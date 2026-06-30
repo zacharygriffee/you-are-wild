@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>FightFuckFeed.me - Tactical Edition</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Dark Mode Base Styles -->
+    <style>
+        /* =============================================
+           CSS VARIABLES - Dark Mode Theme
+           ============================================= */
+        :root {
+            /* Core Colors */
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-elevated: #2d2d4a;
+            
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6a6a7a;
+            --text-accent: #00d4aa;
+            
+            /* Accent Colors */
+            --accent-primary: #00d4aa;
+            --accent-secondary: #ff6b9d;
+            --accent-warning: #ffd166;
+            --accent-danger: #ef476f;
+            --accent-info: #118ab2;
+            
+            /* Borders */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.2);
+            
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
+            
+            /* Typography */
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        
+        /* =============================================
+           RESET & BASE
+           ============================================= */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+        
+        /* =============================================
+           APP SHELL
+           ============================================= */
+        #app {
+            display: grid;
+            grid-template-rows: 60px 1fr 140px;
+            grid-template-areas:
+                "header"
+                "stage"
+                "log";
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* =============================================
+           HEADER
+           ============================================= */
+        .app-header {
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--space-lg);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-default);
+            z-index: 100;
+        }
+        
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .app-logo {
+            font-size: 24px;
+            filter: drop-shadow(0 0 8px var(--accent-primary));
+        }
+        
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .app-nav {
+            display: flex;
+            gap: var(--space-sm);
+        }
+        
+        .nav-btn {
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+        }
+        
+        .nav-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        /* =============================================
+           STAGE AREA (Dynamic Content)
+           ============================================= */
+        .stage {
+            grid-area: stage;
+            display: grid;
+            grid-template-columns: 220px 1fr 280px 280px;
+            grid-template-areas: "map main party enemies";
+            gap: var(--space-md);
+            padding: var(--space-md);
+            overflow: hidden;
+        }
+        
+        /* Panel Base */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: var(--space-md);
+        }
+        
+        /* Map Panel */
+        .panel-map {
+            grid-area: map;
+        }
+        
+        .mini-map {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            aspect-ratio: 1;
+        }
+        
+        .map-tile {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .map-tile:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+        }
+        
+        .map-tile.center {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .map-tile.has-enemy::after {
+            content: '⚔️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+        }
+        
+        /* Main Panel */
+        .panel-main {
+            grid-area: main;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .scene-display {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: var(--space-xl);
+        }
+        
+        .scene-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            color: var(--text-accent);
+        }
+        
+        .scene-description {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+        
+        .scene-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+        
+        /* Party/Enemy Panels */
+        .panel-party { grid-area: party; }
+        .panel-enemies { grid-area: enemies; }
+        
+        /* Unit Card (Accordion) */
+        .unit-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-sm);
+            overflow: hidden;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .unit-card:hover {
+            border-color: var(--border-strong);
+        }
+        
+        .unit-card.selected {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .unit-card.expanded {
+            border-color: var(--accent-secondary);
+        }
+        
+        .unit-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+        }
+        
+        .unit-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-elevated);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .unit-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .unit-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .unit-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        .unit-health {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 11px;
+        }
+        
+        .health-bar {
+            width: 60px;
+            height: 4px;
+            background: var(--bg-elevated);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            transition: width 0.3s ease;
+        }
+        
+        .unit-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            padding: var(--space-sm);
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-default);
+        }
+        
+        .stat {
+            text-align: center;
+            padding: var(--space-xs);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+        
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* =============================================
+           LOG PANEL
+           ============================================= */
+        .panel-log {
+            grid-area: log;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+        }
+        
+        .log-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+        
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-sm) var(--space-md);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            padding: var(--space-xs) 0;
+            border-left: 2px solid transparent;
+            padding-left: var(--space-sm);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .log-entry.combat {
+            border-left-color: var(--accent-danger);
+            background: rgba(239, 71, 111, 0.05);
+        }
+        
+        .log-entry.discovery {
+            border-left-color: var(--accent-warning);
+            background: rgba(255, 209, 102, 0.05);
+        }
+        
+        .log-entry.loot {
+            border-left-color: var(--accent-primary);
+        }
+        
+        .log-entry.text-muted {
+            color: var(--text-muted);
+        }
+        
+        /* =============================================
+           ACTION BAR
+           ============================================= */
+        .action-bar {
+            display: flex;
+            gap: var(--space-md);
+            padding: 0 var(--space-md);
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .action-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+        
+        .action-btn:active {
+            transform: translateY(0);
+        }
+        
+        .action-btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .action-btn.primary:hover {
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .action-icon {
+            font-size: 20px;
+        }
+        
+        /* =============================================
+           SCREENS
+           ============================================= */
+        .screen {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Character Creation Screen */
+        .screen-create {
+            background: var(--bg-primary);
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-xl);
+        }
+        
+        .create-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+        
+        .create-title {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: var(--space-xs);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .create-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .create-section {
+            margin-bottom: var(--space-lg);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--space-sm);
+        }
+        
+        .option-card {
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-default);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .option-card:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-elevated);
+        }
+        
+        .option-card.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.1);
+        }
+        
+        .option-icon {
+            font-size: 32px;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .option-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .option-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: var(--space-xs);
+        }
+        
+        /* =============================================
+           RESPONSIVE
+           ============================================= */
+        @media (max-width: 1400px) {
+            .stage {
+                grid-template-columns: 180px 1fr 240px 240px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .stage {
+                grid-template-columns: 160px 1fr 200px 200px;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            #app {
+                grid-template-rows: 50px 1fr auto 60px;
+                grid-template-areas:
+                    "header"
+                    "stage"
+                    "log"
+                    "actions";
+            }
+            
+            .stage {
+                grid-template-columns: 1fr;
+                grid-template-areas: "main";
+            }
+            
+            .panel-map,
+            .panel-party,
+            .panel-enemies {
+                display: none;
+            }
+            
+            .panel-map.active,
+            .panel-party.active,
+            .panel-enemies.active {
+                display: flex;
+                position: absolute;
+                top: 50px;
+                left: 0;
+                right: 0;
+                bottom: 200px;
+                z-index: 50;
+            }
+        }
+        
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 170, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 170, 0.5); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CHARACTER CREATION SCREEN -->
+    <div id="screen-create" class="screen screen-create active">
+        <div class="create-container">
+            <h1 class="create-title">Create Your Character</h1>
+            <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
+            
+            <!-- Species Selection -->
+            <div class="create-section">
+                <h3 class="section-title">Choose Your Species</h3>
+                <div class="option-grid" id="species-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            
+            <!-- Gender Selection -->
+            <div class="create-section">
+                <h3 class="section-title">Gender</h3>
+                <div class="option-grid" id="gender-grid">
+                    <div class="option-card" data-value="female">
+                        <div class="option-icon">♀️</div>
+                        <div class="option-label">Female</div>
+                        <div class="option-desc">Play as female</div>
+                    </div>
+                    <div class="option-card" data-value="male">
+                        <div class="option-icon">♂️</div>
+                        <div class="option-label">Male</div>
+                        <div class="option-desc">Play as male</div>
+                    </div>
+                    <div class="option-card" data-value="nonbinary">
+                        <div class="option-icon">⚧</div>
+                        <div class="option-label">Non-Binary</div>
+                        <div class="option-desc">Other gender identity</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Target Preferences -->
+            <div class="create-section">
+                <h3 class="section-title">Preferred Encounters</h3>
+                <div class="option-grid" id="preference-grid">
+                    <div class="option-card" data-value="female">
+                        <div class="option-icon">♀️</div>
+                        <div class="option-label">Females</div>
+                    </div>
+                    <div class="option-card" data-value="male">
+                        <div class="option-icon">♂️</div>
+                        <div class="option-label">Males</div>
+                    </div>
+                    <div class="option-card" data-value="any">
+                        <div class="option-icon">🎲</div>
+                        <div class="option-label">Any</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="action-btn primary" style="width: 100%; margin-top: 24px;" onclick="createCharacter()">
+                Begin Adventure →
+            </button>
+        </div>
+    </div>
+    
+    <!-- TUTORIAL OVERLAY -->
+    <div id="tutorial-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
+            <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
+            <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+                <button class="nav-btn" onclick="skipTutorial()">Skip Tutorial</button>
+                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" onclick="nextTutorial()">Next →</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MAIN GAME SCREEN -->
+    <div id="screen-game" class="screen">
+        <div id="app">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="app-brand">
+                    <span class="app-logo">🐺</span>
+                    <span class="app-title">FightFuckFeed.me</span>
+                </div>
+                <nav class="app-nav">
+                    <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
+                    <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
+                    <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
+                    <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
+                </nav>
+            </header>
+            
+            <!-- Stage -->
+            <div class="stage">
+                <!-- Map Panel -->
+                <div class="panel panel-map" id="panel-map">
+                    <div class="panel-header">
+                        <span>🗺️ Map</span>
+                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mini-map" id="mini-map">
+                            <div class="map-tile" onclick="move(-1, -1)"></div>
+                            <div class="map-tile" onclick="move(-1, 0)"></div>
+                            <div class="map-tile" onclick="move(-1, 1)"></div>
+                            <div class="map-tile" onclick="move(0, -1)"></div>
+                            <div class="map-tile center"></div>
+                            <div class="map-tile" onclick="move(0, 1)"></div>
+                            <div class="map-tile" onclick="move(1, -1)"></div>
+                            <div class="map-tile" onclick="move(1, 0)"></div>
+                            <div class="map-tile" onclick="move(1, 1)"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Panel -->
+                <div class="panel panel-main" id="panel-main">
+                    <div class="panel-content">
+                        <div class="scene-display" id="scene-display">
+                            <h2 class="scene-title" id="scene-title">The Wilderness</h2>
+                            <p class="scene-description" id="scene-description">
+                                You find yourself in an untamed land where predators roam and only the strong survive. 
+                                The air is thick with the scent of pine and the distant calls of creatures unknown.
+                            </p>
+                            <div class="scene-actions" id="scene-actions">
+                                <button class="action-btn" onclick="explore()">
+                                    <span class="action-icon">🔍</span>
+                                    Explore
+                                </button>
+                                <button class="action-btn" onclick="rest()">
+                                    <span class="action-icon">🏕️</span>
+                                    Rest
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Party Panel -->
+                <div class="panel panel-party" id="panel-party">
+                    <div class="panel-header">
+                        <span>👥 Party</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('party')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="party-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Enemies Panel -->
+                <div class="panel panel-enemies" id="panel-enemies">
+                    <div class="panel-header">
+                        <span>⚔️ Enemies</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('enemies')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="enemies-content">
+                        <p style="color: var(--text-muted); text-align: center;">No enemies present</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Log Panel -->
+            <div class="panel-log">
+                <div class="log-header">
+                    <span class="log-title">📜 Combat Log</span>
+                    <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                </div>
+                <div class="log-content" id="log-content">
+                    <div class="log-entry">Welcome to FightFuckFeed.me Tactical Edition</div>
+                    <div class="log-entry discovery">Created your character. The journey begins...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Action Bar -->
+        <div class="mobile-action-bar" id="mobile-actions" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top: 1px solid var(--border-default); padding: var(--space-sm); z-index: 100;">
+            <div class="action-bar">
+                <button class="action-btn primary" onclick="combatAction('fight')">
+                    <span class="action-icon">⚔️</span>
+                    Fight
+                </button>
+                <button class="action-btn" onclick="combatAction('fuck')">
+                    <span class="action-icon">💕</span>
+                    Seduce
+                </button>
+                <button class="action-btn" onclick="combatAction('feed')">
+                    <span class="action-icon">🍽️</span>
+                    Consume
+                </button>
+                <button class="action-btn" onclick="combatAction('flee')">
+                    <span class="action-icon">🏃</span>
+                    Flee
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GAME API BRIDGE & APP LOGIC -->
+    <script src="FightFuckFeed.me.html"></script>
+    <script>
+        // =============================================
+        // TACTICAL EDITION - APP CONTROLLER
+        // =============================================
+        
+        const App = {
+            // State
+            screen: 'create',
+            tutorialStep: 0,
+            player: null,
+            party: [],
+            enemies: [],
+            location: { x: 0, y: 0 },
+            log: [],
+            
+            // Configuration
+            species: [
+                { id: 'wolf', name: 'Wolf', icon: '🐺', desc: 'Fierce predator' },
+                { id: 'fox', name: 'Fox', icon: '🦊', desc: 'Cunning trickster' },
+                { id: 'cat', name: 'Cat', icon: '🐱', desc: 'Agile hunter' },
+                { id: 'dragon', name: 'Dragon', icon: '🐲', desc: 'Powerful beast' },
+                { id: 'naga', name: 'Naga', icon: '🐍', desc: 'Serpent folk' },
+                { id: 'bear', name: 'Bear', icon: '🐻', desc: 'Strong brawler' },
+                { id: 'tiger', name: 'Tiger', icon: '🐅', desc: 'Deadly stalker' },
+                { id: 'bunny', name: 'Bunny', icon: '🐰', desc: 'Swift prey' },
+                { id: 'slime', name: 'Slime', icon: '🟢', desc: 'Amorphous' },
+                { id: 'harpy', name: 'Harpy', icon: '🦅', desc: 'Sky hunter' }
+            ],
+            
+            // Tutorial steps
+            tutorialSteps: [
+                {
+                    title: 'Welcome to the Wilds',
+                    content: 'You are a predator in a world of monstergirls. Hunt, consume, and grow stronger. But choose your prey wisely...'
+                },
+                {
+                    title: 'Movement',
+                    content: 'Click the map tiles to move in that direction. The center tile is your current position. Explore to find prey.'
+                },
+                {
+                    title: 'Combat',
+                    content: 'When you encounter enemies, choose your action: Fight to defeat them, Seduce to befriend them, or Consume to devour them.'
+                },
+                {
+                    title: 'Growth',
+                    content: 'Consuming enemies makes you stronger. Your party can grow, but beware - some may not appreciate being eaten!'
+                }
+            ],
+            
+            // Initialize
+            init() {
+                this.populateSpecies();
+                this.bindEvents();
+                this.checkFirstTime();
+            },
+            
+            // Populate character creation options
+            populateSpecies() {
+                const grid = document.getElementById('species-grid');
+                if (!grid) return;
+                
+                grid.innerHTML = this.species.map(s => `
+                    <div class="option-card" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')">
+                        <div class="option-icon">${s.icon}</div>
+                        <div class="option-label">${s.name}</div>
+                        <div class="option-desc">${s.desc}</div>
+                    </div>
+                `).join('');
+            },
+            
+            // Event binding
+            bindEvents() {
+                // Species selection
+                document.querySelectorAll('#species-grid .option-card').forEach(card => {
+                    card.addEventListener('click', () => this.selectSpecies(card.dataset.species));
+                });
+                
+                // Gender selection
+                document.querySelectorAll('#gender-grid .option-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('#gender-grid .option-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        this.playerGender = card.dataset.value;
+                    });
+                });
+                
+                // Preference selection
+                document.querySelectorAll('#preference-grid .option-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('#preference-grid .option-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        this.preference = card.dataset.value;
+                    });
+                });
+            },
+            
+            // Check if first time player
+            checkFirstTime() {
+                const hasPlayed = localStorage.getItem('tactical-has-played');
+                if (!hasPlayed) {
+                    // Default selections
+                    document.querySelector('#gender-grid .option-card')?.classList.add('selected');
+                    document.querySelector('#preference-grid .option-card')?.classList.add('selected');
+                }
+            },
+            
+            // Select species
+            selectSpecies(id) {
+                document.querySelectorAll('#species-grid .option-card').forEach(c => c.classList.remove('selected'));
+                document.querySelector(`[data-species="${id}"]`)?.classList.add('selected');
+                this.selectedSpecies = id;
+            },
+            
+            // Create character and start
+            createCharacter() {
+                if (!this.selectedSpecies) {
+                    alert('Please select a species');
+                    return;
+                }
+                
+                const species = this.species.find(s => s.id === this.selectedSpecies);
+                
+                this.player = {
+                    name: 'You',
+                    species: species.id,
+                    icon: species.icon,
+                    gender: this.playerGender || 'female',
+                    level: 1,
+                    hp: 100,
+                    maxHp: 100,
+                    stats: {
+                        str: 10,
+                        con: 10,
+                        spd: 10,
+                        int: 10,
+                        wis: 10,
+                        cha: 10
+                    },
+                    tags: [species.name]
+                };
+                
+                this.party = [this.player];
+                
+                localStorage.setItem('tactical-has-played', 'true');
+                
+                this.showScreen('game');
+                this.renderParty();
+                this.showTutorial();
+            },
+            
+            // Screen management
+            showScreen(name) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(`screen-${name}`)?.classList.add('active');
+                this.screen = name;
+            },
+            
+            // Tutorial
+            showTutorial() {
+                const hasSeenTutorial = localStorage.getItem('tactical-tutorial-complete');
+                if (hasSeenTutorial) return;
+                
+                this.tutorialStep = 0;
+                document.getElementById('tutorial-overlay').style.display = 'flex';
+                this.updateTutorial();
+            },
+            
+            updateTutorial() {
+                const step = this.tutorialSteps[this.tutorialStep];
+                if (!step) {
+                    this.skipTutorial();
+                    return;
+                }
+                
+                document.getElementById('tutorial-title').textContent = step.title;
+                document.getElementById('tutorial-content').textContent = step.content;
+            },
+            
+            nextTutorial() {
+                this.tutorialStep++;
+                if (this.tutorialStep >= this.tutorialSteps.length) {
+                    this.skipTutorial();
+                } else {
+                    this.updateTutorial();
+                }
+            },
+            
+            skipTutorial() {
+                localStorage.setItem('tactical-tutorial-complete', 'true');
+                document.getElementById('tutorial-overlay').style.display = 'none';
+            },
+            
+            // Party rendering
+            renderParty() {
+                const container = document.getElementById('party-content');
+                if (!container) return;
+                
+                container.innerHTML = this.party.map((unit, i) => this.renderUnitCard(unit, i, 'party')).join('');
+            },
+            
+            renderEnemies() {
+                const container = document.getElementById('enemies-content');
+                if (!container) return;
+                
+                if (this.enemies.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No enemies present</p>';
+                    return;
+                }
+                
+                container.innerHTML = this.enemies.map((unit, i) => this.renderUnitCard(unit, i, 'enemy')).join('');
+            },
+            
+            renderUnitCard(unit, index, type) {
+                const hpPercent = Math.round((unit.hp / unit.maxHp) * 100);
+                const isExpanded = unit.expanded || false;
+                
+                return `
+                    <div class="unit-card ${isExpanded ? 'expanded' : ''}" onclick="App.toggleUnit(${index}, '${type}')">
+                        <div class="unit-header">
+                            <div class="unit-avatar">${unit.icon}</div>
+                            <div class="unit-info">
+                                <div class="unit-name">${unit.name}</div>
+                                <div class="unit-meta">${unit.tags?.join(', ') || unit.species}</div>
+                                <div class="unit-health">
+                                    <div class="health-bar">
+                                        <div class="health-fill" style="width: ${hpPercent}%"></div>
+                                    </div>
+                                    <span>${hpPercent}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        ${isExpanded ? `
+                            <div class="unit-stats">
+                                <div class="stat">
+                                    <div class="stat-label">STR</div>
+                                    <div class="stat-value">${unit.stats?.str || 10}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">CON</div>
+                                    <div class="stat-value">${unit.stats?.con || 10}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">SPD</div>
+                                    <div class="stat-value">${unit.stats?.spd || 10}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">INT</div>
+                                    <div class="stat-value">${unit.stats?.int || 10}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">WIS</div>
+                                    <div class="stat-value">${unit.stats?.wis || 10}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-label">CHA</div>
+                                    <div class="stat-value">${unit.stats?.cha || 10}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            },
+            
+            toggleUnit(index, type) {
+                const list = type === 'party' ? this.party : this.enemies;
+                if (list[index]) {
+                    list[index].expanded = !list[index].expanded;
+                    if (type === 'party') this.renderParty();
+                    else this.renderEnemies();
+                }
+            },
+            
+            expandAll(type) {
+                const list = type === 'party' ? this.party : this.enemies;
+                const allExpanded = list.every(u => u.expanded);
+                list.forEach(u => u.expanded = !allExpanded);
+                if (type === 'party') this.renderParty();
+                else this.renderEnemies();
+            },
+            
+            // Movement
+            move(dy, dx) {
+                this.location.x += dx;
+                this.location.y += dy;
+                document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
+                
+                // Random encounter chance
+                if (Math.random() < 0.3) {
+                    this.generateEncounter();
+                } else {
+                    this.updateScene('Exploring', 'You travel through the wilderness...');
+                }
+                
+                this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y}`, type: 'move' });
+                this.renderLog();
+            },
+            
+            generateEncounter() {
+                const enemySpecies = this.species[Math.floor(Math.random() * this.species.length)];
+                const enemy = {
+                    name: enemySpecies.name + 'girl',
+                    species: enemySpecies.id,
+                    icon: enemySpecies.icon,
+                    hp: 80,
+                    maxHp: 80,
+                    stats: { str: 8, con: 8, spd: 8, int: 8, wis: 8, cha: 8 },
+                    tags: [enemySpecies.name, 'Hostile']
+                };
+                
+                this.enemies = [enemy];
+                this.renderEnemies();
+                
+                this.updateScene(
+                    'Encounter!',
+                    `A ${enemy.name} blocks your path! She looks ${Math.random() > 0.5 ? 'delicious' : 'dangerous'}...`,
+                    true
+                );
+                
+                this.log.push({ text: `Encountered ${enemy.name}!`, type: 'combat' });
+                this.renderLog();
+                
+                // Show mobile actions if on mobile
+                if (window.innerWidth <= 1024) {
+                    document.getElementById('mobile-actions').style.display = 'block';
+                }
+            },
+            
+            updateScene(title, description, inCombat = false) {
+                document.getElementById('scene-title').textContent = title;
+                document.getElementById('scene-description').textContent = description;
+                
+                const actions = document.getElementById('scene-actions');
+                if (inCombat) {
+                    actions.innerHTML = `
+                        <button class="action-btn primary" onclick="App.combatAction('fight')">
+                            <span class="action-icon">⚔️</span>
+                            Fight
+                        </button>
+                        <button class="action-btn" onclick="App.combatAction('fuck')">
+                            <span class="action-icon">💕</span>
+                            Seduce
+                        </button>
+                        <button class="action-btn" onclick="App.combatAction('feed')">
+                            <span class="action-icon">🍽️</span>
+                            Consume
+                        </button>
+                        <button class="action-btn" onclick="App.combatAction('flee')">
+                            <span class="action-icon">🏃</span>
+                            Flee
+                        </button>
+                    `;
+                } else {
+                    actions.innerHTML = `
+                        <button class="action-btn" onclick="App.explore()">
+                            <span class="action-icon">🔍</span>
+                            Explore
+                        </button>
+                        <button class="action-btn" onclick="App.rest()">
+                            <span class="action-icon">🏕️</span>
+                            Rest
+                        </button>
+                    `;
+                }
+            },
+            
+            // Combat actions
+            combatAction(action) {
+                if (this.enemies.length === 0) return;
+                
+                const enemy = this.enemies[0];
+                let result = '';
+                
+                switch(action) {
+                    case 'fight':
+                        const damage = Math.floor(Math.random() * 20) + 10;
+                        enemy.hp -= damage;
+                        result = `Dealt ${damage} damage to ${enemy.name}`;
+                        if (enemy.hp <= 0) {
+                            result += ` and defeated her!`;
+                            this.enemies = [];
+                            this.updateScene('Victory!', `You defeated the ${enemy.name}.`, false);
+                        }
+                        break;
+                    case 'fuck':
+                        result = `Attempted to seduce ${enemy.name}...`;
+                        if (Math.random() > 0.5) {
+                            result += ` She's interested!`;
+                            this.party.push({...enemy, hp: enemy.maxHp, tags: [enemy.species, 'Lover']});
+                            this.enemies = [];
+                            this.renderParty();
+                            this.updateScene('New Ally!', `${enemy.name} joins your party!`, false);
+                        } else {
+                            result += ` She resisted!`;
+                        }
+                        break;
+                    case 'feed':
+                        result = `Consumed ${enemy.name}!`;
+                        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+                        this.player.stats.str += 1;
+                        this.enemies = [];
+                        this.updateScene('Feeding Complete', `You devoured ${enemy.name}. Your power grows...`, false);
+                        break;
+                    case 'flee':
+                        result = `Fled from ${enemy.name}`;
+                        this.enemies = [];
+                        this.updateScene('Escaped', 'You got away safely.', false);
+                        break;
+                }
+                
+                this.log.push({ text: result, type: 'combat' });
+                this.renderLog();
+                this.renderEnemies();
+                
+                document.getElementById('mobile-actions').style.display = 'none';
+            },
+            
+            explore() {
+                this.log.push({ text: 'Exploring the area...', type: 'discovery' });
+                this.renderLog();
+                this.move(0, 0);
+            },
+            
+            rest() {
+                this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+                this.party.forEach(p => p.hp = Math.min(p.maxHp, p.hp + 30));
+                this.log.push({ text: 'Rested and recovered HP', type: 'heal' });
+                this.renderLog();
+                this.renderParty();
+            },
+            
+            // Log rendering
+            renderLog() {
+                const container = document.getElementById('log-content');
+                if (!container) return;
+                
+                const entries = this.log.slice(-20).reverse().map(e => {
+                    let className = 'log-entry';
+                    if (e.type === 'combat') className += ' combat';
+                    if (e.type === 'discovery') className += ' discovery';
+                    if (e.type === 'move') className += ' text-muted';
+                    return `<div class="${className}">${e.text}</div>`;
+                }).join('');
+                
+                container.innerHTML = entries;
+            },
+            
+            clearLog() {
+                this.log = [];
+                this.renderLog();
+            },
+            
+            // Panel toggle (mobile)
+            togglePanel(panel) {
+                const panels = ['panel-map', 'panel-party', 'panel-enemies'];
+                panels.forEach(p => document.getElementById(p)?.classList.remove('active'));
+                document.getElementById(`panel-${panel}`)?.classList.add('active');
+            }
+        };
+        
+        // Global functions for onclick handlers
+        window.createCharacter = () => App.createCharacter();
+        window.move = (dy, dx) => App.move(dy, dx);
+        window.explore = () => App.explore();
+        window.rest = () => App.rest();
+        window.togglePanel = (p) => App.togglePanel(p);
+        window.expandAll = (t) => App.expandAll(t);
+        window.combatAction = (a) => App.combatAction(a);
+        window.showTutorial = () => App.showTutorial();
+        window.nextTutorial = () => App.nextTutorial();
+        window.skipTutorial = () => App.skipTutorial();
+        window.clearLog = () => App.clearLog();
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>

@@ -1,0 +1,489 @@
+/* ============================================= */
+/* FightFuckFeed.me - Modern UI Styles */
+/* ============================================= */
+
+/* Tutorial Styles */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+}
+
+.tutorial-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.tutorial-tooltip {
+    position: absolute;
+    background: #363635;
+    border: 4px solid #b5a886;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.tutorial-title {
+    margin: 0;
+    color: #FCEB88;
+    font-family: 'Luckiest Guy', cursive;
+}
+
+.tutorial-close {
+    background: none;
+    border: none;
+    color: #b5a886;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.tutorial-content {
+    color: #ffffff;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.tutorial-progress {
+    border-top: 2px solid #4a4a4a;
+    padding-top: 15px;
+}
+
+.tutorial-step-counter {
+    color: #88cccc;
+    font-size: 14px;
+}
+
+.tutorial-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.tutorial-highlight {
+    position: relative;
+    z-index: 10001;
+    box-shadow: 0 0 0 4px #FCEB88, 0 0 20px #FCEB88;
+}
+
+/* Save Manager Styles */
+.save-manager-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+}
+
+.save-manager-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.save-manager-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #2e4052;
+    border: 4px solid #b5a886;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.save-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: #363635;
+    border-bottom: 2px solid #b5a886;
+}
+
+.save-manager-header h2 {
+    margin: 0;
+    color: #FCEB88;
+    font-family: 'Luckiest Guy', cursive;
+}
+
+.save-manager-close {
+    background: none;
+    border: none;
+    color: #b5a886;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.save-manager-body {
+    padding: 20px;
+    max-height: calc(90vh - 80px);
+    overflow-y: auto;
+}
+
+.save-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #4a4a4a;
+}
+
+.save-tab {
+    padding: 10px 20px;
+    background: #363635;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #b5a886;
+    font-family: 'Londrina Solid', cursive;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.save-tab.active {
+    color: #FCEB88;
+    border-bottom-color: #FCEB88;
+}
+
+.save-panel {
+    display: none;
+}
+
+.save-panel.active {
+    display: block;
+}
+
+/* Save Slots */
+.save-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.save-slot {
+    background: #363635;
+    border: 3px solid #4a4a4a;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.save-slot.occupied {
+    border-color: #88cccc;
+}
+
+.save-slot.empty {
+    border-color: #666;
+}
+
+.slot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+.slot-number {
+    color: #FCEB88;
+    font-family: 'Luckiest Guy', cursive;
+    font-size: 18px;
+}
+
+.slot-status {
+    color: #88cccc;
+    font-size: 12px;
+}
+
+.slot-body {
+    min-height: 100px;
+}
+
+.slot-preview {
+    text-align: center;
+}
+
+.slot-empty-icon {
+    font-size: 48px;
+    margin: 20px 0;
+}
+
+.slot-character {
+    margin-bottom: 10px;
+}
+
+.slot-species {
+    display: block;
+    color: #88cccc;
+    font-size: 14px;
+}
+
+.slot-name {
+    display: block;
+    color: #FCEB88;
+    font-size: 18px;
+    font-family: 'Londrina Solid', cursive;
+}
+
+.slot-details {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: #b5a886;
+    font-size: 12px;
+}
+
+.slot-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.slot-btn-delete {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.slot-btn-delete:hover {
+    opacity: 1;
+}
+
+/* Import/Export */
+.import-export-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.import-section, .export-section {
+    background: #363635;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.import-section h3, .export-section h3 {
+    color: #FCEB88;
+    margin-top: 0;
+}
+
+.import-dropzone {
+    border: 3px dashed #4a4a4a;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.import-dropzone:hover {
+    border-color: #88cccc;
+}
+
+.import-dropzone input {
+    display: none;
+}
+
+.import-label {
+    cursor: pointer;
+    color: #b5a886;
+}
+
+.export-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 15px 30px;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Londrina Solid', cursive;
+    font-size: 16px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 10001;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: #48bb78;
+    border: 2px solid #38a169;
+}
+
+.toast-error {
+    background: #e53e3e;
+    border: 2px solid #c53030;
+}
+
+.toast-info {
+    background: #3182ce;
+    border: 2px solid #2c5aa0;
+}
+
+/* Modal System */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #363635;
+    border: 4px solid #b5a886;
+    border-radius: 15px;
+    padding: 25px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #b5a886;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+/* Loading Spinner */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #4a4a4a;
+    border-top-color: #88cccc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 20px;
+    color: #b5a886;
+    font-family: 'Londrina Solid', cursive;
+}
+
+/* Keyboard Help */
+.keyboard-help {
+    color: #fff;
+}
+
+.keyboard-help h3 {
+    color: #FCEB88;
+    margin-top: 0;
+}
+
+.shortcut-category {
+    margin-bottom: 20px;
+}
+
+.shortcut-category h4 {
+    color: #88cccc;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #4a4a4a;
+    padding-bottom: 5px;
+}
+
+.shortcut-category ul {
+    list-style: none;
+    padding: 0;
+}
+
+.shortcut-category li {
+    padding: 8px 0;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+kbd {
+    background: #4a4a4a;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'PT Mono', monospace;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .save-slots-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .import-export-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .tutorial-tooltip {
+        max-width: 90%;
+        left: 5% !important;
+        right: 5% !important;
+        transform: none !important;
+    }
+    
+    .save-manager-content {
+        width: 95%;
+    }
+}

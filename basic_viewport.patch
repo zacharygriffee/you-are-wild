@@ -1,0 +1,10 @@
+diff --git a/FightFuckFeed.me.html b/FightFuckFeed.me.html
+--- a/FightFuckFeed.me.html
++++ b/FightFuckFeed.me.html
+@@ -1,6 +1,7 @@
+ <html lang="en-US">
+ 
+ <head>
++	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ 	<link rel="icon" href="https://fightfuckfeed.me/icon.png">
+ 	<!-- Global site tag (gtag.js) - Google Analytics -->

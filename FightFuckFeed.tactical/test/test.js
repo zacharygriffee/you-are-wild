@@ -1204,6 +1204,65 @@ test('Combat target selection is rendered on creature panel cards', () => {
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
 });
 
+test('Combat auto-position assigns flying and ranged units to back row', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-row', species: 'human' });
+  const harpy = makeUnit('Harpy', { id: 'harpy-row', species: 'harpy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [harpy];
+  App.processTurn = function() {};
+  App.startCombat([harpy]);
+  assertEqual(player.combatRow, 'front', 'Melee player should default to front row');
+  assertEqual(harpy.combatRow, 'back', 'Flying/ranged enemy should default to back row');
+});
+
+test('Melee combat targeting cannot select unreachable back-row enemies', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-melee', Figh: 30 });
+  const enemy = makeUnit('Backline', { id: 'backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.activeActor = player;
+  player.combatRow = 'front';
+  App.nextTurn = function() {};
+  App.selectTarget('fight');
+  assertContains(elements.get('enemies-content').innerHTML, 'disabled', 'Unreachable back-row enemy should render disabled');
+  App.executeActionOnTarget('fight', 'backline-1');
+  assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
+  assertContains(App.log[App.log.length - 1].text, 'cannot reach', 'Blocked reach should be logged');
+});
+
+test('Combat move action swaps row and costs the active turn', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-move', combatRow: 'front' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.combatState.active = true;
+  App.activeActor = player;
+  App.nextTurn = function() { this._movedTurn = true; };
+  App.moveCombatRow();
+  assertEqual(player.combatRow, 'back', 'Move action should swap front to back');
+  assertEqual(App._movedTurn, true, 'Move action should consume the turn');
+});
+
+test('Flying attackers get flanking damage against back-row targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const flyer = makeUnit('Flyer', { id: 'flyer-1', Figh: 30, flying: true, combatRow: 'back' });
+  const target = makeUnit('Backline', { id: 'backline-flank', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 10, combatRow: 'back' });
+  App.player = player;
+  App.party = [player, flyer];
+  App.creatures = [target];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App.executeActionAgainstTarget('fight', flyer, target);
+  assertEqual(target.CPun, 73, 'Flying flanking bonus should increase damage against back-row targets');
+});
+
 test('Obedient ally turns use the same panel target selection', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You');

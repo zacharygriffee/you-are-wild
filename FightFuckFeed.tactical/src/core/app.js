@@ -1285,6 +1285,7 @@
                 this.party.forEach(p => this._normalizeUnit(p, { disposition: this.DISPOSITION.PARTY }));
                 enemies.forEach(e => this._normalizeUnit(e, { disposition: this.DISPOSITION.ENEMY }));
                 const allCombatants = [...this.party, ...enemies];
+                this._assignCombatRows(allCombatants);
                 this.combatState.turnQueue = allCombatants
                     .filter(c => c.CPun > 0 && !c.knockedOut)
                     .map(c => ({ unit: c, initiative: this._calcInitiative(c) }))
@@ -1311,6 +1312,48 @@
                 if (stomachSize >= 3) base -= 2;
                 if (stomachSize >= 6) base -= 4;
                 return Math.max(1, base);
+            },
+
+            _defaultCombatRow(unit) {
+                return unit?.flying || unit?.ranged ? 'back' : 'front';
+            },
+
+            _assignCombatRows(units) {
+                for (const unit of units) {
+                    if (!unit || unit.CPun <= 0) continue;
+                    if (unit.combatRow !== 'front' && unit.combatRow !== 'back') {
+                        unit.combatRow = this._defaultCombatRow(unit);
+                    }
+                }
+            },
+
+            _isPhysicalCombatAction(action) {
+                return action === 'fight' || action === 'feast';
+            },
+
+            _canReachCombatTarget(actor, target, action = 'fight') {
+                if (!actor || !target || target.CPun <= 0) return false;
+                if (!this._isPhysicalCombatAction(action)) return true;
+                if (target.combatRow !== 'back') return true;
+                return Boolean(actor.flying || actor.ranged || actor.antiflying);
+            },
+
+            _physicalDamageMultiplier(actor, target) {
+                let mult = 1;
+                if (actor?.flying && target?.combatRow === 'back') mult += 0.2;
+                if (actor?.combatRow === 'back' && target?.combatRow === 'front' && (actor.ranged || actor.antiflying)) mult -= 0.1;
+                return Math.max(0.5, mult);
+            },
+
+            moveCombatRow() {
+                const actor = this.activeActor || this.player;
+                if (!this.combatState.active || !actor || actor.CPun <= 0) return;
+                actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
+                this.log.push({ text: `${actor.name} moves to the ${actor.combatRow} row.`, type: 'combat' });
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                this.nextTurn();
             },
 
             processTurn() {
@@ -1374,6 +1417,7 @@
 
             _newRound() {
                 const living = [...this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat), ...this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)];
+                this._assignCombatRows(living);
                 this.combatState.turnQueue = living.map(c => ({ unit: c, initiative: this._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
@@ -1473,6 +1517,7 @@
                 }
                 if (enemies.length > 0) {
                     html += `<button class="action-btn" onclick="App.showSyncMenu()">👥 Sync</button>`;
+                    html += `<button class="action-btn" onclick="App.moveCombatRow()">↕️ Move</button>`;
                 }
                 if (allies.length > 0 || friendlies.length > 0) {
                     html += `<button class="action-btn" onclick="App.showInteractMenu()">💋 Interact</button>`;
@@ -1504,7 +1549,8 @@
             canSelectCreatureTarget(unit) {
                 if (!unit || unit.CPun <= 0 || !this.targetSelection) return false;
                 if (this.targetSelection.source === 'combat') {
-                    return unit.disposition === this.DISPOSITION.ENEMY;
+                    const actor = this.activeActor || this.player;
+                    return unit.disposition === this.DISPOSITION.ENEMY && this._canReachCombatTarget(actor, unit, this.targetSelection.action);
                 }
                 return unit.disposition !== this.DISPOSITION.PARTY;
             },
@@ -1518,6 +1564,15 @@
                 const targetIndex = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0).indexOf(target);
                 if (targetIndex === -1) {
                     this.cancelTargetSelection();
+                    return;
+                }
+                const actor = this.activeActor || this.player;
+                if (!this._canReachCombatTarget(actor, target, action)) {
+                    this.log.push({ text: `${actor.name} cannot reach ${target.name} from here.`, type: 'combat' });
+                    this.targetSelection = null;
+                    this.renderLog();
+                    this.renderCreatures();
+                    this.showActorActions(actor);
                     return;
                 }
                 this.targetSelection = null;
@@ -1540,7 +1595,8 @@
                     case 'fight': {
                         const ar = this._AR(actor.Figh);
                         const def = target.con || 10;
-                        const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
+                        const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                        const dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(actor, target)));
                         target.CPun -= dmg;
                         result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment!`;
                         if (target.CPun <= 0) {
@@ -2942,9 +2998,10 @@
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
                 const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
+                const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}">
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span></div>
-                    <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}</div>
+                    <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
                     ${actionButtons}
                 </div>`;
@@ -3000,13 +3057,14 @@
                     `Womb: ${this._containerSummary(unit, 'womb')}`,
                     `Balls: ${this._containerSummary(unit, 'balls')}`
                 ].join(' | ');
+                const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
                             <div class="unit-name">${unit.name} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}</div>
                             <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
-                            <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}</div>
+                            <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}${rowLabel}</div>
 	                        </div>
 	                    </div>
 	                    ${actionButtons}

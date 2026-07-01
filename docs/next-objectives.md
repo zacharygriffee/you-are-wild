@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 84/84 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 88/88 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -90,6 +90,7 @@
 - Attacking non-hostile creatures can trigger same-species/social tile reactions: flee-prone creatures may scatter, while others can turn hostile and enter combat together
 - Exploration interactions are actor-based: the selected party member, including the player, can resolve baseline actions against creatures and party targets through the shared outside-combat resolver
 - Recruitment is gated by a moddable score helper based on pleasure, willingness, disposition, actor stats, and same-species affinity instead of being a free friendly-only button
+- Combat positioning has a first-pass row system: front/back rows auto-assign from abilities, active actors can spend a turn to move rows, physical target selection respects back-row reach, and row state is visible on unit cards/chips
 
 ---
 
@@ -97,14 +98,7 @@
 
 ### 🟡 Tier 2: High Impact
 
-#### 1. Combat Movement System
-- Tactical positioning: front row (melee) and back row (ranged)
-- Creatures auto-position based on abilities (flying = back, melee = front)
-- Flanking bonuses: attacking from behind row gives +20% damage
-- `move` action in combat: swap positions between rows (costs turn)
-- Affects targeting: melee can't target back row unless flying or ranged; ranged can target any row with penalty to front row
-
-#### 2. Terrain Effects in Combat
+#### 1. Terrain Effects in Combat
 - Water tiles: swimming creatures get +2 SPD, non-swimmers get -2 SPD
 - Flying creatures: immune to ground melee, can only be hit by ranged/flying
 - Dense forest: +2 CON cover bonus, -2 SPD movement
@@ -112,7 +106,7 @@
 - Cave: darkvision required for full accuracy; non-darkvision creatures have 50% miss chance
 - Swamp: chance to get `stuck` status (skip turn, 20% per round)
 
-#### 3. Status Effect Expansion
+#### 2. Status Effect Expansion
 - `bleed` — DOT 2 HP/turn, 3 turns, stacks
 - `burn` — DOT 3 HP/turn, 2 turns, can spread to adjacent creatures
 - `freeze` — skip 1 turn, -2 SPD for 2 turns after
@@ -121,7 +115,7 @@
 - `charm` — creature fights for the charmer (reversed target selection)
 - `fear` — 50% chance to skip turn, flee if HP < 30%
 
-#### 4. Day-Night Cycle
+#### 3. Day-Night Cycle
 - Time tracking: each `move` or `search` advances time by 1 hour
 - Night (20:00–06:00): nocturnal creatures active (bat, rat), diurnal creatures sleep (bunny, deer)
 - Night encounter rates: +50% for nocturnal, -80% for diurnal
@@ -132,18 +126,18 @@
 
 ### 🟢 Tier 3: Medium Impact
 
-#### 5. Party AI Orders
+#### 4. Party AI Orders
 - Per-ally tactic assignment: `aggressive` (always attack), `defensive` (protect player), `healer` (feed wounded), `scavenger` (feast on corpses), `passive` (do nothing unless attacked)
 - UI: accordion in party panel, dropdown per ally
 - AI overrides: healer ally prioritizes `feed.heal` on most wounded; scavenger ally auto-feasts on corpses after combat
 
-#### 6. Enemy AI Improvements
+#### 5. Enemy AI Improvements
 - Flee when outnumbered: if `enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5`, 50% flee chance
 - Call for reinforcements: pack animals (`pack: true`) on low HP have 30% chance to spawn 1 more same-species ally
 - Prioritize livestock: predators (`isPredatorOf`) target livestock/prey creatures first, even if weaker than player
 - Ambush behavior: `ambush: true` creatures get first strike if player hasn't explored tile yet
 
-#### 7. Landmark Interiors (Sub-Maps)
+#### 6. Landmark Interiors (Sub-Maps)
 - Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)
 - Entering a structure switches to interior map, new biome-specific encounter table
 - Exiting returns to overworld tile

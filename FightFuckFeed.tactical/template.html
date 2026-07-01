@@ -1334,7 +1334,183 @@
         <div class="swipe-hint-right" title="Swipe left for party"></div>
     </div>
     
-    <!-- GAME API BRIDGE & APP LOGIC -->
+    
+    <!-- SETTINGS OVERLAY -->
+    <div id="screen-settings" class="screen screen-overlay">
+        <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
+            
+            <!-- Content Tiers -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="tier-safe" class="nav-btn" onclick="CONTENT.setMaxTier(1); App.updateTierButtons()">Safe</button>
+                    <button id="tier-mature" class="nav-btn" onclick="CONTENT.setMaxTier(2); App.updateTierButtons()">Mature</button>
+                    <button id="tier-adult" class="nav-btn" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
+                </div>
+            </div>
+            
+            <!-- Vore & Feeding -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Vore &amp; Feeding</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Enable Vore</span>
+                        <input type="checkbox" id="toggle-vore" onchange="CONTENT.setPreference('voreEnabled', this.checked); App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Fatal Vore (prey dies)</span>
+                        <input type="checkbox" id="toggle-fatal" onchange="App.settings.fatalVore = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Endo Mode (prey survives)</span>
+                        <input type="checkbox" id="toggle-endo" onchange="App.settings.endoMode = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Slow Digestion</span>
+                        <input type="checkbox" id="toggle-slow" onchange="App.settings.slowDigestion = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Stat Absorption</span>
+                        <input type="checkbox" id="toggle-absorb" onchange="App.settings.statAbsorption = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Chewing Option</span>
+                        <input type="checkbox" id="toggle-chew" onchange="App.settings.chewing = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>All-the-Way-Through</span>
+                        <input type="checkbox" id="toggle-attw" onchange="App.settings.allTheWayThrough = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Sex & Interaction -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sex &amp; Interaction</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Explicit Descriptions</span>
+                        <input type="checkbox" id="toggle-explicit" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Power Dynamics (Dom/Sub)</span>
+                        <input type="checkbox" id="toggle-power" onchange="App.settings.powerDynamics = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Refractory Period</span>
+                        <input type="checkbox" id="toggle-refractory" onchange="App.settings.refractoryPeriod = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Same-Species Bonus</span>
+                        <input type="checkbox" id="toggle-same" onchange="App.settings.sameSpeciesBonus = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Fluids & Extremes -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fluids &amp; Extremes</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Fluid Production</span>
+                        <input type="checkbox" id="toggle-fluids" onchange="App.settings.fluidEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Scat Content</span>
+                        <input type="checkbox" id="toggle-scat" onchange="App.settings.scat = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Watersports</span>
+                        <input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Bone Crushing</span>
+                        <input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Unwilling Prey Warnings</span>
+                        <input type="checkbox" id="toggle-warn" onchange="App.settings.unwillingWarnings = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Game Mode -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Game Mode</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Hardcore Mode (delete save on death)</span>
+                        <input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Cheats -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Cheats</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                    <button class="nav-btn" onclick="App.toggleCheat('godMode')">God Mode</button>
+                    <button class="nav-btn" onclick="App.toggleCheat('neverHungry')">Never Hungry</button>
+                    <button class="nav-btn" onclick="App.toggleCheat('canEatAnything')">Can Eat Anything</button>
+                    <button class="nav-btn" onclick="App.toggleCheat('overpowered')">Overpowered</button>
+                    <button class="nav-btn" onclick="App.toggleCheat('instantWin')">Instant Win</button>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="if(confirm('Delete ALL save data? This cannot be undone!')) { App.deleteAllSaves(); }">🗑️ Clear All Saves</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODS OVERLAY -->
+    <div id="screen-mods" class="screen screen-overlay">
+        <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Mod Manager</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Install, enable, and manage game modules.</p>
+            
+            <!-- Install -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                <label class="nav-btn" style="cursor: pointer; display: inline-block;">
+                    📁 Import Mod
+                    <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
+                </label>
+                <button class="nav-btn" onclick="ModUI.createExampleMod()">✨ Create Example</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+            
+            <!-- Mod List -->
+            <div id="mod-list" style="min-height: 100px;">
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;">Loading modules...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MARKETPLACE OVERLAY -->
+    <div id="screen-market" class="screen screen-overlay">
+        <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">🏪 Module Marketplace</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Discover community-made biomes, species, and features.</p>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
+                <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
+                <button class="nav-btn" onclick="ModUI.showModScreen()">My Modules</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SAVE MANAGER OVERLAY -->
+    <div id="save-manager" class="screen screen-overlay">
+        <div id="save-manager-content" style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <!-- Populated by renderSaveManager() -->
+        </div>
+    </div>
+
+
+<!-- GAME API BRIDGE & APP LOGIC -->
 
 <!-- SCRIPTS_PLACEHOLDER -->
 </body>

@@ -1,0 +1,21 @@
+{
+  "name": "FightFuckFeed.tactical",
+  "version": "0.10.0",
+  "description": "Tactical dark-mode edition of FightFuckFeed.me - single-file HTML game with modular source",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/test.js",
+    "test:core": "node test/test.js --filter=core",
+    "test:ui": "node test/test.js --filter=ui",
+    "lint": "node build.js --lint-only",
+    "watch": "node build.js --watch",
+    "dev": "node build.js --watch & npx serve . -p 3000",
+    "clean": "rm -f ../FightFuckFeed.tactical.html",
+    "full-build": "npm run clean && npm run build && npm run test && npm run lint"
+  },
+  "keywords": ["game", "tactical", "rpg", "browser"],
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}

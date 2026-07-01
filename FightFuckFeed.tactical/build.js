@@ -11,27 +11,60 @@ const SRC_DIR = path.join(__dirname, 'src');
 const TEMPLATE = path.join(__dirname, 'template.html');
 const OUTPUT = path.join(__dirname, '..', 'FightFuckFeed.tactical.html');
 
-// Order matters: dependencies must be loaded before consumers
 const SCRIPT_ORDER = [
-  'src/core/serialization.js',      // Binary (no deps)
-  'src/core/app.js',                // App (methods reference others but not at load time)
-  'src/ui/settings-nav.js',         // Adds settings button to nav (needs App, CONTENT)
-  'src/core/module-system.js',      // MODULE_SYSTEM (no deps)
-  'src/ui/mod-ui.js',               // ModUI (needs MODULE_SYSTEM, App)
-  'src/core/content-system.js',     // CONTENT_SYSTEM (no deps)
-  'src/core/marketplace.js',        // MODULE_MARKETPLACE (no deps)
-  'src/ui/market-screen.js',        // Market screen DOM (needs MODULE_MARKETPLACE)
-  'src/ui/market-nav.js',           // Adds market button (needs MODULE_MARKETPLACE)
-  'src/ui/global-nav.js',           // Global helpers (needs App)
+  'src/core/serialization.js',
+  'src/core/app.js',
+  'src/ui/settings-nav.js',
+  'src/core/module-system.js',
+  'src/ui/mod-ui.js',
+  'src/core/content-system.js',
+  'src/core/marketplace.js',
+  'src/ui/market-screen.js',
+  'src/ui/market-nav.js',
+  'src/ui/global-nav.js',
 ];
+
+function lint() {
+  console.log('Linting all JS modules...\n');
+  let errors = 0;
+  let totalLines = 0;
+
+  for (const relPath of SCRIPT_ORDER) {
+    const fullPath = path.join(__dirname, relPath);
+    if (!fs.existsSync(fullPath)) {
+      console.error(`  ✗ ${relPath} - FILE NOT FOUND`);
+      errors++;
+      continue;
+    }
+
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const lines = content.split('\n').length;
+    totalLines += lines;
+
+    try {
+      new Function(content);
+      console.log(`  ✓ ${relPath} (${lines} lines)`);
+    } catch (e) {
+      console.error(`  ✗ ${relPath} - ${e.message.split('\n')[0]}`);
+      errors++;
+    }
+  }
+
+  console.log(`\nLint results: ${SCRIPT_ORDER.length - errors}/${SCRIPT_ORDER.length} modules passed`);
+  console.log(`Total lines: ${totalLines}`);
+  return errors === 0;
+}
 
 function build() {
   console.log('Building FightFuckFeed.tactical.html...\n');
 
-  // Read template
+  if (!lint()) {
+    console.error('\nBuild aborted due to lint errors.');
+    process.exit(1);
+  }
+
   let html = fs.readFileSync(TEMPLATE, 'utf8');
 
-  // Validate and concatenate scripts
   const scripts = [];
   let totalLines = 0;
 
@@ -39,26 +72,14 @@ function build() {
     const fullPath = path.join(__dirname, relPath);
     const content = fs.readFileSync(fullPath, 'utf8');
     const lines = content.split('\n').length;
-
-    // Validate syntax
-    try {
-      new Function(content);
-    } catch (e) {
-      console.error(`SYNTAX ERROR in ${relPath}:`);
-      console.error(e.message);
-      process.exit(1);
-    }
-
     scripts.push(`<script>\n${content}\n</script>`);
     totalLines += lines;
-    console.log(`  ${relPath} (${lines} lines) - OK`);
+    console.log(`  ${relPath} (${lines} lines) - included`);
   }
 
-  // Replace placeholder
   const scriptsBlock = scripts.join('\n\n');
   html = html.replace('<!-- SCRIPTS_PLACEHOLDER -->', scriptsBlock);
 
-  // Write output
   fs.writeFileSync(OUTPUT, html);
 
   const outputLines = html.split('\n').length;
@@ -67,25 +88,64 @@ function build() {
   console.log(`  Total lines: ${outputLines}`);
   console.log(`  Script lines: ${totalLines}`);
   console.log(`  Scripts: ${SCRIPT_ORDER.length}`);
-
-  // Validate final HTML by checking all script blocks
-  console.log('\nValidating final HTML...');
-  const scriptRegex = /<script>([\s\S]*?)<\/script>/g;
-  let match;
-  let scriptCount = 0;
-  while ((match = scriptRegex.exec(html)) !== null) {
-    scriptCount++;
-    try {
-      new Function(match[1]);
-    } catch (e) {
-      console.error(`  Script ${scriptCount}: ERROR - ${e.message}`);
-    }
-  }
-  console.log(`  All ${scriptCount} script blocks validated successfully.`);
 }
 
-if (require.main === module) {
+function watch() {
+  console.log('Watching for changes... (Ctrl+C to stop)\n');
+  const watchedFiles = [TEMPLATE, ...SCRIPT_ORDER.map(p => path.join(__dirname, p))];
+
+  let building = false;
+
+  function onChange() {
+    if (building) return;
+    building = true;
+    console.log('\n--- Change detected, rebuilding... ---');
+    try {
+      build();
+      console.log('--- Build complete ---\n');
+    } catch (e) {
+      console.error('--- Build failed ---', e.message, '\n');
+    }
+    building = false;
+  }
+
+  for (const file of watchedFiles) {
+    fs.watchFile(file, { interval: 500 }, (curr, prev) => {
+      if (curr.mtime !== prev.mtime) {
+        console.log(`  Changed: ${path.relative(__dirname, file)}`);
+        onChange();
+      }
+    });
+  }
+
+  // Initial build
+  build();
+
+  // Keep process alive
+  process.stdin.resume();
+}
+
+// CLI
+const args = process.argv.slice(2);
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log('Usage: node build.js [options]');
+  console.log('');
+  console.log('Options:');
+  console.log('  --lint-only  Only run syntax validation, no build');
+  console.log('  --watch      Watch for changes and rebuild automatically');
+  console.log('  --help       Show this help');
+  console.log('');
+  console.log('Examples:');
+  console.log('  node build.js              Build the HTML file');
+  console.log('  node build.js --lint-only  Validate all modules');
+  console.log('  node build.js --watch      Watch and rebuild on changes');
+  process.exit(0);
+} else if (args.includes('--lint-only')) {
+  const ok = lint();
+  process.exit(ok ? 0 : 1);
+} else if (args.includes('--watch')) {
+  watch();
+} else {
   build();
 }
-
-module.exports = { build };

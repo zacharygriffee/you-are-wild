@@ -1,0 +1,15 @@
+{
+  "name": "fff-repo",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix FightFuckFeed.tactical run build",
+    "check": "npm --prefix FightFuckFeed.tactical run check",
+    "test": "npm --prefix FightFuckFeed.tactical test",
+    "test:core": "npm --prefix FightFuckFeed.tactical run test:core",
+    "test:ui": "npm --prefix FightFuckFeed.tactical run test:ui",
+    "lint": "npm --prefix FightFuckFeed.tactical run lint",
+    "dev": "npm --prefix FightFuckFeed.tactical run dev",
+    "clean": "npm --prefix FightFuckFeed.tactical run clean",
+    "full-build": "npm --prefix FightFuckFeed.tactical run full-build"
+  }
+}

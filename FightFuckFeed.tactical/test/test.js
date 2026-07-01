@@ -9,12 +9,18 @@ const path = require('path');
 
 const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
+const args = process.argv.slice(2);
+const filterArg = args.find(arg => arg.startsWith('--filter='));
+const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
+let currentSection = 'all';
 
 let totalTests = 0;
 let passedTests = 0;
 let failedTests = 0;
 
 function test(name, fn) {
+  if (activeFilter !== 'all' && currentSection !== activeFilter) return;
+
   totalTests++;
   try {
     fn();
@@ -49,8 +55,20 @@ function assertNotContains(haystack, needle, message) {
   }
 }
 
+function section(name, filterName) {
+  currentSection = filterName;
+  if (activeFilter === 'all' || activeFilter === filterName) {
+    console.log(`\n=== ${name} ===`);
+  }
+}
+
+if (!['all', 'core', 'ui'].includes(activeFilter)) {
+  console.error(`Unknown filter "${activeFilter}". Expected one of: all, core, ui.`);
+  process.exit(1);
+}
+
 // === SYNTAX TESTS ===
-console.log('\n=== Syntax Validation ===');
+section('Syntax Validation', 'core');
 
 const jsFiles = [];
 function collectJs(dir) {
@@ -77,7 +95,7 @@ for (const file of jsFiles) {
 }
 
 // === STRUCTURE TESTS ===
-console.log('\n=== Structure Tests ===');
+section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
@@ -163,7 +181,7 @@ test('No syntax errors in key patterns', () => {
 });
 
 // === SERIALIZATION TESTS ===
-console.log('\n=== Serialization Tests ===');
+section('Serialization Tests', 'core');
 
 const serPath = path.join(SRC_DIR, 'core', 'serialization.js');
 const serContent = fs.readFileSync(serPath, 'utf8');
@@ -182,7 +200,7 @@ test('Binary codec has unit codec', () => {
 });
 
 // === CONTENT SYSTEM TESTS ===
-console.log('\n=== Content System Tests ===');
+section('Content System Tests', 'core');
 
 const contentPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentContent = fs.readFileSync(contentPath, 'utf8');
@@ -202,7 +220,7 @@ test('Content templates exist', () => {
 });
 
 // === TEMPLATE TESTS ===
-console.log('\n=== Template Tests ===');
+section('Template Tests', 'ui');
 
 const template = fs.readFileSync(TEMPLATE, 'utf8');
 

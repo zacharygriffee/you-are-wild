@@ -7,9 +7,13 @@
 const fs = require('fs');
 const path = require('path');
 
+const ROOT_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(__dirname, 'src');
 const TEMPLATE = path.join(__dirname, 'template.html');
-const OUTPUT = path.join(__dirname, '..', 'FightFuckFeed.tactical.html');
+const DIST_DIR = path.join(ROOT_DIR, 'dist');
+const OUTPUT = path.join(DIST_DIR, 'FightFuckFeed.tactical.html');
+const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
+const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit FightFuckFeed.tactical/src and run npm run build. -->';
 
 const SCRIPT_ORDER = [
   'src/core/serialization.js',
@@ -28,6 +32,29 @@ function lint() {
   console.log('Linting all JS modules...\n');
   let errors = 0;
   let totalLines = 0;
+  const expectedFiles = new Set(SCRIPT_ORDER.map(relPath => path.join(__dirname, relPath)));
+  const discoveredFiles = [];
+
+  function collectJs(dir) {
+    for (const entry of fs.readdirSync(dir)) {
+      const fullPath = path.join(dir, entry);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        collectJs(fullPath);
+      } else if (entry.endsWith('.js')) {
+        discoveredFiles.push(fullPath);
+      }
+    }
+  }
+
+  collectJs(SRC_DIR);
+
+  for (const file of discoveredFiles) {
+    if (!expectedFiles.has(file)) {
+      console.error(`  ✗ ${path.relative(__dirname, file)} - missing from SCRIPT_ORDER`);
+      errors++;
+    }
+  }
 
   for (const relPath of SCRIPT_ORDER) {
     const fullPath = path.join(__dirname, relPath);
@@ -55,7 +82,7 @@ function lint() {
   return errors === 0;
 }
 
-function build() {
+function renderHtml() {
   console.log('Building FightFuckFeed.tactical.html...\n');
 
   if (!lint()) {
@@ -64,6 +91,10 @@ function build() {
   }
 
   let html = fs.readFileSync(TEMPLATE, 'utf8');
+  if (!html.includes(PLACEHOLDER)) {
+    console.error(`\nBuild aborted: template is missing ${PLACEHOLDER}.`);
+    process.exit(1);
+  }
 
   const scripts = [];
   let totalLines = 0;
@@ -78,8 +109,16 @@ function build() {
   }
 
   const scriptsBlock = scripts.join('\n\n');
-  html = html.replace('<!-- SCRIPTS_PLACEHOLDER -->', scriptsBlock);
+  html = html.replace(PLACEHOLDER, scriptsBlock);
+  html = `${GENERATED_BANNER}\n${html}`;
 
+  return { html, totalLines };
+}
+
+function build() {
+  const { html, totalLines } = renderHtml();
+
+  fs.mkdirSync(DIST_DIR, { recursive: true });
   fs.writeFileSync(OUTPUT, html);
 
   const outputLines = html.split('\n').length;
@@ -88,6 +127,22 @@ function build() {
   console.log(`  Total lines: ${outputLines}`);
   console.log(`  Script lines: ${totalLines}`);
   console.log(`  Scripts: ${SCRIPT_ORDER.length}`);
+}
+
+function check() {
+  const { html } = renderHtml();
+  if (!fs.existsSync(OUTPUT)) {
+    console.error(`\nCheck failed: ${path.relative(ROOT_DIR, OUTPUT)} does not exist.`);
+    process.exit(1);
+  }
+
+  const current = fs.readFileSync(OUTPUT, 'utf8');
+  if (current !== html) {
+    console.error(`\nCheck failed: ${path.relative(ROOT_DIR, OUTPUT)} is stale. Run npm run build.`);
+    process.exit(1);
+  }
+
+  console.log(`\nCheck passed: ${path.relative(ROOT_DIR, OUTPUT)} is up to date.`);
 }
 
 function watch() {
@@ -133,17 +188,21 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log('');
   console.log('Options:');
   console.log('  --lint-only  Only run syntax validation, no build');
+  console.log('  --check      Verify generated output is up to date');
   console.log('  --watch      Watch for changes and rebuild automatically');
   console.log('  --help       Show this help');
   console.log('');
   console.log('Examples:');
   console.log('  node build.js              Build the HTML file');
   console.log('  node build.js --lint-only  Validate all modules');
+  console.log('  node build.js --check      Validate generated output');
   console.log('  node build.js --watch      Watch and rebuild on changes');
   process.exit(0);
 } else if (args.includes('--lint-only')) {
   const ok = lint();
   process.exit(ok ? 0 : 1);
+} else if (args.includes('--check')) {
+  check();
 } else if (args.includes('--watch')) {
   watch();
 } else {

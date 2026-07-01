@@ -1916,9 +1916,60 @@ test('Quest state persists through binary saves', () => {
   App.inventory = [];
   App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
   const loaded = Binary.loadGame(Binary.saveGame(App));
-  assertEqual(loaded.version, 6, 'Save version should include quest state');
+  assertEqual(loaded.version, 7, 'Save version should include quest and merchant timing state');
   assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
+  assertEqual(loaded.questState.dayCount, 0, 'Day count should persist');
   assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');
+});
+
+test('Merchant cards expose trade actions', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 20 });
+  App.party = [App.player];
+  App.creatures = [makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
+  })];
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'Trade', 'Merchant card should expose trade action');
+});
+
+test('Merchant buy and sell update gold inventory and stock', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 40 });
+  App.party = [App.player];
+  App.inventory = [{ id: 'gem-1', name: 'Shiny Gem' }];
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
+  });
+  App.creatures = [merchant];
+  App.buyFromMerchant('trader-1', 0);
+  assertEqual(App.player.gold, 30, 'Buying should spend gold');
+  assert(App.inventory.some(item => item.name === 'Healing Herb'), 'Buying should add item to inventory');
+  assertEqual(merchant.stock[0].qty, 0, 'Buying should reduce stock quantity');
+  App.sellToMerchant('trader-1', 'gem-1');
+  assertEqual(App.player.gold, 55, 'Selling should grant half item value');
+  assert(!App.inventory.some(item => item.id === 'gem-1'), 'Selling should remove item from inventory');
+  assert(merchant.stock.some(item => item.name === 'Shiny Gem'), 'Sold item should enter merchant stock');
+});
+
+test('Merchant stock refreshes every three in-game days', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const merchant = makeUnit('Trader', {
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 0 }],
+    stockLastRefreshDay: 0
+  });
+  App.dayCount = 2;
+  App._refreshMerchantStock(merchant);
+  assertEqual(merchant.stock[0].qty, 0, 'Stock should not refresh before three days');
+  App._advanceTime(24);
+  App._refreshMerchantStock(merchant);
+  assert(merchant.stock.some(item => item.qty > 0), 'Stock should refresh after three days');
+  assertEqual(merchant.stockLastRefreshDay, 3, 'Refresh day should update');
 });
 
 // === SUMMARY ===

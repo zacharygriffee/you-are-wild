@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 127/127 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 130/130 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -101,7 +101,8 @@
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
-- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 6
+- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 7
+- Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, merchant stock can refresh after three in-game days, and save version 7 persists quest state, player gold, and day count
 
 ---
 
@@ -126,17 +127,17 @@
 
 ### 🔵 Tier 4: Lower Priority
 
-#### 8. Merchant/Trade System
-- Merchant NPCs (`disposition: MERCHANT`) with `stock` array of items
-- Gold currency: `player.gold`, earned from selling items, quest rewards, looting corpses
-- Buy/sell interface: item list with prices, player inventory, transaction confirmation
-- Merchant stock refreshes every 3 in-game days
-
-#### 9. Advanced Quest Scripting
+#### 8. Advanced Quest Scripting
 - Add authored quest content and spawn placement beyond manually attached quest objects
 - Add explicit escort routing/checkpoints instead of only API-level objective matching
 - Add quest turn-in/dialogue flows for rewards that should not auto-grant on objective completion
 - Add richer quest filtering/sorting once the quest log has enough content to need it
+
+#### 9. Advanced Merchant/Trade
+- Add authored merchant placement and stock tables beyond manually attached merchant objects
+- Add transaction confirmation for expensive/rare items
+- Add item categories, sorting, and filtering once inventory has enough content to need it
+- Add explicit gold rewards from corpse loot or other economy sources beyond quests and selling items
 
 #### 16. Equipment System
 - Wearable items: armor (CON bonus), accessories (stat bonuses), rings (special effects)

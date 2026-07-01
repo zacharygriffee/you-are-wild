@@ -2132,7 +2132,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 6,
+      version: 7,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -2150,7 +2150,8 @@
       timeHour: appState.timeHour || 0,
       questState: {
         quests: appState.quests || [],
-        playerGold: appState.player?.gold || 0
+        playerGold: appState.player?.gold || 0,
+        dayCount: appState.dayCount || 0
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);
@@ -2310,7 +2311,10 @@
                 });
             },
             _advanceTime(hours = 1) {
-                this.timeHour = (((this.timeHour || 0) + hours) % 24 + 24) % 24;
+                const current = ((this.timeHour || 0) % 24 + 24) % 24;
+                const nextTotal = current + hours;
+                this.timeHour = ((nextTotal % 24) + 24) % 24;
+                if (hours > 0) this.dayCount = (this.dayCount || 0) + Math.floor(nextTotal / 24);
                 this._renderTime();
             },
             _partyHasDarkvision() {
@@ -2532,6 +2536,7 @@
             quests: [],
             location: { x: 0, y: 0 },
             timeHour: 8,
+            dayCount: 0,
             log: [],
             worldMap: new Map(),
             exploredTiles: new Set(),
@@ -2883,6 +2888,7 @@
                 this.creatures = [];
                 this.location = { x: 0, y: 0 };
                 this.timeHour = 8;
+                this.dayCount = 0;
                 this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
                 this.worldMap = new Map();
                 this.exploredTiles = new Set();
@@ -3289,6 +3295,8 @@
                 unit.gold = unit.gold || 0;
                 unit.quest = unit.quest || null;
                 unit.questAccepted = Boolean(unit.questAccepted);
+                unit.stock = this._normalizeMerchantStock(unit.stock || []);
+                unit.stockLastRefreshDay = unit.stockLastRefreshDay ?? this.dayCount ?? 0;
                 unit.cum = unit.cum || 0;
                 unit.status = unit.status || {};
                 unit.lactating = unit.lactating || false;
@@ -5898,6 +5906,116 @@
                 this.log.push({ text: 'Perk gained: ' + perk.name + '! ' + perk.desc, type: 'discovery' });
             },
 
+            // ===== MERCHANTS / TRADE =====
+            _normalizeMerchantStock(stock = []) {
+                return stock.map((entry, index) => {
+                    const itemName = typeof entry === 'string' ? entry : entry.name;
+                    const def = this.ITEMS[itemName] || {};
+                    return {
+                        id: entry.id || `stock_${itemName || 'item'}_${index}`,
+                        name: itemName || 'Unknown Item',
+                        price: entry.price || def.value || 10,
+                        qty: entry.qty ?? 1
+                    };
+                });
+            },
+
+            _defaultMerchantStock() {
+                return ['Healing Herb', 'Old Coin', 'Monster Fang'].map((name, index) => {
+                    const def = this.ITEMS[name] || {};
+                    return { id: `default_stock_${index}`, name, price: def.value || 10, qty: 1 + Math.floor(Math.random() * 2) };
+                });
+            },
+
+            _refreshMerchantStock(merchant, force = false) {
+                if (!merchant || merchant.disposition !== this.DISPOSITION.MERCHANT) return merchant;
+                const currentDay = this.dayCount || 0;
+                const needsStock = !merchant.stock || merchant.stock.length === 0;
+                const stale = currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= 3;
+                if (force || needsStock || stale) {
+                    merchant.stock = this._defaultMerchantStock();
+                    merchant.stockLastRefreshDay = currentDay;
+                } else {
+                    merchant.stock = this._normalizeMerchantStock(merchant.stock);
+                }
+                return merchant;
+            },
+
+            _findMerchantById(targetId) {
+                const merchant = this.creatures.find(c => c.disposition === this.DISPOSITION.MERCHANT && String(c.id || c.name) === String(targetId));
+                return this._refreshMerchantStock(merchant);
+            },
+
+            showTrade(targetId) {
+                const merchant = this._findMerchantById(targetId);
+                if (!merchant) return;
+                const gold = this.player.gold || 0;
+                let html = `<h3>${merchant.name} Trade</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Gold: ${gold}</p>`;
+                html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">Buy</h4><div style="display:grid;gap:8px;">`;
+                merchant.stock.forEach((item, index) => {
+                    const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
+                    const disabled = gold < item.price || item.qty <= 0 || this.inventory.length >= this.MAX_INVENTORY ? ' disabled' : '';
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">Buy</button></div>`;
+                });
+                html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">Sell</h4><div style="display:grid;gap:8px;">`;
+                if (this.inventory.length === 0) {
+                    html += `<p style="color:var(--text-muted)">No items to sell.</p>`;
+                } else {
+                    this.inventory.forEach(item => {
+                        const def = this.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
+                        const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
+                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">Sell</button></div>`;
+                    });
+                }
+                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                document.getElementById('scene-description').innerHTML = html;
+            },
+
+            buyFromMerchant(targetId, stockIndex) {
+                const merchant = this._findMerchantById(targetId);
+                const item = merchant?.stock?.[stockIndex];
+                if (!merchant || !item || item.qty <= 0) return;
+                if ((this.player.gold || 0) < item.price) {
+                    this.log.push({ text: `You need ${item.price} gold to buy ${item.name}.`, type: 'discovery' });
+                    this.renderLog();
+                    this.showTrade(targetId);
+                    return;
+                }
+                if (this.inventory.length >= this.MAX_INVENTORY) {
+                    this.log.push({ text: 'Inventory is full.', type: 'discovery' });
+                    this.renderLog();
+                    this.showTrade(targetId);
+                    return;
+                }
+                this.player.gold -= item.price;
+                item.qty -= 1;
+                this.inventory.push({ id: `buy_${Date.now()}_${this.inventory.length}`, name: item.name });
+                this.log.push({ text: `Bought ${item.name} for ${item.price} gold.`, type: 'loot' });
+                this.renderLog();
+                this.renderParty();
+                this.showTrade(targetId);
+                this.autoSave();
+            },
+
+            sellToMerchant(targetId, itemId) {
+                const merchant = this._findMerchantById(targetId);
+                if (!merchant) return;
+                const item = this.inventory.find(i => String(i.id) === String(itemId));
+                if (!item) return;
+                const def = this.ITEMS[item.name] || { value: 1 };
+                const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
+                this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
+                this.player.gold = (this.player.gold || 0) + price;
+                const existing = merchant.stock.find(s => s.name === item.name);
+                if (existing) existing.qty += 1;
+                else merchant.stock.push({ id: `sold_${Date.now()}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
+                this.log.push({ text: `Sold ${item.name} for ${price} gold.`, type: 'loot' });
+                this.renderLog();
+                this.renderParty();
+                this.showTrade(targetId);
+                this.autoSave();
+            },
+
             // ===== QUESTS =====
             _normalizeQuest(quest, giver = null) {
                 const source = quest || {};
@@ -6132,11 +6250,14 @@
                         if (unit.quest) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜</button>`;
                         }
+                        if (unit.disposition === this.DISPOSITION.MERCHANT) {
+                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙</button>`;
+                        }
                         actionButtons += '</div>';
                     }
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-                const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
+                const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.MERCHANT ? 'Merchant' : unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}">
@@ -6187,6 +6308,9 @@
                         if (unit.quest) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${unit.questAccepted ? 'View Quest' : 'Accept Quest'}</button>`;
                         }
+                        if (unit.disposition === this.DISPOSITION.MERCHANT) {
+                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 Trade</button>`;
+                        }
                         actionButtons += `</div>`;
                     }
                 }
@@ -6196,6 +6320,7 @@
                     else if (unit.disposition === this.DISPOSITION.ENEMY) dispLabel = 'Hostile';
                     else if (unit.disposition === this.DISPOSITION.FRIENDLY) dispLabel = 'Friendly';
                     else if (unit.disposition === this.DISPOSITION.QUEST_GIVER) dispLabel = 'Quest';
+                    else if (unit.disposition === this.DISPOSITION.MERCHANT) dispLabel = 'Merchant';
                     else if (unit.disposition === this.DISPOSITION.NEUTRAL) dispLabel = 'Neutral';
                 }
                 const stomachUsed = this._containerUsed(unit, 'stomach');
@@ -6861,6 +6986,7 @@ Enter 1, 2, or 3:`);
                     }
                     this.currentBiome = loaded.currentBiome || 'forest';
                     this.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;
+                    this.dayCount = loaded.questState?.dayCount || 0;
                     this.log = (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];

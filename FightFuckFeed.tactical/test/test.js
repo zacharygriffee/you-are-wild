@@ -1018,7 +1018,7 @@ test('Creature panel renders corpses as remains without target actions', () => {
 
 test('Looting a corpse can grant an item without starting combat', () => {
   const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { hunger: 50 });
+  const player = makeUnit('You', { hunger: 50, gold: 0 });
   const corpse = makeUnit('Fallen', { id: 'loot-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = player;
   App.party = [player];
@@ -1028,8 +1028,27 @@ test('Looting a corpse can grant an item without starting combat', () => {
   App.lootCorpse('loot-corpse');
   assertEqual(corpse.looted, true, 'Looted corpse should be marked');
   assertEqual(App.inventory.length, 1, 'Successful corpse loot should add one item');
+  assertEqual(App.player.gold, 2, 'Corpse loot should grant generated gold');
   assertEqual(App.combatState.active, false, 'Corpse loot should not start combat');
   assertContains(App.log[App.log.length - 1].text, App.inventory[0].name, 'Loot log should mention found item');
+  assertContains(App.log[App.log.length - 1].text, '2 gold', 'Loot log should mention found gold');
+  App.lootCorpse('loot-corpse');
+  assertEqual(App.player.gold, 2, 'Already-looted corpse should not grant gold twice');
+});
+
+test('Authored corpse loot can grant explicit gold without an item', () => {
+  const { App } = loadAppForCombat(() => 0.9);
+  const player = makeUnit('You', { gold: 1 });
+  const corpse = makeUnit('Rich Corpse', { id: 'rich-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, goldLoot: 12 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [corpse];
+  App.inventory = [];
+  App.combatState.active = false;
+  App.lootCorpse('rich-corpse');
+  assertEqual(App.inventory.length, 0, 'High random roll should skip item loot');
+  assertEqual(App.player.gold, 13, 'Authored corpse gold should be granted');
+  assertContains(App.log[App.log.length - 1].text, '12 gold', 'Loot log should mention authored gold');
 });
 
 test('Scavenging a corpse uses corpse-specific result and does not remove it', () => {

@@ -3777,20 +3777,28 @@
                 const corpse = this._findCorpseById(targetId);
                 if (!corpse) return;
                 let item = null;
-                if (!corpse.looted && this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
-                    const items = Object.keys(this.ITEMS);
-                    const name = items[Math.floor(Math.random() * items.length)];
-                    item = { id: 'loot_' + Date.now(), name };
-                    this.inventory.push(item);
+                let gold = 0;
+                if (!corpse.looted) {
+                    if (this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
+                        const items = Object.keys(this.ITEMS);
+                        const name = items[Math.floor(Math.random() * items.length)];
+                        item = { id: 'loot_' + Date.now(), name };
+                        this.inventory.push(item);
+                    }
+                    const authoredGold = Number(corpse.goldLoot);
+                    gold = Number.isFinite(authoredGold) ? Math.max(0, Math.floor(authoredGold)) : Math.max(1, Math.floor((corpse.level || 1) * 2 + Math.random() * 6));
+                    if (gold > 0 && this.player) this.player.gold = (this.player.gold || 0) + gold;
                 }
                 corpse.looted = true;
+                const rewards = [item ? item.name : null, gold > 0 ? `${gold} gold` : null].filter(Boolean).join(' and ');
                 const text = CONTENT.actionResult('corpseLoot', {
                     target: corpse.corpseName || corpse.name,
-                    item: item ? item.name : null,
+                    item: rewards || null,
+                    gold,
                     explicit: true,
                     voreEnabled: this.settings.vore
                 });
-                this.log.push({ text, type: item ? 'loot' : 'discovery' });
+                this.log.push({ text, type: item || gold > 0 ? 'loot' : 'discovery' });
                 this.renderLog();
                 this.renderCreatures();
                 this.renderExplorationActions();

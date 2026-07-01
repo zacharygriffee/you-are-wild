@@ -1821,6 +1821,7 @@
                 const hasTits = parts.includes('tits');
                 const maxPun = baseStats.MPun;
                 const maxPle = baseStats.MPle;
+                this.encounterPreference = this.selectedEncounterPreference || 'any';
                 this.player = {
                     id: 'player_' + Date.now(), name: name, species: this.selectedSpecies,
                     icon: species.icon, gender: this.selectedGender,
@@ -2468,8 +2469,18 @@
                 if (enemies.length === 0) { this.nextTurn(); return; }
                 // DUMB AI STATE MACHINE
                 if (ally.dumbAI) {
+                    // High pleasure (>90% MPle): may disobey and auto-fuck
+                    if (ally.CPle >= ally.MPle * 0.9) {
+                        if (ally.obedient && Math.random() < 0.7) {
+                            this.log.push({ text: `${ally.name} is too aroused to obey!`, type: 'combat' });
+                            ally.obedient = false;
+                        }
+                    }
                     // High hunger (>90): auto-feast on weakest enemy
                     if (ally.hunger > 90) {
+                        if (ally.obedient && Math.random() < 0.3) {
+                            this.log.push({ text: `${ally.name} pleads to eat...`, type: 'combat' });
+                        } else {
                         const weakest = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
                         const canEat = weakest.CPun <= weakest.MPun * 0.3 || (ally.Feas > weakest.Flee && ally.size >= weakest.size - 2);
                         if (canEat) {
@@ -2477,7 +2488,8 @@
                             ally.stomach.push({ ...weakest, alive: true, inStomach: true });
                             weakest.CPun = 0;
                             ally.hunger = Math.max(0, ally.hunger - 50);
-                            this.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole!`, type: 'combat' });
+                            ally.obedient = true; // Feeding restores loyalty
+                            this.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole! Loyalty restored.`, type: 'combat' });
                             this.renderLog(); this.renderCreatures(); this.renderParty(); this.nextTurn(); return;
                         }
                     }
@@ -3306,9 +3318,10 @@ Enter 1, 2, or 3:`);
                         }
                         return false;
                     }
+                    this.encounterPreference = loaded.encounterPreference || 'any';
                     this.player = {
                         name: loaded.playerName, species: loaded.playerSpecies, icon: this.species.find(s => s.id === loaded.playerSpecies)?.icon || '👤',
-                        gender: 'female', level: loaded.playerLevel, CPun: loaded.playerHp, MPun: loaded.playerMaxHp, CPle: Math.floor(loaded.playerMaxHp * 0.5), MPle: loaded.playerMaxHp,
+                        gender: loaded.playerGender || 'female', level: loaded.playerLevel, CPun: loaded.playerHp, MPun: loaded.playerMaxHp, CPle: Math.floor(loaded.playerMaxHp * 0.5), MPle: loaded.playerMaxHp,
                         stats: loaded.playerStats, tags: [this.species.find(s => s.id === loaded.playerSpecies)?.name || 'Human']
                     };
                     this.location = { x: loaded.locationX, y: loaded.locationY };
@@ -4104,15 +4117,75 @@ const CONTENT_SYSTEM = {
                 mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
                 adult: (ctx) => `The forest presses close, humid and thick with the scent of lust and danger. You feel eyes upon you, hungry and wanting.`
             },
-            cave: {
-                safe: (ctx) => `A dark cave entrance yawns before you.`,
-                mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
-                adult: (ctx) => `The cave beckons, darkness promising privacy for whatever desires await within.`
+            swamp: {
+                safe: (ctx) => `A murky swamp stretches before you.`,
+                mature: (ctx) => `The swamp waters are dark and still. Mist rises between cypress trees.`,
+                adult: (ctx) => `The swamp is warm and wet. Something in the water brushes your leg...`
             },
             plains: {
                 safe: (ctx) => `Open grasslands stretch to the horizon.`,
                 mature: (ctx) => `Tall grasses sway in the breeze, hiding who knows what. The openness feels exposed.`,
                 adult: (ctx) => `The open plains offer no cover for the pleasures or predations that may find you here.`
+            },
+            cave: {
+                safe: (ctx) => `A dark cave entrance yawns before you.`,
+                mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
+                adult: (ctx) => `The cave beckons, darkness promising privacy for whatever desires await within.`
+            },
+            jungle: {
+                safe: (ctx) => `Dense jungle vegetation blocks your path.`,
+                mature: (ctx) => `Vines hang like curtains in the humid air. The jungle is alive with unseen creatures.`,
+                adult: (ctx) => `The jungle presses against you with wet heat. Vines brush against your skin suggestively.`
+            },
+            dungeon: {
+                safe: (ctx) => `Stone corridors stretch into darkness.`,
+                mature: (ctx) => `Iron-barred cells line the walls. The dungeon is cold and oppressive.`,
+                adult: (ctx) => `Chains hang from the walls. The dungeon holds captives of many kinds...`
+            },
+            manor: {
+                safe: (ctx) => `A grand manor stands before you.`,
+                mature: (ctx) => `The manor's hallways echo with emptiness. Antique furniture gathers dust.`,
+                adult: (ctx) => `The manor's bedroom doors stand ajar. Silk sheets and velvet cushions await.`
+            },
+            beach: {
+                safe: (ctx) => `White sand stretches to the ocean.`,
+                mature: (ctx) => `Waves lap against the shore. Palm trees sway overhead.`,
+                adult: (ctx) => `The warm sand invites you to rest. The water is crystal clear and inviting.`
+            },
+            road: {
+                safe: (ctx) => `A dirt road winds through the landscape.`,
+                mature: (ctx) => `Wagon ruts mark the well-traveled path. A weathered signpost points onward.`,
+                adult: (ctx) => `The road is lonely. A traveler might stop to share warmth and companionship.`
+            },
+            cliff: {
+                safe: (ctx) => `Rocky outcrops tower above.`,
+                mature: (ctx) => `The wind howls at your back. A narrow ledge skirts a dangerous drop.`,
+                adult: (ctx) => `The dizzying height makes your heart race. Adrenaline courses through your veins.`
+            },
+            water: {
+                safe: (ctx) => `A river rushes past.`,
+                mature: (ctx) => `The water is cool and clear. Fish dart beneath the surface.`,
+                adult: (ctx) => `The current pulls at your clothes. The water is warm and inviting...`
+            },
+            bridge: {
+                safe: (ctx) => `A wooden bridge spans the gap.`,
+                mature: (ctx) => `The bridge creaks beneath your feet. Rope rails sway in the wind.`,
+                adult: (ctx) => `The bridge is precarious. You might need to hold someone close for safety...`
+            },
+            farm: {
+                safe: (ctx) => `Barns and fields stretch to the horizon.`,
+                mature: (ctx) => `A windmill turns lazily. Plowed earth shows recent work.`,
+                adult: (ctx) => `The hayloft is warm and soft. The stable is private and secluded.`
+            },
+            indoors: {
+                safe: (ctx) => `You enter a cozy building.`,
+                mature: (ctx) => `Walls enclose the space. A hearth glows with dying embers.`,
+                adult: (ctx) => `The room is warm and intimate. Furniture is arranged for closeness.`
+            },
+            entrance: {
+                safe: (ctx) => `A dark entrance beckons.`,
+                mature: (ctx) => `A cave mouth yawns in darkness. An ancient archway frames the way.`,
+                adult: (ctx) => `The entrance is tight and dark. You must squeeze through to explore deeper...`
             }
         },
         

@@ -19,6 +19,8 @@
                 rest: 'Rest',
                 inventory: 'Items',
                 interact: 'Interact',
+                enter: 'Enter',
+                exit: 'Exit',
                 map: 'Map',
                 party: 'Party',
                 enemies: 'Enemies'
@@ -121,7 +123,7 @@
                 return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', interact: '💋', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', interact: '💋', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;
@@ -178,6 +180,8 @@
             },
             _contextActionKeys() {
                 const keys = ['inventory'];
+                if (this.inInterior) keys.unshift('exit');
+                else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
                 if (this._canRestHere()) keys.unshift('rest');
                 return keys;
             },
@@ -185,6 +189,8 @@
                 const handlers = {
                     rest: 'App.rest()',
                     inventory: 'App.showInventory()',
+                    enter: 'App.enterStructure()',
+                    exit: 'App.exitStructure()',
                     map: "togglePanel('map')",
                     party: "togglePanel('party')",
                     enemies: "togglePanel('enemies')"
@@ -379,6 +385,9 @@
             targetSelection: null,
             activeActor: null,
             explorationActorIds: [],
+            inInterior: false,
+            activeInterior: null,
+            interiorLocation: { x: 0, y: 0 },
 
             // === SPECIES & BIOMES (unchanged) ===
             species: [
@@ -712,6 +721,9 @@
                 this.activeActor = null;
                 this.explorationActorIds = [this._unitSelectionId(this.player)];
                 this.explorationActorId = this.explorationActorIds[0];
+                this.inInterior = false;
+                this.activeInterior = null;
+                this.interiorLocation = { x: 0, y: 0 };
                 this.exploreTile(0, 0);
                 this.showScreen('game');
                 this._renderTime();
@@ -827,7 +839,59 @@
             _containerSummary(unit, container = 'stomach') {
                 return `${this._containerUsed(unit, container)}/${this._containerCapacity(unit, container)}`;
             },
+            _interiorKey(x = this.interiorLocation.x, y = this.interiorLocation.y) {
+                return `${x},${y}`;
+            },
+            _currentOverworldTile() {
+                return this.getTile(this.location.x, this.location.y);
+            },
+            _currentInteriorTile() {
+                if (!this.activeInterior) return null;
+                return this.activeInterior.tiles[this._interiorKey()];
+            },
+            _currentExplorationTile() {
+                return this.inInterior ? this._currentInteriorTile() : this._currentOverworldTile();
+            },
+            _interiorBiomeForStructure(structureId) {
+                return structureId === 'cave' || structureId === 'burrow' || structureId === 'web' || structureId === 'ruins' ? 'cave' : 'indoors';
+            },
+            _ensureStructureInterior(tile) {
+                if (!tile || !tile.structure) return null;
+                if (tile.interior && tile.interior.tiles) return tile.interior;
+                const struct = this.STRUCTURES[tile.structure] || { name: tile.structure, icon: '🚪' };
+                const biomeId = this._interiorBiomeForStructure(tile.structure);
+                const originBiome = this.biomes[tile.biome] || this.biomes.forest;
+                const featureTable = originBiome.structureTable || [];
+                const tiles = {};
+                for (let y = -2; y <= 2; y++) {
+                    for (let x = -2; x <= 2; x++) {
+                        const key = `${x},${y}`;
+                        const feature = x === 0 && y === 0 ? 'exit' : featureTable[Math.abs((tile.x + x) * 17 + (tile.y + y) * 31) % Math.max(1, featureTable.length)];
+                        tiles[key] = {
+                            x, y, biome: biomeId, explored: x === 0 && y === 0,
+                            description: `${struct.name} interior chamber.`,
+                            hasLandmark: false, landmarkName: '',
+                            structure: feature === 'exit' ? null : feature,
+                            structureSpawned: false,
+                            creatures: [], items: [], exit: x === 0 && y === 0
+                        };
+                    }
+                }
+                tile.interior = {
+                    id: `interior_${tile.x}_${tile.y}_${tile.structure}`,
+                    structure: tile.structure,
+                    structureName: struct.name,
+                    origin: { x: tile.x, y: tile.y },
+                    width: 5,
+                    height: 5,
+                    tiles
+                };
+                return tile.interior;
+            },
             _canRestHere() {
+                if (this.inInterior && this.activeInterior) {
+                    return this.SAFE_REST_STRUCTURES.includes(this.activeInterior.structure);
+                }
                 const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
                 if (!tile) return false;
                 if (tile.structure && this.SAFE_REST_STRUCTURES.includes(tile.structure)) return true;
@@ -864,6 +928,11 @@
                 return { fled: false, hostile: unit, text: `${unit.name} turns hostile!` };
             },
             _syncCurrentTileCreatures() {
+                if (this.inInterior) {
+                    const room = this._currentInteriorTile();
+                    if (room) room.creatures = this._tileCreatures(this.creatures);
+                    return;
+                }
                 const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
                 if (tile) tile.creatures = this._tileCreatures(this.creatures);
             },
@@ -1129,14 +1198,101 @@
                         tile.hasLandmark = true;
                         tile.landmarkName = list[Math.abs(x + y) % list.length];
                     }
+                    if (!tile.structure && Math.random() < (biome.structureChance || 0)) {
+                        const table = biome.structureTable || [];
+                        tile.structure = table[Math.abs(x * 13 + y * 19) % Math.max(1, table.length)] || null;
+                    }
                     this.currentBiome = tile.biome;
                 }
                 return tile;
             },
 
+            enterStructure() {
+                if (this.inInterior) return;
+                const tile = this._currentOverworldTile();
+                if (!tile || !tile.structure) {
+                    this.log.push({ text: 'There is no structure to enter here.', type: 'discovery' });
+                    this.renderLog();
+                    return;
+                }
+                tile.creatures = this._tileCreatures(this.creatures);
+                tile.items = this.inventory.slice();
+                this.activeInterior = this._ensureStructureInterior(tile);
+                this.inInterior = true;
+                this.interiorLocation = { x: 0, y: 0 };
+                const room = this._currentInteriorTile();
+                room.explored = true;
+                this.creatures = this._tileCreatures(room.creatures || []);
+                this.currentBiome = room.biome;
+                this.log.push({ text: `Entered ${this.activeInterior.structureName}.`, type: 'discovery' });
+                this.updateScene(this.activeInterior.structureName, room.description, false);
+                this.renderMap();
+                this.renderCreatures();
+                this.renderLog();
+                this.renderExplorationActions();
+                this.autoSave();
+            },
+
+            exitStructure() {
+                if (!this.inInterior || !this.activeInterior) return;
+                const room = this._currentInteriorTile();
+                if (room) room.creatures = this._tileCreatures(this.creatures);
+                const origin = this.activeInterior.origin;
+                const tile = this.getTile(origin.x, origin.y);
+                this.location = { x: origin.x, y: origin.y };
+                this.inInterior = false;
+                this.activeInterior = null;
+                this.interiorLocation = { x: 0, y: 0 };
+                this.creatures = this._tileCreatures(tile.creatures || []);
+                this.currentBiome = tile.biome;
+                document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
+                this.log.push({ text: `Exited ${this.STRUCTURES[tile.structure]?.name || 'the structure'}.`, type: 'move' });
+                this.showExplorationActions();
+                this.renderMap();
+                this.renderCreatures();
+                this.renderLog();
+                this.autoSave();
+            },
+
+            moveInterior(dx, dy) {
+                if (!this.activeInterior) return;
+                const nx = this.interiorLocation.x + dx;
+                const ny = this.interiorLocation.y + dy;
+                if (Math.abs(nx) > 2 || Math.abs(ny) > 2) {
+                    this.log.push({ text: 'A wall blocks the way.', type: 'move' });
+                    this.renderLog();
+                    return;
+                }
+                const oldRoom = this._currentInteriorTile();
+                if (oldRoom) oldRoom.creatures = this._tileCreatures(this.creatures);
+                this.interiorLocation = { x: nx, y: ny };
+                this._advanceTime(1);
+                const room = this._currentInteriorTile();
+                const wasExplored = room.explored;
+                room.explored = true;
+                this.creatures = this._tileCreatures(room.creatures || []);
+                this.currentBiome = room.biome;
+                const biome = this.biomes[room.biome] || this.biomes.indoors;
+                this.log.push({ text: `Moved inside ${this.activeInterior.structureName} to ${nx}, ${ny}.`, type: 'move' });
+                if (!wasExplored && Math.random() < (biome.encounterChance || 0)) {
+                    this.spawnWildEncounter(room, false, true);
+                }
+                room.creatures = this._tileCreatures(this.creatures);
+                this.updateScene(`${this.activeInterior.structureName} Interior`, room.description, this.combatState.active);
+                this.renderMap();
+                this.renderCreatures();
+                this.renderLog();
+                this.renderExplorationActions();
+                this.autoSave();
+            },
+
             // ===== MOVEMENT =====
             move(dx, dy) {
                 if (!this.player) return;
+                if (this.inInterior) {
+                    this.moveInterior(dx, dy);
+                    return;
+                }
                 if (this.mode === this.GAME_MODE.COMBAT) {
                     this.log.push({ text: 'You are in combat! Use Flee to escape.', type: 'combat' });
                     this.renderLog();
@@ -3708,6 +3864,38 @@
 
             // ===== MAP RENDERING =====
             renderMap() {
+                if (this.inInterior && this.activeInterior) {
+                    const cx = this.interiorLocation.x, cy = this.interiorLocation.y;
+                    let html = '';
+                    for (let dy = -2; dy <= 2; dy++) {
+                        html += '<div style="display:flex;gap:4px;justify-content:center;">';
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const tx = dx, ty = dy;
+                            const room = this.activeInterior.tiles[`${tx},${ty}`];
+                            const isCenter = tx === cx && ty === cy;
+                            const isAdjacent = Math.abs(tx - cx) <= 1 && Math.abs(ty - cy) <= 1;
+                            const struct = room?.structure ? this.STRUCTURES[room.structure] : null;
+                            const content = room?.exit ? '🚪' : (struct?.icon || (room?.explored ? '□' : '·'));
+                            let classes = 'map-tile';
+                            if (isCenter) classes += ' center';
+                            else if (room?.explored) classes += ' explored';
+                            else if (isAdjacent) classes += ' moveable';
+                            else classes += ' far';
+                            const onclick = isCenter ? '' : (isAdjacent ? `onclick="App.move(${tx - cx},${ty - cy})"` : '');
+                            const title = room?.exit ? `Exit (${tx}, ${ty})` : `${struct?.name || 'Room'} (${tx}, ${ty})`;
+                            html += `<div class="${classes}" title="${title}" aria-label="${title}" ${onclick}>${content}</div>`;
+                        }
+                        html += '</div>';
+                    }
+                    const containers = [document.getElementById('mini-map'), document.getElementById('mobile-mini-map')].filter(Boolean);
+                    containers.forEach(container => { container.innerHTML = html; });
+                    const coords = document.getElementById('coords');
+                    if (coords) coords.textContent = `Inside ${this.activeInterior.structureName}`;
+                    const mobileCoords = document.getElementById('mobile-coords');
+                    if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
+                    this._renderTime();
+                    return;
+                }
                 const cx = this.location.x, cy = this.location.y;
                 const visibilityRadius = this._mapVisibilityRadius();
                 let html = '';
@@ -3782,12 +3970,13 @@
 	                const mobileExplore = document.getElementById('mobile-explore-actions');
 	                if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
 		            },
-	            showExplorationActions() {
-	                const tile = this.getTile(this.location.x, this.location.y);
-	                const biome = this.biomes[tile.biome];
-	                this.updateScene(biome.name, tile.explored ? 'You are in the ' + biome.name + '. ' + tile.description : 'You stand at the edge of the unknown...', false);
-	                this.renderExplorationActions();
-	            },
+            showExplorationActions() {
+                const tile = this._currentExplorationTile();
+                const biome = this.biomes[tile.biome];
+                const title = this.inInterior && this.activeInterior ? `${this.activeInterior.structureName} Interior` : biome.name;
+                this.updateScene(title, tile.explored ? 'You are in the ' + biome.name + '. ' + tile.description : 'You stand at the edge of the unknown...', false);
+                this.renderExplorationActions();
+            },
 	            renderLog() {
 	                const container = document.getElementById('log-content');
 	                const entries = this.log.slice(-20).reverse().map(e => {
@@ -3806,7 +3995,7 @@
             clearLog() { this.log = []; this.renderLog(); },
             search() {
                 this._advanceTime(1);
-                const tile = this.getTile(this.location.x, this.location.y);
+                const tile = this._currentExplorationTile();
                 const roll = Math.random();
                 let result = '';
                 if (roll < 0.3) {
@@ -4239,6 +4428,9 @@ Enter 1, 2, or 3:`);
                     this.log = (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];
+                    this.inInterior = false;
+                    this.activeInterior = null;
+                    this.interiorLocation = { x: 0, y: 0 };
                     this.activeSlot = slotName;
                     this._restoreWorldState(loaded);
                     this.showScreen('game');

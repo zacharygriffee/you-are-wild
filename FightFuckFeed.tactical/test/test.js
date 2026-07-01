@@ -1246,6 +1246,40 @@ test('Rest only appears and heals at safe structures', () => {
   assertEqual(player.CPun, 80, 'Rest should heal at safe rest structures');
 });
 
+test('Structures expose enter action and create persistent interiors', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.renderExplorationActions();
+  assertContains(elements.get('scene-actions').innerHTML, 'App.enterStructure()', 'Structure tile should expose enter action');
+  App.enterStructure();
+  assertEqual(App.inInterior, true, 'Entering structure should switch to interior mode');
+  assertEqual(Object.keys(App.activeInterior.tiles).length, 25, 'Structure interior should be a persistent 5x5 map');
+  assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
+  assertContains(elements.get('scene-actions').innerHTML, 'App.exitStructure()', 'Interior should expose exit action');
+});
+
+test('Interior movement persists room creatures and exits to overworld', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  const roomCreature = makeUnit('Room Creature', { disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.enterStructure();
+  App.creatures = [roomCreature];
+  App.move(1, 0);
+  assertEqual(App.activeInterior.tiles['0,0'].creatures.includes(roomCreature), true, 'Leaving an interior room should persist its creatures');
+  assertEqual(App.interiorLocation.x, 1, 'Interior move should update interior x coordinate');
+  App.exitStructure();
+  assertEqual(App.inInterior, false, 'Exit should return to overworld mode');
+  assertEqual(App.location.x, 0, 'Exit should restore overworld x coordinate');
+});
+
 test('Revisiting a tile restores friendly neutral and corpse creatures without combat', () => {
   const { App } = loadAppForCombat(() => 1);
   const player = makeUnit('You');

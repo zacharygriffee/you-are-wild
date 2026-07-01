@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 117/117 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 119/119 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -98,6 +98,7 @@
 - Party AI orders provide per-ally tactics (`aggressive`, `defensive`, `healer`, `scavenger`, `passive`) through party-card selectors; healer allies prioritize wounded party members, passive allies hold unless injured, defensive allies prioritize threats when the player is hurt, and scavengers consume fitting corpses after victory
 - Enemy AI now has morale flee when outnumbered and wounded, wounded pack creatures can call same-species reinforcements, predators prioritize livestock/prey targets, and first-entry ambushers get first-strike initiative
 - Exploration party interaction has a first-pass multi-actor model: party cards can toggle multiple active actors, selected actors can act together against one party/creature target, party play-fighting is nonlethal by default, group feast uses a primary consumer with helpers, and group/single feed can place selected party members into another party member's stomach with capacity checks
+- Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 
 ---
 
@@ -112,17 +113,6 @@
 - Add feast variants where helpers chew/split prey when chewing is enabled; current group feast only assists a primary consumer's swallow
 - Keep non-party persuasion deferred: exploration group actions remain player-controlled for party members only
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
-
-### 🟢 Tier 3: Medium Impact
-
-#### 2. Landmark Interiors (Sub-Maps)
-- Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)
-- Entering a structure switches to interior map, new biome-specific encounter table
-- Exiting returns to overworld tile
-- Interior encounters use `structureTable` from biome definition
-- Interior state persists (explored, creatures, items)
-
----
 
 ### 🔵 Tier 4: Lower Priority
 

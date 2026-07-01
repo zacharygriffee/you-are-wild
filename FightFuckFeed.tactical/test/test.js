@@ -2634,6 +2634,28 @@ test('Character stats expose pending perk selection', () => {
   assertContains(elements.get('scene-description').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
 });
 
+test('Perk selection filters trees without hiding available species perks', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { species: 'wolf', perks: [], pendingPerkChoices: 1 });
+  App.party = [App.player];
+  App.showPerkSelection();
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'data-perk-filter="predator"', 'Perk modal should expose archetype tree filters');
+  assertContains(html, 'data-perk-filter="species:wolf"', 'Perk modal should expose matching species tree filter');
+  assertContains(html, 'Predator Instinct', 'All filter should show predator perks');
+  assertContains(html, 'Pack Instinct', 'All filter should show species perks');
+
+  App.setPerkTreeFilter('species:wolf');
+  html = elements.get('scene-description').innerHTML;
+  assertEqual(App.perkTreeFilter, 'species:wolf', 'Species filter should become active');
+  assertContains(html, 'Pack Instinct', 'Species filter should keep species perks visible');
+  assertNotContains(html, 'Predator Instinct', 'Species filter should hide other trees');
+
+  App.setPerkTreeFilter('not-real');
+  assertEqual(App.perkTreeFilter, 'all', 'Invalid perk filter should fall back to all');
+  assertContains(elements.get('scene-description').innerHTML, 'Predator Instinct', 'Fallback should render all trees again');
+});
+
 test('Perk state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

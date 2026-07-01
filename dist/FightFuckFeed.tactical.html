@@ -2851,6 +2851,7 @@
             quests: [],
             questFilter: 'all',
             questSort: 'status',
+            perkTreeFilter: 'all',
             location: { x: 0, y: 0 },
             timeHour: 8,
             dayCount: 0,
@@ -6492,6 +6493,16 @@
                 return choices;
             },
 
+            _availablePerkTreeFilters(unit = this.player) {
+                return [['all', 'All'], ...Object.entries(this._perkTreesForUnit(unit)).map(([treeId, tree]) => [treeId, tree.label])];
+            },
+
+            setPerkTreeFilter(filter) {
+                const valid = this._availablePerkTreeFilters().map(([value]) => value);
+                this.perkTreeFilter = valid.includes(filter) ? filter : 'all';
+                this.showPerkSelection();
+            },
+
             choosePerk(perkId) {
                 if (!this.player || (this.player.pendingPerkChoices || 0) <= 0) return;
                 const choice = this._availablePerkChoices().find(perk => perk.id === perkId);
@@ -6526,8 +6537,17 @@
                 if (!this.player) return;
                 const pending = this.player.pendingPerkChoices || 0;
                 const choices = this._availablePerkChoices();
-                let html = `<h3>Choose Perk</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Pending choices: ${pending}</p><div style="display:grid;gap:12px;">`;
-                for (const [treeId, tree] of Object.entries(this._perkTreesForUnit(this.player))) {
+                const filters = this._availablePerkTreeFilters(this.player);
+                if (!filters.some(([value]) => value === this.perkTreeFilter)) this.perkTreeFilter = 'all';
+                const visibleTrees = Object.entries(this._perkTreesForUnit(this.player)).filter(([treeId]) => this.perkTreeFilter === 'all' || this.perkTreeFilter === treeId);
+                let html = `<h3>Choose Perk</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Pending choices: ${pending}</p><div class="action-legend" role="tablist" aria-label="Perk trees" style="margin-bottom:12px;">`;
+                filters.forEach(([value, label]) => {
+                    const active = this.perkTreeFilter === value ? ' selected' : '';
+                    const escapedValue = this._escapeHtml(value);
+                    html += `<button class="action-chip${active}" role="tab" aria-selected="${this.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" onclick="App.setPerkTreeFilter('${escapedValue}')">${this._escapeHtml(label)}</button>`;
+                });
+                html += `</div><div style="display:grid;gap:12px;">`;
+                for (const [treeId, tree] of visibleTrees) {
                     html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${tree.label}</div><div style="display:grid;gap:8px;margin-top:8px;">`;
                     choices.filter(perk => perk.tree === treeId).forEach(perk => {
                         const disabled = pending <= 0 || !perk.available ? ' disabled' : '';

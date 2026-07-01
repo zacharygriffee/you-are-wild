@@ -1622,19 +1622,17 @@ startCombat(enemies) {
     this.combatState.active = true;
     this.combatState.round = 1;
     
-    const allCombatants = [
-        ...this.party.map((u, i) => ({ ...u, index: i, type: 'ally' })),
-        ...enemies.map((u, i) => ({ ...u, index: i, type: 'enemy' }))
-    ];
-    
+    // Build initiative queue from live party/enemy objects (not copies)
+    // so hp changes are reflected in the queue automatically
+    const allCombatants = [...this.party, ...enemies];
     this.combatState.turnQueue = allCombatants
-        .map(c => ({ ...c, initiative: (c.stats?.spd || 10) + Math.random() * 10 }))
+        .map(c => ({ unit: c, initiative: (c.stats?.spd || 10) + Math.random() * 10 }))
         .sort((a, b) => b.initiative - a.initiative);
     
     this.combatState.currentTurn = 0;
     
     this.log.push({ 
-        text: `Combat! Order: ${this.combatState.turnQueue.map(u => u.name).join(', ')}`,
+        text: `Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`,
         type: 'combat'
     });
     
@@ -1648,19 +1646,37 @@ processTurn() {
     if (!this.combatState.active) return;
     
     const queue = this.combatState.turnQueue;
-    const current = queue[this.combatState.currentTurn];
+    const entry = queue[this.combatState.currentTurn];
+    if (!entry) { this.nextTurn(); return; }
     
+    const current = entry.unit;
     if (!current || current.hp <= 0) {
         this.nextTurn();
+        return;
+    }
+    
+    // Check if all enemies are dead (victory)
+    if (this.enemies.filter(e => e.hp > 0).length === 0) {
+        this.endCombat(true);
+        return;
+    }
+    
+    // Check if all party is dead (defeat)
+    if (this.party.filter(p => p.hp > 0).length === 0) {
+        this.log.push({ text: 'All allies defeated! Game Over!', type: 'combat' });
+        this.renderLog();
+        setTimeout(() => { if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); } }, 1000);
+        this.combatState.active = false;
         return;
     }
     
     document.getElementById('scene-title').textContent = 
         `Round ${this.combatState.round} - ${current.name}'s turn`;
     
-    if (current.type === 'ally' && current.name === 'You') {
+    const isAlly = this.party.includes(current);
+    if (isAlly && current.name === 'You') {
         this.showPlayerActions();
-    } else if (current.type === 'ally') {
+    } else if (isAlly) {
         this.allyTurn(current);
     } else {
         this.enemyTurn(current);
@@ -1875,6 +1891,15 @@ enemyTurn(enemy) {
 nextTurn() {
     this.combatState.currentTurn++;
     if (this.combatState.currentTurn >= this.combatState.turnQueue.length) {
+        // Start of new round: re-roll initiative from all living combatants
+        const allCombatants = [
+            ...this.party.filter(p => p.hp > 0),
+            ...this.enemies.filter(e => e.hp > 0)
+        ];
+        this.combatState.turnQueue = allCombatants
+            .map(c => ({ unit: c, initiative: (c.stats?.spd || 10) + Math.random() * 10 }))
+            .sort((a, b) => b.initiative - a.initiative);
+        
         this.combatState.currentTurn = 0;
         this.combatState.round++;
         this.log.push({ text: `--- Round ${this.combatState.round} ---`, type: 'combat' });

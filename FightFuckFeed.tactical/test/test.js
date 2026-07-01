@@ -2455,6 +2455,29 @@ test('Structure encounters can place authored merchants with trade actions', () 
   assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after merchant placement');
 });
 
+test('Structure encounters can place authored quest givers', () => {
+  const rolls = [0.99, 0, 0, 0, 0.99];
+  const { App, elements } = loadAppForCombat(() => rolls.length ? rolls.shift() : 0.99);
+  App.player = makeUnit('You', { level: 2, gold: 0, xp: 0, xpToNext: 100 });
+  App.party = [App.player];
+  App.currentBiome = 'road';
+  App.creatures = [];
+  App.quests = [];
+  const tile = { x: 2, y: 0, biome: 'road', structure: 'shrine', creatures: [], structureSpawned: false };
+  App.spawnStructureEncounter(tile, true);
+  const giver = App.creatures.find(c => c.disposition === App.DISPOSITION.QUEST_GIVER);
+  assert(giver, 'Shrine structure should be able to place a quest giver');
+  assertEqual(giver.quest.templateId, 'shrine_relic', 'Placed quest giver should use authored quest template');
+  assertEqual(giver.quest.id, 'shrine_relic_2_0', 'Authored quest id should be stable for the structure tile');
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Placed quest giver should expose quest action');
+  App.acceptQuestFromUnit(giver.id);
+  assertEqual(App.quests.length, 1, 'Accepted authored structure quest should enter quest log');
+  assertEqual(App.quests[0].title, 'Shrine Offering', 'Accepted structure quest should preserve authored title');
+  assertEqual(App.quests[0].turnInRequired, true, 'Accepted structure quest should preserve authored turn-in behavior');
+  assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after quest placement');
+});
+
 test('Equipment registry defines slots and item bonuses', () => {
   assertContains(appContent, 'EQUIPMENT_SLOTS', 'Equipment slots registry missing');
   assertContains(appContent, "slot: 'body'", 'Body equipment slot missing from item registry');

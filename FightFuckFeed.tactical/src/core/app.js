@@ -408,6 +408,33 @@
                     { name: 'Clawed Gloves', qty: 1 }
                 ]
             },
+            QUEST_TEMPLATES: {
+                cabin_supplies: {
+                    title: 'Cabin Supplies',
+                    description: 'A local caretaker needs a healing herb restocked.',
+                    objectives: [{ type: 'find', item: 'Healing Herb', required: 1, label: 'Find a Healing Herb' }],
+                    reward: { xp: 10, gold: 6 }
+                },
+                shrine_relic: {
+                    title: 'Shrine Offering',
+                    description: 'A shrine keeper asks for a crystal shard from nearby ruins.',
+                    objectives: [{ type: 'find', item: 'Crystal Shard', required: 1, label: 'Find a Crystal Shard' }],
+                    reward: { xp: 15, gold: 10, items: ['Old Coin'] },
+                    turnInRequired: true
+                },
+                camp_safety: {
+                    title: 'Camp Safety',
+                    description: 'A traveler wants the local predators thinned out.',
+                    objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolf' }],
+                    reward: { xp: 20, gold: 12 }
+                },
+                ruins_cleanup: {
+                    title: 'Ruins Cleanup',
+                    description: 'A nervous explorer wants proof that the old bones have been cleared.',
+                    objectives: [{ type: 'defeat', species: 'skeleton', required: 1, label: 'Defeat a Skeleton' }],
+                    reward: { xp: 25, gold: 14, items: ['Crystal Shard'] }
+                }
+            },
             EQUIPMENT_LOOT_TABLES: {
                 basicGear: [
                     { id: 'Leather Cap', weight: 4 },
@@ -718,21 +745,21 @@
             // ===== STRUCTURES (tile features) =====
             STRUCTURES: {
                 cabin: { name: 'Cabin', icon: '🏠', encounterChance: 0.25, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, lootTable: 'basicGear',
+                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, quest: { chance: 0.35, templates: ['cabin_supplies'], species: ['human', 'cat'] }, lootTable: 'basicGear',
                     descriptions: ['A small wooden cabin stands before you.','A lone cabin, smoke curling from its chimney.','A weathered cabin with a welcoming glow.'] },
                 hut: { name: 'Hut', icon: '🛖', encounterChance: 0.20, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] },
+                    merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] }, quest: { chance: 0.25, templates: ['cabin_supplies'], species: ['human', 'shroom'] },
                     descriptions: ['A rustic hut built from sticks and mud.','A simple hut with a thatched roof.','A travelers hut, abandoned or inhabited.'] },
                 cave: { name: 'Cave Mouth', icon: '🕳️', encounterChance: 0.35, disposition: 'enemy', threat: 3,
                     descriptions: ['A dark cave mouth yawns before you.','A shallow cave, something stirs within.','A narrow cave, the air is cold and damp.'] },
                 ruins: { name: 'Ruins', icon: '🏛️', encounterChance: 0.30, disposition: 'enemy', threat: 3,
-                    lootTable: 'relicGear',
+                    quest: { chance: 0.20, templates: ['ruins_cleanup', 'shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['Ancient ruins crumble around you.','A collapsed structure, something lurks.','A forgotten ruin, treasures and dangers.'] },
                 camp: { name: 'Camp', icon: '⛺', encounterChance: 0.15, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
+                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, quest: { chance: 0.30, templates: ['camp_safety'], species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
                     descriptions: ['A small campsite, recently used.','A bandit camp, abandoned or occupied.','A makeshift camp, signs of recent travelers.'] },
                 shrine: { name: 'Shrine', icon: '⛩️', encounterChance: 0.10, disposition: 'neutral', threat: 0,
-                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, lootTable: 'relicGear',
+                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, quest: { chance: 0.45, templates: ['shrine_relic'], species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['A tiny shrine to a forgotten deity.','A weathered shrine, offerings still fresh.','A serene shrine, peaceful energy radiates.'] },
                 pond: { name: 'Pond', icon: '🏞️', encounterChance: 0.15, disposition: 'neutral', threat: 1,
                     descriptions: ['A crystal-clear pond reflects the sky.','A murky pond, something swims beneath.','A still pond, dragonflies dance overhead.'] },
@@ -1622,6 +1649,7 @@
                 const struct = this.STRUCTURES[tile.structure];
                 tile.structureSpawned = true;
                 const merchant = this._maybeSpawnStructureMerchant(tile);
+                const questGiver = this._maybeSpawnStructureQuestGiver(tile);
                 // Structure always has an encounter inside
                 if (Math.random() < struct.encounterChance) {
                     // Pick from structure-appropriate pool or biome pool
@@ -1676,10 +1704,13 @@
                         this.renderCreatures();
                         this.renderExplorationActions();
                     }
-                } else if (merchant) {
+                } else if (merchant || questGiver) {
                     const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
                     const structDesc = struct.descriptions[descIdx];
-                    const encounterText = `You found a ${struct.name}. ${structDesc} ${merchant.name} is trading here.`;
+                    const visitors = [];
+                    if (merchant) visitors.push(`${merchant.name} is trading here`);
+                    if (questGiver) visitors.push(`${questGiver.name} has work for you`);
+                    const encounterText = `You found a ${struct.name}. ${structDesc} ${visitors.join(', and ')}.`;
                     this.updateScene(`${struct.name} - ${biome.name}`, encounterText, false);
                     this.log.push({ text: encounterText, type: 'discovery' });
                     this.renderCreatures();
@@ -4299,6 +4330,59 @@
                 this.creatures = this._tileCreatures([...(this.creatures || []), merchant]);
                 tile.creatures = this._tileCreatures(this.creatures);
                 return merchant;
+            },
+
+            _questTemplateForStructure(structureId, tile = null) {
+                const config = this.STRUCTURES[structureId]?.quest;
+                const templates = config?.templates || [];
+                if (!templates.length) return null;
+                const templateId = templates[Math.floor(Math.random() * templates.length)] || templates[0];
+                const source = this.QUEST_TEMPLATES[templateId];
+                if (!source) return null;
+                const quest = JSON.parse(JSON.stringify(source));
+                const tileId = tile ? `${tile.x}_${tile.y}` : 'local';
+                quest.id = quest.id || `${templateId}_${tileId}`;
+                quest.templateId = templateId;
+                return quest;
+            },
+
+            _createStructureQuestGiver(structureId, tile) {
+                const struct = this.STRUCTURES[structureId];
+                const questConfig = struct?.quest;
+                if (!questConfig) return null;
+                const quest = this._questTemplateForStructure(structureId, tile);
+                if (!quest) return null;
+                const speciesPool = questConfig.species || ['human'];
+                const sid = speciesPool[Math.floor(Math.random() * speciesPool.length)] || 'human';
+                const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
+                return this._normalizeUnit({
+                    id: `questgiver_${structureId}_${tile?.x ?? 0}_${tile?.y ?? 0}_${Date.now()}`,
+                    name: `${sp?.name || 'Local'} Guide`,
+                    species: sid,
+                    icon: sp?.icon || '👤',
+                    disposition: this.DISPOSITION.QUEST_GIVER,
+                    level: Math.max(1, this.player?.level || 1),
+                    bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [],
+                    quest,
+                    tags: [sp?.name || sid, 'Quest', struct.name],
+                    expanded: false,
+                    hero: false,
+                    ally: false,
+                    mc: false,
+                    obedient: false,
+                    willing: true
+                });
+            },
+
+            _maybeSpawnStructureQuestGiver(tile) {
+                if (!tile?.structure || !this.STRUCTURES[tile.structure]?.quest) return null;
+                const config = this.STRUCTURES[tile.structure].quest;
+                if (Math.random() >= (config.chance ?? 0)) return null;
+                const questGiver = this._createStructureQuestGiver(tile.structure, tile);
+                if (!questGiver) return null;
+                this.creatures = this._tileCreatures([...(this.creatures || []), questGiver]);
+                tile.creatures = this._tileCreatures(this.creatures);
+                return questGiver;
             },
 
             _itemCategory(item) {

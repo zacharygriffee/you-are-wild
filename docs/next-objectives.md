@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 183/183 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 184/184 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -101,7 +101,7 @@
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
-- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, optional deferred reward turn-in, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
+- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, authored quest templates can spawn quest givers from structure encounters, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, optional deferred reward turn-in, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
 - Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, expensive/rare purchases require confirmation, merchant stock can refresh after three in-game days, authored stock tables can place merchants in safe/commercial structures, inventory/trade surfaces support item category filtering and value/name/type sorting, corpse loot can grant generated or authored gold rewards, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses/effects apply and remove from player stats/state, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
@@ -137,7 +137,6 @@
 ### 🔵 Tier 4: Lower Priority
 
 #### 8. Advanced Quest Scripting
-- Add authored quest content and spawn placement beyond manually attached quest objects
 - Add explicit escort routing/checkpoints instead of only API-level objective matching
 
 #### 16. Advanced Equipment
@@ -181,7 +180,7 @@
 ```
 FightFuckFeed.tactical/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~6036 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~6120 lines)
     content-system.js — Template engine, content tiers, localization registry (~463 lines)
     serialization.js  — Binary save/load codec (~268 lines)
     module-system.js  — Mod loader and hook system (~275 lines)
@@ -193,7 +192,7 @@ FightFuckFeed.tactical/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 183 tests, syntax/structure/combat behavior
+  test/test.js       — 184 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

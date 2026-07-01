@@ -1084,6 +1084,7 @@
                     <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
                     <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
                     <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
+                    <button class="nav-btn" onclick="App.showCharacterStats()">📊 Stats</button>
                     <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
                     <button class="nav-btn" onclick="App.showSaveManager()">💾 Save</button>
                     <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
@@ -2182,7 +2183,85 @@
                 return this.party.length < this.MAX_PARTY_SIZE;
             },
             
-            generateEncounter(encounterTable, isBoss = false) {
+                        showCharacterStats() {
+                if (!this.player) return;
+                const p = this.player;
+                const tile = this.getTile(this.location.x, this.location.y);
+                const biome = this.biomes[tile.biome];
+                
+                let html = `<div style="max-width: 500px; margin: 0 auto; padding: 32px;">
+                    <h1 style="color: var(--accent-primary); margin-bottom: 8px;">${p.icon} ${p.name}</h1>
+                    <p style="color: var(--text-muted); margin-bottom: 24px;">
+                        Level ${p.level} ${p.species} | ${p.gender} | ${biome.name}
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+                        <div style="background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-md); text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: var(--accent-primary);">${p.hp}/${p.maxHp}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">HP</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-md); text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: var(--accent-warning);">${p.xp || 0}/${p.xpToNext || 100}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">XP</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Stats</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 24px;">
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-danger);">${p.stats.str}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">STR</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-danger);">${p.stats.con}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">CON</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-danger);">${p.stats.spd}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">SPD</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-info);">${p.stats.int}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">INT</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-info);">${p.stats.wis}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">WIS</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 8px; border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--accent-info);">${p.stats.cha}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">CHA</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Party (${this.party.length}/${this.MAX_PARTY_SIZE})</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
+                        ${this.party.map(ally => `
+                            <div style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+                                ${ally.icon} ${ally.name} ${ally.tags?.includes('Lover') ? '💕' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${this.inventory.length === 0 ? '<span style="color: var(--text-muted); font-size: 13px;">Empty</span>' : this.inventory.map(item => `
+                            <div style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+                                ${item.icon} ${item.name}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="margin-top: 24px; text-align: center;">
+                        <button class="nav-btn" onclick="returnToGame()">← Back</button>
+                    </div>
+                </div>`;
+                
+                document.getElementById('scene-description').innerHTML = html;
+                document.getElementById('scene-actions').innerHTML = '';
+            },
+            
+generateEncounter(encounterTable, isBoss = false) {
                 // Use biome encounter table if provided, otherwise fallback to all species
                 let speciesPool = this.species;
                 if (encounterTable && encounterTable.length > 0) {
@@ -2667,13 +2746,27 @@ endCombat(victory) {
     this.combatState.currentTurn = 0;
     if (victory) {
         this.log.push({ text: 'Victory!', type: 'discovery' });
-        this.updateScene('Victory', 'Enemies defeated!', false);
-        // Bonus XP for winning combat
-        this.gainXP(25);
+        
+        // Build victory text based on what was defeated
+        const totalXp = 25;
+        const victoryTexts = [
+            'The battlefield falls silent. You stand among the fallen, hunger still unsatisfied.',
+            'Your enemies lie defeated. The wilderness is a little safer, and you are a little stronger.',
+            'Another victory, another feast. The cycle of predator and prey continues.',
+            'You emerge from the chaos unscathed, your power growing with each conquest.'
+        ];
+        const victoryText = victoryTexts[Math.floor(Math.random() * victoryTexts.length)];
+        this.updateScene('Victory', victoryText, false);
+        this.gainXP(totalXp);
+    } else {
+        // Defeat
+        this.log.push({ text: 'Defeat! Your party has been overwhelmed...', type: 'combat' });
+        this.updateScene('Defeat', 'Darkness claims you...', false);
+        setTimeout(() => { if (confirm('Defeat! Return to menu?')) { App.showScreen('menu'); } }, 1500);
     }
     this.renderLog();
     this.showExplorationActions();
-                this.autoSave();
+    this.autoSave();
 },
 
 showInventory() {
@@ -2955,6 +3048,7 @@ showExplorationActions() {
             
             // Show save slot manager
             async showSaveManager() {
+                this.showScreen('save-manager');
                 const saves = await this._dbList('saves');
                 const lastSlot = localStorage.getItem('fff-last-slot') || 'slot1';
                 
@@ -2981,7 +3075,7 @@ showExplorationActions() {
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            ${hasData ? `<button class="nav-btn" onclick="App.loadFromSlot('${slotName}').then(() => { document.getElementById('save-manager').style.display='none'; })">📂 Load</button>` : ''}
+                            ${hasData ? `<button class="nav-btn" onclick="App.loadFromSlot('${slotName}').then(() => { App.showScreen('game'); })">📂 Load</button>` : ''}
                             <button class="nav-btn" onclick="App.saveToSlot('${slotName}')">💾 Save</button>
                             ${hasData ? `<button class="nav-btn" style="color: var(--accent-danger);" onclick="App.deleteSlot('${slotName}')">🗑️</button>` : ''}
                         </div>
@@ -2989,11 +3083,10 @@ showExplorationActions() {
                 }
                 
                 html += `<div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-                    <button class="nav-btn" onclick="document.getElementById('save-manager').style.display='none'">Close</button>
+                    <button class="nav-btn" onclick="returnToGame()">Close</button>
                 </div></div>`;
                 
                 document.getElementById('save-manager').innerHTML = html;
-                document.getElementById('save-manager').style.display = 'block';
             },
             
             // Delete a save slot
@@ -3194,7 +3287,7 @@ showExplorationActions() {
 
 <!-- CONTENT SETTINGS SCREEN -->
 <!-- SAVE MANAGER OVERLAY -->
-<div id="save-manager" class="screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; overflow: auto;">
+<div id="save-manager" class="screen screen-overlay" style="display: none; background: rgba(15, 15, 26, 0.95); z-index: 1000; overflow: auto;">
     <!-- Populated by JS -->
 </div>
 

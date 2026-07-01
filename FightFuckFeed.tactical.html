@@ -1332,81 +1332,298 @@
             },
             
             // Combat actions
-            combatAction(action) {
-                if (this.enemies.length === 0) return;
-                
-                const enemy = this.enemies[0];
-                const ctx = {
-                    attacker: 'You',
-                    defender: enemy.name,
-                    target: enemy.name,
-                    species: enemy.species,
-                    damage: Math.floor(Math.random() * 20) + 10,
-                    verb: action === 'fight' ? 'strike' : action === 'fuck' ? 'seduce' : 'devour',
-                    voreEnabled: CONTENT.preferences.voreEnabled,
-                    explicit: CONTENT.preferences.explicitDescriptions
-                };
-                
-                let result = '';
-                
-                switch(action) {
-                    case 'fight':
-                        const damage = Math.floor(Math.random() * 20) + 10;
-                        enemy.hp -= damage;
-                        ctx.damage = damage;
-                        result = CONTENT.combat('attack', ctx);
-                        
-                        if (enemy.hp <= 0) {
-                            result = CONTENT.combat('defeat', { ...ctx, survives: false });
-                            this.enemies = [];
-                            this.updateScene('Victory!', null, false);
-                        }
-                        break;
-                        if (enemy.hp <= 0) {
-                            result += ` and defeated her!`;
-                            this.enemies = [];
-                            this.updateScene('Victory!', `You defeated the ${enemy.name}.`, false);
-                        }
-                        break;
-                    case 'fuck':
-                        result = CONTENT.actionResult('seduce', ctx) + ' ';
-                        if (Math.random() > 0.5) {
-                            result += CONTENT.actionResult('seduce', { ...ctx, success: true });
-                            this.party.push({...enemy, hp: enemy.maxHp, tags: [enemy.species, 'Lover']});
-                            this.enemies = [];
-                            this.renderParty();
-                            const successScene = CONTENT.actionResult('seduce', { ...ctx, target: enemy.name, success: true });
-                            this.updateScene('New Ally!', successScene, false);
-                        } else {
-                            result += 'They resisted.';
-                        }
-                        break;
-                    case 'feed':
-                        result = CONTENT.actionResult('consume', ctx);
-                        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
-                        this.player.stats.str += 1;
-                        this.enemies = [];
-                        const consumeScene = CONTENT.actionResult('consume', { ...ctx, target: enemy.name });
-                        this.updateScene('Feeding Complete', consumeScene, false);
-                        break;
-                    case 'flee':
-                        result = `Fled from ${enemy.name}`;
-                        this.enemies = [];
-                        this.updateScene('Escaped', 'You got away safely.', false);
-                        break;
-                }
-                
-                // Enemy retaliation (if still alive and not seduced/fled)
-                if (this.enemies.length > 0 && this.enemies[0].hp > 0 && action !== 'fuck') {
-                    this.enemyRetaliation(this.enemies[0]);
-                }
-                
-                this.log.push({ text: result, type: 'combat' });
-                this.renderLog();
-                this.renderEnemies();
-                
-                document.getElementById('mobile-actions').style.display = 'none';
-            },
+            // Combat System - Turn-based with Initiative Queue
+combatState: {
+    active: false,
+    turnQueue: [],
+    currentTurn: 0,
+    round: 1
+},
+
+startCombat(enemies) {
+    this.enemies = enemies;
+    this.combatState.active = true;
+    this.combatState.round = 1;
+    
+    const allCombatants = [
+        ...this.party.map((u, i) => ({ ...u, index: i, type: 'ally' })),
+        ...enemies.map((u, i) => ({ ...u, index: i, type: 'enemy' }))
+    ];
+    
+    this.combatState.turnQueue = allCombatants
+        .map(c => ({ ...c, initiative: (c.stats?.spd || 10) + Math.random() * 10 }))
+        .sort((a, b) => b.initiative - a.initiative);
+    
+    this.combatState.currentTurn = 0;
+    
+    this.log.push({ 
+        text: `Combat! Order: ${this.combatState.turnQueue.map(u => u.name).join(', ')}`,
+        type: 'combat'
+    });
+    
+    this.updateScene(`Round 1`, `Combat started!`, true);
+    this.renderParty();
+    this.renderEnemies();
+    this.processTurn();
+},
+
+processTurn() {
+    if (!this.combatState.active) return;
+    
+    const queue = this.combatState.turnQueue;
+    const current = queue[this.combatState.currentTurn];
+    
+    if (!current || current.hp <= 0) {
+        this.nextTurn();
+        return;
+    }
+    
+    document.getElementById('scene-title').textContent = 
+        `Round ${this.combatState.round} - ${current.name}'s turn`;
+    
+    if (current.type === 'ally' && current.name === 'You') {
+        this.showPlayerActions();
+    } else if (current.type === 'ally') {
+        this.allyTurn(current);
+    } else {
+        this.enemyTurn(current);
+    }
+},
+
+showPlayerActions() {
+    const canTargetEnemies = this.enemies.length > 0;
+    const canTargetAllies = this.party.length > 1;
+    
+    let html = '';
+    if (canTargetEnemies) {
+        html += `<button class="action-btn primary" onclick="App.selectTarget('attack')">⚔️ Attack</button>`;
+        html += `<button class="action-btn" onclick="App.selectTarget('seduce')">💕 Seduce</button>`;
+        html += `<button class="action-btn" onclick="App.selectTarget('consume')">🍽️ Consume</button>`;
+    }
+    if (canTargetAllies) {
+        html += `<button class="action-btn" onclick="App.showAllyMenu()">👥 Ally</button>`;
+    }
+    html += `<button class="action-btn" onclick="App.attemptFlee()">🏃 Flee</button>`;
+    
+    document.getElementById('scene-actions').innerHTML = html;
+},
+
+selectTarget(action) {
+    let html = `<h3>Select target to ${action}</h3>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
+    
+    this.enemies.forEach((e, i) => {
+        if (e.hp <= 0) return;
+        html += `<button class="option-card" onclick="App.executeAction('${action}', ${i})">`;
+        html += `<div style="font-size:32px">${e.icon}</div>`;
+        html += `<div style="color:var(--text-primary);font-weight:600">${e.name}</div>`;
+        html += `<div style="color:var(--text-muted);font-size:12px">HP: ${e.hp}/${e.maxHp}</div>`;
+        html += `</button>`;
+    });
+    
+    html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.processTurn()">Cancel</button>`;
+    document.getElementById('scene-description').innerHTML = html;
+},
+
+executeAction(action, enemyIndex) {
+    const enemy = this.enemies[enemyIndex];
+    if (!enemy || enemy.hp <= 0) return;
+    
+    const player = this.player;
+    let result = '';
+    
+    switch(action) {
+        case 'attack':
+            const dmg = (player.stats?.str || 10) + Math.floor(Math.random() * 10);
+            enemy.hp -= dmg;
+            result = `You hit ${enemy.name} for ${dmg} damage!`;
+            if (enemy.hp <= 0) {
+                result += ` ${enemy.name} defeated!`;
+                this.enemies = this.enemies.filter(e => e.hp > 0);
+            }
+            break;
+        case 'seduce':
+            const success = (player.stats?.cha || 10) + Math.random() * 10 > (enemy.stats?.wis || 10);
+            if (success) {
+                result = `${enemy.name} joins you!`;
+                this.party.push({...enemy, hp: enemy.maxHp, tags: ['Lover']});
+                this.enemies = this.enemies.filter(e => e !== enemy);
+            } else {
+                result = `${enemy.name} resists!`;
+            }
+            break;
+        case 'consume':
+            if (enemy.hp < enemy.maxHp * 0.3 || player.stats.str > enemy.stats.con) {
+                result = `You devour ${enemy.name}!`;
+                player.hp = Math.min(player.maxHp, player.hp + 20);
+                player.stats.str += 1;
+                this.enemies = this.enemies.filter(e => e !== enemy);
+            } else {
+                result = `${enemy.name} is too strong to consume!`;
+            }
+            break;
+    }
+    
+    this.log.push({ text: result, type: 'combat' });
+    this.renderLog();
+    this.renderEnemies();
+    this.renderParty();
+    
+    if (this.enemies.length === 0) {
+        this.endCombat(true);
+    } else {
+        this.nextTurn();
+    }
+},
+
+showAllyMenu() {
+    let html = `<h3>Select Ally</h3>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
+    
+    this.party.forEach((ally, i) => {
+        if (ally.name === 'You') return;
+        html += `<button class="option-card" onclick="App.allyAction(${i})">`;
+        html += `<div style="font-size:32px">${ally.icon}</div>`;
+        html += `<div style="color:var(--text-primary);font-weight:600">${ally.name}</div>`;
+        html += `<div style="color:var(--text-muted);font-size:12px">HP: ${ally.hp}/${ally.maxHp}</div>`;
+        html += `</button>`;
+    });
+    
+    html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.processTurn()">Cancel</button>`;
+    document.getElementById('scene-description').innerHTML = html;
+},
+
+allyAction(allyIndex) {
+    const ally = this.party[allyIndex];
+    if (!ally) return;
+    
+    let html = `<h3>Act on ${ally.name}</h3>`;
+    html += `<div style="display:flex;flex-direction:column;gap:12px;">`;
+    html += `<button class="action-btn" onclick="App.executeAllyAction('consume', ${allyIndex})">🍽️ Consume</button>`;
+    html += `<button class="action-btn" onclick="App.executeAllyAction('seduce', ${allyIndex})">💕 Seduce</button>`;
+    html += `<button class="action-btn" onclick="App.executeAllyAction('inspect', ${allyIndex})">👁️ Inspect</button>`;
+    html += `<button class="nav-btn" style="margin-top:8px" onclick="App.showAllyMenu()">Back</button>`;
+    html += `</div>`;
+    document.getElementById('scene-description').innerHTML = html;
+},
+
+executeAllyAction(action, allyIndex) {
+    const ally = this.party[allyIndex];
+    if (!ally) return;
+    
+    let result = '';
+    switch(action) {
+        case 'consume':
+            this.party.splice(allyIndex, 1);
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+            this.player.stats.str += 2;
+            result = `You consumed ${ally.name}. Power grows!`;
+            break;
+        case 'seduce':
+            ally.tags = ally.tags.filter(t => !['Angry'].includes(t));
+            ally.tags.push('Lover');
+            result = `${ally.name} is devoted to you.`;
+            break;
+        case 'inspect':
+            result = `${ally.name}: ${ally.species}, HP ${ally.hp}/${ally.maxHp}, STR ${ally.stats?.str}, SPD ${ally.stats?.spd}`;
+            break;
+    }
+    
+    this.log.push({ text: result, type: 'discovery' });
+    this.renderLog();
+    this.renderParty();
+    
+    if (this.combatState.active) this.nextTurn();
+    else this.updateScene('Exploring', null, false);
+},
+
+allyTurn(ally) {
+    if (this.enemies.length === 0) { this.nextTurn(); return; }
+    const target = this.enemies[Math.floor(Math.random() * this.enemies.length)];
+    const dmg = (ally.stats?.str || 8) + Math.floor(Math.random() * 8);
+    target.hp -= dmg;
+    
+    this.log.push({ text: `${ally.name} attacks ${target.name} for ${dmg}!`, type: 'combat' });
+    if (target.hp <= 0) {
+        this.log.push({ text: `${target.name} defeated!`, type: 'combat' });
+        this.enemies = this.enemies.filter(e => e.hp > 0);
+    }
+    
+    this.renderEnemies();
+    this.renderLog();
+    
+    if (this.enemies.length === 0) this.endCombat(true);
+    else setTimeout(() => this.nextTurn(), 800);
+},
+
+enemyTurn(enemy) {
+    const targets = this.party.filter(p => p.hp > 0);
+    if (targets.length === 0) return;
+    
+    const target = targets[Math.random() < 0.7 || targets.length === 1 ? 0 : Math.floor(Math.random() * targets.length)];
+    const roll = Math.random();
+    let result = '';
+    
+    if (roll < 0.6) {
+        const dmg = (enemy.stats?.str || 8) + Math.floor(Math.random() * 8);
+        target.hp -= dmg;
+        result = `${enemy.name} hits ${target.name} for ${dmg}!`;
+    } else if (roll < 0.8) {
+        const dmg = Math.floor((enemy.stats?.str || 8) * 1.2);
+        target.hp -= dmg;
+        result = `${enemy.name} grapples ${target.name} for ${dmg}!`;
+    } else {
+        result = `${enemy.name} circles ${target.name}.`;
+    }
+    
+    this.log.push({ text: result, type: 'combat' });
+    
+    if (target.hp <= 0) {
+        if (target.name === 'You') {
+            this.log.push({ text: 'You fall! Game Over!', type: 'combat' });
+            setTimeout(() => { if (confirm('Game Over?')) location.reload(); }, 1000);
+            return;
+        } else {
+            this.log.push({ text: `${target.name} falls!`, type: 'combat' });
+            this.party = this.party.filter(p => p.name !== target.name);
+        }
+    }
+    
+    this.renderParty();
+    this.renderLog();
+    
+    setTimeout(() => this.nextTurn(), 800);
+},
+
+nextTurn() {
+    this.combatState.currentTurn++;
+    if (this.combatState.currentTurn >= this.combatState.turnQueue.length) {
+        this.combatState.currentTurn = 0;
+        this.combatState.round++;
+        this.log.push({ text: `--- Round ${this.combatState.round} ---`, type: 'combat' });
+    }
+    this.processTurn();
+},
+
+endCombat(victory) {
+    this.combatState.active = false;
+    this.combatState.turnQueue = [];
+    this.combatState.currentTurn = 0;
+    if (victory) {
+        this.log.push({ text: 'Victory!', type: 'discovery' });
+        this.updateScene('Victory', 'Enemies defeated!', false);
+    }
+    this.renderLog();
+    this.showExplorationActions();
+},
+
+showExplorationActions() {
+    document.getElementById('scene-actions').innerHTML = `
+        <button class="action-btn" onclick="App.explore()"><span class="action-icon">🔍</span>Explore</button>
+        <button class="action-btn" onclick="App.rest()"><span class="action-icon">🏕️</span>Rest</button>
+    `;
+    document.getElementById('scene-description').textContent = 'You travel through the wilderness...';
+},            },
             
             explore() {
                 this.log.push({ text: 'Exploring the area...', type: 'discovery' });
@@ -1507,6 +1724,112 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
+
+<!-- CONTENT SETTINGS SCREEN -->
+<div id="screen-settings" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 32px;">
+        <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Content Settings</h1>
+        <p style="color: var(--text-muted); margin-bottom: 32px;">
+            Customize your experience. All adult content is enabled by default.
+        </p>
+        
+        <!-- Content Tier -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
+                        border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">
+                Content Level
+            </h3>
+            <div style="display: flex; gap: 12px; flex-direction: column;">
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);" 
+                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="2" checked 
+                           onchange="CONTENT.setMaxTier(2)" style="accent-color: var(--accent-primary);">
+                    <div>
+                        <div style="color: var(--accent-primary); font-weight: 600;">Adult (Default)</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">All content including explicit scenes</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);"
+                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="1"
+                           onchange="CONTENT.setMaxTier(1)" style="accent-color: var(--accent-primary);">
+                    <div>
+                        <div style="color: var(--text-primary); font-weight: 500;">Mature</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">Suggestive themes, implied content only</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);"
+                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="0"
+                           onchange="CONTENT.setMaxTier(0)" style="accent-color: var(--accent-primary);">
+                    <div>
+                        <div style="color: var(--text-primary); font-weight: 500;">Safe For Work</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">No adult themes, combat only</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Specific Toggles -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
+                        border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">
+                Specific Content (Opt-out)
+            </h3>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px;">
+                Disable specific content types. All are enabled by default.
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                    <div>
+                        <div style="color: var(--text-primary);">Vore & Consumption</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">Pred/prey mechanics, swallowing scenes</div>
+                    </div>
+                    <input type="checkbox" checked id="toggle-vore" 
+                           onchange="CONTENT.toggleSetting('voreEnabled', this.checked)"
+                           style="accent-color: var(--accent-primary); width: 20px; height: 20px;">
+                </label>
+                
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                    <div>
+                        <div style="color: var(--text-primary);">Explicit Descriptions</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">Detailed sexual/violent content</div>
+                    </div>
+                    <input type="checkbox" checked id="toggle-explicit"
+                           onchange="CONTENT.toggleSetting('explicitDescriptions', this.checked)"
+                           style="accent-color: var(--accent-primary); width: 20px; height: 20px;">
+                </label>
+            </div>
+        </div>
+        
+        <!-- Apply Button -->
+        <button class="nav-btn" style="width: 100%; background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;"
+                onclick="document.getElementById('screen-settings').style.display='none'; document.getElementById('app').style.display='grid';">
+            Apply Changes
+        </button>
+    </div>
+</div>
+
+<script>
+// Add settings to nav
+document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.querySelector('.app-nav');
+    if (nav) {
+        const settingsBtn = document.createElement('button');
+        settingsBtn.className = 'nav-btn';
+        settingsBtn.textContent = '⚙️ Settings';
+        settingsBtn.onclick = () => {
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('screen-settings').style.display = 'block';
+            // Sync UI with current preferences
+            document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
+            document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
+        };
+        nav.insertBefore(settingsBtn, nav.lastChild);
+    }
+});
+</script>
 </body>
 </html>
 

@@ -1069,7 +1069,25 @@
                             this._dbDelete('saves', this.activeSlot).catch(() => {});
                             setTimeout(() => { App.showScreen('menu'); }, 2000);
                         } else {
-                            setTimeout(() => { if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); } }, 1000);
+                            // Softcore: player is knocked out for this combat, party can continue
+                            // Player will revive at 1 HP when combat ends
+                            target.CPun = 1;
+                            target.CPle = 0;
+                            this.log.push({ text: 'You have been knocked out! Your party must finish the fight...', type: 'combat' });
+                            this.renderLog(); this.renderParty();
+                            // If no other living party members, defeat
+                            const livingAllies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
+                            if (livingAllies.length === 0) {
+                                this.log.push({ text: 'Your party has been wiped out!', type: 'combat' });
+                                this.renderLog();
+                                setTimeout(() => { App.showScreen('menu'); }, 2000);
+                                this.combatState.active = false;
+                                return;
+                            }
+                            // Otherwise continue combat with player as KO'd
+                            this.log.push({ text: 'Your allies continue the fight...', type: 'combat' });
+                            this.renderLog();
+                            this.nextTurn(); return;
                         }
                         this.combatState.active = false;
                         return;
@@ -1882,6 +1900,19 @@ Enter 1, 2, or 3:`);
                     this.renderMap(); this.renderParty(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
                     localStorage.setItem('fff-last-slot', slotName);
+                    // Revive any dead party members on load (softcore)
+                    let revived = false;
+                    if (this.player && this.player.CPun <= 0) {
+                        this.player.CPun = 1;
+                        revived = true;
+                    }
+                    for (const p of this.party) {
+                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
+                    }
+                    if (revived) {
+                        this.log.push({ text: 'You were revived from the brink of death! Welcome back, ' + this.player.name + '.', type: 'discovery' });
+                        this.renderLog();
+                    }
                     return true;
                 } catch (e) { console.error('Load failed:', e); alert('Load failed: ' + e.message); return false; }
             },

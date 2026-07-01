@@ -723,8 +723,46 @@
 </head>
 <body>
 
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen screen-menu active">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
+            <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
+            <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">FightFuckFeed.me</h1>
+            <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Tactical Edition</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
+                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
+                    ▶ Continue Last Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('create')">
+                    🆕 New Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showSaveManager()">
+                    📂 Load Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('settings')">
+                    ⚙️ Settings
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showModScreen()">
+                    📦 Mods
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showMarketScreen()">
+                    🏪 Market
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showTutorial()">
+                    📖 Tutorial
+                </button>
+            </div>
+            
+            <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
+                <p>Dark mode tactical edition</p>
+                <p>All content is enabled by default</p>
+            </div>
+        </div>
+    </div>
+
     <!-- CHARACTER CREATION SCREEN -->
-    <div id="screen-create" class="screen screen-create active">
+    <div id="screen-create" class="screen screen-create">
         <div class="create-container">
             <h1 class="create-title">Create Your Character</h1>
             <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
@@ -1172,42 +1210,26 @@
                 this.bindEvents();
                 this.checkFirstTime();
                 
-                // Check for last played save and show continue option
+                // Check for last played save and show Continue button on menu
                 const lastSlot = localStorage.getItem('fff-last-slot');
                 if (lastSlot) {
                     const saveData = await this._dbGet('saves', lastSlot);
                     if (saveData) {
-                        this.showContinueOption(lastSlot);
+                        const btn = document.getElementById('menu-continue');
+                        if (btn) {
+                            const saveTime = new Date(parseInt(localStorage.getItem('fff-last-save-time') || '0')).toLocaleString();
+                            btn.innerHTML = `▶ Continue ${lastSlot} <span style="font-size: 12px; opacity: 0.7;">(${saveTime})</span>`;
+                            btn.style.display = 'block';
+                        }
                     }
                 }
             },
             
-            showContinueOption(slotName) {
-                const container = document.querySelector('.create-container');
-                if (!container) return;
-                
-                // Check if already added
-                if (document.getElementById('continue-banner')) return;
-                
-                const banner = document.createElement('div');
-                banner.id = 'continue-banner';
-                banner.style.cssText = 'background: var(--bg-elevated); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; text-align: center;';
-                banner.innerHTML = `
-                    <div style="color: var(--accent-primary); font-weight: 600; margin-bottom: 8px;">📂 Continue Last Game</div>
-                    <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">
-                        Saved in ${slotName} — ${new Date(parseInt(localStorage.getItem('fff-last-save-time') || '0')).toLocaleString()}
-                    </div>
-                    <div style="display: flex; gap: 12px; justify-content: center;">
-                        <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;" onclick="App.loadFromSlot('${slotName}').then(() => { document.getElementById('continue-banner').remove(); })">
-                            ▶ Continue
-                        </button>
-                        <button class="nav-btn" onclick="document.getElementById('continue-banner').remove()">
-                            New Game
-                        </button>
-                    </div>
-                `;
-                
-                container.insertBefore(banner, container.firstChild);
+            async continueLastGame() {
+                const lastSlot = localStorage.getItem('fff-last-slot');
+                if (lastSlot) {
+                    await this.loadFromSlot(lastSlot);
+                }
             },
             
             // Populate character creation options
@@ -1312,8 +1334,29 @@
             
             // Screen management
             showScreen(name) {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                document.getElementById(`screen-${name}`)?.classList.add('active');
+                // Reset all screens
+                document.querySelectorAll('.screen').forEach(s => {
+                    s.classList.remove('active');
+                    if (s.id !== 'screen-menu') {
+                        s.style.display = 'none';
+                    }
+                });
+                
+                const el = document.getElementById(`screen-${name}`);
+                if (el) {
+                    el.classList.add('active');
+                    el.style.display = 'flex';
+                }
+                
+                // Handle special screens that use display instead of class
+                if (name === 'settings') {
+                    document.getElementById('screen-settings').style.display = 'block';
+                } else if (name === 'mods') {
+                    document.getElementById('screen-mods').style.display = 'block';
+                } else if (name === 'market') {
+                    document.getElementById('screen-market').style.display = 'block';
+                }
+                
                 this.screen = name;
             },
             
@@ -2001,8 +2044,10 @@ showExplorationActions() {
                     this.activeSlot = slotName;
                     localStorage.setItem('fff-last-slot', slotName);
                     localStorage.setItem('fff-last-save-time', Date.now().toString());
+                    localStorage.setItem(`fff-save-time-${slotName}`, Date.now().toString());
                     this.log.push({ text: `Game saved to ${slotName}!`, type: 'discovery' });
                     this.renderLog();
+                    alert(`Game saved to ${slotName}!`);
                 } catch (e) {
                     console.error('Save failed:', e);
                     alert('Save failed: ' + e.message);

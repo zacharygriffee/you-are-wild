@@ -230,7 +230,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 7,
+      version: 8,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -249,7 +249,8 @@
       questState: {
         quests: appState.quests || [],
         playerGold: appState.player?.gold || 0,
-        dayCount: appState.dayCount || 0
+        dayCount: appState.dayCount || 0,
+        playerEquipment: appState.player?.equipment || {}
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

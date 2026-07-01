@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 130/130 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 134/134 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -101,8 +101,9 @@
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
-- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 7
-- Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, merchant stock can refresh after three in-game days, and save version 7 persists quest state, player gold, and day count
+- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 8
+- Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, merchant stock can refresh after three in-game days, and save version 8 persists quest state, player gold, day count, and equipment metadata
+- Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots and numeric `equipBonus` fields, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses apply and remove from player stats, equipped items render in inventory and character stats, and save version 8 persists equipped slot metadata
 
 ---
 
@@ -139,11 +140,11 @@
 - Add item categories, sorting, and filtering once inventory has enough content to need it
 - Add explicit gold rewards from corpse loot or other economy sources beyond quests and selling items
 
-#### 16. Equipment System
-- Wearable items: armor (CON bonus), accessories (stat bonuses), rings (special effects)
-- Equipment slots: head, body, hands, feet, accessory1, accessory2
-- Items in `ITEMS` registry get `slot` and `equipBonus` fields
-- Equipped items show on character stats panel
+#### 16. Advanced Equipment
+- Add authored loot/merchant placement for equipment beyond the built-in sample items
+- Add non-numeric special effects for rings/accessories
+- Decide whether non-player creatures should use equipment slots or creature inventory only
+- Rework save/load stat baselines if equipment needs full recalculation instead of persisted equipped metadata
 
 #### 17. Skill/Perk Tree
 - Replace random `_grantPerk()` with player choice on level-up

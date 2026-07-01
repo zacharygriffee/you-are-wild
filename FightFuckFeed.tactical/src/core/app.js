@@ -352,8 +352,14 @@
                 'Monster Fang': { type: 'material', icon: '🦷', effect: 'craft', value: 25, desc: 'Crafting material' },
                 'Crystal Shard': { type: 'material', icon: '💠', effect: 'craft', value: 40, desc: 'Crafting material' },
                 'Vial of Venom': { type: 'consumable', icon: '🧪', effect: 'damage', value: 40, desc: 'Deals 40 poison damage' },
-                'Enchanted Berry': { type: 'consumable', icon: '🫐', effect: 'buff', value: 5, desc: 'Temporarily boosts STR by 5' }
+                'Enchanted Berry': { type: 'consumable', icon: '🫐', effect: 'buff', value: 5, desc: 'Temporarily boosts STR by 5' },
+                'Leather Cap': { type: 'equipment', icon: '🎩', slot: 'head', equipBonus: { con: 1 }, value: 20, desc: 'Headwear. CON +1' },
+                'Hide Armor': { type: 'equipment', icon: '🦺', slot: 'body', equipBonus: { con: 3 }, value: 60, desc: 'Body armor. CON +3' },
+                'Clawed Gloves': { type: 'equipment', icon: '🧤', slot: 'hands', equipBonus: { Figh: 2, str: 1 }, value: 45, desc: 'Handwear. Figh +2, STR +1' },
+                'Lucky Charm': { type: 'equipment', icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, value: 35, desc: 'Accessory. Flee +2, WIS +1' },
+                'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, value: 55, desc: 'Ring. Flir +2, CHA +1' }
             },
+            EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
             XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 60, flirtEnemy: 35, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
 
             // === STATE ===
@@ -1123,6 +1129,10 @@
                 unit.womb = unit.womb || [];
                 unit.balls = unit.balls || [];
                 unit.inventory = unit.inventory || [];
+                unit.equipment = unit.equipment || {};
+                for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
+                    if (!(slot in unit.equipment)) unit.equipment[slot] = null;
+                }
                 unit.gold = unit.gold || 0;
                 unit.quest = unit.quest || null;
                 unit.questAccepted = Boolean(unit.questAccepted);
@@ -3987,21 +3997,103 @@
                 document.getElementById('scene-description').innerHTML = html;
             },
 
-            // ===== INVENTORY =====
-            showInventory() {
-                if (this.inventory.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<h3>Inventory</h3><p style="color:var(--text-muted)">Empty.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+            // ===== EQUIPMENT =====
+            _getItemDef(item) {
+                return this.ITEMS[item?.name] || {};
+            },
+
+            _isEquippable(item) {
+                const def = this._getItemDef(item);
+                return def.type === 'equipment' && Boolean(def.slot);
+            },
+
+            _applyEquipmentBonus(unit, item, direction = 1) {
+                const bonus = this._getItemDef(item).equipBonus || {};
+                for (const [stat, amount] of Object.entries(bonus)) {
+                    unit[stat] = (unit[stat] || 0) + amount * direction;
+                }
+            },
+
+            equipItem(itemId) {
+                if (!this.player) return;
+                const item = this.inventory.find(i => String(i.id) === String(itemId));
+                if (!item || !this._isEquippable(item)) return;
+                const def = this._getItemDef(item);
+                const slot = def.slot;
+                this.player.equipment = this.player.equipment || {};
+                const current = this.player.equipment[slot];
+                if (current) {
+                    this._applyEquipmentBonus(this.player, current, -1);
+                    this.inventory.push(current);
+                }
+                this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
+                this.player.equipment[slot] = item;
+                this._applyEquipmentBonus(this.player, item, 1);
+                this.log.push({ text: `Equipped ${item.name}.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.showInventory();
+                this.autoSave();
+            },
+
+            unequipItem(slot) {
+                if (!this.player?.equipment || !this.player.equipment[slot]) return;
+                if (this.inventory.length >= this.MAX_INVENTORY) {
+                    this.log.push({ text: 'Inventory is full.', type: 'discovery' });
+                    this.renderLog();
                     return;
                 }
-                let html = `<h3>Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
+                const item = this.player.equipment[slot];
+                this._applyEquipmentBonus(this.player, item, -1);
+                this.player.equipment[slot] = null;
+                this.inventory.push(item);
+                this.log.push({ text: `Unequipped ${item.name}.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.showInventory();
+                this.autoSave();
+            },
+
+            _equipmentSummary(unit = this.player) {
+                const equipment = unit?.equipment || {};
+                return Object.entries(this.EQUIPMENT_SLOTS).map(([slot, label]) => {
+                    const item = equipment[slot];
+                    return `${label}: ${item ? item.name : 'Empty'}`;
+                }).join('<br>');
+            },
+
+            _equipmentBonusText(item) {
+                const bonus = this._getItemDef(item).equipBonus || {};
+                const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
+                return entries.length ? entries.join(', ') : 'No bonus';
+            },
+
+            // ===== INVENTORY =====
+            showInventory() {
+                let html = `<h3>Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3>`;
+                html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">Equipped</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
+                Object.entries(this.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
+                    const equipped = this.player?.equipment?.[slot];
+                    if (equipped) html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px" onclick="App.unequipItem('${slot}')">Unequip ${label}</button>`;
+                });
+                html += `</div></div>`;
+                if (this.inventory.length === 0) {
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">Empty.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    document.getElementById('scene-description').innerHTML = html;
+                    return;
+                }
+                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
                 this.inventory.forEach(item => {
                     const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
                     const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
+                    const canEquip = this._isEquippable(item);
                     html += `<div class="option-card" style="text-align:left;cursor:default;">`;
                     html += `<div style="font-size:24px">${def.icon}</div><div style="font-weight:600;color:var(--text-primary)">${item.name}</div>`;
-                    html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.desc}</div><div style="display:flex;gap:8px;margin-top:8px">`;
-                    if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.useItem('\${item.id}')">Use</button>`;
-                    html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" onclick="App.dropItem('\${item.id}')">Drop</button></div></div>`;
+                    html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.desc}${canEquip ? '<br>' + this._equipmentBonusText(item) : ''}</div><div style="display:flex;gap:8px;margin-top:8px">`;
+                    const itemKey = String(item.id).replace(/'/g, "\\'");
+                    if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.useItem('${itemKey}')">Use</button>`;
+                    if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">Equip</button>`;
+                    html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" onclick="App.dropItem('${itemKey}')">Drop</button></div></div>`;
                 });
                 html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
                 document.getElementById('scene-description').innerHTML = html;
@@ -4460,9 +4552,10 @@
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Punishment</h3><p>${p.CPun}/${p.MPun}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Pleasure</h3><p>${p.CPle}/${p.MPle}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Combat Stats</h3><p>Figh: ${p.Figh} | Feas: ${p.Feas} | Flir: ${p.Flir}<br>Fuck: ${p.Fuck} | Flee: ${p.Flee} | Feed: ${p.Feed}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Attributes</h3><p>STR: ${p.str} | CON: ${p.con} | SPD: ${p.int}<br>INT: ${p.int} | WIS: ${p.wis} | CHA: ${p.cha}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Body</h3><p>Size: ${p.size} | Appetite: ${p.appetite}<br>Parts: ${p.parts || 'none'} | Chest: ${p.chest || 'none'}<br>Body: ${p.bodyParts.map(b => this.BODY_PARTS[b]?.label || b).join(', ') || 'None'}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${p.perks.map(pk => pk.name).join(', ') || 'None'}</p></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Attributes</h3><p>STR: ${p.str} | CON: ${p.con} | SPD: ${p.spd}<br>INT: ${p.int} | WIS: ${p.wis} | CHA: ${p.cha}</p></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Body</h3><p>Size: ${p.size} | Appetite: ${p.appetite}<br>Parts: ${p.parts || 'none'} | Chest: ${p.chest || 'none'}<br>Body: ${(p.bodyParts || []).map(b => this.BODY_PARTS[b]?.label || b).join(', ') || 'None'}</p></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Equipment</h3><p>${this._equipmentSummary(p)}</p></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${(p.perks || []).map(pk => pk.name).join(', ') || 'None'}</p></div>
                     </div>
                     <button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
@@ -4823,6 +4916,7 @@ Enter 1, 2, or 3:`);
                     this.inventory = loaded.inventory || [];
                     this.quests = loaded.questState?.quests || [];
                     this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
+                    this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };

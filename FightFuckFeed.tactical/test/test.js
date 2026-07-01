@@ -1916,7 +1916,7 @@ test('Quest state persists through binary saves', () => {
   App.inventory = [];
   App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
   const loaded = Binary.loadGame(Binary.saveGame(App));
-  assertEqual(loaded.version, 7, 'Save version should include quest and merchant timing state');
+  assertEqual(loaded.version, 8, 'Save version should include quest, merchant timing, and equipment state');
   assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
   assertEqual(loaded.questState.dayCount, 0, 'Day count should persist');
   assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');
@@ -1970,6 +1970,72 @@ test('Merchant stock refreshes every three in-game days', () => {
   App._refreshMerchantStock(merchant);
   assert(merchant.stock.some(item => item.qty > 0), 'Stock should refresh after three days');
   assertEqual(merchant.stockLastRefreshDay, 3, 'Refresh day should update');
+});
+
+test('Equipment registry defines slots and item bonuses', () => {
+  assertContains(appContent, 'EQUIPMENT_SLOTS', 'Equipment slots registry missing');
+  assertContains(appContent, "slot: 'body'", 'Body equipment slot missing from item registry');
+  assertContains(appContent, 'equipBonus', 'Equipment bonus field missing from item registry');
+});
+
+test('Equipping and unequipping items updates player stats and slots', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { con: 10 });
+  App.party = [App.player];
+  App.inventory = [{ id: 'armor-1', name: 'Hide Armor' }];
+  App.equipItem('armor-1');
+  assertEqual(App.player.equipment.body.name, 'Hide Armor', 'Equipped item should occupy its slot');
+  assertEqual(App.player.con, 13, 'Equipment bonus should apply to stats');
+  assertEqual(App.inventory.length, 0, 'Equipped item should leave inventory');
+  App.unequipItem('body');
+  assertEqual(App.player.equipment.body, null, 'Unequipped slot should be empty');
+  assertEqual(App.player.con, 10, 'Equipment bonus should be removed');
+  assertEqual(App.inventory[0].name, 'Hide Armor', 'Unequipped item should return to inventory');
+});
+
+test('Inventory and character stats render equipped items', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    equipment: {
+      head: { id: 'cap-1', name: 'Leather Cap' },
+      body: null,
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    }
+  });
+  App.party = [App.player];
+  App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
+  App.showInventory();
+  assertContains(elements.get('scene-description').innerHTML, 'Equipped', 'Inventory should show equipped section');
+  assertContains(elements.get('scene-description').innerHTML, 'Focus Ring', 'Inventory should show equippable item');
+  assertContains(elements.get('scene-description').innerHTML, 'Equip', 'Inventory should expose equip action');
+  App.showCharacterStats();
+  assertContains(elements.get('scene-description').innerHTML, 'Leather Cap', 'Character stats should list equipped item');
+});
+
+test('Equipment state persists through binary saves', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    gold: 1,
+    equipment: {
+      head: { id: 'cap-1', name: 'Leather Cap' },
+      body: null,
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    }
+  });
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.inventory = [];
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.questState.playerEquipment.head.name, 'Leather Cap', 'Equipped item should persist in save metadata');
 });
 
 // === SUMMARY ===

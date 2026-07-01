@@ -4185,6 +4185,11 @@
                 if (targetId) this.showTrade(targetId);
             },
 
+            _requiresPurchaseConfirmation(item) {
+                const def = this.ITEMS[item?.name] || {};
+                return Boolean(def.rare || item?.rare || (item?.price || 0) >= 50);
+            },
+
             buyFromMerchant(targetId, stockIndex) {
                 const merchant = this._findMerchantById(targetId);
                 const item = merchant?.stock?.[stockIndex];
@@ -4197,6 +4202,12 @@
                 }
                 if (this.inventory.length >= this.MAX_INVENTORY) {
                     this.log.push({ text: 'Inventory is full.', type: 'discovery' });
+                    this.renderLog();
+                    this.showTrade(targetId);
+                    return;
+                }
+                if (this._requiresPurchaseConfirmation(item) && !confirm(`Buy ${item.name} for ${item.price} gold?`)) {
+                    this.log.push({ text: `Purchase cancelled: ${item.name}.`, type: 'discovery' });
                     this.renderLog();
                     this.showTrade(targetId);
                     return;

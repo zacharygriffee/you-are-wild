@@ -2273,7 +2273,7 @@ test('Merchant buy and sell update gold inventory and stock', () => {
 });
 
 test('Merchant trade supports item categories and sorted stock without index drift', () => {
-  const { App, elements } = loadAppForCombat();
+  const { App, elements } = loadAppForCombat(() => 0.5, { confirm: true });
   App.player = makeUnit('You', { gold: 100 });
   App.party = [App.player];
   App.inventory = [{ id: 'gem-1', name: 'Shiny Gem' }];
@@ -2297,6 +2297,36 @@ test('Merchant trade supports item categories and sorted stock without index dri
   assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
   App.buyFromMerchant('trader-1', 2);
   assert(App.inventory.some(item => item.name === 'Hide Armor'), 'Buying after sorted render should still use original stock index');
+});
+
+test('Expensive merchant purchases require confirmation', () => {
+  const cancelled = loadAppForCombat(() => 0.5, { confirm: false });
+  cancelled.App.player = makeUnit('You', { gold: 100 });
+  cancelled.App.party = [cancelled.App.player];
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: cancelled.App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Hide Armor', price: 60, qty: 1 }]
+  });
+  cancelled.App.creatures = [merchant];
+  cancelled.App.buyFromMerchant('trader-1', 0);
+  assertEqual(cancelled.App.player.gold, 100, 'Cancelled expensive purchase should not spend gold');
+  assertEqual(merchant.stock[0].qty, 1, 'Cancelled expensive purchase should not reduce stock');
+  assert(!cancelled.App.inventory.some(item => item.name === 'Hide Armor'), 'Cancelled expensive purchase should not add item');
+
+  const approved = loadAppForCombat(() => 0.5, { confirm: true });
+  approved.App.player = makeUnit('You', { gold: 100 });
+  approved.App.party = [approved.App.player];
+  const approvedMerchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: approved.App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Hide Armor', price: 60, qty: 1 }]
+  });
+  approved.App.creatures = [approvedMerchant];
+  approved.App.buyFromMerchant('trader-1', 0);
+  assertEqual(approved.App.player.gold, 40, 'Confirmed expensive purchase should spend gold');
+  assertEqual(approvedMerchant.stock[0].qty, 0, 'Confirmed expensive purchase should reduce stock');
+  assert(approved.App.inventory.some(item => item.name === 'Hide Armor'), 'Confirmed expensive purchase should add item');
 });
 
 test('Merchant stock refreshes every three in-game days', () => {

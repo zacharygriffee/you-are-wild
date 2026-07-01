@@ -2066,8 +2066,21 @@ const CONTENT_SYSTEM = {
     
     // Get content at appropriate tier
     getContent(templatePath, context = {}) {
-        const [category, type, variant] = templatePath.split('.');
-        const templates = this.templates[category]?.[type]?.[variant];
+        const parts = templatePath.split('.');
+        const category = parts[0];
+        const type = parts[1];
+        const variant = parts[2] || 'default';
+        
+        // Try to get templates
+        let templates = this.templates[category]?.[type]?.[variant];
+        
+        // Fallback to any available variant
+        if (!templates && this.templates[category]?.[type]) {
+            const variants = Object.keys(this.templates[category][type]);
+            if (variants.length > 0) {
+                templates = this.templates[category][type][variants[0]];
+            }
+        }
         
         if (!templates) {
             return `[Missing content: ${templatePath}]`;

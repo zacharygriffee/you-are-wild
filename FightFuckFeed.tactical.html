@@ -1349,13 +1349,17 @@
             
             // Screen management
             showScreen(name) {
-                // Reset all screens
+                // Hide all screens first
                 document.querySelectorAll('.screen').forEach(s => {
                     s.classList.remove('active');
-                    if (s.id !== 'screen-menu') {
-                        s.style.display = 'none';
-                    }
+                    s.style.display = 'none';
                 });
+                
+                // Show menu screen behind overlays if needed
+                if (name === 'menu') {
+                    const menu = document.getElementById('screen-menu');
+                    if (menu) { menu.classList.add('active'); menu.style.display = 'flex'; }
+                }
                 
                 const el = document.getElementById(`screen-${name}`);
                 if (el) {
@@ -1363,13 +1367,15 @@
                     el.style.display = 'flex';
                 }
                 
-                // Handle special screens that use display instead of class
+                // Handle special screens that don't use flex display
                 if (name === 'settings') {
                     document.getElementById('screen-settings').style.display = 'block';
                 } else if (name === 'mods') {
                     document.getElementById('screen-mods').style.display = 'block';
                 } else if (name === 'market') {
                     document.getElementById('screen-market').style.display = 'block';
+                } else if (name === 'game') {
+                    document.getElementById('app').style.display = 'grid';
                 }
                 
                 this.screen = name;
@@ -1708,16 +1714,17 @@ processTurn() {
         return;
     }
     
+    const currentUnit = current.unit || current;
     document.getElementById('scene-title').textContent = 
-        `Round ${this.combatState.round} - ${current.name}'s turn`;
+        `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
     
-    const isAlly = this.party.includes(current);
-    if (isAlly && current.name === 'You') {
+    const isAlly = this.party.includes(currentUnit);
+    if (isAlly && currentUnit.name === 'You') {
         this.showPlayerActions();
     } else if (isAlly) {
-        this.allyTurn(current);
+        this.allyTurn(currentUnit);
     } else {
-        this.enemyTurn(current);
+        this.enemyTurn(currentUnit);
     }
 },
 
@@ -2035,7 +2042,8 @@ showExplorationActions() {
                     this.renderLog();
                     return;
                 }
-                const current = this.combatState.turnQueue[this.combatState.currentTurn];
+                const currentEntry = this.combatState.turnQueue[this.combatState.currentTurn];
+                const current = currentEntry ? (currentEntry.unit || currentEntry) : null;
                 if (!current || current.name !== "You") {
                     this.log.push({ text: "Not your turn!", type: "combat" });
                     this.renderLog();
@@ -2323,6 +2331,18 @@ showExplorationActions() {
                 const panels = ['panel-map', 'panel-party', 'panel-enemies'];
                 panels.forEach(p => document.getElementById(p)?.classList.remove('active'));
                 document.getElementById(`panel-${panel}`)?.classList.add('active');
+            },
+            
+            // Show mod screen
+            showModScreen() {
+                this.showScreen('mods');
+                if (typeof ModUI !== 'undefined') ModUI.refreshModList();
+            },
+            
+            // Show market screen
+            showMarketScreen() {
+                this.showScreen('market');
+                if (typeof MODULE_MARKETPLACE !== 'undefined') MODULE_MARKETPLACE.ui.showMarketplace();
             }
         };
         
@@ -3676,8 +3696,17 @@ window.returnToGame = function() {
     document.getElementById('screen-settings').style.display = 'none';
     document.getElementById('screen-mods').style.display = 'none';
     document.getElementById('screen-market').style.display = 'none';
-    document.getElementById('app').style.display = 'grid';
-    document.getElementById('screen-game').classList.add('active');
+    document.getElementById('save-manager').style.display = 'none';
+    // If we have a player, go to game; otherwise go to menu
+    if (App.player && App.screen !== 'menu') {
+        document.getElementById('app').style.display = 'grid';
+        document.getElementById('screen-game').style.display = 'flex';
+        document.getElementById('screen-game').classList.add('active');
+    } else {
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('screen-menu').style.display = 'flex';
+        document.getElementById('screen-menu').classList.add('active');
+    }
 };
 </script>
 

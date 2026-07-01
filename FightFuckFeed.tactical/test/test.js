@@ -755,6 +755,97 @@ test('Status effects apply damage and expire during processing', () => {
   assertEqual(Boolean(unit.status.enveloped), false, 'Enveloped should expire');
 });
 
+test('Bleed and burn apply damage, stack, and burn can spread in row', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const burned = makeUnit('Burned', {
+    CPun: 30,
+    combatRow: 'front',
+    status: {
+      bleed: { dmg: 2, turns: 1, stacks: 2 },
+      burn: { dmg: 3, turns: 1 }
+    }
+  });
+  const neighbor = makeUnit('Neighbor', { combatRow: 'front' });
+  App.party = [burned, neighbor];
+  App.creatures = [];
+  App._processStatusEffects();
+  assertEqual(burned.CPun, 23, 'Bleed stacks and burn should both damage');
+  assertEqual(Boolean(burned.status.bleed), false, 'Bleed should expire');
+  assertEqual(Boolean(burned.status.burn), false, 'Burn should expire');
+  assert(neighbor.status.burn, 'Burn should spread to same-row combatant when roll succeeds');
+});
+
+test('Freeze skips once then applies temporary speed penalty', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const unit = makeUnit('Frozen', { spd: 10, status: { freeze: { skip: true, slowTurns: 2 } } });
+  App.player = unit;
+  App.party = [unit];
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'plains', explored: true, creatures: [] }]]);
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() { this._freezeSkipped = true; };
+  App.processTurn();
+  assertEqual(App._freezeSkipped, true, 'Freeze should skip the current turn');
+  assertEqual(App._effectiveSpeed(unit), 8, 'Freeze should apply -2 speed after skip');
+});
+
+test('Stun skips one turn and then clears', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const unit = makeUnit('Stunned', { status: { stun: { turns: 1 } } });
+  App.player = unit;
+  App.party = [unit];
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() { this._stunSkipped = true; };
+  App.processTurn();
+  assertEqual(App._stunSkipped, true, 'Stun should skip turn');
+  assertEqual(Boolean(unit.status.stun), false, 'Stun should clear after skip');
+});
+
+test('Sleep skips turns but wakes on damage', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const sleeper = makeUnit('Sleeper', { status: { sleep: { turns: 3 } } });
+  const attacker = makeUnit('Attacker', { Figh: 30 });
+  App.player = attacker;
+  App.party = [attacker, sleeper];
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: sleeper, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() { this._sleepSkipped = true; };
+  App.processTurn();
+  assertEqual(App._sleepSkipped, true, 'Sleep should skip turn');
+  App.executeActionAgainstTarget('fight', attacker, sleeper);
+  assertEqual(Boolean(sleeper.status.sleep), false, 'Damage should wake sleeping unit');
+});
+
+test('Charm reverses enemy target selection', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const charmed = makeUnit('Charmed Enemy', { disposition: App.DISPOSITION.ENEMY, Figh: 30, status: { charm: { turns: 2, by: 'You' } } });
+  const allyEnemy = makeUnit('Enemy Ally', { disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [charmed, allyEnemy];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App.enemyTurn(charmed);
+  assert(allyEnemy.CPun < 100, 'Charmed enemy should attack another enemy');
+  assertEqual(player.CPun, 100, 'Charmed enemy should not attack the player');
+});
+
+test('Fear can skip or force low-health combatants to flee', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const scared = makeUnit('Scared', { CPun: 20, MPun: 100, status: { fear: { turns: 2, by: 'Enemy' } } });
+  App.player = scared;
+  App.party = [scared];
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: scared, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() { this._fearSkipped = true; };
+  App.processTurn();
+  assertEqual(scared.fledCombat, true, 'Low-health feared unit should flee combat');
+  assertEqual(App._fearSkipped, true, 'Fear flee should consume turn');
+});
+
 test('Loaded-style units are normalized for combat assumptions', () => {
   const { App } = loadAppForCombat();
   const unit = App._normalizeUnit({ name: 'Bat', species: 'bat', CPun: 10, MPun: 20 });

@@ -3510,7 +3510,8 @@
             },
 
             _effectiveSpeed(unit) {
-                return Math.max(1, (unit?.spd || 10) + this._terrainSpeedModifier(unit));
+                const frozenSlow = unit?.status?.freeze?.slowTurns > 0 ? -2 : 0;
+                return Math.max(1, (unit?.spd || 10) + this._terrainSpeedModifier(unit) + frozenSlow);
             },
 
             _effectiveCon(unit) {
@@ -3569,6 +3570,63 @@
                 return Math.max(0.5, mult);
             },
 
+            _wakeOnDamage(unit) {
+                if (unit?.status?.sleep) {
+                    delete unit.status.sleep;
+                    this.log.push({ text: `${unit.name} wakes from the hit!`, type: 'combat' });
+                }
+            },
+
+            _skipTurnFromStatus(unit) {
+                const status = unit?.status || {};
+                if (status.stun?.turns > 0) {
+                    status.stun.turns--;
+                    if (status.stun.turns <= 0) delete status.stun;
+                    return `${unit.name} is stunned and loses their turn!`;
+                }
+                if (status.freeze?.skip) {
+                    status.freeze.skip = false;
+                    status.freeze.slowTurns = Math.max(status.freeze.slowTurns || 0, 2);
+                    return `${unit.name} is frozen in place and loses their turn!`;
+                }
+                if (status.sleep?.turns > 0) {
+                    return `${unit.name} is asleep and cannot act!`;
+                }
+                if (status.fear?.turns > 0) {
+                    const lowHp = unit.CPun < unit.MPun * 0.3;
+                    if (lowHp) {
+                        unit.fledCombat = true;
+                        return `${unit.name} panics and flees from fear!`;
+                    }
+                    if (Math.random() < 0.5) return `${unit.name} freezes in fear and loses their turn!`;
+                }
+                return null;
+            },
+
+            _applyAttackStatus(actor, target, dmg) {
+                if (!target || target.CPun <= 0) return;
+                target.status = target.status || {};
+                if (actor?.bleedAttack) {
+                    const bleed = target.status.bleed || { dmg: 2, turns: 3, stacks: 0 };
+                    bleed.dmg = bleed.dmg || 2;
+                    bleed.turns = Math.max(bleed.turns || 0, 3);
+                    bleed.stacks = Math.min(5, (bleed.stacks || 0) + 1);
+                    target.status.bleed = bleed;
+                }
+                if (actor?.burnAttack) target.status.burn = { dmg: 3, turns: 2 };
+                if (actor?.freezeAttack) target.status.freeze = { skip: true, slowTurns: 2 };
+                if (actor?.stunAttack) target.status.stun = { turns: 1 };
+                if (actor?.sleepAttack) target.status.sleep = { turns: 3 };
+                if (actor?.charmAttack) target.status.charm = { turns: 2, by: actor.name };
+                if (actor?.fearAttack || actor?.menacing) target.status.fear = { turns: 2, by: actor.name };
+            },
+
+            _charmedTargetsFor(unit) {
+                if (!unit?.status?.charm) return null;
+                if (this.party.includes(unit)) return this.party.filter(p => p !== unit && p.CPun > 0 && !p.knockedOut);
+                return this.creatures.filter(c => c !== unit && c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+            },
+
             moveCombatRow() {
                 const actor = this.activeActor || this.player;
                 if (!this.combatState.active || !actor || actor.CPun <= 0) return;
@@ -3616,6 +3674,11 @@
                 if (livingParty.length === 0) { this.endCombat(false); return; }
                 // Check if unit already acted in a sync this round
                 if (entry.actedThisRound) { this.nextTurn(); return; }
+                const statusSkip = this._skipTurnFromStatus(currentUnit);
+                if (statusSkip) {
+                    this.log.push({ text: statusSkip, type: 'combat' });
+                    this.renderLog(); this.nextTurn(); return;
+                }
                 // Check if restrained (skip turn)
                 if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
                     this.log.push({ text: `${currentUnit.name} is restrained and cannot act!`, type: 'combat' });
@@ -3678,6 +3741,27 @@
                         unit.status.poisoned.turns--;
                         if (unit.status.poisoned.turns <= 0) delete unit.status.poisoned;
                     }
+                    if (unit.status.bleed) {
+                        const stacks = Math.max(1, unit.status.bleed.stacks || 1);
+                        unit.CPun -= (unit.status.bleed.dmg || 2) * stacks;
+                        unit.status.bleed.turns--;
+                        if (unit.status.bleed.turns <= 0) delete unit.status.bleed;
+                    }
+                    if (unit.status.burn) {
+                        if (unit.status.burn.fresh) {
+                            delete unit.status.burn.fresh;
+                            continue;
+                        }
+                        unit.CPun -= unit.status.burn.dmg || 3;
+                        const spreadTarget = all.find(other => other !== unit && other.CPun > 0 && !this._isCorpse(other) && !other.status?.burn && (!unit.combatRow || other.combatRow === unit.combatRow));
+                        if (spreadTarget && Math.random() < 0.25) {
+                            spreadTarget.status = spreadTarget.status || {};
+                            spreadTarget.status.burn = { dmg: 3, turns: 2, fresh: true };
+                            this.log.push({ text: `${unit.name}'s burn spreads to ${spreadTarget.name}!`, type: 'combat' });
+                        }
+                        unit.status.burn.turns--;
+                        if (unit.status.burn.turns <= 0) delete unit.status.burn;
+                    }
                     if (unit.status.restrained) {
                         unit.status.restrained.turns--;
                         if (unit.status.restrained.turns <= 0) {
@@ -3693,9 +3777,23 @@
                             delete unit.status.enveloped;
                         }
                     }
-	                    if (unit.status.frightened) {
-	                        delete unit.status.frightened;
-	                    }
+                    if (unit.status.freeze?.slowTurns) {
+                        unit.status.freeze.slowTurns--;
+                        if (unit.status.freeze.slowTurns <= 0 && !unit.status.freeze.skip) delete unit.status.freeze;
+                    }
+                    if (unit.status.sleep) {
+                        unit.status.sleep.turns--;
+                        if (unit.status.sleep.turns <= 0) delete unit.status.sleep;
+                    }
+                    if (unit.status.charm) {
+                        unit.status.charm.turns--;
+                        if (unit.status.charm.turns <= 0) delete unit.status.charm;
+                    }
+                    if (unit.status.fear) {
+                        unit.status.fear.turns--;
+                        if (unit.status.fear.turns <= 0) delete unit.status.fear;
+                    }
+	                    if (unit.status.frightened) delete unit.status.frightened;
 	                    if (unit !== this.player && this.party.includes(unit) && unit.CPun <= 0) {
 	                        this.log.push({ text: `${unit.name} succumbs to their wounds.`, type: 'combat' });
 	                        this._dropPartyCorpse(unit, 'status');
@@ -3835,6 +3933,8 @@
                         const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
                         const dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(actor, target)));
                         target.CPun -= dmg;
+                        this._wakeOnDamage(target);
+                        this._applyAttackStatus(actor, target, dmg);
                         result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment!`;
                         if (target.CPun <= 0) {
                             result += ` ${target.name} collapses!`;
@@ -4431,7 +4531,8 @@
 
             // ===== ALLY TURN AI =====
             allyTurn(ally) {
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+                const charmedTargets = this._charmedTargetsFor(ally);
+                const enemies = charmedTargets || this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 if (enemies.length === 0) { this.nextTurn(); return; }
                 if (this._attemptTimidAllyFlee(ally)) return;
                 // DUMB AI STATE MACHINE
@@ -4521,6 +4622,8 @@
                 let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(ally, target)));
                 if (ally.bloodsuck) { ally.CPun = Math.min(ally.MPun, ally.CPun + Math.floor(dmg * 0.3)); }
                 target.CPun -= dmg;
+                this._wakeOnDamage(target);
+                this._applyAttackStatus(ally, target, dmg);
                 // Constrictor restrains
                 if (ally.constrictor && target.size <= 4 && !target.status.restrained) {
                     target.status.restrained = { turns: 2, by: ally.name };
@@ -4550,7 +4653,8 @@
 
             // ===== ENEMY TURN AI =====
             enemyTurn(enemy) {
-                const targets = this.party.filter(p => p.CPun > 0);
+                const charmedTargets = this._charmedTargetsFor(enemy);
+                const targets = charmedTargets || this.party.filter(p => p.CPun > 0);
                 if (targets.length === 0) return;
                 // Enemy targeting: prefer weakest, then tasty, then player
                 let target = targets[0];
@@ -4607,6 +4711,8 @@
                 // Bloodsucker heals on hit
                 if (enemy.bloodsuck) { enemy.CPun = Math.min(enemy.MPun, enemy.CPun + Math.floor(dmg * 0.3)); }
                 target.CPun -= dmg;
+                this._wakeOnDamage(target);
+                this._applyAttackStatus(enemy, target, dmg);
                 // Poisonous/venom applies DOT
                 if (enemy.poisonous || enemy.venom) {
                     target.status.poisoned = { dmg: 3, turns: 3 };

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 95/95 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 101/101 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -93,6 +93,7 @@
 - Combat positioning has a first-pass row system: front/back rows auto-assign from abilities, active actors can spend a turn to move rows, physical target selection respects back-row reach, and row state is visible on unit cards/chips
 - Terrain effects now modify combat: water changes speed for swimmers/non-swimmers, dense forest grants cover and slows units, cave darkness can cause non-darkvision physical misses, swamp can stick grounded combatants, and flying creatures cannot be hit by ground melee
 - Combat cards and mobile chips show live attack-order badges, including the current focused actor/target (`Now #n`) and queued group-action badges (`Group/Target Action #n`) that resolve at the slowest participant's turn while intervening turns remain available
+- Status expansion supports bleed, burn spread, freeze, stun, sleep, charm, and fear, with combat hooks for damage ticks, skip turns, wake-on-damage, reversed target selection, and fear flee
 
 ---
 
@@ -100,16 +101,7 @@
 
 ### 🟡 Tier 2: High Impact
 
-#### 1. Status Effect Expansion
-- `bleed` — DOT 2 HP/turn, 3 turns, stacks
-- `burn` — DOT 3 HP/turn, 2 turns, can spread to adjacent creatures
-- `freeze` — skip 1 turn, -2 SPD for 2 turns after
-- `stun` — skip 1 turn
-- `sleep` — skip until hit or 3 turns pass; wake on damage
-- `charm` — creature fights for the charmer (reversed target selection)
-- `fear` — 50% chance to skip turn, flee if HP < 30%
-
-#### 2. Day-Night Cycle
+#### 1. Day-Night Cycle
 - Time tracking: each `move` or `search` advances time by 1 hour
 - Night (20:00–06:00): nocturnal creatures active (bat, rat), diurnal creatures sleep (bunny, deer)
 - Night encounter rates: +50% for nocturnal, -80% for diurnal
@@ -120,18 +112,18 @@
 
 ### 🟢 Tier 3: Medium Impact
 
-#### 3. Party AI Orders
+#### 2. Party AI Orders
 - Per-ally tactic assignment: `aggressive` (always attack), `defensive` (protect player), `healer` (feed wounded), `scavenger` (feast on corpses), `passive` (do nothing unless attacked)
 - UI: accordion in party panel, dropdown per ally
 - AI overrides: healer ally prioritizes `feed.heal` on most wounded; scavenger ally auto-feasts on corpses after combat
 
-#### 4. Enemy AI Improvements
+#### 3. Enemy AI Improvements
 - Flee when outnumbered: if `enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5`, 50% flee chance
 - Call for reinforcements: pack animals (`pack: true`) on low HP have 30% chance to spawn 1 more same-species ally
 - Prioritize livestock: predators (`isPredatorOf`) target livestock/prey creatures first, even if weaker than player
 - Ambush behavior: `ambush: true` creatures get first strike if player hasn't explored tile yet
 
-#### 5. Landmark Interiors (Sub-Maps)
+#### 4. Landmark Interiors (Sub-Maps)
 - Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)
 - Entering a structure switches to interior map, new biome-specific encounter table
 - Exiting returns to overworld tile

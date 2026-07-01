@@ -2533,7 +2533,8 @@
                 boneCrushing: false, unwillingWarnings: false,
                 statAbsorption: true, refractoryPeriod: false,
                 sameSpeciesBonus: true, fluidEnabled: true,
-                cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false
+                cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
+                partyPlayFightMode: 'nonlethal'
             },
 
             combatState: {
@@ -5317,6 +5318,52 @@
                 return `${prey.name} is fed to ${consumer.name} and settles in their stomach.`;
             },
 
+            registerPlayFightResolver(resolver) {
+                this.playFightResolver = typeof resolver === 'function' ? resolver : null;
+            },
+
+            _resolvePartyPlayFight(actors, target, dmg) {
+                if (this.playFightResolver) {
+                    return this.playFightResolver({ actors, target, dmg, app: this });
+                }
+                target.CPun -= dmg;
+                if (target.CPun <= 0) {
+                    if (this.settings.partyPlayFightMode === 'lethal') {
+                        this._makeCorpse(target, 'fight');
+                        return `${target.name} collapses from the rough play.`;
+                    }
+                    target.CPun = 1;
+                    return 'They are pinned but not seriously hurt.';
+                }
+                return '';
+            },
+
+            _groupChewFeast(actors, target) {
+                const portions = actors.filter(actor => actor && actor !== target);
+                if (portions.length === 0) return `${target.name} cannot be split without helpers.`;
+                const portionSize = Math.max(1, Math.ceil((target.size || 1) / portions.length));
+                const blocked = portions.find(actor => this._containerUsed(actor, 'stomach') + portionSize > this._containerCapacity(actor, 'stomach'));
+                if (blocked) return this._capacityFailureMessage(blocked, target, 'stomach');
+                for (const actor of portions) {
+                    if (!actor.stomach) actor.stomach = [];
+                    actor.stomach.push({
+                        name: `${target.name} portion`,
+                        species: target.species,
+                        size: portionSize,
+                        alive: false,
+                        inStomach: true,
+                        digestionState: 'digested',
+                        digestionProgress: 100,
+                        sourceId: target.id || target.name
+                    });
+                    actor.hunger = Math.max(0, (actor.hunger || 0) - 25);
+                }
+                target.CPun = 0;
+                if (this.party.includes(target)) this._removeContainedPartyMember(target);
+                else this._makeCorpse(target, 'feast');
+                return `${portions.map(actor => actor.name).join(', ')} split ${target.name} into chewable portions.`;
+            },
+
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors()) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 if (livingActors.length <= 1) {
@@ -5344,12 +5391,14 @@
                         }
                         const totalFigh = livingActors.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
                         const dmg = Math.max(1, Math.floor(this._AR(totalFigh) - (target.con || 10) * 0.3 + Math.random() * 6));
-                        target.CPun -= dmg;
                         result = `${names} play-fight ${target.name} for ${dmg} punishment.`;
-                        if (this.party.includes(target) && target.CPun <= 0) {
-                            target.CPun = 1;
-                            result += ' They are pinned but not seriously hurt.';
-                        } else if (target.CPun <= 0) {
+                        if (this.party.includes(target)) {
+                            const outcome = this._resolvePartyPlayFight(livingActors, target, dmg);
+                            if (outcome) result += ` ${outcome}`;
+                        } else {
+                            target.CPun -= dmg;
+                        }
+                        if (!this.party.includes(target) && target.CPun <= 0) {
                             this._makeCorpse(target, 'fight');
                             result += ` ${target.name} collapses.`;
                         }
@@ -5376,6 +5425,10 @@
                     }
                     case 'feast': {
                         const primary = livingActors[0];
+                        if (this.settings.chewing && livingActors.length > 1) {
+                            result = this._groupChewFeast(livingActors, target);
+                            break;
+                        }
                         const helperBonus = livingActors.slice(1).reduce((sum, actor) => sum + Math.floor((actor.Feas || 10) * 0.5), 0);
                         const canEatOutside = this.cheats.canEatAnything || (primary.size >= target.size - 2 && primary.Feas + helperBonus + 5 > target.Flee);
                         if (!canEatOutside) {

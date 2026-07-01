@@ -1182,6 +1182,20 @@ test('Multiple selected party actors can play-fight one party target nonlethally
   assertContains(App.log[App.log.length - 1].text, 'play-fight You', 'Group play-fight should be logged distinctly');
 });
 
+test('Party play-fight severity can be overridden for harsher outcomes', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', CPun: 5, MPun: 100, con: 1 });
+  const allyA = makeUnit('Ally A', { id: 'ally-a', Figh: 40 });
+  const allyB = makeUnit('Ally B', { id: 'ally-b', Figh: 40 });
+  App.player = player;
+  App.party = [player, allyA, allyB];
+  App.settings.partyPlayFightMode = 'lethal';
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('fight', 0);
+  assertEqual(player.disposition, App.DISPOSITION.CORPSE, 'Lethal play-fight mode should allow harsher moddable outcome');
+});
+
 test('Selected party members can be fed into another party member as consumer', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 8, hunger: 80 });
@@ -1208,6 +1222,24 @@ test('Single selected party member can be fed to another full-health party membe
   App.outsideActionForParty('feed', 1);
   assertEqual(consumer.stomach.length, 1, 'Feed action should support feeding selected party member to party consumer');
   assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
+});
+
+test('Chewing-enabled group feast splits target among selected actors', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 4, appetite: 4, Feas: 20 });
+  const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 4, appetite: 4, Feas: 20 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
+  App.player = player;
+  App.party = [player, eaterA, eaterB, prey];
+  App.settings.chewing = true;
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('feast', 3);
+  assertEqual(eaterA.stomach.length, 1, 'First group eater should receive a prey portion');
+  assertEqual(eaterB.stomach.length, 1, 'Second group eater should receive a prey portion');
+  assertEqual(App.party.includes(prey), false, 'Split party target should leave active party list');
+  assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
 });
 
 test('Recruitment is gated by pleasure and willingness score', () => {

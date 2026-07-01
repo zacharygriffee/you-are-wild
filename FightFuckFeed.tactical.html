@@ -1386,7 +1386,29 @@
         Binary.json.encode(s, obj.inventory || []);
       },
       decode(s) {
-        return { version: Binary.vuint.decode(s), playerName: Binary.string.decode(s), playerSpecies: Binary.string.decode(s), locationX: Binary.int32.decode(s), locationY: Binary.int32.decode(s), playerHp: Binary.vuint.decode(s), playerMaxHp: Binary.vuint.decode(s), playerStats: Binary.codecs.stats.decode(s), playerLevel: Binary.vuint.decode(s), party: Binary.array(Binary.codecs.unit).decode(s), log: Binary.array(Binary.string).decode(s), currentBiome: Binary.string.decode(s), worldMap: Binary.json.decode(s), exploredTiles: Binary.json.decode(s), inventory: Binary.json.decode(s) };
+        const version = Binary.vuint.decode(s);
+        const result = {
+          version: version,
+          playerName: Binary.string.decode(s),
+          playerSpecies: Binary.string.decode(s),
+          locationX: Binary.int32.decode(s),
+          locationY: Binary.int32.decode(s),
+          playerHp: Binary.vuint.decode(s),
+          playerMaxHp: Binary.vuint.decode(s),
+          playerStats: Binary.codecs.stats.decode(s),
+          playerLevel: Binary.vuint.decode(s),
+          party: Binary.array(Binary.codecs.unit).decode(s),
+          log: Binary.array(Binary.string).decode(s),
+          currentBiome: Binary.string.decode(s),
+          worldMap: Binary.json.decode(s),
+          exploredTiles: Binary.json.decode(s)
+        };
+        if (version >= 3) {
+          try { result.inventory = Binary.json.decode(s); } catch(e) { result.inventory = []; }
+        } else {
+          result.inventory = [];
+        }
+        return result;
       }
     }
   };

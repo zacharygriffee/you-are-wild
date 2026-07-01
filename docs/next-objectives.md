@@ -110,9 +110,16 @@
 
 #### 1. Remaining Multi-Creature Interaction Model
 - Add UI affordances for choosing multiple exploration targets; API-level multi-target resolution already exists
-- Expand mixed self/other resolution for `c1 + c2 + c3 -> c1` beyond the current first-pass behavior where selected helpers can act on the selected target
+- Fix party-to-party feeding when one or more selected party members are fed to another party member; selected helpers should either become prey, assist the primary prey/consumer interaction, or be rejected by clear capacity/rule checks instead of silently misrouting
+- Fix multi-select reliability for party members before resolving group actions; selected actor state should remain stable through target selection, action choice, and action resolution
+- Expand asymmetric one-to-many and many-to-one exploration action resolution:
+  - `c2 + c3 -> c1`: both selected actors act together on one target; fight is two-against-one, feast uses a primary consumer unless chewing/splitting is available
+  - `c1 -> c2 + c3`: one actor acts across multiple selected targets only when stats/skills allow it, such as high dexterity for fighting multiple targets or sufficient social/pleasure ability for flirting multiple targets
+  - `c1 + c2 + c3 -> c1`: support self-included groups where the target may act on themself while other selected actors also act on the same target, or where the whole group acts non-asymmetrically on each other
+- Keep party-vs-party fight interactions as play-fighting by default, but keep the resolver moddable so projects/settings can opt into harsher outcomes
 - Expand play-fight outcome hooks into UI/mod configuration if the project needs visible controls beyond the current resolver and setting
 - Add more feast variants beyond the current swallow and chewing-split branches
+- Keep primary-consumer feast semantics explicit: if multiple helpers feed one prey and chewing is unavailable, helpers assist the primary consumer instead of all independently swallowing the same prey
 - Keep non-party persuasion deferred: exploration group actions remain player-controlled for party members only
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 

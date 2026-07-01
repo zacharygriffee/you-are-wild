@@ -17,7 +17,69 @@ const CONTENT_SYSTEM = {
         maxTier: 2,           // Default: ADULT (show all content)
         voreEnabled: true,    // Vore enabled by default (core mechanic)
         explicitDescriptions: true,  // Explicit by default
-        filterTags: []        // User can block specific tags if desired
+        filterTags: [],       // User can block specific tags if desired
+        language: 'en'
+    },
+
+    locales: {
+        en: {
+            'settings.language': 'Language',
+            'settings.language.en': 'English',
+            'settings.language.es': 'Spanish',
+            'action.fight': 'Fight',
+            'action.flirt': 'Flirt',
+            'action.fuck': 'Fuck',
+            'action.fuck.sfw': 'Seduce',
+            'action.feast': 'Feast',
+            'action.feast.sfw': 'Consume',
+            'action.feed': 'Feed',
+            'action.flee': 'Flee',
+            'action.search': 'Search',
+            'action.rest': 'Rest',
+            'action.inventory': 'Items',
+            'action.quests': 'Quests',
+            'action.interact': 'Interact',
+            'action.enter': 'Enter',
+            'action.exit': 'Exit',
+            'action.map': 'Map',
+            'action.party': 'Party',
+            'action.enemies': 'Enemies',
+            'target.actors': 'Actors',
+            'target.targets': 'Targets',
+            'target.clear': 'Clear',
+            'target.count': '{count} target',
+            'target.count_plural': '{count} targets',
+            'target.clearSelected': 'Clear selected targets'
+        },
+        es: {
+            'settings.language': 'Idioma',
+            'settings.language.en': 'Ingles',
+            'settings.language.es': 'Espanol',
+            'action.fight': 'Luchar',
+            'action.flirt': 'Coquetear',
+            'action.fuck': 'Seducir',
+            'action.fuck.sfw': 'Seducir',
+            'action.feast': 'Devorar',
+            'action.feast.sfw': 'Consumir',
+            'action.feed': 'Alimentar',
+            'action.flee': 'Huir',
+            'action.search': 'Buscar',
+            'action.rest': 'Descansar',
+            'action.inventory': 'Objetos',
+            'action.quests': 'Misiones',
+            'action.interact': 'Interactuar',
+            'action.enter': 'Entrar',
+            'action.exit': 'Salir',
+            'action.map': 'Mapa',
+            'action.party': 'Grupo',
+            'action.enemies': 'Enemigos',
+            'target.actors': 'Actores',
+            'target.targets': 'Objetivos',
+            'target.clear': 'Limpiar',
+            'target.count': '{count} objetivo',
+            'target.count_plural': '{count} objetivos',
+            'target.clearSelected': 'Limpiar objetivos'
+        }
     },
     
     // Template database (populated by modules)
@@ -255,6 +317,26 @@ const CONTENT_SYSTEM = {
     setMaxTier(tier) {
         this.preferences.maxTier = tier;
         this.savePreferences();
+    },
+
+    setLanguage(language) {
+        this.preferences.language = this.locales[language] ? language : 'en';
+        this.savePreferences();
+        return this.preferences.language;
+    },
+
+    t(key, vars = {}) {
+        const language = this.preferences.language || 'en';
+        const table = this.locales[language] || this.locales.en;
+        let text = table[key] || this.locales.en[key] || key;
+        return text.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+    },
+
+    setPreference(setting, value) {
+        if (setting in this.preferences) {
+            this.preferences[setting] = value;
+            this.savePreferences();
+        }
     },
     
     // Toggle specific content

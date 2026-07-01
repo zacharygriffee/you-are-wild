@@ -1831,6 +1831,18 @@
             <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
             <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
 
+            <!-- Language -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Language</h3>
+                <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                    <span>Interface Language</span>
+                    <select id="setting-language" class="nav-btn" aria-label="Interface language" onchange="App.updateLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="es">Espanol</option>
+                    </select>
+                </label>
+            </div>
+
             <!-- Content Tiers -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>
@@ -2407,14 +2419,28 @@
             },
             _getPrimaryLabel(action) {
                 const isSFW = CONTENT.preferences.maxTier < 2;
-                const labels = {
-                    fight: 'Fight', flirt: isSFW ? 'Flirt' : 'Flirt', feast: isSFW ? 'Consume' : 'Feast',
-                    fuck: isSFW ? 'Seduce' : 'Fuck', feed: isSFW ? 'Feed' : 'Feed', flee: 'Flee'
-                };
-                return labels[action] || action;
+                if (isSFW) {
+                    const safeKey = `action.${action}.sfw`;
+                    const safeLabel = this._t(safeKey);
+                    if (safeLabel !== safeKey) return safeLabel;
+                }
+                const labelKey = `action.${action}`;
+                const label = this._t(labelKey);
+                return label === labelKey ? action : label;
+            },
+            _t(key, vars = {}) {
+                return CONTENT?.t ? CONTENT.t(key, vars) : key;
             },
             _uiLabel(key) {
-                return this.UI_LABELS[key] || key;
+                const isSFW = CONTENT.preferences.maxTier < 2;
+                if (isSFW) {
+                    const safeKey = `action.${key}.sfw`;
+                    const safeLabel = this._t(safeKey);
+                    if (safeLabel !== safeKey) return safeLabel;
+                }
+                const labelKey = `action.${key}`;
+                const label = this._t(labelKey);
+                return label === labelKey ? (this.UI_LABELS[key] || key) : label;
             },
             _unitKey(unit) {
                 return String(unit?.id || unit?.name || '').replace(/'/g, "\\'");
@@ -5566,7 +5592,7 @@
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
                 const actors = this._getExplorationActors();
-                const label = `${targets.length} target${targets.length === 1 ? '' : 's'}`;
+                const label = this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length });
                 const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
                 const targetNames = targets.map(target => target.name).join(', ');
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
@@ -5574,7 +5600,9 @@
                     const title = `${this._uiLabel(key)} ${label}`;
                     return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
-                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>Actors: ${this._escapeHtml(actorNames)}</span><span>Targets: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="Clear selected targets" aria-label="Clear selected targets" onclick="App.clearExplorationTargets()">Clear</button>`;
+                const clearLabel = this._t('target.clear');
+                const clearTitle = this._t('target.clearSelected');
+                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
             },
 
             resolveExplorationTargetAction(action) {
@@ -7358,7 +7386,26 @@
                     reducedMotion: this.settings.reducedMotion,
                     fontSize: this.settings.fontSize,
                 }));
+                if (CONTENT?.preferences) {
+                    localStorage.setItem('fff-content-prefs', JSON.stringify(CONTENT.preferences));
+                }
                 this.updateTierButtons();
+            },
+            updateLanguage(language) {
+                if (CONTENT?.setLanguage) {
+                    CONTENT.setLanguage(language);
+                } else if (CONTENT?.preferences) {
+                    CONTENT.preferences.language = language;
+                }
+                this.saveSettings();
+                this.syncLanguageControl();
+                this.renderExplorationActions();
+                this.renderParty();
+                this.renderCreatures();
+            },
+            syncLanguageControl() {
+                const language = document.getElementById('setting-language');
+                if (language) language.value = CONTENT?.preferences?.language || 'en';
             },
             updateAccessibilitySetting(key, value) {
                 if (key === 'fontSize') {
@@ -7423,6 +7470,7 @@
                 this.updateCheatButtons();
                 this.applyAccessibilitySettings();
                 this.syncAccessibilityControls();
+                this.syncLanguageControl();
             },
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {
@@ -8363,7 +8411,69 @@ const CONTENT_SYSTEM = {
         maxTier: 2,           // Default: ADULT (show all content)
         voreEnabled: true,    // Vore enabled by default (core mechanic)
         explicitDescriptions: true,  // Explicit by default
-        filterTags: []        // User can block specific tags if desired
+        filterTags: [],       // User can block specific tags if desired
+        language: 'en'
+    },
+
+    locales: {
+        en: {
+            'settings.language': 'Language',
+            'settings.language.en': 'English',
+            'settings.language.es': 'Spanish',
+            'action.fight': 'Fight',
+            'action.flirt': 'Flirt',
+            'action.fuck': 'Fuck',
+            'action.fuck.sfw': 'Seduce',
+            'action.feast': 'Feast',
+            'action.feast.sfw': 'Consume',
+            'action.feed': 'Feed',
+            'action.flee': 'Flee',
+            'action.search': 'Search',
+            'action.rest': 'Rest',
+            'action.inventory': 'Items',
+            'action.quests': 'Quests',
+            'action.interact': 'Interact',
+            'action.enter': 'Enter',
+            'action.exit': 'Exit',
+            'action.map': 'Map',
+            'action.party': 'Party',
+            'action.enemies': 'Enemies',
+            'target.actors': 'Actors',
+            'target.targets': 'Targets',
+            'target.clear': 'Clear',
+            'target.count': '{count} target',
+            'target.count_plural': '{count} targets',
+            'target.clearSelected': 'Clear selected targets'
+        },
+        es: {
+            'settings.language': 'Idioma',
+            'settings.language.en': 'Ingles',
+            'settings.language.es': 'Espanol',
+            'action.fight': 'Luchar',
+            'action.flirt': 'Coquetear',
+            'action.fuck': 'Seducir',
+            'action.fuck.sfw': 'Seducir',
+            'action.feast': 'Devorar',
+            'action.feast.sfw': 'Consumir',
+            'action.feed': 'Alimentar',
+            'action.flee': 'Huir',
+            'action.search': 'Buscar',
+            'action.rest': 'Descansar',
+            'action.inventory': 'Objetos',
+            'action.quests': 'Misiones',
+            'action.interact': 'Interactuar',
+            'action.enter': 'Entrar',
+            'action.exit': 'Salir',
+            'action.map': 'Mapa',
+            'action.party': 'Grupo',
+            'action.enemies': 'Enemigos',
+            'target.actors': 'Actores',
+            'target.targets': 'Objetivos',
+            'target.clear': 'Limpiar',
+            'target.count': '{count} objetivo',
+            'target.count_plural': '{count} objetivos',
+            'target.clearSelected': 'Limpiar objetivos'
+        }
     },
     
     // Template database (populated by modules)
@@ -8601,6 +8711,26 @@ const CONTENT_SYSTEM = {
     setMaxTier(tier) {
         this.preferences.maxTier = tier;
         this.savePreferences();
+    },
+
+    setLanguage(language) {
+        this.preferences.language = this.locales[language] ? language : 'en';
+        this.savePreferences();
+        return this.preferences.language;
+    },
+
+    t(key, vars = {}) {
+        const language = this.preferences.language || 'en';
+        const table = this.locales[language] || this.locales.en;
+        let text = table[key] || this.locales.en[key] || key;
+        return text.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+    },
+
+    setPreference(setting, value) {
+        if (setting in this.preferences) {
+            this.preferences[setting] = value;
+            this.savePreferences();
+        }
     },
     
     // Toggle specific content

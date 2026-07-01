@@ -335,6 +335,16 @@ test('Corpse content templates exist', () => {
   assertContains(contentContent, 'corpseScavenge', 'Corpse scavenge content template missing');
 });
 
+test('Localization registry exposes English and Spanish labels', () => {
+  assertContains(contentContent, 'locales:', 'Locale registry missing');
+  assertContains(contentContent, 'en: {', 'English locale missing');
+  assertContains(contentContent, 'es: {', 'Spanish locale missing');
+  assertContains(contentContent, 't(key, vars = {})', 'Translation helper missing');
+  assertContains(contentContent, 'setLanguage(language)', 'Language setter missing');
+  assertContains(contentContent, "'action.fight': 'Fight'", 'English action label missing');
+  assertContains(contentContent, "'action.fight': 'Luchar'", 'Spanish action label missing');
+});
+
 // === TEMPLATE TESTS ===
 section('Template Tests', 'ui');
 
@@ -377,6 +387,13 @@ test('Accessibility settings controls are available', () => {
   assertContains(template, 'id="setting-reduced-motion"', 'Reduced motion setting missing');
   assertContains(template, 'id="setting-font-size"', 'Font size setting missing');
   assertContains(template, 'aria-live="polite"', 'Log region should announce updates politely');
+});
+
+test('Settings expose language selector', () => {
+  assertContains(template, 'id="setting-language"', 'Language selector missing');
+  assertContains(template, 'App.updateLanguage(this.value)', 'Language selector should update App language');
+  assertContains(template, '<option value="en">English</option>', 'English language option missing');
+  assertContains(template, '<option value="es">Espanol</option>', 'Spanish language option missing');
 });
 
 test('Create screen is constrained for mobile scrolling', () => {
@@ -502,9 +519,19 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     document,
     localStorage,
     {
-      preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true },
+      preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
+      locales: {
+        en: { 'action.fight': 'Fight', 'target.actors': 'Actors', 'target.targets': 'Targets' },
+        es: { 'action.fight': 'Luchar', 'target.actors': 'Actores', 'target.targets': 'Objetivos' }
+      },
       setPreference(key, value) { this.preferences[key] = value; },
       setMaxTier(value) { this.preferences.maxTier = value; },
+      setLanguage(value) { this.preferences.language = this.locales[value] ? value : 'en'; },
+      t(key, vars = {}) {
+        const table = this.locales[this.preferences.language] || this.locales.en;
+        let text = table[key] || this.locales.en[key] || key;
+        return text.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+      },
       biomeIntro: () => '',
       encounter: () => '',
       actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}`
@@ -2429,6 +2456,15 @@ test('Newer interaction settings persist through saveSettings', () => {
   assertEqual(saved.unbirthEnabled, true, 'Unbirth setting should persist');
   assertEqual(saved.forcedFeeding, true, 'Forced feeding setting should persist');
   assertEqual(saved.partyPlayFightMode, 'lethal', 'Party play-fight mode should persist');
+});
+
+test('Language setting persists and updates localized labels', () => {
+  const { App, elements, storage } = loadAppForCombat();
+  App.updateLanguage('es');
+  assertEqual(elements.get('setting-language').value, 'es', 'Language control should sync selected value');
+  const prefs = JSON.parse(storage.get('fff-content-prefs'));
+  assertEqual(prefs.language, 'es', 'Language preference should persist');
+  assertEqual(App._uiLabel('fight'), 'Luchar', 'Action labels should use active locale');
 });
 
 test('Combat log export returns filtered text', () => {

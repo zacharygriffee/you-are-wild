@@ -98,14 +98,28 @@
             },
             _getPrimaryLabel(action) {
                 const isSFW = CONTENT.preferences.maxTier < 2;
-                const labels = {
-                    fight: 'Fight', flirt: isSFW ? 'Flirt' : 'Flirt', feast: isSFW ? 'Consume' : 'Feast',
-                    fuck: isSFW ? 'Seduce' : 'Fuck', feed: isSFW ? 'Feed' : 'Feed', flee: 'Flee'
-                };
-                return labels[action] || action;
+                if (isSFW) {
+                    const safeKey = `action.${action}.sfw`;
+                    const safeLabel = this._t(safeKey);
+                    if (safeLabel !== safeKey) return safeLabel;
+                }
+                const labelKey = `action.${action}`;
+                const label = this._t(labelKey);
+                return label === labelKey ? action : label;
+            },
+            _t(key, vars = {}) {
+                return CONTENT?.t ? CONTENT.t(key, vars) : key;
             },
             _uiLabel(key) {
-                return this.UI_LABELS[key] || key;
+                const isSFW = CONTENT.preferences.maxTier < 2;
+                if (isSFW) {
+                    const safeKey = `action.${key}.sfw`;
+                    const safeLabel = this._t(safeKey);
+                    if (safeLabel !== safeKey) return safeLabel;
+                }
+                const labelKey = `action.${key}`;
+                const label = this._t(labelKey);
+                return label === labelKey ? (this.UI_LABELS[key] || key) : label;
             },
             _unitKey(unit) {
                 return String(unit?.id || unit?.name || '').replace(/'/g, "\\'");
@@ -3257,7 +3271,7 @@
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
                 const actors = this._getExplorationActors();
-                const label = `${targets.length} target${targets.length === 1 ? '' : 's'}`;
+                const label = this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length });
                 const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
                 const targetNames = targets.map(target => target.name).join(', ');
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
@@ -3265,7 +3279,9 @@
                     const title = `${this._uiLabel(key)} ${label}`;
                     return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
-                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>Actors: ${this._escapeHtml(actorNames)}</span><span>Targets: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="Clear selected targets" aria-label="Clear selected targets" onclick="App.clearExplorationTargets()">Clear</button>`;
+                const clearLabel = this._t('target.clear');
+                const clearTitle = this._t('target.clearSelected');
+                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
             },
 
             resolveExplorationTargetAction(action) {
@@ -5049,7 +5065,26 @@
                     reducedMotion: this.settings.reducedMotion,
                     fontSize: this.settings.fontSize,
                 }));
+                if (CONTENT?.preferences) {
+                    localStorage.setItem('fff-content-prefs', JSON.stringify(CONTENT.preferences));
+                }
                 this.updateTierButtons();
+            },
+            updateLanguage(language) {
+                if (CONTENT?.setLanguage) {
+                    CONTENT.setLanguage(language);
+                } else if (CONTENT?.preferences) {
+                    CONTENT.preferences.language = language;
+                }
+                this.saveSettings();
+                this.syncLanguageControl();
+                this.renderExplorationActions();
+                this.renderParty();
+                this.renderCreatures();
+            },
+            syncLanguageControl() {
+                const language = document.getElementById('setting-language');
+                if (language) language.value = CONTENT?.preferences?.language || 'en';
             },
             updateAccessibilitySetting(key, value) {
                 if (key === 'fontSize') {
@@ -5114,6 +5149,7 @@
                 this.updateCheatButtons();
                 this.applyAccessibilitySettings();
                 this.syncAccessibilityControls();
+                this.syncLanguageControl();
             },
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {

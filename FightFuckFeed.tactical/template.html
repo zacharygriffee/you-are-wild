@@ -1830,6 +1830,18 @@
             <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
             <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
 
+            <!-- Language -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Language</h3>
+                <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                    <span>Interface Language</span>
+                    <select id="setting-language" class="nav-btn" aria-label="Interface language" onchange="App.updateLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="es">Espanol</option>
+                    </select>
+                </label>
+            </div>
+
             <!-- Content Tiers -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>

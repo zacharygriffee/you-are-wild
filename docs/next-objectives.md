@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 165/165 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 168/168 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -110,6 +110,7 @@
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
+- Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, and high-traffic action/target labels now route through locale keys
 
 ---
 
@@ -186,10 +187,10 @@
 - Device-test high-contrast, reduced-motion, and font-size scaling against the mobile layout
 
 #### 22. Localization Framework
-- All user-facing strings in `locales/en.json` (or similar)
-- Language switcher in settings
-- Content templates use locale keys instead of hardcoded strings
-- Initial target: English + Spanish (for community)
+- Expand locale coverage to remaining hardcoded user-facing strings beyond the current action/target/settings-language foundation
+- Decide whether to keep the in-code locale registry or move it to `locales/en.json` / `locales/es.json` once the build pipeline supports external locale assets cleanly
+- Content templates still use hardcoded safe/mature/adult strings; migrate them to locale keys when narrative text coverage becomes a priority
+- Add community-facing translation workflow once English/Spanish coverage is broad enough to maintain
 
 ---
 
@@ -199,9 +200,9 @@
 ```
 FightFuckFeed.tactical/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~3200 lines)
-    content-system.js — Template engine, content tiers (~370 lines)
-    serialization.js  — Binary save/load codec (~239 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~5566 lines)
+    content-system.js — Template engine, content tiers, localization registry (~463 lines)
+    serialization.js  — Binary save/load codec (~268 lines)
     module-system.js  — Mod loader and hook system (~275 lines)
     marketplace.js    — Built-in content pack metadata (~140 lines)
   src/ui/
@@ -211,7 +212,7 @@ FightFuckFeed.tactical/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 57 tests, syntax/structure/combat behavior
+  test/test.js       — 168 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

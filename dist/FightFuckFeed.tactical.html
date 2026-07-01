@@ -5866,12 +5866,21 @@
                     }
                     case 'flirt':
                     case 'fuck': {
+                        const selfIncludedPartyTarget = this.party.includes(target) && livingActors.includes(target);
                         const totalCharm = livingActors.reduce((sum, actor) => sum + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10) + (actor.cha || 10) * 0.5, 0);
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
                         if (totalCharm > resist) {
                             const gain = Math.floor(totalCharm * (action === 'fuck' ? 0.45 : 0.3));
                             target.CPle = Math.min(target.MPle, target.CPle + gain);
-                            result = `${names} focus on ${target.name}. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                            if (selfIncludedPartyTarget) {
+                                const sharedGain = Math.max(1, Math.floor(gain * 0.5));
+                                livingActors.filter(actor => actor !== target).forEach(actor => {
+                                    actor.CPle = Math.min(actor.MPle, (actor.CPle || 0) + sharedGain);
+                                });
+                                result = `${names} share ${this._uiLabel(action).toLowerCase()} with ${target.name}. Pleasure spreads through the group; ${target.name} rises to ${target.CPle}/${target.MPle}.`;
+                            } else {
+                                result = `${names} focus on ${target.name}. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                            }
                             if (target.CPle >= target.MPle * 0.8) {
                                 target.willing = true;
                                 target.orgasmed = true;

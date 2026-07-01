@@ -1264,6 +1264,20 @@ test('Self-included group feed tends target instead of consuming helpers', () =>
   assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Self-included feed should log tending semantics');
 });
 
+test('Self-included group social action shares pleasure across participants', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPle: 0, MPle: 100, Fuck: 20, Flir: 20, cha: 20, wis: 1 });
+  const helper = makeUnit('Helper', { id: 'helper-1', CPle: 0, MPle: 100, Fuck: 20, Flir: 20, cha: 20 });
+  App.player = player;
+  App.party = [player, target, helper];
+  App.explorationActorIds = ['target-1', 'helper-1'];
+  App.outsideActionForParty('fuck', 1);
+  assert(target.CPle > 0, 'Self-included social target should gain pleasure');
+  assert(helper.CPle > 0, 'Self-included social helper should also gain shared pleasure');
+  assertContains(App.log[App.log.length - 1].text, 'share fuck with Target', 'Self-included social action should log shared semantics');
+});
+
 test('Single selected party member can be fed to another full-health party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

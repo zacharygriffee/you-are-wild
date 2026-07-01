@@ -1203,6 +1203,12 @@
             
             // Movement
             move(dy, dx) {
+                // If in encounter, movement = attempt to flee
+                if (this.enemies.length > 0) {
+                    this.attemptFlee();
+                    return;
+                }
+                
                 this.location.x += dx;
                 this.location.y += dy;
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
@@ -1215,6 +1221,32 @@
                 }
                 
                 this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y}`, type: 'move' });
+                this.renderLog();
+            },
+            
+            // Attempt to flee from encounter
+            attemptFlee() {
+                const enemy = this.enemies[0];
+                const fleeChance = 0.6; // 60% base chance
+                
+                if (Math.random() < fleeChance) {
+                    // Successful flee
+                    this.log.push({ 
+                        text: `You retreat from ${enemy.name}!`, 
+                        type: 'move' 
+                    });
+                    this.enemies = [];
+                    this.updateScene('Escaped', 'You slipped away in the chaos.', false);
+                    this.renderEnemies();
+                } else {
+                    // Failed flee - enemy gets free attack
+                    this.log.push({ 
+                        text: `Failed to escape! ${enemy.name} blocks your path!`, 
+                        type: 'combat' 
+                    });
+                    this.enemyRetaliation(enemy);
+                }
+                
                 this.renderLog();
             },
             

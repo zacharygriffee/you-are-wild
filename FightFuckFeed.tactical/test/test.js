@@ -1624,6 +1624,55 @@ test('Scavenger AI order feasts on corpses after victory', () => {
   assertEqual(scavenger.stomach.length, 1, 'Scavenger should store scavenged remains in stomach capacity');
 });
 
+test('Predator enemy AI prioritizes livestock and prey targets', () => {
+  const { App } = loadAppForCombat(() => 0.9);
+  const enemy = makeUnit('Wolf', { species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  const player = makeUnit('You', { species: 'human', CPun: 20, MPun: 100 });
+  const livestock = makeUnit('Bunny Ally', { species: 'bunny', livestock: true, CPun: 100, MPun: 100 });
+  const target = App._selectEnemyTarget(enemy, [player, livestock]);
+  assertEqual(target, livestock, 'Predator should prefer livestock/prey over weakest non-prey target');
+});
+
+test('Outnumbered low-health enemies can flee', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const ally = makeUnit('Ally');
+  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.nextTurn = function() { this._enemyFledAdvanced = true; };
+  App.enemyTurn(enemy);
+  assertEqual(enemy.disposition, App.DISPOSITION.NEUTRAL, 'Outnumbered wounded enemy should flee on morale roll');
+  assertEqual(enemy.CPun, 0, 'Fleeing enemy should be removed from combat by HP gate');
+});
+
+test('Pack enemies can call reinforcements when wounded', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const wolf = makeUnit('Wolf', { species: 'wolf', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [wolf];
+  App.combatState = { active: true, currentTurn: 0, turnQueue: [{ unit: wolf, initiative: 10 }], syncActions: [] };
+  const called = App._enemyCallReinforcement(wolf);
+  assertEqual(called, true, 'Wounded pack enemy should call reinforcement on successful roll');
+  assert(App.creatures.some(c => c !== wolf && c.species === 'wolf'), 'Reinforcement should be added to creatures');
+  assertEqual(App.combatState.turnQueue.length, 2, 'Reinforcement should be inserted into turn queue');
+});
+
+test('Ambush creatures on first-entry encounters get first strike initiative', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { spd: 30 });
+  const spider = makeUnit('Spider', { species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 1, ambushReady: true });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [spider];
+  App.processTurn = function() {};
+  App.startCombat([spider]);
+  assertEqual(App.combatState.turnQueue[0].unit, spider, 'Ambush-ready enemy should act before faster player');
+  assertContains(App.log.map(e => e.text).join('\n'), 'ambush from hiding', 'Ambush should be logged');
+});
+
 test('Create accordion keeps only the selected section open', () => {
   const sections = ['species', 'gender', 'anatomy'].map(id => ({ dataset: { accordion: id } }));
   const { App, elements } = loadAppForCombat(() => 0.5, {

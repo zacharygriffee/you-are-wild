@@ -1175,10 +1175,10 @@
                     this.creatures = this._tileCreatures(tile.creatures || []);
                     // Try structure encounter first (guaranteed if structure present and not yet spawned)
                     if (tile.structure && !tile.structureSpawned) {
-                        this.spawnStructureEncounter(tile);
+                        this.spawnStructureEncounter(tile, !wasExplored);
                     } else if (Math.random() < biome.encounterChance) {
                         // Roll for friendly vs hostile encounter
-                        this.spawnWildEncounter(tile);
+                        this.spawnWildEncounter(tile, false, !wasExplored);
                     }
                 }
                 tile.creatures = this._tileCreatures(this.creatures);
@@ -1208,7 +1208,7 @@
                 }
                 return table[0].id;
             },
-            spawnWildEncounter(tile, isBoss = false) {
+            spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 const count = isBoss ? 1 : Math.max(1, Math.floor(Math.random() * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
                 const creatures = [];
@@ -1246,6 +1246,7 @@
                         expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.3,
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
+                    creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
                     this._applyTimeOfDayToCreature(creature);
                     // Calculate disposition based on temperament
                     creature.disposition = this._calculateEncounterDisposition(creature, this.player);
@@ -1279,7 +1280,7 @@
                     this.renderExplorationActions();
                 }
             },
-            spawnStructureEncounter(tile) {
+            spawnStructureEncounter(tile, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 if (!tile.structure || !this.STRUCTURES[tile.structure]) return;
                 const struct = this.STRUCTURES[tile.structure];
@@ -1316,6 +1317,7 @@
                             expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: disp === this.DISPOSITION.FRIENDLY,
                             ...this.SPECIES_ABILITIES[sid] || {}
                         };
+                        creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
                         this._applyTimeOfDayToCreature(creature);
                         enemies.push(creature);
                     }
@@ -1359,9 +1361,11 @@
                 this._assignCombatRows(allCombatants);
                 this.combatState.turnQueue = allCombatants
                     .filter(c => c.CPun > 0 && !c.knockedOut)
-                    .map(c => ({ unit: c, initiative: this._calcInitiative(c) }))
+                    .map(c => ({ unit: c, initiative: this._calcInitiative(c) + (c.ambushReady ? 100 : 0) }))
                     .sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
+                const ambushers = enemies.filter(e => e.ambushReady);
+                if (ambushers.length > 0) this.log.push({ text: `${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, type: 'combat' });
                 this.log.push({ text: `Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, type: 'combat' });
                 this.updateScene(`Round 1`, `Combat started!`, true);
                 this.renderParty();
@@ -2648,22 +2652,54 @@
             },
 
             // ===== ENEMY TURN AI =====
+            _enemyShouldFlee(enemy, targets) {
+                const enemyCount = this._livingEnemies(this.creatures).length;
+                const partyCount = targets.filter(t => t.CPun > 0 && !t.knockedOut).length;
+                if (enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5) return Math.random() < 0.5;
+                return enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3 && Math.random() < 0.3;
+            },
+            _enemyCallReinforcement(enemy) {
+                const temp = this._getSpeciesTemperament(enemy.species);
+                if (!temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || Math.random() >= 0.3) return false;
+                const sp = this.species.find(s => s.id === enemy.species) || { name: enemy.species || 'Creature', icon: enemy.icon || '❓' };
+                const base = this._getSpeciesBaseStats(enemy.species);
+                const reinforcement = this._normalizeUnit({
+                    id: 'reinforce_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    name: sp.name + ' Reinforcement',
+                    species: enemy.species,
+                    icon: sp.icon,
+                    level: enemy.level || 1,
+                    MPun: Math.floor((base.MPun || 100) * 0.8),
+                    CPun: Math.floor((base.MPun || 100) * 0.8),
+                    MPle: base.MPle || 100,
+                    CPle: 0,
+                    disposition: this.DISPOSITION.ENEMY,
+                    status: {}
+                }, { disposition: this.DISPOSITION.ENEMY });
+                enemy.calledReinforcement = true;
+                this.creatures.push(reinforcement);
+                this._assignCombatRows([reinforcement]);
+                const insertAt = Math.min(this.combatState.turnQueue.length, this.combatState.currentTurn + 1);
+                this.combatState.turnQueue.splice(insertAt, 0, { unit: reinforcement, initiative: this._calcInitiative(reinforcement) });
+                this.log.push({ text: `${enemy.name} calls for help! ${reinforcement.name} joins the fight.`, type: 'combat' });
+                this._syncCurrentTileCreatures();
+                this.renderCreatures();
+                return true;
+            },
+            _selectEnemyTarget(enemy, targets) {
+                const preyTargets = targets.filter(t => t.livestock || t.willingPrey || this._isPredatorOf(enemy.species, t.species));
+                if (preyTargets.length > 0) {
+                    return preyTargets.reduce((best, t) => (t.CPun / t.MPun < best.CPun / best.MPun) ? t : best, preyTargets[0]);
+                }
+                const tastyTargets = targets.filter(t => t.tasty);
+                if (tastyTargets.length > 0) return tastyTargets[Math.floor(Math.random() * tastyTargets.length)];
+                return targets.reduce((weakest, t) => (t.CPun / t.MPun < weakest.CPun / weakest.MPun) ? t : weakest, targets[0]);
+            },
             enemyTurn(enemy) {
                 const charmedTargets = this._charmedTargetsFor(enemy);
                 const targets = charmedTargets || this.party.filter(p => p.CPun > 0);
                 if (targets.length === 0) return;
-                // Enemy targeting: prefer weakest, then tasty, then player
-                let target = targets[0];
-                let weakest = targets[0];
-                for (const t of targets) {
-                    if (t.CPun / t.MPun < weakest.CPun / weakest.MPun) weakest = t;
-                }
-                if (enemy.tasty && targets.some(t => t.tasty)) {
-                    const tasty = targets.filter(t => t.tasty);
-                    target = tasty[Math.floor(Math.random() * tasty.length)];
-                } else {
-                    target = weakest;
-                }
+                const target = this._selectEnemyTarget(enemy, targets);
                 // Menacing enemies may scare weak targets
                 if (enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random() < 0.3) {
                     this.log.push({ text: `${enemy.name} is terrifying! ${target.name} cowers in fear.`, type: 'combat' });
@@ -2674,9 +2710,8 @@
                 if (enemy.rage && enemy.CPun < enemy.MPun * 0.5) {
                     this.log.push({ text: `${enemy.name} enters a rage!`, type: 'combat' });
                 }
-                // May flee if low CPun
-                const mayFlee = enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3 && Math.random() < 0.3;
-                if (mayFlee) {
+                this._enemyCallReinforcement(enemy);
+                if (this._enemyShouldFlee(enemy, targets)) {
 	                    this.log.push({ text: `${enemy.name} flees in terror!`, type: 'combat' });
 	                    enemy.disposition = this.DISPOSITION.NEUTRAL;
 	                    enemy.CPun = 0;

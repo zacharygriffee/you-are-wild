@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 109/109 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 113/113 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -96,6 +96,7 @@
 - Status expansion supports bleed, burn spread, freeze, stun, sleep, charm, and fear, with combat hooks for damage ticks, skip turns, wake-on-damage, reversed target selection, and fear flee
 - Day-night cycle tracks an in-game hour, advances on movement/search, persists in saves, displays in desktop/mobile map UI, boosts nocturnal encounter weights at night, suppresses diurnal encounter weights, puts diurnal spawns to sleep, and narrows night minimap visibility unless the party has darkvision
 - Party AI orders provide per-ally tactics (`aggressive`, `defensive`, `healer`, `scavenger`, `passive`) through party-card selectors; healer allies prioritize wounded party members, passive allies hold unless injured, defensive allies prioritize threats when the player is hurt, and scavengers consume fitting corpses after victory
+- Enemy AI now has morale flee when outnumbered and wounded, wounded pack creatures can call same-species reinforcements, predators prioritize livestock/prey targets, and first-entry ambushers get first-strike initiative
 
 ---
 
@@ -103,13 +104,19 @@
 
 ### 🟡 Tier 2: High Impact
 
-### 🟢 Tier 3: Medium Impact
+#### 1. Party Feeding and Multi-Creature Interaction Model
+- Fix party-member-to-party-member feeding when the target is meant to be contained by another party member instead of only healed
+- Repair multiple party selection so selected actors can act together on one party/creature target during exploration
+- Define selected actors vs selected targets explicitly:
+  - `c2 + c3 -> c1`: selected actors cooperate against one target
+  - `c1 -> c2 + c3`: one actor interacts with multiple targets and may require stats/skills for multi-target handling
+  - `c1 + c2 + c3 -> c1`: mixed self/other interaction needs a resolver that can split self-action from helper action
+- Exploration group actions should be player-controlled only for party members; non-party persuasion is deferred
+- Play fighting between party members should be non-lethal by default, with moddable overrides for harsher outcomes
+- Feast group behavior should support a primary consumer: helpers assist swallow/feed unless chewing/splitting is enabled
+- Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
-#### 1. Enemy AI Improvements
-- Flee when outnumbered: if `enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5`, 50% flee chance
-- Call for reinforcements: pack animals (`pack: true`) on low HP have 30% chance to spawn 1 more same-species ally
-- Prioritize livestock: predators (`isPredatorOf`) target livestock/prey creatures first, even if weaker than player
-- Ambush behavior: `ambush: true` creatures get first strike if player hasn't explored tile yet
+### 🟢 Tier 3: Medium Impact
 
 #### 2. Landmark Interiors (Sub-Maps)
 - Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)

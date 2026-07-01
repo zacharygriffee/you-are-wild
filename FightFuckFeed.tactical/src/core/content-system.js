@@ -220,6 +220,16 @@ const CONTENT_SYSTEM = {
                 safe: (ctx) => `${ctx.actor} breaks a piece from ${ctx.target}.`,
                 mature: (ctx) => `${ctx.actor} tears off a chunk of ${ctx.target}.`,
                 adult: (ctx) => ctx.explicit ? `${ctx.actor} bites a piece from ${ctx.target}'s breakable body, consuming it as sweet nourishment.` : null
+            },
+            corpseLoot: {
+                safe: (ctx) => ctx.item ? `You search the remains of ${ctx.target} and find ${ctx.item}.` : `You search the remains of ${ctx.target}, but find nothing useful.`,
+                mature: (ctx) => ctx.item ? `You pick over ${ctx.target}'s remains and recover ${ctx.item}.` : `You pick over ${ctx.target}'s remains, but there is nothing worth taking.`,
+                adult: (ctx) => ctx.item ? `You pick over the remains of ${ctx.target}, finding ${ctx.item}.` : `You pick over the remains of ${ctx.target}, finding nothing but cooling flesh.`
+            },
+            corpseScavenge: {
+                safe: (ctx) => `You carefully scavenge the remains of ${ctx.target}.`,
+                mature: (ctx) => `You carve useful scraps from ${ctx.target}'s remains.`,
+                adult: (ctx) => ctx.voreEnabled ? `You feast from ${ctx.target}'s remains, taking what the battle left behind.` : null
             }
         }
     },

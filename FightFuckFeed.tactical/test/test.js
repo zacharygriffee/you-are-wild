@@ -187,6 +187,38 @@ section('Serialization Tests', 'core');
 const serPath = path.join(SRC_DIR, 'core', 'serialization.js');
 const serContent = fs.readFileSync(serPath, 'utf8');
 
+function loadBinaryForTest() {
+  return new Function('window', `${serContent}\nreturn window.Binary;`)({});
+}
+
+function makeSerializableUnit(name, overrides = {}) {
+  return {
+    name,
+    species: 'human',
+    icon: 'X',
+    gender: 'female',
+    disposition: 'party',
+    level: 1,
+    CPun: 100,
+    MPun: 100,
+    CPle: 0,
+    MPle: 100,
+    str: 10,
+    con: 10,
+    spd: 10,
+    int: 10,
+    wis: 10,
+    cha: 10,
+    tags: ['Human'],
+    bodyParts: [],
+    stomach: [],
+    womb: [],
+    balls: [],
+    cum: 0,
+    ...overrides
+  };
+}
+
 test('Binary codec has save/load', () => {
   assertContains(serContent, 'Binary.saveGame', 'saveGame missing');
   assertContains(serContent, 'Binary.loadGame', 'loadGame missing');
@@ -198,6 +230,81 @@ test('Binary codec has unit codec', () => {
   assertContains(serContent, 'stomach:', 'unit stomach field missing');
   assertContains(serContent, 'womb:', 'unit womb field missing');
   assertContains(serContent, 'balls:', 'unit balls field missing');
+});
+
+test('Binary save/load preserves full world tile state', () => {
+  const Binary = loadBinaryForTest();
+  const corpse = makeSerializableUnit('Fallen', { disposition: 'corpse', CPun: 0, MPun: 100 });
+  const friendly = makeSerializableUnit('Friendly', { disposition: 'friendly' });
+  const save = Binary.saveGame({
+    player: makeSerializableUnit('You'),
+    party: [makeSerializableUnit('You')],
+    location: { x: 1, y: 2 },
+    currentBiome: 'forest',
+    inventory: [{ id: 'i1', name: 'Apple' }],
+    log: [{ text: 'saved' }],
+    exploredTiles: new Set(['1,2']),
+    worldMap: new Map([['1,2', {
+      x: 1,
+      y: 2,
+      biome: 'forest',
+      explored: true,
+      hasLandmark: true,
+      landmarkName: 'Old Tree',
+      structure: 'cabin',
+      structureSpawned: true,
+      items: [{ id: 'tile-item', name: 'Bone' }],
+      creatures: [corpse, friendly]
+    }]])
+  });
+  const loaded = Binary.loadGame(save);
+  const tile = loaded.worldMap['1,2'];
+  assertEqual(tile.structureSpawned, true, 'World save should preserve structureSpawned');
+  assertEqual(tile.landmarkName, 'Old Tree', 'World save should preserve landmark name');
+  assertEqual(tile.items[0].name, 'Bone', 'World save should preserve tile items');
+  assertEqual(tile.creatures.length, 2, 'World save should preserve tile creatures');
+  assertEqual(tile.creatures[0].disposition, 'corpse', 'World save should preserve corpse disposition');
+  assertEqual(tile.creatures[1].disposition, 'friendly', 'World save should preserve friendly disposition');
+});
+
+test('Binary load tolerates old saves without world data', () => {
+  const Binary = loadBinaryForTest();
+  const oldCodec = {
+    preencode(s, obj) {
+      Binary.vuint.preencode(s, obj.version); Binary.string.preencode(s, obj.playerName);
+      Binary.string.preencode(s, obj.playerSpecies); Binary.int32.preencode(s, obj.locationX);
+      Binary.int32.preencode(s, obj.locationY); Binary.vuint.preencode(s, obj.playerHp);
+      Binary.vuint.preencode(s, obj.playerMaxHp); Binary.codecs.stats.preencode(s, obj.playerStats);
+      Binary.vuint.preencode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).preencode(s, obj.party || []);
+      Binary.array(Binary.string).preencode(s, obj.log || []); Binary.string.preencode(s, obj.currentBiome || 'forest');
+    },
+    encode(s, obj) {
+      Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
+      Binary.string.encode(s, obj.playerSpecies); Binary.int32.encode(s, obj.locationX);
+      Binary.int32.encode(s, obj.locationY); Binary.vuint.encode(s, obj.playerHp);
+      Binary.vuint.encode(s, obj.playerMaxHp); Binary.codecs.stats.encode(s, obj.playerStats);
+      Binary.vuint.encode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).encode(s, obj.party || []);
+      Binary.array(Binary.string).encode(s, obj.log || []); Binary.string.encode(s, obj.currentBiome || 'forest');
+    }
+  };
+  const buffer = Binary.encode(oldCodec, {
+    version: 2,
+    playerName: 'You',
+    playerSpecies: 'human',
+    locationX: 0,
+    locationY: 0,
+    playerHp: 100,
+    playerMaxHp: 100,
+    playerStats: { str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+    playerLevel: 1,
+    party: [makeSerializableUnit('You')],
+    log: ['old'],
+    currentBiome: 'forest'
+  });
+  const loaded = Binary.loadGame(buffer);
+  assertEqual(Object.keys(loaded.worldMap).length, 0, 'Old save without worldMap should load empty worldMap');
+  assertEqual(loaded.exploredTiles.length, 0, 'Old save without exploredTiles should load empty exploredTiles');
+  assertEqual(loaded.inventory.length, 0, 'Old save without inventory should load empty inventory');
 });
 
 // === CONTENT SYSTEM TESTS ===
@@ -218,6 +325,11 @@ test('Content templates exist', () => {
   assertContains(contentContent, 'encounter:', 'encounter templates missing');
   assertContains(contentContent, 'combat:', 'combat templates missing');
   assertContains(contentContent, 'action:', 'action templates missing');
+});
+
+test('Corpse content templates exist', () => {
+  assertContains(contentContent, 'corpseLoot', 'Corpse loot content template missing');
+  assertContains(contentContent, 'corpseScavenge', 'Corpse scavenge content template missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -297,6 +409,14 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, "document.getElementById('mobile-mini-map')", 'renderMap should target mobile map');
 });
 
+test('Action icon labels and legend styles exist', () => {
+  assertContains(appContent, 'UI_LABELS:', 'UI label registry missing');
+  assertContains(appContent, '_iconActionButton', 'Icon action button helper missing');
+  assertContains(appContent, '_actionLegend', 'Action legend helper missing');
+  assertContains(template, '.action-legend', 'Action legend styles missing');
+  assertContains(template, '.action-caption', 'Action caption styles missing');
+});
+
 // === COMBAT BEHAVIOR TESTS ===
 section('Combat Behavior Tests', 'core');
 
@@ -360,7 +480,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     {},
     document,
     localStorage,
-    { biomeIntro: () => '', encounter: () => '' },
+    { biomeIntro: () => '', encounter: () => '', actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}` },
     { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
     { open() {}, deleteDatabase() { return {}; } },
@@ -607,6 +727,7 @@ test('Loaded-style units are normalized for combat assumptions', () => {
   const unit = App._normalizeUnit({ name: 'Bat', species: 'bat', CPun: 10, MPun: 20 });
   assert(unit.status, 'Normalized unit should have status object');
   assert(Array.isArray(unit.stomach), 'Normalized unit should have stomach array');
+  assert(Array.isArray(unit.inventory), 'Normalized unit should have moddable inventory array');
   assert(unit.bloodsuck, 'Normalized unit should receive species abilities');
   assertEqual(unit.Figh > 0, true, 'Normalized unit should have combat stats');
 });
@@ -617,6 +738,59 @@ test('Body parts apply combat abilities to normalized units', () => {
   assert(unit.flying, 'Wings should apply flying');
   assert(unit.venom, 'Stinger should apply venom');
   assert(unit.constrictor, 'Tail should apply constrictor');
+});
+
+test('Container capacity blocks stomach overfill', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', {
+    size: 4,
+    appetite: 1,
+    Feas: 50,
+    stomach: [makeUnit('Stored', { size: 4, alive: true, inStomach: true })]
+  });
+  const prey = makeUnit('Prey', { size: 2, CPun: 1, MPun: 100, Flee: 1 });
+  const result = App._doSubAction('feast', 'swallow', predator, prey, 'Predator', 's');
+  assertContains(result, 'stomach is too full', 'Over-capacity swallow should report full stomach');
+  assertEqual(predator.stomach.length, 1, 'Blocked swallow should not add prey');
+  assertEqual(prey.CPun, 1, 'Blocked swallow should not remove prey');
+});
+
+test('Container capacity allows prey that fits', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', { size: 4, appetite: 2, Feas: 50, stomach: [] });
+  const prey = makeUnit('Prey', { size: 2, CPun: 1, MPun: 100, Flee: 1 });
+  const result = App._doSubAction('feast', 'swallow', predator, prey, 'Predator', 's');
+  assertContains(result, 'stomach', 'Allowed swallow should produce stomach result text');
+  assertEqual(predator.stomach.length, 1, 'Allowed swallow should add prey');
+  assertEqual(prey.CPun, 0, 'Allowed swallow should remove prey from play');
+});
+
+test('Cock vore and unbirth use reduced orifice capacities', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { size: 4, appetite: 2, Feas: 50, parts: 'cock', balls: [] });
+  const tooLarge = makeUnit('Large Prey', { size: 4, CPun: 1, MPun: 100, Flee: 1 });
+  const small = makeUnit('Small Prey', { size: 3, CPun: 1, MPun: 100, Flee: 1 });
+  const blocked = App._doSubAction('feast', 'cockVore', actor, tooLarge, 'Actor', 's');
+  assertContains(blocked, 'balls is too full', 'Balls capacity should be half base capacity');
+  const allowed = App._doSubAction('feast', 'cockVore', actor, small, 'Actor', 's');
+  assertContains(allowed, 'balls', 'Small prey should fit reduced balls capacity');
+  assertEqual(actor.balls.length, 1, 'Allowed cock vore should add prey to balls');
+});
+
+test('Expanded unit card shows containment capacity usage', () => {
+  const { App } = loadAppForCombat();
+  const unit = makeUnit('Predator', {
+    expanded: true,
+    size: 4,
+    appetite: 2,
+    stomach: [makeUnit('Stored', { size: 2, alive: true, inStomach: true })]
+  });
+  App.player = unit;
+  App.party = [unit];
+  const html = App.renderUnitCard(unit, 0, 'party');
+  assertContains(html, 'Stomach: 2/6', 'Unit card should show stomach used/capacity');
+  assertContains(html, 'Womb: 0/3', 'Unit card should show womb capacity');
+  assertContains(html, 'Balls: 0/3', 'Unit card should show balls capacity');
 });
 
 test('Victory XP uses tracked combat outcome rewards', () => {
@@ -657,8 +831,97 @@ test('Creature panel renders corpses as remains without target actions', () => {
   const html = elements.get('enemies-content').innerHTML;
   assertContains(elements.get('enemies-title').textContent, 'Remains', 'Corpse-only panel should be titled Remains');
   assertContains(html, '[Remains]', 'Corpse card should label remains');
+  assertContains(html, "lootCorpse('fallen-1')", 'Corpse card should expose loot action');
+  assertContains(html, "scavengeCorpse('fallen-1')", 'Corpse card should expose scavenge action');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
+});
+
+test('Looting a corpse can grant an item without starting combat', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { hunger: 50 });
+  const corpse = makeUnit('Fallen', { id: 'loot-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [corpse];
+  App.inventory = [];
+  App.combatState.active = false;
+  App.lootCorpse('loot-corpse');
+  assertEqual(corpse.looted, true, 'Looted corpse should be marked');
+  assertEqual(App.inventory.length, 1, 'Successful corpse loot should add one item');
+  assertEqual(App.combatState.active, false, 'Corpse loot should not start combat');
+  assertContains(App.log[App.log.length - 1].text, App.inventory[0].name, 'Loot log should mention found item');
+});
+
+test('Scavenging a corpse uses corpse-specific result and does not remove it', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { hunger: 50, CPun: 80, MPun: 100 });
+  const corpse = makeUnit('Fallen', { id: 'scavenge-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [corpse];
+  App.scavengeCorpse('scavenge-corpse');
+  assertEqual(corpse.scavenged, true, 'Scavenged corpse should be marked');
+  assert(App.creatures.includes(corpse), 'Scavenging should keep corpse on tile');
+  assertEqual(player.hunger, 30, 'Scavenging should reduce hunger');
+  assertEqual(player.CPun, 85, 'Scavenging should restore a small amount of punishment');
+  assertContains(App.log[App.log.length - 1].text, 'Fallen', 'Scavenge log should use corpse content');
+});
+
+test('Threatened timid non-hostile can flee without XP', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { xp: 0, xpToNext: 1000 });
+  const timid = makeUnit('Bunny', { id: 'timid-flee', species: 'bunny', disposition: App.DISPOSITION.NEUTRAL, Flee: 20 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [timid];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [timid] }]]);
+  App.location = { x: 0, y: 0 };
+  App.outsideActionOnTarget('fight', timid);
+  assert(!App.creatures.includes(timid), 'Successful timid flee should remove creature from tile');
+  assertEqual(player.xp, 0, 'Fleeing timid creature should grant no XP');
+  assertContains(App.log[App.log.length - 1].text, 'flees', 'Flee result should be logged');
+});
+
+test('Failed timid flee turns non-hostile creature hostile and starts combat', () => {
+  const { App } = loadAppForCombat(() => 0.9);
+  const player = makeUnit('You');
+  const timid = makeUnit('Cornered Bunny', { id: 'timid-fail', species: 'bunny', disposition: App.DISPOSITION.FRIENDLY, Flee: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [timid];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [timid] }]]);
+  App.location = { x: 0, y: 0 };
+  App.outsideActionOnTarget('fight', timid);
+  assertEqual(timid.disposition, App.DISPOSITION.ENEMY, 'Failed timid flee should turn creature hostile');
+  assertEqual(App.combatState.active, true, 'Failed timid flee should start combat');
+});
+
+test('Timid ally flees instead of attacking when badly outnumbered', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const ally = makeUnit('Timid Ally', { species: 'bunny', Flee: 20 });
+  const enemies = [
+    makeUnit('Enemy 1', { disposition: App.DISPOSITION.ENEMY }),
+    makeUnit('Enemy 2', { disposition: App.DISPOSITION.ENEMY }),
+    makeUnit('Enemy 3', { disposition: App.DISPOSITION.ENEMY })
+  ];
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = enemies;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 20 }, ...enemies.map(unit => ({ unit, initiative: 10 }))],
+    syncActions: []
+  };
+  App.allyTurn(ally);
+  assertEqual(ally.fledCombat, true, 'Timid ally should mark itself fled from combat');
+  assert(!App.combatState.turnQueue.some(entry => entry.unit === ally), 'Fled ally should be removed from combat queue');
+  assertEqual(enemies[0].CPun, 100, 'Fled ally should not attack');
 });
 
 test('Combat actions emit module hook payloads', () => {
@@ -676,7 +939,7 @@ test('Combat actions emit module hook payloads', () => {
   assertEqual(hooks[0].payload.action, 'fight');
 });
 
-test('Exploration actions expose interaction when non-hostile creatures are present', () => {
+test('Exploration context keeps creature interaction in panels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You');
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY });
@@ -687,10 +950,33 @@ test('Exploration actions expose interaction when non-hostile creatures are pres
   App.combatState.active = false;
   App.renderExplorationActions();
   App.renderCreatures();
-  assertContains(elements.get('scene-actions').innerHTML, 'showInteractMenu', 'Exploration actions should include Interact');
+  const actionsHtml = elements.get('scene-actions').innerHTML;
+  assertNotContains(actionsHtml, 'showInteractMenu', 'Main context should not duplicate panel creature interactions');
+  assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden until it has stronger mechanics');
+  assertContains(actionsHtml, 'title="Items"', 'Inventory should remain in the main context');
+  assertContains(actionsHtml, 'aria-label="Items"', 'Inventory icon should expose an aria label');
+  assertContains(actionsHtml, 'action-legend', 'Exploration controls should include an icon legend');
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should offer fight');
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fuck','neutral-1')", 'Neutral card should offer baseline interaction');
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
+});
+
+test('Rest only appears and heals at safe structures', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { CPun: 50, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: null }]]);
+  App.renderExplorationActions();
+  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should be hidden outside safe rest structures');
+  App.rest();
+  assertEqual(player.CPun, 50, 'Rest should not heal outside safe rest structures');
+  App.worldMap.get('0,0').structure = 'cabin';
+  App.renderExplorationActions();
+  assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should appear at safe rest structures');
+  App.rest();
+  assertEqual(player.CPun, 80, 'Rest should heal at safe rest structures');
 });
 
 test('Revisiting a tile restores friendly neutral and corpse creatures without combat', () => {
@@ -736,6 +1022,55 @@ test('Revisiting a tile starts combat only for living enemies', () => {
   assertEqual(App.combatState.active, true, 'Living enemy revisit should start combat');
   assert(App.combatState.turnQueue.some(entry => entry.unit === enemy), 'Living enemy should be included in turn queue');
   assert(!App.combatState.turnQueue.some(entry => entry.unit === corpse), 'Corpse should not be included in turn queue');
+});
+
+test('Restored world state populates current tile creatures', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  const corpse = makeUnit('Saved Corpse', { disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  const friendly = makeUnit('Saved Friend', { disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 2, y: 3 };
+  App._restoreWorldState({
+    exploredTiles: ['2,3'],
+    worldMap: {
+      '2,3': {
+        x: 2,
+        y: 3,
+        biome: 'forest',
+        explored: true,
+        description: 'Saved tile',
+        hasLandmark: true,
+        landmarkName: 'Saved Tree',
+        structureSpawned: true,
+        creatures: [corpse, friendly],
+        items: [{ id: 'saved-item', name: 'Apple' }]
+      }
+    }
+  });
+  assertEqual(App.currentBiome, 'forest', 'Restored current biome should come from loaded tile');
+  assertEqual(App.creatures.length, 2, 'Current tile creatures should be restored into active creatures');
+  assertEqual(App.creatures[0].disposition, App.DISPOSITION.CORPSE, 'Restored active creatures should include corpses');
+  assertEqual(App.creatures[1].disposition, App.DISPOSITION.FRIENDLY, 'Restored active creatures should include friendlies');
+  assertEqual(App.worldMap.get('2,3').structureSpawned, true, 'Restored tile should keep structureSpawned');
+});
+
+test('Minimap resolves adjacent tile biomes without exploring them', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.getTile(0, 0).explored = true;
+  App.renderMap();
+  const adjacentTile = App.worldMap.get('1,0');
+  assert(adjacentTile, 'Adjacent minimap tile should be resolved into worldMap');
+  assertEqual(App.exploredTiles.has('1,0'), false, 'Resolved adjacent tile should not be marked explored');
+  const adjacentBiome = App.biomes[adjacentTile.biome];
+  assertContains(elements.get('mini-map').innerHTML, adjacentBiome.icon, 'Adjacent tile biome icon should render on minimap');
+  assertContains(elements.get('mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
 });
 
 test('Combat target selection is rendered on creature panel cards', () => {

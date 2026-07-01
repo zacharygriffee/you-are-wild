@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 61/61 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 77/77 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -65,57 +65,40 @@
 - Tile movement preserves friendlies, neutrals, and corpses
 - Revisiting tiles starts combat only when restored creatures include living enemies
 - First-visit spawns append to existing tile creatures instead of wiping them
+- Corpse cards expose `Loot` and `Scavenge`
+- Corpse loot/scavenge has safe/mature/adult content templates
+- Corpse actions do not start combat and preserve the corpse on the tile
+
+### Capacity, Flee, Persistence, and Map UX
+- Stomach capacity is `predator.size + predator.appetite`
+- Womb/balls capacity use half capacity via `Math.floor(capacity / 2)` with a minimum of 1
+- Swallow, cock vore, unbirth, sacrifice, force-feed, sync-feed, ally consume, and auto-feast paths enforce capacity
+- Expanded unit cards show `Stomach`, `Womb`, and `Balls` used/capacity values
+- Timid non-hostiles flee when threatened by `Fight`; failed flee turns them hostile and starts combat
+- Timid allies can flee instead of attacking when badly outnumbered
+- Binary saves preserve world tiles, tile creatures/corpses/items, landmarks, structures, and explored state
+- Older saves without world data load with empty world state instead of failing
+- Loading a save restores current-tile creatures into the active scene
+- Minimap resolves immediate adjacent tile biome icons/names without marking those tiles explored
+- Icon-only runtime action controls now use localizable labels, `title`/`aria-label`, captions, and a compact action legend
+- Default main-context actions are simplified: creature interactions live on party/creature panels, Search is hidden until stronger mechanics exist, Inventory remains available
+- Rest appears and heals only at safe rest structures (`cabin`, `hut`, `camp`, `shrine`, `spring`) and refuses direct use elsewhere
+- Normalized creatures now carry an `inventory` array for future/modded creature inventory support
 
 ---
 
 ## Open Objectives (Priority Order)
 
-### 🔴 Tier 1: Critical Next (Start Here)
-
-#### 1. Stomach/Womb/Balls Capacity
-**Problem:** No limit on how many prey a predator can hold. A size-1 mouse could theoretically hold 10 dragons.
-
-**Requirements:**
-- `capacity = predator.size + predator.appetite`
-- Each prey consumes `prey.size` capacity
-- `validate` in `feast.swallow` sub-action: check `currentOccupied + target.size <= capacity`
-- Same for `cockVore` and `unbirth` (separate orifice capacities could be `Math.floor(capacity / 2)` each)
-- Failure: "Your stomach is too full for that!" (or appropriate orifice message)
-- Capacity display on unit card (e.g., "Stomach: 3/6")
-
-**Files to touch:** `src/core/app.js` (`SUB_ACTIONS.feast.swallow.validate`, `_createStomachPrey`, `_doSubAction`, `renderUnitCard`)
-
-#### 2. Timid Creature Flee Behavior
-**Problem:** Timid creatures (bunny, deer, mouse) that spawn as NEUTRAL or FRIENDLY just sit there. They should flee if threatened.
-
-**Requirements:**
-- When player selects `Fight` targeting a timid creature, or moves adjacent, the creature should attempt to flee
-- Flee check: `Math.random() < (Flee / 20)` — bunnies with Flee=20 auto-flee, deer with Flee=12 might stay
-- If flee succeeds: log message, creature removed from `this.creatures`, no XP reward
-- If flee fails: creature becomes ENEMY (cornered animal fights back)
-- Same for allies in `allyTurn()` — if ally is timid and outnumbered, attempt to flee instead of attacking
-
-**Files to touch:** `src/core/app.js` (`executeActionAgainstTarget` for fight targeting, `allyTurn`, `move` for proximity triggers)
-
-#### 3. Corpse Scavenging/Looting Content Templates
-- Add `corpse` templates to `content-system.js`: `scavenge`, `loot` with safe/mature/adult tiers
-- Default adult tier: "You pick over the remains of ${target.name}, finding..." (item list or nothing)
-- SFW tier: "You search the remains of ${target.name}."
-
-**Files to touch:** `src/core/content-system.js`
-
----
-
 ### 🟡 Tier 2: High Impact
 
-#### 6. Combat Movement System
+#### 1. Combat Movement System
 - Tactical positioning: front row (melee) and back row (ranged)
 - Creatures auto-position based on abilities (flying = back, melee = front)
 - Flanking bonuses: attacking from behind row gives +20% damage
 - `move` action in combat: swap positions between rows (costs turn)
 - Affects targeting: melee can't target back row unless flying or ranged; ranged can target any row with penalty to front row
 
-#### 7. Terrain Effects in Combat
+#### 2. Terrain Effects in Combat
 - Water tiles: swimming creatures get +2 SPD, non-swimmers get -2 SPD
 - Flying creatures: immune to ground melee, can only be hit by ranged/flying
 - Dense forest: +2 CON cover bonus, -2 SPD movement
@@ -123,7 +106,7 @@
 - Cave: darkvision required for full accuracy; non-darkvision creatures have 50% miss chance
 - Swamp: chance to get `stuck` status (skip turn, 20% per round)
 
-#### 8. Status Effect Expansion
+#### 3. Status Effect Expansion
 - `bleed` — DOT 2 HP/turn, 3 turns, stacks
 - `burn` — DOT 3 HP/turn, 2 turns, can spread to adjacent creatures
 - `freeze` — skip 1 turn, -2 SPD for 2 turns after
@@ -132,12 +115,7 @@
 - `charm` — creature fights for the charmer (reversed target selection)
 - `fear` — 50% chance to skip turn, flee if HP < 30%
 
-#### 9. World Persistence
-- Save full world state: all tiles with their `creatures`, `corpses`, `items`, `explored`, `hasLandmark`, `landmarkName`, `structureSpawned`
-- Currently only saves player, party, and inventory. World map regenerates on load.
-- Binary codec needs new fields for `worldMap` serialization
-
-#### 10. Day-Night Cycle
+#### 4. Day-Night Cycle
 - Time tracking: each `move` or `search` advances time by 1 hour
 - Night (20:00–06:00): nocturnal creatures active (bat, rat), diurnal creatures sleep (bunny, deer)
 - Night encounter rates: +50% for nocturnal, -80% for diurnal
@@ -148,18 +126,18 @@
 
 ### 🟢 Tier 3: Medium Impact
 
-#### 11. Party AI Orders
+#### 5. Party AI Orders
 - Per-ally tactic assignment: `aggressive` (always attack), `defensive` (protect player), `healer` (feed wounded), `scavenger` (feast on corpses), `passive` (do nothing unless attacked)
 - UI: accordion in party panel, dropdown per ally
 - AI overrides: healer ally prioritizes `feed.heal` on most wounded; scavenger ally auto-feasts on corpses after combat
 
-#### 12. Enemy AI Improvements
+#### 6. Enemy AI Improvements
 - Flee when outnumbered: if `enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5`, 50% flee chance
 - Call for reinforcements: pack animals (`pack: true`) on low HP have 30% chance to spawn 1 more same-species ally
 - Prioritize livestock: predators (`isPredatorOf`) target livestock/prey creatures first, even if weaker than player
 - Ambush behavior: `ambush: true` creatures get first strike if player hasn't explored tile yet
 
-#### 13. Landmark Interiors (Sub-Maps)
+#### 7. Landmark Interiors (Sub-Maps)
 - Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)
 - Entering a structure switches to interior map, new biome-specific encounter table
 - Exiting returns to overworld tile
@@ -170,13 +148,13 @@
 
 ### 🔵 Tier 4: Lower Priority
 
-#### 14. Quest System
+#### 8. Quest System
 - Quest giver NPCs (`disposition: QUEST_GIVER`) with `quest` object: `{ id, title, objectives, reward, status }`
 - Objective types: `defeat`, `find`, `escort`, `consume`, `seduce`
 - Reward: XP, items, gold, or unique creature recruitment
 - Quest log in UI (overlay screen)
 
-#### 15. Merchant/Trade System
+#### 9. Merchant/Trade System
 - Merchant NPCs (`disposition: MERCHANT`) with `stock` array of items
 - Gold currency: `player.gold`, earned from selling items, quest rewards, looting corpses
 - Buy/sell interface: item list with prices, player inventory, transaction confirmation

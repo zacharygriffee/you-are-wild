@@ -8,12 +8,28 @@
             GAME_MODE: { NORMAL: 'normal', COMBAT: 'combat' },
             DISPOSITION: { ENEMY: 'enemy', NEUTRAL: 'neutral', FRIENDLY: 'friendly', PARTY: 'party', CORPSE: 'corpse', QUEST_GIVER: 'quest_giver', MERCHANT: 'merchant' },
             ACTION: { FIGHT: 'fight', FLIRT: 'flirt', FEAST: 'feast', FUCK: 'fuck', FEED: 'feed', FLEE: 'flee', SYNC_FIGHT: 'sync_fight', SYNC_FUCK: 'sync_fuck', SYNC_FEED: 'sync_feed', PROTECT: 'protect', RETREAT_COVER: 'retreat_cover' },
+            UI_LABELS: {
+                fight: 'Fight',
+                flirt: 'Flirt',
+                feast: 'Feast',
+                fuck: 'Fuck',
+                feed: 'Feed',
+                flee: 'Flee',
+                search: 'Search',
+                rest: 'Rest',
+                inventory: 'Items',
+                interact: 'Interact',
+                map: 'Map',
+                party: 'Party',
+                enemies: 'Enemies'
+            },
+            SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
             SUB_ACTIONS: {
                 feast: {
-                    swallow: { label: 'Swallow', sfwLabel: 'Consume', icon: '🍽️', validate: (a, t) => t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2), execute: 'swallowWhole', setting: null },
+                    swallow: { label: 'Swallow', sfwLabel: 'Consume', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
                     chew: { label: 'Chew', sfwLabel: 'Mangle', icon: '🦷', validate: (a, t) => App.settings.chewing, execute: 'chewPrey', setting: 'chewing' },
-                    cockVore: { label: 'Cock Vore', sfwLabel: 'Capture', icon: '🍆', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock', execute: 'cockVore', setting: 'cockVoreEnabled' },
-                    unbirth: { label: 'Unbirth', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit', execute: 'unbirth', setting: 'unbirthEnabled' },
+                    cockVore: { label: 'Cock Vore', sfwLabel: 'Capture', icon: '🍆', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock' && App._canFitPrey(a, t, 'balls'), execute: 'cockVore', setting: 'cockVoreEnabled' },
+                    unbirth: { label: 'Unbirth', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit' && App._canFitPrey(a, t, 'womb'), execute: 'unbirth', setting: 'unbirthEnabled' },
                     digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a, t) => a.stomach && a.stomach.some(p => p.alive && p.inStomach), execute: 'digestPrey', setting: null },
                     release: { label: 'Release', sfwLabel: 'Free', icon: '⬆️', validate: (a, t) => a.stomach && a.stomach.some(p => p.alive && p.inStomach), execute: 'releasePrey', setting: null }
                 },
@@ -73,6 +89,41 @@
                     fuck: isSFW ? 'Seduce' : 'Fuck', feed: isSFW ? 'Feed' : 'Feed', flee: 'Flee'
                 };
                 return labels[action] || action;
+            },
+            _uiLabel(key) {
+                return this.UI_LABELS[key] || key;
+            },
+            _iconActionButton(key, icon, onclick, extraClass = '') {
+                const label = this._uiLabel(key);
+                const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
+                return `<button class="${className}" title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
+            },
+            _actionLegend(keys) {
+                return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+            },
+            _actionIcon(key) {
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', interact: '💋', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+            },
+            _contextActionKeys() {
+                const keys = ['inventory'];
+                if (this._canRestHere()) keys.unshift('rest');
+                return keys;
+            },
+            _contextActionButton(key) {
+                const handlers = {
+                    rest: 'App.rest()',
+                    inventory: 'App.showInventory()',
+                    map: "togglePanel('map')",
+                    party: "togglePanel('party')",
+                    enemies: "togglePanel('enemies')"
+                };
+                return this._iconActionButton(key, this._actionIcon(key), handlers[key] || '');
+            },
+            _renderContextActions(includePanels = false) {
+                const keys = this._contextActionKeys();
+                const panelKeys = includePanels ? ['map', 'party', 'enemies'] : [];
+                const allKeys = [...keys, ...panelKeys];
+                return allKeys.map(key => this._contextActionButton(key)).join('') + this._actionLegend(allKeys);
             },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
@@ -674,6 +725,78 @@
             _tileCreatures(list = []) {
                 return (list || []).filter(c => this._isCorpse(c) || c.CPun > 0);
             },
+            _containerCapacity(unit, container = 'stomach') {
+                const base = Math.max(1, (unit?.size || 4) + (unit?.appetite || 0));
+                return container === 'stomach' ? base : Math.max(1, Math.floor(base / 2));
+            },
+            _containerContents(unit, container = 'stomach') {
+                if (container === 'womb') return unit?.womb || [];
+                if (container === 'balls') return unit?.balls || [];
+                return unit?.stomach || [];
+            },
+            _containerUsed(unit, container = 'stomach') {
+                return this._containerContents(unit, container).reduce((sum, prey) => sum + (prey.size || 1), 0);
+            },
+            _canFitPrey(predator, prey, container = 'stomach') {
+                if (!predator || !prey) return false;
+                return this._containerUsed(predator, container) + (prey.size || 1) <= this._containerCapacity(predator, container);
+            },
+            _capacityFailureMessage(actor, target, container = 'stomach') {
+                const label = container === 'womb' ? 'womb' : container === 'balls' ? 'balls' : 'stomach';
+                const prefix = actor === this.player ? 'Your' : `${actor.name}'s`;
+                return `${prefix} ${label} is too full for ${target.name}!`;
+            },
+            _containerSummary(unit, container = 'stomach') {
+                return `${this._containerUsed(unit, container)}/${this._containerCapacity(unit, container)}`;
+            },
+            _canRestHere() {
+                const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
+                if (!tile) return false;
+                if (tile.structure && this.SAFE_REST_STRUCTURES.includes(tile.structure)) return true;
+                const struct = tile.structure ? this.STRUCTURES[tile.structure] : null;
+                return Boolean(struct && struct.threat === 0 && struct.disposition !== 'enemy');
+            },
+            _isTimid(unit) {
+                return Boolean(unit && (unit.timid || this._getSpeciesTemperament(unit.species).timid));
+            },
+            _syncCurrentTileCreatures() {
+                const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
+                if (tile) tile.creatures = this._tileCreatures(this.creatures);
+            },
+            _attemptTimidCreatureFlee(unit, threat = this.player) {
+                if (!this._isTimid(unit) || unit.disposition === this.DISPOSITION.ENEMY || this._isCorpse(unit)) return null;
+                const chance = Math.min(1, Math.max(0, (unit.Flee || 10) / 20));
+                if (Math.random() < chance) {
+                    this.creatures = this.creatures.filter(c => c !== unit);
+                    this._syncCurrentTileCreatures();
+                    return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+                }
+                unit.disposition = this.DISPOSITION.ENEMY;
+                unit.willing = false;
+                this._syncCurrentTileCreatures();
+                return { fled: false, text: `${unit.name} is cornered and turns hostile!` };
+            },
+            _attemptTimidAllyFlee(ally) {
+                if (!this._isTimid(ally)) return false;
+                const livingEnemies = this._livingEnemies(this.creatures);
+                const livingParty = this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
+                const badlyOutnumbered = livingEnemies.length > livingParty.length;
+                if (!badlyOutnumbered) return false;
+                const chance = Math.min(1, Math.max(0, (ally.Flee || 10) / 20));
+                if (Math.random() < chance) {
+                    ally.fledCombat = true;
+                    this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== ally);
+                    this.combatState.currentTurn = Math.max(-1, this.combatState.currentTurn - 1);
+                    this.log.push({ text: `${ally.name} loses their nerve and flees from the fight!`, type: 'combat' });
+                    this.renderLog();
+                    this.renderParty();
+                    this.nextTurn();
+                    return true;
+                }
+                this.log.push({ text: `${ally.name} tries to flee but cannot get away!`, type: 'combat' });
+                this.renderLog();
+                return false;
+            },
             _makeCorpse(target, cause = 'fight') {
                 if (!target) return target;
                 target.CPun = 0;
@@ -686,8 +809,7 @@
                 target.status = {};
                 target.willing = false;
                 target.knockedOut = false;
-                const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
-                if (tile) tile.creatures = this._tileCreatures(this.creatures);
+                this._syncCurrentTileCreatures();
                 return target;
             },
 
@@ -757,6 +879,7 @@
                 unit.stomach = unit.stomach || [];
                 unit.womb = unit.womb || [];
                 unit.balls = unit.balls || [];
+                unit.inventory = unit.inventory || [];
                 unit.cum = unit.cum || 0;
                 unit.status = unit.status || {};
                 unit.lactating = unit.lactating || false;
@@ -1110,7 +1233,7 @@
                 const entry = queue[this.combatState.currentTurn];
                 if (!entry) { this.nextTurn(); return; }
                 const currentUnit = entry.unit || entry.unit;
-                if (!currentUnit || currentUnit.CPun <= 0 || currentUnit.knockedOut) { this.nextTurn(); return; }
+                if (!currentUnit || currentUnit.CPun <= 0 || currentUnit.knockedOut || currentUnit.fledCombat) { this.nextTurn(); return; }
                 // Refractory period: skip turn if recovering from orgasm
                 if (currentUnit.refractory) {
                     currentUnit.refractory = false;
@@ -1161,7 +1284,7 @@
             },
 
             _newRound() {
-                const living = [...this.party.filter(p => p.CPun > 0 && !p.knockedOut), ...this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)];
+                const living = [...this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat), ...this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)];
                 this.combatState.turnQueue = living.map(c => ({ unit: c, initiative: this._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
@@ -1435,6 +1558,7 @@
                     case 'feast.swallow': {
                         const canEat = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canEat) { result = `${target.name} is too strong or too big to consume!`; break; }
+                        if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         const prey = this._createStomachPrey(target);
                         if (!actor.stomach) actor.stomach = [];
                         actor.stomach.push(prey);
@@ -1459,6 +1583,7 @@
                         if (!actor.parts || actor.parts !== 'cock') { result = `${actorName} lack${actorVerb} the anatomy for that.`; break; }
                         const canCV = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canCV) { result = `${target.name} is too strong or too big!`; break; }
+                        if (!this._canFitPrey(actor, target, 'balls')) { result = this._capacityFailureMessage(actor, target, 'balls'); break; }
                         const prey = this._createStomachPrey(target, { inCock: true });
                         if (!actor.balls) actor.balls = [];
                         actor.balls.push(prey);
@@ -1473,6 +1598,7 @@
                         if (!actor.parts || actor.parts !== 'clit') { result = `${actorName} lack${actorVerb} the anatomy for that.`; break; }
                         const canUB = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canUB) { result = `${target.name} is too strong or too big!`; break; }
+                        if (!this._canFitPrey(actor, target, 'womb')) { result = this._capacityFailureMessage(actor, target, 'womb'); break; }
                         const prey = this._createStomachPrey(target, { inWomb: true });
                         if (!actor.womb) actor.womb = [];
                         actor.womb.push(prey);
@@ -1532,6 +1658,7 @@
                         const isWilling = target.livestock || target.willingPrey;
                         if (!isWilling && !this.cheats.canEatAnything) { result = `${target.name} refuses to be fed to ${actorName}.`; break; }
                         if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
+                        if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         const prey = this._createStomachPrey(target, { willingSacrifice: true });
                         if (!actor.stomach) actor.stomach = [];
                         actor.stomach.push(prey);
@@ -1547,6 +1674,7 @@
                         }
                         const holder = holders[0] || this.creatures.filter(c => c.CPun > 0 && c !== target && c !== actor)[0];
                         if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
+                        if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         const prey = this._createStomachPrey(target, { forcedFed: true, by: actor.name });
                         if (!actor.stomach) actor.stomach = [];
                         actor.stomach.push(prey);
@@ -1887,10 +2015,14 @@
                     case 'sync_feed': {
                         const totalFeas = sync.participants.reduce((sum, p) => sum + (p.Feas || 0), 0);
                         const canEat = sync.target.CPun <= sync.target.MPun * 0.3 || totalFeas > sync.target.Flee + 5;
-                        if (canEat) {
-                            const eater = sync.participants[0];
-                            if (!eater.stomach) eater.stomach = [];
-	                            eater.stomach.push({ ...sync.target, alive: true, inStomach: true });
+	                        if (canEat) {
+	                            const eater = sync.participants[0];
+	                            if (!this._canFitPrey(eater, sync.target, 'stomach')) {
+	                                result = this._capacityFailureMessage(eater, sync.target, 'stomach');
+	                                break;
+	                            }
+	                            if (!eater.stomach) eater.stomach = [];
+	                            eater.stomach.push(this._createStomachPrey(sync.target));
 	                            sync.target.CPun = 0;
 	                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
 	                            result = `${sync.participants.map(p => p.name).join(' and ')} force ${sync.target.name} into ${eater.name}'s stomach!`;
@@ -1912,6 +2044,7 @@
             allyTurn(ally) {
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 if (enemies.length === 0) { this.nextTurn(); return; }
+                if (this._attemptTimidAllyFlee(ally)) return;
                 // DUMB AI STATE MACHINE
                 if (ally.dumbAI) {
                     // High pleasure (>90% MPle): may disobey and auto-fuck
@@ -1928,16 +2061,16 @@
                         } else {
                             const weakest = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
                             const canEat = weakest.CPun <= weakest.MPun * 0.3 || (ally.Feas > weakest.Flee && ally.size >= weakest.size - 2);
-                            if (canEat) {
+                            if (canEat && this._canFitPrey(ally, weakest, 'stomach')) {
                                 if (!ally.stomach) ally.stomach = [];
-                                ally.stomach.push({ ...weakest, alive: true, inStomach: true });
-	                                weakest.CPun = 0;
-	                                ally.hunger = Math.max(0, ally.hunger - 50);
-	                                ally.obedient = true; // Feeding restores loyalty
-	                                this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-	                                this.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole! Loyalty restored.`, type: 'combat' });
-	                                this._emitCombatAction('ally_feast', ally, weakest, 'consumed');
-	                                this.renderLog(); this.renderCreatures(); this.renderParty(); this.nextTurn(); return;
+                                ally.stomach.push(this._createStomachPrey(weakest));
+                                weakest.CPun = 0;
+                                ally.hunger = Math.max(0, ally.hunger - 50);
+                                ally.obedient = true; // Feeding restores loyalty
+                                this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                                this.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole! Loyalty restored.`, type: 'combat' });
+                                this._emitCombatAction('ally_feast', ally, weakest, 'consumed');
+                                this.renderLog(); this.renderCreatures(); this.renderParty(); this.nextTurn(); return;
                             }
                         }
                     }
@@ -1962,11 +2095,11 @@
                 }
                 // Livestock auto-offer: if ally is livestock and a predator is hungry, offer to be eaten
                 if (ally.livestock && ally.obedient) {
-                    const predators = this.party.filter(p => p !== ally && p.CPun > 0 && p.hunger > 50 && p.Feas > ally.Flee && p.size >= ally.size - 2);
+                    const predators = this.party.filter(p => p !== ally && p.CPun > 0 && p.hunger > 50 && p.Feas > ally.Flee && p.size >= ally.size - 2 && this._canFitPrey(p, ally, 'stomach'));
                     if (predators.length > 0) {
                         const pred = predators.reduce((best, p) => p.hunger > best.hunger ? p : best, predators[0]);
                         if (!pred.stomach) pred.stomach = [];
-                        pred.stomach.push({ ...ally, alive: true, inStomach: true, willingSacrifice: true });
+                        pred.stomach.push(this._createStomachPrey(ally, { willingSacrifice: true }));
                         ally.CPun = 0; ally.CPle = 0;
                         pred.hunger = Math.max(0, pred.hunger - 50);
                         pred.obedient = true;
@@ -2154,6 +2287,7 @@
                 this.combatState.turnQueue = [];
                 this.combatState.currentTurn = 0;
                 this.combatState.syncActions = [];
+                this.party.forEach(p => { p.fledCombat = false; });
                 if (this.player?.knockedOut) {
                     this.player.knockedOut = false;
                     this.player.CPun = Math.max(1, this.player.CPun || 0);
@@ -2233,8 +2367,17 @@
 
             outsideActionOnTarget(action, target) {
                 let result = '';
+                let startCombatAfter = false;
                 switch (action) {
                     case 'fight': {
+                        if (target.disposition !== this.DISPOSITION.ENEMY) {
+                            const flee = this._attemptTimidCreatureFlee(target, this.player);
+                            if (flee) {
+                                result = flee.text;
+                                startCombatAfter = !flee.fled;
+                                break;
+                            }
+                        }
                         const ar = this._AR(this.player.Figh);
                         const def = target.con || 10;
                         const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
@@ -2270,8 +2413,12 @@
                     case 'feast': {
                         const canEatOutside = this.cheats.canEatAnything || (this.player.size >= target.size - 2 && this.player.Feas + 5 > target.Flee);
                         if (canEatOutside) {
+                            if (!this._canFitPrey(this.player, target, 'stomach')) {
+                                result = this._capacityFailureMessage(this.player, target, 'stomach');
+                                break;
+                            }
                             if (!this.player.stomach) this.player.stomach = [];
-                            this.player.stomach.push({ ...target, alive: true, inStomach: true });
+                            this.player.stomach.push(this._createStomachPrey(target));
                             target.CPun = 0;
                             result = `You swallow ${target.name} whole. They settle in your stomach.`;
                         } else {
@@ -2319,7 +2466,59 @@
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
+                if (startCombatAfter) {
+                    this.startCombat([target]);
+                    return;
+                }
                 if (!this.combatState.active) this.renderExplorationActions();
+            },
+
+            _findCorpseById(targetId) {
+                return this.creatures.find(c => this._isCorpse(c) && String(c.id || c.name) === String(targetId));
+            },
+
+            lootCorpse(targetId) {
+                const corpse = this._findCorpseById(targetId);
+                if (!corpse) return;
+                let item = null;
+                if (!corpse.looted && this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
+                    const items = Object.keys(this.ITEMS);
+                    const name = items[Math.floor(Math.random() * items.length)];
+                    item = { id: 'loot_' + Date.now(), name };
+                    this.inventory.push(item);
+                }
+                corpse.looted = true;
+                const text = CONTENT.actionResult('corpseLoot', {
+                    target: corpse.corpseName || corpse.name,
+                    item: item ? item.name : null,
+                    explicit: true,
+                    voreEnabled: this.settings.vore
+                });
+                this.log.push({ text, type: item ? 'loot' : 'discovery' });
+                this.renderLog();
+                this.renderCreatures();
+                this.renderExplorationActions();
+                this.autoSave();
+            },
+
+            scavengeCorpse(targetId) {
+                const corpse = this._findCorpseById(targetId);
+                if (!corpse) return;
+                corpse.scavenged = true;
+                this.player.hunger = Math.max(0, (this.player.hunger || 0) - 20);
+                this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 5);
+                const text = CONTENT.actionResult('corpseScavenge', {
+                    target: corpse.corpseName || corpse.name,
+                    actor: this.player.name,
+                    explicit: true,
+                    voreEnabled: this.settings.vore
+                });
+                this.log.push({ text, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+                this.autoSave();
             },
 
             recruitCreatureFromIndex(index) {
@@ -2597,6 +2796,10 @@
                 if (isParty && !isPlayer) {
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('feed',${index})">🍲</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('consume',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('seduce',${index})">💕</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('inspect',${index})">👁️</button></div>`;
                 }
+                if (!isParty && isCorpse) {
+                    const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">Loot</button><button class="action-btn" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">Scavenge</button></div>`;
+                }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
                     if (this.targetSelection) {
@@ -2617,8 +2820,16 @@
                     else if (unit.disposition === this.DISPOSITION.FRIENDLY) dispLabel = 'Friendly';
                     else if (unit.disposition === this.DISPOSITION.NEUTRAL) dispLabel = 'Neutral';
                 }
-	                const stomachCount = (unit.stomach?.length || 0) + (unit.womb?.length || 0) + (unit.balls?.length || 0);
-	                return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
+                const stomachUsed = this._containerUsed(unit, 'stomach');
+                const wombUsed = this._containerUsed(unit, 'womb');
+                const ballsUsed = this._containerUsed(unit, 'balls');
+                const hasContained = stomachUsed > 0 || wombUsed > 0 || ballsUsed > 0;
+                const capacitySummary = [
+                    `Stomach: ${this._containerSummary(unit, 'stomach')}`,
+                    `Womb: ${this._containerSummary(unit, 'womb')}`,
+                    `Balls: ${this._containerSummary(unit, 'balls')}`
+                ].join(' | ');
+                return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
@@ -2635,7 +2846,7 @@
                             <div><span style="color:var(--text-muted)">Flee:</span> ${unit.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${unit.Feed}</div>
                             <div><span style="color:var(--text-muted)">Size:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">App:</span> ${unit.appetite}</div>
 	                            <div><span style="color:var(--text-muted)">Parts:</span> ${unit.parts || 'none'}</div><div><span style="color:var(--text-muted)">Chest:</span> ${unit.chest || 'none'}</div>
-	                            ${stomachCount > 0 ? `<div style="grid-column:1/-1;color:var(--accent-warning)">Stomach: ${stomachCount} inside</div>` : ''}
+		                            <div style="grid-column:1/-1;color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
 	                        </div>
 	                    </div>` : ''}
 	                </div>`;
@@ -2673,10 +2884,14 @@
                         ally.willing = true;
                         result = `You flirt with ${ally.name}, raising both your pleasures. They blush warmly.`;
                         break;
-                    case 'consume':
-                        this.party.splice(index, 1);
-                        if (!this.player.stomach) this.player.stomach = [];
-                        this.player.stomach.push({ ...ally, alive: true, inStomach: true });
+	                    case 'consume':
+	                        if (!this._canFitPrey(this.player, ally, 'stomach')) {
+	                            result = this._capacityFailureMessage(this.player, ally, 'stomach');
+	                            break;
+	                        }
+	                        this.party.splice(index, 1);
+	                        if (!this.player.stomach) this.player.stomach = [];
+	                        this.player.stomach.push(this._createStomachPrey(ally));
                         this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 30);
                         this.player.Feas += 2;
                         result = `You consume ${ally.name}. Power grows!`;
@@ -2712,12 +2927,12 @@
                         const tx = cx + dx, ty = cy + dy;
                         const isCenter = dx === 0 && dy === 0;
                         const isExplored = this.isExplored(tx, ty);
-                        const tile = isExplored ? this.getTile(tx, ty) : null;
+                        const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+                        const tile = (isExplored || isAdjacent) ? this.getTile(tx, ty) : null;
                         const biome = tile ? this.biomes[tile.biome] : null;
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
-                        const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
                         const isFar = Math.abs(dx) > 1 || Math.abs(dy) > 1;
-                        let content = isExplored ? (biome ? biome.icon : '?') : (isAdjacent ? '□' : '·');
+                        let content = (isExplored || isAdjacent) ? (biome ? biome.icon : '?') : '·';
                         let classes = 'map-tile';
                         if (isCenter) classes += ' center';
                         else if (isExplored) classes += ' explored';
@@ -2725,7 +2940,8 @@
                         else classes += ' far';
                         if (hasCreatures) classes += ' has-enemy';
                         const onclick = isCenter ? '' : (isAdjacent ? `onclick="App.move(${dx},${dy})"` : '');
-                        html += `<div class="${classes}" ${onclick}>${content}</div>`;
+                        const title = biome ? `${biome.name} (${tx}, ${ty})` : `${tx}, ${ty}`;
+                        html += `<div class="${classes}" title="${title}" aria-label="${title}" ${onclick}>${content}</div>`;
 	                    }
 	                    html += '</div>';
 	                }
@@ -2747,31 +2963,33 @@
 	                if (mobileDesc) mobileDesc.textContent = description || '';
 	                const actions = document.getElementById('scene-actions');
                 const mobileActions = document.getElementById('mobile-actions');
-                const mobileCombat = document.getElementById('mobile-combat-actions');
-                const mobileExplore = document.getElementById('mobile-explore-actions');
-                if (inCombat) {
-                    if (actions) actions.innerHTML = `<button class="action-btn primary" onclick="combatAction('fight')">⚔️</button><button class="action-btn" onclick="combatAction('flirt')">😘</button><button class="action-btn" onclick="combatAction('feast')">🍽️</button><button class="action-btn" onclick="combatAction('fuck')">🔥</button><button class="action-btn" onclick="combatAction('feed')">🍲</button><button class="action-btn" onclick="combatAction('flee')">🏃</button>`;
+	                const mobileCombat = document.getElementById('mobile-combat-actions');
+	                const mobileExplore = document.getElementById('mobile-explore-actions');
+	                if (inCombat) {
+	                    if (actions) {
+	                        const keys = ['fight', 'flirt', 'feast', 'fuck', 'feed', 'flee'];
+	                        actions.innerHTML = keys.map(key => this._iconActionButton(key, this._actionIcon(key), `combatAction('${key}')`, key === 'fight' ? 'primary' : '')).join('') + this._actionLegend(keys);
+	                    }
                     if (mobileActions) mobileActions.style.display = 'block';
                     if (mobileCombat) mobileCombat.style.display = 'flex';
                     if (mobileExplore) mobileExplore.style.display = 'none';
-                } else {
-                    if (actions) actions.innerHTML = `<button class="action-btn" onclick="App.search()">🔍</button><button class="action-btn" onclick="App.rest()">🏕️</button><button class="action-btn" onclick="App.showInventory()">🎒</button>`;
-                    if (mobileActions) mobileActions.style.display = 'block';
-                    if (mobileCombat) mobileCombat.style.display = 'none';
-                    if (mobileExplore) mobileExplore.style.display = 'flex';
-	                }
-	            },
-	            renderExplorationActions() {
-	                const actions = document.getElementById('scene-actions');
-	                if (!actions || this.combatState.active) return;
-	                const livingCreatures = this.creatures.filter(c => c.CPun > 0);
-	                const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player?.name);
-	                let html = `<button class="action-btn" onclick="App.search()">🔍</button><button class="action-btn" onclick="App.rest()">🏕️</button><button class="action-btn" onclick="App.showInventory()">🎒</button>`;
-	                if (livingCreatures.length > 0 || allies.length > 0) {
-	                    html += `<button class="action-btn" onclick="App.showInteractMenu()">💋 Interact</button>`;
-	                }
-	                actions.innerHTML = html;
-	            },
+		                } else {
+		                    if (actions) {
+		                        actions.innerHTML = this._renderContextActions(false);
+		                    }
+	                    if (mobileActions) mobileActions.style.display = 'block';
+	                    if (mobileCombat) mobileCombat.style.display = 'none';
+	                    if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
+	                    if (mobileExplore) mobileExplore.style.display = 'flex';
+		                }
+		            },
+		            renderExplorationActions() {
+		                const actions = document.getElementById('scene-actions');
+		                if (!actions || this.combatState.active) return;
+		                actions.innerHTML = this._renderContextActions(false);
+	                const mobileExplore = document.getElementById('mobile-explore-actions');
+	                if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
+		            },
 	            showExplorationActions() {
 	                const tile = this.getTile(this.location.x, this.location.y);
 	                const biome = this.biomes[tile.biome];
@@ -2814,8 +3032,14 @@
                 this.autoSave();
             },
             rest() {
-                this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 30);
-                this.party.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + 30); });
+                if (!this._canRestHere()) {
+                    this.log.push({ text: 'There is no safe place to rest here.', type: 'discovery' });
+                    this.renderLog();
+                    this.renderExplorationActions();
+                    return;
+                }
+                const healed = new Set([this.player, ...this.party]);
+                healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + 30); });
                 this.log.push({ text: 'Rested and recovered.', type: 'heal' });
                 this.renderLog(); this.renderParty();
             },
@@ -3222,21 +3446,9 @@ Enter 1, 2, or 3:`);
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];
                     this.activeSlot = slotName;
-                    this.worldMap = new Map();
-                    this.exploredTiles = new Set();
-                    this.superPatchMap = new Map();
-                    if (loaded.worldMap) {
-                        for (const [key, tile] of Object.entries(loaded.worldMap)) {
-                            this.worldMap.set(key, tile);
-                            if (tile.explored) this.exploredTiles.add(key);
-                        }
-                    }
-                    this._rebuildSuperPatchMap();
-                    // Set currentBiome from player's current location
-                    const currentTile = this.getTile(this.location.x, this.location.y);
-                    this.currentBiome = currentTile.biome;
+                    this._restoreWorldState(loaded);
                     this.showScreen('game');
-                    this.renderMap(); this.renderParty(); this.renderLog();
+                    this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
                     localStorage.setItem('fff-last-slot', slotName);
                     // Revive any dead party members on load (softcore)
@@ -3256,6 +3468,24 @@ Enter 1, 2, or 3:`);
                     }
                     return true;
                 } catch (e) { console.error('Load failed:', e); alert('Load failed: ' + e.message); return false; }
+            },
+            _restoreWorldState(loaded) {
+                this.worldMap = new Map();
+                this.exploredTiles = new Set(loaded.exploredTiles || []);
+                this.superPatchMap = new Map();
+                if (loaded.worldMap) {
+                    for (const [key, tile] of Object.entries(loaded.worldMap)) {
+                        if (Array.isArray(tile.creatures)) {
+                            tile.creatures = tile.creatures.map(unit => this._normalizeUnit(unit, {}));
+                        }
+                        this.worldMap.set(key, tile);
+                        if (tile.explored) this.exploredTiles.add(key);
+                    }
+                }
+                this._rebuildSuperPatchMap();
+                const currentTile = this.getTile(this.location.x, this.location.y);
+                this.currentBiome = currentTile.biome;
+                this.creatures = this._tileCreatures(currentTile.creatures || []);
             },
             async loadLastPlayed() {
                 const lastSlot = localStorage.getItem('fff-last-slot');
@@ -3345,4 +3575,3 @@ Enter 1, 2, or 3:`);
             }
         };
         document.addEventListener('DOMContentLoaded', () => App.init());
-

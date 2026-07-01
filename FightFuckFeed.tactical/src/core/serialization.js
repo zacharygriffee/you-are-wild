@@ -6,46 +6,46 @@
  */
 (function() {
   'use strict';
-  
+
   const Binary = (function() {
     const state = (start = 0, end = 0, buffer = null) => ({ start, end, buffer });
-    
+
     const uint8 = {
       preencode(s, n) { s.end += 1; },
       encode(s, n) { s.buffer[s.start++] = n & 0xff; },
       decode(s) { return s.buffer[s.start++]; }
     };
-    
+
     const uint16 = {
       preencode(s, n) { s.end += 2; },
       encode(s, n) { s.buffer[s.start++] = n & 0xff; s.buffer[s.start++] = (n >> 8) & 0xff; },
       decode(s) { return s.buffer[s.start++] + (s.buffer[s.start++] << 8); }
     };
-    
+
     const uint32 = {
       preencode(s, n) { s.end += 4; },
       encode(s, n) { s.buffer[s.start++] = n & 0xff; s.buffer[s.start++] = (n >> 8) & 0xff; s.buffer[s.start++] = (n >> 16) & 0xff; s.buffer[s.start++] = (n >> 24) & 0xff; },
       decode(s) { return s.buffer[s.start++] + (s.buffer[s.start++] << 8) + (s.buffer[s.start++] << 16) + (s.buffer[s.start++] << 24); }
     };
-    
+
     const int8 = {
       preencode(s, n) { s.end += 1; },
       encode(s, n) { s.buffer[s.start++] = (n < 0 ? 256 + n : n) & 0xff; },
       decode(s) { const n = s.buffer[s.start++]; return n > 127 ? n - 256 : n; }
     };
-    
+
     const int16 = {
       preencode(s, n) { s.end += 2; },
       encode(s, n) { uint16.encode(s, n < 0 ? n + 65536 : n); },
       decode(s) { const n = uint16.decode(s); return n > 32767 ? n - 65536 : n; }
     };
-    
+
     const int32 = {
       preencode(s, n) { s.end += 4; },
       encode(s, n) { uint32.encode(s, n < 0 ? n + 4294967296 : n); },
       decode(s) { const n = uint32.decode(s); return n > 2147483647 ? n - 4294967296 : n; }
     };
-    
+
     // Variable-length unsigned int
     const vuint = {
       preencode(s, n) { s.end += n <= 0xfc ? 1 : n <= 0xffff ? 3 : n <= 0xffffffff ? 5 : 9; },
@@ -63,43 +63,43 @@
         return uint32.decode(s); // truncated 64-bit
       }
     };
-    
+
     const bool = {
       preencode(s, n) { s.end += 1; },
       encode(s, n) { s.buffer[s.start++] = n ? 1 : 0; },
       decode(s) { return s.buffer[s.start++] === 1; }
     };
-    
+
     const string = {
       preencode(s, str) { const bytes = new TextEncoder().encode(str); vuint.preencode(s, bytes.length); s.end += bytes.length; },
       encode(s, str) { const bytes = new TextEncoder().encode(str); vuint.encode(s, bytes.length); s.buffer.set(bytes, s.start); s.start += bytes.length; },
       decode(s) { const len = vuint.decode(s); const bytes = s.buffer.subarray(s.start, s.start + len); s.start += len; return new TextDecoder().decode(bytes); }
     };
-    
+
     const array = (enc) => ({
       preencode(s, arr) { vuint.preencode(s, arr.length); for (const item of arr) enc.preencode(s, item); },
       encode(s, arr) { vuint.encode(s, arr.length); for (const item of arr) enc.encode(s, item); },
       decode(s) { const len = vuint.decode(s); const arr = []; for (let i = 0; i < len; i++) arr.push(enc.decode(s)); return arr; }
     });
-    
+
     const optional = (enc) => ({
       preencode(s, val) { if (val !== null && val !== undefined) { bool.preencode(s, true); enc.preencode(s, val); } else bool.preencode(s, false); },
       encode(s, val) { if (val !== null && val !== undefined) { bool.encode(s, true); enc.encode(s, val); } else bool.encode(s, false); },
       decode(s) { return bool.decode(s) ? enc.decode(s) : null; }
     });
-    
+
     const json = {
       preencode(s, val) { string.preencode(s, JSON.stringify(val)); },
       encode(s, val) { string.encode(s, JSON.stringify(val)); },
       decode(s) { return JSON.parse(string.decode(s)); }
     };
-    
+
     const encode = (codec, val) => { const s = state(); codec.preencode(s, val); s.buffer = new Uint8Array(s.end); s.start = 0; codec.encode(s, val); return s.buffer; };
     const decode = (codec, buffer) => codec.decode(state(0, buffer.length, buffer));
-    
+
     return { state, uint8, uint16, uint32, int8, int16, int32, vuint, bool, string, array, optional, json, encode, decode };
   })();
-  
+
   // Save codecs
   Binary.codecs = {
     // Unit stats
@@ -185,10 +185,16 @@
           party: Binary.array(Binary.codecs.unit).decode(s),
           log: Binary.array(Binary.string).decode(s),
           currentBiome: Binary.string.decode(s),
-          worldMap: Binary.json.decode(s),
-          exploredTiles: Binary.json.decode(s)
+          worldMap: {},
+          exploredTiles: []
         };
-        if (version >= 3) {
+        if (s.start < s.end) {
+          try { result.worldMap = Binary.json.decode(s); } catch(e) { result.worldMap = {}; }
+        }
+        if (s.start < s.end) {
+          try { result.exploredTiles = Binary.json.decode(s); } catch(e) { result.exploredTiles = []; }
+        }
+        if (version >= 3 && s.start < s.end) {
           try { result.inventory = Binary.json.decode(s); } catch(e) { result.inventory = []; }
         } else {
           result.inventory = [];
@@ -197,7 +203,7 @@
       }
     }
   };
-  
+
   // Save/load helpers
   Binary.saveGame = (appState) => {
     // Convert Map/Set to plain objects for serialization
@@ -208,7 +214,7 @@
         }
     }
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
-    
+
     const saveData = {
       version: 4,
       playerName: appState.player?.name || 'You',
@@ -228,12 +234,12 @@
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
-  
+
   Binary.loadGame = (buffer) => {
     return Binary.decode(Binary.codecs.save, new Uint8Array(buffer));
   };
-  
+
   window.Binary = Binary;
 })();
 
-    
+

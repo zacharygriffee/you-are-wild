@@ -2782,6 +2782,10 @@
             log: [],
             logFilter: 'all',
             logSearch: '',
+            inventoryFilter: 'all',
+            inventorySort: 'name',
+            tradeFilter: 'all',
+            tradeSort: 'name',
             mobileMapZoom: 1,
             worldMap: new Map(),
             exploredTiles: new Set(),
@@ -6419,6 +6423,47 @@
                 });
             },
 
+            _itemCategory(item) {
+                return this._getItemDef(item).type || 'misc';
+            },
+
+            _itemValue(item) {
+                return this._getItemDef(item).value || item?.price || 0;
+            },
+
+            _itemListOptions(prefix, targetId = null) {
+                const targetArg = targetId ? `,'${String(targetId).replace(/'/g, "\\'")}'` : '';
+                return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Category
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Filter(this.value${targetArg})">
+                            ${['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].map(type => `<option value="${type}" ${this[`${prefix.toLowerCase()}Filter`] === type ? 'selected' : ''}>${type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}</option>`).join('')}
+                        </select>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Sort
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Sort(this.value${targetArg})">
+                            ${[
+                                ['name', 'Name'],
+                                ['type', 'Type'],
+                                ['value-desc', 'Value ↓'],
+                                ['value-asc', 'Value ↑']
+                            ].map(([value, label]) => `<option value="${value}" ${this[`${prefix.toLowerCase()}Sort`] === value ? 'selected' : ''}>${label}</option>`).join('')}
+                        </select>
+                    </label>
+                </div>`;
+            },
+
+            _filterAndSortItemEntries(entries, filter = 'all', sort = 'name') {
+                const filtered = entries.filter(entry => filter === 'all' || this._itemCategory(entry.item) === filter);
+                return filtered.sort((a, b) => {
+                    const aDef = this._getItemDef(a.item);
+                    const bDef = this._getItemDef(b.item);
+                    if (sort === 'value-desc') return this._itemValue(b.item) - this._itemValue(a.item) || a.item.name.localeCompare(b.item.name);
+                    if (sort === 'value-asc') return this._itemValue(a.item) - this._itemValue(b.item) || a.item.name.localeCompare(b.item.name);
+                    if (sort === 'type') return (aDef.type || 'misc').localeCompare(bDef.type || 'misc') || a.item.name.localeCompare(b.item.name);
+                    return a.item.name.localeCompare(b.item.name);
+                });
+            },
+
             _defaultMerchantStock() {
                 return ['Healing Herb', 'Old Coin', 'Monster Fang'].map((name, index) => {
                     const def = this.ITEMS[name] || {};
@@ -6450,24 +6495,42 @@
                 if (!merchant) return;
                 const gold = this.player.gold || 0;
                 let html = `<h3>${merchant.name} Trade</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Gold: ${gold}</p>`;
+                html += this._itemListOptions('Trade', this._unitKey(merchant));
                 html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">Buy</h4><div style="display:grid;gap:8px;">`;
-                merchant.stock.forEach((item, index) => {
+                const stockEntries = this._filterAndSortItemEntries((merchant.stock || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
+                if (stockEntries.length === 0) {
+                    html += `<p style="color:var(--text-muted)">No stock matches the current filter.</p>`;
+                }
+                stockEntries.forEach(({ item, index }) => {
                     const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
                     const disabled = gold < item.price || item.qty <= 0 || this.inventory.length >= this.MAX_INVENTORY ? ' disabled' : '';
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">Buy</button></div>`;
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">Buy</button></div>`;
                 });
                 html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">Sell</h4><div style="display:grid;gap:8px;">`;
+                const sellEntries = this._filterAndSortItemEntries((this.inventory || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
                 if (this.inventory.length === 0) {
                     html += `<p style="color:var(--text-muted)">No items to sell.</p>`;
+                } else if (sellEntries.length === 0) {
+                    html += `<p style="color:var(--text-muted)">No inventory items match the current filter.</p>`;
                 } else {
-                    this.inventory.forEach(item => {
+                    sellEntries.forEach(({ item }) => {
                         const def = this.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
                         const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">Sell</button></div>`;
+                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">Sell</button></div>`;
                     });
                 }
                 html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
                 document.getElementById('scene-description').innerHTML = html;
+            },
+
+            setTradeFilter(filter, targetId) {
+                this.tradeFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
+                if (targetId) this.showTrade(targetId);
+            },
+
+            setTradeSort(sort, targetId) {
+                this.tradeSort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
+                if (targetId) this.showTrade(targetId);
             },
 
             buyFromMerchant(targetId, stockIndex) {
@@ -6740,14 +6803,21 @@
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }
+                html += this._itemListOptions('Inventory');
+                const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
+                if (entries.length === 0) {
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">No items match the current filter.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    document.getElementById('scene-description').innerHTML = html;
+                    return;
+                }
                 html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
-                this.inventory.forEach(item => {
+                entries.forEach(({ item }) => {
                     const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
                     const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
                     const canEquip = this._isEquippable(item);
                     html += `<div class="option-card" style="text-align:left;cursor:default;">`;
                     html += `<div style="font-size:24px">${def.icon}</div><div style="font-weight:600;color:var(--text-primary)">${item.name}</div>`;
-                    html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.desc}${canEquip ? '<br>' + this._equipmentBonusText(item) : ''}</div><div style="display:flex;gap:8px;margin-top:8px">`;
+                    html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.type || 'misc'} · ${def.desc}${canEquip ? '<br>' + this._equipmentBonusText(item) : ''}</div><div style="display:flex;gap:8px;margin-top:8px">`;
                     const itemKey = String(item.id).replace(/'/g, "\\'");
                     if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.useItem('${itemKey}')">Use</button>`;
                     if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">Equip</button>`;
@@ -6755,6 +6825,14 @@
                 });
                 html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
                 document.getElementById('scene-description').innerHTML = html;
+            },
+            setInventoryFilter(filter) {
+                this.inventoryFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
+                this.showInventory();
+            },
+            setInventorySort(sort) {
+                this.inventorySort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
+                this.showInventory();
             },
             useItem(itemId) { /* simplified */ },
             dropItem(itemId) { this.inventory = this.inventory.filter(i => i.id !== itemId); this.showInventory(); this.autoSave(); },

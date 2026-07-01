@@ -2253,6 +2253,33 @@ test('Merchant buy and sell update gold inventory and stock', () => {
   assert(merchant.stock.some(item => item.name === 'Shiny Gem'), 'Sold item should enter merchant stock');
 });
 
+test('Merchant trade supports item categories and sorted stock without index drift', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 100 });
+  App.party = [App.player];
+  App.inventory = [{ id: 'gem-1', name: 'Shiny Gem' }];
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [
+      { name: 'Old Coin', price: 10, qty: 1 },
+      { name: 'Healing Herb', price: 30, qty: 1 },
+      { name: 'Hide Armor', price: 60, qty: 1 }
+    ]
+  });
+  App.creatures = [merchant];
+  App.setTradeFilter('equipment', 'trader-1');
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Hide Armor', 'Equipment filter should show equipment stock');
+  assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumable stock');
+  App.setTradeFilter('all', 'trader-1');
+  App.setTradeSort('value-desc', 'trader-1');
+  html = elements.get('scene-description').innerHTML;
+  assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
+  App.buyFromMerchant('trader-1', 2);
+  assert(App.inventory.some(item => item.name === 'Hide Armor'), 'Buying after sorted render should still use original stock index');
+});
+
 test('Merchant stock refreshes every three in-game days', () => {
   const { App } = loadAppForCombat(() => 0);
   const merchant = makeUnit('Trader', {
@@ -2310,6 +2337,27 @@ test('Inventory and character stats render equipped items', () => {
   assertContains(elements.get('scene-description').innerHTML, 'Equip', 'Inventory should expose equip action');
   App.showCharacterStats();
   assertContains(elements.get('scene-description').innerHTML, 'Leather Cap', 'Character stats should list equipped item');
+});
+
+test('Inventory supports item categories and sorting', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.inventory = [
+    { id: 'herb-1', name: 'Healing Herb' },
+    { id: 'armor-1', name: 'Hide Armor' },
+    { id: 'coin-1', name: 'Old Coin' }
+  ];
+  App.setInventoryFilter('equipment');
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Hide Armor', 'Equipment filter should show equipment');
+  assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumables');
+  App.setInventoryFilter('all');
+  App.setInventorySort('value-asc');
+  html = elements.get('scene-description').innerHTML;
+  assert(html.indexOf('Old Coin') < html.indexOf('Healing Herb'), 'Value ascending sort should show cheaper items first');
+  assertContains(html, 'Category', 'Inventory should expose category control');
+  assertContains(html, 'Sort', 'Inventory should expose sort control');
 });
 
 test('Equipment state persists through binary saves', () => {

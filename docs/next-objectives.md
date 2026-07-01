@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 169/169 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 171/171 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -102,7 +102,7 @@
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
 - Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, quest cards expose accept/view actions, accepted quests render in a quest log, defeat/find/consume/seduce/escort-style objective progress uses a shared matcher, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
-- Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, merchant stock can refresh after three in-game days, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
+- Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, merchant stock can refresh after three in-game days, inventory/trade surfaces support item category filtering and value/name/type sorting, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots and numeric `equipBonus` fields, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses apply and remove from player stats, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees, perks can require prior tree investment, selected perks apply numeric stat bonuses, pending choices render from character stats, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
@@ -145,7 +145,6 @@
 #### 9. Advanced Merchant/Trade
 - Add authored merchant placement and stock tables beyond manually attached merchant objects
 - Add transaction confirmation for expensive/rare items
-- Add item categories, sorting, and filtering once inventory has enough content to need it
 - Add explicit gold rewards from corpse loot or other economy sources beyond quests and selling items
 
 #### 16. Advanced Equipment
@@ -199,7 +198,7 @@
 ```
 FightFuckFeed.tactical/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~5598 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~5676 lines)
     content-system.js — Template engine, content tiers, localization registry (~463 lines)
     serialization.js  — Binary save/load codec (~268 lines)
     module-system.js  — Mod loader and hook system (~275 lines)
@@ -211,7 +210,7 @@ FightFuckFeed.tactical/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 169 tests, syntax/structure/combat behavior
+  test/test.js       — 171 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

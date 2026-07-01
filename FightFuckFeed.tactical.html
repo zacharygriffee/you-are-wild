@@ -1884,6 +1884,9 @@
             log: [],
             worldMap: new Map(),
             exploredTiles: new Set(),
+            superPatchMap: new Map(),
+            PATCH_SIZE: 10,
+            SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
             activeSlot: 'slot1',
             settings: {
@@ -2154,18 +2157,48 @@
             },
 
             // ===== MAP SYSTEM =====
+            // ===== WORLD / REGION SYSTEM =====
+            // Biomes are large contiguous regions (super-patches of 30x30 tiles)
+            // Deterministic assignment based on super-patch coordinates
+            _patchNoise(spx, spy) {
+                const n1 = Math.abs(spx * 374761393 + spy * 668265263);
+                const n2 = Math.abs((spx + 1000) * 668265263 + (spy + 1000) * 374761393);
+                const v1 = ((n1 * 9301 + 49297) % 233280) / 233280;
+                const v2 = ((n2 * 49297 + 9301) % 233280) / 233280;
+                return (v1 + v2 * 0.5) / 1.5;
+            },
+            _getSuperPatchBiome(spx, spy) {
+                const key = `${spx},${spy}`;
+                if (this.superPatchMap.has(key)) return this.superPatchMap.get(key);
+                // Starting super-patch (0,0) and immediate neighbors are Grove
+                if (Math.abs(spx) <= 1 && Math.abs(spy) <= 1) {
+                    this.superPatchMap.set(key, 'grove');
+                    return 'grove';
+                }
+                const noise = this._patchNoise(spx, spy);
+                const biomeKeys = Object.keys(this.biomes);
+                const biomeIndex = Math.floor(noise * biomeKeys.length) % biomeKeys.length;
+                const biomeId = biomeKeys[biomeIndex];
+                this.superPatchMap.set(key, biomeId);
+                return biomeId;
+            },
+            _rebuildSuperPatchMap() {
+                this.superPatchMap = new Map();
+                for (const [key, tile] of this.worldMap) {
+                    const spx = Math.floor(Math.floor(tile.x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
+                    const spy = Math.floor(Math.floor(tile.y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
+                    const skey = `${spx},${spy}`;
+                    if (!this.superPatchMap.has(skey)) {
+                        this.superPatchMap.set(skey, tile.biome);
+                    }
+                }
+            },
             getTile(x, y) {
                 const key = `${x},${y}`;
                 if (this.worldMap.has(key)) return this.worldMap.get(key);
-                // Starting tile (0,0) is always the Grove (safe zone)
-                let biomeId;
-                if (x === 0 && y === 0) {
-                    biomeId = 'grove';
-                } else {
-                    const seed = Math.abs(x * 374761393 + y * 668265263) % 100;
-                    const biomeIds = Object.keys(this.biomes);
-                    biomeId = biomeIds[seed % biomeIds.length];
-                }
+                const spx = Math.floor(Math.floor(x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
+                const spy = Math.floor(Math.floor(y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
+                const biomeId = this._getSuperPatchBiome(spx, spy);
                 const biome = this.biomes[biomeId];
                 const tile = { x, y, biome: biomeId, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [] };
                 this.worldMap.set(key, tile);
@@ -3777,12 +3810,17 @@ Enter 1, 2, or 3:`);
                     this.activeSlot = slotName;
                     this.worldMap = new Map();
                     this.exploredTiles = new Set();
+                    this.superPatchMap = new Map();
                     if (loaded.worldMap) {
                         for (const [key, tile] of Object.entries(loaded.worldMap)) {
                             this.worldMap.set(key, tile);
                             if (tile.explored) this.exploredTiles.add(key);
                         }
                     }
+                    this._rebuildSuperPatchMap();
+                    // Set currentBiome from player's current location
+                    const currentTile = this.getTile(this.location.x, this.location.y);
+                    this.currentBiome = currentTile.biome;
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);

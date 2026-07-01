@@ -1418,6 +1418,28 @@
             renderUnitCard(unit, index, type) {
                 const hpPercent = Math.round((unit.hp / unit.maxHp) * 100);
                 const isExpanded = unit.expanded || false;
+                const isParty = type === 'party';
+                const isPlayer = isParty && unit.name === 'You';
+                const isAlly = isParty && !isPlayer;
+                
+                // Build action buttons for party members when expanded
+                let actionButtons = '';
+                if (isExpanded && isAlly) {
+                    actionButtons = `
+                        <div class="unit-actions">
+                            <button class="action-btn" onclick="event.stopPropagation(); App.executeAllyAction('consume', ${index})">🍽️ Consume</button>
+                            <button class="action-btn" onclick="event.stopPropagation(); App.executeAllyAction('seduce', ${index})">💕 Seduce</button>
+                            <button class="action-btn" onclick="event.stopPropagation(); App.executeAllyAction('fuck', ${index})">🔥 Fuck</button>
+                            <button class="action-btn" onclick="event.stopPropagation(); App.executeAllyAction('inspect', ${index})">👁️ Inspect</button>
+                        </div>
+                    `;
+                } else if (isExpanded && isPlayer) {
+                    actionButtons = `
+                        <div class="unit-actions">
+                            <button class="action-btn" onclick="event.stopPropagation(); App.executeAllyAction('inspect', ${index})">👁️ Inspect</button>
+                        </div>
+                    `;
+                }
                 
                 return `
                     <div class="unit-card ${isExpanded ? 'expanded' : ''}" onclick="App.toggleUnit(${index}, '${type}')">
@@ -1461,6 +1483,7 @@
                                     <div class="stat-value">${unit.stats?.cha || 10}</div>
                                 </div>
                             </div>
+                            ${actionButtons}
                         ` : ''}
                     </div>
                 `;
@@ -1817,8 +1840,16 @@ executeAllyAction(action, allyIndex) {
             ally.tags.push('Lover');
             result = `${ally.name} is devoted to you.`;
             break;
+        case 'fuck':
+            ally.hp = Math.min(ally.maxHp, ally.hp + 20);
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 15);
+            ally.tags = ally.tags.filter(t => !['Angry'].includes(t));
+            if (!ally.tags.includes('Lover')) ally.tags.push('Lover');
+            if (!ally.tags.includes('Satisfied')) ally.tags.push('Satisfied');
+            result = `You and ${ally.name} share an intimate moment. Both feel renewed!`;
+            break;
         case 'inspect':
-            result = `${ally.name}: ${ally.species}, HP ${ally.hp}/${ally.maxHp}, STR ${ally.stats?.str}, SPD ${ally.stats?.spd}`;
+            result = `${ally.name} [${ally.species}]: HP ${ally.hp}/${ally.maxHp}, STR ${ally.stats?.str}, CON ${ally.stats?.con}, SPD ${ally.stats?.spd}, INT ${ally.stats?.int}, WIS ${ally.stats?.wis}, CHA ${ally.stats?.cha}`;
             break;
     }
     

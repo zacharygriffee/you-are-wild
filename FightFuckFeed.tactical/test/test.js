@@ -1372,6 +1372,37 @@ test('Multiple actors against multiple marked targets are rejected clearly', () 
   assertContains(App.log[App.log.length - 1].text, 'Choose one actor', 'Many-to-many rejection should explain how to proceed');
 });
 
+test('Exploration selection cleanup removes stale party and creature targets', () => {
+  const { App } = loadAppForCombat(() => 0, { confirm: true });
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const creature = makeUnit('Creature', { id: 'creature-1', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [creature];
+  App.explorationActorIds = ['ally-1'];
+  App.toggleExplorationTarget('party', 'ally-1');
+  App.toggleExplorationTarget('creature', 'creature-1');
+  App.dismissPartyMember(1);
+  assertEqual(App.explorationActorIds.includes('ally-1'), false, 'Dismiss should clear selected actor id');
+  assertEqual(App.explorationTargetIds.includes('party:ally-1'), false, 'Dismiss should clear selected party target id');
+  App._makeCorpse(creature, 'fight');
+  assertEqual(App.explorationTargetIds.includes('creature:creature-1'), false, 'Corpse conversion should clear selected creature target id');
+});
+
+test('Exploration selection normalization resets stale save-load state', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.explorationActorIds = ['missing-actor'];
+  App.explorationTargetIds = ['party:missing-party', 'creature:missing-creature'];
+  App._normalizeExplorationSelections({ resetTargets: true });
+  assertEqual(App.explorationActorIds[0], 'player-1', 'Selection normalization should fall back to player actor');
+  assertEqual(App.explorationTargetIds.length, 0, 'Selection normalization should clear target ids on load/reset');
+});
+
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });

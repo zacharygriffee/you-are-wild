@@ -3399,6 +3399,7 @@
                 target.status = {};
                 target.willing = false;
                 target.knockedOut = false;
+                this._normalizeExplorationSelections();
                 this._syncCurrentTileCreatures();
                 if (wasLiving && cause === 'fight') {
                     this._updateQuestProgress('defeat', { target, targetId: target.id || target.name, species: target.species, name: target.name });
@@ -5424,6 +5425,18 @@
                 return this._getExplorationActors(actorId)[0] || this.player;
             },
 
+            _normalizeExplorationSelections({ resetTargets = false } = {}) {
+                const livingPartyIds = new Set((this.party || []).filter(unit => this._isLivingCreature(unit)).map(unit => this._unitSelectionId(unit)));
+                this.explorationActorIds = (this.explorationActorIds || []).filter(id => livingPartyIds.has(String(id)));
+                if (this.explorationActorIds.length === 0 && this.player) this.explorationActorIds = [this._unitSelectionId(this.player)];
+                this.explorationActorId = this.explorationActorIds[0] || this._unitSelectionId(this.player);
+                if (resetTargets) {
+                    this.explorationTargetIds = [];
+                    return;
+                }
+                this.explorationTargetIds = (this.explorationTargetIds || []).filter(key => this._explorationTargetFromKey(key));
+            },
+
             _getPartyLeader() {
                 const leader = this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId || ''));
                 return leader || this.player || this.party[0] || null;
@@ -5455,7 +5468,7 @@
                 if (!unit || unit === this.player || unit.mc) return;
                 if (typeof confirm === 'function' && !confirm(`Dismiss ${unit.name} from the party?`)) return;
                 this.party.splice(index, 1);
-                this.explorationActorIds = (this.explorationActorIds || []).filter(id => id !== this._unitSelectionId(unit));
+                this._normalizeExplorationSelections();
                 if (this.partyLeaderId === this._unitSelectionId(unit)) this.partyLeaderId = this._unitSelectionId(this.player);
                 this.log.push({ text: `${unit.name} leaves the party.`, type: 'discovery' });
                 this.renderLog();
@@ -5515,18 +5528,18 @@
                 return (this.explorationTargetIds || []).includes(this._explorationTargetKey(type, id));
             },
 
+            _explorationTargetFromKey(key) {
+                const [type, ...rest] = String(key).split(':');
+                const id = rest.join(':');
+                let target = null;
+                if (type === 'party') target = this.party.find(unit => this._unitSelectionId(unit) === id);
+                if (type === 'creature') target = this.creatures.find(unit => String(unit.id || unit.name) === id);
+                return target && this._isLivingCreature(target) ? target : null;
+            },
+
             _getExplorationTargets() {
                 const ids = this.explorationTargetIds || [];
-                const targets = [];
-                for (const key of ids) {
-                    const [type, ...rest] = String(key).split(':');
-                    const id = rest.join(':');
-                    let target = null;
-                    if (type === 'party') target = this.party.find(unit => this._unitSelectionId(unit) === id);
-                    if (type === 'creature') target = this.creatures.find(unit => String(unit.id || unit.name) === id);
-                    if (target && this._isLivingCreature(target)) targets.push(target);
-                }
-                return targets;
+                return ids.map(key => this._explorationTargetFromKey(key)).filter(Boolean);
             },
 
             toggleExplorationTarget(type, id) {
@@ -5657,9 +5670,7 @@
             _removeContainedPartyMember(unit) {
                 if (!unit || unit === this.player || unit.mc) return;
                 this.party = this.party.filter(p => p !== unit);
-                this.explorationActorIds = (this.explorationActorIds || []).filter(id => id !== this._unitSelectionId(unit));
-                this.explorationTargetIds = (this.explorationTargetIds || []).filter(id => id !== this._explorationTargetKey('party', this._unitSelectionId(unit)));
-                this.explorationActorId = this.explorationActorIds[0] || this._unitSelectionId(this.player);
+                this._normalizeExplorationSelections();
             },
 
             _feedPartyMemberToConsumer(prey, consumer) {
@@ -7669,6 +7680,7 @@ Enter 1, 2, or 3:`);
                     this.interiorLocation = { x: 0, y: 0 };
                     this.activeSlot = slotName;
                     this._restoreWorldState(loaded);
+                    this._normalizeExplorationSelections({ resetTargets: true });
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);

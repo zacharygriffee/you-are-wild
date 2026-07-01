@@ -1539,8 +1539,16 @@
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-create').style.display = 'flex';
                     this.selectSpecies('human');
-                } else if (name === 'settings' || name === 'mods' || name === 'market') {
+                } else if (name === 'settings') {
                     document.getElementById('app').style.display = 'none';
+                    this.showSettings();
+                    this.updateTierButtons();
+                } else if (name === 'mods') {
+                    document.getElementById('app').style.display = 'none';
+                    if (typeof ModUI !== 'undefined' && ModUI.refreshModList) { try { ModUI.refreshModList(); } catch(e) {} }
+                } else if (name === 'market') {
+                    document.getElementById('app').style.display = 'none';
+                    if (typeof MODULE_MARKETPLACE !== 'undefined' && MODULE_MARKETPLACE.ui && MODULE_MARKETPLACE.ui.showMarketplace) { try { MODULE_MARKETPLACE.ui.showMarketplace(); } catch(e) {} }
                 } else if (name === 'save-manager') {
                     document.getElementById('save-manager').style.display = 'block';
                     document.getElementById('save-manager').classList.add('active');

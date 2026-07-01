@@ -2902,6 +2902,21 @@
                 document.getElementById('screen-settings').style.display = 'block';
                 document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
                 document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
+                document.getElementById('toggle-endo').checked = App.settings.endoMode;
+                document.getElementById('toggle-fatal').checked = App.settings.fatalVore;
+                document.getElementById('toggle-slow').checked = App.settings.slowDigestion;
+                document.getElementById('toggle-absorb').checked = App.settings.statAbsorption;
+                document.getElementById('toggle-chew').checked = App.settings.chewing;
+                document.getElementById('toggle-attw').checked = App.settings.allTheWayThrough;
+                document.getElementById('toggle-power').checked = App.settings.powerDynamics;
+                document.getElementById('toggle-refractory').checked = App.settings.refractoryPeriod;
+                document.getElementById('toggle-same').checked = App.settings.sameSpeciesBonus;
+                document.getElementById('toggle-fluids').checked = App.settings.fluidEnabled;
+                document.getElementById('toggle-scat').checked = App.settings.scat;
+                document.getElementById('toggle-ws').checked = App.settings.watersports;
+                document.getElementById('toggle-bones').checked = App.settings.boneCrushing;
+                document.getElementById('toggle-warn').checked = App.settings.unwillingWarnings;
+                document.getElementById('toggle-hardcore').checked = App.settings.hardcore;
             },
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {
@@ -3123,86 +3138,83 @@
 
 <div id="screen-settings" class="screen screen-overlay" style="display: none; background: var(--bg-primary); overflow: auto;">
     <div style="max-width: 600px; margin: 0 auto; padding: 32px;">
-        <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Content Settings</h1>
+        <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Game Settings</h1>
         <p style="color: var(--text-muted); margin-bottom: 32px;">
-            Customize your experience. All adult content is enabled by default.
+            Customize your experience. Adult content is enabled by default.
         </p>
         
         <!-- Content Tier -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
-                        border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
-            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">
-                Content Level
-            </h3>
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Content Level</h3>
             <div style="display: flex; gap: 12px; flex-direction: column;">
-                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);" 
-                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
-                    <input type="radio" name="content-tier" value="2" checked 
-                           onchange="CONTENT.setMaxTier(2)" style="accent-color: var(--accent-primary);">
-                    <div>
-                        <div style="color: var(--accent-primary); font-weight: 600;">Adult (Default)</div>
-                        <div style="color: var(--text-muted); font-size: 12px;">All content including explicit scenes</div>
-                    </div>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);" onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="2" checked onchange="CONTENT.setMaxTier(2)" style="accent-color: var(--accent-primary);">
+                    <div><div style="color: var(--accent-primary); font-weight: 600;">Adult (Default)</div><div style="color: var(--text-muted); font-size: 12px;">All content including explicit scenes</div></div>
                 </label>
-                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);"
-                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
-                    <input type="radio" name="content-tier" value="1"
-                           onchange="CONTENT.setMaxTier(1)" style="accent-color: var(--accent-primary);">
-                    <div>
-                        <div style="color: var(--text-primary); font-weight: 500;">Mature</div>
-                        <div style="color: var(--text-muted); font-size: 12px;">Suggestive themes, implied content only</div>
-                    </div>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);" onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="1" onchange="CONTENT.setMaxTier(1)" style="accent-color: var(--accent-primary);">
+                    <div><div style="color: var(--text-primary); font-weight: 500;">Mature</div><div style="color: var(--text-muted); font-size: 12px;">Suggestive themes, implied content only</div></div>
                 </label>
-                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);"
-                       onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
-                    <input type="radio" name="content-tier" value="0"
-                           onchange="CONTENT.setMaxTier(0)" style="accent-color: var(--accent-primary);">
-                    <div>
-                        <div style="color: var(--text-primary); font-weight: 500;">Safe For Work</div>
-                        <div style="color: var(--text-muted); font-size: 12px;">No adult themes, combat only</div>
-                    </div>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm);" onmouseenter="this.style.background='var(--bg-tertiary)'" onmouseleave="this.style.background='transparent'">
+                    <input type="radio" name="content-tier" value="0" onchange="CONTENT.setMaxTier(0)" style="accent-color: var(--accent-primary);">
+                    <div><div style="color: var(--text-primary); font-weight: 500;">Safe For Work</div><div style="color: var(--text-muted); font-size: 12px;">No adult themes, combat only</div></div>
                 </label>
             </div>
         </div>
         
-        <!-- Specific Toggles -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
-                        border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
-            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">
-                Specific Content (Opt-out)
-            </h3>
-            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px;">
-                Disable specific content types. All are enabled by default.
-            </p>
-            
+        <!-- Vore Settings -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Vore Mechanics</h3>
             <div style="display: flex; flex-direction: column; gap: 12px;">
-                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                    <div>
-                        <div style="color: var(--text-primary);">Vore & Consumption</div>
-                        <div style="color: var(--text-muted); font-size: 12px;">Pred/prey mechanics, swallowing scenes</div>
-                    </div>
-                    <input type="checkbox" checked id="toggle-vore" 
-                           onchange="CONTENT.toggleSetting('voreEnabled', this.checked)"
-                           style="accent-color: var(--accent-primary); width: 20px; height: 20px;">
-                </label>
-                
-                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                    <div>
-                        <div style="color: var(--text-primary);">Explicit Descriptions</div>
-                        <div style="color: var(--text-muted); font-size: 12px;">Detailed sexual/violent content</div>
-                    </div>
-                    <input type="checkbox" checked id="toggle-explicit"
-                           onchange="CONTENT.toggleSetting('explicitDescriptions', this.checked)"
-                           style="accent-color: var(--accent-primary); width: 20px; height: 20px;">
-                </label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Endo Mode (Safe Vore)</div><div style="color: var(--text-muted); font-size: 12px;">Prey survives at 1 HP inside you</div></div><input type="checkbox" id="toggle-endo" onchange="App.settings.endoMode = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Fatal Vore</div><div style="color: var(--text-muted); font-size: 12px;">Prey dies when digested (default ON)</div></div><input type="checkbox" checked id="toggle-fatal" onchange="App.settings.fatalVore = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Slow Digestion</div><div style="color: var(--text-muted); font-size: 12px;">Prey loses 1-2 HP per turn instead of 3-5</div></div><input type="checkbox" id="toggle-slow" onchange="App.settings.slowDigestion = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Stat Absorption</div><div style="color: var(--text-muted); font-size: 12px;">Gain stats from prey as they digest</div></div><input type="checkbox" checked id="toggle-absorb" onchange="App.settings.statAbsorption = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Chewing Option</div><div style="color: var(--text-muted); font-size: 12px;">Can chew prey instead of swallowing whole</div></div><input type="checkbox" id="toggle-chew" onchange="App.settings.chewing = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">All-The-Way-Through</div><div style="color: var(--text-muted); font-size: 12px;">Prey can exit after digestion (not fatal)</div></div><input type="checkbox" id="toggle-attw" onchange="App.settings.allTheWayThrough = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
             </div>
         </div>
         
-        <!-- Apply Button -->
-        <button class="nav-btn" style="width: 100%; background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;"
-                onclick="returnToGame()">
-            Apply Changes
-        </button>
+        <!-- Sex Mechanics -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Sex Mechanics</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Power Dynamics</div><div style="color: var(--text-muted); font-size: 12px;">Dom/Sub tracking, command/resistance</div></div><input type="checkbox" id="toggle-power" onchange="App.settings.powerDynamics = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Refractory Period</div><div style="color: var(--text-muted); font-size: 12px;">Skip turn after orgasm</div></div><input type="checkbox" id="toggle-refractory" onchange="App.settings.refractoryPeriod = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Same-Species Attraction</div><div style="color: var(--text-muted); font-size: 12px;">Bonus with matching species</div></div><input type="checkbox" checked id="toggle-same" onchange="App.settings.sameSpeciesBonus = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Fluids</div><div style="color: var(--text-muted); font-size: 12px;">Semen, milk, blood, etc.</div></div><input type="checkbox" checked id="toggle-fluids" onchange="App.settings.fluidEnabled = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+            </div>
+        </div>
+        
+        <!-- Content Opt-Outs -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Content Opt-Outs (All OFF by default)</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Scat</div><div style="color: var(--text-muted); font-size: 12px;">Post-digestion waste content</div></div><input type="checkbox" id="toggle-scat" onchange="App.settings.scat = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Watersports</div><div style="color: var(--text-muted); font-size: 12px;">Urine content</div></div><input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Bone Crushing</div><div style="color: var(--text-muted); font-size: 12px;">Graphic crushing/breaking content</div></div><input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Unwilling Prey Warnings</div><div style="color: var(--text-muted); font-size: 12px;">Warn before unwilling vore scenes</div></div><input type="checkbox" id="toggle-warn" onchange="App.settings.unwillingWarnings = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+            </div>
+        </div>
+        
+        <!-- Game Mode -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Game Mode</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--accent-danger); font-weight: 600;">HARDCORE MODE</div><div style="color: var(--text-muted); font-size: 12px;">DEATH DELETES YOUR SAVE. No mercy.</div></div><input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked" style="accent-color: var(--accent-danger); width: 20px; height: 20px;"></label>
+            </div>
+        </div>
+        
+        <!-- Content Opt-out (legacy) -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">Content System (Legacy)</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Vore & Consumption</div><div style="color: var(--text-muted); font-size: 12px;">Pred/prey mechanics, swallowing scenes</div></div><input type="checkbox" checked id="toggle-vore" onchange="CONTENT.toggleSetting('voreEnabled', this.checked)" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Explicit Descriptions</div><div style="color: var(--text-muted); font-size: 12px;">Detailed sexual/violent content</div></div><input type="checkbox" checked id="toggle-explicit" onchange="CONTENT.toggleSetting('explicitDescriptions', this.checked)" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+            </div>
+        </div>
+        
+        <button class="nav-btn" style="width: 100%; background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;" onclick="returnToGame()">Apply Changes</button>
     </div>
 </div>
 
@@ -3216,9 +3228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsBtn.textContent = '⚙️ Settings';
         settingsBtn.onclick = () => {
             App.showScreen('settings');
-            // Sync UI with current preferences
-            document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
-            document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
+            App.showSettings();
         };
         nav.insertBefore(settingsBtn, nav.lastChild);
     }

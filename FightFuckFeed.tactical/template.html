@@ -206,12 +206,14 @@
         }
         
         .mini-map {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-xs);
-            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
         }
-        
+
         .map-tile {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-default);
@@ -219,27 +221,63 @@
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }
-        
+
         .map-tile:hover {
             border-color: var(--accent-primary);
             box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+            transform: scale(1.1);
         }
-        
+
         .map-tile.center {
             background: var(--accent-primary);
             border-color: var(--accent-primary);
+            color: var(--bg-primary);
+            font-weight: bold;
         }
-        
+
+        .map-tile.moveable {
+            background: var(--bg-elevated);
+            border: 2px dashed var(--accent-primary);
+            color: var(--accent-primary);
+            font-size: 14px;
+        }
+
+        .map-tile.moveable:hover {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(0, 212, 170, 0.4);
+        }
+
+        .map-tile.explored {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+        }
+
+        .map-tile.far {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            opacity: 0.4;
+        }
+
         .map-tile.has-enemy::after {
             content: '⚔️';
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 14px;
+            font-size: 12px;
         }
-        
+
         .map-tile.unexplored {
             background: var(--bg-primary) !important;
             border-color: var(--border-subtle) !important;
@@ -248,17 +286,10 @@
             opacity: 0.5;
             cursor: pointer;
         }
-        
+
         .map-tile.unexplored:hover {
             border-color: var(--accent-primary) !important;
             box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
-        }
-        
-        /* Main Panel */
-        .panel-main {
-            grid-area: main;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-subtle);
         }
         
         .scene-display {
@@ -1212,16 +1243,8 @@
                     </div>
                     <div class="panel-content">
                         <div class="mini-map" id="mini-map">
-                            <div class="map-tile" onclick="move(-1, -1)"></div>
-                            <div class="map-tile" onclick="move(-1, 0)"></div>
-                            <div class="map-tile" onclick="move(-1, 1)"></div>
-                            <div class="map-tile" onclick="move(0, -1)"></div>
-                            <div class="map-tile center"></div>
-                            <div class="map-tile" onclick="move(0, 1)"></div>
-                            <div class="map-tile" onclick="move(1, -1)"></div>
-                            <div class="map-tile" onclick="move(1, 0)"></div>
-                            <div class="map-tile" onclick="move(1, 1)"></div>
-                        </div>
+                        <!-- Populated by App.renderMap() -->
+                    </div>
                     </div>
                 </div>
                 

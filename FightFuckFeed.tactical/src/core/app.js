@@ -1433,14 +1433,17 @@
                         const tile = isExplored ? this.getTile(tx, ty) : null;
                         const biome = tile ? this.biomes[tile.biome] : null;
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
-                        let content = isExplored ? (biome ? biome.icon : '?') : (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 ? '?' : ' ');
-                        let style = 'width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;';
-                        if (isCenter) { style += 'background:var(--accent-primary);color:var(--bg-primary);border:2px solid var(--accent-secondary);'; }
-                        else if (isExplored) { style += 'background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border-default);'; }
-                        else if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) { style += 'background:var(--bg-elevated);color:var(--accent-danger);border:1px solid var(--accent-danger);'; }
-                        else { style += 'background:transparent;'; }
-                        const onclick = isCenter ? '' : (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 ? `onclick="App.move(${dx},${dy})"` : '');
-                        html += `<div style="${style}" ${onclick}>${content}</div>`;
+                        const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+                        const isFar = Math.abs(dx) > 1 || Math.abs(dy) > 1;
+                        let content = isExplored ? (biome ? biome.icon : '?') : (isAdjacent ? '□' : '·');
+                        let classes = 'map-tile';
+                        if (isCenter) classes += ' center';
+                        else if (isExplored) classes += ' explored';
+                        else if (isAdjacent) classes += ' moveable';
+                        else classes += ' far';
+                        if (hasCreatures) classes += ' has-enemy';
+                        const onclick = isCenter ? '' : (isAdjacent ? `onclick="App.move(${dx},${dy})"` : '');
+                        html += `<div class="${classes}" ${onclick}>${content}</div>`;
                     }
                     html += '</div>';
                 }

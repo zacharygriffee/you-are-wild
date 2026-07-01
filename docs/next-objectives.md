@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 79/79 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 84/84 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -87,6 +87,9 @@
 - Non-player party members killed by combat/status damage are removed from party and dropped onto the current tile as corpses
 - Corpses have a simple `decayTurns` timer and decay out of the current tile creature list when expired
 - Single-button context areas suppress redundant visible legends; labels/tooltips remain
+- Attacking non-hostile creatures can trigger same-species/social tile reactions: flee-prone creatures may scatter, while others can turn hostile and enter combat together
+- Exploration interactions are actor-based: the selected party member, including the player, can resolve baseline actions against creatures and party targets through the shared outside-combat resolver
+- Recruitment is gated by a moddable score helper based on pleasure, willingness, disposition, actor stats, and same-species affinity instead of being a free friendly-only button
 
 ---
 

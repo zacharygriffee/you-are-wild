@@ -1012,7 +1012,7 @@ test('Combat actions emit module hook payloads', () => {
 test('Exploration context keeps creature interaction in panels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You');
-  const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY });
+  const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
   const neutral = makeUnit('Neutral', { id: 'neutral-1', disposition: App.DISPOSITION.NEUTRAL });
   App.player = player;
   App.party = [player];
@@ -1029,6 +1029,51 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should offer fight');
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fuck','neutral-1')", 'Neutral card should offer baseline interaction');
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
+});
+
+test('Selected party actor resolves exploration attacks against creatures', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', Figh: 1 });
+  const ally = makeUnit('Ally', { id: 'ally-1', Figh: 40 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-explore', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.selectExplorationActor(1);
+  App.outsideActionForCreature('fight', 'enemy-explore');
+  assert(enemy.CPun < 70, 'Selected ally stats should drive exploration attack damage');
+  assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Exploration log should name selected actor');
+});
+
+test('Selected party actor can interact with party targets outside combat', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const healer = makeUnit('Healer', { id: 'healer-1', Feed: 20 });
+  const wounded = makeUnit('Wounded', { id: 'wounded-1', CPun: 20, MPun: 100, hunger: 60 });
+  App.player = player;
+  App.party = [player, healer, wounded];
+  App.selectExplorationActor(1);
+  App.outsideActionForParty('feed', 2);
+  assertEqual(wounded.CPun, 60, 'Selected party actor should feed the selected party target');
+  assertContains(App.log[App.log.length - 1].text, 'Healer feeds Wounded', 'Party interaction log should use selected actor and target');
+});
+
+test('Recruitment is gated by pleasure and willingness score', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });
+  const reluctant = makeUnit('Reluctant', { id: 'reluctant-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 10, MPle: 100 });
+  const willing = makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [reluctant, willing];
+  App.renderCreatures();
+  const html = elements.get('enemies-content').innerHTML;
+  assertNotContains(html, "recruitCreatureById('reluctant-1')", 'Low-pleasure friendly should not show recruitment');
+  assertContains(html, "recruitCreatureById('willing-1')", 'High-pleasure willing friendly should show recruitment');
+  App.recruitCreatureById('reluctant-1');
+  assert(!App.party.includes(reluctant), 'Low-score friendly should not join');
+  App.recruitCreatureById('willing-1');
+  assert(App.party.includes(willing), 'High-score willing friendly should join');
 });
 
 test('Rest only appears and heals at safe structures', () => {

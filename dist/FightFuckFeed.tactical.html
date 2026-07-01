@@ -2229,6 +2229,13 @@
             _uiLabel(key) {
                 return this.UI_LABELS[key] || key;
             },
+            _unitKey(unit) {
+                return String(unit?.id || unit?.name || '').replace(/'/g, "\\'");
+            },
+            _actorNameAndVerb(actor) {
+                const isPlayer = actor && actor.name === this.player?.name;
+                return { actorName: isPlayer ? 'You' : actor?.name || 'Someone', actorVerb: isPlayer ? '' : 's' };
+            },
             _iconActionButton(key, icon, onclick, extraClass = '') {
                 const label = this._uiLabel(key);
                 const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
@@ -4545,6 +4552,39 @@
             },
 
             // ===== OUTSIDE COMBAT INTERACTION =====
+            _getExplorationActor(actorId = null) {
+                const id = actorId || this.explorationActorId;
+                const actor = id ? this.party.find(p => String(p.id || p.name) === String(id) && this._isLivingCreature(p)) : null;
+                return actor || this.player;
+            },
+
+            selectExplorationActor(index) {
+                const actor = this.party[index];
+                if (!actor || !this._isLivingCreature(actor)) return;
+                this.explorationActorId = actor.id || actor.name;
+                this.renderParty();
+                this.renderCreatures();
+            },
+
+            _getRecruitScore(actor, target) {
+                if (!actor || !target || this._isCorpse(target)) return 0;
+                const pleasureRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);
+                let score = Math.floor(pleasureRatio * 100);
+                if (target.willing) score += 20;
+                if (target.orgasmed) score += 15;
+                if (target.disposition === this.DISPOSITION.FRIENDLY) score += 20;
+                if (target.disposition === this.DISPOSITION.NEUTRAL) score += 5;
+                if (this.settings.sameSpeciesBonus && target.species === actor.species) score += 8;
+                score += Math.floor(((actor.cha || 10) + (actor.Flir || 10) + (actor.Fuck || 10) - (target.wis || 10)) / 6);
+                if (target.disposition === this.DISPOSITION.ENEMY) score -= 40;
+                return score;
+            },
+
+            _canRecruit(actor, target) {
+                if (!target || target.disposition !== this.DISPOSITION.FRIENDLY || this.party.includes(target)) return false;
+                return this._getRecruitScore(actor, target) >= 85;
+            },
+
             showInteractMenu() {
                 const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
@@ -4586,43 +4626,57 @@
                 this.outsideActionOnTarget(action, target);
             },
 
+            outsideActionForParty(action, targetIndex, actorId = null) {
+                const target = this.party[targetIndex];
+                if (!target) return;
+                this.outsideActionOnTarget(action, target, this._getExplorationActor(actorId));
+            },
+
             outsideActionForCreature(action, targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
-                this.outsideActionOnTarget(action, target);
+                this.outsideActionOnTarget(action, target, this._getExplorationActor());
             },
 
-            outsideActionOnTarget(action, target) {
+            outsideActionForCreatureAs(actorId, action, targetId) {
+                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
+                if (!target) return;
+                this.outsideActionOnTarget(action, target, this._getExplorationActor(actorId));
+            },
+
+            outsideActionOnTarget(action, target, actor = this.player) {
+                actor = actor || this.player;
+                const { actorName, actorVerb } = this._actorNameAndVerb(actor);
                 let result = '';
                 let startCombatAfter = false;
                 let combatTargets = [];
                 switch (action) {
                     case 'fight': {
-                        if (target.disposition !== this.DISPOSITION.ENEMY) {
-                            const reaction = this._reactToNonHostileAttack(target, this.player);
+                        if (target.disposition !== this.DISPOSITION.ENEMY && !this.party.includes(target)) {
+                            const reaction = this._reactToNonHostileAttack(target, actor);
                             result = reaction.text;
                             combatTargets = reaction.hostiles;
                             startCombatAfter = combatTargets.length > 0;
                             break;
                         }
-                        const ar = this._AR(this.player.Figh);
+                        const ar = this._AR(actor.Figh);
                         const def = target.con || 10;
                         const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
                         target.CPun -= dmg;
-                        result = `You hit ${target.name} for ${dmg} punishment.`;
+                        result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment.`;
                         if (target.CPun <= 0) { target.CPun = 1; result += ' They are subdued.'; }
                         break;
                     }
                     case 'fuck': {
-                        let charm = this._AR(this.player.Fuck + this.player.Flir);
-                        if (this.settings.sameSpeciesBonus && target.species === this.player.species) {
+                        let charm = this._AR(actor.Fuck + actor.Flir);
+                        if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 5;
                         }
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
                         const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                            result = `You pleasure ${target.name}. Their arousal rises to ${target.CPle}/${target.MPle}.`;
+                            result = `${actorName} pleasure${actorVerb} ${target.name}. Their arousal rises to ${target.CPle}/${target.MPle}.`;
                             if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
                                 target.willing = true;
                                 target.orgasmed = true;
@@ -4632,30 +4686,36 @@
                                     result += ' They need a moment to recover...';
                                 }
                             }
+                            if (!this.party.includes(target) && this._canRecruit(actor, target)) {
+                                result += ` ${target.name} may be willing to join the party.`;
+                            }
                         } else {
                             result = `${target.name} is not in the mood.`;
                         }
                         break;
                     }
                     case 'feast': {
-                        const canEatOutside = this.cheats.canEatAnything || (this.player.size >= target.size - 2 && this.player.Feas + 5 > target.Flee);
+                        const canEatOutside = this.cheats.canEatAnything || (actor.size >= target.size - 2 && actor.Feas + 5 > target.Flee);
                         if (canEatOutside) {
-                            if (!this._canFitPrey(this.player, target, 'stomach')) {
-                                result = this._capacityFailureMessage(this.player, target, 'stomach');
+                            if (!this._canFitPrey(actor, target, 'stomach')) {
+                                result = this._capacityFailureMessage(actor, target, 'stomach');
                                 break;
                             }
-                            if (!this.player.stomach) this.player.stomach = [];
-                            this.player.stomach.push(this._createStomachPrey(target));
+                            if (!actor.stomach) actor.stomach = [];
+                            actor.stomach.push(this._createStomachPrey(target));
                             target.CPun = 0;
-                            result = `You swallow ${target.name} whole. They settle in your stomach.`;
+                            if (this.party.includes(target) && target !== actor) {
+                                this.party = this.party.filter(p => p !== target);
+                            }
+                            result = `${actorName} swallow${actorVerb} ${target.name} whole. They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;
                         } else {
                             result = `${target.name} is too large or strong to eat.`;
                         }
                         break;
                     }
                     case 'flirt': {
-                        let charm = this._AR(this.player.Flir + (this.player.cha || 10) * 0.5);
-                        if (this.settings.sameSpeciesBonus && target.species === this.player.species) {
+                        let charm = this._AR(actor.Flir + (actor.cha || 10) * 0.5);
+                        if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
                         }
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
@@ -4663,11 +4723,14 @@
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                            result = `You flirt with ${target.name}. Their guard lowers. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                            result = `${actorName} flirt${actorVerb} with ${target.name}. Their guard lowers. Pleasure rises to ${target.CPle}/${target.MPle}.`;
                             if (target.charmed >= 3) {
                                 result += ` ${target.name} is utterly charmed and becomes friendly!`;
                                 target.disposition = this.DISPOSITION.FRIENDLY;
                                 target.willing = true;
+                            }
+                            if (!this.party.includes(target) && this._canRecruit(actor, target)) {
+                                result += ` ${target.name} may be willing to join the party.`;
                             }
                         } else {
                             result = `${target.name} rebuffs your flirtation!`;
@@ -4675,13 +4738,13 @@
                         break;
                     }
                     case 'feed': {
-                        const healAmount = Math.floor((this.player.Feed || 10) * 2);
+                        const healAmount = Math.floor((actor.Feed || 10) * 2);
                         target.CPun = Math.min(target.MPun, target.CPun + healAmount);
                         target.hunger = Math.max(0, (target.hunger || 0) - 25);
                         if (target.CPle < target.MPle * 0.5) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(healAmount * 0.5));
                         }
-                        result = `You feed ${target.name}, restoring ${healAmount} punishment and sating their hunger.`;
+                        result = `${actorName} feed${actorVerb} ${target.name}, restoring ${healAmount} punishment and sating their hunger.`;
                         break;
                     }
                     case 'inspect': {
@@ -4751,19 +4814,25 @@
             recruitCreatureFromIndex(index) {
                 const target = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return;
-                this.recruitCreature(target);
+                this.recruitCreature(target, this._getExplorationActor());
             },
 
             recruitCreatureById(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target || target.disposition !== this.DISPOSITION.FRIENDLY) return;
-                this.recruitCreature(target);
+                this.recruitCreature(target, this._getExplorationActor());
             },
 
-            recruitCreature(target) {
+            recruitCreature(target, actor = this.player, options = {}) {
                 if (this.party.length >= this.MAX_PARTY_SIZE) {
                     this.log.push({ text: 'Party is full! Cannot recruit ' + target.name, type: 'combat' });
                     this.renderLog();
+                    return;
+                }
+                if (!options.force && !this._canRecruit(actor, target)) {
+                    this.log.push({ text: `${target.name} is not ready to join the party.`, type: 'discovery' });
+                    this.renderLog();
+                    this.renderCreatures();
                     return;
                 }
 	                target.disposition = this.DISPOSITION.PARTY;
@@ -4990,13 +5059,18 @@
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
                 const isTargetable = !isParty && this.targetSelection && this.canSelectCreatureTarget(unit);
                 let actionButtons = '';
+                if (isParty && !this.combatState.active) {
+                    const selected = this._getExplorationActor();
+                    const selectedClass = selected === unit ? ' primary' : '';
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button></div>`;
+                }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
                         const disabled = isTargetable ? '' : ' disabled';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
-                        if (unit.disposition === this.DISPOSITION.FRIENDLY) {
+                        if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
                         actionButtons += '</div>';
@@ -5020,21 +5094,27 @@
                 const isAlly = isParty && !isPlayer;
                 const isCorpse = this._isCorpse(unit);
                 let actionButtons = '';
-                if (isParty && !isPlayer) {
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('feed',${index})">🍲</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('consume',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('seduce',${index})">💕</button><button class="action-btn" onclick="event.stopPropagation();App.executeAllyAction('inspect',${index})">👁️</button></div>`;
+                if (isParty && !this.combatState.active) {
+                    const selected = this._getExplorationActor();
+                    const selectedClass = selected === unit ? ' primary' : '';
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button>`;
+                    if (selected && selected !== unit) {
+                        actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
+                    }
+                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button></div>`;
                 }
                 if (!isParty && isCorpse) {
-                    const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
+                    const targetKey = this._unitKey(unit);
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">Loot</button><button class="action-btn" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">Scavenge</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
-                    const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
+                    const targetKey = this._unitKey(unit);
                     if (this.targetSelection) {
                         const disabled = this.canSelectCreatureTarget(unit) ? '' : ' disabled';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
-                        if (unit.disposition === this.DISPOSITION.FRIENDLY) {
+                        if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
                         actionButtons += `</div>`;

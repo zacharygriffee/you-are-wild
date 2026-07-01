@@ -244,6 +244,21 @@
             font-size: 14px;
         }
         
+        .map-tile.unexplored {
+            background: var(--bg-primary) !important;
+            border-color: var(--border-subtle) !important;
+            color: var(--text-muted);
+            font-size: 12px;
+            opacity: 0.5;
+            cursor: default;
+            pointer-events: none;
+        }
+        
+        .map-tile.unexplored:hover {
+            border-color: var(--border-subtle) !important;
+            box-shadow: none;
+        }
+        
         /* Main Panel */
         .panel-main {
             grid-area: main;
@@ -1123,6 +1138,7 @@
         Binary.vuint.preencode(s, obj.playerMaxHp); Binary.codecs.stats.preencode(s, obj.playerStats);
         Binary.vuint.preencode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).preencode(s, obj.party || []);
         Binary.array(Binary.string).preencode(s, obj.log || []); Binary.string.preencode(s, obj.currentBiome || 'forest');
+        Binary.json.preencode(s, obj.worldMap || {}); Binary.json.preencode(s, obj.exploredTiles || []);
       },
       encode(s, obj) {
         Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
@@ -1131,17 +1147,27 @@
         Binary.vuint.encode(s, obj.playerMaxHp); Binary.codecs.stats.encode(s, obj.playerStats);
         Binary.vuint.encode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).encode(s, obj.party || []);
         Binary.array(Binary.string).encode(s, obj.log || []); Binary.string.encode(s, obj.currentBiome || 'forest');
+        Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
       },
       decode(s) {
-        return { version: Binary.vuint.decode(s), playerName: Binary.string.decode(s), playerSpecies: Binary.string.decode(s), locationX: Binary.int32.decode(s), locationY: Binary.int32.decode(s), playerHp: Binary.vuint.decode(s), playerMaxHp: Binary.vuint.decode(s), playerStats: Binary.codecs.stats.decode(s), playerLevel: Binary.vuint.decode(s), party: Binary.array(Binary.codecs.unit).decode(s), log: Binary.array(Binary.string).decode(s), currentBiome: Binary.string.decode(s) };
+        return { version: Binary.vuint.decode(s), playerName: Binary.string.decode(s), playerSpecies: Binary.string.decode(s), locationX: Binary.int32.decode(s), locationY: Binary.int32.decode(s), playerHp: Binary.vuint.decode(s), playerMaxHp: Binary.vuint.decode(s), playerStats: Binary.codecs.stats.decode(s), playerLevel: Binary.vuint.decode(s), party: Binary.array(Binary.codecs.unit).decode(s), log: Binary.array(Binary.string).decode(s), currentBiome: Binary.string.decode(s), worldMap: Binary.json.decode(s), exploredTiles: Binary.json.decode(s) };
       }
     }
   };
   
   // Save/load helpers
   Binary.saveGame = (appState) => {
+    // Convert Map/Set to plain objects for serialization
+    const worldMapObj = {};
+    if (appState.worldMap) {
+        for (const [key, tile] of appState.worldMap.entries()) {
+            worldMapObj[key] = tile;
+        }
+    }
+    const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
+    
     const saveData = {
-      version: 1,
+      version: 2,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -1152,7 +1178,9 @@
       playerLevel: appState.player?.level || 1,
       party: appState.party || [],
       log: appState.log?.map(e => e.text) || [],
-      currentBiome: appState.currentBiome || 'forest'
+      currentBiome: appState.currentBiome || 'forest',
+      worldMap: worldMapObj,
+      exploredTiles: exploredArray
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
@@ -1197,6 +1225,151 @@
                 { id: 'slime', name: 'Slime', icon: '🟢', desc: 'Amorphous' },
                 { id: 'harpy', name: 'Harpy', icon: '🦅', desc: 'Sky hunter' }
             ],
+            
+            // Biome definitions
+            biomes: {
+                forest: {
+                    name: 'Forest',
+                    icon: '🌲',
+                    color: '#2d5016',
+                    bgColor: '#1a3310',
+                    encounterChance: 0.3,
+                    encounterTable: ['wolf', 'bunny', 'bear', 'slime', 'harpy'],
+                    descriptions: [
+                        'Ancient trees tower overhead, their branches forming a canopy that blocks most light.',
+                        'The forest is dense and humid, moss-covered rocks line a narrow deer path.',
+                        'Sunlight filters through leaves in scattered beams. Something rustles in the underbrush.',
+                        'A clearing opens before you, mushrooms forming a fairy ring. The air smells of pine and earth.',
+                        'Fallen logs and twisted roots make travel slow. The forest seems to watch your every step.'
+                    ]
+                },
+                swamp: {
+                    name: 'Swamp',
+                    icon: '🐊',
+                    color: '#3d4a1e',
+                    bgColor: '#2a3310',
+                    encounterChance: 0.35,
+                    encounterTable: ['naga', 'slime', 'frog', 'plant', 'shroom'],
+                    descriptions: [
+                        'Murky waters stretch through twisted cypress trees. Mist clings to the surface.',
+                        'The ground squelches beneath your feet. Unseen creatures ripple the dark water.',
+                        'Fireflies drift through the fog, their glow the only light in this gloomy expanse.',
+                        'A sunken log bridges a channel of stagnant water. The air reeks of decay and life.',
+                        'Gnarled roots form natural archways. Somewhere, a frog croaks and falls silent.'
+                    ]
+                },
+                plains: {
+                    name: 'Plains',
+                    icon: '🌾',
+                    color: '#6b5b1e',
+                    bgColor: '#4a4010',
+                    encounterChance: 0.25,
+                    encounterTable: ['human', 'wolf', 'tiger', 'bunny', 'deer'],
+                    descriptions: [
+                        'Tall grasses sway in the warm breeze, golden and endless.',
+                        'Open grasslands stretch to the horizon. A lone tree stands as a landmark.',
+                        'The plains are peaceful, dotted with wildflowers. But predators hunt here too.',
+                        'A stream cuts through the prairie, animals gathering at the water\'s edge.',
+                        'Wind rustles the grass in waves. You spot movement - is it prey or predator?'
+                    ]
+                },
+                cave: {
+                    name: 'Cave',
+                    icon: '🦇',
+                    color: '#2a2a3a',
+                    bgColor: '#1a1a2e',
+                    encounterChance: 0.4,
+                    encounterTable: ['bat', 'slime', 'naga', 'goblin', 'dragon'],
+                    descriptions: [
+                        'Stalactites hang like teeth from the cave ceiling. Water drips somewhere in the dark.',
+                        'The cave opens into a vast chamber, bioluminescent fungi casting an eerie glow.',
+                        'A narrow passage forces you to squeeze through. The rock is cold and damp.',
+                        'An underground river rushes through the cavern, its roar echoing endlessly.',
+                        'Crystal formations glitter in the darkness, beautiful and foreboding.'
+                    ]
+                },
+                jungle: {
+                    name: 'Jungle',
+                    icon: '🌿',
+                    color: '#1a5c1a',
+                    bgColor: '#0f3d0f',
+                    encounterChance: 0.35,
+                    encounterTable: ['tiger', 'naga', 'frog', 'plant', 'harpy'],
+                    descriptions: [
+                        'Vines hang like curtains, cutting off all but the most determined travelers.',
+                        'The jungle is alive with sound - insects, birds, and things you cannot identify.',
+                        'Humidity presses down like a weight. Every surface drips with moisture.',
+                        'A waterfall crashes into a hidden pool, the jungle thriving around it.',
+                        'Thick vegetation forces you to hack your way forward. Thorns snag your skin.'
+                    ]
+                }
+            },
+            
+            // Map system
+            worldMap: new Map(), // Map key: "x,y" -> tile data
+            exploredTiles: new Set(), // Set of "x,y" strings
+            currentBiome: 'forest',
+            
+            // Map tile generation
+            getTile(x, y) {
+                const key = `${x},${y}`;
+                if (this.worldMap.has(key)) return this.worldMap.get(key);
+                
+                // Generate new tile based on coordinates (deterministic pseudo-random)
+                const seed = Math.abs(x * 374761393 + y * 668265263) % 100;
+                let biomeId = 'forest';
+                
+                // Simple biome zones based on coordinates
+                if (y < -3) biomeId = 'cave';
+                else if (y > 3) biomeId = 'plains';
+                else if (x < -3) biomeId = 'swamp';
+                else if (x > 3) biomeId = 'jungle';
+                else if (seed < 20) biomeId = 'swamp';
+                else if (seed < 40) biomeId = 'plains';
+                else if (seed < 50) biomeId = 'cave';
+                else if (seed < 60) biomeId = 'jungle';
+                
+                const biome = this.biomes[biomeId];
+                const tile = {
+                    x, y,
+                    biome: biomeId,
+                    name: biome.name,
+                    icon: biome.icon,
+                    color: biome.color,
+                    bgColor: biome.bgColor,
+                    description: biome.descriptions[Math.abs(seed + x * y) % biome.descriptions.length],
+                    explored: false,
+                    hasLandmark: seed < 5,
+                    landmarkName: seed < 5 ? this.generateLandmark(biomeId) : null
+                };
+                
+                this.worldMap.set(key, tile);
+                return tile;
+            },
+            
+            generateLandmark(biomeId) {
+                const landmarks = {
+                    forest: ['Ancient Oak', 'Fairy Circle', 'Hunter\'s Camp', 'Forgotten Shrine', 'Mossy Ruins'],
+                    swamp: ['Sunken Temple', 'Witch\'s Hut', 'Croaking Pool', 'Mist Bridge', 'Rotting Pier'],
+                    plains: ['Lone Monument', 'Windmill', 'Abandoned Farm', 'Nomad Camp', 'Stone Circle'],
+                    cave: ['Crystal Chamber', 'Underground Lake', 'Collapsed Mine', 'Bat Colony', 'Forgotten Forge'],
+                    jungle: ['Waterfall Pool', 'Rope Bridge', 'Overgrown Temple', 'Tree Village', 'Poison Garden']
+                };
+                const list = landmarks[biomeId] || ['Mysterious Structure'];
+                return list[Math.floor(Math.random() * list.length)];
+            },
+            
+            exploreTile(x, y) {
+                const key = `${x},${y}`;
+                this.exploredTiles.add(key);
+                const tile = this.getTile(x, y);
+                tile.explored = true;
+                return tile;
+            },
+            
+            isExplored(x, y) {
+                return this.exploredTiles.has(`${x},${y}`);
+            },
             
             // Tutorial steps
             tutorialSteps: [
@@ -1341,6 +1514,11 @@
                 
                 localStorage.setItem('tactical-has-played', 'true');
                 
+                // Initialize starting tile
+                this.exploreTile(0, 0);
+                this.currentBiome = 'forest';
+                this.renderMap();
+                
                 this.showScreen('game');
                 this.renderParty();
                 this.showTutorial();
@@ -1414,6 +1592,52 @@
             skipTutorial() {
                 localStorage.setItem('tactical-tutorial-complete', 'true');
                 document.getElementById('tutorial-overlay').style.display = 'none';
+            },
+            
+            // Map rendering
+            renderMap() {
+                const container = document.getElementById('mini-map');
+                if (!container) return;
+                
+                const cx = this.location.x;
+                const cy = this.location.y;
+                
+                let html = '';
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const tx = cx + dx;
+                        const ty = cy + dy;
+                        const tile = this.getTile(tx, ty);
+                        const isCenter = dx === 0 && dy === 0;
+                        const isExplored = this.isExplored(tx, ty);
+                        
+                        let tileClass = 'map-tile';
+                        if (isCenter) tileClass += ' center';
+                        if (!isExplored && !isCenter) tileClass += ' unexplored';
+                        
+                        let content = '';
+                        if (isCenter) {
+                            content = '⭐';
+                        } else if (isExplored) {
+                            content = tile.icon;
+                        } else {
+                            content = '❓';
+                        }
+                        
+                        let bgStyle = '';
+                        if (isExplored || isCenter) {
+                            bgStyle = `background: ${tile.color}30; border-color: ${tile.color};`;
+                        }
+                        
+                        if (isCenter) {
+                            html += `<div class="${tileClass}" style="${bgStyle}">${content}</div>`;
+                        } else {
+                            html += `<div class="${tileClass}" style="${bgStyle}" onclick="move(${dy}, ${dx})">${content}</div>`;
+                        }
+                    }
+                }
+                
+                container.innerHTML = html;
             },
             
             // Party rendering
@@ -1539,14 +1763,34 @@
                 this.location.y += dy;
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                 
-                // Random encounter chance
-                if (Math.random() < 0.3) {
-                    this.generateEncounter();
-                } else {
-                    this.updateScene('Exploring', 'You travel through the wilderness...');
+                // Explore the new tile
+                const tile = this.exploreTile(this.location.x, this.location.y);
+                this.currentBiome = tile.biome;
+                
+                // Update scene with biome description
+                const biome = this.biomes[tile.biome];
+                const ctx = { biome: tile.biome, voreEnabled: true, explicit: true };
+                let biomeText = CONTENT.biomeIntro(tile.biome, ctx);
+                if (biomeText.includes('Missing content')) biomeText = tile.description;
+                
+                let landmarkText = '';
+                if (tile.hasLandmark && tile.landmarkName) {
+                    landmarkText = ` You discover ${tile.landmarkName}!`;
+                    this.log.push({ text: `Discovered ${tile.landmarkName} at ${this.location.x},${this.location.y}`, type: 'discovery' });
                 }
                 
-                this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y}`, type: 'move' });
+                // Random encounter based on biome
+                if (Math.random() < biome.encounterChance) {
+                    this.generateEncounter(biome.encounterTable);
+                } else {
+                    this.updateScene(biome.name, biomeText + landmarkText, false);
+                    // Update scene background to match biome
+                    const mainPanel = document.querySelector('.panel-main');
+                    if (mainPanel) mainPanel.style.background = tile.bgColor;
+                }
+                
+                this.renderMap();
+                this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y} (${biome.name})`, type: 'move' });
                 this.renderLog();
                 this.autoSave();
             },
@@ -1577,16 +1821,24 @@
                 this.renderLog();
             },
             
-            generateEncounter() {
-                const enemySpecies = this.species[Math.floor(Math.random() * this.species.length)];
+            generateEncounter(encounterTable) {
+                // Use biome encounter table if provided, otherwise fallback to all species
+                let speciesPool = this.species;
+                if (encounterTable && encounterTable.length > 0) {
+                    speciesPool = this.species.filter(s => encounterTable.includes(s.id));
+                    if (speciesPool.length === 0) speciesPool = this.species;
+                }
+                
+                const enemySpecies = speciesPool[Math.floor(Math.random() * speciesPool.length)];
                 const enemy = {
                     name: enemySpecies.name + 'girl',
                     species: enemySpecies.id,
                     icon: enemySpecies.icon,
-                    hp: 80,
-                    maxHp: 80,
-                    stats: { str: 10 + Math.floor(Math.random() * 6), con: 10 + Math.floor(Math.random() * 6), 
-                             spd: 10 + Math.floor(Math.random() * 6), int: 10, wis: 10, cha: 10 },
+                    hp: 80 + Math.floor(Math.random() * 40),
+                    maxHp: 120,
+                    stats: { str: 10 + Math.floor(Math.random() * 10), con: 10 + Math.floor(Math.random() * 10), 
+                             spd: 10 + Math.floor(Math.random() * 10), int: 10 + Math.floor(Math.random() * 6), 
+                             wis: 10 + Math.floor(Math.random() * 6), cha: 10 + Math.floor(Math.random() * 6) },
                     tags: [enemySpecies.name, 'Hostile']
                 };
                 
@@ -2185,10 +2437,20 @@ showExplorationActions() {
                     
                     this.location = { x: loaded.locationX, y: loaded.locationY };
                     this.party = loaded.party;
-                    this.currentBiome = loaded.currentBiome;
+                    this.currentBiome = loaded.currentBiome || 'forest';
                     this.log = loaded.log.map(text => ({ text, type: 'discovery' }));
                     this.enemies = [];
                     this.activeSlot = slotName;
+                    
+                    // Restore map state
+                    this.worldMap = new Map();
+                    this.exploredTiles = new Set();
+                    if (loaded.worldMap) {
+                        for (const [key, tile] of Object.entries(loaded.worldMap)) {
+                            this.worldMap.set(key, tile);
+                            if (tile.explored) this.exploredTiles.add(key);
+                        }
+                    }
                     
                     document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                     this.showScreen('game');

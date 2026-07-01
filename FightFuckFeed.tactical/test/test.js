@@ -2394,6 +2394,8 @@ test('Combat log template exposes filters search and export controls', () => {
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');
   assertContains(template, 'App.exportLog()', 'Log should expose export action');
+  assertContains(appContent, 'fff-log-view', 'Log view preferences should persist separately');
+  assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
 });
 
 test('Combat log filters by type and search text', () => {
@@ -2411,6 +2413,24 @@ test('Combat log filters by type and search text', () => {
   App.setLogSearch('coin');
   assertContains(elements.get('log-content').innerHTML, 'Found coin', 'Search should show matching entry');
   assertNotContains(elements.get('log-content').innerHTML, 'Wolf attacks', 'Search should hide non-matching entry');
+});
+
+test('Combat log filter and search preferences persist', () => {
+  const { App, storage } = loadAppForCombat();
+  App.setLogFilter('loot');
+  App.setLogSearch('coin');
+  const saved = JSON.parse(storage.get('fff-log-view'));
+  assertEqual(saved.filter, 'loot', 'Log filter should persist');
+  assertEqual(saved.search, 'coin', 'Log search should persist');
+  App.logFilter = 'all';
+  App.logSearch = '';
+  App.loadLogViewPreferences();
+  assertEqual(App.logFilter, 'loot', 'Stored log filter should reload');
+  assertEqual(App.logSearch, 'coin', 'Stored log search should reload');
+  storage.set('fff-log-view', JSON.stringify({ filter: 'invalid', search: 7 }));
+  App.loadLogViewPreferences();
+  assertEqual(App.logFilter, 'all', 'Invalid stored filter should fall back to all');
+  assertEqual(App.logSearch, '', 'Invalid stored search should fall back to empty');
 });
 
 test('Combat log renders relative timestamps and status role', () => {

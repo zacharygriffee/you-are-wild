@@ -3004,6 +3004,7 @@
                     const savedPrefs = JSON.parse(localStorage.getItem('fff-content-prefs') || '{}');
                     for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
                 } catch(e) { console.warn('Settings load failed', e); }
+                this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
@@ -7113,13 +7114,32 @@
                     return true;
                 });
             },
+            loadLogViewPreferences() {
+                try {
+                    const prefs = JSON.parse(localStorage.getItem('fff-log-view') || '{}');
+                    const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
+                    this.logFilter = allowed.includes(prefs.filter) ? prefs.filter : 'all';
+                    this.logSearch = typeof prefs.search === 'string' ? prefs.search : '';
+                } catch(e) {
+                    this.logFilter = 'all';
+                    this.logSearch = '';
+                }
+            },
+            saveLogViewPreferences() {
+                localStorage.setItem('fff-log-view', JSON.stringify({
+                    filter: this.logFilter || 'all',
+                    search: this.logSearch || ''
+                }));
+            },
             setLogFilter(filter = 'all') {
                 const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
                 this.logFilter = allowed.includes(filter) ? filter : 'all';
+                this.saveLogViewPreferences();
                 this.renderLog();
             },
             setLogSearch(value = '') {
                 this.logSearch = value;
+                this.saveLogViewPreferences();
                 this.renderLog();
             },
             exportLog() {

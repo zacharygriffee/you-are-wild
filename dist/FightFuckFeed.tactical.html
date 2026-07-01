@@ -3450,6 +3450,45 @@
                 return Math.max(1, base);
             },
 
+            _syncActionLabel(type) {
+                return { sync_fight: 'Fight', sync_flirt: 'Flirt', sync_fuck: 'Fuck', sync_feed: 'Feed' }[type] || 'Group';
+            },
+
+            _pendingSyncForUnit(unit) {
+                if (!this.combatState.active || !unit) return null;
+                return (this.combatState.syncActions || []).find(sync =>
+                    !sync.resolved &&
+                    sync.round === this.combatState.round &&
+                    (sync.participants.includes(unit) || sync.target === unit)
+                ) || null;
+            },
+
+            _turnOrderInfo(unit) {
+                if (!this.combatState.active || !unit) return null;
+                const queue = this.combatState.turnQueue || [];
+                const queueIndex = queue.findIndex(entry => entry.unit === unit);
+                const sync = this._pendingSyncForUnit(unit);
+                return {
+                    order: queueIndex >= 0 ? queueIndex + 1 : null,
+                    current: queueIndex === this.combatState.currentTurn,
+                    acted: queueIndex >= 0 && Boolean(queue[queueIndex].actedThisRound),
+                    sync,
+                    syncOrder: sync ? sync.resolveAtIndex + 1 : null,
+                    syncRole: sync ? (sync.participants.includes(unit) ? 'Group' : 'Target') : null
+                };
+            },
+
+            _turnOrderBadge(unit) {
+                const info = this._turnOrderInfo(unit);
+                if (!info || (!info.order && !info.syncOrder)) return '';
+                const base = info.current ? `Now #${info.order}` : (info.order ? `#${info.order}` : '');
+                const acted = info.acted && !info.current ? ' Done' : '';
+                const sync = info.sync ? ` ${info.syncRole} ${this._syncActionLabel(info.sync.type)} #${info.syncOrder}` : '';
+                const bg = info.current ? 'var(--accent-primary)' : (info.sync ? 'var(--accent-warning)' : 'var(--bg-tertiary)');
+                const color = info.current || info.sync ? 'var(--bg-primary)' : 'var(--text-secondary)';
+                return `<span class="turn-order-badge" title="Turn order" aria-label="Turn order ${base}${sync}" style="font-size:10px;font-weight:800;background:${bg};color:${color};border:1px solid var(--border-default);border-radius:6px;padding:2px 5px;margin-left:4px;white-space:nowrap;">${base}${acted}${sync}</span>`;
+            },
+
             _currentBiomeId() {
                 const tile = this.worldMap?.get(`${this.location.x},${this.location.y}`);
                 return tile?.biome || this.currentBiome || null;
@@ -3596,6 +3635,8 @@
                     this.renderLog(); this.nextTurn(); return;
                 }
                 document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
+                this.renderParty();
+                this.renderCreatures();
                 const isParty = this.party.includes(currentUnit);
                 if (isParty && (currentUnit.name === this.player.name || currentUnit.obedient !== false)) {
                     this.showActorActions(currentUnit);
@@ -4241,7 +4282,7 @@
 	                        slowestIdx = qIdx;
 	                    }
 	                }
-	                tile.creatures = this._tileCreatures(this.creatures);
+	                this._syncCurrentTileCreatures();
 	                if (slowestIdx === -1) {
 	                    this.log.push({ text: 'Sync failed! Participants are no longer in the turn queue.', type: 'combat' });
 	                    this.renderLog();
@@ -4259,6 +4300,8 @@
                     if (qEntry) qEntry.actedThisRound = true;
                 }
                 this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
                 this.nextTurn();
             },
 
@@ -5212,8 +5255,9 @@
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
                 const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
+                const turnBadge = this._turnOrderBadge(unit);
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}">
-                    <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span></div>
+                    <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span>${turnBadge}</div>
                     <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
                     ${actionButtons}
@@ -5271,11 +5315,12 @@
                     `Balls: ${this._containerSummary(unit, 'balls')}`
                 ].join(' | ');
                 const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
+                const turnBadge = this._turnOrderBadge(unit);
                 return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
-                            <div class="unit-name">${unit.name} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}</div>
+                            <div class="unit-name">${unit.name} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
                             <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
                             <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}${rowLabel}</div>
 	                        </div>

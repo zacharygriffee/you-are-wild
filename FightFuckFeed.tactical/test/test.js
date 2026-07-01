@@ -1204,6 +1204,64 @@ test('Combat target selection is rendered on creature panel cards', () => {
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
 });
 
+test('Combat unit cards show turn order and current focus badges', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'order-player' });
+  const ally = makeUnit('Ally', { id: 'order-ally' });
+  const enemy = makeUnit('Enemy', { id: 'order-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: enemy, initiative: 20 }, { unit: ally, initiative: 10 }],
+    syncActions: []
+  };
+  const enemyCard = App.renderUnitCard(enemy, 0, 'creature');
+  const allyCard = App.renderUnitCard(ally, 1, 'party');
+  assertContains(enemyCard, 'Now #2', 'Current target card should show focused turn order');
+  assertContains(allyCard, '#3', 'Waiting party card should show turn order number');
+});
+
+test('Queued group actions show the slowest participant order and preserve intervening turns', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'sync-player' });
+  const ally = makeUnit('Ally', { id: 'sync-ally' });
+  const enemy = makeUnit('Enemy', { id: 'sync-enemy', disposition: App.DISPOSITION.ENEMY });
+  const bystander = makeUnit('Bystander', { id: 'sync-bystander', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy, bystander];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'plains', explored: true, creatures: [enemy, bystander] }]]);
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [
+      { unit: player, initiative: 30 },
+      { unit: bystander, initiative: 20 },
+      { unit: ally, initiative: 10 },
+      { unit: enemy, initiative: 5 }
+    ],
+    syncActions: []
+  };
+  App._syncParticipants = [player, ally];
+  App.nextTurn = function() {};
+  App.queueSyncAction('sync_fight', 0);
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.resolveAtIndex, 2, 'Group action should resolve on slowest participant index');
+  assertEqual(App.combatState.turnQueue[1].actedThisRound || false, false, 'Intervening turn before slowest participant should remain available');
+  assertContains(App.renderUnitCard(player, 0, 'party'), 'Group Fight #3', 'Participant card should show group action order');
+  assertContains(App.renderUnitCard(enemy, 0, 'creature'), 'Target Fight #3', 'Target card should show group target order');
+});
+
 test('Combat auto-position assigns flying and ranged units to back row', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-row', species: 'human' });

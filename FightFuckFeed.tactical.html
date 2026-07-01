@@ -250,13 +250,12 @@
             color: var(--text-muted);
             font-size: 12px;
             opacity: 0.5;
-            cursor: default;
-            pointer-events: none;
+            cursor: pointer;
         }
         
         .map-tile.unexplored:hover {
-            border-color: var(--border-subtle) !important;
-            box-shadow: none;
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
         }
         
         /* Main Panel */
@@ -969,9 +968,9 @@
                                 The air is thick with the scent of pine and the distant calls of creatures unknown.
                             </p>
                             <div class="scene-actions" id="scene-actions">
-                                <button class="action-btn" onclick="explore()">
+                                <button class="action-btn" onclick="App.search()">
                                     <span class="action-icon">🔍</span>
-                                    Explore
+                                    Search
                                 </button>
                                 <button class="action-btn" onclick="rest()">
                                     <span class="action-icon">🏕️</span>
@@ -1442,7 +1441,7 @@
                 },
                 {
                     title: 'Movement',
-                    content: 'Click the map tiles to move in that direction. The center tile is your current position. Explore to find prey.'
+                    content: 'Click the map tiles to move in that direction. Moving automatically explores the new tile. The center tile is your current position.'
                 },
                 {
                     title: 'Combat',
@@ -2006,9 +2005,9 @@
                     `;
                 } else {
                     actions.innerHTML = `
-                        <button class="action-btn" onclick="App.explore()">
+                        <button class="action-btn" onclick="App.search()">
                             <span class="action-icon">🔍</span>
-                            Explore
+                            Search
                         </button>
                         <button class="action-btn" onclick="App.rest()">
                             <span class="action-icon">🏕️</span>
@@ -2375,16 +2374,32 @@ endCombat(victory) {
 
 showExplorationActions() {
     document.getElementById('scene-actions').innerHTML = `
-        <button class="action-btn" onclick="App.explore()"><span class="action-icon">🔍</span>Explore</button>
+        <button class="action-btn" onclick="App.search()"><span class="action-icon">🔍</span>Search</button>
         <button class="action-btn" onclick="App.rest()"><span class="action-icon">🏕️</span>Rest</button>
     `;
     document.getElementById('scene-description').textContent = 'You travel through the wilderness...';
 },
             
-            explore() {
-                this.log.push({ text: 'Exploring the area...', type: 'discovery' });
+            search() {
+                const tile = this.getTile(this.location.x, this.location.y);
+                const biome = this.biomes[tile.biome];
+                
+                const roll = Math.random();
+                let result = '';
+                
+                if (roll < 0.3) {
+                    const items = ['Healing Herb', 'Shiny Gem', 'Strange Mushroom', 'Old Coin', 'Monster Fang'];
+                    const item = items[Math.floor(Math.random() * items.length)];
+                    result = `You search the area and find a ${item}!`;
+                } else if (roll < 0.6) {
+                    result = `You take a closer look. ${tile.description} ${tile.hasLandmark ? `Nearby: ${tile.landmarkName}.` : ''}`;
+                } else {
+                    result = 'You search the area but find nothing of interest.';
+                }
+                
+                this.log.push({ text: result, type: 'discovery' });
                 this.renderLog();
-                this.move(0, 0);
+                this.autoSave();
             },
             
             rest() {
@@ -2759,7 +2774,8 @@ showExplorationActions() {
         // Global functions for onclick handlers
         window.createCharacter = () => App.createCharacter();
         window.move = (dy, dx) => App.move(dy, dx);
-        window.explore = () => App.explore();
+        window.explore = () => App.search();
+        window.search = () => App.search();
         window.rest = () => App.rest();
         window.togglePanel = (p) => App.togglePanel(p);
         window.expandAll = (t) => App.expandAll(t);

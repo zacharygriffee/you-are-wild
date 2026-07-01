@@ -2457,6 +2457,27 @@ test('Equipping and unequipping items updates player stats and slots', () => {
   assertEqual(App.inventory[0].name, 'Hide Armor', 'Unequipped item should return to inventory');
 });
 
+test('Accessory equipment can apply non-numeric special effects', () => {
+  const lucky = loadAppForCombat(() => 0.35);
+  lucky.App.player = makeUnit('You', { Flee: 10, wis: 10 });
+  lucky.App.party = [lucky.App.player];
+  lucky.App.inventory = [{ id: 'charm-1', name: 'Lucky Charm' }];
+  lucky.App.location = { x: 0, y: 0 };
+  lucky.App.worldMap = new Map([['0,0', { biome: 'forest', explored: true, description: 'quiet' }]]);
+  lucky.App.equipItem('charm-1');
+  assertEqual(lucky.App.player.equipmentEffects.luckyFind, 1, 'Lucky Charm should apply its special effect');
+  lucky.App.search();
+  assertEqual(lucky.App.inventory.length, 1, 'Lucky find effect should turn borderline search rolls into item finds');
+  lucky.App.unequipItem('accessory1');
+  assertEqual(Boolean(lucky.App.player.equipmentEffects.luckyFind), false, 'Unequipping should remove special effect');
+
+  const focus = loadAppForCombat();
+  focus.App.player = makeUnit('You', { status: { charm: { turns: 2, by: 'Enemy' } }, equipment: { accessory2: { id: 'ring-1', name: 'Focus Ring' } } });
+  focus.App._rebuildEquipmentEffects(focus.App.player);
+  assertEqual(focus.App._charmedTargetsFor(focus.App.player), null, 'Focus Ring should suppress charm target confusion');
+  assertEqual(Boolean(focus.App.player.status.charm), false, 'Focus Ring should clear charm status when it resists');
+});
+
 test('Inventory and character stats render equipped items', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You', {

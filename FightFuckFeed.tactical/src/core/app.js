@@ -378,8 +378,8 @@
                 'Leather Cap': { type: 'equipment', icon: '🎩', slot: 'head', equipBonus: { con: 1 }, value: 20, desc: 'Headwear. CON +1' },
                 'Hide Armor': { type: 'equipment', icon: '🦺', slot: 'body', equipBonus: { con: 3 }, value: 60, desc: 'Body armor. CON +3' },
                 'Clawed Gloves': { type: 'equipment', icon: '🧤', slot: 'hands', equipBonus: { Figh: 2, str: 1 }, value: 45, desc: 'Handwear. Figh +2, STR +1' },
-                'Lucky Charm': { type: 'equipment', icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, value: 35, desc: 'Accessory. Flee +2, WIS +1' },
-                'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, value: 55, desc: 'Ring. Flir +2, CHA +1' }
+                'Lucky Charm': { type: 'equipment', icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, equipEffect: 'luckyFind', value: 35, desc: 'Accessory. Flee +2, WIS +1. Improves search finds.' },
+                'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, equipEffect: 'focusGuard', value: 55, desc: 'Ring. Flir +2, CHA +1. Resists charm confusion.' }
             },
             MERCHANT_STOCK_TABLES: {
                 general: [
@@ -1260,6 +1260,8 @@
                 for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
                     if (!(slot in unit.equipment)) unit.equipment[slot] = null;
                 }
+                unit.equipmentEffects = unit.equipmentEffects || {};
+                this._rebuildEquipmentEffects(unit);
                 unit.gold = unit.gold || 0;
                 unit.quest = unit.quest || null;
                 unit.questAccepted = Boolean(unit.questAccepted);
@@ -1887,6 +1889,10 @@
 
             _charmedTargetsFor(unit) {
                 if (!unit?.status?.charm) return null;
+                if (this._hasEquipmentEffect(unit, 'focusGuard')) {
+                    delete unit.status.charm;
+                    return null;
+                }
                 if (this.party.includes(unit)) return this.party.filter(p => p !== unit && p.CPun > 0 && !p.knockedOut);
                 return this.creatures.filter(c => c !== unit && c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
             },
@@ -4610,6 +4616,27 @@
                 }
             },
 
+            _applyEquipmentEffect(unit, item, direction = 1) {
+                const effect = this._getItemDef(item).equipEffect;
+                if (!effect) return;
+                unit.equipmentEffects = unit.equipmentEffects || {};
+                const next = (unit.equipmentEffects[effect] || 0) + direction;
+                if (next > 0) unit.equipmentEffects[effect] = next;
+                else delete unit.equipmentEffects[effect];
+            },
+
+            _hasEquipmentEffect(unit, effect) {
+                return Boolean(unit?.equipmentEffects?.[effect]);
+            },
+
+            _rebuildEquipmentEffects(unit) {
+                if (!unit) return;
+                unit.equipmentEffects = {};
+                for (const item of Object.values(unit.equipment || {})) {
+                    if (item) this._applyEquipmentEffect(unit, item, 1);
+                }
+            },
+
             equipItem(itemId) {
                 if (!this.player) return;
                 const item = this.inventory.find(i => String(i.id) === String(itemId));
@@ -4620,11 +4647,13 @@
                 const current = this.player.equipment[slot];
                 if (current) {
                     this._applyEquipmentBonus(this.player, current, -1);
+                    this._applyEquipmentEffect(this.player, current, -1);
                     this.inventory.push(current);
                 }
                 this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
                 this.player.equipment[slot] = item;
                 this._applyEquipmentBonus(this.player, item, 1);
+                this._applyEquipmentEffect(this.player, item, 1);
                 this.log.push({ text: `Equipped ${item.name}.`, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
@@ -4641,6 +4670,7 @@
                 }
                 const item = this.player.equipment[slot];
                 this._applyEquipmentBonus(this.player, item, -1);
+                this._applyEquipmentEffect(this.player, item, -1);
                 this.player.equipment[slot] = null;
                 this.inventory.push(item);
                 this.log.push({ text: `Unequipped ${item.name}.`, type: 'discovery' });
@@ -4661,6 +4691,8 @@
             _equipmentBonusText(item) {
                 const bonus = this._getItemDef(item).equipBonus || {};
                 const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
+                const effect = this._getItemDef(item).equipEffect;
+                if (effect) entries.push(`Effect: ${effect}`);
                 return entries.length ? entries.join(', ') : 'No bonus';
             },
 
@@ -5187,8 +5219,9 @@
                 this._advanceTime(1);
                 const tile = this._currentExplorationTile();
                 const roll = Math.random();
+                const findChance = this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.45 : 0.3;
                 let result = '';
-                if (roll < 0.3) {
+                if (roll < findChance) {
                     const items = Object.keys(this.ITEMS);
                     const iname = items[Math.floor(Math.random() * items.length)];
                     const iid = 'item_' + Date.now();
@@ -5767,6 +5800,7 @@ Enter 1, 2, or 3:`);
                     this.quests = loaded.questState?.quests || [];
                     this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
                     this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
+                    this._rebuildEquipmentEffects(this.player);
                     this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
                     this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
                     this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);

@@ -150,6 +150,76 @@ const CONTENT_SYSTEM = {
                 safe: (ctx) => `${ctx.target} agrees to join you.`,
                 mature: (ctx) => `${ctx.target} is swayed by your charms and joins your party.`,
                 adult: (ctx) => ctx.explicit ? `${ctx.target} submits to your advances.` : null
+            },
+            flirt: {
+                safe: (ctx) => `${ctx.actor} makes a friendly gesture toward ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} flirts with ${ctx.target}, lowering their guard.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} sends a sultry gaze and a teasing touch toward ${ctx.target}, making them weak in the knees.` : null
+            },
+            feed: {
+                safe: (ctx) => `${ctx.actor} tends to ${ctx.target}'s needs.`,
+                mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target} intimately, their bodies pressed close as vitality flows between them.` : null
+            },
+            swallow: {
+                safe: (ctx) => `${ctx.actor} consumes ${ctx.target}.`,
+                mature: (ctx) => `${ctx.target} is swallowed whole by ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down ${ctx.actor}'s throat, settling in their stomach with wet gulps.` : null
+            },
+            chew: {
+                safe: (ctx) => `${ctx.target} is defeated by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.actor} tears into ${ctx.target} with savage bites.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} chews ${ctx.target} into pieces, blood and flesh dripping from their maw.` : null
+            },
+            cockVore: {
+                safe: (ctx) => `${ctx.target} is captured by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s shaft.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is stuffed into ${ctx.actor}'s swollen cock, sliding down into heavy balls.` : null
+            },
+            unbirth: {
+                safe: (ctx) => `${ctx.target} is enveloped by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s womb.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is pulled deep into ${ctx.actor}'s warm womb, walls closing around them.` : null
+            },
+            digest: {
+                safe: (ctx) => `${ctx.target} is fully absorbed by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is digested completely inside ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target}'s body is reduced to nutrients inside ${ctx.actor}'s stomach.` : null
+            },
+            release: {
+                safe: (ctx) => `${ctx.target} is freed by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.actor} releases ${ctx.target} from their belly.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} heaves, pushing ${ctx.target} out of their stomach, covered in slime and weakened.` : null
+            },
+            heal: {
+                safe: (ctx) => `${ctx.actor} tends to ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target}, their warmth spreading as vitality returns.` : null
+            },
+            breastfeed: {
+                safe: (ctx) => `${ctx.actor} nurses ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} offers milk to ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} presses ${ctx.target} to their breast, warm milk flowing as pleasure surges through both.` : null
+            },
+            sacrifice: {
+                safe: (ctx) => `${ctx.target} offers themself to ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} willingly feeds themself to ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides themself into ${ctx.actor}'s mouth, surrendering to the warm darkness of their belly.` : null
+            },
+            forceFeed: {
+                safe: (ctx) => `${ctx.target} is forced into ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is held down and forced into ${ctx.actor}'s stomach.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} struggles against restraints as they are shoved down ${ctx.actor}'s throat, forced into the belly.` : null
+            },
+            slurp: {
+                safe: (ctx) => `${ctx.actor} draws essence from ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} slurps a portion of ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} drinks deeply from ${ctx.target}'s yielding form, savoring their essence.` : null
+            },
+            fragment: {
+                safe: (ctx) => `${ctx.actor} breaks a piece from ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} tears off a chunk of ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} bites a piece from ${ctx.target}'s breakable body, consuming it as sweet nourishment.` : null
             }
         }
     },

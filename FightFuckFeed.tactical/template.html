@@ -16,48 +16,48 @@
             --bg-secondary: #1a1a2e;
             --bg-tertiary: #252542;
             --bg-elevated: #2d2d4a;
-            
+
             /* Text Colors */
             --text-primary: #ffffff;
             --text-secondary: #a0a0b0;
             --text-muted: #6a6a7a;
             --text-accent: #00d4aa;
-            
+
             /* Accent Colors */
             --accent-primary: #00d4aa;
             --accent-secondary: #ff6b9d;
             --accent-warning: #ffd166;
             --accent-danger: #ef476f;
             --accent-info: #118ab2;
-            
+
             /* Borders */
             --border-subtle: rgba(255, 255, 255, 0.06);
             --border-default: rgba(255, 255, 255, 0.1);
             --border-strong: rgba(255, 255, 255, 0.2);
-            
+
             /* Spacing */
             --space-xs: 4px;
             --space-sm: 8px;
             --space-md: 16px;
             --space-lg: 24px;
             --space-xl: 32px;
-            
+
             /* Radius */
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 16px;
-            
+
             /* Shadows */
             --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
             --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
             --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
             --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
-            
+
             /* Typography */
             --font-body: 'Inter', -apple-system, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
-        
+
         /* =============================================
            RESET & BASE
            ============================================= */
@@ -66,20 +66,21 @@
             margin: 0;
             padding: 0;
         }
-        
+
         html {
             scroll-behavior: smooth;
         }
-        
+
         body {
             font-family: var(--font-body);
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             line-height: 1.5;
         }
-        
+
         /* =============================================
            APP SHELL
            ============================================= */
@@ -91,9 +92,12 @@
                 "stage"
                 "log";
             height: 100vh;
+            height: 100dvh;
             width: 100vw;
+            max-width: 100vw;
+            overflow: hidden;
         }
-        
+
         /* =============================================
            HEADER
            ============================================= */
@@ -106,19 +110,21 @@
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-default);
             z-index: 100;
+            min-width: 0;
         }
-        
+
         .app-brand {
             display: flex;
             align-items: center;
             gap: var(--space-sm);
+            min-width: 0;
         }
-        
+
         .app-logo {
             font-size: 24px;
             filter: drop-shadow(0 0 8px var(--accent-primary));
         }
-        
+
         .app-title {
             font-size: 18px;
             font-weight: 700;
@@ -126,13 +132,15 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            white-space: nowrap;
         }
-        
+
         .app-nav {
             display: flex;
             gap: var(--space-sm);
+            min-width: 0;
         }
-        
+
         .nav-btn {
             padding: var(--space-sm) var(--space-md);
             background: var(--bg-tertiary);
@@ -144,19 +152,19 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .nav-btn:hover {
             background: var(--bg-elevated);
             border-color: var(--border-strong);
             color: var(--text-primary);
         }
-        
+
         .nav-btn.active {
             background: var(--accent-primary);
             border-color: var(--accent-primary);
             color: var(--bg-primary);
         }
-        
+
         /* =============================================
            STAGE AREA (Dynamic Content)
            ============================================= */
@@ -169,7 +177,7 @@
             padding: var(--space-md);
             overflow: hidden;
         }
-        
+
         /* Panel Base */
         .panel {
             background: var(--bg-secondary);
@@ -179,7 +187,7 @@
             flex-direction: column;
             overflow: hidden;
         }
-        
+
         .panel-header {
             display: flex;
             align-items: center;
@@ -193,18 +201,18 @@
             letter-spacing: 0.5px;
             color: var(--text-secondary);
         }
-        
+
         .panel-content {
             flex: 1;
             overflow: auto;
             padding: var(--space-md);
         }
-        
+
         /* Map Panel */
         .panel-map {
             grid-area: map;
         }
-        
+
         .mini-map {
             display: flex;
             flex-direction: column;
@@ -291,7 +299,7 @@
             border-color: var(--accent-primary) !important;
             box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
         }
-        
+
         .scene-display {
             height: 100%;
             display: flex;
@@ -301,31 +309,35 @@
             text-align: center;
             padding: var(--space-xl);
         }
-        
+
         .scene-title {
             font-size: 24px;
             font-weight: 700;
             margin-bottom: var(--space-md);
             color: var(--text-accent);
         }
-        
+
         .scene-description {
             font-size: 15px;
             line-height: 1.7;
             color: var(--text-secondary);
             max-width: 600px;
         }
-        
+
         .scene-actions {
             display: flex;
             gap: var(--space-md);
             margin-top: var(--space-xl);
         }
-        
+
+        .mobile-play-surface {
+            display: none;
+        }
+
         /* Party/Enemy Panels */
         .panel-party { grid-area: party; }
         .panel-enemies { grid-area: enemies; }
-        
+
         /* Unit Card (Accordion) */
         .unit-card {
             background: var(--bg-tertiary);
@@ -336,16 +348,16 @@
             transition: all 0.2s;
             cursor: pointer;
         }
-        
+
         .unit-card:hover {
             border-color: var(--border-strong);
         }
-        
+
         .unit-card.selected {
             border-color: var(--accent-primary);
             box-shadow: var(--shadow-glow);
         }
-        
+
         .unit-card.expanded {
             border-color: var(--accent-secondary);
         }
@@ -357,21 +369,21 @@
             margin-top: 8px;
             flex-wrap: wrap;
         }
-        
+
         .unit-actions .action-btn {
             flex: 1;
             min-width: 60px;
             padding: 6px 10px;
             font-size: 11px;
         }
-        
+
         .unit-header {
             display: flex;
             align-items: center;
             gap: var(--space-sm);
             padding: var(--space-sm);
         }
-        
+
         .unit-avatar {
             width: 40px;
             height: 40px;
@@ -383,12 +395,12 @@
             font-size: 20px;
             flex-shrink: 0;
         }
-        
+
         .unit-info {
             flex: 1;
             min-width: 0;
         }
-        
+
         .unit-name {
             font-size: 14px;
             font-weight: 600;
@@ -397,19 +409,19 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         .unit-meta {
             font-size: 11px;
             color: var(--text-muted);
         }
-        
+
         .unit-health {
             display: flex;
             align-items: center;
             gap: var(--space-xs);
             font-size: 11px;
         }
-        
+
         .health-bar {
             width: 60px;
             height: 4px;
@@ -417,13 +429,13 @@
             border-radius: 2px;
             overflow: hidden;
         }
-        
+
         .health-fill {
             height: 100%;
             background: var(--accent-primary);
             transition: width 0.3s ease;
         }
-        
+
         .unit-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -432,26 +444,26 @@
             background: var(--bg-elevated);
             border-top: 1px solid var(--border-default);
         }
-        
+
         .stat {
             text-align: center;
             padding: var(--space-xs);
             background: var(--bg-secondary);
             border-radius: var(--radius-sm);
         }
-        
+
         .stat-label {
             font-size: 9px;
             color: var(--text-muted);
             text-transform: uppercase;
         }
-        
+
         .stat-value {
             font-size: 13px;
             font-weight: 600;
             color: var(--text-primary);
         }
-        
+
         /* =============================================
            LOG PANEL
            ============================================= */
@@ -462,7 +474,7 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         .log-header {
             display: flex;
             align-items: center;
@@ -471,7 +483,7 @@
             background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border-default);
         }
-        
+
         .log-title {
             font-size: 11px;
             font-weight: 600;
@@ -479,7 +491,7 @@
             letter-spacing: 0.5px;
             color: var(--text-secondary);
         }
-        
+
         .log-content {
             flex: 1;
             overflow-y: auto;
@@ -488,42 +500,42 @@
             font-size: 12px;
             line-height: 1.6;
         }
-        
+
         .log-entry {
             padding: var(--space-xs) 0;
             border-left: 2px solid transparent;
             padding-left: var(--space-sm);
             margin-bottom: var(--space-xs);
         }
-        
+
         .log-entry.combat {
             border-left-color: var(--accent-danger);
             background: rgba(239, 71, 111, 0.05);
         }
-        
+
         .log-entry.discovery {
             border-left-color: var(--accent-warning);
             background: rgba(255, 209, 102, 0.05);
         }
-        
+
         .log-entry.loot {
             border-left-color: var(--accent-primary);
         }
-        
+
         .log-entry.text-muted {
             color: var(--text-muted);
         }
-        
+
         .log-entry.heal {
             border-left-color: var(--accent-primary);
             background: rgba(0, 212, 170, 0.05);
         }
-        
+
         .log-entry.mod {
             border-left-color: var(--accent-info);
             font-style: italic;
         }
-        
+
         /* =============================================
            ACTION BAR
            ============================================= */
@@ -532,7 +544,7 @@
             gap: var(--space-md);
             padding: 0 var(--space-md);
         }
-        
+
         .action-btn {
             flex: 1;
             padding: var(--space-md);
@@ -549,32 +561,32 @@
             align-items: center;
             gap: var(--space-xs);
         }
-        
+
         .action-btn:hover {
             background: var(--bg-elevated);
             border-color: var(--border-strong);
             color: var(--text-primary);
             transform: translateY(-2px);
         }
-        
+
         .action-btn:active {
             transform: translateY(0);
         }
-        
+
         .action-btn.primary {
             background: var(--accent-primary);
             border-color: var(--accent-primary);
             color: var(--bg-primary);
         }
-        
+
         .action-btn.primary:hover {
             box-shadow: var(--shadow-glow);
         }
-        
+
         .action-icon {
             font-size: 20px;
         }
-        
+
         /* =============================================
            SCREENS
            ============================================= */
@@ -583,12 +595,12 @@
             height: 100vh;
             width: 100vw;
         }
-        
+
         .screen.active {
             display: flex;
             flex-direction: column;
         }
-        
+
         /* Overlay screens (settings, mods, market) */
         .screen-overlay {
             position: fixed !important;
@@ -598,7 +610,7 @@
             height: 100% !important;
             z-index: 200 !important;
         }
-        
+
         #save-manager.screen {
             position: fixed;
             top: 0;
@@ -610,28 +622,34 @@
             overflow: auto;
             display: none;
         }
-        
+
         #save-manager.screen.active {
             display: flex;
         }
-        
+
         /* Character Creation Screen */
         .screen-create {
             background: var(--bg-primary);
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             padding: var(--space-xl);
+            overflow: auto;
+            height: 100vh;
+            height: 100dvh;
         }
-        
+
         .create-container {
             width: 100%;
             max-width: 800px;
+            max-height: calc(100vh - (var(--space-xl) * 2));
+            max-height: calc(100dvh - (var(--space-xl) * 2));
+            overflow-y: auto;
             background: var(--bg-secondary);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
             padding: var(--space-xl);
         }
-        
+
         .create-title {
             font-size: 32px;
             font-weight: 700;
@@ -641,17 +659,26 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        
+
         .create-subtitle {
             text-align: center;
             color: var(--text-muted);
             margin-bottom: var(--space-xl);
         }
-        
+
         .create-section {
             margin-bottom: var(--space-lg);
         }
-        
+
+        .create-submit {
+            width: 100%;
+            margin-top: var(--space-lg);
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            box-shadow: 0 -12px 24px var(--bg-secondary);
+        }
+
         .section-title {
             font-size: 14px;
             font-weight: 600;
@@ -660,7 +687,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .option-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -669,25 +696,25 @@
             overflow-y: auto;
             padding-right: var(--space-sm);
         }
-        
+
         .option-grid::-webkit-scrollbar {
             width: 6px;
         }
-        
+
         .option-grid::-webkit-scrollbar-track {
             background: var(--bg-tertiary);
             border-radius: var(--radius-sm);
         }
-        
+
         .option-grid::-webkit-scrollbar-thumb {
             background: var(--border-strong);
             border-radius: var(--radius-sm);
         }
-        
+
         .option-grid::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
         }
-        
+
         .option-card {
             padding: var(--space-md);
             background: var(--bg-tertiary);
@@ -697,34 +724,34 @@
             transition: all 0.2s;
             text-align: center;
         }
-        
+
         .option-card:hover {
             border-color: var(--border-strong);
             background: var(--bg-elevated);
         }
-        
+
         .option-card.selected {
             border-color: var(--accent-primary);
             background: rgba(0, 212, 170, 0.1);
         }
-        
+
         .option-icon {
             font-size: 32px;
             margin-bottom: var(--space-sm);
         }
-        
+
         .option-label {
             font-size: 13px;
             font-weight: 500;
             color: var(--text-primary);
         }
-        
+
         .option-desc {
             font-size: 11px;
             color: var(--text-muted);
             margin-top: var(--space-xs);
         }
-        
+
         /* =============================================
            RESPONSIVE
            ============================================= */
@@ -733,115 +760,320 @@
                 grid-template-columns: 180px 1fr 240px 240px;
             }
         }
-        
+
         @media (max-width: 1200px) {
             .stage {
                 grid-template-columns: 160px 1fr 200px 200px;
             }
         }
-        
+
         @media (max-width: 1024px) {
+            :root {
+                --mobile-actions-height: 112px;
+            }
+
             #app {
-                grid-template-rows: 50px 1fr auto;
+                grid-template-rows: 52px minmax(0, 1fr);
                 grid-template-areas:
                     "header"
-                    "stage"
-                    "log";
-                height: 100vh;
+                    "stage";
+                height: calc(100vh - var(--mobile-actions-height));
+                height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom));
                 width: 100vw;
+                max-width: 100vw;
                 overflow: hidden;
             }
-            
+
+            .app-header {
+                padding: 0 10px;
+                gap: 8px;
+                overflow: hidden;
+            }
+
+            .app-logo {
+                font-size: 22px;
+            }
+
+            .app-title {
+                font-size: clamp(16px, 5vw, 22px);
+            }
+
+            .app-nav {
+                flex: 1;
+                justify-content: flex-end;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                scrollbar-width: none;
+                gap: 6px;
+            }
+
+            .app-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+            .app-nav .nav-btn {
+                flex: 0 0 auto;
+                min-width: 72px;
+                padding: 8px 10px;
+            }
+
             .stage {
                 grid-template-columns: 1fr;
                 grid-template-areas: "main";
                 padding: 8px;
                 gap: 8px;
-                overflow: visible;
+                overflow: hidden;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100vw;
             }
-            
-            /* Mobile slide-out panels */
-            .panel-map {
-                display: none;
-                position: fixed;
-                top: 50px;
-                left: -85vw;
-                bottom: 120px;
-                width: 85vw;
-                z-index: 200;
-                transition: left 0.3s ease;
-                border-radius: 0 var(--radius-md) var(--radius-md) 0;
-                border-left: none;
-            }
-            
-            .panel-party {
-                display: none;
-                position: fixed;
-                top: 50px;
-                right: -85vw;
-                bottom: 120px;
-                width: 85vw;
-                z-index: 200;
-                transition: right 0.3s ease;
-                border-radius: var(--radius-md) 0 0 var(--radius-md);
-                border-right: none;
-            }
-            
+
+            /* Mobile overlay panels */
+            .panel-map,
+            .panel-party,
             .panel-enemies {
-                display: none;
                 position: fixed;
-                top: 50px;
-                right: -85vw;
-                bottom: 120px;
-                width: 85vw;
+                top: 60px;
+                left: 8px;
+                right: 8px;
+                bottom: 92px;
+                width: auto;
+                max-width: calc(100vw - 16px);
                 z-index: 200;
-                transition: right 0.3s ease;
-                border-radius: var(--radius-md) 0 0 var(--radius-md);
-                border-right: none;
-            }
-            
-            .panel-map.active {
-                display: flex;
-                left: 0;
-            }
-            
-            .panel-party.active {
-                display: flex;
-                right: 0;
-            }
-            
-            .panel-enemies.active {
-                display: flex;
-                right: 0;
-            }
-            
-            .panel-main {
-                width: 100%;
+                transform: translateX(-110%);
+                transition: transform 0.22s ease;
                 border-radius: var(--radius-md);
             }
-            
-            .panel-log {
-                max-height: 120px;
-                border-radius: 0;
+
+            .panel-party,
+            .panel-enemies {
+                transform: translateX(110%);
             }
-            
-            .mobile-action-bar {
-                display: block !important;
-                position: fixed;
+
+            .panel-map.active,
+            .panel-party.active,
+            .panel-enemies.active {
+                transform: translateX(0);
+            }
+
+            .panel-map:not(.active),
+            .panel-party:not(.active),
+            .panel-enemies:not(.active) {
+                pointer-events: none;
+            }
+
+            .panel-map {
+                grid-area: auto;
+            }
+
+            .panel-party {
+                grid-area: auto;
+            }
+
+            .panel-enemies {
+                grid-area: auto;
+            }
+
+            .panel-main {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                min-height: 0;
+                border-radius: var(--radius-md);
+                overflow: hidden;
+            }
+
+            .panel-main .panel-content {
+                min-height: 0;
+                padding: 8px;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .scene-display {
+                display: none;
+            }
+
+            .mobile-play-surface {
+	                display: flex;
+	                flex-direction: column;
+	                gap: 10px;
+	                min-height: 100%;
+	                overflow: visible;
+	                padding-bottom: 10px;
+	            }
+
+            .mobile-map-card,
+            .mobile-scene-sheet,
+            .mobile-strip-card {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+            }
+
+            .mobile-map-card {
+                padding: 10px;
+                flex: 1 1 auto;
+                min-height: 230px;
+                overflow: auto;
+            }
+
+            .mobile-map-header,
+            .mobile-strip-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: var(--text-secondary);
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+
+            .mobile-map-card .mini-map {
+                min-height: 190px;
+            }
+
+            .mobile-map-card .map-tile {
+                width: clamp(42px, 13vw, 56px);
+                height: clamp(42px, 13vw, 56px);
+                font-size: 20px;
+            }
+
+            .mobile-unit-strips {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 8px;
+                flex: 0 0 auto;
+            }
+
+            .mobile-strip-card {
+                padding: 8px;
+            }
+
+            .mobile-unit-strip {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+
+            .mobile-unit-strip::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-unit-chip {
+                flex: 0 0 132px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                background: var(--bg-tertiary);
+                padding: 8px;
+                color: var(--text-primary);
+                cursor: pointer;
+            }
+
+            .mobile-unit-chip.targetable {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25);
+            }
+
+            .mobile-unit-chip .unit-actions {
+                margin-top: 6px !important;
+            }
+
+            .mobile-unit-chip .action-btn {
+                padding: 6px;
+                min-width: 34px;
+                font-size: 11px;
+            }
+
+            .mobile-chip-name {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                font-size: 12px;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .mobile-chip-meta {
+                margin-top: 4px;
+                color: var(--text-muted);
+                font-size: 11px;
+            }
+
+            .mobile-chip-bar {
+                height: 5px;
+                background: var(--bg-primary);
+                border-radius: 999px;
+                overflow: hidden;
+                margin-top: 6px;
+            }
+
+            .mobile-chip-fill {
+                height: 100%;
+                background: var(--accent-primary);
+            }
+
+            .mobile-scene-sheet {
+                flex: 0 0 auto;
+                padding: 10px 12px;
+                max-height: 28vh;
+                max-height: 28dvh;
+                overflow: auto;
+            }
+
+            .mobile-scene-title {
+                color: var(--text-accent);
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 6px;
+            }
+
+            .mobile-scene-description {
+                color: var(--text-secondary);
+                font-size: 13px;
+                line-height: 1.45;
+            }
+
+            .mobile-log-summary {
+                color: var(--text-muted);
+                font-size: 12px;
+                margin-top: 8px;
+                border-top: 1px solid var(--border-subtle);
+                padding-top: 8px;
+            }
+
+            .scene-actions {
+                display: none;
+            }
+
+            .panel-log {
+                display: none;
+            }
+
+	            .mobile-action-bar {
+	                display: block !important;
+	                position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 background: var(--bg-secondary);
-                border-top: 1px solid var(--border-default);
-                padding: 8px;
-                z-index: 100;
-            }
-            
+	                border-top: 1px solid var(--border-default);
+	                padding: 8px;
+	                z-index: 100;
+	                min-height: var(--mobile-actions-height);
+	                padding-bottom: calc(8px + env(safe-area-inset-bottom));
+	            }
+
             .mobile-action-bar .action-bar {
                 display: flex;
                 gap: 8px;
             }
-            
+
             .mobile-action-bar .action-btn {
                 flex: 1;
                 padding: 12px 4px;
@@ -851,13 +1083,13 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-            
+
             .mobile-action-bar .action-icon {
                 font-size: 20px;
                 display: block;
                 margin-bottom: 2px;
             }
-            
+
             /* Swipe hint indicators - subtle edge glows */
             .swipe-hint-left,
             .swipe-hint-right {
@@ -873,20 +1105,20 @@
                 pointer-events: none;
                 transition: opacity 0.3s;
             }
-            
+
             .swipe-hint-left {
                 left: 2px;
             }
-            
+
             .swipe-hint-right {
                 right: 2px;
             }
-            
+
             .swipe-hint-left:hover,
             .swipe-hint-right:hover {
                 opacity: 0.4;
             }
-            
+
             /* Panel backdrop overlay when panel is open */
             .panel-backdrop {
                 display: none;
@@ -898,88 +1130,88 @@
                 background: rgba(0, 0, 0, 0.5);
                 z-index: 150;
             }
-            
+
             .panel-backdrop.active {
                 display: block;
             }
         }
-        
+
         @media (min-width: 1025px) {
             .mobile-action-bar {
                 display: none !important;
             }
-            
+
             .swipe-hint-left,
             .swipe-hint-right {
                 display: none;
             }
-            
+
             .panel-backdrop {
                 display: none !important;
             }
         }
-        
+
         /* Scrollbars */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
-        
+
         ::-webkit-scrollbar-track {
             background: var(--bg-secondary);
         }
-        
+
         ::-webkit-scrollbar-thumb {
             background: var(--border-strong);
             border-radius: 4px;
         }
-        
+
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
         }
-        
+
         /* Mobile Action Bar */
         .mobile-action-bar {
             display: none;
         }
-        
+
         .mobile-action-bar .action-bar {
             display: flex;
             gap: 8px;
             padding: 8px;
         }
-        
+
         .mobile-action-bar .action-btn {
             flex: 1;
             padding: 12px 8px;
             font-size: 12px;
         }
-        
+
         .mobile-action-bar .action-icon {
             font-size: 20px;
         }
-        
+
         @media (max-width: 1024px) {
             .mobile-action-bar {
                 display: block !important;
             }
         }
-        
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .fade-in {
             animation: fadeIn 0.3s ease;
         }
-        
+
         @keyframes pulse-glow {
             0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 170, 0.3); }
             50% { box-shadow: 0 0 30px rgba(0, 212, 170, 0.5); }
         }
-        
+
         .pulse-glow {
             animation: pulse-glow 2s ease-in-out infinite;
         }
@@ -1014,6 +1246,49 @@
             background: var(--bg-secondary);
             animation: accordionOpen 0.2s ease-out;
         }
+        #species-grid {
+            max-height: min(300px, 38vh);
+            max-height: min(300px, 38dvh);
+            overflow-y: auto;
+        }
+        #body-parts-grid {
+            max-height: min(200px, 34vh);
+            max-height: min(200px, 34dvh);
+            overflow-y: auto;
+        }
+        @media (max-width: 640px) {
+            .screen-create {
+                align-items: stretch;
+                padding: 12px;
+            }
+            .create-container {
+                max-height: calc(100vh - 24px);
+                max-height: calc(100dvh - 24px);
+                padding: var(--space-md);
+                border-radius: var(--radius-md);
+            }
+            .create-title {
+                font-size: 24px;
+            }
+            .create-subtitle {
+                margin-bottom: var(--space-md);
+            }
+            .create-section {
+                margin-bottom: var(--space-md);
+            }
+            .option-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: var(--space-sm);
+                max-height: 36vh;
+                max-height: 36dvh;
+            }
+            .accordion-header {
+                padding: 10px 12px;
+            }
+            .accordion-body {
+                padding: 10px;
+            }
+        }
         @keyframes accordionOpen {
             from { opacity: 0; transform: translateY(-4px); }
             to { opacity: 1; transform: translateY(0); }
@@ -1042,7 +1317,7 @@
             <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
             <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">FightFuckFeed.me</h1>
             <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Tactical Edition</p>
-            
+
             <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
                 <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
                     ▶ Continue Last Game
@@ -1066,7 +1341,7 @@
                     📖 Tutorial
                 </button>
             </div>
-            
+
             <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
                 <p>Dark mode tactical edition</p>
                 <p>All content is enabled by default</p>
@@ -1076,17 +1351,17 @@
 
     <!-- CHARACTER CREATION SCREEN -->
     <div id="screen-create" class="screen screen-create">
-        <div class="create-container" style="max-height:90vh;overflow-y:auto;padding:24px;">
+        <div class="create-container">
             <h1 class="create-title">Create Your Character</h1>
             <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
-            
+
             <!-- Name Input -->
             <div class="create-section">
                 <h3 class="section-title">Name</h3>
                 <input id="char-name" type="text" placeholder="Enter your name..." value="You"
                        style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
             </div>
-            
+
             <!-- Species Selection -->
             <div class="accordion-section" data-accordion="species">
                 <div class="accordion-header" onclick="App.toggleAccordion('species')">
@@ -1097,12 +1372,12 @@
                     <div id="species-info" style="margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);min-height:60px;">
                         <p style="color:var(--text-muted);font-size:13px;">Select a species to see details.</p>
                     </div>
-                    <div class="option-grid" id="species-grid" style="max-height:300px;overflow-y:auto;">
+                    <div class="option-grid" id="species-grid">
                         <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
-            
+
             <!-- Gender Selection -->
             <div class="accordion-section" data-accordion="gender">
                 <div class="accordion-header" onclick="App.toggleAccordion('gender')">
@@ -1129,7 +1404,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Anatomy Selection -->
             <div class="accordion-section" data-accordion="anatomy">
                 <div class="accordion-header" onclick="App.toggleAccordion('anatomy')">
@@ -1157,7 +1432,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Body Parts Selection -->
             <div class="accordion-section" data-accordion="bodyparts">
                 <div class="accordion-header" onclick="App.toggleAccordion('bodyparts')">
@@ -1165,12 +1440,12 @@
                     <span class="accordion-arrow" id="arrow-bodyparts">▶</span>
                 </div>
                 <div class="accordion-body" id="body-bodyparts" style="display:none;">
-                    <div id="body-parts-grid" class="option-grid" style="max-height:200px;overflow-y:auto;">
+                    <div id="body-parts-grid" class="option-grid">
                         <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
-            
+
             <!-- Target Preferences -->
             <div class="accordion-section" data-accordion="preferences">
                 <div class="accordion-header" onclick="App.toggleAccordion('preferences')">
@@ -1194,13 +1469,13 @@
                     </div>
                 </div>
             </div>
-            
-            <button class="action-btn primary" style="width: 100%; margin-top: 24px;" onclick="createCharacter()">
+
+            <button class="action-btn primary create-submit" onclick="createCharacter()">
                 Begin Adventure →
             </button>
         </div>
     </div>
-    
+
     <!-- TUTORIAL OVERLAY -->
     <div id="tutorial-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
         <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
@@ -1212,7 +1487,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- MAIN GAME SCREEN -->
     <div id="screen-game" class="screen">
         <div id="app">
@@ -1232,7 +1507,7 @@
                     <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
                 </nav>
             </header>
-            
+
             <!-- Stage -->
             <div class="stage">
                 <!-- Map Panel -->
@@ -1247,14 +1522,46 @@
                     </div>
                     </div>
                 </div>
-                
-                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
-                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
-                    <div class="panel-content">
-                        <div class="scene-display" id="scene-display">
+
+	                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
+	                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
+	                    <div class="panel-content">
+	                        <div class="mobile-play-surface" id="mobile-play-surface">
+	                            <div class="mobile-map-card">
+	                                <div class="mobile-map-header">
+	                                    <span>Map</span>
+	                                    <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span>
+	                                </div>
+	                                <div class="mini-map" id="mobile-mini-map"></div>
+	                            </div>
+	                            <div class="mobile-unit-strips">
+	                                <div class="mobile-strip-card">
+	                                    <div class="mobile-strip-header">
+	                                        <span>Party</span>
+	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
+	                                    </div>
+	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
+	                                </div>
+	                                <div class="mobile-strip-card" id="mobile-creature-card">
+	                                    <div class="mobile-strip-header">
+	                                        <span id="mobile-creature-title">Creatures</span>
+	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
+	                                    </div>
+	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
+	                                </div>
+	                            </div>
+	                            <div class="mobile-scene-sheet">
+	                                <div class="mobile-scene-title" id="mobile-scene-title">The Wilderness</div>
+	                                <div class="mobile-scene-description" id="mobile-scene-description">
+	                                    You find yourself in an untamed land where predators roam and only the strong survive.
+	                                </div>
+	                                <div class="mobile-log-summary" id="mobile-log-summary">Welcome to FightFuckFeed.me Tactical Edition</div>
+	                            </div>
+	                        </div>
+	                        <div class="scene-display" id="scene-display">
                             <h2 class="scene-title" id="scene-title">The Wilderness</h2>
                             <p class="scene-description" id="scene-description">
-                                You find yourself in an untamed land where predators roam and only the strong survive. 
+                                You find yourself in an untamed land where predators roam and only the strong survive.
                                 The air is thick with the scent of pine and the distant calls of creatures unknown.
                             </p>
                             <div class="scene-actions" id="scene-actions">
@@ -1270,7 +1577,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Party Panel -->
                 <div class="panel panel-party" id="panel-party">
                     <div class="panel-header">
@@ -1281,7 +1588,7 @@
                         <!-- Populated by JS -->
                     </div>
                 </div>
-                
+
                 <!-- Enemies Panel -->
                 <div class="panel panel-enemies" id="panel-enemies">
                     <div class="panel-header">
@@ -1293,7 +1600,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Log Panel -->
             <div class="panel-log">
                 <div class="log-header">
@@ -1306,7 +1613,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Mobile Action Bar - switches between combat and exploration modes -->
         <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
             <!-- Combat buttons -->
@@ -1315,13 +1622,21 @@
                     <span class="action-icon">⚔️</span>
                     Fight
                 </button>
+                <button class="action-btn" onclick="combatAction('flirt')">
+                    <span class="action-icon">😘</span>
+                    Flirt
+                </button>
+                <button class="action-btn" onclick="combatAction('feast')">
+                    <span class="action-icon">🍽️</span>
+                    Feast
+                </button>
                 <button class="action-btn" onclick="combatAction('fuck')">
                     <span class="action-icon">💕</span>
-                    Seduce
+                    Fuck
                 </button>
                 <button class="action-btn" onclick="combatAction('feed')">
-                    <span class="action-icon">🍽️</span>
-                    Consume
+                    <span class="action-icon">🍲</span>
+                    Feed
                 </button>
                 <button class="action-btn" onclick="combatAction('flee')">
                     <span class="action-icon">🏃</span>
@@ -1342,28 +1657,32 @@
                     <span class="action-icon">🗺️</span>
                     Map
                 </button>
-                <button class="action-btn" onclick="togglePanel('party')">
-                    <span class="action-icon">👥</span>
-                    Party
-                </button>
-            </div>
+	                <button class="action-btn" onclick="togglePanel('party')">
+	                    <span class="action-icon">👥</span>
+	                    Party
+	                </button>
+	                <button class="action-btn" onclick="togglePanel('enemies')">
+	                    <span class="action-icon">⚔️</span>
+	                    Enemies
+	                </button>
+	            </div>
         </div>
-        
+
         <!-- Backdrop for closing mobile panels by tapping outside -->
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
-        
+
         <!-- Swipe hints for mobile -->
         <div class="swipe-hint-left" title="Swipe right for map"></div>
         <div class="swipe-hint-right" title="Swipe left for party"></div>
     </div>
-    
-    
+
+
     <!-- SETTINGS OVERLAY -->
     <div id="screen-settings" class="screen screen-overlay">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
             <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
-            
+
             <!-- Content Tiers -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>
@@ -1373,7 +1692,7 @@
                     <button id="tier-adult" class="nav-btn" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
                 </div>
             </div>
-            
+
             <!-- Vore & Feeding -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Vore &amp; Feeding</h3>
@@ -1408,7 +1727,7 @@
                     </label>
                 </div>
             </div>
-            
+
             <!-- Sex & Interaction -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sex &amp; Interaction</h3>
@@ -1431,7 +1750,7 @@
                     </label>
                 </div>
             </div>
-            
+
             <!-- Fluids & Extremes -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fluids &amp; Extremes</h3>
@@ -1449,6 +1768,18 @@
                         <input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Cock Vore</span>
+                        <input type="checkbox" id="toggle-cockVore" onchange="App.settings.cockVoreEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Unbirth</span>
+                        <input type="checkbox" id="toggle-unbirth" onchange="App.settings.unbirthEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Forced Feeding (CNC)</span>
+                        <input type="checkbox" id="toggle-forcedFeed" onchange="App.settings.forcedFeeding = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Bone Crushing</span>
                         <input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
                     </label>
@@ -1458,7 +1789,7 @@
                     </label>
                 </div>
             </div>
-            
+
             <!-- Game Mode -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Game Mode</h3>
@@ -1469,7 +1800,7 @@
                     </label>
                 </div>
             </div>
-            
+
             <!-- Cheats -->
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Cheats</h3>
@@ -1483,20 +1814,20 @@
                     <button id="cheat-instantWin" class="nav-btn" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="if(confirm('Delete ALL save data? This cannot be undone!')) { App.deleteAllSaves(); }">🗑️ Clear All Saves</button>
+                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ Clear All Saves</button>
                 <button class="nav-btn" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>
-    
+
     <!-- MODS OVERLAY -->
     <div id="screen-mods" class="screen screen-overlay">
         <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Mod Manager</h1>
             <p style="color: var(--text-muted); margin-bottom: 24px;">Install, enable, and manage game modules.</p>
-            
+
             <!-- Install -->
             <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
                 <label class="nav-btn" style="cursor: pointer; display: inline-block;">
@@ -1506,14 +1837,14 @@
                 <button class="nav-btn" onclick="ModUI.createExampleMod()">✨ Create Example</button>
                 <button class="nav-btn" onclick="returnToGame()">Close</button>
             </div>
-            
+
             <!-- Mod List -->
             <div id="mod-list" style="min-height: 100px;">
                 <p style="color: var(--text-muted); text-align: center; padding: 32px;">Loading modules...</p>
             </div>
         </div>
     </div>
-    
+
     <!-- MARKETPLACE OVERLAY -->
     <div id="screen-market" class="screen screen-overlay">
         <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
@@ -1526,7 +1857,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- SAVE MANAGER OVERLAY -->
     <div id="save-manager" class="screen screen-overlay">
         <div id="save-manager-content" style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">

@@ -420,6 +420,8 @@
             creatures: [], // ALL creatures at location with disposition
             inventory: [],
             quests: [],
+            questFilter: 'all',
+            questSort: 'status',
             location: { x: 0, y: 0 },
             timeHour: 8,
             dayCount: 0,
@@ -4364,14 +4366,57 @@
                 }).join('<br>');
             },
 
+            _filteredQuestEntries() {
+                const filter = ['all', 'active', 'completed'].includes(this.questFilter) ? this.questFilter : 'all';
+                const sort = ['status', 'title'].includes(this.questSort) ? this.questSort : 'status';
+                const quests = (this.quests || []).filter(quest => filter === 'all' || quest.status === filter);
+                return quests.sort((a, b) => {
+                    if (sort === 'title') return (a.title || '').localeCompare(b.title || '');
+                    const weight = status => status === 'active' ? 0 : status === 'completed' ? 1 : 2;
+                    return weight(a.status) - weight(b.status) || (a.title || '').localeCompare(b.title || '');
+                });
+            },
+
+            _questLogControls() {
+                return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Status
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.setQuestFilter(this.value)">
+                            ${[['all', 'All'], ['active', 'Active'], ['completed', 'Completed']].map(([value, label]) => `<option value="${value}" ${this.questFilter === value ? 'selected' : ''}>${label}</option>`).join('')}
+                        </select>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Sort
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.setQuestSort(this.value)">
+                            ${[['status', 'Status'], ['title', 'Title']].map(([value, label]) => `<option value="${value}" ${this.questSort === value ? 'selected' : ''}>${label}</option>`).join('')}
+                        </select>
+                    </label>
+                </div>`;
+            },
+
+            setQuestFilter(filter) {
+                this.questFilter = ['all', 'active', 'completed'].includes(filter) ? filter : 'all';
+                this.showQuestLog();
+            },
+
+            setQuestSort(sort) {
+                this.questSort = ['status', 'title'].includes(sort) ? sort : 'status';
+                this.showQuestLog();
+            },
+
             showQuestLog() {
                 const quests = this.quests || [];
                 if (quests.length === 0) {
                     document.getElementById('scene-description').innerHTML = `<h3>Quests</h3><p style="color:var(--text-muted)">No active quests.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
                     return;
                 }
-                let html = `<h3>Quests</h3><div style="display:grid;gap:12px;margin-top:12px;">`;
-                quests.forEach(quest => {
+                const visibleQuests = this._filteredQuestEntries();
+                let html = `<h3>Quests</h3>${this._questLogControls()}`;
+                if (visibleQuests.length === 0) {
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">No quests match the current filter.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    document.getElementById('scene-description').innerHTML = html;
+                    return;
+                }
+                html += `<div style="display:grid;gap:12px;margin-top:12px;">`;
+                visibleQuests.forEach(quest => {
                     const status = quest.status === 'completed' ? 'Completed' : 'Active';
                     html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${quest.title} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
                     if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${quest.description}</div>`;

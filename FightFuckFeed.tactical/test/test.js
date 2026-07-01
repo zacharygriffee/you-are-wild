@@ -2221,6 +2221,31 @@ test('Quest find objectives advance from search discoveries', () => {
   assertEqual(App.player.gold, 3, 'Find quest should grant reward');
 });
 
+test('Quest log supports status filtering and title sorting', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.quests = [
+    { id: 'b', title: 'B Task', status: 'completed', objectives: [], reward: {} },
+    { id: 'a', title: 'A Task', status: 'active', objectives: [], reward: {} },
+    { id: 'c', title: 'C Task', status: 'active', objectives: [], reward: {} }
+  ];
+  App.setQuestFilter('active');
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'A Task', 'Active filter should show active quests');
+  assertNotContains(html, 'B Task', 'Active filter should hide completed quests');
+  App.setQuestFilter('completed');
+  html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'B Task', 'Completed filter should show completed quests');
+  assertNotContains(html, 'A Task', 'Completed filter should hide active quests');
+  App.setQuestFilter('all');
+  App.setQuestSort('title');
+  html = elements.get('scene-description').innerHTML;
+  assert(html.indexOf('A Task') < html.indexOf('B Task'), 'Title sort should order quests alphabetically');
+  assertContains(html, 'Status', 'Quest log should expose status filter control');
+  assertContains(html, 'Sort', 'Quest log should expose sort control');
+});
+
 test('Quest state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

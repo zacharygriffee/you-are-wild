@@ -160,6 +160,7 @@
         Binary.json.preencode(s, obj.worldMap || {}); Binary.json.preencode(s, obj.exploredTiles || []);
         Binary.json.preencode(s, obj.inventory || []);
         Binary.vuint.preencode(s, obj.timeHour || 0);
+        Binary.json.preencode(s, obj.questState || {});
       },
       encode(s, obj) {
         Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
@@ -171,6 +172,7 @@
         Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
         Binary.json.encode(s, obj.inventory || []);
         Binary.vuint.encode(s, obj.timeHour || 0);
+        Binary.json.encode(s, obj.questState || {});
       },
       decode(s) {
         const version = Binary.vuint.decode(s);
@@ -206,6 +208,11 @@
         } else {
           result.timeHour = 8;
         }
+        if (version >= 6 && s.start < s.end) {
+          try { result.questState = Binary.json.decode(s); } catch(e) { result.questState = {}; }
+        } else {
+          result.questState = {};
+        }
         return result;
       }
     }
@@ -223,7 +230,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 5,
+      version: 6,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -238,7 +245,11 @@
       worldMap: worldMapObj,
       exploredTiles: exploredArray,
       inventory: appState.inventory || [],
-      timeHour: appState.timeHour || 0
+      timeHour: appState.timeHour || 0,
+      questState: {
+        quests: appState.quests || [],
+        playerGold: appState.player?.gold || 0
+      }
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
@@ -249,4 +260,3 @@
 
   window.Binary = Binary;
 })();
-

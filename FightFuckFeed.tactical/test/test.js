@@ -1842,6 +1842,85 @@ test('Create accordion keeps only the selected section open', () => {
   assertEqual(elements.get('arrow-gender').textContent, '▼', 'selected arrow should point open');
 });
 
+test('Quest system exposes quest giver actions and quest log', () => {
+  assertContains(appContent, 'acceptQuestFromUnit', 'Quest accept API missing');
+  assertContains(appContent, 'showQuestLog', 'Quest log UI missing');
+  const { App, elements } = loadAppForCombat();
+  const giver = makeUnit('Guide', {
+    id: 'guide-1',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'guide_task',
+      title: 'Guide Task',
+      objectives: [{ type: 'defeat', species: 'wolf', required: 1 }],
+      reward: { xp: 10, gold: 5, items: ['Old Coin'] }
+    }
+  });
+  App.player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.creatures = [giver];
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Quest giver card should expose accept action');
+  App.acceptQuestFromUnit('guide-1');
+  assertEqual(App.quests.length, 1, 'Accepted quest should enter quest log');
+  assertContains(elements.get('scene-description').innerHTML, 'Guide Task', 'Quest log should render accepted quest');
+});
+
+test('Quest progress completes defeat objectives and grants rewards', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.quests = [{
+    id: 'wolf_hunt',
+    title: 'Wolf Hunt',
+    status: 'active',
+    objectives: [{ type: 'defeat', species: 'wolf', label: 'Defeat wolf', required: 1, progress: 0, complete: false }],
+    reward: { xp: 10, gold: 7, items: ['Old Coin'] }
+  }];
+  const wolf = makeUnit('Wolf', { id: 'wolf-1', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  App._makeCorpse(wolf, 'fight');
+  assertEqual(App.quests[0].status, 'completed', 'Defeat objective should complete quest');
+  assertEqual(App.player.gold, 7, 'Quest reward should grant gold');
+  assertEqual(App.player.xp, 10, 'Quest reward should grant XP');
+  assertEqual(App.inventory[0].name, 'Old Coin', 'Quest reward should grant item');
+});
+
+test('Quest find objectives advance from search discoveries', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { biome: 'forest', explored: true, description: 'quiet' }]]);
+  App.inventory = [];
+  App.quests = [{
+    id: 'herb_fetch',
+    title: 'Herb Fetch',
+    status: 'active',
+    objectives: [{ type: 'find', item: 'Healing Herb', label: 'Find herb', required: 1, progress: 0, complete: false }],
+    reward: { gold: 3 }
+  }];
+  App.search();
+  assertEqual(App.quests[0].status, 'completed', 'Finding quest item should complete quest');
+  assertEqual(App.player.gold, 3, 'Find quest should grant reward');
+});
+
+test('Quest state persists through binary saves', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 12 });
+  App.party = [App.player];
+  App.location = { x: 2, y: -1 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.inventory = [];
+  App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.version, 6, 'Save version should include quest state');
+  assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
+  assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');
+});
+
 // === SUMMARY ===
 console.log('\n' + '='.repeat(50));
 console.log(`Results: ${passedTests}/${totalTests} passed`);

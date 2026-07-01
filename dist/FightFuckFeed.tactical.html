@@ -2062,6 +2062,7 @@
         Binary.json.preencode(s, obj.worldMap || {}); Binary.json.preencode(s, obj.exploredTiles || []);
         Binary.json.preencode(s, obj.inventory || []);
         Binary.vuint.preencode(s, obj.timeHour || 0);
+        Binary.json.preencode(s, obj.questState || {});
       },
       encode(s, obj) {
         Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
@@ -2073,6 +2074,7 @@
         Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
         Binary.json.encode(s, obj.inventory || []);
         Binary.vuint.encode(s, obj.timeHour || 0);
+        Binary.json.encode(s, obj.questState || {});
       },
       decode(s) {
         const version = Binary.vuint.decode(s);
@@ -2108,6 +2110,11 @@
         } else {
           result.timeHour = 8;
         }
+        if (version >= 6 && s.start < s.end) {
+          try { result.questState = Binary.json.decode(s); } catch(e) { result.questState = {}; }
+        } else {
+          result.questState = {};
+        }
         return result;
       }
     }
@@ -2125,7 +2132,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 5,
+      version: 6,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -2140,7 +2147,11 @@
       worldMap: worldMapObj,
       exploredTiles: exploredArray,
       inventory: appState.inventory || [],
-      timeHour: appState.timeHour || 0
+      timeHour: appState.timeHour || 0,
+      questState: {
+        quests: appState.quests || [],
+        playerGold: appState.player?.gold || 0
+      }
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
@@ -2151,7 +2162,6 @@
 
   window.Binary = Binary;
 })();
-
 
 </script>
 
@@ -2176,6 +2186,7 @@
                 search: 'Search',
                 rest: 'Rest',
                 inventory: 'Items',
+                quests: 'Quests',
                 interact: 'Interact',
                 enter: 'Enter',
                 exit: 'Exit',
@@ -2281,7 +2292,7 @@
                 return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', interact: '💋', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', quests: '📜', interact: '💋', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;
@@ -2338,6 +2349,7 @@
             },
             _contextActionKeys() {
                 const keys = ['inventory'];
+                if ((this.quests || []).length > 0) keys.push('quests');
                 if (this.inInterior) keys.unshift('exit');
                 else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
                 if (this._canRestHere()) keys.unshift('rest');
@@ -2347,6 +2359,7 @@
                 const handlers = {
                     rest: 'App.rest()',
                     inventory: 'App.showInventory()',
+                    quests: 'App.showQuestLog()',
                     enter: 'App.enterStructure()',
                     exit: 'App.exitStructure()',
                     map: "togglePanel('map')",
@@ -2516,6 +2529,7 @@
             party: [],
             creatures: [], // ALL creatures at location with disposition
             inventory: [],
+            quests: [],
             location: { x: 0, y: 0 },
             timeHour: 8,
             log: [],
@@ -2857,7 +2871,7 @@
                     identity: this.selectedGender, parts: hasCock ? 'cock' : (hasClit ? 'clit' : null),
                     chest: hasTits ? 'tits' : 'pecs', bothParts: hasCock && hasClit,
                     bodyParts: bodyParts, size: 4, appetite: 4,
-                    level: 1, xp: 0, xpToNext: 100,
+                    level: 1, xp: 0, xpToNext: 100, gold: 0,
                     MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),
                     Figh: baseStats.Figh, Feas: baseStats.Feas, Flir: baseStats.Flir, Fuck: baseStats.Fuck, Flee: baseStats.Flee, Feed: baseStats.Feed,
                     str: baseStats.str, con: baseStats.con, spd: baseStats.spd, int: baseStats.int, wis: baseStats.wis, cha: baseStats.cha,
@@ -2874,6 +2888,7 @@
                 this.exploredTiles = new Set();
                 this.currentBiome = 'forest';
                 this.inventory = [];
+                this.quests = [];
                 this.mode = this.GAME_MODE.NORMAL;
                 this.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
                 this.targetSelection = null;
@@ -3185,6 +3200,7 @@
             },
             _makeCorpse(target, cause = 'fight') {
                 if (!target) return target;
+                const wasLiving = this._isLivingCreature(target);
                 target.CPun = 0;
                 target.CPle = 0;
                 target.alive = false;
@@ -3197,6 +3213,9 @@
                 target.willing = false;
                 target.knockedOut = false;
                 this._syncCurrentTileCreatures();
+                if (wasLiving && cause === 'fight') {
+                    this._updateQuestProgress('defeat', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                }
                 return target;
             },
 
@@ -3267,6 +3286,9 @@
                 unit.womb = unit.womb || [];
                 unit.balls = unit.balls || [];
                 unit.inventory = unit.inventory || [];
+                unit.gold = unit.gold || 0;
+                unit.quest = unit.quest || null;
+                unit.questAccepted = Boolean(unit.questAccepted);
                 unit.cum = unit.cum || 0;
                 unit.status = unit.status || {};
                 unit.lactating = unit.lactating || false;
@@ -4310,6 +4332,7 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 20);
                         actor.Feas += 1;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                        this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = `${actorName} devour${actorVerb} ${target.name}! They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;
                         break;
                     }
@@ -4320,6 +4343,7 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 30);
                         actor.Feas += 2;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                        this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = `${actorName} tear${actorVerb} into ${target.name} with savage teeth, chewing them apart!`;
                         break;
                     }
@@ -5361,6 +5385,7 @@
                 target.CPun = 0;
                 if (this.party.includes(target)) this._removeContainedPartyMember(target);
                 else this._makeCorpse(target, 'feast');
+                this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                 return `${portions.map(actor => actor.name).join(', ')} split ${target.name} into chewable portions.`;
             },
 
@@ -5491,6 +5516,7 @@
                         primary.stomach.push(this._createStomachPrey(target));
                         target.CPun = 0;
                         if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
+                        this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = `${livingActors.slice(1).map(actor => actor.name).join(', ') || primary.name} help${livingActors.length > 2 ? '' : 's'} ${primary.name} swallow ${target.name}.`;
                         break;
                     }
@@ -5506,6 +5532,7 @@
                                 target.willing = true;
                                 target.orgasmed = true;
                                 if (!this.party.includes(target)) target.disposition = this.DISPOSITION.FRIENDLY;
+                                this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             }
                         } else {
                             result = `${target.name} resists the group's attention.`;
@@ -5564,6 +5591,7 @@
                                 target.willing = true;
                                 target.orgasmed = true;
                                 result += ' They orgasm and are completely devoted.';
+                                this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                                 if (this.settings.refractoryPeriod) {
                                     target.refractory = true;
                                     result += ' They need a moment to recover...';
@@ -5590,6 +5618,7 @@
                             if (this.party.includes(target) && target !== actor) {
                                 this.party = this.party.filter(p => p !== target);
                             }
+                            this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             result = `${actorName} swallow${actorVerb} ${target.name} whole. They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;
                         } else {
                             result = `${target.name} is too large or strong to eat.`;
@@ -5869,6 +5898,146 @@
                 this.log.push({ text: 'Perk gained: ' + perk.name + '! ' + perk.desc, type: 'discovery' });
             },
 
+            // ===== QUESTS =====
+            _normalizeQuest(quest, giver = null) {
+                const source = quest || {};
+                const id = source.id || `quest_${giver?.id || giver?.name || Date.now()}`;
+                return {
+                    id,
+                    title: source.title || 'Untitled Quest',
+                    description: source.description || '',
+                    giverId: source.giverId || giver?.id || giver?.name || null,
+                    giverName: source.giverName || giver?.name || null,
+                    status: source.status || 'available',
+                    objectives: (source.objectives || []).map((objective, index) => ({
+                        id: objective.id || `${id}_objective_${index}`,
+                        type: objective.type || 'find',
+                        label: objective.label || objective.description || this._questObjectiveLabel(objective),
+                        targetId: objective.targetId || null,
+                        species: objective.species || null,
+                        item: objective.item || null,
+                        required: objective.required || objective.count || 1,
+                        progress: objective.progress || 0,
+                        complete: Boolean(objective.complete)
+                    })),
+                    reward: source.reward || source.rewards || {}
+                };
+            },
+
+            _questObjectiveLabel(objective) {
+                const target = objective.item || objective.species || objective.targetId || 'target';
+                return `${objective.type || 'find'} ${target}`;
+            },
+
+            _getQuestById(questId) {
+                return (this.quests || []).find(q => q.id === questId);
+            },
+
+            _getQuestGiverByKey(targetId) {
+                return this.creatures.find(c => String(c.id || c.name) === String(targetId) && c.quest);
+            },
+
+            acceptQuestFromUnit(targetId) {
+                const giver = this._getQuestGiverByKey(targetId);
+                if (!giver) return;
+                this.acceptQuest(giver.quest, giver);
+            },
+
+            acceptQuest(quest, giver = null) {
+                const normalized = this._normalizeQuest(quest, giver);
+                this.quests = this.quests || [];
+                const existing = this._getQuestById(normalized.id);
+                if (existing) {
+                    this.log.push({ text: `${existing.title} is already in your quest log.`, type: 'discovery' });
+                    this.showQuestLog();
+                    this.renderLog();
+                    return existing;
+                }
+                normalized.status = 'active';
+                this.quests.push(normalized);
+                if (giver) {
+                    giver.questAccepted = true;
+                    if (giver.quest) giver.quest.status = 'active';
+                }
+                this.log.push({ text: `Quest accepted: ${normalized.title}.`, type: 'discovery' });
+                this.showQuestLog();
+                this.renderLog();
+                this.renderCreatures();
+                this.autoSave();
+                return normalized;
+            },
+
+            _questObjectiveMatches(type, payload, objective) {
+                if (!objective || objective.complete || objective.type !== type) return false;
+                if (objective.species && objective.species !== payload.species && objective.species !== payload.target?.species) return false;
+                if (objective.targetId && String(objective.targetId) !== String(payload.targetId || payload.target?.id || payload.target?.name)) return false;
+                if (objective.item && objective.item !== payload.item && objective.item !== payload.name) return false;
+                return true;
+            },
+
+            _updateQuestProgress(type, payload = {}) {
+                let changed = false;
+                for (const quest of this.quests || []) {
+                    if (quest.status !== 'active') continue;
+                    for (const objective of quest.objectives || []) {
+                        if (!this._questObjectiveMatches(type, payload, objective)) continue;
+                        objective.progress = Math.min(objective.required, (objective.progress || 0) + (payload.count || 1));
+                        objective.complete = objective.progress >= objective.required;
+                        changed = true;
+                    }
+                    if ((quest.objectives || []).length > 0 && quest.objectives.every(o => o.complete) && quest.status !== 'completed') {
+                        quest.status = 'completed';
+                        this._grantQuestReward(quest);
+                        this.log.push({ text: `Quest completed: ${quest.title}.`, type: 'discovery' });
+                    }
+                }
+                if (changed) {
+                    this.renderLog();
+                    this.renderParty();
+                    this.autoSave();
+                }
+                return changed;
+            },
+
+            _grantQuestReward(quest) {
+                const reward = quest.reward || {};
+                if (reward.xp) this.gainXP(reward.xp);
+                if (reward.gold) this.player.gold = (this.player.gold || 0) + reward.gold;
+                for (const itemName of reward.items || []) {
+                    if (this.inventory.length < this.MAX_INVENTORY) {
+                        this.inventory.push({ id: `quest_item_${Date.now()}_${this.inventory.length}`, name: itemName });
+                    }
+                }
+                if (reward.recruit && this.party.length < this.MAX_PARTY_SIZE) {
+                    const recruit = this._normalizeUnit({ ...reward.recruit }, { disposition: this.DISPOSITION.PARTY, ally: true, obedient: true, willing: true });
+                    this.party.push(recruit);
+                }
+            },
+
+            _questProgressText(quest) {
+                return (quest.objectives || []).map(objective => {
+                    const done = objective.complete ? '✓' : '•';
+                    return `${done} ${objective.label || this._questObjectiveLabel(objective)} (${objective.progress || 0}/${objective.required || 1})`;
+                }).join('<br>');
+            },
+
+            showQuestLog() {
+                const quests = this.quests || [];
+                if (quests.length === 0) {
+                    document.getElementById('scene-description').innerHTML = `<h3>Quests</h3><p style="color:var(--text-muted)">No active quests.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    return;
+                }
+                let html = `<h3>Quests</h3><div style="display:grid;gap:12px;margin-top:12px;">`;
+                quests.forEach(quest => {
+                    const status = quest.status === 'completed' ? 'Completed' : 'Active';
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${quest.title} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
+                    if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${quest.description}</div>`;
+                    html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${this._questProgressText(quest)}</div></div>`;
+                });
+                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                document.getElementById('scene-description').innerHTML = html;
+            },
+
             // ===== INVENTORY =====
             showInventory() {
                 if (this.inventory.length === 0) {
@@ -5960,11 +6129,14 @@
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
+                        if (unit.quest) {
+                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜</button>`;
+                        }
                         actionButtons += '</div>';
                     }
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-                const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
+                const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}">
@@ -6012,6 +6184,9 @@
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
+                        if (unit.quest) {
+                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${unit.questAccepted ? 'View Quest' : 'Accept Quest'}</button>`;
+                        }
                         actionButtons += `</div>`;
                     }
                 }
@@ -6020,6 +6195,7 @@
                     if (isCorpse) dispLabel = 'Remains';
                     else if (unit.disposition === this.DISPOSITION.ENEMY) dispLabel = 'Hostile';
                     else if (unit.disposition === this.DISPOSITION.FRIENDLY) dispLabel = 'Friendly';
+                    else if (unit.disposition === this.DISPOSITION.QUEST_GIVER) dispLabel = 'Quest';
                     else if (unit.disposition === this.DISPOSITION.NEUTRAL) dispLabel = 'Neutral';
                 }
                 const stomachUsed = this._containerUsed(unit, 'stomach');
@@ -6262,6 +6438,7 @@
                     const iname = items[Math.floor(Math.random() * items.length)];
                     const iid = 'item_' + Date.now();
                     this.inventory.push({ id: iid, name: iname });
+                    this._updateQuestProgress('find', { item: iname, name: iname });
                     result = 'You found a ' + iname + '!';
                 } else if (roll < 0.6) {
                     result = 'You explore the area. ' + tile.description;
@@ -6687,6 +6864,8 @@ Enter 1, 2, or 3:`);
                     this.log = (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];
+                    this.quests = loaded.questState?.quests || [];
+                    this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };

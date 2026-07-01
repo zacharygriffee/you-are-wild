@@ -1249,8 +1249,21 @@
             },
             
             updateScene(title, description, inCombat = false) {
-                document.getElementById('scene-title').textContent = title;
-                document.getElementById('scene-description').textContent = description;
+                // Use Content System for scene text
+                const ctx = {
+                    species: this.enemies[0]?.species || 'creature',
+                    biome: this.currentBiome || 'wilderness',
+                    mood: inCombat ? 'hostile' : 'neutral'
+                };
+                
+                // Get content at appropriate tier
+                const biomeText = CONTENT.biomeIntro(this.currentBiome || 'forest', ctx);
+                const encounterText = this.enemies.length > 0 ? 
+                    CONTENT.encounter(this.enemies[0].species, ctx) : '';
+                
+                document.getElementById('scene-title').textContent = title || biomeText.split('.')[0];
+                document.getElementById('scene-description').textContent = description || 
+                    (biomeText + (encounterText ? ' ' + encounterText : ''));
                 
                 const actions = document.getElementById('scene-actions');
                 if (inCombat) {
@@ -1291,13 +1304,32 @@
                 if (this.enemies.length === 0) return;
                 
                 const enemy = this.enemies[0];
+                const ctx = {
+                    attacker: 'You',
+                    defender: enemy.name,
+                    target: enemy.name,
+                    species: enemy.species,
+                    damage: Math.floor(Math.random() * 20) + 10,
+                    verb: action === 'fight' ? 'strike' : action === 'fuck' ? 'seduce' : 'devour',
+                    voreEnabled: CONTENT.preferences.voreEnabled,
+                    explicit: CONTENT.preferences.explicitDescriptions
+                };
+                
                 let result = '';
                 
                 switch(action) {
                     case 'fight':
                         const damage = Math.floor(Math.random() * 20) + 10;
                         enemy.hp -= damage;
-                        result = `Dealt ${damage} damage to ${enemy.name}`;
+                        ctx.damage = damage;
+                        result = CONTENT.combat('attack', ctx);
+                        
+                        if (enemy.hp <= 0) {
+                            result = CONTENT.combat('defeat', { ...ctx, survives: false });
+                            this.enemies = [];
+                            this.updateScene('Victory!', null, false);
+                        }
+                        break;
                         if (enemy.hp <= 0) {
                             result += ` and defeated her!`;
                             this.enemies = [];
@@ -1305,23 +1337,25 @@
                         }
                         break;
                     case 'fuck':
-                        result = `Attempted to seduce ${enemy.name}...`;
+                        result = CONTENT.actionResult('seduce', ctx) + ' ';
                         if (Math.random() > 0.5) {
-                            result += ` She's interested!`;
+                            result += CONTENT.actionResult('seduce', { ...ctx, success: true });
                             this.party.push({...enemy, hp: enemy.maxHp, tags: [enemy.species, 'Lover']});
                             this.enemies = [];
                             this.renderParty();
-                            this.updateScene('New Ally!', `${enemy.name} joins your party!`, false);
+                            const successScene = CONTENT.actionResult('seduce', { ...ctx, target: enemy.name, success: true });
+                            this.updateScene('New Ally!', successScene, false);
                         } else {
-                            result += ` She resisted!`;
+                            result += 'They resisted.';
                         }
                         break;
                     case 'feed':
-                        result = `Consumed ${enemy.name}!`;
+                        result = CONTENT.actionResult('consume', ctx);
                         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
                         this.player.stats.str += 1;
                         this.enemies = [];
-                        this.updateScene('Feeding Complete', `You devoured ${enemy.name}. Your power grows...`, false);
+                        const consumeScene = CONTENT.actionResult('consume', { ...ctx, target: enemy.name });
+                        this.updateScene('Feeding Complete', consumeScene, false);
                         break;
                     case 'flee':
                         result = `Fled from ${enemy.name}`;
@@ -1901,5 +1935,365 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.appendChild(modBtn);
     }
 });
+</script>
+
+
+<!-- ============================================= -->
+<!-- STEP 1: CONTENT TEMPLATE SYSTEM -->
+<!-- ============================================= -->
+
+<script>
+/**
+ * CONTENT TEMPLATE SYSTEM
+ * Preference-gated content with template literal rendering
+ */
+
+const CONTENT_SYSTEM = {
+    // Content rating tiers
+    TIERS: {
+        SAFE: 0,      // Combat, exploration, no suggestive content
+        MATURE: 1,    // Violence, suggestive themes, implied content
+        ADULT: 2      // Explicit content (user must opt in)
+    },
+    
+    // Default preferences
+    preferences: {
+        maxTier: 1,           // Default: MATURE
+        voreEnabled: false,   // Specific mechanic opt-in
+        explicitDescriptions: false,
+        filterTags: []        // User blocked content tags
+    },
+    
+    // Template database (populated by modules)
+    templates: {
+        // Biome introductions
+        biome: {
+            forest: {
+                safe: (ctx) => `You enter a dense forest. Sunlight filters through the canopy.`,
+                mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
+                adult: null  // Gated - must opt in
+            },
+            cave: {
+                safe: (ctx) => `A dark cave entrance yawns before you.`,
+                mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
+                adult: null
+            },
+            plains: {
+                safe: (ctx) => `Open grasslands stretch to the horizon.`,
+                mature: (ctx) => `Tall grasses sway in the breeze, hiding who knows what. The openness feels exposed.`,
+                adult: null
+            }
+        },
+        
+        // Encounter introductions
+        encounter: {
+            generic: {
+                safe: (ctx) => `A ${ctx.species} stands before you.`,
+                mature: (ctx) => `A ${ctx.species} blocks your path, looking ${ctx.mood || 'curious'}.`,
+                adult: (ctx) => ctx.explicit ? `A ${ctx.species} approaches with ${ctx.intent}.` : null
+            },
+            predatory: {
+                safe: (ctx) => `You sense danger nearby.`,
+                mature: (ctx) => `${ctx.species} eyes you with hunger.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.species} licks their lips, sizing you up.` : null
+            }
+        },
+        
+        // Combat actions
+        combat: {
+            attack: {
+                safe: (ctx) => `${ctx.attacker} strikes ${ctx.defender} for ${ctx.damage} damage!`,
+                mature: (ctx) => `${ctx.attacker} ${ctx.verb || 'slams into'} ${ctx.defender}, dealing ${ctx.damage} damage!`,
+                adult: (ctx) => ctx.explicit ? `${ctx.attacker} ${ctx.verb} ${ctx.defender} with brutal force!` : null
+            },
+            defeat: {
+                safe: (ctx) => `${ctx.defender} is defeated.`,
+                mature: (ctx) => `${ctx.defender} collapses, unable to continue fighting.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.defender} collapses, at your mercy.` : null
+            }
+        },
+        
+        // Action outcomes
+        action: {
+            flee: {
+                safe: (ctx) => `You escape successfully.`,
+                mature: (ctx) => `You manage to slip away into the ${ctx.terrain || 'wilderness'}.`,
+                adult: null
+            },
+            consume: {
+                safe: (ctx) => `You defeat ${ctx.target}.`,
+                mature: (ctx) => `${ctx.target} is consumed. You feel stronger.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down your throat, settling in your belly.` : null
+            },
+            seduce: {
+                safe: (ctx) => `${ctx.target} agrees to join you.`,
+                mature: (ctx) => `${ctx.target} is swayed by your charms and joins your party.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.target} submits to your advances.` : null
+            }
+        }
+    },
+    
+    // Initialize from storage
+    async init() {
+        const saved = localStorage.getItem('fff-content-prefs');
+        if (saved) {
+            try {
+                this.preferences = { ...this.preferences, ...JSON.parse(saved) };
+            } catch (e) {
+                console.error('Failed to load content preferences:', e);
+            }
+        }
+    },
+    
+    // Save preferences
+    savePreferences() {
+        localStorage.setItem('fff-content-prefs', JSON.stringify(this.preferences));
+    },
+    
+    // Set max content tier
+    setMaxTier(tier) {
+        this.preferences.maxTier = tier;
+        this.savePreferences();
+    },
+    
+    // Toggle specific content
+    toggleSetting(setting, value) {
+        if (setting in this.preferences) {
+            this.preferences[setting] = value !== undefined ? value : !this.preferences[setting];
+            this.savePreferences();
+        }
+    },
+    
+    // Get content at appropriate tier
+    getContent(templatePath, context = {}) {
+        const [category, type, variant] = templatePath.split('.');
+        const templates = this.templates[category]?.[type]?.[variant];
+        
+        if (!templates) {
+            return `[Missing content: ${templatePath}]`;
+        }
+        
+        // Try tiers from highest allowed down to safe
+        const tiers = ['adult', 'mature', 'safe'];
+        const maxTier = this.preferences.maxTier;
+        
+        for (const tierName of tiers) {
+            const tier = this.TIERS[tierName.toUpperCase()];
+            
+            // Skip if above max tier
+            if (tier > maxTier) continue;
+            
+            // Skip if gated content not enabled
+            if (tier === this.TIERS.ADULT) {
+                if (templates === null) continue;
+                if (context.voreEnabled && !this.preferences.voreEnabled) continue;
+                if (context.explicit && !this.preferences.explicitDescriptions) continue;
+            }
+            
+            // Get template function
+            const template = templates[tierName];
+            if (typeof template === 'function') {
+                try {
+                    return template(context);
+                } catch (e) {
+                    console.error(`Template error ${templatePath}:`, e);
+                    continue;
+                }
+            }
+        }
+        
+        // Fallback to safe
+        const safeTemplate = templates.safe;
+        if (typeof safeTemplate === 'function') {
+            return safeTemplate(context);
+        }
+        
+        return '[Content unavailable]';
+    },
+    
+    // Quick content helpers
+    biomeIntro(biome, context = {}) {
+        return this.getContent(`biome.${biome}`, context);
+    },
+    
+    encounter(species, context = {}) {
+        return this.getContent(`encounter.generic`, { 
+            species, 
+            mood: context.mood || 'curious',
+            ...context 
+        });
+    },
+    
+    combat(action, context = {}) {
+        return this.getContent(`combat.${action}`, context);
+    },
+    
+    actionResult(action, context = {}) {
+        return this.getContent(`action.${action}`, context);
+    },
+    
+    // Add custom templates from modules
+    registerTemplate(category, type, variant, templates) {
+        if (!this.templates[category]) {
+            this.templates[category] = {};
+        }
+        if (!this.templates[category][type]) {
+            this.templates[category][type] = {};
+        }
+        this.templates[category][type][variant] = templates;
+    }
+};
+
+// Initialize
+CONTENT_SYSTEM.init();
+
+// Make available globally
+window.CONTENT = CONTENT_SYSTEM;
+</script>
+
+
+<!-- ============================================= -->
+<!-- STEP 2: EXAMPLE CONTENT PACKS -->
+<!-- ============================================= -->
+
+<script>
+/**
+ * EXAMPLE CONTENT PACKS
+ * Demonstrating tiered content system
+ */
+
+// Base Game Content Pack (included by default)
+const BASE_CONTENT_PACK = {
+    manifest: {
+        id: 'content_base_game',
+        name: 'Core World',
+        version: '1.0.0',
+        author: 'FFFme Team',
+        description: 'Base biomes, encounters, and content',
+        type: 'content_pack',
+        contentRating: 'MATURE',
+        isCore: true
+    },
+    
+    install() {
+        // Biome introductions
+        CONTENT.registerTemplate('biome', 'jungle', 'default', {
+            safe: (ctx) => `Dense jungle surrounds you. Vines hang from towering trees.`,
+            mature: (ctx) => `The jungle presses close, humid and alive. Something moves in the canopy above.`,
+            adult: null
+        });
+        
+        CONTENT.registerTemplate('biome', 'swamp', 'default', {
+            safe: (ctx) => `Murky waters stretch through twisted trees.`,
+            mature: (ctx) => `The swamp exhales mist. Unseen creatures ripple the surface.`,
+            adult: null
+        });
+        
+        // Encounter types
+        CONTENT.registerTemplate('encounter', 'ambush', 'default', {
+            safe: (ctx) => `${ctx.species} attacks by surprise!`,
+            mature: (ctx) => `A ${ctx.species} lunges from ${ctx.hidingSpot || 'the shadows'}!`,
+            adult: (ctx) => ctx.explicit ? `${ctx.species} pounces, pinning you!` : null
+        });
+        
+        // Combat outcomes
+        CONTENT.registerTemplate('combat', 'grapple', 'default', {
+            safe: (ctx) => `${ctx.attacker} grabs ${ctx.defender}.`,
+            mature: (ctx) => `${ctx.attacker} wrestles with ${ctx.defender}, trying to overpower them.`,
+            adult: (ctx) => ctx.voreEnabled ? `${ctx.attacker} wraps around ${ctx.defender}, constricting tight.` : null
+        });
+        
+        console.log('Base content pack installed');
+    }
+};
+
+// Extended Adult Content Pack (optional)
+const ADULT_CONTENT_PACK = {
+    manifest: {
+        id: 'content_adult_extended',
+        name: 'Extended Descriptions',
+        version: '1.0.0',
+        author: 'Community',
+        description: 'Additional explicit content for adult players',
+        type: 'content_pack',
+        contentRating: 'ADULT',
+        requiresOptIn: ['explicitDescriptions', 'voreEnabled']
+    },
+    
+    install() {
+        // These only render if user opts in
+        
+        CONTENT.registerTemplate('action', 'consume', 'detailed', {
+            safe: null,  // Don't override
+            mature: null,
+            adult: (ctx) => ctx.voreEnabled ? 
+                `${ctx.target} slips past your jaws, sliding down your throat in one smooth motion. You feel them settle in your stomach, becoming part of you.` : null
+        });
+        
+        CONTENT.registerTemplate('action', 'seduce', 'detailed', {
+            safe: null,
+            mature: null,
+            adult: (ctx) => ctx.explicit ? 
+                `You draw ${ctx.target} close, your intentions clear. They melt into your embrace, submitting completely.` : null
+        });
+        
+        CONTENT.registerTemplate('encounter', 'intimate', 'default', {
+            safe: null,
+            mature: null,
+            adult: (ctx) => ctx.explicit ? 
+                `The ${ctx.species} approaches with obvious interest, their gaze lingering on your form.` : null
+        });
+        
+        console.log('Adult content pack installed');
+    }
+};
+
+// Species Flavor Pack
+const SPECIES_FLAVOR_PACK = {
+    manifest: {
+        id: 'content_species_flavor',
+        name: 'Species Flavor Text',
+        version: '1.0.0',
+        author: 'Community',
+        description: 'Unique descriptions for each species type',
+        type: 'content_pack',
+        contentRating: 'MATURE'
+    },
+    
+    install() {
+        // Naga-specific content
+        CONTENT.registerTemplate('species', 'naga', 'encounter', {
+            safe: (ctx) => `A naga slithers into view, serpentine lower body coiling.`,
+            mature: (ctx) => `The naga's tail circles lazily, upper body poised and predatory. She assesses you with calculating eyes.`,
+            adult: (ctx) => ctx.explicit ? `The naga's forked tongue flickers, tasting your scent on the air. Her coils tighten with interest.` : null
+        });
+        
+        // Dragon-specific content
+        CONTENT.registerTemplate('species', 'dragon', 'encounter', {
+            safe: (ctx) => `A dragon lands before you, wings folding.`,
+            mature: (ctx) => `Heat radiates from the dragon as she settles, ancient eyes weighing your worth.`,
+            adult: (ctx) => ctx.explicit ? `The dragon's muscular form looms, tail curling possessively around her territory.` : null
+        });
+        
+        // Slime-specific content
+        CONTENT.registerTemplate('species', 'slime', 'encounter', {
+            safe: (ctx) => `A slime creature bubbles into form.`,
+            mature: (ctx) => `The slime shifts, forming a curvaceous shape as it advances.`,
+            adult: (ctx) => ctx.explicit ? `The slime's translucent body molds into inviting shapes, ready to envelop.` : null
+        });
+        
+        console.log('Species flavor pack installed');
+    }
+};
+
+// Install base content automatically
+BASE_CONTENT_PACK.install();
+
+// Make packs available for manual install
+window.CONTENT_PACKS = {
+    base: BASE_CONTENT_PACK,
+    adult: ADULT_CONTENT_PACK,
+    species: SPECIES_FLAVOR_PACK
+};
 </script>
 

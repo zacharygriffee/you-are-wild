@@ -2033,12 +2033,12 @@ const CONTENT_SYSTEM = {
         ADULT: 2      // Explicit content (user must opt in)
     },
     
-    // Default preferences
+    // Default preferences - ADULT by default
     preferences: {
-        maxTier: 1,           // Default: MATURE
-        voreEnabled: false,   // Specific mechanic opt-in
-        explicitDescriptions: false,
-        filterTags: []        // User blocked content tags
+        maxTier: 2,           // Default: ADULT (show all content)
+        voreEnabled: true,    // Vore enabled by default (core mechanic)
+        explicitDescriptions: true,  // Explicit by default
+        filterTags: []        // User can block specific tags if desired
     },
     
     // Template database (populated by modules)
@@ -2048,17 +2048,17 @@ const CONTENT_SYSTEM = {
             forest: {
                 safe: (ctx) => `You enter a dense forest. Sunlight filters through the canopy.`,
                 mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
-                adult: null  // Gated - must opt in
+                adult: (ctx) => `The forest presses close, humid and thick with the scent of lust and danger. You feel eyes upon you, hungry and wanting.`
             },
             cave: {
                 safe: (ctx) => `A dark cave entrance yawns before you.`,
                 mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
-                adult: null
+                adult: (ctx) => `The cave beckons, darkness promising privacy for whatever desires await within.`
             },
             plains: {
                 safe: (ctx) => `Open grasslands stretch to the horizon.`,
                 mature: (ctx) => `Tall grasses sway in the breeze, hiding who knows what. The openness feels exposed.`,
-                adult: null
+                adult: (ctx) => `The open plains offer no cover for the pleasures or predations that may find you here.`
             }
         },
         
@@ -2067,7 +2067,12 @@ const CONTENT_SYSTEM = {
             generic: {
                 safe: (ctx) => `A ${ctx.species} stands before you.`,
                 mature: (ctx) => `A ${ctx.species} blocks your path, looking ${ctx.mood || 'curious'}.`,
-                adult: (ctx) => ctx.explicit ? `A ${ctx.species} approaches with ${ctx.intent}.` : null
+                adult: (ctx) => `A ${ctx.species} approaches, her intentions clear as she eyes you hungrily.`
+            },
+            predatory: {
+                safe: (ctx) => `You sense danger nearby.`,
+                mature: (ctx) => `${ctx.species} eyes you with hunger.`,
+                adult: (ctx) => `${ctx.species} licks her lips, sizing you up as potential prey.`
             },
             predatory: {
                 safe: (ctx) => `You sense danger nearby.`,
@@ -2163,9 +2168,17 @@ const CONTENT_SYSTEM = {
             return `[Missing content: ${templatePath}]`;
         }
         
-        // Try tiers from highest allowed down to safe
+        // Try tiers - adult first (default), then fallbacks
         const tiers = ['adult', 'mature', 'safe'];
         const maxTier = this.preferences.maxTier;
+        
+        // If user has explicit enabled and adult exists, prefer it
+        if (maxTier >= 2 && this.preferences.explicitDescriptions) {
+            const adultTemplate = templates.adult;
+            if (adultTemplate && typeof adultTemplate === 'function') {
+                return adultTemplate(context);
+            }
+        }
         
         for (const tierName of tiers) {
             const tier = this.TIERS[tierName.toUpperCase()];

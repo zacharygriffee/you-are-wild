@@ -1199,9 +1199,9 @@
                     <span class="action-icon">🔍</span>
                     Search
                 </button>
-                <button class="action-btn" onclick="App.rest()">
-                    <span class="action-icon">🏕️</span>
-                    Rest
+                <button class="action-btn" onclick="App.showInventory()">
+                    <span class="action-icon">🎒</span>
+                    Items
                 </button>
                 <button class="action-btn" onclick="togglePanel('map')">
                     <span class="action-icon">🗺️</span>
@@ -1382,9 +1382,10 @@
         Binary.vuint.encode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).encode(s, obj.party || []);
         Binary.array(Binary.string).encode(s, obj.log || []); Binary.string.encode(s, obj.currentBiome || 'forest');
         Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
+        Binary.json.encode(s, obj.inventory || []);
       },
       decode(s) {
-        return { version: Binary.vuint.decode(s), playerName: Binary.string.decode(s), playerSpecies: Binary.string.decode(s), locationX: Binary.int32.decode(s), locationY: Binary.int32.decode(s), playerHp: Binary.vuint.decode(s), playerMaxHp: Binary.vuint.decode(s), playerStats: Binary.codecs.stats.decode(s), playerLevel: Binary.vuint.decode(s), party: Binary.array(Binary.codecs.unit).decode(s), log: Binary.array(Binary.string).decode(s), currentBiome: Binary.string.decode(s), worldMap: Binary.json.decode(s), exploredTiles: Binary.json.decode(s) };
+        return { version: Binary.vuint.decode(s), playerName: Binary.string.decode(s), playerSpecies: Binary.string.decode(s), locationX: Binary.int32.decode(s), locationY: Binary.int32.decode(s), playerHp: Binary.vuint.decode(s), playerMaxHp: Binary.vuint.decode(s), playerStats: Binary.codecs.stats.decode(s), playerLevel: Binary.vuint.decode(s), party: Binary.array(Binary.codecs.unit).decode(s), log: Binary.array(Binary.string).decode(s), currentBiome: Binary.string.decode(s), worldMap: Binary.json.decode(s), exploredTiles: Binary.json.decode(s), inventory: Binary.json.decode(s) };
       }
     }
   };
@@ -1401,7 +1402,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
     
     const saveData = {
-      version: 2,
+      version: 3,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -1414,7 +1415,8 @@
       log: appState.log?.map(e => e.text) || [],
       currentBiome: appState.currentBiome || 'forest',
       worldMap: worldMapObj,
-      exploredTiles: exploredArray
+      exploredTiles: exploredArray,
+      inventory: appState.inventory || []
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
@@ -1443,6 +1445,19 @@
             party: [],
             enemies: [],
             MAX_PARTY_SIZE: 6,
+            inventory: [],
+            MAX_INVENTORY: 20,
+            
+            ITEMS: {
+                'Healing Herb': { type: 'consumable', icon: '🌿', effect: 'heal', value: 30, desc: 'Restores 30 HP' },
+                'Shiny Gem': { type: 'valuable', icon: '💎', effect: 'sell', value: 50, desc: 'Worth 50 gold' },
+                'Strange Mushroom': { type: 'consumable', icon: '🍄', effect: 'heal', value: 50, desc: 'Restores 50 HP (and maybe more)' },
+                'Old Coin': { type: 'valuable', icon: '🪙', effect: 'sell', value: 10, desc: 'Worth 10 gold' },
+                'Monster Fang': { type: 'material', icon: '🦷', effect: 'craft', value: 25, desc: 'Crafting material' },
+                'Crystal Shard': { type: 'material', icon: '💠', effect: 'craft', value: 40, desc: 'Crafting material' },
+                'Vial of Venom': { type: 'consumable', icon: '🧪', effect: 'damage', value: 40, desc: 'Deals 40 poison damage' },
+                'Enchanted Berry': { type: 'consumable', icon: '🫐', effect: 'buff', value: 5, desc: 'Temporarily boosts STR by 5' }
+            },
             
             // XP rewards
             XP_REWARDS: {
@@ -1467,7 +1482,27 @@
                 { id: 'tiger', name: 'Tiger', icon: '🐅', desc: 'Deadly stalker' },
                 { id: 'bunny', name: 'Bunny', icon: '🐰', desc: 'Swift prey' },
                 { id: 'slime', name: 'Slime', icon: '🟢', desc: 'Amorphous' },
-                { id: 'harpy', name: 'Harpy', icon: '🦅', desc: 'Sky hunter' }
+                { id: 'harpy', name: 'Harpy', icon: '🦅', desc: 'Sky hunter' },
+                { id: 'bat', name: 'Bat', icon: '🦇', desc: 'Night stalker' },
+                { id: 'deer', name: 'Deer', icon: '🦌', desc: 'Graceful prey' },
+                { id: 'frog', name: 'Frog', icon: '🐸', desc: 'Swamp dweller' },
+                { id: 'plant', name: 'Plant', icon: '🌿', desc: 'Carnivorous flora' },
+                { id: 'shroom', name: 'Shroom', icon: '🍄', desc: 'Spore bearer' },
+                { id: 'bee', name: 'Bee', icon: '🐝', desc: 'Hive warrior' },
+                { id: 'goblin', name: 'Goblin', icon: '👺', desc: 'Mischief maker' },
+                { id: 'mouse', name: 'Mouse', icon: '🐭', desc: 'Tiny survivor' },
+                { id: 'rat', name: 'Rat', icon: '🐀', desc: 'Sewer dweller' },
+                { id: 'pig', name: 'Pig', icon: '🐷', desc: 'Mud roller' },
+                { id: 'cow', name: 'Cow', icon: '🐮', desc: 'Milk maid' },
+                { id: 'sheep', name: 'Sheep', icon: '🐑', desc: 'Woolly prey' },
+                { id: 'horse', name: 'Horse', icon: '🐴', desc: 'Gallant steed' },
+                { id: 'lizard', name: 'Lizard', icon: '🦎', desc: 'Sun basker' },
+                { id: 'spider', name: 'Spider', icon: '🕷️', desc: 'Web weaver' },
+                { id: 'centaur', name: 'Centaur', icon: '🐎', desc: 'Half-beast warrior' },
+                { id: 'drow', name: 'Drow', icon: '🧝', desc: 'Dark elf' },
+                { id: 'hyena', name: 'Hyena', icon: '🐆', desc: 'Laughing hunter' },
+                { id: 'raccoon', name: 'Raccoon', icon: '🦝', desc: 'Trash bandit' },
+                { id: 'otter', name: 'Otter', icon: '🦦', desc: 'River playmate' }
             ],
             
             // Biome definitions
@@ -2208,6 +2243,10 @@
                             <span class="action-icon">🏕️</span>
                             Rest
                         </button>
+                        <button class="action-btn" onclick="App.showInventory()">
+                            <span class="action-icon">🎒</span>
+                            Inventory (${App.inventory.length})
+                        </button>
                     `;
                     // Show mobile exploration bar
                     if (mobileActions) mobileActions.style.display = 'block';
@@ -2532,7 +2571,7 @@ enemyTurn(enemy) {
     if (target.hp <= 0) {
         if (target.name === 'You') {
             this.log.push({ text: 'You fall! Game Over!', type: 'combat' });
-            setTimeout(() => { if (confirm('Game Over?')) location.reload(); }, 1000);
+            setTimeout(() => { if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); } }, 1000);
             return;
         } else {
             this.log.push({ text: `${target.name} falls!`, type: 'combat' });
@@ -2581,10 +2620,43 @@ endCombat(victory) {
                 this.autoSave();
 },
 
+showInventory() {
+    if (this.inventory.length === 0) {
+        document.getElementById('scene-description').innerHTML = `
+            <h3>🎒 Inventory</h3>
+            <p style="color: var(--text-muted);">Your inventory is empty.</p>
+            <button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>
+        `;
+        return;
+    }
+    
+    let html = `<h3>🎒 Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
+    
+    this.inventory.forEach(item => {
+        const canUse = item.effect === 'heal' || item.effect === 'buff' || item.effect === 'damage';
+        html += `<div class="option-card" style="text-align:left;cursor:default;">`;
+        html += `<div style="font-size:24px">${item.icon}</div>`;
+        html += `<div style="font-weight:600;color:var(--text-primary)">${item.name}</div>`;
+        html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${item.desc}</div>`;
+        html += `<div style="display:flex;gap:8px;margin-top:8px">`;
+        if (canUse) {
+            html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.useItem('${item.id}')">Use</button>`;
+        }
+        html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" onclick="App.dropItem('${item.id}')">Drop</button>`;
+        html += `</div></div>`;
+    });
+    
+    html += `</div>`;
+    html += `<button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+    document.getElementById('scene-description').innerHTML = html;
+},
+            
 showExplorationActions() {
     document.getElementById('scene-actions').innerHTML = `
         <button class="action-btn" onclick="App.search()"><span class="action-icon">🔍</span>Search</button>
         <button class="action-btn" onclick="App.rest()"><span class="action-icon">🏕️</span>Rest</button>
+        <button class="action-btn" onclick="App.showInventory()"><span class="action-icon">🎒</span>Inventory</button>
     `;
     const tile = this.getTile(this.location.x, this.location.y);
     const biome = this.biomes[tile.biome];
@@ -2645,7 +2717,7 @@ showExplorationActions() {
                     if (player.hp <= 0) {
                         actionText += ' You collapse!';
                         setTimeout(() => {
-                            alert('Game Over! You were defeated.');
+                            if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); }
                         }, 500);
                     }
                 } else if (roll < 0.9) {
@@ -2795,6 +2867,7 @@ showExplorationActions() {
                     this.currentBiome = loaded.currentBiome || 'forest';
                     this.log = loaded.log.map(text => ({ text, type: 'discovery' }));
                     this.enemies = [];
+                    this.inventory = loaded.inventory || [];
                     this.activeSlot = slotName;
                     
                     // Restore map state

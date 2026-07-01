@@ -135,21 +135,21 @@
                 { id: 'otter', name: 'Otter', icon: '🦦', desc: 'River playmate' }
             ],
             biomes: {
-                forest: { name: 'Forest', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', encounterChance: 0.3, encounterTable: ['wolf','bunny','bear','slime','harpy'], descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
-                swamp: { name: 'Swamp', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', encounterChance: 0.35, encounterTable: ['naga','slime','frog','plant','shroom'], descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
-                plains: { name: 'Plains', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', encounterChance: 0.25, encounterTable: ['human','wolf','tiger','bunny','deer'], descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
-                cave: { name: 'Cave', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', encounterChance: 0.4, encounterTable: ['bat','slime','naga','goblin','dragon'], descriptions: ['Stalactites hang like teeth from the ceiling.','The cave opens into a vast chamber.','A narrow passage forces you to squeeze through.','An underground river rushes through.','Crystal formations glitter in the darkness.'] },
-                jungle: { name: 'Jungle', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', encounterChance: 0.35, encounterTable: ['tiger','naga','frog','plant','harpy'], descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
-                dungeon: { name: 'Dungeon', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', encounterChance: 0.45, encounterTable: ['goblin','spider','drow','rat','skeleton'], descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
-                manor: { name: 'Manor', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.3, encounterTable: ['human','cat','horse','lizard','spider'], descriptions: ['Grand hallways echo with emptiness.','Antique furniture gathers dust.','A portrait gallery watches your passage.','The ballroom is frozen in decay.','Servants quarters hide secrets.'] },
-                beach: { name: 'Beach', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', encounterChance: 0.25, encounterTable: ['frog','harpy','fish','crab','siren'], descriptions: ['Waves lap against white sand.','Palm trees sway overhead.','Seashells scatter the shore.','A tide pool teems with life.','A distant ship lies wrecked on the reef.'] },
-                road: { name: 'Road', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.2, encounterTable: ['human','wolf','horse','goblin','bandit'], descriptions: ['A dirt path stretches between biomes.','Wagon ruts mark the earth.','A weathered signpost points onward.','A campfire ring marks a resting spot.','The road is well-traveled.'] },
-                cliff: { name: 'Cliff', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', encounterChance: 0.3, encounterTable: ['harpy','goat','eagle','bat','wolf'], descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
-                water: { name: 'Water', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', encounterChance: 0.35, encounterTable: ['frog','fish','otter','naga','slime'], descriptions: ['The river rushes past.','A lake reflects the sky like glass.','Water cascades over smooth rocks.','The current pulls at your feet.','A hidden spring bubbles from the earth.'] },
-                bridge: { name: 'Bridge', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', encounterChance: 0.3, encounterTable: ['troll','bandit','goblin','human','frog'], descriptions: ['A wooden span creaks beneath you.','Rope bridges sway in the wind.','Stone arches rise from the water.','A toll booth stands abandoned.','The bridge offers a commanding view.'] },
-                farm: { name: 'Farm', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.25, encounterTable: ['cow','pig','sheep','horse','human'], descriptions: ['Barns loom in the golden fields.','A windmill turns lazily.','Plowed earth stretches to the horizon.','Chicken coops clatter with activity.','A silo casts a long shadow.'] },
-                indoors: { name: 'Indoors', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.2, encounterTable: ['human','cat','rat','mouse','spider'], descriptions: ['Walls enclose the space.','A hearth glows with dying embers.','Furniture is arranged cozily.','The ceiling is low and beamed.','A door leads to other rooms.'] },
-                entrance: { name: 'Entrance', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', encounterChance: 0.3, encounterTable: ['goblin','human','wolf','bat','skeleton'], descriptions: ['A cave mouth yawns in darkness.','A dungeon door stands reinforced.','A portal shimmers with energy.','A gatehouse guards the passage.','An ancient archway frames the way.'] }
+                forest: { name: 'Forest', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', encounterChance: 0.15, encounterTable: ['wolf','bunny','bear','slime','harpy'], descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
+                swamp: { name: 'Swamp', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', encounterChance: 0.20, encounterTable: ['naga','slime','frog','plant','shroom'], descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
+                plains: { name: 'Plains', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', encounterChance: 0.12, encounterTable: ['human','wolf','tiger','bunny','deer'], descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
+                cave: { name: 'Cave', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', encounterChance: 0.25, encounterTable: ['bat','slime','naga','goblin','dragon'], descriptions: ['Stalactites hang like teeth from the ceiling.','The cave opens into a vast chamber.','A narrow passage forces you to squeeze through.','An underground river rushes through.','Crystal formations glitter in the darkness.'] },
+                jungle: { name: 'Jungle', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', encounterChance: 0.20, encounterTable: ['tiger','naga','frog','plant','harpy'], descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
+                dungeon: { name: 'Dungeon', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', encounterChance: 0.30, encounterTable: ['goblin','spider','drow','rat','skeleton'], descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
+                manor: { name: 'Manor', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.15, encounterTable: ['human','cat','horse','lizard','spider'], descriptions: ['Grand hallways echo with emptiness.','Antique furniture gathers dust.','A portrait gallery watches your passage.','The ballroom is frozen in decay.','Servants quarters hide secrets.'] },
+                beach: { name: 'Beach', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', encounterChance: 0.12, encounterTable: ['frog','harpy','fish','crab','siren'], descriptions: ['Waves lap against white sand.','Palm trees sway overhead.','Seashells scatter the shore.','A tide pool teems with life.','A distant ship lies wrecked on the reef.'] },
+                road: { name: 'Road', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.10, encounterTable: ['human','wolf','horse','goblin','bandit'], descriptions: ['A dirt path stretches between biomes.','Wagon ruts mark the earth.','A weathered signpost points onward.','A campfire ring marks a resting spot.','The road is well-traveled.'] },
+                cliff: { name: 'Cliff', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', encounterChance: 0.15, encounterTable: ['harpy','goat','eagle','bat','wolf'], descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
+                water: { name: 'Water', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', encounterChance: 0.20, encounterTable: ['frog','fish','otter','naga','slime'], descriptions: ['The river rushes past.','A lake reflects the sky like glass.','Water cascades over smooth rocks.','The current pulls at your feet.','A hidden spring bubbles from the earth.'] },
+                bridge: { name: 'Bridge', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', encounterChance: 0.15, encounterTable: ['troll','bandit','goblin','human','frog'], descriptions: ['A wooden span creaks beneath you.','Rope bridges sway in the wind.','Stone arches rise from the water.','A toll booth stands abandoned.','The bridge offers a commanding view.'] },
+                farm: { name: 'Farm', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.12, encounterTable: ['cow','pig','sheep','horse','human'], descriptions: ['Barns loom in the golden fields.','A windmill turns lazily.','Plowed earth stretches to the horizon.','Chicken coops clatter with activity.','A silo casts a long shadow.'] },
+                indoors: { name: 'Indoors', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.10, encounterTable: ['human','cat','rat','mouse','spider'], descriptions: ['Walls enclose the space.','A hearth glows with dying embers.','Furniture is arranged cozily.','The ceiling is low and beamed.','A door leads to other rooms.'] },
+                entrance: { name: 'Entrance', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', encounterChance: 0.15, encounterTable: ['goblin','human','wolf','bat','skeleton'], descriptions: ['A cave mouth yawns in darkness.','A dungeon door stands reinforced.','A portal shimmers with energy.','A gatehouse guards the passage.','An ancient archway frames the way.'] }
             },
 
             // ===== CHARACTER CREATION =====
@@ -341,25 +341,30 @@
                 const oldTile = this.worldMap.get(oldKey);
                 if (oldTile) {
                     oldTile.creatures = [...this.creatures];
-                    oldTile.items = this.inventory.slice(); // snapshot of dropped items could be added here
+                    oldTile.items = this.inventory.slice();
                 }
                 this.location.x += dx; this.location.y += dy;
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
+
+                // Check if destination was explored BEFORE we call exploreTile (which marks it)
+                const wasExplored = this.isExplored(this.location.x, this.location.y);
                 const tile = this.exploreTile(this.location.x, this.location.y);
                 const biome = this.biomes[tile.biome];
                 this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y} (${biome.name})`, type: 'move' });
                 if (tile.hasLandmark) {
                     this.log.push({ text: `Discovered ${tile.landmarkName}!`, type: 'discovery' });
                 }
-                // Restore creatures from tile if revisiting, or clear
-                if (tile.creatures && tile.creatures.length > 0) {
-                    this.creatures = tile.creatures;
+
+                if (wasExplored) {
+                    // Revisiting: only restore saved creatures, never spawn new ones
+                    this.creatures = tile.creatures || [];
                     const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                     if (enemies.length > 0) {
                         this.log.push({ text: `You encounter ${enemies.map(e => e.name).join(', ')}!`, type: 'combat' });
                         this.startCombat(enemies);
                     }
                 } else {
+                    // First visit: clear and possibly spawn
                     this.creatures = [];
                     if (Math.random() < biome.encounterChance) { this.spawnEncounter(tile); }
                 }
@@ -372,29 +377,34 @@
             // ===== ENCOUNTER / SPAWN =====
             spawnEncounter(tile, isBoss = false) {
                 const biome = this.biomes[tile.biome];
-                const count = isBoss ? 1 : Math.floor(Math.random() * 3) + 1;
+                // Enemy count: 1 at low levels, up to 2 at higher levels, 3 rarely
+                const count = isBoss ? 1 : Math.max(1, Math.floor(Math.random() * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
                 const enemies = [];
                 for (let i = 0; i < count; i++) {
                     const pool = biome.encounterTable;
                     const sid = pool[Math.floor(Math.random() * pool.length)];
                     const sp = this.species.find(s => s.id === sid);
-                    const lvl = isBoss ? this.player.level + 2 : Math.max(1, this.player.level - 1 + Math.floor(Math.random() * 3));
+                    // Enemy level: at or below player level, never above
+                    const lvl = isBoss ? Math.max(1, this.player.level) : Math.max(1, this.player.level - 1 + Math.floor(Math.random() * 2));
                     const base = this._getSpeciesBaseStats(sid);
-                    const hpBase = isBoss ? 150 : 80; const hpVar = isBoss ? 100 : 40;
+                    // Enemy stats: weaker than player at same level (0.6x to 0.9x multiplier)
+                    const statMult = isBoss ? 1.0 : (0.6 + Math.random() * 0.3);
+                    // HP: weaker enemies
+                    const hpMult = isBoss ? 1.2 : (0.5 + Math.random() * 0.3);
                     const enemy = {
                         id: 'enemy_' + Date.now() + '_' + i, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
                         species: sid, icon: sp.icon, gender: Math.random() < 0.5 ? 'female' : 'male',
                         identity: Math.random() < 0.5 ? 'female' : 'male', parts: Math.random() < 0.3 ? 'cock' : 'clit', chest: Math.random() < 0.5 ? 'tits' : 'pecs',
-                        bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: Math.floor(Math.random() * 6) + 2, appetite: Math.floor(Math.random() * 6) + 2,
-                        level: lvl, MPun: Math.floor(base.MPun * (0.8 + lvl * 0.2)), CPun: Math.floor(base.MPun * (0.8 + lvl * 0.2)),
-                        MPle: base.MPle, CPle: Math.floor(base.MPle * 0.5),
-                        Figh: Math.floor(base.Figh * (0.8 + lvl * 0.15)), Feas: Math.floor(base.Feas * (0.8 + lvl * 0.15)),
-                        Flir: Math.floor(base.Flir * (0.8 + lvl * 0.15)), Fuck: Math.floor(base.Fuck * (0.8 + lvl * 0.15)),
-                        Flee: Math.floor(base.Flee * (0.8 + lvl * 0.15)), Feed: Math.floor(base.Feed * (0.8 + lvl * 0.15)),
-                        hunger: Math.floor((base.hunger || 40) * (0.8 + lvl * 0.15)), str: Math.floor(base.str * (0.8 + lvl * 0.15)), con: Math.floor(base.con * (0.8 + lvl * 0.15)), spd: Math.floor(base.spd * (0.8 + lvl * 0.15)),
-                        int: Math.floor(base.int * (0.8 + lvl * 0.15)), wis: Math.floor(base.wis * (0.8 + lvl * 0.15)), cha: Math.floor(base.cha * (0.8 + lvl * 0.15)),
+                        bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: Math.floor(Math.random() * 4) + 2, appetite: Math.floor(Math.random() * 4) + 2,
+                        level: lvl, MPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)), CPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)),
+                        MPle: base.MPle, CPle: Math.floor(base.MPle * 0.3),
+                        Figh: Math.floor(base.Figh * statMult), Feas: Math.floor(base.Feas * statMult),
+                        Flir: Math.floor(base.Flir * statMult), Fuck: Math.floor(base.Fuck * statMult),
+                        Flee: Math.floor(base.Flee * statMult), Feed: Math.floor(base.Feed * statMult),
+                        hunger: Math.floor((base.hunger || 40) * 0.7), str: Math.floor(base.str * statMult), con: Math.floor(base.con * statMult), spd: Math.floor(base.spd * statMult),
+                        int: Math.floor(base.int * statMult), wis: Math.floor(base.wis * statMult), cha: Math.floor(base.cha * statMult),
                         tags: [sp.name], stomach: [], womb: [], balls: [], cum: 0, status: {}, disposition: this.DISPOSITION.ENEMY,
-                        expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.2,
+                        expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.3,
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
                     enemies.push(enemy);

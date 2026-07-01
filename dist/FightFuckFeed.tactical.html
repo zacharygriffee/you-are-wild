@@ -5364,6 +5364,54 @@
                 return `${portions.map(actor => actor.name).join(', ')} split ${target.name} into chewable portions.`;
             },
 
+            _multiTargetStat(actor, action) {
+                if (action === 'fight') return actor.Figh || actor.str || 10;
+                if (action === 'flirt') return (actor.Flir || 10) + Math.floor((actor.cha || 10) * 0.5);
+                if (action === 'fuck') return (actor.Fuck || 10) + Math.floor((actor.cha || 10) * 0.5);
+                if (action === 'feast') return actor.Feas || actor.str || 10;
+                if (action === 'feed') return actor.Feed || actor.wis || 10;
+                return actor.spd || 10;
+            },
+
+            _canHandleMultipleTargets(actor, action, targets) {
+                const count = (targets || []).length;
+                if (count <= 1) return true;
+                const stat = this._multiTargetStat(actor, action);
+                const difficulty = 12 + (count - 1) * 8;
+                return stat >= difficulty;
+            },
+
+            outsideActionOnTargets(action, targets, actor = this._getExplorationActor()) {
+                const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
+                if (targetList.length === 0) return;
+                actor = actor || this.player;
+                if (!this._canHandleMultipleTargets(actor, action, targetList)) {
+                    this.log.push({ text: `${actor.name} cannot handle ${targetList.length} targets with ${this._uiLabel(action).toLowerCase()} yet.`, type: 'discovery' });
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    return;
+                }
+                for (const target of targetList) {
+                    this.outsideActionOnTarget(action, target, actor);
+                }
+                this.log.push({ text: `${actor.name} finishes a multi-target ${this._uiLabel(action).toLowerCase()} action on ${targetList.map(t => t.name).join(', ')}.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+            },
+
+            outsideActionForPartyTargets(action, targetIndexes, actorId = null) {
+                const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
+                this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId));
+            },
+
+            outsideActionForCreatureTargets(action, targetIds, actorId = null) {
+                const ids = new Set((targetIds || []).map(id => String(id)));
+                const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
+                this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId));
+            },
+
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors()) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 if (livingActors.length <= 1) {

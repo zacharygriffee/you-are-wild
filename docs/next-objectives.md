@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 121/121 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 123/123 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -100,6 +100,7 @@
 - Exploration party interaction has a first-pass multi-actor model: party cards can toggle multiple active actors, selected actors can act together against one party/creature target, party play-fighting is nonlethal by default, group feast uses a primary consumer with helpers, and group/single feed can place selected party members into another party member's stomach with capacity checks
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
+- Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
 
 ---
 
@@ -108,7 +109,7 @@
 ### 🟡 Tier 2: High Impact
 
 #### 1. Remaining Multi-Creature Interaction Model
-- Add true multi-target exploration resolution for `c1 -> c2 + c3`, including stat/skill gates for one actor handling multiple targets
+- Add UI affordances for choosing multiple exploration targets; API-level multi-target resolution already exists
 - Expand mixed self/other resolution for `c1 + c2 + c3 -> c1` beyond the current first-pass behavior where selected helpers can act on the selected target
 - Expand play-fight outcome hooks into UI/mod configuration if the project needs visible controls beyond the current resolver and setting
 - Add more feast variants beyond the current swallow and chewing-split branches

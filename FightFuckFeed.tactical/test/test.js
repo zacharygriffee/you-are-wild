@@ -1242,6 +1242,33 @@ test('Chewing-enabled group feast splits target among selected actors', () => {
   assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
 });
 
+test('One actor needs enough stats to handle multiple exploration targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 5, cha: 5 });
+  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100 });
+  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100 });
+  App.player = actor;
+  App.party = [actor, targetA, targetB];
+  App.outsideActionForPartyTargets('flirt', [1, 2]);
+  assertEqual(targetA.CPle, 0, 'Low-stat actor should not affect first multi-target target');
+  assertEqual(targetB.CPle, 0, 'Low-stat actor should not affect second multi-target target');
+  assertContains(App.log[App.log.length - 1].text, 'cannot handle 2 targets', 'Failed multi-target action should explain the stat gate');
+});
+
+test('Capable actor can resolve one action across multiple exploration targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const targetA = makeUnit('Target A', { id: 'target-a', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [targetA, targetB];
+  App.outsideActionForCreatureTargets('flirt', ['target-a', 'target-b']);
+  assert(targetA.CPle > 0, 'Capable actor should affect first target');
+  assert(targetB.CPle > 0, 'Capable actor should affect second target');
+  assertContains(App.log[App.log.length - 1].text, 'multi-target flirt', 'Successful multi-target action should be summarized');
+});
+
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });

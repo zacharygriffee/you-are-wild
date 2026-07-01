@@ -3258,6 +3258,9 @@
                 const actors = this._getExplorationActors();
                 if (targets.length === 1 && actors.length > 1) {
                     this.outsideGroupActionOnTarget(action, targets[0], actors);
+                } else if (targets.length > 1 && actors.length > 1) {
+                    this.log.push({ text: `Choose one actor for multi-target ${this._uiLabel(action).toLowerCase()} actions, or one target for group actions.`, type: 'discovery' });
+                    this.renderLog();
                 } else {
                     this.outsideActionOnTargets(action, targets, actors[0] || this.player);
                 }
@@ -3439,7 +3442,7 @@
                     return;
                 }
                 for (const target of targetList) {
-                    this.outsideActionOnTarget(action, target, actor);
+                    this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
                 }
                 this.log.push({ text: `${actor.name} finishes a multi-target ${this._uiLabel(action).toLowerCase()} action on ${targetList.map(t => t.name).join(', ')}.`, type: 'discovery' });
                 this.renderLog();
@@ -3575,7 +3578,7 @@
                 if (!this.combatState.active) this.renderExplorationActions();
             },
 
-            outsideActionOnTarget(action, target, actor = this.player) {
+            outsideActionOnTarget(action, target, actor = this.player, options = {}) {
                 actor = actor || this.player;
                 const { actorName, actorVerb } = this._actorNameAndVerb(actor);
                 let result = '';
@@ -3671,7 +3674,7 @@
                         break;
                     }
                     case 'feed': {
-                        if (this.party.includes(actor) && this.party.includes(target) && actor !== target && target.CPun >= target.MPun) {
+                        if (options.allowPartySacrifice !== false && this.party.includes(actor) && this.party.includes(target) && actor !== target && target.CPun >= target.MPun) {
                             result = this._feedPartyMemberToConsumer(actor, target);
                             break;
                         }

@@ -1342,6 +1342,36 @@ test('Marked exploration targets resolve through multi-target action and clear s
   assertEqual(App.explorationTargetIds.length, 0, 'Target selection should clear after resolving action');
 });
 
+test('Multi-target feed does not consume the acting party member', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Feeder', { id: 'feeder-1', Feed: 20 });
+  const fullTarget = makeUnit('Full Target', { id: 'full-target', CPun: 100, MPun: 100, size: 6, appetite: 6 });
+  const woundedTarget = makeUnit('Wounded Target', { id: 'wounded-target', CPun: 20, MPun: 100 });
+  App.player = actor;
+  App.party = [actor, fullTarget, woundedTarget];
+  App.outsideActionForPartyTargets('feed', [1, 2]);
+  assertEqual(App.party.includes(actor), true, 'Multi-target feed should not hand the actor off as prey');
+  assertEqual(fullTarget.stomach.length, 0, 'Full party target should not consume the actor during multi-target feed');
+  assertEqual(woundedTarget.CPun, 60, 'Wounded target should still be fed/healed');
+});
+
+test('Multiple actors against multiple marked targets are rejected clearly', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'actor-a', Flir: 30, cha: 20 });
+  const actorB = makeUnit('Actor B', { id: 'actor-b', Flir: 30, cha: 20 });
+  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100, wis: 1 });
+  App.player = actorA;
+  App.party = [actorA, actorB, targetA, targetB];
+  App.explorationActorIds = ['actor-a', 'actor-b'];
+  App.toggleExplorationTarget('party', 'target-a');
+  App.toggleExplorationTarget('party', 'target-b');
+  App.resolveExplorationTargetAction('flirt');
+  assertEqual(targetA.CPle, 0, 'Ambiguous many-to-many action should not affect first target');
+  assertEqual(targetB.CPle, 0, 'Ambiguous many-to-many action should not affect second target');
+  assertContains(App.log[App.log.length - 1].text, 'Choose one actor', 'Many-to-many rejection should explain how to proceed');
+});
+
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });

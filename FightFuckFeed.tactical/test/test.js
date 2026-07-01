@@ -1051,6 +1051,25 @@ test('Authored corpse loot can grant explicit gold without an item', () => {
   assertContains(App.log[App.log.length - 1].text, '12 gold', 'Loot log should mention authored gold');
 });
 
+test('Authored loot tables can place equipment on corpses and structures', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.inventory = [];
+  const corpse = makeUnit('Guard Corpse', { id: 'guard-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, lootTable: 'armory' });
+  App.creatures = [corpse];
+  App.lootCorpse('guard-corpse');
+  assertEqual(App.inventory[0].name, 'Hide Armor', 'Corpse loot table should grant authored equipment');
+
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  const tile = { x: 0, y: 0, biome: 'forest', explored: true, description: 'A guarded camp.', structure: 'camp', structureLooted: false };
+  App.worldMap = new Map([['0,0', tile]]);
+  App.search();
+  assertEqual(App.inventory[0].name, 'Hide Armor', 'Structure loot table should grant authored equipment through search');
+  assertEqual(tile.structureLooted, true, 'Structure loot should be marked consumed after search');
+});
+
 test('Scavenging a corpse uses corpse-specific result and does not remove it', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { hunger: 50, CPun: 80, MPun: 100 });

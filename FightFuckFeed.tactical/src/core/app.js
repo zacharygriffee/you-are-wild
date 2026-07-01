@@ -408,6 +408,22 @@
                     { name: 'Clawed Gloves', qty: 1 }
                 ]
             },
+            EQUIPMENT_LOOT_TABLES: {
+                basicGear: [
+                    { id: 'Leather Cap', weight: 4 },
+                    { id: 'Lucky Charm', weight: 2 }
+                ],
+                armory: [
+                    { id: 'Hide Armor', weight: 3 },
+                    { id: 'Clawed Gloves', weight: 3 },
+                    { id: 'Leather Cap', weight: 2 }
+                ],
+                relicGear: [
+                    { id: 'Focus Ring', weight: 3 },
+                    { id: 'Lucky Charm', weight: 2 },
+                    { id: 'Crystal Shard', weight: 2 }
+                ]
+            },
             EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
             PERK_TREES: {
                 predator: {
@@ -701,7 +717,7 @@
             // ===== STRUCTURES (tile features) =====
             STRUCTURES: {
                 cabin: { name: 'Cabin', icon: '🏠', encounterChance: 0.25, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] },
+                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] }, lootTable: 'basicGear',
                     descriptions: ['A small wooden cabin stands before you.','A lone cabin, smoke curling from its chimney.','A weathered cabin with a welcoming glow.'] },
                 hut: { name: 'Hut', icon: '🛖', encounterChance: 0.20, disposition: 'neutral', threat: 1,
                     merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] },
@@ -709,12 +725,13 @@
                 cave: { name: 'Cave Mouth', icon: '🕳️', encounterChance: 0.35, disposition: 'enemy', threat: 3,
                     descriptions: ['A dark cave mouth yawns before you.','A shallow cave, something stirs within.','A narrow cave, the air is cold and damp.'] },
                 ruins: { name: 'Ruins', icon: '🏛️', encounterChance: 0.30, disposition: 'enemy', threat: 3,
+                    lootTable: 'relicGear',
                     descriptions: ['Ancient ruins crumble around you.','A collapsed structure, something lurks.','A forgotten ruin, treasures and dangers.'] },
                 camp: { name: 'Camp', icon: '⛺', encounterChance: 0.15, disposition: 'neutral', threat: 1,
-                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] },
+                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] }, lootTable: 'armory',
                     descriptions: ['A small campsite, recently used.','A bandit camp, abandoned or occupied.','A makeshift camp, signs of recent travelers.'] },
                 shrine: { name: 'Shrine', icon: '⛩️', encounterChance: 0.10, disposition: 'neutral', threat: 0,
-                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] },
+                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] }, lootTable: 'relicGear',
                     descriptions: ['A tiny shrine to a forgotten deity.','A weathered shrine, offerings still fresh.','A serene shrine, peaceful energy radiates.'] },
                 pond: { name: 'Pond', icon: '🏞️', encounterChance: 0.15, disposition: 'neutral', threat: 1,
                     descriptions: ['A crystal-clear pond reflects the sky.','A murky pond, something swims beneath.','A still pond, dragonflies dance overhead.'] },
@@ -3852,13 +3869,23 @@
                 return this.creatures.find(c => this._isCorpse(c) && String(c.id || c.name) === String(targetId));
             },
 
+            _lootItemNameFromTable(tableId) {
+                const table = this.EQUIPMENT_LOOT_TABLES[tableId];
+                if (!table || table.length === 0) return null;
+                return this._weightedPick(table);
+            },
+
             lootCorpse(targetId) {
                 const corpse = this._findCorpseById(targetId);
                 if (!corpse) return;
                 let item = null;
                 let gold = 0;
                 if (!corpse.looted) {
-                    if (this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
+                    const authoredLoot = corpse.lootTable ? this._lootItemNameFromTable(corpse.lootTable) : null;
+                    if (authoredLoot && this.inventory.length < this.MAX_INVENTORY) {
+                        item = { id: 'loot_' + Date.now(), name: authoredLoot };
+                        this.inventory.push(item);
+                    } else if (this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
                         const items = Object.keys(this.ITEMS);
                         const name = items[Math.floor(Math.random() * items.length)];
                         item = { id: 'loot_' + Date.now(), name };
@@ -5222,8 +5249,11 @@
                 const findChance = this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.45 : 0.3;
                 let result = '';
                 if (roll < findChance) {
+                    const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;
+                    const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable) : null;
                     const items = Object.keys(this.ITEMS);
-                    const iname = items[Math.floor(Math.random() * items.length)];
+                    const iname = authoredLoot || items[Math.floor(Math.random() * items.length)];
+                    if (authoredLoot) tile.structureLooted = true;
                     const iid = 'item_' + Date.now();
                     this.inventory.push({ id: iid, name: iname });
                     this._updateQuestProgress('find', { item: iname, name: iname });

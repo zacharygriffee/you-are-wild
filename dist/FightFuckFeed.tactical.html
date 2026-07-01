@@ -6533,6 +6533,40 @@
                 this.autoSave();
             },
 
+            respecPerks(skipConfirm = false) {
+                if (!this.player) return;
+                const selected = this.player.perks || [];
+                if (!selected.length) {
+                    this.log.push({ text: 'No perks selected to respec.', type: 'discovery' });
+                    this.renderLog();
+                    return;
+                }
+                if (!skipConfirm && !confirm('Reset selected perks and refund their choices?')) return;
+                selected.forEach(perk => {
+                    if (perk.stat && typeof perk.val === 'number') {
+                        this.player[perk.stat] = Math.max(0, (this.player[perk.stat] || 0) - perk.val);
+                    }
+                });
+                this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + selected.length;
+                this.player.perks = [];
+                this.perkTreeFilter = 'all';
+                this.log.push({ text: `Perks reset. Refunded ${selected.length} choice${selected.length === 1 ? '' : 's'}.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.showCharacterStats();
+                this.autoSave();
+            },
+
+            debugGrantPerkChoice(count = 1) {
+                if (!this.player) return;
+                const grant = Math.max(1, Math.floor(Number(count) || 1));
+                this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + grant;
+                this.log.push({ text: `Debug: granted ${grant} perk choice${grant === 1 ? '' : 's'}.`, type: 'discovery' });
+                this.renderLog();
+                this.showCharacterStats();
+                this.autoSave();
+            },
+
             showPerkSelection() {
                 if (!this.player) return;
                 const pending = this.player.pendingPerkChoices || 0;
@@ -7702,6 +7736,7 @@
                 if (!this.player) return;
                 const p = this.player;
                 const perkButton = (p.pendingPerkChoices || 0) > 0 ? `<button class="nav-btn" style="margin-top:12px" onclick="App.showPerkSelection()">Choose Perk (${p.pendingPerkChoices})</button>` : '';
+                const respecDisabled = (p.perks || []).length ? '' : ' disabled';
                 let html = `<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary)">📊 ${p.name}</h1>
                     <p>Level ${p.level} ${p.species} | XP: ${p.xp}/${p.xpToNext}</p>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
@@ -7712,6 +7747,7 @@
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Body</h3><p>Size: ${p.size} | Appetite: ${p.appetite}<br>Parts: ${p.parts || 'none'} | Chest: ${p.chest || 'none'}<br>Body: ${(p.bodyParts || []).map(b => this.BODY_PARTS[b]?.label || b).join(', ') || 'None'}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Equipment</h3><p>${this._equipmentSummary(p)}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${(p.perks || []).map(pk => pk.name).join(', ') || 'None'}</p></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perk Tools</h3><p style="color:var(--text-muted);font-size:12px">Balance/debug controls.</p><button class="nav-btn" style="margin-top:8px" onclick="App.respecPerks()"${respecDisabled}>Respec Perks</button><button class="nav-btn" style="margin-top:8px" onclick="App.debugGrantPerkChoice(1)">Debug +1 Perk Choice</button></div>
                     </div>
                     ${perkButton}<button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;

@@ -2656,6 +2656,40 @@ test('Perk selection filters trees without hiding available species perks', () =
   assertContains(elements.get('scene-description').innerHTML, 'Predator Instinct', 'Fallback should render all trees again');
 });
 
+test('Perk respec and debug tools refund choices and rollback bonuses', () => {
+  const cancelled = loadAppForCombat(() => 0.5, { confirm: false });
+  cancelled.App.player = makeUnit('You', { Figh: 10, Feas: 10, perks: [], pendingPerkChoices: 1 });
+  cancelled.App.party = [cancelled.App.player];
+  cancelled.App.choosePerk('predator_instinct');
+  cancelled.App.respecPerks();
+  assertEqual(cancelled.App.player.perks.length, 1, 'Cancelled respec should keep selected perks');
+  assertEqual(cancelled.App.player.Figh, 12, 'Cancelled respec should keep perk stat bonuses');
+
+  const { App, elements } = loadAppForCombat(() => 0.5, { confirm: true });
+  App.player = makeUnit('You', { Figh: 10, Feas: 10, perks: [], pendingPerkChoices: 1 });
+  App.party = [App.player];
+  App.choosePerk('predator_instinct');
+  App.player.pendingPerkChoices = 1;
+  App.choosePerk('voracious');
+  assertEqual(App.player.Figh, 12, 'First perk should apply before respec');
+  assertEqual(App.player.Feas, 13, 'Second perk should apply before respec');
+  App.showCharacterStats();
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Respec Perks', 'Character stats should expose perk respec tool');
+  assertContains(html, 'Debug +1 Perk Choice', 'Character stats should expose debug perk choice tool');
+
+  App.respecPerks();
+  assertEqual(App.player.perks.length, 0, 'Respec should clear selected perks');
+  assertEqual(App.player.pendingPerkChoices, 2, 'Respec should refund selected perk choices');
+  assertEqual(App.player.Figh, 10, 'Respec should remove Figh bonus');
+  assertEqual(App.player.Feas, 10, 'Respec should remove Feas bonus');
+
+  App.debugGrantPerkChoice(2);
+  assertEqual(App.player.pendingPerkChoices, 4, 'Debug grant should add perk choices for balancing');
+  html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Choose Perk (4)', 'Debug grant should refresh character stats with new pending count');
+});
+
 test('Perk state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

@@ -919,13 +919,14 @@
     </div>
     
     <!-- GAME API BRIDGE & APP LOGIC -->
-    <script src="FightFuckFeed.me.html"></script>
+    <!-- <script src="FightFuckFeed.me.html"></script> -->
     <script>
         // =============================================
         // TACTICAL EDITION - APP CONTROLLER
         // =============================================
         
         const App = {
+    _debug: console.log('App object created'),
             // State
             screen: 'create',
             tutorialStep: 0,
@@ -972,6 +973,7 @@
             
             // Initialize
             init() {
+                console.log('App.init() running');
                 this.populateSpecies();
                 this.bindEvents();
                 this.checkFirstTime();
@@ -979,8 +981,13 @@
             
             // Populate character creation options
             populateSpecies() {
+                console.log('populateSpecies() called');
                 const grid = document.getElementById('species-grid');
-                if (!grid) return;
+                if (!grid) {
+                    console.error('species-grid element NOT FOUND');
+                    return;
+                }
+                console.log('species-grid found, populating with', this.species.length, 'species');
                 
                 grid.innerHTML = this.species.map(s => `
                     <div class="option-card" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')">
@@ -1617,7 +1624,7 @@ showExplorationActions() {
         <button class="action-btn" onclick="App.rest()"><span class="action-icon">🏕️</span>Rest</button>
     `;
     document.getElementById('scene-description').textContent = 'You travel through the wilderness...';
-},            },
+},
             
             explore() {
                 this.log.push({ text: 'Exploring the area...', type: 'discovery' });
@@ -1671,6 +1678,30 @@ showExplorationActions() {
                 this.log.push({ text: actionText, type: 'combat' });
                 this.renderLog();
                 this.renderParty();
+            },
+
+            // Legacy action router for mobile bar
+            combatAction(action) {
+                if (!this.combatState.active) {
+                    this.log.push({ text: "Not in combat!", type: "combat" });
+                    this.renderLog();
+                    return;
+                }
+                const current = this.combatState.turnQueue[this.combatState.currentTurn];
+                if (!current || current.name !== "You") {
+                    this.log.push({ text: "Not your turn!", type: "combat" });
+                    this.renderLog();
+                    return;
+                }
+                if (action === "fight") {
+                    this.selectTarget("attack");
+                } else if (action === "fuck") {
+                    this.selectTarget("seduce");
+                } else if (action === "feed") {
+                    this.selectTarget("consume");
+                } else if (action === "flee") {
+                    this.attemptFlee();
+                }
             },
 
     // Log rendering

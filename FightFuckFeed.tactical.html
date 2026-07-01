@@ -1208,6 +1208,16 @@
             player: null,
             party: [],
             enemies: [],
+            MAX_PARTY_SIZE: 6,
+            
+            // XP rewards
+            XP_REWARDS: {
+                defeatEnemy: 50,
+                consumeEnemy: 75,
+                seduceEnemy: 60,
+                discoverLandmark: 25,
+                consumeAlly: 40
+            },
             location: { x: 0, y: 0 },
             log: [],
             
@@ -1497,6 +1507,8 @@
                     icon: species.icon,
                     gender: this.playerGender || 'female',
                     level: 1,
+                    xp: 0,
+                    xpToNext: 100,
                     hp: 100,
                     maxHp: 100,
                     stats: {
@@ -1777,6 +1789,7 @@
                 if (tile.hasLandmark && tile.landmarkName) {
                     landmarkText = ` You discover ${tile.landmarkName}!`;
                     this.log.push({ text: `Discovered ${tile.landmarkName} at ${this.location.x},${this.location.y}`, type: 'discovery' });
+                    this.gainXP(this.XP_REWARDS.discoverLandmark);
                 }
                 
                 // Random encounter based on biome
@@ -1819,6 +1832,49 @@
                 }
                 
                 this.renderLog();
+            },
+            
+                        // Add XP to player and check for level up
+            gainXP(amount) {
+                if (!this.player) return;
+                this.player.xp += amount;
+                this.log.push({ text: `+${amount} XP`, type: 'discovery' });
+                
+                // Check for level up
+                while (this.player.xp >= this.player.xpToNext) {
+                    this.player.xp -= this.player.xpToNext;
+                    this.levelUp();
+                }
+                this.renderLog();
+                this.renderParty(); // Update player stats display
+            },
+            
+            levelUp() {
+                this.player.level++;
+                const oldMaxHp = this.player.maxHp;
+                
+                // Stat increases
+                this.player.maxHp += 20;
+                this.player.hp += 20; // Heal on level up
+                this.player.stats.str += 1;
+                this.player.stats.con += 1;
+                this.player.stats.spd += 1;
+                this.player.stats.int += 1;
+                this.player.stats.wis += 1;
+                this.player.stats.cha += 1;
+                
+                // XP curve: 100, 150, 225, 338, 507...
+                this.player.xpToNext = Math.floor(this.player.xpToNext * 1.5);
+                
+                this.log.push({ 
+                    text: `LEVEL UP! ${this.player.name} is now level ${this.player.level}! HP +20, All stats +1!`, 
+                    type: 'discovery' 
+                });
+            },
+            
+            // Check if party can accept new members
+            canAddToParty() {
+                return this.party.length < this.MAX_PARTY_SIZE;
             },
             
             generateEncounter(encounterTable) {
@@ -2044,15 +2100,21 @@ executeAction(action, enemyIndex) {
                 result += ' ' + CONTENT.combat('defeat', ctx);
                 if (result.includes('Missing content')) result += ` ${enemy.name} defeated!`;
                 this.enemies = this.enemies.filter(e => e.hp > 0);
+                this.gainXP(this.XP_REWARDS.defeatEnemy);
             }
             break;
         case 'seduce':
             const success = (player.stats?.cha || 10) + Math.random() * 10 > (enemy.stats?.wis || 10);
             if (success) {
-                this.party.push({...enemy, hp: enemy.maxHp, tags: ['Lover']});
-                this.enemies = this.enemies.filter(e => e !== enemy);
-                result = CONTENT.actionResult('seduce', ctx);
-                if (result.includes('Missing content')) result = `${enemy.name} joins you!`;
+                if (this.canAddToParty()) {
+                    this.party.push({...enemy, hp: enemy.maxHp, tags: ['Lover']});
+                    this.enemies = this.enemies.filter(e => e !== enemy);
+                    this.gainXP(this.XP_REWARDS.seduceEnemy);
+                    result = CONTENT.actionResult('seduce', ctx);
+                    if (result.includes('Missing content')) result = `${enemy.name} joins you!`;
+                } else {
+                    result = `${enemy.name} wants to join, but your party is full!`;
+                }
             } else {
                 result = `${enemy.name} resists your advances!`;
             }
@@ -2062,6 +2124,7 @@ executeAction(action, enemyIndex) {
                 player.hp = Math.min(player.maxHp, player.hp + 20);
                 player.stats.str += 1;
                 this.enemies = this.enemies.filter(e => e !== enemy);
+                this.gainXP(this.XP_REWARDS.consumeEnemy);
                 result = CONTENT.actionResult('consume', ctx);
                 if (result.includes('Missing content')) result = `You devour ${enemy.name}!`;
             } else {
@@ -2131,6 +2194,7 @@ executeAllyAction(action, allyIndex) {
             this.party.splice(allyIndex, 1);
             this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
             this.player.stats.str += 2;
+            this.gainXP(this.XP_REWARDS.consumeAlly);
             result = CONTENT.actionResult('consume', ctx);
             if (result.includes('Missing content')) result = `You consumed ${ally.name}. Power grows!`;
             break;
@@ -2246,6 +2310,8 @@ endCombat(victory) {
     if (victory) {
         this.log.push({ text: 'Victory!', type: 'discovery' });
         this.updateScene('Victory', 'Enemies defeated!', false);
+        // Bonus XP for winning combat
+        this.gainXP(25);
     }
     this.renderLog();
     this.showExplorationActions();

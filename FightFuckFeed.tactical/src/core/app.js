@@ -760,6 +760,32 @@
             _isTimid(unit) {
                 return Boolean(unit && (unit.timid || this._getSpeciesTemperament(unit.species).timid));
             },
+            _isSocialWithThreatened(target, candidate) {
+                if (!target || !candidate || target === candidate) return false;
+                if (!this._isLivingCreature(candidate) || candidate.disposition === this.DISPOSITION.ENEMY) return false;
+                const targetTemp = this._getSpeciesTemperament(target.species);
+                const candidateTemp = this._getSpeciesTemperament(candidate.species);
+                if (target.species && candidate.species === target.species) return true;
+                if (targetTemp.pack && candidateTemp.pack) return true;
+                if (targetTemp.herd && candidateTemp.herd) return true;
+                if (targetTemp.swarm && candidateTemp.swarm) return true;
+                return false;
+            },
+            _shouldFleeThreat(unit) {
+                const temp = this._getSpeciesTemperament(unit.species);
+                return this._isTimid(unit) || temp.fastFlee || temp.passive || (temp.prey && !temp.aggressive);
+            },
+            _makeCreatureFlee(unit, threat = this.player) {
+                this.creatures = this.creatures.filter(c => c !== unit);
+                this._syncCurrentTileCreatures();
+                return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+            },
+            _turnCreatureHostile(unit) {
+                unit.disposition = this.DISPOSITION.ENEMY;
+                unit.willing = false;
+                this._syncCurrentTileCreatures();
+                return { fled: false, hostile: unit, text: `${unit.name} turns hostile!` };
+            },
             _syncCurrentTileCreatures() {
                 const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
                 if (tile) tile.creatures = this._tileCreatures(this.creatures);
@@ -802,14 +828,34 @@
                 if (!this._isTimid(unit) || unit.disposition === this.DISPOSITION.ENEMY || this._isCorpse(unit)) return null;
                 const chance = Math.min(1, Math.max(0, (unit.Flee || 10) / 20));
                 if (Math.random() < chance) {
-                    this.creatures = this.creatures.filter(c => c !== unit);
-                    this._syncCurrentTileCreatures();
-                    return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+                    return this._makeCreatureFlee(unit, threat);
                 }
-                unit.disposition = this.DISPOSITION.ENEMY;
-                unit.willing = false;
-                this._syncCurrentTileCreatures();
-                return { fled: false, text: `${unit.name} is cornered and turns hostile!` };
+                const hostile = this._turnCreatureHostile(unit);
+                hostile.text = `${unit.name} is cornered and turns hostile!`;
+                return hostile;
+            },
+            _reactCreatureToThreat(unit, threat = this.player) {
+                if (!unit || unit.disposition === this.DISPOSITION.ENEMY || !this._isLivingCreature(unit)) return null;
+                if (this._isTimid(unit)) return this._attemptTimidCreatureFlee(unit, threat);
+                if (this._shouldFleeThreat(unit)) {
+                    const chance = Math.min(0.75, Math.max(0.15, (unit.Flee || 10) / 30));
+                    if (Math.random() < chance) return this._makeCreatureFlee(unit, threat);
+                }
+                return this._turnCreatureHostile(unit);
+            },
+            _reactToNonHostileAttack(target, threat = this.player) {
+                const reactants = [target, ...this.creatures.filter(c => this._isSocialWithThreatened(target, c))];
+                const hostiles = [];
+                const texts = [];
+                for (const unit of reactants) {
+                    const reaction = this._reactCreatureToThreat(unit, threat);
+                    if (!reaction) continue;
+                    texts.push(reaction.text);
+                    if (reaction.hostile || (!reaction.fled && unit.disposition === this.DISPOSITION.ENEMY)) {
+                        hostiles.push(reaction.hostile || unit);
+                    }
+                }
+                return { hostiles, text: texts.join(' ') || `${target.name} recoils from the attack.` };
             },
             _attemptTimidAllyFlee(ally) {
                 if (!this._isTimid(ally)) return false;
@@ -2413,15 +2459,15 @@
             outsideActionOnTarget(action, target) {
                 let result = '';
                 let startCombatAfter = false;
+                let combatTargets = [];
                 switch (action) {
                     case 'fight': {
                         if (target.disposition !== this.DISPOSITION.ENEMY) {
-                            const flee = this._attemptTimidCreatureFlee(target, this.player);
-                            if (flee) {
-                                result = flee.text;
-                                startCombatAfter = !flee.fled;
-                                break;
-                            }
+                            const reaction = this._reactToNonHostileAttack(target, this.player);
+                            result = reaction.text;
+                            combatTargets = reaction.hostiles;
+                            startCombatAfter = combatTargets.length > 0;
+                            break;
                         }
                         const ar = this._AR(this.player.Figh);
                         const def = target.con || 10;
@@ -2512,7 +2558,7 @@
                 this.renderParty();
                 this.renderCreatures();
                 if (startCombatAfter) {
-                    this.startCombat([target]);
+                    this.startCombat(combatTargets);
                     return;
                 }
                 if (!this.combatState.active) this.renderExplorationActions();

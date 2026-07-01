@@ -930,6 +930,43 @@ test('Failed timid flee turns non-hostile creature hostile and starts combat', (
   assertEqual(App.combatState.active, true, 'Failed timid flee should start combat');
 });
 
+test('Attacking a timid group can make same-species creatures flee together', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { xp: 0, xpToNext: 1000 });
+  const target = makeUnit('Mouse A', { id: 'mouse-a', species: 'bunny', disposition: App.DISPOSITION.NEUTRAL, Flee: 20 });
+  const bystander = makeUnit('Mouse B', { id: 'mouse-b', species: 'bunny', disposition: App.DISPOSITION.FRIENDLY, Flee: 20 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [target, bystander];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [target, bystander] }]]);
+  App.location = { x: 0, y: 0 };
+  App.outsideActionOnTarget('fight', target);
+  assertEqual(App.creatures.length, 0, 'Same-species timid bystander should flee with threatened target');
+  assertEqual(player.xp, 0, 'Fleeing group should grant no XP');
+  assertEqual(App.combatState.active, false, 'All-flee reaction should not start combat');
+});
+
+test('Attacking a non-timid creature can turn same-species group hostile', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  const target = makeUnit('Wolf A', { id: 'wolf-a', species: 'wolf', disposition: App.DISPOSITION.FRIENDLY });
+  const bystander = makeUnit('Wolf B', { id: 'wolf-b', species: 'wolf', disposition: App.DISPOSITION.NEUTRAL });
+  const unrelated = makeUnit('Human Bystander', { id: 'human-b', species: 'human', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [target, bystander, unrelated];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [target, bystander, unrelated] }]]);
+  App.location = { x: 0, y: 0 };
+  App.processTurn = function() {};
+  App.outsideActionOnTarget('fight', target);
+  assertEqual(target.disposition, App.DISPOSITION.ENEMY, 'Threatened non-timid target should turn hostile');
+  assertEqual(bystander.disposition, App.DISPOSITION.ENEMY, 'Same-species bystander should turn hostile');
+  assertEqual(unrelated.disposition, App.DISPOSITION.FRIENDLY, 'Unrelated friendly should stay friendly');
+  assertEqual(App.combatState.active, true, 'Group hostility should start combat');
+  assert(App.combatState.turnQueue.some(entry => entry.unit === target), 'Target should enter combat queue');
+  assert(App.combatState.turnQueue.some(entry => entry.unit === bystander), 'Bystander should enter combat queue');
+});
+
 test('Timid ally flees instead of attacking when badly outnumbered', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You');

@@ -1004,10 +1004,20 @@
             <h1 class="create-title">Create Your Character</h1>
             <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
             
+            <!-- Name Input -->
+            <div class="create-section">
+                <h3 class="section-title">Name</h3>
+                <input id="char-name" type="text" placeholder="Enter your name..." value="You"
+                       style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
+            </div>
+            
             <!-- Species Selection -->
             <div class="create-section">
                 <h3 class="section-title">Choose Your Species</h3>
-                <div class="option-grid" id="species-grid">
+                <div id="species-info" style="margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);min-height:60px;">
+                    <p style="color:var(--text-muted);font-size:13px;">Select a species to see details.</p>
+                </div>
+                <div class="option-grid" id="species-grid" style="max-height:300px;overflow-y:auto;">
                     <!-- Populated by JS -->
                 </div>
             </div>
@@ -1016,17 +1026,17 @@
             <div class="create-section">
                 <h3 class="section-title">Gender</h3>
                 <div class="option-grid" id="gender-grid">
-                    <div class="option-card" data-value="female">
+                    <div class="option-card selected" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">♀️</div>
                         <div class="option-label">Female</div>
                         <div class="option-desc">Play as female</div>
                     </div>
-                    <div class="option-card" data-value="male">
+                    <div class="option-card" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">♂️</div>
                         <div class="option-label">Male</div>
                         <div class="option-desc">Play as male</div>
                     </div>
-                    <div class="option-card" data-value="nonbinary">
+                    <div class="option-card" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">⚧</div>
                         <div class="option-label">Non-Binary</div>
                         <div class="option-desc">Other gender identity</div>
@@ -1034,19 +1044,50 @@
                 </div>
             </div>
             
+            <!-- Anatomy Selection -->
+            <div class="create-section">
+                <h3 class="section-title">Anatomy</h3>
+                <div class="option-grid" id="anatomy-grid">
+                    <div class="option-card selected" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
+                        <div class="option-icon">🔮</div>
+                        <div class="option-label">Pussy</div>
+                    </div>
+                    <div class="option-card" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();">
+                        <div class="option-icon">🍆</div>
+                        <div class="option-label">Cock</div>
+                    </div>
+                    <div class="option-card selected" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
+                        <div class="option-icon">🍈</div>
+                        <div class="option-label">Tits</div>
+                    </div>
+                    <div class="option-card" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();">
+                        <div class="option-icon">💪</div>
+                        <div class="option-label">Pecs</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Body Parts Selection -->
+            <div class="create-section">
+                <h3 class="section-title">Body Parts</h3>
+                <div id="body-parts-grid" class="option-grid" style="max-height:200px;overflow-y:auto;">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            
             <!-- Target Preferences -->
             <div class="create-section">
                 <h3 class="section-title">Preferred Encounters</h3>
                 <div class="option-grid" id="preference-grid">
-                    <div class="option-card" data-value="female">
+                    <div class="option-card selected" data-value="female" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">♀️</div>
                         <div class="option-label">Females</div>
                     </div>
-                    <div class="option-card" data-value="male">
+                    <div class="option-card" data-value="male" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">♂️</div>
                         <div class="option-label">Males</div>
                     </div>
-                    <div class="option-card" data-value="any">
+                    <div class="option-card" data-value="any" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                         <div class="option-icon">🎲</div>
                         <div class="option-label">Any</div>
                     </div>
@@ -1597,6 +1638,7 @@
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('\${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
+                this.initBodyPartsGrid();
                 this.showScreen('menu');
             },
 
@@ -1608,6 +1650,10 @@
                 this.selectedBodyParts = [...defaults];
                 const info = document.getElementById('species-info');
                 if (info) info.innerHTML = `<div style="font-size:48px;margin-bottom:8px">${species.icon}</div><h3>${species.name}</h3><p>${species.desc}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">Default parts: ${defaults.length ? defaults.map(p => this.BODY_PARTS[p]?.label || p).join(', ') : 'None'}</p>`;
+                // Update body parts grid to reflect defaults
+                document.querySelectorAll('#body-parts-grid .option-card').forEach(c => {
+                    c.classList.toggle('selected', this.selectedBodyParts.includes(c.dataset.part));
+                });
             },
 
             selectGender(g) { this.selectedGender = g; },
@@ -1618,6 +1664,22 @@
             toggleBodyPart(id) {
                 if (this.selectedBodyParts.includes(id)) this.selectedBodyParts = this.selectedBodyParts.filter(x => x !== id);
                 else this.selectedBodyParts.push(id);
+            },
+            updateAnatomyUI() {
+                document.querySelectorAll('#anatomy-grid .option-card').forEach(c => {
+                    const part = c.dataset.part;
+                    c.classList.toggle('selected', this.selectedParts.includes(part));
+                });
+            },
+            initBodyPartsGrid() {
+                const grid = document.getElementById('body-parts-grid');
+                if (!grid) return;
+                grid.innerHTML = Object.entries(this.BODY_PARTS).map(([id, part]) =>
+                    `<div class="option-card" data-part="${id}" onclick="App.toggleBodyPart('${id}');this.classList.toggle('selected');">
+                        <div style="font-weight:600;color:var(--text-primary)">${part.label}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${part.desc}</div>
+                    </div>`
+                ).join('');
             },
 
             createCharacter() {

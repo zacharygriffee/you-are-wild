@@ -573,6 +573,27 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: var(--space-sm);
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: var(--space-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .option-grid::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: var(--radius-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
         
         .option-card {

@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>FightFuckFeed.me - Tactical Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+/* =============================================
+           CSS VARIABLES - Dark Mode Theme
+           ============================================= */
+        :root {
+            /* Core Colors */
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-elevated: #2d2d4a;
+            
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6a6a7a;
+            --text-accent: #00d4aa;
+            
+            /* Accent Colors */
+            --accent-primary: #00d4aa;
+            --accent-secondary: #ff6b9d;
+            --accent-warning: #ffd166;
+            --accent-danger: #ef476f;
+            --accent-info: #118ab2;
+            
+            /* Borders */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.2);
+            
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
+            
+            /* Typography */
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        
+        /* =============================================
+           RESET & BASE
+           ============================================= */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+        
+        /* =============================================
+           APP SHELL
+           ============================================= */
+        #app {
+            display: grid;
+            grid-template-rows: 60px 1fr 140px;
+            grid-template-areas:
+                "header"
+                "stage"
+                "log";
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* =============================================
+           HEADER
+           ============================================= */
+        .app-header {
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--space-lg);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-default);
+            z-index: 100;
+        }
+        
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .app-logo {
+            font-size: 24px;
+            filter: drop-shadow(0 0 8px var(--accent-primary));
+        }
+        
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .app-nav {
+            display: flex;
+            gap: var(--space-sm);
+        }
+        
+        .nav-btn {
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+        }
+        
+        .nav-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        /* =============================================
+           STAGE AREA (Dynamic Content)
+           ============================================= */
+        .stage {
+            grid-area: stage;
+            display: grid;
+            grid-template-columns: 220px 1fr 280px 280px;
+            grid-template-areas: "map main party enemies";
+            gap: var(--space-md);
+            padding: var(--space-md);
+            overflow: hidden;
+        }
+        
+        /* Panel Base */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: var(--space-md);
+        }
+        
+        /* Map Panel */
+        .panel-map {
+            grid-area: map;
+        }
+        
+        .mini-map {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            aspect-ratio: 1;
+        }
+        
+        .map-tile {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .map-tile:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+        }
+        
+        .map-tile.center {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .map-tile.has-enemy::after {
+            content: '⚔️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+        }
+        
+        .map-tile.unexplored {
+            background: var(--bg-primary) !important;
+            border-color: var(--border-subtle) !important;
+            color: var(--text-muted);
+            font-size: 12px;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        .map-tile.unexplored:hover {
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+        }
+        
+        /* Main Panel */
+        .panel-main {
+            grid-area: main;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .scene-display {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: var(--space-xl);
+        }
+        
+        .scene-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            color: var(--text-accent);
+        }
+        
+        .scene-description {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+        
+        .scene-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+        
+        /* Party/Enemy Panels */
+        .panel-party { grid-area: party; }
+        .panel-enemies { grid-area: enemies; }
+        
+        /* Unit Card (Accordion) */
+        .unit-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-sm);
+            overflow: hidden;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .unit-card:hover {
+            border-color: var(--border-strong);
+        }
+        
+        .unit-card.selected {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .unit-card.expanded {
+            border-color: var(--accent-secondary);
+        }
+        .unit-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px 12px;
+            border-top: 1px solid var(--border-default);
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .unit-actions .action-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+        
+        .unit-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+        }
+        
+        .unit-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-elevated);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .unit-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .unit-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .unit-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        .unit-health {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 11px;
+        }
+        
+        .health-bar {
+            width: 60px;
+            height: 4px;
+            background: var(--bg-elevated);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            transition: width 0.3s ease;
+        }
+        
+        .unit-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            padding: var(--space-sm);
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-default);
+        }
+        
+        .stat {
+            text-align: center;
+            padding: var(--space-xs);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+        
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* =============================================
+           LOG PANEL
+           ============================================= */
+        .panel-log {
+            grid-area: log;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+        }
+        
+        .log-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+        
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-sm) var(--space-md);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            padding: var(--space-xs) 0;
+            border-left: 2px solid transparent;
+            padding-left: var(--space-sm);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .log-entry.combat {
+            border-left-color: var(--accent-danger);
+            background: rgba(239, 71, 111, 0.05);
+        }
+        
+        .log-entry.discovery {
+            border-left-color: var(--accent-warning);
+            background: rgba(255, 209, 102, 0.05);
+        }
+        
+        .log-entry.loot {
+            border-left-color: var(--accent-primary);
+        }
+        
+        .log-entry.text-muted {
+            color: var(--text-muted);
+        }
+        
+        .log-entry.heal {
+            border-left-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.05);
+        }
+        
+        .log-entry.mod {
+            border-left-color: var(--accent-info);
+            font-style: italic;
+        }
+        
+        /* =============================================
+           ACTION BAR
+           ============================================= */
+        .action-bar {
+            display: flex;
+            gap: var(--space-md);
+            padding: 0 var(--space-md);
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .action-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+        
+        .action-btn:active {
+            transform: translateY(0);
+        }
+        
+        .action-btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .action-btn.primary:hover {
+            box-shadow: var(--shadow-glow);
+        }
+        
+        .action-icon {
+            font-size: 20px;
+        }
+        
+        /* =============================================
+           SCREENS
+           ============================================= */
+        .screen {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Overlay screens (settings, mods, market) */
+        .screen-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 200 !important;
+        }
+        
+        #save-manager.screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 26, 0.95);
+            z-index: 1000;
+            overflow: auto;
+            display: none;
+        }
+        
+        #save-manager.screen.active {
+            display: flex;
+        }
+        
+        /* Character Creation Screen */
+        .screen-create {
+            background: var(--bg-primary);
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-xl);
+        }
+        
+        .create-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+        
+        .create-title {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: var(--space-xs);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .create-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .create-section {
+            margin-bottom: var(--space-lg);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--space-sm);
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: var(--space-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .option-grid::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: var(--radius-sm);
+        }
+        
+        .option-grid::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+        
+        .option-card {
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-default);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .option-card:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-elevated);
+        }
+        
+        .option-card.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.1);
+        }
+        
+        .option-icon {
+            font-size: 32px;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .option-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .option-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: var(--space-xs);
+        }
+        
+        /* =============================================
+           RESPONSIVE
+           ============================================= */
+        @media (max-width: 1400px) {
+            .stage {
+                grid-template-columns: 180px 1fr 240px 240px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .stage {
+                grid-template-columns: 160px 1fr 200px 200px;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            #app {
+                grid-template-rows: 50px 1fr auto;
+                grid-template-areas:
+                    "header"
+                    "stage"
+                    "log";
+                height: 100vh;
+                width: 100vw;
+                overflow: hidden;
+            }
+            
+            .stage {
+                grid-template-columns: 1fr;
+                grid-template-areas: "main";
+                padding: 8px;
+                gap: 8px;
+                overflow: visible;
+            }
+            
+            /* Mobile slide-out panels */
+            .panel-map {
+                display: none;
+                position: fixed;
+                top: 50px;
+                left: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: left 0.3s ease;
+                border-radius: 0 var(--radius-md) var(--radius-md) 0;
+                border-left: none;
+            }
+            
+            .panel-party {
+                display: none;
+                position: fixed;
+                top: 50px;
+                right: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: right 0.3s ease;
+                border-radius: var(--radius-md) 0 0 var(--radius-md);
+                border-right: none;
+            }
+            
+            .panel-enemies {
+                display: none;
+                position: fixed;
+                top: 50px;
+                right: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: right 0.3s ease;
+                border-radius: var(--radius-md) 0 0 var(--radius-md);
+                border-right: none;
+            }
+            
+            .panel-map.active {
+                display: flex;
+                left: 0;
+            }
+            
+            .panel-party.active {
+                display: flex;
+                right: 0;
+            }
+            
+            .panel-enemies.active {
+                display: flex;
+                right: 0;
+            }
+            
+            .panel-main {
+                width: 100%;
+                border-radius: var(--radius-md);
+            }
+            
+            .panel-log {
+                max-height: 120px;
+                border-radius: 0;
+            }
+            
+            .mobile-action-bar {
+                display: block !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+                border-top: 1px solid var(--border-default);
+                padding: 8px;
+                z-index: 100;
+            }
+            
+            .mobile-action-bar .action-bar {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .mobile-action-bar .action-btn {
+                flex: 1;
+                padding: 12px 4px;
+                font-size: 11px;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .mobile-action-bar .action-icon {
+                font-size: 20px;
+                display: block;
+                margin-bottom: 2px;
+            }
+            
+            /* Swipe hint indicators - subtle edge glows */
+            .swipe-hint-left,
+            .swipe-hint-right {
+                position: fixed;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 6px;
+                height: 80px;
+                background: var(--accent-primary);
+                opacity: 0.2;
+                border-radius: 3px;
+                z-index: 50;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            
+            .swipe-hint-left {
+                left: 2px;
+            }
+            
+            .swipe-hint-right {
+                right: 2px;
+            }
+            
+            .swipe-hint-left:hover,
+            .swipe-hint-right:hover {
+                opacity: 0.4;
+            }
+            
+            /* Panel backdrop overlay when panel is open */
+            .panel-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 150;
+            }
+            
+            .panel-backdrop.active {
+                display: block;
+            }
+        }
+        
+        @media (min-width: 1025px) {
+            .mobile-action-bar {
+                display: none !important;
+            }
+            
+            .swipe-hint-left,
+            .swipe-hint-right {
+                display: none;
+            }
+            
+            .panel-backdrop {
+                display: none !important;
+            }
+        }
+        
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+        
+        /* Mobile Action Bar */
+        .mobile-action-bar {
+            display: none;
+        }
+        
+        .mobile-action-bar .action-bar {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+        }
+        
+        .mobile-action-bar .action-btn {
+            flex: 1;
+            padding: 12px 8px;
+            font-size: 12px;
+        }
+        
+        .mobile-action-bar .action-icon {
+            font-size: 20px;
+        }
+        
+        @media (max-width: 1024px) {
+            .mobile-action-bar {
+                display: block !important;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 170, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 170, 0.5); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+            .accordion-section {
+            margin-bottom: 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: background 0.2s;
+        }
+        .accordion-header:hover {
+            background: var(--bg-elevated);
+        }
+        .accordion-arrow {
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+        .accordion-body {
+            padding: 12px;
+            background: var(--bg-secondary);
+            animation: accordionOpen 0.2s ease-out;
+        }
+        @keyframes accordionOpen {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .create-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-strong) var(--bg-tertiary);
+        }
+        .create-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .create-container::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+        .create-container::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: var(--radius-sm);
+        }
+    </style>
+</head>
+<body>
+<!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen screen-menu active">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
+            <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
+            <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">FightFuckFeed.me</h1>
+            <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Tactical Edition</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
+                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
+                    ▶ Continue Last Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('create')">
+                    🆕 New Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showSaveManager()">
+                    📂 Load Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('settings')">
+                    ⚙️ Settings
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showModScreen()">
+                    📦 Mods
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showMarketScreen()">
+                    🏪 Market
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showTutorial()">
+                    📖 Tutorial
+                </button>
+            </div>
+            
+            <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
+                <p>Dark mode tactical edition</p>
+                <p>All content is enabled by default</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARACTER CREATION SCREEN -->
+    <div id="screen-create" class="screen screen-create">
+        <div class="create-container" style="max-height:90vh;overflow-y:auto;padding:24px;">
+            <h1 class="create-title">Create Your Character</h1>
+            <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
+            
+            <!-- Name Input -->
+            <div class="create-section">
+                <h3 class="section-title">Name</h3>
+                <input id="char-name" type="text" placeholder="Enter your name..." value="You"
+                       style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
+            </div>
+            
+            <!-- Species Selection -->
+            <div class="accordion-section" data-accordion="species">
+                <div class="accordion-header" onclick="App.toggleAccordion('species')">
+                    <span>Choose Your Species</span>
+                    <span class="accordion-arrow" id="arrow-species">▼</span>
+                </div>
+                <div class="accordion-body" id="body-species" style="display:block;">
+                    <div id="species-info" style="margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);min-height:60px;">
+                        <p style="color:var(--text-muted);font-size:13px;">Select a species to see details.</p>
+                    </div>
+                    <div class="option-grid" id="species-grid" style="max-height:300px;overflow-y:auto;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gender Selection -->
+            <div class="accordion-section" data-accordion="gender">
+                <div class="accordion-header" onclick="App.toggleAccordion('gender')">
+                    <span>Gender</span>
+                    <span class="accordion-arrow" id="arrow-gender">▶</span>
+                </div>
+                <div class="accordion-body" id="body-gender" style="display:none;">
+                    <div class="option-grid" id="gender-grid">
+                        <div class="option-card selected" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♀️</div>
+                            <div class="option-label">Female</div>
+                            <div class="option-desc">Play as female</div>
+                        </div>
+                        <div class="option-card" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♂️</div>
+                            <div class="option-label">Male</div>
+                            <div class="option-desc">Play as male</div>
+                        </div>
+                        <div class="option-card" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">⚧</div>
+                            <div class="option-label">Non-Binary</div>
+                            <div class="option-desc">Other gender identity</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Anatomy Selection -->
+            <div class="accordion-section" data-accordion="anatomy">
+                <div class="accordion-header" onclick="App.toggleAccordion('anatomy')">
+                    <span>Anatomy</span>
+                    <span class="accordion-arrow" id="arrow-anatomy">▶</span>
+                </div>
+                <div class="accordion-body" id="body-anatomy" style="display:none;">
+                    <div class="option-grid" id="anatomy-grid">
+                        <div class="option-card selected" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
+                            <div class="option-icon">🔮</div>
+                            <div class="option-label">Pussy</div>
+                        </div>
+                        <div class="option-card" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();">
+                            <div class="option-icon">🍆</div>
+                            <div class="option-label">Cock</div>
+                        </div>
+                        <div class="option-card selected" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
+                            <div class="option-icon">🍈</div>
+                            <div class="option-label">Tits</div>
+                        </div>
+                        <div class="option-card" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();">
+                            <div class="option-icon">💪</div>
+                            <div class="option-label">Pecs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Body Parts Selection -->
+            <div class="accordion-section" data-accordion="bodyparts">
+                <div class="accordion-header" onclick="App.toggleAccordion('bodyparts')">
+                    <span>Body Parts</span>
+                    <span class="accordion-arrow" id="arrow-bodyparts">▶</span>
+                </div>
+                <div class="accordion-body" id="body-bodyparts" style="display:none;">
+                    <div id="body-parts-grid" class="option-grid" style="max-height:200px;overflow-y:auto;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Target Preferences -->
+            <div class="accordion-section" data-accordion="preferences">
+                <div class="accordion-header" onclick="App.toggleAccordion('preferences')">
+                    <span>Preferred Encounters</span>
+                    <span class="accordion-arrow" id="arrow-preferences">▶</span>
+                </div>
+                <div class="accordion-body" id="body-preferences" style="display:none;">
+                    <div class="option-grid" id="preference-grid">
+                        <div class="option-card selected" data-value="female" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♀️</div>
+                            <div class="option-label">Females</div>
+                        </div>
+                        <div class="option-card" data-value="male" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♂️</div>
+                            <div class="option-label">Males</div>
+                        </div>
+                        <div class="option-card" data-value="any" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">🎲</div>
+                            <div class="option-label">Any</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="action-btn primary" style="width: 100%; margin-top: 24px;" onclick="createCharacter()">
+                Begin Adventure →
+            </button>
+        </div>
+    </div>
+    
+    <!-- TUTORIAL OVERLAY -->
+    <div id="tutorial-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
+            <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
+            <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+                <button class="nav-btn" onclick="skipTutorial()">Skip Tutorial</button>
+                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" onclick="nextTutorial()">Next →</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MAIN GAME SCREEN -->
+    <div id="screen-game" class="screen">
+        <div id="app">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="app-brand">
+                    <span class="app-logo">🐺</span>
+                    <span class="app-title">FightFuckFeed.me</span>
+                </div>
+                <nav class="app-nav">
+                    <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
+                    <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
+                    <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
+                    <button class="nav-btn" onclick="App.showCharacterStats()">📊 Stats</button>
+                    <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">💾 Save</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
+                </nav>
+            </header>
+            
+            <!-- Stage -->
+            <div class="stage">
+                <!-- Map Panel -->
+                <div class="panel panel-map" id="panel-map">
+                    <div class="panel-header">
+                        <span>🗺️ Map</span>
+                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mini-map" id="mini-map">
+                            <div class="map-tile" onclick="move(-1, -1)"></div>
+                            <div class="map-tile" onclick="move(-1, 0)"></div>
+                            <div class="map-tile" onclick="move(-1, 1)"></div>
+                            <div class="map-tile" onclick="move(0, -1)"></div>
+                            <div class="map-tile center"></div>
+                            <div class="map-tile" onclick="move(0, 1)"></div>
+                            <div class="map-tile" onclick="move(1, -1)"></div>
+                            <div class="map-tile" onclick="move(1, 0)"></div>
+                            <div class="map-tile" onclick="move(1, 1)"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
+                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
+                    <div class="panel-content">
+                        <div class="scene-display" id="scene-display">
+                            <h2 class="scene-title" id="scene-title">The Wilderness</h2>
+                            <p class="scene-description" id="scene-description">
+                                You find yourself in an untamed land where predators roam and only the strong survive. 
+                                The air is thick with the scent of pine and the distant calls of creatures unknown.
+                            </p>
+                            <div class="scene-actions" id="scene-actions">
+                                <button class="action-btn" onclick="App.search()">
+                                    <span class="action-icon">🔍</span>
+                                    Search
+                                </button>
+                                <button class="action-btn" onclick="rest()">
+                                    <span class="action-icon">🏕️</span>
+                                    Rest
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Party Panel -->
+                <div class="panel panel-party" id="panel-party">
+                    <div class="panel-header">
+                        <span>👥 Party</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('party')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="party-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Enemies Panel -->
+                <div class="panel panel-enemies" id="panel-enemies">
+                    <div class="panel-header">
+                        <span>⚔️ Enemies</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('enemies')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="enemies-content">
+                        <p style="color: var(--text-muted); text-align: center;">No enemies present</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Log Panel -->
+            <div class="panel-log">
+                <div class="log-header">
+                    <span class="log-title">📜 Combat Log</span>
+                    <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                </div>
+                <div class="log-content" id="log-content">
+                    <div class="log-entry">Welcome to FightFuckFeed.me Tactical Edition</div>
+                    <div class="log-entry discovery">Created your character. The journey begins...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Action Bar - switches between combat and exploration modes -->
+        <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
+            <!-- Combat buttons -->
+            <div id="mobile-combat-actions" class="action-bar" style="display: none;">
+                <button class="action-btn primary" onclick="combatAction('fight')">
+                    <span class="action-icon">⚔️</span>
+                    Fight
+                </button>
+                <button class="action-btn" onclick="combatAction('fuck')">
+                    <span class="action-icon">💕</span>
+                    Seduce
+                </button>
+                <button class="action-btn" onclick="combatAction('feed')">
+                    <span class="action-icon">🍽️</span>
+                    Consume
+                </button>
+                <button class="action-btn" onclick="combatAction('flee')">
+                    <span class="action-icon">🏃</span>
+                    Flee
+                </button>
+            </div>
+            <!-- Exploration buttons -->
+            <div id="mobile-explore-actions" class="action-bar">
+                <button class="action-btn" onclick="App.search()">
+                    <span class="action-icon">🔍</span>
+                    Search
+                </button>
+                <button class="action-btn" onclick="App.showInventory()">
+                    <span class="action-icon">🎒</span>
+                    Items
+                </button>
+                <button class="action-btn" onclick="togglePanel('map')">
+                    <span class="action-icon">🗺️</span>
+                    Map
+                </button>
+                <button class="action-btn" onclick="togglePanel('party')">
+                    <span class="action-icon">👥</span>
+                    Party
+                </button>
+            </div>
+        </div>
+        
+        <!-- Backdrop for closing mobile panels by tapping outside -->
+        <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
+        
+        <!-- Swipe hints for mobile -->
+        <div class="swipe-hint-left" title="Swipe right for map"></div>
+        <div class="swipe-hint-right" title="Swipe left for party"></div>
+    </div>
+    
+    <!-- GAME API BRIDGE & APP LOGIC -->
+
+<!-- SCRIPTS_PLACEHOLDER -->
+</body>
+</html>

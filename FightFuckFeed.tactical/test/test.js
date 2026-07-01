@@ -1278,6 +1278,22 @@ test('Self-included group social action shares pleasure across participants', ()
   assertContains(App.log[App.log.length - 1].text, 'share fuck with Target', 'Self-included social action should log shared semantics');
 });
 
+test('Self-included group fight spars across participants instead of self-attacking target', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  const helper = makeUnit('Helper', { id: 'helper-1', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  App.player = player;
+  App.party = [player, target, helper];
+  App.explorationActorIds = ['target-1', 'helper-1'];
+  App.outsideActionForParty('fight', 1);
+  assert(target.CPun < 100, 'Self-included sparring should affect the target');
+  assert(helper.CPun < 100, 'Self-included sparring should affect the helper too');
+  assertEqual(App.party.includes(target), true, 'Default self-included sparring should keep target in party');
+  assertEqual(App.party.includes(helper), true, 'Default self-included sparring should keep helper in party');
+  assertContains(App.log[App.log.length - 1].text, 'spar together', 'Self-included fight should log sparring semantics');
+});
+
 test('Single selected party member can be fed to another full-health party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

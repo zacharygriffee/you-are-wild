@@ -5808,6 +5808,17 @@
                         }
                         const totalFigh = livingActors.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
                         const dmg = Math.max(1, Math.floor(this._AR(totalFigh) - (target.con || 10) * 0.3 + Math.random() * 6));
+                        if (this.party.includes(target) && livingActors.includes(target)) {
+                            const sparDamage = Math.max(1, Math.floor(dmg / livingActors.length));
+                            const outcomes = [];
+                            for (const participant of livingActors) {
+                                const outcome = this._resolvePartyPlayFight(livingActors, participant, sparDamage);
+                                if (outcome) outcomes.push(`${participant.name}: ${outcome}`);
+                            }
+                            result = `${names} spar together, each taking ${sparDamage} punishment.`;
+                            if (outcomes.length > 0) result += ` ${outcomes.join(' ')}`;
+                            break;
+                        }
                         result = `${names} play-fight ${target.name} for ${dmg} punishment.`;
                         if (this.party.includes(target)) {
                             const outcome = this._resolvePartyPlayFight(livingActors, target, dmg);

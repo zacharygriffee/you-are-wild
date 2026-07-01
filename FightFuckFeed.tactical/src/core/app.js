@@ -99,6 +99,7 @@
                 return `<button class="${className}" title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
             },
             _actionLegend(keys) {
+                if (keys.length <= 1) return '';
                 return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
             },
             _actionIcon(key) {
@@ -123,7 +124,7 @@
                 const keys = this._contextActionKeys();
                 const panelKeys = includePanels ? ['map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
-                return allKeys.map(key => this._contextActionButton(key)).join('') + this._actionLegend(allKeys);
+                return allKeys.map(key => this._contextActionButton(key)).join('') + (includePanels ? '' : this._actionLegend(allKeys));
             },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
@@ -763,6 +764,40 @@
                 const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
                 if (tile) tile.creatures = this._tileCreatures(this.creatures);
             },
+            _dropPartyCorpse(unit, cause = 'fight') {
+                if (!unit || unit === this.player || unit.name === this.player?.name) return false;
+                const partyIndex = this.party.indexOf(unit);
+                if (partyIndex === -1) return false;
+                this.party.splice(partyIndex, 1);
+                unit.ally = false;
+                unit.obedient = false;
+                unit.disposition = this.DISPOSITION.CORPSE;
+                if (!this.creatures.includes(unit)) this.creatures.push(unit);
+                this._makeCorpse(unit, cause);
+                this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== unit);
+                this.log.push({ text: `${unit.name}'s remains fall to the ground.`, type: 'combat' });
+                this.renderParty();
+                this.renderCreatures();
+                return true;
+            },
+            _processCorpseDecay() {
+                let removed = 0;
+                for (const corpse of this.creatures.filter(c => this._isCorpse(c))) {
+                    corpse.decayTurns = corpse.decayTurns ?? 12;
+                    corpse.decayTurns -= 1;
+                }
+                this.creatures = this.creatures.filter(c => {
+                    if (!this._isCorpse(c) || c.decayTurns > 0) return true;
+                    removed++;
+                    return false;
+                });
+                if (removed > 0) {
+                    this.log.push({ text: `${removed === 1 ? 'A corpse decays' : removed + ' corpses decay'} into nothing.`, type: 'discovery' });
+                    this._syncCurrentTileCreatures();
+                    this.renderCreatures();
+                    this.renderLog();
+                }
+            },
             _attemptTimidCreatureFlee(unit, threat = this.player) {
                 if (!this._isTimid(unit) || unit.disposition === this.DISPOSITION.ENEMY || this._isCorpse(unit)) return null;
                 const chance = Math.min(1, Math.max(0, (unit.Flee || 10) / 20));
@@ -806,6 +841,7 @@
                 target.corpseCause = cause;
                 target.corpseName = target.corpseName || target.name;
                 target.corpseIcon = target.corpseIcon || target.icon;
+                target.decayTurns = target.decayTurns ?? 12;
                 target.status = {};
                 target.willing = false;
                 target.knockedOut = false;
@@ -1299,6 +1335,7 @@
                 this._processStatusEffects();
                 // Per-turn digestion
                 this._processDigestion();
+                this._processCorpseDecay();
                 this.processTurn();
             },
 
@@ -1326,11 +1363,15 @@
                             delete unit.status.enveloped;
                         }
                     }
-                    if (unit.status.frightened) {
-                        delete unit.status.frightened;
-                    }
-                }
-            },
+	                    if (unit.status.frightened) {
+	                        delete unit.status.frightened;
+	                    }
+	                    if (unit !== this.player && this.party.includes(unit) && unit.CPun <= 0) {
+	                        this.log.push({ text: `${unit.name} succumbs to their wounds.`, type: 'combat' });
+	                        this._dropPartyCorpse(unit, 'status');
+	                    }
+	                }
+	            },
             _absorbStats(unit, dmg, stats) {
                 if (!this.settings.statAbsorption) return;
                 unit._absorbRemainder = (unit._absorbRemainder || 0) + dmg * 0.1;
@@ -1538,9 +1579,9 @@
                         result = this._doSubAction('feast', subId, actor, target, actorName, actorVerb);
                         this._emitSubAction('feast', subId, actor, target, result);
                         break;
-                    }
-                }
-                this.log.push({ text: result, type: 'combat' });
+	                    }
+	                }
+	                this.log.push({ text: result, type: 'combat' });
                 this._emitCombatAction(action, actor, target, result);
                 this.renderLog();
                 this.renderCreatures();
@@ -2259,11 +2300,15 @@
                             this.renderLog();
                             this.nextTurn(); return;
                         }
-                        this.combatState.active = false;
-                        return;
-                    }
-                }
-                this.log.push({ text: result, type: 'combat' });
+	                        this.combatState.active = false;
+	                        return;
+	                    }
+	                    if (this._dropPartyCorpse(target, 'fight')) {
+	                        this.nextTurn();
+	                        return;
+	                    }
+	                }
+	                this.log.push({ text: result, type: 'combat' });
                 this._emitCombatAction('enemy_fight', enemy, target, result);
                 this.renderLog();
                 this.renderParty();

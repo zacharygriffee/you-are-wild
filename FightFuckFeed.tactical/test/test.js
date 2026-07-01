@@ -685,6 +685,39 @@ test('Softcore player KO removes player from acting while allies continue', () =
   assert(App._nextTurnCalled, 'Combat should advance after KO');
 });
 
+test('Killed party allies drop as tile corpses instead of staying in party', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { CPun: 100, MPun: 100 });
+  const ally = makeUnit('Ally', { CPun: 5, MPun: 100 });
+  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY, Figh: 50 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }]]);
+  App.combatState.active = true;
+  App.nextTurn = function() { this._nextTurnCalled = true; };
+  App.enemyTurn(enemy);
+  assert(!App.party.includes(ally), 'Killed ally should be removed from party');
+  assert(App.creatures.includes(ally), 'Killed ally corpse should be placed in creature area');
+  assertEqual(ally.disposition, App.DISPOSITION.CORPSE, 'Killed ally should become corpse disposition');
+  assertEqual(ally.decayTurns, 12, 'Dropped corpse should receive decay timer');
+  assert(App.worldMap.get('0,0').creatures.includes(ally), 'Dropped corpse should persist on current tile');
+});
+
+test('Corpse decay removes expired remains from tile creatures', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const corpse = makeUnit('Decaying', { disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, decayTurns: 1 });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [corpse];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [corpse] }]]);
+  App._processCorpseDecay();
+  assert(!App.creatures.includes(corpse), 'Expired corpse should be removed from active creatures');
+  assert(!App.worldMap.get('0,0').creatures.includes(corpse), 'Expired corpse should be removed from tile creatures');
+});
+
 test('Stat absorption accumulates fractional digestion progress', () => {
   const { App } = loadAppForCombat();
   const predator = makeUnit('Predator', {
@@ -955,7 +988,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden until it has stronger mechanics');
   assertContains(actionsHtml, 'title="Items"', 'Inventory should remain in the main context');
   assertContains(actionsHtml, 'aria-label="Items"', 'Inventory icon should expose an aria label');
-  assertContains(actionsHtml, 'action-legend', 'Exploration controls should include an icon legend');
+  assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should offer fight');
   assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fuck','neutral-1')", 'Neutral card should offer baseline interaction');
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');

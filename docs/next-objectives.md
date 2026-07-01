@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 77/77 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 79/79 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -84,6 +84,9 @@
 - Default main-context actions are simplified: creature interactions live on party/creature panels, Search is hidden until stronger mechanics exist, Inventory remains available
 - Rest appears and heals only at safe rest structures (`cabin`, `hut`, `camp`, `shrine`, `spring`) and refuses direct use elsewhere
 - Normalized creatures now carry an `inventory` array for future/modded creature inventory support
+- Non-player party members killed by combat/status damage are removed from party and dropped onto the current tile as corpses
+- Corpses have a simple `decayTurns` timer and decay out of the current tile creature list when expired
+- Single-button context areas suppress redundant visible legends; labels/tooltips remain
 
 ---
 

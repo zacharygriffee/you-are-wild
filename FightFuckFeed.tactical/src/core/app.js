@@ -26,6 +26,13 @@
                 party: 'Party',
                 enemies: 'Enemies'
             },
+            LOG_CATEGORIES: {
+                combat: { label: 'Combat', icon: '⚔️' },
+                discovery: { label: 'Discovery', icon: '🧭' },
+                loot: { label: 'Loot', icon: '🎒' },
+                heal: { label: 'Heal', icon: '💚' },
+                mod: { label: 'Mod', icon: '🧩' }
+            },
             SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
             NOCTURNAL_SPECIES: ['bat', 'rat'],
             DIURNAL_SPECIES: ['bunny', 'deer'],
@@ -4784,6 +4791,9 @@
                 if (indexFromEnd <= 0) return 'just now';
                 return indexFromEnd === 1 ? '1 turn ago' : `${indexFromEnd} turns ago`;
             },
+            _logCategoryMeta(type = 'discovery') {
+                return this.LOG_CATEGORIES[type] || { label: type || 'Discovery', icon: '•' };
+            },
             _filteredLogEntries() {
                 const filter = this.logFilter || 'all';
                 const query = (this.logSearch || '').trim().toLowerCase();
@@ -4845,9 +4855,11 @@
                     const filtered = this._filteredLogEntries();
 	                const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => {
                         const indexFromEnd = visibleIndex;
+                        const type = e.type || 'discovery';
+                        const meta = this._logCategoryMeta(type);
 	                    let cn = 'log-entry';
-	                    if (e.type) cn += ` ${e.type}`;
-	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span>${this._escapeHtml(e.text)}</div>`;
+	                    if (type) cn += ` ${type}`;
+	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span><span class="log-category" aria-label="${this._escapeHtml(meta.label)}"><span aria-hidden="true">${this._escapeHtml(meta.icon)}</span> ${this._escapeHtml(meta.label)}</span>${this._escapeHtml(e.text)}</div>`;
 	                }).join('');
 	                if (container) container.innerHTML = entries || '<div class="log-entry text-muted">No log entries match the current filter.</div>';
                     document.querySelectorAll?.('.log-filter-btn').forEach(btn => {

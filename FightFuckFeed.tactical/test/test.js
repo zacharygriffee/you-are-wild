@@ -2396,6 +2396,8 @@ test('Combat log template exposes filters search and export controls', () => {
   assertContains(template, 'App.exportLog()', 'Log should expose export action');
   assertContains(appContent, 'fff-log-view', 'Log view preferences should persist separately');
   assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
+  assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
+  assertContains(template, '.log-category', 'Log category badge style should exist');
 });
 
 test('Combat log filters by type and search text', () => {
@@ -2444,6 +2446,9 @@ test('Combat log renders relative timestamps and status role', () => {
   assertContains(html, 'just now', 'Newest log entry should show relative timestamp');
   assertContains(html, '1 turn ago', 'Older log entry should show relative timestamp');
   assertContains(html, 'role="status"', 'Log entries should expose status role');
+  assertContains(html, 'class="log-category"', 'Log entries should show category badges');
+  assertContains(html, 'aria-label="Combat"', 'Combat category badge should expose an accessible label');
+  assertContains(html, '⚔️</span> Combat', 'Combat category badge should show icon and label');
 });
 
 test('Accessibility settings apply, sync, and persist', () => {

@@ -591,9 +591,28 @@
             margin-bottom: 2px;
         }
 
+        .log-category {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-right: 6px;
+            padding: 1px 5px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
         .log-entry.combat {
             border-left-color: var(--accent-danger);
             background: rgba(239, 71, 111, 0.05);
+        }
+
+        .log-entry.combat .log-category {
+            color: var(--accent-danger);
         }
 
         .log-entry.discovery {
@@ -601,8 +620,16 @@
             background: rgba(255, 209, 102, 0.05);
         }
 
+        .log-entry.discovery .log-category {
+            color: var(--accent-warning);
+        }
+
         .log-entry.loot {
             border-left-color: var(--accent-primary);
+        }
+
+        .log-entry.loot .log-category {
+            color: var(--accent-primary);
         }
 
         .log-entry.text-muted {
@@ -614,9 +641,17 @@
             background: rgba(0, 212, 170, 0.05);
         }
 
+        .log-entry.heal .log-category {
+            color: var(--accent-primary);
+        }
+
         .log-entry.mod {
             border-left-color: var(--accent-info);
             font-style: italic;
+        }
+
+        .log-entry.mod .log-category {
+            color: var(--accent-info);
         }
 
         /* =============================================

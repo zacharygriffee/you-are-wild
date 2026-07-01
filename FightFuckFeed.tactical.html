@@ -1989,6 +1989,14 @@
                 if (!entry) { this.nextTurn(); return; }
                 const current = entry.unit;
                 if (!current || current.CPun <= 0) { this.nextTurn(); return; }
+                // Refractory period: skip turn if recovering from orgasm
+                if (current.refractory) {
+                    current.refractory = false;
+                    this.log.push({ text: `${current.name} is recovering from orgasm and skips their turn.`, type: 'combat' });
+                    this.renderLog();
+                    this.nextTurn();
+                    return;
+                }
                 // Check sync actions - if this unit is part of a sync action that resolves now, handle it
                 const activeSync = this.combatState.syncActions.find(s => !s.resolved && s.participants.includes(current));
                 if (activeSync) {
@@ -2134,15 +2142,27 @@
                         break;
                     }
                     case 'fuck': {
-                        const charm = this._AR(player.Fuck + player.Flir);
+                        let charm = this._AR(player.Fuck + player.Flir);
+                        // Same-species attraction bonus
+                        if (this.settings.sameSpeciesBonus && target.species === player.species) {
+                            charm += 5;
+                        }
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
                         if (charm > resist) {
+                            const oldPle = target.CPle;
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
                             result = `You seduce ${target.name}! Pleasure rises to ${target.CPle}/${target.MPle}.`;
-                            if (target.CPle >= target.MPle * 0.8) {
-                                result += ` They look dazed and submissive...`;
+                            // Orgasm threshold at 80%
+                            if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
+                                result += ` ${target.name} orgasms, becoming dazed and submissive!`;
                                 target.disposition = this.DISPOSITION.FRIENDLY;
                                 target.willing = true;
+                                target.orgasmed = true;
+                                // Refractory period: skip next turn if enabled
+                                if (this.settings.refractoryPeriod) {
+                                    target.refractory = true;
+                                    result += ` They need a moment to recover...`;
+                                }
                             }
                         } else {
                             result = `${target.name} resists your advances!`;
@@ -2282,13 +2302,23 @@
                 let result = '';
                 switch (sync.type) {
                     case 'sync_fuck': {
-                        const totalCharm = sync.participants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
+                        let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
+                        if (this.settings.sameSpeciesBonus) {
+                            const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
+                            totalCharm += speciesMatch * 5;
+                        }
                         const resist = (sync.target.wis || 10) + (sync.target.CPle / sync.target.MPle * 10);
+                        const oldPle = sync.target.CPle;
                         if (totalCharm > resist * 1.5) {
                             sync.target.CPle = sync.target.MPle;
                             sync.target.disposition = this.DISPOSITION.FRIENDLY;
                             sync.target.willing = true;
+                            sync.target.orgasmed = true;
                             result = `${sync.participants.map(p => p.name).join(' and ')} overwhelm ${sync.target.name} with pleasure! They submit completely.`;
+                            if (this.settings.refractoryPeriod) {
+                                sync.target.refractory = true;
+                                result += ` They are spent and need recovery...`;
+                            }
                             // Offer recruitment
                             setTimeout(() => {
                                 if (confirm(`${sync.target.name} is submissive. Recruit them to your party?`)) {
@@ -2298,6 +2328,11 @@
                         } else if (totalCharm > resist) {
                             sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                             result = `${sync.participants.map(p => p.name).join(' and ')} pleasure ${sync.target.name}! They are dazed but not fully broken.`;
+                            if (sync.target.CPle >= sync.target.MPle * 0.8 && oldPle < sync.target.MPle * 0.8) {
+                                result += ` ${sync.target.name} orgasms!`;
+                                sync.target.orgasmed = true;
+                                if (this.settings.refractoryPeriod) sync.target.refractory = true;
+                            }
                         } else {
                             result = `${sync.target.name} resists the combined advances!`;
                         }
@@ -2518,14 +2553,23 @@
                         break;
                     }
                     case 'fuck': {
-                        const charm = this._AR(this.player.Fuck + this.player.Flir);
+                        let charm = this._AR(this.player.Fuck + this.player.Flir);
+                        if (this.settings.sameSpeciesBonus && target.species === this.player.species) {
+                            charm += 5;
+                        }
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
                             result = `You pleasure ${target.name}. Their arousal rises to ${target.CPle}/${target.MPle}.`;
-                            if (target.CPle >= target.MPle * 0.8) {
+                            if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
                                 target.willing = true;
-                                result += ' They are completely devoted.';
+                                target.orgasmed = true;
+                                result += ' They orgasm and are completely devoted.';
+                                if (this.settings.refractoryPeriod) {
+                                    target.refractory = true;
+                                    result += ' They need a moment to recover...';
+                                }
                             }
                         } else {
                             result = `${target.name} is not in the mood.`;

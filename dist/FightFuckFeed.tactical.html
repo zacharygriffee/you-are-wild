@@ -2132,7 +2132,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 9,
+      version: 10,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -2154,7 +2154,8 @@
         dayCount: appState.dayCount || 0,
         playerEquipment: appState.player?.equipment || {},
         playerPerks: appState.player?.perks || [],
-        pendingPerkChoices: appState.player?.pendingPerkChoices || 0
+        pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
+        partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);
@@ -2566,6 +2567,7 @@
             tutorialStep: 0,
             player: null,
             party: [],
+            partyLeaderId: null,
             creatures: [], // ALL creatures at location with disposition
             inventory: [],
             quests: [],
@@ -2920,6 +2922,7 @@
                 };
                 this._applySpeciesAbilities(this.player);
                 this.party = [this.player];
+                this.partyLeaderId = this._unitSelectionId(this.player);
                 this.creatures = [];
                 this.location = { x: 0, y: 0 };
                 this.timeHour = 8;
@@ -5083,6 +5086,8 @@
                 }
                 const tastyTargets = targets.filter(t => t.tasty);
                 if (tastyTargets.length > 0) return tastyTargets[Math.floor(Math.random() * tastyTargets.length)];
+                const leader = this.partyLeaderId ? this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId)) : null;
+                if (leader && targets.includes(leader)) return leader;
                 return targets.reduce((weakest, t) => (t.CPun / t.MPun < weakest.CPun / weakest.MPun) ? t : weakest, targets[0]);
             },
             enemyTurn(enemy) {
@@ -5274,6 +5279,63 @@
             },
             _getExplorationActor(actorId = null) {
                 return this._getExplorationActors(actorId)[0] || this.player;
+            },
+
+            _getPartyLeader() {
+                const leader = this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId || ''));
+                return leader || this.player || this.party[0] || null;
+            },
+
+            setPartyLeader(index) {
+                const unit = this.party[index];
+                if (!unit) return;
+                this.partyLeaderId = this._unitSelectionId(unit);
+                this.log.push({ text: `${unit.name} is now party leader.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.autoSave();
+            },
+
+            movePartyMember(index, direction) {
+                const targetIndex = index + direction;
+                if (index <= 0 || targetIndex <= 0 || targetIndex >= this.party.length) return;
+                const [unit] = this.party.splice(index, 1);
+                this.party.splice(targetIndex, 0, unit);
+                this.log.push({ text: `${unit.name} changes party position.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.autoSave();
+            },
+
+            dismissPartyMember(index) {
+                const unit = this.party[index];
+                if (!unit || unit === this.player || unit.mc) return;
+                if (typeof confirm === 'function' && !confirm(`Dismiss ${unit.name} from the party?`)) return;
+                this.party.splice(index, 1);
+                this.explorationActorIds = (this.explorationActorIds || []).filter(id => id !== this._unitSelectionId(unit));
+                if (this.partyLeaderId === this._unitSelectionId(unit)) this.partyLeaderId = this._unitSelectionId(this.player);
+                this.log.push({ text: `${unit.name} leaves the party.`, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.autoSave();
+            },
+
+            showPartyMemberStats(index) {
+                const unit = this.party[index];
+                if (!unit) return;
+                const leaderText = this._getPartyLeader() === unit ? 'Leader' : (unit === this.player ? 'You' : 'Ally');
+                const html = `<div style="max-width:600px;margin:0 auto;padding:24px;"><h3>${unit.icon} ${unit.name}</h3>
+                    <p style="color:var(--text-muted)">${leaderText} | Level ${unit.level} ${unit.species}</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:12px;">
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Punishment</strong><br>${unit.CPun}/${unit.MPun}</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Pleasure</strong><br>${unit.CPle}/${unit.MPle}</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Combat</strong><br>Figh ${unit.Figh} | Feas ${unit.Feas}<br>Flir ${unit.Flir} | Fuck ${unit.Fuck}<br>Flee ${unit.Flee} | Feed ${unit.Feed}</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Attributes</strong><br>STR ${unit.str} | CON ${unit.con} | SPD ${unit.spd}<br>INT ${unit.int} | WIS ${unit.wis} | CHA ${unit.cha}</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Capacity</strong><br>${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Perks</strong><br>${(unit.perks || []).map(perk => perk.name).join(', ') || 'None'}</div>
+                    </div>
+                    <button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button></div>`;
+                document.getElementById('scene-description').innerHTML = html;
             },
 
             selectExplorationActor(index) {
@@ -6462,6 +6524,7 @@
                 const isPlayer = isParty && unit.name === this.player?.name;
                 const isAlly = isParty && !isPlayer;
                 const isCorpse = this._isCorpse(unit);
+                const isLeader = isParty && this._getPartyLeader() === unit;
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
@@ -6471,10 +6534,15 @@
                         actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
                     }
                     actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
+                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">Stats</button>`;
+                    if (!isLeader) actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.setPartyLeader(${index})">Lead</button>`;
+                    if (index > 1) actionButtons += `<button class="action-btn" title="Move up" aria-label="Move ${unit.name} up" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
+                    if (!isPlayer && index < this.party.length - 1) actionButtons += `<button class="action-btn" title="Move down" aria-label="Move ${unit.name} down" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
                     if (isAlly) {
                         const order = this._getPartyAIOrder(unit);
                         const options = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="AI order" aria-label="AI order for ${unit.name}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
+                        actionButtons += `<button class="action-btn" style="color:var(--accent-danger)" onclick="event.stopPropagation();App.dismissPartyMember(${index})">Dismiss</button>`;
                     }
                     actionButtons += `</div>`;
                 }
@@ -6525,7 +6593,7 @@
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
-                            <div class="unit-name">${unit.name} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
+                            <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
                             <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
                             <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}${rowLabel}</div>
 	                        </div>
@@ -7184,6 +7252,7 @@ Enter 1, 2, or 3:`);
                     this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
                     this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
                     this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
+                    this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };

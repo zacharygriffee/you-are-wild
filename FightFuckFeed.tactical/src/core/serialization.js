@@ -230,7 +230,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 9,
+      version: 10,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -252,7 +252,8 @@
         dayCount: appState.dayCount || 0,
         playerEquipment: appState.player?.equipment || {},
         playerPerks: appState.player?.perks || [],
-        pendingPerkChoices: appState.player?.pendingPerkChoices || 0
+        pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
+        partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

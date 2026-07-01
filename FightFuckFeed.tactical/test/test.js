@@ -1729,6 +1729,67 @@ test('Party panel exposes per-ally AI order controls', () => {
   assertContains(html, 'value="defensive" selected', 'Selected AI order should be reflected in the selector');
 });
 
+test('Party panel exposes management controls and leader badge', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  App.player = player;
+  App.party = [player, ally];
+  App.partyLeaderId = 'player-1';
+  App.renderParty();
+  const html = elements.get('party-content').innerHTML;
+  assertContains(html, '[Leader]', 'Party leader badge should render');
+  assertContains(html, 'showPartyMemberStats(1)', 'Party card should expose detailed stats');
+  assertContains(html, 'setPartyLeader(1)', 'Party card should expose set leader action');
+  assertContains(html, 'dismissPartyMember(1)', 'Ally card should expose dismiss action');
+});
+
+test('Party management can reorder set leader and dismiss allies', () => {
+  const { App } = loadAppForCombat(() => 0, { confirm: true });
+  const player = makeUnit('You', { id: 'player-1' });
+  const allyA = makeUnit('Ally A', { id: 'ally-a' });
+  const allyB = makeUnit('Ally B', { id: 'ally-b' });
+  App.player = player;
+  App.party = [player, allyA, allyB];
+  App.partyLeaderId = 'player-1';
+  App.explorationActorIds = ['ally-b'];
+  App.movePartyMember(2, -1);
+  assertEqual(App.party[1], allyB, 'Move up should reorder ally without moving before player');
+  App.setPartyLeader(1);
+  assertEqual(App._getPartyLeader(), allyB, 'Set leader should update leader lookup');
+  App.dismissPartyMember(1);
+  assertEqual(App.party.includes(allyB), false, 'Dismiss should remove ally from party');
+  assertEqual(App.partyLeaderId, 'player-1', 'Dismissing leader should fall back to player');
+  assertEqual(App.explorationActorIds.includes('ally-b'), false, 'Dismiss should clear selected actor id');
+});
+
+test('Enemy target priority prefers party leader when no prey override applies', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', CPun: 20, MPun: 100 });
+  const leader = makeUnit('Leader Ally', { id: 'leader-1', CPun: 100, MPun: 100 });
+  const enemy = makeUnit('Enemy', { species: 'human' });
+  App.player = player;
+  App.party = [player, leader];
+  App.partyLeaderId = 'leader-1';
+  const target = App._selectEnemyTarget(enemy, App.party);
+  assertEqual(target, leader, 'Enemy target selection should prefer party leader after prey/tasty checks');
+});
+
+test('Party leader state persists through binary saves', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Leader Ally', { id: 'leader-1' });
+  App.party = [App.player, ally];
+  App.partyLeaderId = 'leader-1';
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.inventory = [];
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.questState.partyLeaderId, 'leader-1', 'Party leader id should persist in save metadata');
+});
+
 test('Healer AI order feeds the most wounded ally during combat', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { CPun: 100, MPun: 100 });
@@ -1916,7 +1977,7 @@ test('Quest state persists through binary saves', () => {
   App.inventory = [];
   App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
   const loaded = Binary.loadGame(Binary.saveGame(App));
-  assertEqual(loaded.version, 9, 'Save version should include quest, merchant timing, equipment, and perk state');
+  assertEqual(loaded.version, 10, 'Save version should include quest, merchant timing, equipment, perk, and party leader state');
   assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
   assertEqual(loaded.questState.dayCount, 0, 'Day count should persist');
   assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');

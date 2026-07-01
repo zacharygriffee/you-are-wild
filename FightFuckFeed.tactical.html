@@ -810,8 +810,8 @@
                     <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
                     <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
                     <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
-                    <button class="nav-btn" onclick="App.saveGame()">💾 Save</button>
-                    <button class="nav-btn" onclick="App.loadGame()">📂 Load</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">💾 Save</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
                 </nav>
             </header>
             
@@ -1166,11 +1166,48 @@
             ],
             
             // Initialize
-            init() {
+            async init() {
                 console.log('App.init() running');
                 this.populateSpecies();
                 this.bindEvents();
                 this.checkFirstTime();
+                
+                // Check for last played save and show continue option
+                const lastSlot = localStorage.getItem('fff-last-slot');
+                if (lastSlot) {
+                    const saveData = await this._dbGet('saves', lastSlot);
+                    if (saveData) {
+                        this.showContinueOption(lastSlot);
+                    }
+                }
+            },
+            
+            showContinueOption(slotName) {
+                const container = document.querySelector('.create-container');
+                if (!container) return;
+                
+                // Check if already added
+                if (document.getElementById('continue-banner')) return;
+                
+                const banner = document.createElement('div');
+                banner.id = 'continue-banner';
+                banner.style.cssText = 'background: var(--bg-elevated); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; text-align: center;';
+                banner.innerHTML = `
+                    <div style="color: var(--accent-primary); font-weight: 600; margin-bottom: 8px;">📂 Continue Last Game</div>
+                    <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">
+                        Saved in ${slotName} — ${new Date(parseInt(localStorage.getItem('fff-last-save-time') || '0')).toLocaleString()}
+                    </div>
+                    <div style="display: flex; gap: 12px; justify-content: center;">
+                        <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;" onclick="App.loadFromSlot('${slotName}').then(() => { document.getElementById('continue-banner').remove(); })">
+                            ▶ Continue
+                        </button>
+                        <button class="nav-btn" onclick="document.getElementById('continue-banner').remove()">
+                            New Game
+                        </button>
+                    </div>
+                `;
+                
+                container.insertBefore(banner, container.firstChild);
             },
             
             // Populate character creation options
@@ -1270,6 +1307,7 @@
                 this.showScreen('game');
                 this.renderParty();
                 this.showTutorial();
+                this.autoSave();
             },
             
             // Screen management
@@ -1423,6 +1461,7 @@
                 
                 this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y}`, type: 'move' });
                 this.renderLog();
+                this.autoSave();
             },
             
             // Attempt to flee from encounter
@@ -1810,6 +1849,7 @@ endCombat(victory) {
     }
     this.renderLog();
     this.showExplorationActions();
+                this.autoSave();
 },
 
 showExplorationActions() {
@@ -1919,33 +1959,63 @@ showExplorationActions() {
                 this.renderLog();
             },
             
-            // Save game to IndexedDB
-            async saveGame() {
+            // ===== SAVE/LOAD SYSTEM =====
+            // Current active slot
+            activeSlot: 'slot1',
+            
+            // Check for last played game on startup
+            async checkLastPlayed() {
+                const lastSlot = localStorage.getItem('fff-last-slot');
+                if (!lastSlot) return false;
+                
+                const saveData = await this._dbGet('saves', lastSlot);
+                if (!saveData) return false;
+                
+                // Ask user if they want to continue
+                return true; // Auto-continue will be handled in init
+            },
+            
+            // Auto-save (silent, no alerts)
+            async autoSave() {
+                if (!this.player || this.screen !== 'game') return;
+                try {
+                    const saveData = Binary.saveGame(this);
+                    await this._dbPut('saves', this.activeSlot, saveData);
+                    localStorage.setItem('fff-last-slot', this.activeSlot);
+                    localStorage.setItem('fff-last-save-time', Date.now().toString());
+                    console.log('Auto-saved to', this.activeSlot);
+                } catch (e) {
+                    console.error('Auto-save failed:', e);
+                }
+            },
+            
+            // Manual save to a specific slot
+            async saveToSlot(slotName) {
                 if (!this.player) {
                     alert('No game to save! Create a character first.');
                     return;
                 }
                 try {
                     const saveData = Binary.saveGame(this);
-                    const saveSlot = 'fff-save-slot1';
-                    await this._dbPut('saves', saveSlot, saveData);
-                    this.log.push({ text: 'Game saved!', type: 'discovery' });
+                    await this._dbPut('saves', slotName, saveData);
+                    this.activeSlot = slotName;
+                    localStorage.setItem('fff-last-slot', slotName);
+                    localStorage.setItem('fff-last-save-time', Date.now().toString());
+                    this.log.push({ text: `Game saved to ${slotName}!`, type: 'discovery' });
                     this.renderLog();
-                    alert('Game saved successfully!');
                 } catch (e) {
                     console.error('Save failed:', e);
                     alert('Save failed: ' + e.message);
                 }
             },
             
-            // Load game from IndexedDB
-            async loadGame() {
+            // Load from a specific slot
+            async loadFromSlot(slotName) {
                 try {
-                    const saveSlot = 'fff-save-slot1';
-                    const saveData = await this._dbGet('saves', saveSlot);
+                    const saveData = await this._dbGet('saves', slotName);
                     if (!saveData) {
-                        alert('No save found!');
-                        return;
+                        alert('No save found in ' + slotName);
+                        return false;
                     }
                     const loaded = Binary.loadGame(saveData);
                     
@@ -1967,22 +2037,95 @@ showExplorationActions() {
                     this.currentBiome = loaded.currentBiome;
                     this.log = loaded.log.map(text => ({ text, type: 'discovery' }));
                     this.enemies = [];
+                    this.activeSlot = slotName;
                     
                     document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                     this.showScreen('game');
                     this.renderParty();
                     this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
-                    this.log.push({ text: 'Game loaded!', type: 'discovery' });
+                    this.log.push({ text: `Loaded from ${slotName}!`, type: 'discovery' });
                     this.renderLog();
-                    alert('Game loaded successfully!');
+                    localStorage.setItem('fff-last-slot', slotName);
+                    return true;
                 } catch (e) {
                     console.error('Load failed:', e);
                     alert('Load failed: ' + e.message);
+                    return false;
                 }
             },
             
-            // IndexedDB helpers
+            // Show save slot manager
+            async showSaveManager() {
+                const saves = await this._dbList('saves');
+                const lastSlot = localStorage.getItem('fff-last-slot') || 'slot1';
+                
+                let html = `<div style="max-width: 600px; margin: 0 auto; padding: 32px;">
+                    <h1 style="color: var(--accent-primary); margin-bottom: 8px;">💾 Save Slots</h1>
+                    <p style="color: var(--text-muted); margin-bottom: 24px;">
+                        Auto-save is always on. Your last played slot is highlighted.
+                    </p>`;
+                
+                for (let i = 1; i <= 5; i++) {
+                    const slotName = `slot${i}`;
+                    const save = saves[slotName];
+                    const isActive = slotName === lastSlot;
+                    const hasData = !!save;
+                    const saveTime = save ? new Date(parseInt(localStorage.getItem(`fff-save-time-${slotName}`) || '0')).toLocaleString() : 'Empty';
+                    
+                    html += `<div style="background: ${isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)'}; border: 1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-default)'}; border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">
+                                ${isActive ? '▶ ' : ''}Slot ${i}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                                ${hasData ? saveTime : 'Empty slot'}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            ${hasData ? `<button class="nav-btn" onclick="App.loadFromSlot('${slotName}').then(() => { document.getElementById('save-manager').style.display='none'; })">📂 Load</button>` : ''}
+                            <button class="nav-btn" onclick="App.saveToSlot('${slotName}')">💾 Save</button>
+                            ${hasData ? `<button class="nav-btn" style="color: var(--accent-danger);" onclick="App.deleteSlot('${slotName}')">🗑️</button>` : ''}
+                        </div>
+                    </div>`;
+                }
+                
+                html += `<div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                    <button class="nav-btn" onclick="document.getElementById('save-manager').style.display='none'">Close</button>
+                </div></div>`;
+                
+                document.getElementById('save-manager').innerHTML = html;
+                document.getElementById('save-manager').style.display = 'block';
+            },
+            
+            // Delete a save slot
+            async deleteSlot(slotName) {
+                if (!confirm(`Delete save slot ${slotName}? This cannot be undone.`)) return;
+                try {
+                    await this._dbDelete('saves', slotName);
+                    localStorage.removeItem(`fff-save-time-${slotName}`);
+                    if (this.activeSlot === slotName) {
+                        this.activeSlot = 'slot1';
+                    }
+                    this.showSaveManager();
+                    this.log.push({ text: `Deleted ${slotName}`, type: 'discovery' });
+                    this.renderLog();
+                } catch (e) {
+                    console.error('Delete failed:', e);
+                    alert('Delete failed: ' + e.message);
+                }
+            },
+            
+            // Load last played game (called from init)
+            async loadLastPlayed() {
+                const lastSlot = localStorage.getItem('fff-last-slot');
+                if (!lastSlot) return false;
+                const saveData = await this._dbGet('saves', lastSlot);
+                if (!saveData) return false;
+                return this.loadFromSlot(lastSlot);
+            },
+            
+            // ===== INDEXEDDB HELPERS =====
             async _dbPut(store, key, value) {
                 return new Promise((resolve, reject) => {
                     const request = indexedDB.open('FFF_Saves', 1);
@@ -2017,6 +2160,48 @@ showExplorationActions() {
                 });
             },
             
+            async _dbDelete(store, key) {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('FFF_Saves', 1);
+                    request.onupgradeneeded = (e) => {
+                        e.target.result.createObjectStore('saves');
+                    };
+                    request.onsuccess = (e) => {
+                        const db = e.target.result;
+                        const tx = db.transaction('saves', 'readwrite');
+                        tx.objectStore('saves').delete(key);
+                        tx.oncomplete = () => { db.close(); resolve(); };
+                        tx.onerror = () => { db.close(); reject(tx.error); };
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            async _dbList(store) {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('FFF_Saves', 1);
+                    request.onupgradeneeded = (e) => {
+                        e.target.result.createObjectStore('saves');
+                    };
+                    request.onsuccess = (e) => {
+                        const db = e.target.result;
+                        const tx = db.transaction('saves', 'readonly');
+                        const getAll = tx.objectStore('saves').getAllKeys();
+                        const getAllVals = tx.objectStore('saves').getAll();
+                        const results = {};
+                        getAll.onsuccess = () => {
+                            const keys = getAll.result;
+                            getAllVals.onsuccess = () => {
+                                keys.forEach((k, i) => { results[k] = getAllVals.result[i]; });
+                                db.close();
+                                resolve(results);
+                            };
+                        };
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
             // Panel toggle (mobile)
             togglePanel(panel) {
                 const panels = ['panel-map', 'panel-party', 'panel-enemies'];
@@ -2043,6 +2228,11 @@ showExplorationActions() {
     </script>
 
 <!-- CONTENT SETTINGS SCREEN -->
+<!-- SAVE MANAGER OVERLAY -->
+<div id="save-manager" class="screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; overflow: auto;">
+    <!-- Populated by JS -->
+</div>
+
 <div id="screen-settings" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
     <div style="max-width: 600px; margin: 0 auto; padding: 32px;">
         <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Content Settings</h1>

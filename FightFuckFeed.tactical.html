@@ -1811,7 +1811,8 @@
                 plant: ['tentacles'], shroom: [], bee: ['wings','stinger'], goblin: [], mouse: [],
                 rat: ['fangs'], pig: [], cow: ['horns'], sheep: [], horse: ['horns'], lizard: ['scales','tail'],
                 spider: ['fangs','webbing'], centaur: ['horns','tail'], drow: [], hyena: ['fangs','claws'],
-                raccoon: ['claws'], otter: ['fins','tail']
+                raccoon: ['claws'], otter: ['fins','tail'],
+                fish: ['fins'], crab: ['claws'], siren: [], troll: [], bandit: [], skeleton: [], goat: ['horns'], eagle: ['wings','claws']
             },
             SPECIES_ABILITIES: {
                 wolf: { rage: true, menacing: true },
@@ -1838,7 +1839,24 @@
                 centaur: { ranged: true },
                 hyena: { laughing: true },
                 rat: { darkvision: true, bloodsuck: true },
-                otter: { swimming: true }
+                otter: { swimming: true },
+                fish: { swimming: true },
+                crab: { floopy: true },
+                siren: { swimming: true, ranged: true },
+                troll: { rage: true, menacing: true },
+                bandit: { ranged: true },
+                skeleton: { darkvision: true },
+                goat: { fastFlee: true },
+                eagle: { flying: true, ranged: true, antiflying: true }
+            },
+            SPECIES_DIFFICULTY: {
+                bunny: 1, mouse: 1, sheep: 1, deer: 1, human: 1, frog: 1, cow: 1, pig: 1,
+                fish: 1, crab: 1, otter: 1, goat: 1,
+                wolf: 2, cat: 2, fox: 2, rat: 2, lizard: 2, harpy: 2, bat: 2, bee: 2,
+                goblin: 2, horse: 2, raccoon: 2, bandit: 2, skeleton: 2, eagle: 2,
+                bear: 3, tiger: 3, naga: 3, slime: 3, plant: 3, spider: 3, shroom: 3,
+                hyena: 3, centaur: 3, drow: 3, troll: 3, siren: 3,
+                dragon: 4
             },
             MAX_PARTY_SIZE: 6,
             MAX_INVENTORY: 20,
@@ -1914,24 +1932,81 @@
                 { id: 'drow', name: 'Drow', icon: '🧝', desc: 'Dark elf' },
                 { id: 'hyena', name: 'Hyena', icon: '🐆', desc: 'Laughing hunter' },
                 { id: 'raccoon', name: 'Raccoon', icon: '🦝', desc: 'Trash bandit' },
-                { id: 'otter', name: 'Otter', icon: '🦦', desc: 'River playmate' }
+                { id: 'otter', name: 'Otter', icon: '🦦', desc: 'River playmate' },
+                { id: 'fish', name: 'Fish', icon: '🐟', desc: 'Water dweller' },
+                { id: 'crab', name: 'Crab', icon: '🦀', desc: 'Beach scuttler' },
+                { id: 'siren', name: 'Siren', icon: '🧜', desc: 'Enchanting songstress' },
+                { id: 'troll', name: 'Troll', icon: '👹', desc: 'Bridge guardian' },
+                { id: 'bandit', name: 'Bandit', icon: '🥷', desc: 'Road robber' },
+                { id: 'skeleton', name: 'Skeleton', icon: '💀', desc: 'Ancient bones' },
+                { id: 'goat', name: 'Goat', icon: '🐐', desc: 'Cliff climber' },
+                { id: 'eagle', name: 'Eagle', icon: '🦅', desc: 'Sky predator' }
             ],
             biomes: {
-                forest: { name: 'Forest', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', encounterChance: 0.15, encounterTable: ['wolf','bunny','bear','slime','harpy'], descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
-                swamp: { name: 'Swamp', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', encounterChance: 0.20, encounterTable: ['naga','slime','frog','plant','shroom'], descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
-                plains: { name: 'Plains', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', encounterChance: 0.12, encounterTable: ['human','wolf','tiger','bunny','deer'], descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
-                cave: { name: 'Cave', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', encounterChance: 0.25, encounterTable: ['bat','slime','naga','goblin','dragon'], descriptions: ['Stalactites hang like teeth from the ceiling.','The cave opens into a vast chamber.','A narrow passage forces you to squeeze through.','An underground river rushes through.','Crystal formations glitter in the darkness.'] },
-                jungle: { name: 'Jungle', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', encounterChance: 0.20, encounterTable: ['tiger','naga','frog','plant','harpy'], descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
-                dungeon: { name: 'Dungeon', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', encounterChance: 0.30, encounterTable: ['goblin','spider','drow','rat','skeleton'], descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
-                manor: { name: 'Manor', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.15, encounterTable: ['human','cat','horse','lizard','spider'], descriptions: ['Grand hallways echo with emptiness.','Antique furniture gathers dust.','A portrait gallery watches your passage.','The ballroom is frozen in decay.','Servants quarters hide secrets.'] },
-                beach: { name: 'Beach', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', encounterChance: 0.12, encounterTable: ['frog','harpy','fish','crab','siren'], descriptions: ['Waves lap against white sand.','Palm trees sway overhead.','Seashells scatter the shore.','A tide pool teems with life.','A distant ship lies wrecked on the reef.'] },
-                road: { name: 'Road', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.10, encounterTable: ['human','wolf','horse','goblin','bandit'], descriptions: ['A dirt path stretches between biomes.','Wagon ruts mark the earth.','A weathered signpost points onward.','A campfire ring marks a resting spot.','The road is well-traveled.'] },
-                cliff: { name: 'Cliff', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', encounterChance: 0.15, encounterTable: ['harpy','goat','eagle','bat','wolf'], descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
-                water: { name: 'Water', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', encounterChance: 0.20, encounterTable: ['frog','fish','otter','naga','slime'], descriptions: ['The river rushes past.','A lake reflects the sky like glass.','Water cascades over smooth rocks.','The current pulls at your feet.','A hidden spring bubbles from the earth.'] },
-                bridge: { name: 'Bridge', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', encounterChance: 0.15, encounterTable: ['troll','bandit','goblin','human','frog'], descriptions: ['A wooden span creaks beneath you.','Rope bridges sway in the wind.','Stone arches rise from the water.','A toll booth stands abandoned.','The bridge offers a commanding view.'] },
-                farm: { name: 'Farm', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', encounterChance: 0.12, encounterTable: ['cow','pig','sheep','horse','human'], descriptions: ['Barns loom in the golden fields.','A windmill turns lazily.','Plowed earth stretches to the horizon.','Chicken coops clatter with activity.','A silo casts a long shadow.'] },
-                indoors: { name: 'Indoors', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', encounterChance: 0.10, encounterTable: ['human','cat','rat','mouse','spider'], descriptions: ['Walls enclose the space.','A hearth glows with dying embers.','Furniture is arranged cozily.','The ceiling is low and beamed.','A door leads to other rooms.'] },
-                entrance: { name: 'Entrance', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', encounterChance: 0.15, encounterTable: ['goblin','human','wolf','bat','skeleton'], descriptions: ['A cave mouth yawns in darkness.','A dungeon door stands reinforced.','A portal shimmers with energy.','A gatehouse guards the passage.','An ancient archway frames the way.'] }
+                grove: { name: 'Grove', icon: '🌳', color: '#3a6b2a', bgColor: '#2a4a1a', danger: 1, encounterChance: 0.08, encounterTable: [
+                    { id: 'bunny', weight: 50 }, { id: 'mouse', weight: 20 }, { id: 'sheep', weight: 15 },
+                    { id: 'deer', weight: 10 }, { id: 'human', weight: 5 }
+                ], descriptions: ['A peaceful grove of young trees.','Wildflowers carpet the ground.','A gentle stream bubbles nearby.','Birdsong fills the air.','Sunlight dapples through leaves.'] },
+                forest: { name: 'Forest', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', danger: 3, encounterChance: 0.15, encounterTable: [
+                    { id: 'bunny', weight: 25 }, { id: 'deer', weight: 20 }, { id: 'wolf', weight: 15 },
+                    { id: 'slime', weight: 15 }, { id: 'harpy', weight: 15 }, { id: 'bear', weight: 10 }
+                ], descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
+                swamp: { name: 'Swamp', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', danger: 4, encounterChance: 0.20, encounterTable: [
+                    { id: 'frog', weight: 25 }, { id: 'shroom', weight: 20 }, { id: 'slime', weight: 20 },
+                    { id: 'naga', weight: 15 }, { id: 'plant', weight: 20 }
+                ], descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
+                plains: { name: 'Plains', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', danger: 2, encounterChance: 0.12, encounterTable: [
+                    { id: 'bunny', weight: 25 }, { id: 'deer', weight: 20 }, { id: 'human', weight: 15 },
+                    { id: 'horse', weight: 15 }, { id: 'wolf', weight: 15 }, { id: 'tiger', weight: 10 }
+                ], descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
+                cave: { name: 'Cave', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', danger: 5, encounterChance: 0.25, encounterTable: [
+                    { id: 'bat', weight: 25 }, { id: 'goblin', weight: 20 }, { id: 'rat', weight: 20 },
+                    { id: 'slime', weight: 20 }, { id: 'naga', weight: 10 }, { id: 'dragon', weight: 5 }
+                ], descriptions: ['Stalactites hang like teeth from the ceiling.','The cave opens into a vast chamber.','A narrow passage forces you to squeeze through.','An underground river rushes through.','Crystal formations glitter in the darkness.'] },
+                jungle: { name: 'Jungle', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', danger: 4, encounterChance: 0.20, encounterTable: [
+                    { id: 'frog', weight: 20 }, { id: 'plant', weight: 20 }, { id: 'harpy', weight: 20 },
+                    { id: 'tiger', weight: 20 }, { id: 'naga', weight: 15 }, { id: 'slime', weight: 5 }
+                ], descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
+                dungeon: { name: 'Dungeon', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', danger: 5, encounterChance: 0.30, encounterTable: [
+                    { id: 'rat', weight: 25 }, { id: 'goblin', weight: 25 }, { id: 'skeleton', weight: 20 },
+                    { id: 'spider', weight: 20 }, { id: 'drow', weight: 10 }
+                ], descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
+                manor: { name: 'Manor', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', danger: 3, encounterChance: 0.15, encounterTable: [
+                    { id: 'human', weight: 30 }, { id: 'cat', weight: 25 }, { id: 'rat', weight: 20 },
+                    { id: 'mouse', weight: 15 }, { id: 'spider', weight: 10 }
+                ], descriptions: ['Grand hallways echo with emptiness.','Antique furniture gathers dust.','A portrait gallery watches your passage.','The ballroom is frozen in decay.','Servants quarters hide secrets.'] },
+                beach: { name: 'Beach', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', danger: 2, encounterChance: 0.12, encounterTable: [
+                    { id: 'crab', weight: 30 }, { id: 'fish', weight: 25 }, { id: 'frog', weight: 20 },
+                    { id: 'otter', weight: 15 }, { id: 'siren', weight: 10 }
+                ], descriptions: ['Waves lap against white sand.','Palm trees sway overhead.','Seashells scatter the shore.','A tide pool teems with life.','A distant ship lies wrecked on the reef.'] },
+                road: { name: 'Road', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', danger: 2, encounterChance: 0.10, encounterTable: [
+                    { id: 'human', weight: 25 }, { id: 'mouse', weight: 20 }, { id: 'rat', weight: 20 },
+                    { id: 'goblin', weight: 20 }, { id: 'wolf', weight: 10 }, { id: 'bandit', weight: 5 }
+                ], descriptions: ['A dirt path stretches between biomes.','Wagon ruts mark the earth.','A weathered signpost points onward.','A campfire ring marks a resting spot.','The road is well-traveled.'] },
+                cliff: { name: 'Cliff', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', danger: 3, encounterChance: 0.15, encounterTable: [
+                    { id: 'goat', weight: 25 }, { id: 'bat', weight: 20 }, { id: 'eagle', weight: 20 },
+                    { id: 'wolf', weight: 20 }, { id: 'harpy', weight: 15 }
+                ], descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
+                water: { name: 'Water', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', danger: 3, encounterChance: 0.20, encounterTable: [
+                    { id: 'fish', weight: 25 }, { id: 'frog', weight: 25 }, { id: 'otter', weight: 20 },
+                    { id: 'slime', weight: 20 }, { id: 'naga', weight: 10 }
+                ], descriptions: ['The river rushes past.','A lake reflects the sky like glass.','Water cascades over smooth rocks.','The current pulls at your feet.','A hidden spring bubbles from the earth.'] },
+                bridge: { name: 'Bridge', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', danger: 4, encounterChance: 0.15, encounterTable: [
+                    { id: 'frog', weight: 25 }, { id: 'human', weight: 25 }, { id: 'goblin', weight: 20 },
+                    { id: 'bandit', weight: 20 }, { id: 'troll', weight: 10 }
+                ], descriptions: ['A wooden span creaks beneath you.','Rope bridges sway in the wind.','Stone arches rise from the water.','A toll booth stands abandoned.','The bridge offers a commanding view.'] },
+                farm: { name: 'Farm', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', danger: 1, encounterChance: 0.12, encounterTable: [
+                    { id: 'cow', weight: 30 }, { id: 'sheep', weight: 25 }, { id: 'pig', weight: 20 },
+                    { id: 'horse', weight: 15 }, { id: 'human', weight: 10 }
+                ], descriptions: ['Barns loom in the golden fields.','A windmill turns lazily.','Plowed earth stretches to the horizon.','Chicken coops clatter with activity.','A silo casts a long shadow.'] },
+                indoors: { name: 'Indoors', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', danger: 2, encounterChance: 0.10, encounterTable: [
+                    { id: 'human', weight: 25 }, { id: 'cat', weight: 25 }, { id: 'mouse', weight: 25 },
+                    { id: 'rat', weight: 15 }, { id: 'spider', weight: 10 }
+                ], descriptions: ['Walls enclose the space.','A hearth glows with dying embers.','Furniture is arranged cozily.','The ceiling is low and beamed.','A door leads to other rooms.'] },
+                entrance: { name: 'Entrance', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', danger: 4, encounterChance: 0.15, encounterTable: [
+                    { id: 'human', weight: 25 }, { id: 'goblin', weight: 25 }, { id: 'bat', weight: 20 },
+                    { id: 'wolf', weight: 20 }, { id: 'skeleton', weight: 10 }
+                ], descriptions: ['A cave mouth yawns in darkness.','A dungeon door stands reinforced.','A portal shimmers with energy.','A gatehouse guards the passage.','An ancient archway frames the way.'] }
             },
 
             // ===== CHARACTER CREATION =====
@@ -2082,9 +2157,15 @@
             getTile(x, y) {
                 const key = `${x},${y}`;
                 if (this.worldMap.has(key)) return this.worldMap.get(key);
-                const seed = Math.abs(x * 374761393 + y * 668265263) % 100;
-                const biomeIds = Object.keys(this.biomes);
-                const biomeId = biomeIds[seed % biomeIds.length];
+                // Starting tile (0,0) is always the Grove (safe zone)
+                let biomeId;
+                if (x === 0 && y === 0) {
+                    biomeId = 'grove';
+                } else {
+                    const seed = Math.abs(x * 374761393 + y * 668265263) % 100;
+                    const biomeIds = Object.keys(this.biomes);
+                    biomeId = biomeIds[seed % biomeIds.length];
+                }
                 const biome = this.biomes[biomeId];
                 const tile = { x, y, biome: biomeId, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [] };
                 this.worldMap.set(key, tile);
@@ -2100,7 +2181,7 @@
                     const biome = this.biomes[tile.biome];
                     tile.description = biome.descriptions[Math.abs(x * 31 + y * 17) % biome.descriptions.length];
                     if (Math.random() < 0.1) {
-                        const landmarks = { forest: ['Ancient Tree','Fairy Ring','Hunter\'s Camp'], swamp: ['Sunken Shrine','Witch\'s Hut','Bone Pile'], plains: ['Lone Tree','Abandoned Wagon','Stone Circle'], cave: ['Crystal Chamber','Underground Lake','Collapsed Tunnel'], jungle: ['Waterfall','Hidden Pool','Rope Bridge'] };
+                        const landmarks = { grove: ['Sacred Spring','Old Bench','Butterfly Garden'], forest: ['Ancient Tree','Fairy Ring','Hunter\'s Camp'], swamp: ['Sunken Shrine','Witch\'s Hut','Bone Pile'], plains: ['Lone Tree','Abandoned Wagon','Stone Circle'], cave: ['Crystal Chamber','Underground Lake','Collapsed Tunnel'], jungle: ['Waterfall','Hidden Pool','Rope Bridge'] };
                         const list = landmarks[tile.biome] || ['Mysterious Structure'];
                         tile.hasLandmark = true;
                         tile.landmarkName = list[Math.abs(x + y) % list.length];
@@ -2157,6 +2238,18 @@
             },
 
             // ===== ENCOUNTER / SPAWN =====
+            _weightedPick(table) {
+                if (!table || table.length === 0) return 'bunny';
+                // Support both old format (array of strings) and new format (array of {id, weight})
+                if (typeof table[0] === 'string') return table[Math.floor(Math.random() * table.length)];
+                const total = table.reduce((sum, e) => sum + (e.weight || 10), 0);
+                let roll = Math.random() * total;
+                for (const entry of table) {
+                    roll -= (entry.weight || 10);
+                    if (roll <= 0) return entry.id;
+                }
+                return table[0].id;
+            },
             spawnEncounter(tile, isBoss = false) {
                 const biome = this.biomes[tile.biome];
                 // Enemy count: 1 at low levels, up to 2 at higher levels, 3 rarely
@@ -2164,7 +2257,19 @@
                 const enemies = [];
                 for (let i = 0; i < count; i++) {
                     const pool = biome.encounterTable;
-                    const sid = pool[Math.floor(Math.random() * pool.length)];
+                    // Weighted species selection based on biome danger + player level
+                    let sid = this._weightedPick(pool);
+                    // Filter by difficulty relative to player level (danger 1-5 biome scale)
+                    const danger = biome.danger || 3;
+                    const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
+                    const maxDiff = isBoss ? 5 : Math.min(danger, playerMaxDiff);
+                    let attempts = 10;
+                    while (attempts > 0) {
+                        const diff = this.SPECIES_DIFFICULTY[sid] || 2;
+                        if (diff <= maxDiff) break;
+                        sid = this._weightedPick(pool);
+                        attempts--;
+                    }
                     const sp = this.species.find(s => s.id === sid);
                     // Enemy level: at or below player level, never above
                     const lvl = isBoss ? Math.max(1, this.player.level) : Math.max(1, this.player.level - 1 + Math.floor(Math.random() * 2));

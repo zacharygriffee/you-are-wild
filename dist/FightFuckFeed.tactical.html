@@ -2791,6 +2791,36 @@
                     ]
                 }
             },
+            SPECIES_PERK_TREES: {
+                human: {
+                    label: 'Human',
+                    perks: [
+                        { id: 'human_adaptable', name: 'Adaptable', stat: 'int', val: 2, desc: 'INT +2.' },
+                        { id: 'human_resolve', name: 'Steady Resolve', stat: 'wis', val: 2, desc: 'WIS +2.', requires: { perk: 'human_adaptable' } }
+                    ]
+                },
+                wolf: {
+                    label: 'Wolf',
+                    perks: [
+                        { id: 'wolf_pack_instinct', name: 'Pack Instinct', stat: 'Figh', val: 2, desc: 'Figh +2.' },
+                        { id: 'wolf_relentless_hunger', name: 'Relentless Hunger', stat: 'Feas', val: 2, desc: 'Feas +2.', requires: { perk: 'wolf_pack_instinct' } }
+                    ]
+                },
+                bunny: {
+                    label: 'Bunny',
+                    perks: [
+                        { id: 'bunny_quickstep', name: 'Quickstep', stat: 'Flee', val: 3, desc: 'Flee +3.' },
+                        { id: 'bunny_soft_charm', name: 'Soft Charm', stat: 'Flir', val: 2, desc: 'Flir +2.', requires: { perk: 'bunny_quickstep' } }
+                    ]
+                },
+                dragon: {
+                    label: 'Dragon',
+                    perks: [
+                        { id: 'dragon_ancient_bulk', name: 'Ancient Bulk', stat: 'con', val: 3, desc: 'CON +3.' },
+                        { id: 'dragon_dominant_appetite', name: 'Dominant Appetite', stat: 'Feas', val: 3, desc: 'Feas +3.', requires: { perk: 'dragon_ancient_bulk' } }
+                    ]
+                }
+            },
             XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 60, flirtEnemy: 35, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
 
             // === STATE ===
@@ -6404,9 +6434,16 @@
                 return true;
             },
 
+            _perkTreesForUnit(unit = this.player) {
+                const trees = { ...this.PERK_TREES };
+                const speciesTree = this.SPECIES_PERK_TREES[unit?.species];
+                if (speciesTree) trees[`species:${unit.species}`] = speciesTree;
+                return trees;
+            },
+
             _availablePerkChoices(unit = this.player) {
                 const choices = [];
-                for (const [treeId, tree] of Object.entries(this.PERK_TREES)) {
+                for (const [treeId, tree] of Object.entries(this._perkTreesForUnit(unit))) {
                     for (const perk of tree.perks) {
                         choices.push({ ...perk, tree: treeId, treeLabel: tree.label, available: this._canChoosePerk(perk, treeId, unit) });
                     }
@@ -6427,6 +6464,7 @@
                 this.player.perks.push({
                     id: choice.id,
                     tree: choice.tree,
+                    species: choice.tree.startsWith('species:') ? this.player.species : null,
                     name: choice.name,
                     stat: choice.stat,
                     val: choice.val,
@@ -6447,11 +6485,12 @@
                 const pending = this.player.pendingPerkChoices || 0;
                 const choices = this._availablePerkChoices();
                 let html = `<h3>Choose Perk</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Pending choices: ${pending}</p><div style="display:grid;gap:12px;">`;
-                for (const [treeId, tree] of Object.entries(this.PERK_TREES)) {
+                for (const [treeId, tree] of Object.entries(this._perkTreesForUnit(this.player))) {
                     html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${tree.label}</div><div style="display:grid;gap:8px;margin-top:8px;">`;
                     choices.filter(perk => perk.tree === treeId).forEach(perk => {
                         const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
-                        const req = perk.requires ? ` Requires ${perk.requires.count || 1} ${this.PERK_TREES[perk.requires.tree]?.label || perk.requires.tree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.` : '';
+                        const reqTree = perk.requires?.tree ? this._perkTreesForUnit(this.player)[perk.requires.tree]?.label || perk.requires.tree : null;
+                        const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
                         html += `<button class="nav-btn" style="text-align:left;white-space:normal;padding:8px;" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
                     });
                     html += `</div></div>`;

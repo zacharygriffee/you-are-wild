@@ -2548,6 +2548,22 @@ test('Perk choices apply bonuses and enforce tree prerequisites', () => {
   assertEqual(App.player.Feas, 13, 'Second-tier perk should apply bonus');
 });
 
+test('Species-specific perk variants are available only to matching species', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { species: 'wolf', Figh: 10, Feas: 10, perks: [], pendingPerkChoices: 1 });
+  App.party = [App.player];
+  const wolfChoices = App._availablePerkChoices();
+  assert(wolfChoices.some(perk => perk.id === 'wolf_pack_instinct'), 'Wolf player should see wolf-specific perk');
+  assert(!wolfChoices.some(perk => perk.id === 'bunny_quickstep'), 'Wolf player should not see bunny-specific perk');
+  App.showPerkSelection();
+  assertContains(elements.get('scene-description').innerHTML, 'Wolf', 'Perk UI should render species-specific tree');
+  App.choosePerk('wolf_pack_instinct');
+  assertEqual(App.player.Figh, 12, 'Species perk should apply its stat bonus');
+  assertEqual(App.player.perks[0].species, 'wolf', 'Chosen species perk should preserve its species metadata');
+  App.player.pendingPerkChoices = 1;
+  assertEqual(App._canChoosePerk(App.SPECIES_PERK_TREES.wolf.perks[1], 'species:wolf'), true, 'Species perk prerequisite should unlock from prior species perk');
+});
+
 test('Character stats expose pending perk selection', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You', { perks: [], pendingPerkChoices: 2 });

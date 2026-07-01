@@ -1087,6 +1087,43 @@
                 background: var(--accent-primary);
             }
 
+            .mobile-context-menu {
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                bottom: calc(var(--mobile-actions-height) + 12px);
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-lg);
+                z-index: 220;
+                padding: 10px;
+                display: grid;
+                gap: 8px;
+            }
+
+            .mobile-context-menu-title {
+                color: var(--text-primary);
+                font-weight: 700;
+                font-size: 13px;
+            }
+
+            .mobile-context-menu-actions {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .mobile-context-menu-actions .action-btn {
+                flex: 1 1 70px;
+                min-width: 58px;
+            }
+
+            #mobile-mini-map {
+                transform-origin: center;
+                transition: transform 0.12s ease;
+            }
+
             .mobile-scene-sheet {
                 flex: 0 0 auto;
                 padding: 10px 12px;
@@ -1602,7 +1639,7 @@
 	                                    <span>Map</span>
 	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
-	                                <div class="mini-map" id="mobile-mini-map"></div>
+	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
 	                                <div class="mobile-strip-card">

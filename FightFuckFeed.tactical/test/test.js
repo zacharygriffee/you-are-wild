@@ -431,6 +431,8 @@ function makeElement() {
     value: '',
     checked: false,
     style: {},
+    remove() { this.removed = true; },
+    insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
     dataset: {},
     classList: {
       add: (...names) => names.forEach(name => classes.add(name)),
@@ -447,7 +449,9 @@ function makeElement() {
 
 function loadAppForCombat(random = () => 0.5, options = {}) {
   const elements = new Map();
+  const body = makeElement();
   const document = {
+    body,
     addEventListener() {},
     getElementById(id) {
       if (!elements.has(id)) elements.set(id, makeElement());
@@ -498,7 +502,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts };
+  return { App, elements, hooks, storage, alerts, body };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -2200,6 +2204,46 @@ test('Combat log export returns filtered text', () => {
   const text = App.exportLog();
   assertContains(text, 'Found coin', 'Export should include filtered entry');
   assertNotContains(text, 'Wolf attacks', 'Export should respect current filter');
+});
+
+test('Mobile creature chips expose long-press context handlers', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  const creature = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY });
+  const html = App.renderMobileUnitChip(creature, 0, 'creature');
+  assertContains(html, "startMobileCreaturePress(event,'friendly-1')", 'Mobile creature chip should start long-press detection');
+  assertContains(html, 'cancelMobileCreaturePress()', 'Mobile creature chip should cancel long-press on movement/end');
+});
+
+test('Mobile creature long-press menu exposes core actions', () => {
+  const { App, body } = loadAppForCombat();
+  App.player = makeUnit('You', { Flir: 40, Fuck: 40, cha: 40 });
+  App.party = [App.player];
+  App.creatures = [makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true })];
+  App.showMobileCreatureContext('willing-1');
+  assertContains(body.innerHTML, 'Fight', 'Long-press menu should expose Fight');
+  assertContains(body.innerHTML, 'Flirt', 'Long-press menu should expose Flirt');
+  assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
+  assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
+  assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
+});
+
+test('Mobile map pinch changes zoom and applies transform', () => {
+  const { App, elements } = loadAppForCombat();
+  elements.set('mobile-mini-map', makeElement());
+  App.handleMapTouchStart({ touches: [{ screenX: 0, screenY: 0 }, { screenX: 100, screenY: 0 }] });
+  App.handleMapTouchMove({ touches: [{ screenX: 0, screenY: 0 }, { screenX: 150, screenY: 0 }], preventDefault() {} });
+  assertEqual(App.mobileMapZoom, 1.5, 'Pinch-out should increase mobile map zoom');
+  assertEqual(elements.get('mobile-mini-map').style.transform, 'scale(1.5)', 'Pinch zoom should apply map transform');
+  App.handleMapTouchEnd();
+  assertEqual(App._pinchStartDistance, 0, 'Pinch end should clear gesture distance');
+});
+
+test('Mobile gesture helpers include haptic feedback hooks', () => {
+  assertContains(appContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
+  assertContains(appContent, 'this._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
+  assertContains(appContent, 'this._haptic(6)', 'Swipe gestures should trigger haptic feedback');
 });
 
 // === SUMMARY ===

@@ -404,6 +404,7 @@
             log: [],
             logFilter: 'all',
             logSearch: '',
+            mobileMapZoom: 1,
             worldMap: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
@@ -4338,7 +4339,8 @@
                 const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.MERCHANT ? 'Merchant' : unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
-                return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}">
+                const pressHandlers = !isParty ? ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"` : '';
+                return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span>${turnBadge}</div>
                     <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
@@ -4572,6 +4574,7 @@
 	                containers.forEach(container => { container.innerHTML = html; });
 	                const mobileCoords = document.getElementById('mobile-coords');
 	                if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
+                    this.applyMobileMapZoom();
 	                this._renderTime();
 	            },
 
@@ -5013,6 +5016,78 @@
                 const hasActivePanel = Boolean(document.querySelector('.panel-map.active, .panel-party.active, .panel-enemies.active'));
                 backdrop.classList.toggle('active', hasActivePanel);
             },
+            _haptic(pattern = 12) {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    try { navigator.vibrate(pattern); } catch(e) {}
+                }
+            },
+            _touchDistance(touches) {
+                if (!touches || touches.length < 2) return 0;
+                const dx = touches[0].screenX - touches[1].screenX;
+                const dy = touches[0].screenY - touches[1].screenY;
+                return Math.sqrt(dx * dx + dy * dy);
+            },
+            handleMapTouchStart(e) {
+                if (!e.touches || e.touches.length < 2) return;
+                this._pinchStartDistance = this._touchDistance(e.touches);
+                this._pinchStartZoom = this.mobileMapZoom || 1;
+            },
+            handleMapTouchMove(e) {
+                if (!e.touches || e.touches.length < 2 || !this._pinchStartDistance) return;
+                if (typeof e.preventDefault === 'function') e.preventDefault();
+                const distance = this._touchDistance(e.touches);
+                const nextZoom = Math.max(0.75, Math.min(1.8, this._pinchStartZoom * (distance / this._pinchStartDistance)));
+                this.mobileMapZoom = Math.round(nextZoom * 100) / 100;
+                this.applyMobileMapZoom();
+            },
+            handleMapTouchEnd() {
+                this._pinchStartDistance = 0;
+            },
+            applyMobileMapZoom() {
+                const map = document.getElementById('mobile-mini-map');
+                if (map) map.style.transform = `scale(${this.mobileMapZoom || 1})`;
+            },
+            startMobileCreaturePress(e, targetId) {
+                this.cancelMobileCreaturePress();
+                this._mobilePressTargetId = targetId;
+                this._mobilePressTimer = setTimeout(() => {
+                    this._haptic([12, 20, 12]);
+                    this.showMobileCreatureContext(targetId);
+                }, 500);
+            },
+            cancelMobileCreaturePress() {
+                if (this._mobilePressTimer) clearTimeout(this._mobilePressTimer);
+                this._mobilePressTimer = null;
+            },
+            closeMobileContextMenu() {
+                const menu = document.getElementById('mobile-context-menu');
+                if (menu) menu.remove();
+            },
+            showMobileCreatureContext(targetId) {
+                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
+                if (!target || this._isCorpse(target)) return;
+                this.closeMobileContextMenu();
+                const canRecruit = this._canRecruit(this._getExplorationActor(), target);
+                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="menu"><div class="mobile-context-menu-title">${target.icon || ''} ${target.name}</div><div class="mobile-context-menu-actions">`;
+                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('fight','${targetId}')">⚔️ Fight</button>`;
+                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('flirt','${targetId}')">😘 Flirt</button>`;
+                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('feed','${targetId}')">🍲 Feed</button>`;
+                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('inspect','${targetId}')">👁️ Inspect</button>`;
+                if (canRecruit) html += `<button class="action-btn primary" onclick="App.mobileCreatureContextAction('recruit','${targetId}')">💕 Recruit</button>`;
+                html += `<button class="action-btn" onclick="App.closeMobileContextMenu()">Close</button></div></div>`;
+                document.body.insertAdjacentHTML('beforeend', html);
+            },
+            mobileCreatureContextAction(action, targetId) {
+                this._haptic(8);
+                this.closeMobileContextMenu();
+                if (action === 'recruit') return this.recruitCreatureById(targetId);
+                if (action === 'inspect') {
+                    const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
+                    if (target) return this.outsideActionOnTarget('inspect', target, this._getExplorationActor());
+                    return;
+                }
+                this.outsideActionForCreature(action, targetId);
+            },
             handleTouchStart(e) {
                 this._touchStartX = e.changedTouches[0].screenX;
                 this._touchStartY = e.changedTouches[0].screenY;
@@ -5027,6 +5102,7 @@
                 const mapP = document.getElementById('panel-map');
                 const partyP = document.getElementById('panel-party');
                 const enemiesP = document.getElementById('panel-enemies');
+                this._haptic(6);
                 if (dx > 0) {
                     if (partyP && partyP.classList.contains('active')) partyP.classList.remove('active');
                     else if (enemiesP && enemiesP.classList.contains('active')) enemiesP.classList.remove('active');

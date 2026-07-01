@@ -3256,13 +3256,16 @@
             _renderExplorationTargetActions() {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
+                const actors = this._getExplorationActors();
                 const label = `${targets.length} target${targets.length === 1 ? '' : 's'}`;
+                const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
+                const targetNames = targets.map(target => target.name).join(', ');
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = `${this._uiLabel(key)} ${label}`;
                     return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
-                return `<div class="action-legend" aria-label="Selected exploration targets">${label} selected</div>${buttons}<button class="action-btn" title="Clear selected targets" aria-label="Clear selected targets" onclick="App.clearExplorationTargets()">Clear</button>`;
+                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>Actors: ${this._escapeHtml(actorNames)}</span><span>Targets: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="Clear selected targets" aria-label="Clear selected targets" onclick="App.clearExplorationTargets()">Clear</button>`;
             },
 
             resolveExplorationTargetAction(action) {

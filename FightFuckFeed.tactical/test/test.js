@@ -1383,8 +1383,22 @@ test('Exploration cards expose multi-target selection and context actions', () =
   App.toggleExplorationTarget('party', 'ally-target');
   App.toggleExplorationTarget('creature', 'creature-target');
   const actionsHtml = elements.get('scene-actions').innerHTML;
-  assertContains(actionsHtml, '2 targets selected', 'Context actions should show selected target count');
+  assertContains(actionsHtml, 'selected-target-summary', 'Context actions should include a selected-target summary');
+  assertContains(actionsHtml, 'Actors: Actor', 'Context actions should show selected actor names');
+  assertContains(actionsHtml, 'Targets: Ally Target, Creature Target', 'Context actions should show selected target names');
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt')", 'Context actions should resolve selected targets');
+});
+
+test('Exploration target summary escapes actor and target names', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor <One>', { id: 'actor-1' });
+  const target = makeUnit('Target & Two', { id: 'target-1' });
+  App.player = actor;
+  App.party = [actor, target];
+  App.toggleExplorationTarget('party', 'target-1');
+  const actionsHtml = elements.get('scene-actions').innerHTML;
+  assertContains(actionsHtml, 'Actor &lt;One&gt;', 'Actor names in target summary should be escaped');
+  assertContains(actionsHtml, 'Target &amp; Two', 'Target names in target summary should be escaped');
 });
 
 test('Marked exploration targets resolve through multi-target action and clear selection', () => {

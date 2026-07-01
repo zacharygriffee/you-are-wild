@@ -3435,7 +3435,7 @@
             },
 
             _calcInitiative(c) {
-                let base = (c.spd || 10) + Math.random() * 10;
+                let base = this._effectiveSpeed(c) + Math.random() * 10;
                 if (c.bodyParts) {
                     for (const bp of c.bodyParts) {
                         const part = this.BODY_PARTS[bp];
@@ -3448,6 +3448,34 @@
                 if (stomachSize >= 3) base -= 2;
                 if (stomachSize >= 6) base -= 4;
                 return Math.max(1, base);
+            },
+
+            _currentBiomeId() {
+                const tile = this.worldMap?.get(`${this.location.x},${this.location.y}`);
+                return tile?.biome || this.currentBiome || null;
+            },
+
+            _isDenseForestBiome(biomeId = this._currentBiomeId()) {
+                return biomeId === 'forest' || biomeId === 'jungle' || biomeId === 'grove';
+            },
+
+            _terrainSpeedModifier(unit, biomeId = this._currentBiomeId()) {
+                let mod = 0;
+                if (biomeId === 'water') mod += unit?.swimming ? 2 : -2;
+                if (this._isDenseForestBiome(biomeId)) mod -= 2;
+                return mod;
+            },
+
+            _terrainConModifier(unit, biomeId = this._currentBiomeId()) {
+                return this._isDenseForestBiome(biomeId) ? 2 : 0;
+            },
+
+            _effectiveSpeed(unit) {
+                return Math.max(1, (unit?.spd || 10) + this._terrainSpeedModifier(unit));
+            },
+
+            _effectiveCon(unit) {
+                return Math.max(1, (unit?.con || 10) + this._terrainConModifier(unit));
             },
 
             _defaultCombatRow(unit) {
@@ -3470,8 +3498,29 @@
             _canReachCombatTarget(actor, target, action = 'fight') {
                 if (!actor || !target || target.CPun <= 0) return false;
                 if (!this._isPhysicalCombatAction(action)) return true;
+                if (target.flying && !actor.flying && !actor.ranged && !actor.antiflying) return false;
                 if (target.combatRow !== 'back') return true;
                 return Boolean(actor.flying || actor.ranged || actor.antiflying);
+            },
+
+            _terrainCausesMiss(actor, target, action = 'fight') {
+                if (!this._isPhysicalCombatAction(action)) return false;
+                if (this._currentBiomeId() === 'cave' && !actor?.darkvision && Math.random() < 0.5) {
+                    this.log.push({ text: `${actor.name} loses the target in the cave darkness!`, type: 'combat' });
+                    return true;
+                }
+                return false;
+            },
+
+            _applyTerrainRoundEffects(living) {
+                if (this._currentBiomeId() !== 'swamp') return;
+                for (const unit of living) {
+                    if (!unit || unit.CPun <= 0 || unit.flying || unit.status?.stuck) continue;
+                    if (Math.random() < 0.2) {
+                        unit.status = unit.status || {};
+                        unit.status.stuck = { turns: 1 };
+                    }
+                }
             },
 
             _physicalDamageMultiplier(actor, target) {
@@ -3533,6 +3582,12 @@
                     this.log.push({ text: `${currentUnit.name} is restrained and cannot act!`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
+                if (currentUnit.status?.stuck && currentUnit.status.stuck.turns > 0) {
+                    currentUnit.status.stuck.turns--;
+                    if (currentUnit.status.stuck.turns <= 0) delete currentUnit.status.stuck;
+                    this.log.push({ text: `${currentUnit.name} is stuck in the terrain and loses their turn!`, type: 'combat' });
+                    this.renderLog(); this.nextTurn(); return;
+                }
                 // Check if enveloped (skip turn, take damage)
                 if (currentUnit.status?.enveloped && currentUnit.status.enveloped.turns > 0) {
                     currentUnit.CPun -= 4;
@@ -3566,6 +3621,7 @@
                 }
                 // Process status effects first
                 this._processStatusEffects();
+                this._applyTerrainRoundEffects(living);
                 // Per-turn digestion
                 this._processDigestion();
                 this._processCorpseDecay();
@@ -3729,8 +3785,12 @@
                 let result = '';
                 switch (action) {
                     case 'fight': {
+                        if (this._terrainCausesMiss(actor, target, action)) {
+                            result = `${actorName} miss${actorVerb} ${target.name}.`;
+                            break;
+                        }
                         const ar = this._AR(actor.Figh);
-                        const def = target.con || 10;
+                        const def = this._effectiveCon(target);
                         const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
                         const dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(actor, target)));
                         target.CPun -= dmg;
@@ -4286,7 +4346,7 @@
                     }
                     case 'sync_fight': {
                         const totalStr = sync.participants.reduce((sum, p) => sum + (p.Figh || 0), 0);
-                        const def = sync.target.con || 10;
+                        const def = this._effectiveCon(sync.target);
                         const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + Math.random() * 10));
                         sync.target.CPun -= dmg;
                         result = `${sync.participants.map(p => p.name).join(' and ')} gang up on ${sync.target.name}, dealing ${dmg} punishment!`;
@@ -4396,7 +4456,15 @@
                     }
                 }
                 // Default behavior: attack weakest
-                const target = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
+                const reachableEnemies = enemies.filter(e => this._canReachCombatTarget(ally, e, 'fight'));
+                if (reachableEnemies.length === 0) {
+                    this.log.push({ text: `${ally.name} cannot reach any target.`, type: 'combat' });
+                    this.renderLog(); this.nextTurn(); return;
+                }
+                const target = reachableEnemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, reachableEnemies[0]);
+                if (this._terrainCausesMiss(ally, target, 'fight')) {
+                    this.renderLog(); this.nextTurn(); return;
+                }
                 // Flying dodge check
                 const allyIsRanged = ally.ranged || ally.antiflying;
                 const targetDodge = target.flying && !allyIsRanged && !ally.ranged ? 0.5 : (target.swimming && !ally.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
@@ -4405,8 +4473,9 @@
                     this.renderLog(); this.nextTurn(); return;
                 }
                 const ar = this._AR(ally.Figh) * (ally.rage && ally.CPun < ally.MPun * 0.5 ? 1.5 : 1);
-                const def = target.con || 10;
-                let dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
+                const def = this._effectiveCon(target);
+                const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(ally, target)));
                 if (ally.bloodsuck) { ally.CPun = Math.min(ally.MPun, ally.CPun + Math.floor(dmg * 0.3)); }
                 target.CPun -= dmg;
                 // Constrictor restrains
@@ -4474,6 +4543,13 @@
                     this.nextTurn();
                     return;
                 }
+                if (!this._canReachCombatTarget(enemy, target, 'fight')) {
+                    this.log.push({ text: `${enemy.name} cannot reach ${target.name}.`, type: 'combat' });
+                    this.renderLog(); this.nextTurn(); return;
+                }
+                if (this._terrainCausesMiss(enemy, target, 'fight')) {
+                    this.renderLog(); this.nextTurn(); return;
+                }
                 // Flying/swimming/floopy dodge check
                 const isRanged = enemy.ranged || enemy.antiflying;
                 const targetDodge = target.flying && !isRanged && !enemy.ranged ? 0.5 : (target.swimming && !enemy.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
@@ -4482,8 +4558,9 @@
                     this.renderLog(); this.nextTurn(); return;
                 }
                 const ar = this._AR(enemy.Figh) * (enemy.rage && enemy.CPun < enemy.MPun * 0.5 ? 1.5 : 1);
-                const def = target.con || 10;
-                let dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
+                const def = this._effectiveCon(target);
+                const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(enemy, target)));
                 // Bloodsucker heals on hit
                 if (enemy.bloodsuck) { enemy.CPun = Math.min(enemy.MPun, enemy.CPun + Math.floor(dmg * 0.3)); }
                 target.CPun -= dmg;

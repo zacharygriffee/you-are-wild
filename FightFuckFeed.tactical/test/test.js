@@ -1257,10 +1257,77 @@ test('Flying attackers get flanking damage against back-row targets', () => {
   App.player = player;
   App.party = [player, flyer];
   App.creatures = [target];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'plains', explored: true, creatures: [target] }]]);
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.executeActionAgainstTarget('fight', flyer, target);
   assertEqual(target.CPun, 73, 'Flying flanking bonus should increase damage against back-row targets');
+});
+
+test('Water terrain modifies combat speed for swimmers and non-swimmers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'water', explored: true, creatures: [] }]]);
+  const swimmer = makeUnit('Swimmer', { spd: 10, swimming: true });
+  const walker = makeUnit('Walker', { spd: 10 });
+  assertEqual(App._effectiveSpeed(swimmer), 12, 'Swimmers should get water speed bonus');
+  assertEqual(App._effectiveSpeed(walker), 8, 'Non-swimmers should get water speed penalty');
+});
+
+test('Dense forest terrain grants cover and slows movement', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }]]);
+  const unit = makeUnit('Forest Unit', { spd: 10, con: 10 });
+  assertEqual(App._effectiveSpeed(unit), 8, 'Dense forest should reduce speed');
+  assertEqual(App._effectiveCon(unit), 12, 'Dense forest should grant cover CON');
+});
+
+test('Cave terrain can cause non-darkvision physical attacks to miss', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { Figh: 50 });
+  const enemy = makeUnit('Cave Enemy', { disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'cave', explored: true, creatures: [enemy] }]]);
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App.executeActionAgainstTarget('fight', player, enemy);
+  assertEqual(enemy.CPun, 100, 'Cave darkness miss should prevent damage');
+  assertContains(App.log[App.log.length - 1].text, 'miss', 'Cave miss should be logged as the action result');
+});
+
+test('Swamp terrain can stick grounded combatants for their turn', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  App.player = player;
+  App.party = [player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'swamp', explored: true, creatures: [] }]]);
+  App._applyTerrainRoundEffects([player]);
+  assert(player.status.stuck, 'Swamp should apply stuck status when hazard rolls');
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }], syncActions: [] };
+  App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+  App.nextTurn = function() { this._stuckSkipped = true; };
+  App.processTurn();
+  assertEqual(App._stuckSkipped, true, 'Stuck unit should lose its turn');
+});
+
+test('Flying creatures are immune to ground melee target selection', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'ground-melee', Figh: 30 });
+  const flyer = makeUnit('Flyer', { id: 'flying-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [flyer];
+  App.combatState.active = true;
+  App.activeActor = player;
+  App.nextTurn = function() {};
+  App.selectTarget('fight');
+  assertContains(elements.get('enemies-content').innerHTML, 'disabled', 'Ground melee should not target flying creatures');
 });
 
 test('Obedient ally turns use the same panel target selection', () => {

@@ -2581,11 +2581,29 @@ test('Perk choices apply bonuses and enforce tree prerequisites', () => {
   assertEqual(App._canChoosePerk(App.PERK_TREES.predator.perks[1], 'predator'), false, 'Voracious should require one predator perk');
   App.choosePerk('predator_instinct');
   assertEqual(App.player.Figh, 12, 'Chosen perk should apply its stat bonus');
+  assertEqual(App.player.perks[0].perkEffect, 'predatorScent', 'Chosen perk should preserve its special effect');
   assertEqual(App.player.pendingPerkChoices, 0, 'Choosing a perk should consume one pending choice');
   App.player.pendingPerkChoices = 1;
   assertEqual(App._canChoosePerk(App.PERK_TREES.predator.perks[1], 'predator'), true, 'Prerequisite should pass after one predator perk');
   App.choosePerk('voracious');
   assertEqual(App.player.Feas, 13, 'Second-tier perk should apply bonus');
+});
+
+test('Non-numeric perk effects can modify exploration and combat status behavior', () => {
+  const searchCase = loadAppForCombat(() => 0.35);
+  searchCase.App.player = makeUnit('You', { perks: [{ id: 'predator_instinct', perkEffect: 'predatorScent' }] });
+  searchCase.App.party = [searchCase.App.player];
+  searchCase.App.inventory = [];
+  searchCase.App.location = { x: 0, y: 0 };
+  searchCase.App.worldMap = new Map([['0,0', { biome: 'forest', explored: true, description: 'quiet' }]]);
+  searchCase.App.search();
+  assertEqual(searchCase.App.inventory.length, 1, 'Predator scent should improve search find chance');
+
+  const fearCase = loadAppForCombat(() => 0);
+  const unit = makeUnit('Stalwart', { status: { fear: { turns: 2, by: 'Enemy' } }, perks: [{ id: 'iron_will', perkEffect: 'fearResist' }] });
+  const skipped = fearCase.App._skipTurnFromStatus(unit);
+  assertEqual(skipped, null, 'Fear resist perk should prevent fear turn loss');
+  assertEqual(Boolean(unit.status.fear), false, 'Fear resist perk should clear fear status');
 });
 
 test('Species-specific perk variants are available only to matching species', () => {

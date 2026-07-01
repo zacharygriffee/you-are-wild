@@ -429,7 +429,7 @@
                 predator: {
                     label: 'Predator',
                     perks: [
-                        { id: 'predator_instinct', name: 'Predator Instinct', stat: 'Figh', val: 2, desc: 'Figh +2.' },
+                        { id: 'predator_instinct', name: 'Predator Instinct', stat: 'Figh', val: 2, perkEffect: 'predatorScent', desc: 'Figh +2. Improves search finds.' },
                         { id: 'voracious', name: 'Voracious', stat: 'Feas', val: 3, desc: 'Feas +3.', requires: { tree: 'predator', count: 1 } },
                         { id: 'apex_pressure', name: 'Apex Pressure', stat: 'str', val: 2, desc: 'STR +2.', requires: { tree: 'predator', count: 2 } }
                     ]
@@ -445,7 +445,7 @@
                 survivor: {
                     label: 'Survivor',
                     perks: [
-                        { id: 'iron_will', name: 'Iron Will', stat: 'wis', val: 2, desc: 'WIS +2.' },
+                        { id: 'iron_will', name: 'Iron Will', stat: 'wis', val: 2, perkEffect: 'fearResist', desc: 'WIS +2. Resists fear turn loss.' },
                         { id: 'swift_strides', name: 'Swift Strides', stat: 'spd', val: 2, desc: 'SPD +2.', requires: { tree: 'survivor', count: 1 } },
                         { id: 'iron_gut', name: 'Iron Gut', stat: 'con', val: 3, desc: 'CON +3.', requires: { tree: 'survivor', count: 2 } }
                     ]
@@ -1875,8 +1875,12 @@
                 if (status.sleep?.turns > 0) {
                     return `${unit.name} is asleep and cannot act!`;
                 }
-                if (status.fear?.turns > 0) {
-                    const lowHp = unit.CPun < unit.MPun * 0.3;
+	                if (status.fear?.turns > 0) {
+                    if (this._hasPerkEffect('fearResist', unit)) {
+                        delete status.fear;
+                        return null;
+                    }
+	                    const lowHp = unit.CPun < unit.MPun * 0.3;
                     if (lowHp) {
                         unit.fledCombat = true;
                         return `${unit.name} panics and flees from fear!`;
@@ -4103,6 +4107,10 @@
                 return (unit?.perks || []).some(perk => perk.id === perkId);
             },
 
+            _hasPerkEffect(effect, unit = this.player) {
+                return (unit?.perks || []).some(perk => perk.perkEffect === effect);
+            },
+
             _canChoosePerk(perk, treeId, unit = this.player) {
                 if (!perk || !unit || this._hasPerk(perk.id, unit)) return false;
                 if (!perk.requires) return true;
@@ -4145,6 +4153,7 @@
                     name: choice.name,
                     stat: choice.stat,
                     val: choice.val,
+                    perkEffect: choice.perkEffect || null,
                     desc: choice.desc
                 });
                 if (choice.stat) this.player[choice.stat] = (this.player[choice.stat] || 0) + (choice.val || 0);
@@ -5246,7 +5255,7 @@
                 this._advanceTime(1);
                 const tile = this._currentExplorationTile();
                 const roll = Math.random();
-                const findChance = this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.45 : 0.3;
+                const findChance = 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0);
                 let result = '';
                 if (roll < findChance) {
                     const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;

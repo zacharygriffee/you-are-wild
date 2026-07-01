@@ -28,6 +28,13 @@
             DIURNAL_SPECIES: ['bunny', 'deer'],
             DAY_VISIBILITY_RADIUS: 2,
             NIGHT_VISIBILITY_PENALTY: 2,
+            PARTY_AI_ORDERS: {
+                aggressive: 'Aggressive',
+                defensive: 'Defensive',
+                healer: 'Healer',
+                scavenger: 'Scavenger',
+                passive: 'Passive'
+            },
             SUB_ACTIONS: {
                 feast: {
                     swallow: { label: 'Swallow', sfwLabel: 'Consume', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
@@ -1041,6 +1048,7 @@
                 unit.knockedOut = Boolean(unit.knockedOut);
                 unit.obedient = unit.obedient ?? true;
                 unit.willing = unit.willing ?? false;
+                unit.aiOrder = unit.aiOrder || (unit.mc ? 'aggressive' : 'aggressive');
                 this._applySpeciesAbilities(unit);
                 return unit;
             },
@@ -2457,11 +2465,72 @@
             },
 
             // ===== ALLY TURN AI =====
+            _getPartyAIOrder(unit) {
+                const order = unit?.aiOrder || 'aggressive';
+                return this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
+            },
+            setPartyAIOrder(index, order) {
+                const unit = this.party[index];
+                if (!unit || unit === this.player || !this.PARTY_AI_ORDERS[order]) return;
+                unit.aiOrder = order;
+                this.log.push({ text: `${unit.name} will act ${this.PARTY_AI_ORDERS[order].toLowerCase()}.`, type: 'discovery' });
+                this.renderParty();
+                this.renderLog();
+                this.autoSave();
+            },
+            _allyHealWounded(ally) {
+                const wounded = this.party
+                    .filter(p => p.CPun > 0 && p.CPun < p.MPun && p !== ally)
+                    .sort((a, b) => (a.CPun / a.MPun) - (b.CPun / b.MPun))[0];
+                if (!wounded || wounded.CPun / wounded.MPun > 0.7) return false;
+                const { actorName, actorVerb } = this._actorNameAndVerb(ally);
+                const result = this._doSubAction('feed', 'heal', ally, wounded, actorName, actorVerb);
+                this.log.push({ text: result, type: 'heal' });
+                this._emitCombatAction('ally_feed', ally, wounded, result);
+                this.renderLog();
+                this.renderParty();
+                this.nextTurn();
+                return true;
+            },
+            _selectAllyAttackTarget(ally, enemies) {
+                const order = this._getPartyAIOrder(ally);
+                if (order === 'defensive' && this.player && this.player.CPun / this.player.MPun < 0.6) {
+                    return enemies.reduce((best, enemy) => (enemy.Figh || 0) > (best.Figh || 0) ? enemy : best, enemies[0]);
+                }
+                return enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
+            },
+            _runPostCombatScavengers() {
+                const scavengers = this.party.filter(p => p.CPun > 0 && this._getPartyAIOrder(p) === 'scavenger');
+                if (scavengers.length === 0) return;
+                for (const ally of scavengers) {
+                    const corpse = this.creatures.find(c => this._isCorpse(c) && this._canFitPrey(ally, c, 'stomach'));
+                    if (!corpse) continue;
+                    if (!ally.stomach) ally.stomach = [];
+                    ally.stomach.push({
+                        name: corpse.name, species: corpse.species, size: corpse.size || 1,
+                        alive: false, inStomach: true, digestionState: 'digested', digestionProgress: 100
+                    });
+                    ally.hunger = Math.max(0, (ally.hunger || 0) - 30);
+                    this.creatures = this.creatures.filter(c => c !== corpse);
+                    this.log.push({ text: `${ally.name} scavenges ${corpse.name}'s remains after the fight.`, type: 'discovery' });
+                }
+                this._syncCurrentTileCreatures();
+                this.renderParty();
+                this.renderCreatures();
+            },
             allyTurn(ally) {
                 const charmedTargets = this._charmedTargetsFor(ally);
                 const enemies = charmedTargets || this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 if (enemies.length === 0) { this.nextTurn(); return; }
                 if (this._attemptTimidAllyFlee(ally)) return;
+                const order = this._getPartyAIOrder(ally);
+                if (order === 'passive' && ally.CPun >= ally.MPun) {
+                    this.log.push({ text: `${ally.name} holds position.`, type: 'combat' });
+                    this.renderLog();
+                    this.nextTurn();
+                    return;
+                }
+                if (order === 'healer' && this._allyHealWounded(ally)) return;
                 // DUMB AI STATE MACHINE
                 if (ally.dumbAI) {
                     // High pleasure (>90% MPle): may disobey and auto-fuck
@@ -2532,7 +2601,7 @@
                     this.log.push({ text: `${ally.name} cannot reach any target.`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
-                const target = reachableEnemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, reachableEnemies[0]);
+                const target = this._selectAllyAttackTarget(ally, reachableEnemies);
                 if (this._terrainCausesMiss(ally, target, 'fight')) {
                     this.renderLog(); this.nextTurn(); return;
                 }
@@ -2747,6 +2816,7 @@
                             this.log.push({ text: `${c.name} looks at you with submissive eyes...`, type: 'discovery' });
                         }
                     }
+                    this._runPostCombatScavengers();
                 } else if (outcome === 'flee') {
                     this.log.push({ text: 'You escaped the encounter.', type: 'move' });
                     this.updateScene('Escaped', 'You put distance between yourself and danger.', false);
@@ -3312,7 +3382,13 @@
                     if (selected && selected !== unit) {
                         actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
                     }
-                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button></div>`;
+                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
+                    if (isAlly) {
+                        const order = this._getPartyAIOrder(unit);
+                        const options = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
+                        actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="AI order" aria-label="AI order for ${unit.name}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
+                    }
+                    actionButtons += `</div>`;
                 }
                 if (!isParty && isCorpse) {
                     const targetKey = this._unitKey(unit);

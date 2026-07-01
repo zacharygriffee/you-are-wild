@@ -1566,6 +1566,64 @@ test('Obedient ally turns use the same panel target selection', () => {
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
 });
 
+test('Party panel exposes per-ally AI order controls', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const ally = makeUnit('Ally', { aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, ally];
+  App.renderParty();
+  const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'setPartyAIOrder(1,this.value)', 'Ally card should expose AI order selector');
+  assertContains(html, 'value="defensive" selected', 'Selected AI order should be reflected in the selector');
+});
+
+test('Healer AI order feeds the most wounded ally during combat', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { CPun: 100, MPun: 100 });
+  const healer = makeUnit('Healer', { Feed: 20, aiOrder: 'healer' });
+  const wounded = makeUnit('Wounded', { CPun: 20, MPun: 100 });
+  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, healer, wounded];
+  App.creatures = [enemy];
+  App.combatState = { active: true, xpEarned: 0, turnQueue: [], currentTurn: 0, syncActions: [] };
+  App.nextTurn = function() { this._healerAdvanced = true; };
+  App.allyTurn(healer);
+  assertEqual(wounded.CPun, 60, 'Healer order should use feed.heal on the most wounded ally');
+  assertEqual(App._healerAdvanced, true, 'Healer action should consume the ally turn');
+});
+
+test('Passive AI order holds position unless wounded', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You');
+  const ally = makeUnit('Passive Ally', { aiOrder: 'passive', CPun: 100, MPun: 100 });
+  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY, CPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.nextTurn = function() { this._passiveAdvanced = true; };
+  App.allyTurn(ally);
+  assertEqual(enemy.CPun, 100, 'Unwounded passive ally should not attack');
+  assertEqual(App._passiveAdvanced, true, 'Passive ally should still advance turn flow');
+});
+
+test('Scavenger AI order feasts on corpses after victory', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { xp: 0, xpToNext: 100 });
+  const scavenger = makeUnit('Scavenger', { aiOrder: 'scavenger', size: 6, appetite: 6, hunger: 60 });
+  const corpse = makeUnit('Corpse', { disposition: App.DISPOSITION.CORPSE, CPun: 0, size: 2 });
+  App.player = player;
+  App.party = [player, scavenger];
+  App.creatures = [corpse];
+  App.worldMap = new Map([['0,0', { creatures: [corpse] }]]);
+  App.location = { x: 0, y: 0 };
+  App.combatState = { xpEarned: 0, syncActions: [], turnQueue: [], currentTurn: 0 };
+  App.endCombat(true);
+  assertEqual(App.creatures.includes(corpse), false, 'Scavenger should remove a fitting corpse from the tile');
+  assertEqual(scavenger.stomach.length, 1, 'Scavenger should store scavenged remains in stomach capacity');
+});
+
 test('Create accordion keeps only the selected section open', () => {
   const sections = ['species', 'gender', 'anatomy'].map(id => ({ dataset: { accordion: id } }));
   const { App, elements } = loadAppForCombat(() => 0.5, {

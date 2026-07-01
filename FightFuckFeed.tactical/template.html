@@ -1474,11 +1474,13 @@
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Cheats</h3>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                    <button class="nav-btn" onclick="App.toggleCheat('godMode')">God Mode</button>
-                    <button class="nav-btn" onclick="App.toggleCheat('neverHungry')">Never Hungry</button>
-                    <button class="nav-btn" onclick="App.toggleCheat('canEatAnything')">Can Eat Anything</button>
-                    <button class="nav-btn" onclick="App.toggleCheat('overpowered')">Overpowered</button>
-                    <button class="nav-btn" onclick="App.toggleCheat('instantWin')">Instant Win</button>
+                    <button id="cheat-godMode" class="nav-btn" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
+                    <button id="cheat-neverHungry" class="nav-btn" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
+                    <button id="cheat-canEatAnything" class="nav-btn" onclick="App.toggleCheat('canEatAnything')">🍴 Eat Anything</button>
+                    <button id="cheat-overpowered" class="nav-btn" onclick="App.toggleCheat('overpowered')">💪 Overpowered</button>
+                </div>
+                <div style="margin-top: 8px;">
+                    <button id="cheat-instantWin" class="nav-btn" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
                 </div>
             </div>
             

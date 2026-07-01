@@ -606,9 +606,7 @@
                 const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
                 let html = '';
-                if (this.cheats.instantWin) {
-                    html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" onclick="App.instantWinCombat()">⚡ Instant Win</button>`;
-                }
+                html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" onclick="App.instantWin()">⚡ Instant Win</button>`;
                 if (enemies.length > 0) {
                     html += `<button class="action-btn primary" onclick="App.selectTarget('fight')">⚔️ Fight</button>`;
                     html += `<button class="action-btn" onclick="App.selectTarget('fuck')">🔥 Fuck</button>`;
@@ -1081,12 +1079,7 @@
                 this.processTurn();
             },
 
-            instantWinCombat() {
-                this.log.push({ text: 'INSTANT WIN! All enemies are defeated.', type: 'combat' });
-                this.renderLog();
-                this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY) c.CPun = 0; });
-                this.endCombat(true);
-            },
+
             endCombat(victory) {
                 this.mode = this.GAME_MODE.NORMAL;
                 this.combatState.active = false;
@@ -1570,7 +1563,7 @@
                     <button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
-            cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, instantWin: false },
+            cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
             toggleCheat(cheat) {
                 this.cheats[cheat] = !this.cheats[cheat];
                 const isOn = this.cheats[cheat];
@@ -1586,6 +1579,36 @@
                     this.renderParty();
                 }
                 this.renderLog();
+                this.updateCheatButtons();
+            },
+            updateCheatButtons() {
+                const btnStyle = (id, on) => {
+                    const el = document.getElementById('cheat-' + id);
+                    if (!el) return;
+                    if (on) {
+                        el.style.background = 'var(--accent-primary)';
+                        el.style.color = 'var(--bg-primary)';
+                        el.style.borderColor = 'var(--accent-primary)';
+                    } else {
+                        el.style.background = 'var(--bg-tertiary)';
+                        el.style.color = 'var(--text-secondary)';
+                        el.style.borderColor = 'var(--border-default)';
+                    }
+                };
+                for (const [k, v] of Object.entries(this.cheats)) {
+                    btnStyle(k, v);
+                }
+            },
+            instantWin() {
+                if (!this.combatState.active) {
+                    this.log.push({ text: 'Not in combat! Instant Win only works during combat.', type: 'combat' });
+                    this.renderLog();
+                    return;
+                }
+                this.log.push({ text: '⚡ INSTANT WIN! All enemies are defeated.', type: 'combat' });
+                this.renderLog();
+                this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY) c.CPun = 0; });
+                this.endCombat(true);
             },
             clearAllData() {
                 if (!confirm('WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?')) return;
@@ -1666,6 +1689,8 @@
                 document.getElementById('toggle-bones').checked = App.settings.boneCrushing;
                 document.getElementById('toggle-warn').checked = App.settings.unwillingWarnings;
                 document.getElementById('toggle-hardcore').checked = App.settings.hardcore;
+                this.updateTierButtons();
+                this.updateCheatButtons();
             },
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {

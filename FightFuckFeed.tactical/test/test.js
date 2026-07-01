@@ -2202,6 +2202,37 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
   assertEqual(App.inventory[0].name, 'Old Coin', 'Quest reward should grant item');
 });
 
+test('Quest turn-in can defer rewards until claimed from quest log', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  App.quests = [{
+    id: 'deferred_wolf_hunt',
+    title: 'Deferred Wolf Hunt',
+    status: 'active',
+    turnInRequired: true,
+    giverName: 'Guide',
+    objectives: [{ type: 'defeat', species: 'wolf', label: 'Defeat wolf', required: 1, progress: 0, complete: false }],
+    reward: { xp: 10, gold: 7, items: ['Old Coin'] }
+  }];
+  const wolf = makeUnit('Wolf', { id: 'wolf-1', species: 'wolf', disposition: App.DISPOSITION.ENEMY });
+  App._makeCorpse(wolf, 'fight');
+  assertEqual(App.quests[0].status, 'completed', 'Deferred quest should complete objectives');
+  assertEqual(App.quests[0].rewardClaimed, false, 'Deferred quest should not mark reward claimed before turn-in');
+  assertEqual(App.player.gold, 0, 'Deferred quest should not grant gold immediately');
+  assertEqual(App.player.xp, 0, 'Deferred quest should not grant XP immediately');
+  App.showQuestLog();
+  assertContains(elements.get('scene-description').innerHTML, 'Turn In', 'Quest log should expose turn-in action for deferred rewards');
+  App.turnInQuest('deferred_wolf_hunt');
+  assertEqual(App.player.gold, 7, 'Turn-in should grant deferred gold');
+  assertEqual(App.player.xp, 10, 'Turn-in should grant deferred XP');
+  assertEqual(App.inventory[0].name, 'Old Coin', 'Turn-in should grant deferred item');
+  assertEqual(App.quests[0].rewardClaimed, true, 'Turn-in should mark reward claimed');
+  App.turnInQuest('deferred_wolf_hunt');
+  assertEqual(App.player.gold, 7, 'Duplicate turn-in should not grant gold twice');
+});
+
 test('Quest find objectives advance from search discoveries', () => {
   const { App } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');

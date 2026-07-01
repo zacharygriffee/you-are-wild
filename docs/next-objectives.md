@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 113/113 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 117/117 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -97,6 +97,7 @@
 - Day-night cycle tracks an in-game hour, advances on movement/search, persists in saves, displays in desktop/mobile map UI, boosts nocturnal encounter weights at night, suppresses diurnal encounter weights, puts diurnal spawns to sleep, and narrows night minimap visibility unless the party has darkvision
 - Party AI orders provide per-ally tactics (`aggressive`, `defensive`, `healer`, `scavenger`, `passive`) through party-card selectors; healer allies prioritize wounded party members, passive allies hold unless injured, defensive allies prioritize threats when the player is hurt, and scavengers consume fitting corpses after victory
 - Enemy AI now has morale flee when outnumbered and wounded, wounded pack creatures can call same-species reinforcements, predators prioritize livestock/prey targets, and first-entry ambushers get first-strike initiative
+- Exploration party interaction has a first-pass multi-actor model: party cards can toggle multiple active actors, selected actors can act together against one party/creature target, party play-fighting is nonlethal by default, group feast uses a primary consumer with helpers, and group/single feed can place selected party members into another party member's stomach with capacity checks
 
 ---
 
@@ -104,16 +105,12 @@
 
 ### 🟡 Tier 2: High Impact
 
-#### 1. Party Feeding and Multi-Creature Interaction Model
-- Fix party-member-to-party-member feeding when the target is meant to be contained by another party member instead of only healed
-- Repair multiple party selection so selected actors can act together on one party/creature target during exploration
-- Define selected actors vs selected targets explicitly:
-  - `c2 + c3 -> c1`: selected actors cooperate against one target
-  - `c1 -> c2 + c3`: one actor interacts with multiple targets and may require stats/skills for multi-target handling
-  - `c1 + c2 + c3 -> c1`: mixed self/other interaction needs a resolver that can split self-action from helper action
-- Exploration group actions should be player-controlled only for party members; non-party persuasion is deferred
-- Play fighting between party members should be non-lethal by default, with moddable overrides for harsher outcomes
-- Feast group behavior should support a primary consumer: helpers assist swallow/feed unless chewing/splitting is enabled
+#### 1. Remaining Multi-Creature Interaction Model
+- Add true multi-target exploration resolution for `c1 -> c2 + c3`, including stat/skill gates for one actor handling multiple targets
+- Expand mixed self/other resolution for `c1 + c2 + c3 -> c1` beyond the current first-pass behavior where selected helpers can act on the selected target
+- Add moddable overrides for party play-fight severity and harsher consensual/non-consensual outcomes
+- Add feast variants where helpers chew/split prey when chewing is enabled; current group feast only assists a primary consumer's swallow
+- Keep non-party persuasion deferred: exploration group actions remain player-controlled for party members only
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
 ### 🟢 Tier 3: Medium Impact

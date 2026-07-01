@@ -1152,6 +1152,64 @@ test('Selected party actor can interact with party targets outside combat', () =
   assertContains(App.log[App.log.length - 1].text, 'Healer feeds Wounded', 'Party interaction log should use selected actor and target');
 });
 
+test('Exploration actor selection supports multiple party members', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const allyA = makeUnit('Ally A', { id: 'ally-a' });
+  const allyB = makeUnit('Ally B', { id: 'ally-b' });
+  App.player = player;
+  App.party = [player, allyA, allyB];
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  assertEqual(App._getExplorationActors().length, 2, 'Two selected allies should both be active exploration actors');
+  App.renderParty();
+  const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'Ally A', 'First selected ally should still render');
+  assertContains(html, 'Ally B', 'Second selected ally should still render');
+});
+
+test('Multiple selected party actors can play-fight one party target nonlethally', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', CPun: 5, MPun: 100, con: 1 });
+  const allyA = makeUnit('Ally A', { id: 'ally-a', Figh: 40 });
+  const allyB = makeUnit('Ally B', { id: 'ally-b', Figh: 40 });
+  App.player = player;
+  App.party = [player, allyA, allyB];
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('fight', 0);
+  assertEqual(player.CPun, 1, 'Party play-fight should not drop party target below 1 HP');
+  assertContains(App.log[App.log.length - 1].text, 'play-fight You', 'Group play-fight should be logged distinctly');
+});
+
+test('Selected party members can be fed into another party member as consumer', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 8, hunger: 80 });
+  const preyA = makeUnit('Prey A', { id: 'prey-a', size: 2 });
+  const preyB = makeUnit('Prey B', { id: 'prey-b', size: 2 });
+  App.player = player;
+  App.party = [player, preyA, preyB];
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('feed', 0);
+  assertEqual(player.stomach.length, 2, 'Party consumer should receive both selected prey');
+  assertEqual(App.party.includes(preyA), false, 'Contained party member should leave active party list');
+  assertEqual(App.party.includes(preyB), false, 'Second contained party member should leave active party list');
+});
+
+test('Single selected party member can be fed to another full-health party member', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  App.player = player;
+  App.party = [player, consumer, prey];
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('feed', 1);
+  assertEqual(consumer.stomach.length, 1, 'Feed action should support feeding selected party member to party consumer');
+  assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
+});
+
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });

@@ -378,6 +378,7 @@
             },
             targetSelection: null,
             activeActor: null,
+            explorationActorIds: [],
 
             // === SPECIES & BIOMES (unchanged) ===
             species: [
@@ -709,6 +710,8 @@
                 this.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
                 this.targetSelection = null;
                 this.activeActor = null;
+                this.explorationActorIds = [this._unitSelectionId(this.player)];
+                this.explorationActorId = this.explorationActorIds[0];
                 this.exploreTile(0, 0);
                 this.showScreen('game');
                 this._renderTime();
@@ -2866,16 +2869,38 @@
             },
 
             // ===== OUTSIDE COMBAT INTERACTION =====
+            _unitSelectionId(unit) {
+                return String(unit?.id || unit?.name || '');
+            },
+            _getExplorationActors(actorId = null) {
+                if (actorId) {
+                    const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
+                    return actor ? [actor] : [this.player].filter(Boolean);
+                }
+                const ids = this.explorationActorIds && this.explorationActorIds.length > 0
+                    ? this.explorationActorIds
+                    : (this.explorationActorId ? [this.explorationActorId] : []);
+                const actors = ids
+                    .map(id => this.party.find(p => this._unitSelectionId(p) === String(id) && this._isLivingCreature(p)))
+                    .filter(Boolean);
+                return actors.length > 0 ? actors : [this.player].filter(Boolean);
+            },
             _getExplorationActor(actorId = null) {
-                const id = actorId || this.explorationActorId;
-                const actor = id ? this.party.find(p => String(p.id || p.name) === String(id) && this._isLivingCreature(p)) : null;
-                return actor || this.player;
+                return this._getExplorationActors(actorId)[0] || this.player;
             },
 
             selectExplorationActor(index) {
                 const actor = this.party[index];
                 if (!actor || !this._isLivingCreature(actor)) return;
-                this.explorationActorId = actor.id || actor.name;
+                const id = this._unitSelectionId(actor);
+                this.explorationActorIds = this.explorationActorIds || [];
+                if (this.explorationActorIds.includes(id)) {
+                    this.explorationActorIds = this.explorationActorIds.filter(existing => existing !== id);
+                } else {
+                    this.explorationActorIds.push(id);
+                }
+                if (this.explorationActorIds.length === 0) this.explorationActorIds = [this._unitSelectionId(this.player)];
+                this.explorationActorId = this.explorationActorIds[0];
                 this.renderParty();
                 this.renderCreatures();
             },
@@ -2937,25 +2962,154 @@
             outsideAction(action, type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return;
-                this.outsideActionOnTarget(action, target);
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors());
             },
 
             outsideActionForParty(action, targetIndex, actorId = null) {
                 const target = this.party[targetIndex];
                 if (!target) return;
-                this.outsideActionOnTarget(action, target, this._getExplorationActor(actorId));
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId));
             },
 
             outsideActionForCreature(action, targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
-                this.outsideActionOnTarget(action, target, this._getExplorationActor());
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors());
             },
 
             outsideActionForCreatureAs(actorId, action, targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
-                this.outsideActionOnTarget(action, target, this._getExplorationActor(actorId));
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId));
+            },
+
+            _removeContainedPartyMember(unit) {
+                if (!unit || unit === this.player || unit.mc) return;
+                this.party = this.party.filter(p => p !== unit);
+                this.explorationActorIds = (this.explorationActorIds || []).filter(id => id !== this._unitSelectionId(unit));
+                this.explorationActorId = this.explorationActorIds[0] || this._unitSelectionId(this.player);
+            },
+
+            _feedPartyMemberToConsumer(prey, consumer) {
+                if (!prey || !consumer || prey === consumer) return `${prey?.name || 'Someone'} cannot feed into themself yet.`;
+                if (prey === this.player || prey.mc) return `${prey.name} cannot be handed off as prey right now.`;
+                if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
+                if (!consumer.stomach) consumer.stomach = [];
+                consumer.stomach.push(this._createStomachPrey(prey, { willingSacrifice: true }));
+                prey.CPun = 0;
+                prey.CPle = 0;
+                consumer.hunger = Math.max(0, (consumer.hunger || 0) - 40);
+                this._removeContainedPartyMember(prey);
+                return `${prey.name} is fed to ${consumer.name} and settles in their stomach.`;
+            },
+
+            outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors()) {
+                const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
+                if (livingActors.length <= 1) {
+                    this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
+                    return;
+                }
+                const names = livingActors.map(actor => actor.name).join(', ');
+                let result = '';
+                let startCombatAfter = false;
+                let combatTargets = [];
+                switch (action) {
+                    case 'fight': {
+                        if (target.disposition !== this.DISPOSITION.ENEMY && !this.party.includes(target)) {
+                            const hostiles = [];
+                            const texts = [];
+                            for (const actor of livingActors) {
+                                const reaction = this._reactToNonHostileAttack(target, actor);
+                                if (reaction?.text) texts.push(reaction.text);
+                                hostiles.push(...(reaction?.hostiles || []));
+                            }
+                            result = texts.join(' ');
+                            combatTargets = [...new Set(hostiles)];
+                            startCombatAfter = combatTargets.length > 0;
+                            break;
+                        }
+                        const totalFigh = livingActors.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
+                        const dmg = Math.max(1, Math.floor(this._AR(totalFigh) - (target.con || 10) * 0.3 + Math.random() * 6));
+                        target.CPun -= dmg;
+                        result = `${names} play-fight ${target.name} for ${dmg} punishment.`;
+                        if (this.party.includes(target) && target.CPun <= 0) {
+                            target.CPun = 1;
+                            result += ' They are pinned but not seriously hurt.';
+                        } else if (target.CPun <= 0) {
+                            this._makeCorpse(target, 'fight');
+                            result += ` ${target.name} collapses.`;
+                        }
+                        break;
+                    }
+                    case 'feed': {
+                        if (this.party.includes(target)) {
+                            const prey = livingActors.filter(actor => actor !== target);
+                            if (prey.length === 0) {
+                                const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
+                                const healAmount = Math.floor(totalFeed * 2);
+                                target.CPun = Math.min(target.MPun, target.CPun + healAmount);
+                                result = `${names} tend ${target.name}, restoring ${healAmount} punishment.`;
+                            } else {
+                                const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
+                                result = texts.join(' ');
+                            }
+                        } else {
+                            const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
+                            target.CPun = Math.min(target.MPun, target.CPun + Math.floor(totalFeed * 2));
+                            result = `${names} feed ${target.name}, restoring ${Math.floor(totalFeed * 2)} punishment.`;
+                        }
+                        break;
+                    }
+                    case 'feast': {
+                        const primary = livingActors[0];
+                        const helperBonus = livingActors.slice(1).reduce((sum, actor) => sum + Math.floor((actor.Feas || 10) * 0.5), 0);
+                        const canEatOutside = this.cheats.canEatAnything || (primary.size >= target.size - 2 && primary.Feas + helperBonus + 5 > target.Flee);
+                        if (!canEatOutside) {
+                            result = `${target.name} is too large or strong for ${names} to consume.`;
+                            break;
+                        }
+                        if (!this._canFitPrey(primary, target, 'stomach')) {
+                            result = this._capacityFailureMessage(primary, target, 'stomach');
+                            break;
+                        }
+                        if (!primary.stomach) primary.stomach = [];
+                        primary.stomach.push(this._createStomachPrey(target));
+                        target.CPun = 0;
+                        if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
+                        result = `${livingActors.slice(1).map(actor => actor.name).join(', ') || primary.name} help${livingActors.length > 2 ? '' : 's'} ${primary.name} swallow ${target.name}.`;
+                        break;
+                    }
+                    case 'flirt':
+                    case 'fuck': {
+                        const totalCharm = livingActors.reduce((sum, actor) => sum + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10) + (actor.cha || 10) * 0.5, 0);
+                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        if (totalCharm > resist) {
+                            const gain = Math.floor(totalCharm * (action === 'fuck' ? 0.45 : 0.3));
+                            target.CPle = Math.min(target.MPle, target.CPle + gain);
+                            result = `${names} focus on ${target.name}. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                            if (target.CPle >= target.MPle * 0.8) {
+                                target.willing = true;
+                                target.orgasmed = true;
+                                if (!this.party.includes(target)) target.disposition = this.DISPOSITION.FRIENDLY;
+                            }
+                        } else {
+                            result = `${target.name} resists the group's attention.`;
+                        }
+                        break;
+                    }
+                    default:
+                        this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
+                        return;
+                }
+                this.log.push({ text: result, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                if (startCombatAfter) {
+                    this.startCombat(combatTargets);
+                    return;
+                }
+                if (!this.combatState.active) this.renderExplorationActions();
             },
 
             outsideActionOnTarget(action, target, actor = this.player) {
@@ -3052,6 +3206,10 @@
                         break;
                     }
                     case 'feed': {
+                        if (this.party.includes(actor) && this.party.includes(target) && actor !== target && target.CPun >= target.MPun) {
+                            result = this._feedPartyMemberToConsumer(actor, target);
+                            break;
+                        }
                         const healAmount = Math.floor((actor.Feed || 10) * 2);
                         target.CPun = Math.min(target.MPun, target.CPun + healAmount);
                         target.hunger = Math.max(0, (target.hunger || 0) - 25);
@@ -3374,8 +3532,8 @@
                 const isTargetable = !isParty && this.targetSelection && this.canSelectCreatureTarget(unit);
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
-                    const selected = this._getExplorationActor();
-                    const selectedClass = selected === unit ? ' primary' : '';
+                    const selectedActors = this._getExplorationActors();
+                    const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
@@ -3411,10 +3569,10 @@
                 const isCorpse = this._isCorpse(unit);
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
-                    const selected = this._getExplorationActor();
-                    const selectedClass = selected === unit ? ' primary' : '';
+                    const selectedActors = this._getExplorationActors();
+                    const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button>`;
-                    if (selected && selected !== unit) {
+                    if (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(unit))) {
                         actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
                     }
                     actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;

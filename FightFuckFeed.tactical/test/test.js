@@ -1193,6 +1193,19 @@ test('Exploration actor selection supports multiple party members', () => {
   assertContains(html, 'Ally B', 'Second selected ally should still render');
 });
 
+test('Selecting an ally first replaces the default player actor', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  App.player = player;
+  App.party = [player, ally];
+  App.explorationActorIds = ['player-1'];
+  App.explorationActorId = 'player-1';
+  App.selectExplorationActor(1);
+  assertEqual(App._getExplorationActors().length, 1, 'First ally selection should not silently keep the player selected');
+  assertEqual(App._getExplorationActors()[0], ally, 'Ally should become the active actor after replacing default player');
+});
+
 test('Multiple selected party actors can play-fight one party target nonlethally', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', CPun: 5, MPun: 100, con: 1 });
@@ -1292,6 +1305,41 @@ test('Capable actor can resolve one action across multiple exploration targets',
   assert(targetA.CPle > 0, 'Capable actor should affect first target');
   assert(targetB.CPle > 0, 'Capable actor should affect second target');
   assertContains(App.log[App.log.length - 1].text, 'multi-target flirt', 'Successful multi-target action should be summarized');
+});
+
+test('Exploration cards expose multi-target selection and context actions', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const allyTarget = makeUnit('Ally Target', { id: 'ally-target' });
+  const creatureTarget = makeUnit('Creature Target', { id: 'creature-target', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = actor;
+  App.party = [actor, allyTarget];
+  App.creatures = [creatureTarget];
+  App.renderParty();
+  App.renderCreatures();
+  assertContains(elements.get('party-content').innerHTML, "toggleExplorationTarget('party','ally-target')", 'Party card should expose target selection');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','creature-target')", 'Creature card should expose target selection');
+  App.toggleExplorationTarget('party', 'ally-target');
+  App.toggleExplorationTarget('creature', 'creature-target');
+  const actionsHtml = elements.get('scene-actions').innerHTML;
+  assertContains(actionsHtml, '2 targets selected', 'Context actions should show selected target count');
+  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt')", 'Context actions should resolve selected targets');
+});
+
+test('Marked exploration targets resolve through multi-target action and clear selection', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100, wis: 1 });
+  const targetB = makeUnit('Target B', { id: 'target-b', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = actor;
+  App.party = [actor, targetA];
+  App.creatures = [targetB];
+  App.toggleExplorationTarget('party', 'target-a');
+  App.toggleExplorationTarget('creature', 'target-b');
+  App.resolveExplorationTargetAction('flirt');
+  assert(targetA.CPle > 0, 'Marked party target should receive multi-target action');
+  assert(targetB.CPle > 0, 'Marked creature target should receive multi-target action');
+  assertEqual(App.explorationTargetIds.length, 0, 'Target selection should clear after resolving action');
 });
 
 test('Recruitment is gated by pleasure and willingness score', () => {

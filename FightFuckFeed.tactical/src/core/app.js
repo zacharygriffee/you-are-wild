@@ -207,7 +207,8 @@
                 const keys = this._contextActionKeys();
                 const panelKeys = includePanels ? ['map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
-                return allKeys.map(key => this._contextActionButton(key)).join('') + (includePanels ? '' : this._actionLegend(allKeys));
+                const targetActions = this._renderExplorationTargetActions();
+                return targetActions + allKeys.map(key => this._contextActionButton(key)).join('') + (includePanels ? '' : this._actionLegend(allKeys));
             },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
@@ -431,6 +432,7 @@
             targetSelection: null,
             activeActor: null,
             explorationActorIds: [],
+            explorationTargetIds: [],
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -3175,6 +3177,15 @@
                 if (!actor || !this._isLivingCreature(actor)) return;
                 const id = this._unitSelectionId(actor);
                 this.explorationActorIds = this.explorationActorIds || [];
+                const defaultPlayerOnly = this.explorationActorIds.length === 1 && this.explorationActorIds[0] === this._unitSelectionId(this.player);
+                if (defaultPlayerOnly && actor !== this.player) {
+                    this.explorationActorIds = [id];
+                    this.explorationActorId = id;
+                    this.renderParty();
+                    this.renderCreatures();
+                    this.renderExplorationActions();
+                    return;
+                }
                 if (this.explorationActorIds.includes(id)) {
                     this.explorationActorIds = this.explorationActorIds.filter(existing => existing !== id);
                 } else {
@@ -3184,6 +3195,73 @@
                 this.explorationActorId = this.explorationActorIds[0];
                 this.renderParty();
                 this.renderCreatures();
+                this.renderExplorationActions();
+            },
+
+            _explorationTargetKey(type, id) {
+                return `${type}:${String(id || '')}`;
+            },
+
+            _isExplorationTarget(type, id) {
+                return (this.explorationTargetIds || []).includes(this._explorationTargetKey(type, id));
+            },
+
+            _getExplorationTargets() {
+                const ids = this.explorationTargetIds || [];
+                const targets = [];
+                for (const key of ids) {
+                    const [type, ...rest] = String(key).split(':');
+                    const id = rest.join(':');
+                    let target = null;
+                    if (type === 'party') target = this.party.find(unit => this._unitSelectionId(unit) === id);
+                    if (type === 'creature') target = this.creatures.find(unit => String(unit.id || unit.name) === id);
+                    if (target && this._isLivingCreature(target)) targets.push(target);
+                }
+                return targets;
+            },
+
+            toggleExplorationTarget(type, id) {
+                const key = this._explorationTargetKey(type, id);
+                this.explorationTargetIds = this.explorationTargetIds || [];
+                if (this.explorationTargetIds.includes(key)) {
+                    this.explorationTargetIds = this.explorationTargetIds.filter(existing => existing !== key);
+                } else {
+                    this.explorationTargetIds.push(key);
+                }
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+            },
+
+            clearExplorationTargets() {
+                this.explorationTargetIds = [];
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+            },
+
+            _renderExplorationTargetActions() {
+                const targets = this._getExplorationTargets();
+                if (targets.length === 0 || this.combatState.active) return '';
+                const label = `${targets.length} target${targets.length === 1 ? '' : 's'}`;
+                const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
+                const buttons = keys.map(key => {
+                    const title = `${this._uiLabel(key)} ${label}`;
+                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
+                }).join('');
+                return `<div class="action-legend" aria-label="Selected exploration targets">${label} selected</div>${buttons}<button class="action-btn" title="Clear selected targets" aria-label="Clear selected targets" onclick="App.clearExplorationTargets()">Clear</button>`;
+            },
+
+            resolveExplorationTargetAction(action) {
+                const targets = this._getExplorationTargets();
+                if (targets.length === 0) return;
+                const actors = this._getExplorationActors();
+                if (targets.length === 1 && actors.length > 1) {
+                    this.outsideGroupActionOnTarget(action, targets[0], actors);
+                } else {
+                    this.outsideActionOnTargets(action, targets, actors[0] || this.player);
+                }
+                this.clearExplorationTargets();
             },
 
             _getRecruitScore(actor, target) {
@@ -3268,6 +3346,7 @@
                 if (!unit || unit === this.player || unit.mc) return;
                 this.party = this.party.filter(p => p !== unit);
                 this.explorationActorIds = (this.explorationActorIds || []).filter(id => id !== this._unitSelectionId(unit));
+                this.explorationTargetIds = (this.explorationTargetIds || []).filter(id => id !== this._explorationTargetKey('party', this._unitSelectionId(unit)));
                 this.explorationActorId = this.explorationActorIds[0] || this._unitSelectionId(this.player);
             },
 
@@ -4312,19 +4391,23 @@
                 const hpPercent = Math.max(0, Math.min(100, Math.round((unit.CPun / unit.MPun) * 100)));
                 const isParty = type === 'party';
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
+                const rawTargetId = this._unitSelectionId(unit);
+                const targetSelected = this._isExplorationTarget(type, rawTargetId);
                 const isTargetable = !isParty && this.targetSelection && this.canSelectCreatureTarget(unit);
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button></div>`;
+                    const targetClass = targetSelected ? ' primary' : '';
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button><button class="action-btn${targetClass}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">Target</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
                         const disabled = isTargetable ? '' : ' disabled';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        const targetClass = targetSelected ? ' primary' : '';
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${targetClass}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">Target</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
@@ -4363,7 +4446,9 @@
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const unitLabel = this._escapeHtml(unit.name || 'party member');
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="Select ${unitLabel} to act" aria-label="Select ${unitLabel} to act" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button>`;
+                    const targetClass = this._isExplorationTarget('party', this._unitSelectionId(unit)) ? ' primary' : '';
+                    const targetKey = this._unitKey(unit);
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="Select ${unitLabel} to act" aria-label="Select ${unitLabel} to act" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button><button class="action-btn${targetClass}" title="Mark ${unitLabel} as target" aria-label="Mark ${unitLabel} as target" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">Target</button>`;
                     if (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(unit))) {
                         actionButtons += `<button class="action-btn" title="Fight ${unitLabel}" aria-label="Fight ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" title="Flirt with ${unitLabel}" aria-label="Flirt with ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" title="Pleasure ${unitLabel}" aria-label="Pleasure ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" title="Feast on ${unitLabel}" aria-label="Feast on ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" title="Feed ${unitLabel}" aria-label="Feed ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
                     }
@@ -4391,7 +4476,8 @@
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
                         const targetLabel = this._escapeHtml(unit.name || 'creature');
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="Fight ${targetLabel}" aria-label="Fight ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="Flirt with ${targetLabel}" aria-label="Flirt with ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="Pleasure ${targetLabel}" aria-label="Pleasure ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="Feast on ${targetLabel}" aria-label="Feast on ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="Feed ${targetLabel}" aria-label="Feed ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        const targetClass = this._isExplorationTarget('creature', String(unit.id || unit.name)) ? ' primary' : '';
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="Mark ${targetLabel} as target" aria-label="Mark ${targetLabel} as target" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">Target</button><button class="action-btn" title="Fight ${targetLabel}" aria-label="Fight ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="Flirt with ${targetLabel}" aria-label="Flirt with ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="Pleasure ${targetLabel}" aria-label="Pleasure ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="Feast on ${targetLabel}" aria-label="Feast on ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="Feed ${targetLabel}" aria-label="Feed ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += `<button class="action-btn primary" title="Recruit ${targetLabel}" aria-label="Recruit ${targetLabel}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 153/153 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 156/156 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -109,6 +109,7 @@
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, screen-reader status roles, and an export action that emits the currently filtered log as text
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
+- Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, and selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group
 
 ---
 
@@ -117,9 +118,9 @@
 ### 🟡 Tier 2: High Impact
 
 #### 1. Remaining Multi-Creature Interaction Model
-- Add UI affordances for choosing multiple exploration targets; API-level multi-target resolution already exists
-- Fix party-to-party feeding when one or more selected party members are fed to another party member; selected helpers should either become prey, assist the primary prey/consumer interaction, or be rejected by clear capacity/rule checks instead of silently misrouting
-- Fix multi-select reliability for party members before resolving group actions; selected actor state should remain stable through target selection, action choice, and action resolution
+- Expand the first-pass target-selection UI with clearer mobile affordances and target summaries if playtesting shows the new `Target` buttons are too subtle
+- Further harden party-to-party feeding when mixed self-target/helper/prey groups are selected; selected helpers should either become prey, assist the primary prey/consumer interaction, or be rejected by clear capacity/rule checks instead of silently misrouting
+- Continue testing multi-select stability through more edge cases: target removal, creature defeat, containment, dismissal, and save/load while actors or targets are selected
 - Expand asymmetric one-to-many and many-to-one exploration action resolution:
   - `c2 + c3 -> c1`: both selected actors act together on one target; fight is two-against-one, feast uses a primary consumer unless chewing/splitting is available
   - `c1 -> c2 + c3`: one actor acts across multiple selected targets only when stats/skills allow it, such as high dexterity for fighting multiple targets or sufficient social/pleasure ability for flirting multiple targets

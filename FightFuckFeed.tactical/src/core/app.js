@@ -452,18 +452,18 @@
                 }
                 const entry = queue[this.combatState.currentTurn];
                 if (!entry) { this.nextTurn(); return; }
-                const current = entry.unit;
-                if (!current || current.CPun <= 0) { this.nextTurn(); return; }
+                const currentUnit = entry.unit || entry.unit;
+                if (!currentUnit || currentUnit.CPun <= 0) { this.nextTurn(); return; }
                 // Refractory period: skip turn if recovering from orgasm
-                if (current.refractory) {
-                    current.refractory = false;
-                    this.log.push({ text: `${current.name} is recovering from orgasm and skips their turn.`, type: 'combat' });
+                if (currentUnit.refractory) {
+                    currentUnit.refractory = false;
+                    this.log.push({ text: `${currentUnit.name} is recovering from orgasm and skips their turn.`, type: 'combat' });
                     this.renderLog();
                     this.nextTurn();
                     return;
                 }
                 // Check sync actions - if this unit is part of a sync action that resolves now, handle it
-                const activeSync = this.combatState.syncActions.find(s => !s.resolved && s.participants.includes(current));
+                const activeSync = this.combatState.syncActions.find(s => !s.resolved && s.participants.includes(currentUnit));
                 if (activeSync) {
                     this._resolveSyncAction(activeSync);
                     return;
@@ -487,7 +487,6 @@
                     if (currentUnit.CPun <= 0) { this.log.push({ text: `${currentUnit.name} succumbs to the envelopment!`, type: 'combat' }); }
                     this.renderLog(); this.nextTurn(); return;
                 }
-                const currentUnit = current.unit || current;
                 document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
                 const isParty = this.party.includes(currentUnit);
                 if (isParty && currentUnit.name === this.player.name) {

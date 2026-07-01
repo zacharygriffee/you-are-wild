@@ -76,10 +76,39 @@
             font-family: var(--font-body);
             background: var(--bg-primary);
             color: var(--text-primary);
+            font-size: var(--base-font-size, 14px);
             min-height: 100vh;
             min-height: 100dvh;
             overflow: hidden;
             line-height: 1.5;
+        }
+
+        body.high-contrast {
+            --bg-primary: #000000;
+            --bg-secondary: #050505;
+            --bg-tertiary: #111111;
+            --bg-elevated: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #f5f5f5;
+            --text-muted: #d0d0d0;
+            --accent-primary: #00ffff;
+            --accent-secondary: #ffff00;
+            --accent-danger: #ff5f5f;
+            --accent-success: #39ff14;
+            --border-default: #ffffff;
+            --border-subtle: #909090;
+            --shadow-sm: none;
+            --shadow-md: none;
+            --shadow-lg: none;
+            --shadow-glow: 0 0 0 2px #00ffff;
+        }
+
+        body.reduced-motion *,
+        body.reduced-motion *::before,
+        body.reduced-motion *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
         }
 
         /* =============================================
@@ -1726,9 +1755,9 @@
                     <button class="nav-btn log-filter-btn" data-log-filter="heal" onclick="App.setLogFilter('heal')">Heal</button>
                     <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
                 </div>
-                <div class="log-content" id="log-content">
-                    <div class="log-entry">Welcome to FightFuckFeed.me Tactical Edition</div>
-                    <div class="log-entry discovery">Created your character. The journey begins...</div>
+                <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
+                    <div class="log-entry" role="status">Welcome to FightFuckFeed.me Tactical Edition</div>
+                    <div class="log-entry discovery" role="status">Created your character. The journey begins...</div>
                 </div>
             </div>
         </div>
@@ -1916,6 +1945,25 @@
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Hardcore Mode (delete save on death)</span>
                         <input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Accessibility</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>High Contrast</span>
+                        <input type="checkbox" id="setting-high-contrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Reduced Motion</span>
+                        <input type="checkbox" id="setting-reduced-motion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
+                    </label>
+                    <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span>Base Font Size</span><span id="setting-font-size-value">14px</span></span>
+                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
                     </label>
                 </div>
             </div>
@@ -2681,7 +2729,8 @@
                 statAbsorption: true, refractoryPeriod: false,
                 sameSpeciesBonus: true, fluidEnabled: true,
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
-                partyPlayFightMode: 'nonlethal'
+                partyPlayFightMode: 'nonlethal',
+                highContrast: false, reducedMotion: false, fontSize: 14
             },
 
             combatState: {
@@ -2927,6 +2976,7 @@
                     const savedPrefs = JSON.parse(localStorage.getItem('fff-content-prefs') || '{}');
                     for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
                 } catch(e) { console.warn('Settings load failed', e); }
+                this.applyAccessibilitySettings();
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
@@ -6621,20 +6671,21 @@
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button>`;
+                    const unitLabel = this._escapeHtml(unit.name || 'party member');
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="Select ${unitLabel} to act" aria-label="Select ${unitLabel} to act" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button>`;
                     if (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(unit))) {
-                        actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
+                        actionButtons += `<button class="action-btn" title="Fight ${unitLabel}" aria-label="Fight ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" title="Flirt with ${unitLabel}" aria-label="Flirt with ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" title="Pleasure ${unitLabel}" aria-label="Pleasure ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" title="Feast on ${unitLabel}" aria-label="Feast on ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" title="Feed ${unitLabel}" aria-label="Feed ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
                     }
-                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
-                    actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">Stats</button>`;
-                    if (!isLeader) actionButtons += `<button class="action-btn" onclick="event.stopPropagation();App.setPartyLeader(${index})">Lead</button>`;
+                    actionButtons += `<button class="action-btn" title="Inspect ${unitLabel}" aria-label="Inspect ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
+                    actionButtons += `<button class="action-btn" title="Show stats for ${unitLabel}" aria-label="Show stats for ${unitLabel}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">Stats</button>`;
+                    if (!isLeader) actionButtons += `<button class="action-btn" title="Make ${unitLabel} party leader" aria-label="Make ${unitLabel} party leader" onclick="event.stopPropagation();App.setPartyLeader(${index})">Lead</button>`;
                     if (index > 1) actionButtons += `<button class="action-btn" title="Move up" aria-label="Move ${unit.name} up" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
                     if (!isPlayer && index < this.party.length - 1) actionButtons += `<button class="action-btn" title="Move down" aria-label="Move ${unit.name} down" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
                     if (isAlly) {
                         const order = this._getPartyAIOrder(unit);
                         const options = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="AI order" aria-label="AI order for ${unit.name}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
-                        actionButtons += `<button class="action-btn" style="color:var(--accent-danger)" onclick="event.stopPropagation();App.dismissPartyMember(${index})">Dismiss</button>`;
+                        actionButtons += `<button class="action-btn" style="color:var(--accent-danger)" title="Dismiss ${unitLabel}" aria-label="Dismiss ${unitLabel}" onclick="event.stopPropagation();App.dismissPartyMember(${index})">Dismiss</button>`;
                     }
                     actionButtons += `</div>`;
                 }
@@ -6648,15 +6699,16 @@
                         const disabled = this.canSelectCreatureTarget(unit) ? '' : ' disabled';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        const targetLabel = this._escapeHtml(unit.name || 'creature');
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="Fight ${targetLabel}" aria-label="Fight ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="Flirt with ${targetLabel}" aria-label="Flirt with ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="Pleasure ${targetLabel}" aria-label="Pleasure ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="Feast on ${targetLabel}" aria-label="Feast on ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="Feed ${targetLabel}" aria-label="Feed ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
+                            actionButtons += `<button class="action-btn primary" title="Recruit ${targetLabel}" aria-label="Recruit ${targetLabel}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
                         if (unit.quest) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${unit.questAccepted ? 'View Quest' : 'Accept Quest'}</button>`;
+                            actionButtons += `<button class="action-btn primary" title="${unit.questAccepted ? 'View quest from' : 'Accept quest from'} ${targetLabel}" aria-label="${unit.questAccepted ? 'View quest from' : 'Accept quest from'} ${targetLabel}" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${unit.questAccepted ? 'View Quest' : 'Accept Quest'}</button>`;
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 Trade</button>`;
+                            actionButtons += `<button class="action-btn primary" title="Trade with ${targetLabel}" aria-label="Trade with ${targetLabel}" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 Trade</button>`;
                         }
                         actionButtons += `</div>`;
                     }
@@ -7168,11 +7220,55 @@
                     fluidEnabled: this.settings.fluidEnabled,
                     scat: this.settings.scat,
                     watersports: this.settings.watersports,
+                    cockVoreEnabled: this.settings.cockVoreEnabled,
+                    unbirthEnabled: this.settings.unbirthEnabled,
+                    forcedFeeding: this.settings.forcedFeeding,
                     boneCrushing: this.settings.boneCrushing,
                     unwillingWarnings: this.settings.unwillingWarnings,
                     hardcore: this.settings.hardcore,
+                    partyPlayFightMode: this.settings.partyPlayFightMode,
+                    highContrast: this.settings.highContrast,
+                    reducedMotion: this.settings.reducedMotion,
+                    fontSize: this.settings.fontSize,
                 }));
                 this.updateTierButtons();
+            },
+            updateAccessibilitySetting(key, value) {
+                if (key === 'fontSize') {
+                    const parsed = Number(value);
+                    this.settings.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsed) ? parsed : 14));
+                } else if (key === 'highContrast' || key === 'reducedMotion') {
+                    this.settings[key] = Boolean(value);
+                } else {
+                    return;
+                }
+                this.applyAccessibilitySettings();
+                this.syncAccessibilityControls();
+                this.saveSettings();
+            },
+            applyAccessibilitySettings() {
+                const body = document.body;
+                if (!body) return;
+                const fontSize = Math.max(12, Math.min(20, Number(this.settings.fontSize) || 14));
+                body.classList.toggle('high-contrast', Boolean(this.settings.highContrast));
+                body.classList.toggle('reduced-motion', Boolean(this.settings.reducedMotion));
+                if (body.style?.setProperty) {
+                    body.style.setProperty('--base-font-size', `${fontSize}px`);
+                } else {
+                    body.style['--base-font-size'] = `${fontSize}px`;
+                    body.style.fontSize = `${fontSize}px`;
+                }
+            },
+            syncAccessibilityControls() {
+                const highContrast = document.getElementById('setting-high-contrast');
+                const reducedMotion = document.getElementById('setting-reduced-motion');
+                const fontSize = document.getElementById('setting-font-size');
+                const fontSizeValue = document.getElementById('setting-font-size-value');
+                const size = Math.max(12, Math.min(20, Number(this.settings.fontSize) || 14));
+                if (highContrast) highContrast.checked = Boolean(this.settings.highContrast);
+                if (reducedMotion) reducedMotion.checked = Boolean(this.settings.reducedMotion);
+                if (fontSize) fontSize.value = String(size);
+                if (fontSizeValue) fontSizeValue.textContent = `${size}px`;
             },
             showSettings() {
                 document.getElementById('screen-settings').style.display = 'block';
@@ -7190,11 +7286,16 @@
                 document.getElementById('toggle-fluids').checked = App.settings.fluidEnabled;
                 document.getElementById('toggle-scat').checked = App.settings.scat;
                 document.getElementById('toggle-ws').checked = App.settings.watersports;
+                document.getElementById('toggle-cockVore').checked = App.settings.cockVoreEnabled;
+                document.getElementById('toggle-unbirth').checked = App.settings.unbirthEnabled;
+                document.getElementById('toggle-forcedFeed').checked = App.settings.forcedFeeding;
                 document.getElementById('toggle-bones').checked = App.settings.boneCrushing;
                 document.getElementById('toggle-warn').checked = App.settings.unwillingWarnings;
                 document.getElementById('toggle-hardcore').checked = App.settings.hardcore;
                 this.updateTierButtons();
                 this.updateCheatButtons();
+                this.applyAccessibilitySettings();
+                this.syncAccessibilityControls();
             },
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {

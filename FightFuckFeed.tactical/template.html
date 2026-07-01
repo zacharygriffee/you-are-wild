@@ -75,10 +75,39 @@
             font-family: var(--font-body);
             background: var(--bg-primary);
             color: var(--text-primary);
+            font-size: var(--base-font-size, 14px);
             min-height: 100vh;
             min-height: 100dvh;
             overflow: hidden;
             line-height: 1.5;
+        }
+
+        body.high-contrast {
+            --bg-primary: #000000;
+            --bg-secondary: #050505;
+            --bg-tertiary: #111111;
+            --bg-elevated: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #f5f5f5;
+            --text-muted: #d0d0d0;
+            --accent-primary: #00ffff;
+            --accent-secondary: #ffff00;
+            --accent-danger: #ff5f5f;
+            --accent-success: #39ff14;
+            --border-default: #ffffff;
+            --border-subtle: #909090;
+            --shadow-sm: none;
+            --shadow-md: none;
+            --shadow-lg: none;
+            --shadow-glow: 0 0 0 2px #00ffff;
+        }
+
+        body.reduced-motion *,
+        body.reduced-motion *::before,
+        body.reduced-motion *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
         }
 
         /* =============================================
@@ -1725,9 +1754,9 @@
                     <button class="nav-btn log-filter-btn" data-log-filter="heal" onclick="App.setLogFilter('heal')">Heal</button>
                     <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
                 </div>
-                <div class="log-content" id="log-content">
-                    <div class="log-entry">Welcome to FightFuckFeed.me Tactical Edition</div>
-                    <div class="log-entry discovery">Created your character. The journey begins...</div>
+                <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
+                    <div class="log-entry" role="status">Welcome to FightFuckFeed.me Tactical Edition</div>
+                    <div class="log-entry discovery" role="status">Created your character. The journey begins...</div>
                 </div>
             </div>
         </div>
@@ -1915,6 +1944,25 @@
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Hardcore Mode (delete save on death)</span>
                         <input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Accessibility</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>High Contrast</span>
+                        <input type="checkbox" id="setting-high-contrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Reduced Motion</span>
+                        <input type="checkbox" id="setting-reduced-motion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
+                    </label>
+                    <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span>Base Font Size</span><span id="setting-font-size-value">14px</span></span>
+                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
                     </label>
                 </div>
             </div>

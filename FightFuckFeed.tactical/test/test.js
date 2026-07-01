@@ -370,6 +370,15 @@ test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(appContent, 'location.reload()', 'deleteAllSaves should refresh UI after clearing saves');
 });
 
+test('Accessibility settings controls are available', () => {
+  assertContains(template, 'body.high-contrast', 'High contrast CSS class missing');
+  assertContains(template, 'body.reduced-motion *', 'Reduced motion CSS class missing');
+  assertContains(template, 'id="setting-high-contrast"', 'High contrast setting missing');
+  assertContains(template, 'id="setting-reduced-motion"', 'Reduced motion setting missing');
+  assertContains(template, 'id="setting-font-size"', 'Font size setting missing');
+  assertContains(template, 'aria-live="polite"', 'Log region should announce updates politely');
+});
+
 test('Create screen is constrained for mobile scrolling', () => {
   assertContains(template, 'height: 100dvh', 'create screen should use dynamic viewport height');
   assertContains(template, 'max-height: calc(100dvh - 24px)', 'mobile create container should fit viewport');
@@ -425,12 +434,17 @@ section('Combat Behavior Tests', 'core');
 
 function makeElement() {
   const classes = new Set();
+  const style = {
+    setProperty(name, value) {
+      this[name] = value;
+    }
+  };
   return {
     innerHTML: '',
     textContent: '',
     value: '',
     checked: false,
-    style: {},
+    style,
     remove() { this.removed = true; },
     insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
     dataset: {},
@@ -487,7 +501,14 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     {},
     document,
     localStorage,
-    { biomeIntro: () => '', encounter: () => '', actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}` },
+    {
+      preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true },
+      setPreference(key, value) { this.preferences[key] = value; },
+      setMaxTier(value) { this.preferences.maxTier = value; },
+      biomeIntro: () => '',
+      encounter: () => '',
+      actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}`
+    },
     { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
     { open() {}, deleteDatabase() { return {}; } },
@@ -2192,6 +2213,38 @@ test('Combat log renders relative timestamps and status role', () => {
   assertContains(html, 'just now', 'Newest log entry should show relative timestamp');
   assertContains(html, '1 turn ago', 'Older log entry should show relative timestamp');
   assertContains(html, 'role="status"', 'Log entries should expose status role');
+});
+
+test('Accessibility settings apply, sync, and persist', () => {
+  const { App, elements, storage, body } = loadAppForCombat();
+  App.updateAccessibilitySetting('highContrast', true);
+  App.updateAccessibilitySetting('reducedMotion', true);
+  App.updateAccessibilitySetting('fontSize', 22);
+  assert(body.classList.contains('high-contrast'), 'High contrast should toggle body class');
+  assert(body.classList.contains('reduced-motion'), 'Reduced motion should toggle body class');
+  assertEqual(body.style['--base-font-size'], '20px', 'Font size should clamp at 20px');
+  assertEqual(elements.get('setting-high-contrast').checked, true, 'High contrast control should sync');
+  assertEqual(elements.get('setting-reduced-motion').checked, true, 'Reduced motion control should sync');
+  assertEqual(elements.get('setting-font-size').value, '20', 'Font size control should sync');
+  assertEqual(elements.get('setting-font-size-value').textContent, '20px', 'Font size label should sync');
+  const saved = JSON.parse(storage.get('fff-settings'));
+  assertEqual(saved.highContrast, true, 'High contrast setting should persist');
+  assertEqual(saved.reducedMotion, true, 'Reduced motion setting should persist');
+  assertEqual(saved.fontSize, 20, 'Font size setting should persist');
+});
+
+test('Newer interaction settings persist through saveSettings', () => {
+  const { App, storage } = loadAppForCombat();
+  App.settings.cockVoreEnabled = true;
+  App.settings.unbirthEnabled = true;
+  App.settings.forcedFeeding = true;
+  App.settings.partyPlayFightMode = 'lethal';
+  App.saveSettings();
+  const saved = JSON.parse(storage.get('fff-settings'));
+  assertEqual(saved.cockVoreEnabled, true, 'Cock vore setting should persist');
+  assertEqual(saved.unbirthEnabled, true, 'Unbirth setting should persist');
+  assertEqual(saved.forcedFeeding, true, 'Forced feeding setting should persist');
+  assertEqual(saved.partyPlayFightMode, 'lethal', 'Party play-fight mode should persist');
 });
 
 test('Combat log export returns filtered text', () => {

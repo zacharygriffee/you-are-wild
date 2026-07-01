@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 150/150 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 153/153 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -108,6 +108,7 @@
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, screen-reader status roles, and an export action that emits the currently filtered log as text
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
+- Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
 
 ---
 
@@ -177,11 +178,11 @@
 - Consider radial/joystick map controls once core traversal semantics settle
 - Add dedicated gesture affordance hints if playtesting shows discoverability issues
 
-#### 21. Accessibility
-- Screen reader support: `aria-label` on all action buttons, `role="status"` on log entries
-- High-contrast mode toggle in settings (CSS variable swap)
-- Font size scaling (12px–20px base)
-- Reduced motion: disable animations/transitions
+#### 21. Advanced Accessibility
+- Audit every remaining custom control for keyboard focus order, visible focus, and complete `aria-label` coverage
+- Add focus trapping/restoration for overlays and mobile context menus
+- Add screen-reader labels for dynamic combat targeting state beyond the current log/status support
+- Device-test high-contrast, reduced-motion, and font-size scaling against the mobile layout
 
 #### 22. Localization Framework
 - All user-facing strings in `locales/en.json` (or similar)

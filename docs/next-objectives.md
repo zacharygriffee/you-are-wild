@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 142/142 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 146/146 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -106,6 +106,7 @@
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots and numeric `equipBonus` fields, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses apply and remove from player stats, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees, perks can require prior tree investment, selected perks apply numeric stat bonuses, pending choices render from character stats, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
+- Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, screen-reader status roles, and an export action that emits the currently filtered log as text
 
 ---
 
@@ -164,11 +165,10 @@
 - Add dismissal consequences/dialogue if party relationship systems become meaningful
 - Decide whether mobile chips need the same full management surface or a long-press menu
 
-#### 19. Combat Log Filtering
-- Filter buttons: All / Combat / Discovery / Loot / Heal
-- Search box (text filter)
-- Timestamps (relative: "2 turns ago", "just now")
-- Export to text file (for bug reports/screenshots)
+#### 19. Advanced Combat Log
+- Add richer turn/round metadata at log creation sites instead of inferring relative labels at render time
+- Add saved log filter preferences if players want persistent log views
+- Add category colors/icons once the log has more event types
 
 #### 20. Mobile Gesture Improvements
 - Long-press on creature card: context menu (Fight/Flirt/Feed/Inspect/Recruit)

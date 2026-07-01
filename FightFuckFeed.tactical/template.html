@@ -506,6 +506,38 @@
             color: var(--text-secondary);
         }
 
+        .log-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 6px var(--space-md);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .log-filter-btn {
+            padding: 3px 8px;
+            font-size: 10px;
+            min-height: 24px;
+        }
+
+        .log-filter-btn.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .log-search {
+            flex: 1;
+            min-width: 120px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
         .log-content {
             flex: 1;
             overflow-y: auto;
@@ -520,6 +552,14 @@
             border-left: 2px solid transparent;
             padding-left: var(--space-sm);
             margin-bottom: var(--space-xs);
+        }
+
+        .log-time {
+            display: block;
+            color: var(--text-muted);
+            font-size: 10px;
+            line-height: 1.2;
+            margin-bottom: 2px;
         }
 
         .log-entry.combat {
@@ -1635,7 +1675,18 @@
             <div class="panel-log">
                 <div class="log-header">
                     <span class="log-title">📜 Combat Log</span>
-                    <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                    <div style="display:flex;gap:6px;">
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="App.exportLog()">Export</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                    </div>
+                </div>
+                <div class="log-controls" id="log-controls">
+                    <button class="nav-btn log-filter-btn active" data-log-filter="all" onclick="App.setLogFilter('all')">All</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="combat" onclick="App.setLogFilter('combat')">Combat</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="loot" onclick="App.setLogFilter('loot')">Loot</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
                 </div>
                 <div class="log-content" id="log-content">
                     <div class="log-entry">Welcome to FightFuckFeed.me Tactical Edition</div>

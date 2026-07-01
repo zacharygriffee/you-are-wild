@@ -402,6 +402,8 @@
             timeHour: 8,
             dayCount: 0,
             log: [],
+            logFilter: 'all',
+            logSearch: '',
             worldMap: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
@@ -4619,15 +4621,70 @@
                 this.updateScene(title, tile.explored ? 'You are in the ' + biome.name + '. ' + tile.description : 'You stand at the edge of the unknown...', false);
                 this.renderExplorationActions();
             },
+            _escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+            },
+            _logTimestamp(entry, indexFromEnd = 0) {
+                if (entry?.round && this.combatState?.round) {
+                    const diff = Math.max(0, this.combatState.round - entry.round);
+                    if (diff === 0) return 'this round';
+                    return diff === 1 ? '1 round ago' : `${diff} rounds ago`;
+                }
+                if (indexFromEnd <= 0) return 'just now';
+                return indexFromEnd === 1 ? '1 turn ago' : `${indexFromEnd} turns ago`;
+            },
+            _filteredLogEntries() {
+                const filter = this.logFilter || 'all';
+                const query = (this.logSearch || '').trim().toLowerCase();
+                return (this.log || []).filter(entry => {
+                    if (filter !== 'all' && (entry.type || 'discovery') !== filter) return false;
+                    if (query && !String(entry.text || '').toLowerCase().includes(query)) return false;
+                    return true;
+                });
+            },
+            setLogFilter(filter = 'all') {
+                const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
+                this.logFilter = allowed.includes(filter) ? filter : 'all';
+                this.renderLog();
+            },
+            setLogSearch(value = '') {
+                this.logSearch = value;
+                this.renderLog();
+            },
+            exportLog() {
+                const lines = this._filteredLogEntries().map((entry, index, arr) => {
+                    const indexFromEnd = arr.length - 1 - index;
+                    return `[${entry.type || 'discovery'} | ${this._logTimestamp(entry, indexFromEnd)}] ${entry.text}`;
+                });
+                const text = lines.join('\n');
+                if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && document?.createElement) {
+                    try {
+                        const blob = new Blob([text], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `combat-log-${Date.now()}.txt`;
+                        if (typeof a.click === 'function') a.click();
+                        URL.revokeObjectURL(url);
+                    } catch(e) {}
+                }
+                return text;
+            },
 	            renderLog() {
 	                const container = document.getElementById('log-content');
-	                const entries = this.log.slice(-20).reverse().map(e => {
+                    const filtered = this._filteredLogEntries();
+	                const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => {
+                        const indexFromEnd = visibleIndex;
 	                    let cn = 'log-entry';
-	                    if (e.type === 'combat') cn += ' combat';
-	                    if (e.type === 'discovery') cn += ' discovery';
-	                    return `<div class="${cn}">${e.text}</div>`;
+	                    if (e.type) cn += ` ${e.type}`;
+	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span>${this._escapeHtml(e.text)}</div>`;
 	                }).join('');
-	                if (container) container.innerHTML = entries;
+	                if (container) container.innerHTML = entries || '<div class="log-entry text-muted">No log entries match the current filter.</div>';
+                    document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.logFilter === (this.logFilter || 'all'));
+                    });
+                    const search = document.getElementById('log-search');
+                    if (search && search.value !== (this.logSearch || '')) search.value = this.logSearch || '';
 	                const mobileLog = document.getElementById('mobile-log-summary');
 	                if (mobileLog) {
 	                    const latest = this.log[this.log.length - 1];

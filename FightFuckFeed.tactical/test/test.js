@@ -2153,6 +2153,55 @@ test('Perk state persists through binary saves', () => {
   assertEqual(loaded.questState.pendingPerkChoices, 1, 'Pending perk choices should persist');
 });
 
+test('Combat log template exposes filters search and export controls', () => {
+  assertContains(template, 'data-log-filter="all"', 'Log should expose All filter');
+  assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
+  assertContains(template, 'id="log-search"', 'Log should expose search input');
+  assertContains(template, 'App.exportLog()', 'Log should expose export action');
+});
+
+test('Combat log filters by type and search text', () => {
+  const { App, elements } = loadAppForCombat();
+  App.log = [
+    { text: 'Wolf attacks', type: 'combat' },
+    { text: 'Found coin', type: 'loot' },
+    { text: 'Rested well', type: 'heal' },
+    { text: 'Discovered shrine', type: 'discovery' }
+  ];
+  App.setLogFilter('combat');
+  assertContains(elements.get('log-content').innerHTML, 'Wolf attacks', 'Combat filter should show combat entry');
+  assertNotContains(elements.get('log-content').innerHTML, 'Found coin', 'Combat filter should hide loot entry');
+  App.setLogFilter('all');
+  App.setLogSearch('coin');
+  assertContains(elements.get('log-content').innerHTML, 'Found coin', 'Search should show matching entry');
+  assertNotContains(elements.get('log-content').innerHTML, 'Wolf attacks', 'Search should hide non-matching entry');
+});
+
+test('Combat log renders relative timestamps and status role', () => {
+  const { App, elements } = loadAppForCombat();
+  App.log = [
+    { text: 'Older entry', type: 'discovery' },
+    { text: 'Latest entry', type: 'combat' }
+  ];
+  App.renderLog();
+  const html = elements.get('log-content').innerHTML;
+  assertContains(html, 'just now', 'Newest log entry should show relative timestamp');
+  assertContains(html, '1 turn ago', 'Older log entry should show relative timestamp');
+  assertContains(html, 'role="status"', 'Log entries should expose status role');
+});
+
+test('Combat log export returns filtered text', () => {
+  const { App } = loadAppForCombat();
+  App.log = [
+    { text: 'Wolf attacks', type: 'combat' },
+    { text: 'Found coin', type: 'loot' }
+  ];
+  App.setLogFilter('loot');
+  const text = App.exportLog();
+  assertContains(text, 'Found coin', 'Export should include filtered entry');
+  assertNotContains(text, 'Wolf attacks', 'Export should respect current filter');
+});
+
 // === SUMMARY ===
 console.log('\n' + '='.repeat(50));
 console.log(`Results: ${passedTests}/${totalTests} passed`);

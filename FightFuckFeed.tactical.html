@@ -562,6 +562,16 @@
             flex-direction: column;
         }
         
+        /* Overlay screens (settings, mods, market) */
+        .screen-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 200 !important;
+        }
+        
         #save-manager.screen {
             position: fixed;
             top: 0;
@@ -705,35 +715,180 @@
         
         @media (max-width: 1024px) {
             #app {
-                grid-template-rows: 50px 1fr auto 60px;
+                grid-template-rows: 50px 1fr auto;
                 grid-template-areas:
                     "header"
                     "stage"
-                    "log"
-                    "actions";
+                    "log";
+                height: 100vh;
+                width: 100vw;
+                overflow: hidden;
             }
             
             .stage {
                 grid-template-columns: 1fr;
                 grid-template-areas: "main";
+                padding: 8px;
+                gap: 8px;
+                overflow: visible;
             }
             
-            .panel-map,
-            .panel-party,
+            /* Mobile slide-out panels */
+            .panel-map {
+                display: none;
+                position: fixed;
+                top: 50px;
+                left: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: left 0.3s ease;
+                border-radius: 0 var(--radius-md) var(--radius-md) 0;
+                border-left: none;
+            }
+            
+            .panel-party {
+                display: none;
+                position: fixed;
+                top: 50px;
+                right: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: right 0.3s ease;
+                border-radius: var(--radius-md) 0 0 var(--radius-md);
+                border-right: none;
+            }
+            
             .panel-enemies {
+                display: none;
+                position: fixed;
+                top: 50px;
+                right: -85vw;
+                bottom: 120px;
+                width: 85vw;
+                z-index: 200;
+                transition: right 0.3s ease;
+                border-radius: var(--radius-md) 0 0 var(--radius-md);
+                border-right: none;
+            }
+            
+            .panel-map.active {
+                display: flex;
+                left: 0;
+            }
+            
+            .panel-party.active {
+                display: flex;
+                right: 0;
+            }
+            
+            .panel-enemies.active {
+                display: flex;
+                right: 0;
+            }
+            
+            .panel-main {
+                width: 100%;
+                border-radius: var(--radius-md);
+            }
+            
+            .panel-log {
+                max-height: 120px;
+                border-radius: 0;
+            }
+            
+            .mobile-action-bar {
+                display: block !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+                border-top: 1px solid var(--border-default);
+                padding: 8px;
+                z-index: 100;
+            }
+            
+            .mobile-action-bar .action-bar {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .mobile-action-bar .action-btn {
+                flex: 1;
+                padding: 12px 4px;
+                font-size: 11px;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .mobile-action-bar .action-icon {
+                font-size: 20px;
+                display: block;
+                margin-bottom: 2px;
+            }
+            
+            /* Swipe hint indicators - subtle edge glows */
+            .swipe-hint-left,
+            .swipe-hint-right {
+                position: fixed;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 6px;
+                height: 80px;
+                background: var(--accent-primary);
+                opacity: 0.2;
+                border-radius: 3px;
+                z-index: 50;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            
+            .swipe-hint-left {
+                left: 2px;
+            }
+            
+            .swipe-hint-right {
+                right: 2px;
+            }
+            
+            .swipe-hint-left:hover,
+            .swipe-hint-right:hover {
+                opacity: 0.4;
+            }
+            
+            /* Panel backdrop overlay when panel is open */
+            .panel-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 150;
+            }
+            
+            .panel-backdrop.active {
+                display: block;
+            }
+        }
+        
+        @media (min-width: 1025px) {
+            .mobile-action-bar {
+                display: none !important;
+            }
+            
+            .swipe-hint-left,
+            .swipe-hint-right {
                 display: none;
             }
             
-            .panel-map.active,
-            .panel-party.active,
-            .panel-enemies.active {
-                display: flex;
-                position: absolute;
-                top: 50px;
-                left: 0;
-                right: 0;
-                bottom: 200px;
-                z-index: 50;
+            .panel-backdrop {
+                display: none !important;
             }
         }
         
@@ -958,8 +1113,8 @@
                     </div>
                 </div>
                 
-                <!-- Main Panel -->
-                <div class="panel panel-main" id="panel-main">
+                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
+                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
                     <div class="panel-content">
                         <div class="scene-display" id="scene-display">
                             <h2 class="scene-title" id="scene-title">The Wilderness</h2>
@@ -1017,9 +1172,10 @@
             </div>
         </div>
         
-        <!-- Mobile Action Bar -->
-        <div class="mobile-action-bar" id="mobile-actions" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top: 1px solid var(--border-default); padding: var(--space-sm); z-index: 100;">
-            <div class="action-bar">
+        <!-- Mobile Action Bar - switches between combat and exploration modes -->
+        <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
+            <!-- Combat buttons -->
+            <div id="mobile-combat-actions" class="action-bar" style="display: none;">
                 <button class="action-btn primary" onclick="combatAction('fight')">
                     <span class="action-icon">⚔️</span>
                     Fight
@@ -1037,7 +1193,33 @@
                     Flee
                 </button>
             </div>
+            <!-- Exploration buttons -->
+            <div id="mobile-explore-actions" class="action-bar">
+                <button class="action-btn" onclick="App.search()">
+                    <span class="action-icon">🔍</span>
+                    Search
+                </button>
+                <button class="action-btn" onclick="App.rest()">
+                    <span class="action-icon">🏕️</span>
+                    Rest
+                </button>
+                <button class="action-btn" onclick="togglePanel('map')">
+                    <span class="action-icon">🗺️</span>
+                    Map
+                </button>
+                <button class="action-btn" onclick="togglePanel('party')">
+                    <span class="action-icon">👥</span>
+                    Party
+                </button>
+            </div>
         </div>
+        
+        <!-- Backdrop for closing mobile panels by tapping outside -->
+        <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
+        
+        <!-- Swipe hints for mobile -->
+        <div class="swipe-hint-left" title="Swipe right for map"></div>
+        <div class="swipe-hint-right" title="Swipe left for party"></div>
     </div>
     
     <!-- GAME API BRIDGE & APP LOGIC -->
@@ -1626,6 +1808,10 @@
                 this.screen = name;
             },
             
+            showSettingsFromMenu() {
+                this.showScreen('settings');
+            },
+            
             // Tutorial
             showTutorial() {
                 const hasSeenTutorial = localStorage.getItem('tactical-tutorial-complete');
@@ -1985,6 +2171,10 @@
                     (biomeText + (encounterText ? ' ' + encounterText : ''));
                 
                 const actions = document.getElementById('scene-actions');
+                const mobileActions = document.getElementById('mobile-actions');
+                const mobileCombat = document.getElementById('mobile-combat-actions');
+                const mobileExplore = document.getElementById('mobile-explore-actions');
+                
                 if (inCombat) {
                     actions.innerHTML = `
                         <button class="action-btn primary" onclick="App.combatAction('fight')">
@@ -2004,6 +2194,10 @@
                             Flee
                         </button>
                     `;
+                    // Show mobile combat bar
+                    if (mobileActions) mobileActions.style.display = 'block';
+                    if (mobileCombat) mobileCombat.style.display = 'flex';
+                    if (mobileExplore) mobileExplore.style.display = 'none';
                 } else {
                     actions.innerHTML = `
                         <button class="action-btn" onclick="App.search()">
@@ -2015,6 +2209,10 @@
                             Rest
                         </button>
                     `;
+                    // Show mobile exploration bar
+                    if (mobileActions) mobileActions.style.display = 'block';
+                    if (mobileCombat) mobileCombat.style.display = 'none';
+                    if (mobileExplore) mobileExplore.style.display = 'flex';
                 }
             },
             
@@ -2611,6 +2809,7 @@ showExplorationActions() {
                     
                     document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                     this.showScreen('game');
+                    this.renderMap();
                     this.renderParty();
                     this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
@@ -2774,21 +2973,75 @@ showExplorationActions() {
             
             // Panel toggle (mobile)
             togglePanel(panel) {
+                const target = document.getElementById(`panel-${panel}`);
+                if (!target) return;
+                
+                // Close all panels first
+                this.closeAllPanels();
+                
+                // If it wasn't active, open it
+                if (!target.classList.contains('active')) {
+                    target.classList.add('active');
+                    // Show backdrop on mobile
+                    const backdrop = document.getElementById('panel-backdrop');
+                    if (backdrop) backdrop.classList.add('active');
+                }
+            },
+            
+            closeAllPanels() {
                 const panels = ['panel-map', 'panel-party', 'panel-enemies'];
                 panels.forEach(p => document.getElementById(p)?.classList.remove('active'));
-                document.getElementById(`panel-${panel}`)?.classList.add('active');
+                const backdrop = document.getElementById('panel-backdrop');
+                if (backdrop) backdrop.classList.remove('active');
+            },
+            
+            // Touch swipe handling for mobile
+            touchStartX: 0,
+            touchStartY: 0,
+            
+            handleTouchStart(e) {
+                this.touchStartX = e.changedTouches[0].screenX;
+                this.touchStartY = e.changedTouches[0].screenY;
+            },
+            
+            handleTouchEnd(e) {
+                const endX = e.changedTouches[0].screenX;
+                const endY = e.changedTouches[0].screenY;
+                const dx = endX - this.touchStartX;
+                const dy = endY - this.touchStartY;
+                
+                // Only handle horizontal swipes (abs(dx) > abs(dy) and threshold > 50px)
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                    if (dx > 0) {
+                        // Swiped right: open map from left
+                        this.togglePanel('map');
+                    } else {
+                        // Swiped left: open party from right
+                        this.togglePanel('party');
+                    }
+                }
             },
             
             // Show mod screen
             showModScreen() {
-                this.showScreen('mods');
+                document.querySelectorAll('.screen').forEach(s => {
+                    s.classList.remove('active');
+                    s.style.display = 'none';
+                });
+                document.getElementById('screen-mods').style.display = 'block';
                 if (typeof ModUI !== 'undefined') ModUI.refreshModList();
+                this.screen = 'mods';
             },
             
             // Show market screen
             showMarketScreen() {
-                this.showScreen('market');
+                document.querySelectorAll('.screen').forEach(s => {
+                    s.classList.remove('active');
+                    s.style.display = 'none';
+                });
+                document.getElementById('screen-market').style.display = 'block';
                 if (typeof MODULE_MARKETPLACE !== 'undefined') MODULE_MARKETPLACE.ui.showMarketplace();
+                this.screen = 'market';
             }
         };
         
@@ -2816,7 +3069,7 @@ showExplorationActions() {
     <!-- Populated by JS -->
 </div>
 
-<div id="screen-settings" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
+<div id="screen-settings" class="screen screen-overlay" style="display: none; background: var(--bg-primary); overflow: auto;">
     <div style="max-width: 600px; margin: 0 auto; padding: 32px;">
         <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Content Settings</h1>
         <p style="color: var(--text-muted); margin-bottom: 32px;">
@@ -2895,7 +3148,7 @@ showExplorationActions() {
         
         <!-- Apply Button -->
         <button class="nav-btn" style="width: 100%; background: var(--accent-primary); color: var(--bg-primary); font-weight: 600;"
-                onclick="document.getElementById('screen-settings').style.display='none'; document.getElementById('app').style.display='grid';">
+                onclick="returnToGame()">
             Apply Changes
         </button>
     </div>
@@ -2910,8 +3163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsBtn.className = 'nav-btn';
         settingsBtn.textContent = '⚙️ Settings';
         settingsBtn.onclick = () => {
-            document.getElementById('app').style.display = 'none';
-            document.getElementById('screen-settings').style.display = 'block';
+            App.showScreen('settings');
             // Sync UI with current preferences
             document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
             document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
@@ -3146,6 +3398,10 @@ const MODULE_SYSTEM = {
     
     // Get all installed modules
     async getAllModules() {
+        if (!this.db) {
+            console.warn('Module DB not initialized yet');
+            return [];
+        }
         const tx = this.db.transaction(['modules'], 'readonly');
         const store = tx.objectStore('modules');
         return await store.getAll();
@@ -3199,7 +3455,7 @@ MODULE_SYSTEM.init().then(() => {
 
 
 <!-- MODULE MANAGER UI -->
-<div id="screen-mods" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
+<div id="screen-mods" class="screen screen-overlay" style="display: none; background: var(--bg-primary); overflow: auto;">
     <div style="max-width: 900px; margin: 0 auto; padding: 24px;">
     <div style="max-width: 900px; margin: 0 auto;">
         <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Module Manager</h1>
@@ -3317,7 +3573,20 @@ const ModUI = {
     
     async refreshModList() {
         const container = document.getElementById('mod-list');
-        const modules = await MODULE_SYSTEM.getAllModules();
+        if (!container) return;
+        
+        let modules = [];
+        try {
+            modules = await MODULE_SYSTEM.getAllModules();
+        } catch (e) {
+            console.warn('Failed to load modules:', e);
+            container.innerHTML = `
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;">
+                    Module storage not ready. Try again in a moment.
+                </p>
+            `;
+            return;
+        }
         
         if (modules.length === 0) {
             container.innerHTML = `
@@ -3411,7 +3680,10 @@ const ModUI = {
     },
     
     showModScreen() {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('active');
+            s.style.display = 'none';
+        });
         document.getElementById('screen-mods').style.display = 'block';
         this.refreshModList();
     }
@@ -4110,7 +4382,7 @@ window.MARKET = MODULE_MARKETPLACE;
 </script>
 
 <!-- Marketplace Screen -->
-<div id="screen-market" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
+<div id="screen-market" class="screen screen-overlay" style="display: none; background: var(--bg-primary); overflow: auto;">
     <div style="max-width: 900px; margin: 0 auto; padding: 24px;">
         <div style="display: flex; justify-content: flex-end; padding: 16px 0;">
             <button class="nav-btn" onclick="returnToGame()">← Return to Game</button>
@@ -4147,7 +4419,9 @@ window.returnToGame = function() {
     document.getElementById('screen-market').style.display = 'none';
     document.getElementById('save-manager').style.display = 'none';
     // If we have a player, go to game; otherwise go to menu
-    if (App.player && App.screen !== 'menu') {
+    if (App.player && App.player.hp > 0) {
+        document.getElementById('screen-menu').style.display = 'none';
+        document.getElementById('screen-menu').classList.remove('active');
         document.getElementById('app').style.display = 'grid';
         document.getElementById('screen-game').style.display = 'flex';
         document.getElementById('screen-game').classList.add('active');

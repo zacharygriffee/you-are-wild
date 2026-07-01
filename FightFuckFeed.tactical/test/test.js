@@ -2792,6 +2792,34 @@ test('Combat log renders relative timestamps and status role', () => {
   assertContains(html, '⚔️</span> Combat', 'Combat category badge should show icon and label');
 });
 
+test('Combat log entries capture round turn and actor metadata at creation', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-1', CPun: 100, MPun: 100 });
+  const wolf = makeUnit('Wolf', { id: 'wolf-1', species: 'wolf', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [wolf];
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: wolf, initiative: 10 }],
+    syncActions: []
+  };
+  App._pushLog('Manual combat entry', 'combat', { actor: player, action: 'fight', targetId: 'wolf-1', targetName: 'Wolf', phase: 'action' });
+  const entry = App.log[0];
+  assertEqual(entry.round, 3, 'Combat log helper should stamp current round');
+  assertEqual(entry.turnIndex, 1, 'Combat log helper should stamp current turn index');
+  assertEqual(entry.actorName, 'You', 'Combat log helper should stamp actor name');
+  assertEqual(entry.targetName, 'Wolf', 'Combat log helper should preserve target name');
+  assertEqual(entry.action, 'fight', 'Combat log helper should preserve action metadata');
+  App.renderLog();
+  assertContains(elements.get('log-content').innerHTML, 'R3 T1', 'Rendered combat log should use explicit round and turn metadata');
+  assertContains(App.exportLog(), '[combat | R3 T1', 'Exported combat log should use explicit round and turn metadata');
+});
+
 test('Accessibility settings apply, sync, and persist', () => {
   const { App, elements, storage, body } = loadAppForCombat();
   App.updateAccessibilitySetting('highContrast', true);

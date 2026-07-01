@@ -1741,8 +1741,8 @@
                     .sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
                 const ambushers = enemies.filter(e => e.ambushReady);
-                if (ambushers.length > 0) this.log.push({ text: `${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, type: 'combat' });
-                this.log.push({ text: `Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, type: 'combat' });
+                if (ambushers.length > 0) this._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
+                this._pushLog(`Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
                 this.updateScene(`Round 1`, `Combat started!`, true);
                 this.renderParty();
                 this.renderCreatures();
@@ -1954,7 +1954,7 @@
                 const actor = this.activeActor || this.player;
                 if (!this.combatState.active || !actor || actor.CPun <= 0) return;
                 actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
-                this.log.push({ text: `${actor.name} moves to the ${actor.combatRow} row.`, type: 'combat' });
+                this._pushLog(`${actor.name} moves to the ${actor.combatRow} row.`, 'combat', { actor, phase: 'position' });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -1974,7 +1974,7 @@
                 // Refractory period: skip turn if recovering from orgasm
                 if (currentUnit.refractory) {
                     currentUnit.refractory = false;
-                    this.log.push({ text: `${currentUnit.name} is recovering from orgasm and skips their turn.`, type: 'combat' });
+                    this._pushLog(`${currentUnit.name} is recovering from orgasm and skips their turn.`, 'combat', { actor: currentUnit, phase: 'skip' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -1999,25 +1999,25 @@
                 if (entry.actedThisRound) { this.nextTurn(); return; }
                 const statusSkip = this._skipTurnFromStatus(currentUnit);
                 if (statusSkip) {
-                    this.log.push({ text: statusSkip, type: 'combat' });
+                    this._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 // Check if restrained (skip turn)
                 if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
-                    this.log.push({ text: `${currentUnit.name} is restrained and cannot act!`, type: 'combat' });
+                    this._pushLog(`${currentUnit.name} is restrained and cannot act!`, 'combat', { actor: currentUnit, phase: 'status' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 if (currentUnit.status?.stuck && currentUnit.status.stuck.turns > 0) {
                     currentUnit.status.stuck.turns--;
                     if (currentUnit.status.stuck.turns <= 0) delete currentUnit.status.stuck;
-                    this.log.push({ text: `${currentUnit.name} is stuck in the terrain and loses their turn!`, type: 'combat' });
+                    this._pushLog(`${currentUnit.name} is stuck in the terrain and loses their turn!`, 'combat', { actor: currentUnit, phase: 'terrain' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 // Check if enveloped (skip turn, take damage)
                 if (currentUnit.status?.enveloped && currentUnit.status.enveloped.turns > 0) {
                     currentUnit.CPun -= 4;
-                    this.log.push({ text: `${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`, type: 'combat' });
-                    if (currentUnit.CPun <= 0) { this.log.push({ text: `${currentUnit.name} succumbs to the envelopment!`, type: 'combat' }); }
+                    this._pushLog(`${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`, 'combat', { actor: currentUnit, phase: 'status' });
+                    if (currentUnit.CPun <= 0) { this._pushLog(`${currentUnit.name} succumbs to the envelopment!`, 'combat', { actor: currentUnit, phase: 'status' }); }
                     this.renderLog(); this.nextTurn(); return;
                 }
                 document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
@@ -2039,7 +2039,7 @@
                 this.combatState.turnQueue = living.map(c => ({ unit: c, initiative: this._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
-                this.log.push({ text: `--- Round ${this.combatState.round} ---`, type: 'combat' });
+                this._pushLog(`--- Round ${this.combatState.round} ---`, 'combat', { phase: 'round' });
                 // Increase hunger for all combatants each round (unless Never Hungry cheat)
                 for (const c of living) {
                     if (!this.cheats.neverHungry) {
@@ -2222,7 +2222,7 @@
                 }
                 const actor = this.activeActor || this.player;
                 if (!this._canReachCombatTarget(actor, target, action)) {
-                    this.log.push({ text: `${actor.name} cannot reach ${target.name} from here.`, type: 'combat' });
+                    this._pushLog(`${actor.name} cannot reach ${target.name} from here.`, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'targeting' });
                     this.targetSelection = null;
                     this.renderLog();
                     this.renderCreatures();
@@ -2350,7 +2350,7 @@
                         break;
 	                    }
 	                }
-	                this.log.push({ text: result, type: 'combat' });
+	                this._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
                 this._emitCombatAction(action, actor, target, result);
                 this.renderLog();
                 this.renderCreatures();
@@ -5297,7 +5297,31 @@
             _escapeHtml(value) {
                 return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
             },
+            _currentCombatLogMeta(extra = {}) {
+                if (!this.combatState?.active) return {};
+                const entry = this.combatState.turnQueue?.[this.combatState.currentTurn] || null;
+                const actor = extra.actor || entry?.unit || null;
+                return {
+                    round: this.combatState.round || 1,
+                    turnIndex: (this.combatState.currentTurn ?? 0) + 1,
+                    actorId: actor ? (actor.id || actor.name || null) : null,
+                    actorName: actor?.name || null,
+                    phase: extra.phase || (actor ? 'turn' : 'combat')
+                };
+            },
+            _pushLog(entry, type = 'discovery', meta = {}) {
+                const next = typeof entry === 'string' ? { text: entry, type } : { ...(entry || {}) };
+                next.type = next.type || type;
+                const needsCombatMeta = next.type === 'combat' && this.combatState?.active;
+                const full = needsCombatMeta ? { ...this._currentCombatLogMeta(meta), ...next, ...meta } : { ...next, ...meta };
+                this.log.push(full);
+                return full;
+            },
             _logTimestamp(entry, indexFromEnd = 0) {
+                if (entry?.round && entry?.turnIndex) {
+                    const actor = entry.actorName ? ` · ${entry.actorName}` : '';
+                    return `R${entry.round} T${entry.turnIndex}${actor}`;
+                }
                 if (entry?.round && this.combatState?.round) {
                     const diff = Math.max(0, this.combatState.round - entry.round);
                     if (diff === 0) return 'this round';

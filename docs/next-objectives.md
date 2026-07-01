@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 184/184 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 185/185 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -106,7 +106,7 @@
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses/effects apply and remove from player stats/state, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
-- Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
+- Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
 - Combat log view preferences now persist independently: selected filter and search text are saved to `fff-log-view`, reloaded on app init, and invalid stored values fall back safely
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
@@ -151,9 +151,6 @@
 - Add dismissal consequences/dialogue if party relationship systems become meaningful
 - Decide whether mobile chips need the same full management surface or a long-press menu
 
-#### 19. Advanced Combat Log
-- Add richer turn/round metadata at log creation sites instead of inferring relative labels at render time
-
 #### 20. Advanced Mobile Gestures
 - Tune long-press duration and context-menu placement after device testing
 - Add richer haptic patterns per action outcome if the UX benefits from it
@@ -180,7 +177,7 @@
 ```
 FightFuckFeed.tactical/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~6120 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~6144 lines)
     content-system.js — Template engine, content tiers, localization registry (~463 lines)
     serialization.js  — Binary save/load codec (~268 lines)
     module-system.js  — Mod loader and hook system (~275 lines)
@@ -192,7 +189,7 @@ FightFuckFeed.tactical/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 184 tests, syntax/structure/combat behavior
+  test/test.js       — 185 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

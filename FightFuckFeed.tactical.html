@@ -1819,16 +1819,16 @@
 
             _getSpeciesBaseStats(sid) {
                 const defaults = {
-                    human: { MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10, str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
-                    wolf: { MPun: 90, MPle: 90, Figh: 14, Feas: 12, Flir: 8, Fuck: 10, Flee: 12, Feed: 12, str: 14, con: 10, spd: 12, int: 8, wis: 10, cha: 8 },
-                    fox: { MPun: 85, MPle: 100, Figh: 10, Feas: 10, Flir: 14, Fuck: 12, Flee: 14, Feed: 10, str: 10, con: 8, spd: 14, int: 12, wis: 10, cha: 14 },
-                    cat: { MPun: 80, MPle: 90, Figh: 12, Feas: 10, Flir: 12, Fuck: 10, Flee: 16, Feed: 10, str: 12, con: 8, spd: 16, int: 10, wis: 10, cha: 12 },
-                    dragon: { MPun: 150, MPle: 120, Figh: 18, Feas: 18, Flir: 8, Fuck: 14, Flee: 6, Feed: 18, str: 18, con: 16, spd: 10, int: 12, wis: 14, cha: 8 },
-                    naga: { MPun: 110, MPle: 100, Figh: 12, Feas: 16, Flir: 10, Fuck: 12, Flee: 10, Feed: 16, str: 12, con: 14, spd: 10, int: 10, wis: 12, cha: 10 },
-                    slime: { MPun: 80, MPle: 120, Figh: 8, Feas: 16, Flir: 10, Fuck: 18, Flee: 8, Feed: 14, str: 8, con: 18, spd: 8, int: 10, wis: 10, cha: 10 },
+                    human: { MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10, hunger: 30, str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+                    wolf: { MPun: 90, MPle: 90, Figh: 14, Feas: 12, Flir: 8, Fuck: 10, Flee: 12, Feed: 12, hunger: 60, str: 14, con: 10, spd: 12, int: 8, wis: 10, cha: 8 },
+                    fox: { MPun: 85, MPle: 100, Figh: 10, Feas: 10, Flir: 14, Fuck: 12, Flee: 14, Feed: 10, hunger: 40, str: 10, con: 8, spd: 14, int: 12, wis: 10, cha: 14 },
+                    cat: { MPun: 80, MPle: 90, Figh: 12, Feas: 10, Flir: 12, Fuck: 10, Flee: 16, Feed: 10, hunger: 45, str: 12, con: 8, spd: 16, int: 10, wis: 10, cha: 12 },
+                    dragon: { MPun: 150, MPle: 120, Figh: 18, Feas: 18, Flir: 8, Fuck: 14, Flee: 6, Feed: 18, hunger: 80, str: 18, con: 16, spd: 10, int: 12, wis: 14, cha: 8 },
+                    naga: { MPun: 110, MPle: 100, Figh: 12, Feas: 16, Flir: 10, Fuck: 12, Flee: 10, Feed: 16, hunger: 50, str: 12, con: 14, spd: 10, int: 10, wis: 12, cha: 10 },
+                    slime: { MPun: 80, MPle: 120, Figh: 8, Feas: 16, Flir: 10, Fuck: 18, Flee: 8, Feed: 14, hunger: 70, str: 8, con: 18, spd: 8, int: 10, wis: 10, cha: 10 },
                     harpy: { MPun: 85, MPle: 90, Figh: 10, Feas: 10, Flir: 12, Fuck: 10, Flee: 18, Feed: 10, str: 10, con: 8, spd: 18, int: 10, wis: 10, cha: 12 },
-                    bunny: { MPun: 70, MPle: 100, Figh: 6, Feas: 8, Flir: 14, Fuck: 14, Flee: 20, Feed: 8, str: 6, con: 6, spd: 20, int: 8, wis: 10, cha: 14 },
-                    default: { MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10, str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 }
+                    bunny: { MPun: 70, MPle: 100, Figh: 6, Feas: 8, Flir: 14, Fuck: 14, Flee: 20, Feed: 8, hunger: 20, str: 6, con: 6, spd: 20, int: 8, wis: 10, cha: 14 },
+                    default: { MPun: 100, MPle: 100, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10, hunger: 40, str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 }
                 };
                 return defaults[sid] || defaults.default;
             },
@@ -1928,7 +1928,7 @@
                         Figh: Math.floor(base.Figh * (0.8 + lvl * 0.15)), Feas: Math.floor(base.Feas * (0.8 + lvl * 0.15)),
                         Flir: Math.floor(base.Flir * (0.8 + lvl * 0.15)), Fuck: Math.floor(base.Fuck * (0.8 + lvl * 0.15)),
                         Flee: Math.floor(base.Flee * (0.8 + lvl * 0.15)), Feed: Math.floor(base.Feed * (0.8 + lvl * 0.15)),
-                        str: Math.floor(base.str * (0.8 + lvl * 0.15)), con: Math.floor(base.con * (0.8 + lvl * 0.15)), spd: Math.floor(base.spd * (0.8 + lvl * 0.15)),
+                        hunger: Math.floor((base.hunger || 40) * (0.8 + lvl * 0.15)), str: Math.floor(base.str * (0.8 + lvl * 0.15)), con: Math.floor(base.con * (0.8 + lvl * 0.15)), spd: Math.floor(base.spd * (0.8 + lvl * 0.15)),
                         int: Math.floor(base.int * (0.8 + lvl * 0.15)), wis: Math.floor(base.wis * (0.8 + lvl * 0.15)), cha: Math.floor(base.cha * (0.8 + lvl * 0.15)),
                         tags: [sp.name], stomach: [], womb: [], balls: [], cum: 0, status: {}, disposition: this.DISPOSITION.ENEMY,
                         expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.2
@@ -2028,6 +2028,12 @@
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
                 this.log.push({ text: `--- Round ${this.combatState.round} ---`, type: 'combat' });
+                // Increase hunger for all combatants each round (unless Never Hungry cheat)
+                for (const c of living) {
+                    if (!this.cheats.neverHungry) {
+                        c.hunger = Math.min(100, (c.hunger || 0) + 3);
+                    }
+                }
                 // Per-turn digestion
                 this._processDigestion();
                 this.processTurn();
@@ -2094,6 +2100,9 @@
                 const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
                 let html = '';
+                if (this.cheats.instantWin) {
+                    html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" onclick="App.instantWinCombat()">⚡ Instant Win</button>`;
+                }
                 if (enemies.length > 0) {
                     html += `<button class="action-btn primary" onclick="App.selectTarget('fight')">⚔️ Fight</button>`;
                     html += `<button class="action-btn" onclick="App.selectTarget('fuck')">🔥 Fuck</button>`;
@@ -2170,7 +2179,7 @@
                         break;
                     }
                     case 'feast': {
-                        const canEat = target.CPun <= target.MPun * 0.3 || (player.Feas > target.Flee && player.size >= target.size - 2);
+                        const canEat = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (player.Feas > target.Flee && player.size >= target.size - 2);
                         if (canEat) {
                             const prey = { ...target, alive: true, inStomach: true };
                             if (!player.stomach) player.stomach = [];
@@ -2376,23 +2385,40 @@
             allyTurn(ally) {
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 if (enemies.length === 0) { this.nextTurn(); return; }
-                // Personality-based targeting
-                const target = enemies[Math.floor(Math.random() * enemies.length)];
-                // Check if ally should act independently (disobedience)
-                if (this.settings.powerDynamics && ally.CPle >= ally.MPle * 0.9 && Math.random() < 0.3) {
-                    // Disobedient ally - may act on party member or enemy
-                    if (Math.random() < 0.5 && this.party.length > 1) {
-                        const other = this.party[Math.floor(Math.random() * this.party.length)];
-                        if (other !== ally && other.CPun > 0) {
-                            this.log.push({ text: `${ally.name} ignores orders and approaches ${other.name} on their own...`, type: 'combat' });
-                            // Could fuck or eat them - simplified for now
-                            this.log.push({ text: `${ally.name} shares an intimate moment with ${other.name}.`, type: 'combat' });
-                            this.renderLog();
-                            this.nextTurn();
-                            return;
+                // DUMB AI STATE MACHINE
+                if (ally.dumbAI) {
+                    // High hunger (>90): auto-feast on weakest enemy
+                    if (ally.hunger > 90) {
+                        const weakest = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
+                        const canEat = weakest.CPun <= weakest.MPun * 0.3 || (ally.Feas > weakest.Flee && ally.size >= weakest.size - 2);
+                        if (canEat) {
+                            if (!ally.stomach) ally.stomach = [];
+                            ally.stomach.push({ ...weakest, alive: true, inStomach: true });
+                            weakest.CPun = 0;
+                            ally.hunger = Math.max(0, ally.hunger - 50);
+                            this.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole!`, type: 'combat' });
+                            this.renderLog(); this.renderCreatures(); this.renderParty(); this.nextTurn(); return;
+                        }
+                    }
+                    // High arousal (>80% MPle): auto-fuck nearest enemy
+                    if (ally.CPle >= ally.MPle * 0.8) {
+                        const target = enemies[Math.floor(Math.random() * enemies.length)];
+                        let charm = ally.Fuck + ally.Flir + Math.random() * 10;
+                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        if (charm > resist) {
+                            target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
+                            this.log.push({ text: `${ally.name} is aroused and seduces ${target.name}! Pleasure rises to ${target.CPle}/${target.MPle}.`, type: 'combat' });
+                            if (target.CPle >= target.MPle * 0.8) {
+                                target.disposition = this.DISPOSITION.FRIENDLY;
+                                target.willing = true;
+                                this.log.push({ text: `${target.name} submits to ${ally.name}!`, type: 'combat' });
+                            }
+                            this.renderLog(); this.renderCreatures(); this.nextTurn(); return;
                         }
                     }
                 }
+                // Default behavior: attack weakest
+                const target = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
                 const ar = this._AR(ally.Figh);
                 const def = target.con || 10;
                 const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
@@ -2443,6 +2469,11 @@
                 if (target.CPun <= 0) {
                     result += ` ${target.name} falls!`;
                     if (target.name === this.player.name) {
+                        if (this.cheats.godMode) {
+                            target.CPun = Math.max(1, target.CPun);
+                            this.log.push({ text: 'God Mode saved you from death!', type: 'combat' });
+                            this.renderLog(); this.nextTurn(); return;
+                        }
                         this.log.push({ text: 'You have fallen! Game Over!', type: 'combat' });
                         this.renderLog();
                         if (this.settings.hardcore) {
@@ -2476,6 +2507,12 @@
                 this.processTurn();
             },
 
+            instantWinCombat() {
+                this.log.push({ text: 'INSTANT WIN! All enemies are defeated.', type: 'combat' });
+                this.renderLog();
+                this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY) c.CPun = 0; });
+                this.endCombat(true);
+            },
             endCombat(victory) {
                 this.mode = this.GAME_MODE.NORMAL;
                 this.combatState.active = false;
@@ -2577,7 +2614,7 @@
                         break;
                     }
                     case 'feast': {
-                        if (this.player.size >= target.size - 2 && this.player.Feas > target.Flee) {
+                        if (this.cheats.canEatAnything || (this.player.size >= target.size - 2 && this.player.Feas > target.Flee)) {
                             if (!this.player.stomach) this.player.stomach = [];
                             this.player.stomach.push({ ...target, alive: true, inStomach: true });
                             target.CPun = 0;
@@ -2942,6 +2979,46 @@
                     <button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
+            cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false, instantWin: false },
+            toggleCheat(cheat) {
+                this.cheats[cheat] = !this.cheats[cheat];
+                const isOn = this.cheats[cheat];
+                this.log.push({ text: `Cheat ${cheat}: ${isOn ? 'ON' : 'OFF'}`, type: 'discovery' });
+                if (cheat === 'overpowered' && isOn && this.player) {
+                    this.player.Figh = 99; this.player.Feas = 99; this.player.Flir = 99;
+                    this.player.Fuck = 99; this.player.Flee = 99; this.player.Feed = 99;
+                    this.player.str = 99; this.player.con = 99; this.player.spd = 99;
+                    this.player.int = 99; this.player.wis = 99; this.player.cha = 99;
+                    this.player.MPun = 999; this.player.CPun = 999;
+                    this.player.MPle = 999; this.player.CPle = 999;
+                    this.log.push({ text: 'Overpowered! All stats maxed.', type: 'discovery' });
+                    this.renderParty();
+                }
+                this.renderLog();
+            },
+            clearAllData() {
+                if (!confirm('WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?')) return;
+                // Delete all saves from IndexedDB
+                for (let i = 1; i <= 5; i++) {
+                    this._dbDelete('saves', 'slot' + i).catch(() => {});
+                    localStorage.removeItem('fff-save-time-slot' + i);
+                }
+                localStorage.removeItem('fff-last-slot');
+                localStorage.removeItem('fff-last-save-time');
+                localStorage.removeItem('tactical-has-played');
+                localStorage.removeItem('tactical-tutorial-complete');
+                localStorage.removeItem('fff-content-prefs');
+                // Delete module DB
+                const req = indexedDB.deleteDatabase('FFFme_Modules');
+                req.onsuccess = () => console.log('Module DB deleted');
+                req.onerror = () => console.error('Failed to delete module DB');
+                // Delete saves DB
+                const req2 = indexedDB.deleteDatabase('FFF_Saves');
+                req2.onsuccess = () => console.log('Saves DB deleted');
+                req2.onerror = () => console.error('Failed to delete saves DB');
+                alert('All data cleared. Refresh the page to start fresh.');
+                location.reload();
+            },
             showSettings() {
                 document.getElementById('screen-settings').style.display = 'block';
                 document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
@@ -3059,7 +3136,33 @@
                 try {
                     const saveData = await this._dbGet('saves', slotName);
                     if (!saveData) { alert('No save in ' + slotName); return false; }
-                    const loaded = Binary.loadGame(saveData);
+                    let loaded;
+                    try {
+                        loaded = Binary.loadGame(saveData);
+                    } catch (e) {
+                        console.error('Incompatible save:', e);
+                        const choice = prompt(`Save data is incompatible or corrupted. Options:
+
+1 = Delete save
+2 = Download backup (as base64)
+3 = Cancel
+
+Enter 1, 2, or 3:`);
+                        if (choice === '1') {
+                            await this._dbDelete('saves', slotName);
+                            localStorage.removeItem('fff-save-time-' + slotName);
+                            alert('Save deleted.');
+                        } else if (choice === '2') {
+                            const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)));
+                            const blob = new Blob([base64], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = 'fff_save_' + slotName + '_backup.txt'; a.click();
+                            URL.revokeObjectURL(url);
+                            alert('Backup downloaded. Save remains intact.');
+                        }
+                        return false;
+                    }
                     this.player = {
                         name: loaded.playerName, species: loaded.playerSpecies, icon: this.species.find(s => s.id === loaded.playerSpecies)?.icon || '👤',
                         gender: 'female', level: loaded.playerLevel, CPun: loaded.playerHp, MPun: loaded.playerMaxHp, CPle: Math.floor(loaded.playerMaxHp * 0.5), MPle: loaded.playerMaxHp,
@@ -3238,6 +3341,18 @@
                 <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Watersports</div><div style="color: var(--text-muted); font-size: 12px;">Urine content</div></div><input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
                 <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Bone Crushing</div><div style="color: var(--text-muted); font-size: 12px;">Graphic crushing/breaking content</div></div><input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
                 <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Unwilling Prey Warnings</div><div style="color: var(--text-muted); font-size: 12px;">Warn before unwilling vore scenes</div></div><input type="checkbox" id="toggle-warn" onchange="App.settings.unwillingWarnings = this.checked" style="accent-color: var(--accent-primary); width: 20px; height: 20px;"></label>
+            </div>
+        </div>
+        
+        <!-- Cheat System -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;">
+            <h3 style="color: var(--text-secondary); margin: 0 0 12px 0; font-size: 14px;">🎮 Cheats</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">God Mode</div><div style="color: var(--text-muted); font-size: 12px;">Player never dies</div></div><input type="checkbox" id="cheat-god" onchange="App.toggleCheat('godMode')" style="accent-color: var(--accent-warning); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Never Hungry</div><div style="color: var(--text-muted); font-size: 12px;">Hunger never increases</div></div><input type="checkbox" id="cheat-hunger" onchange="App.toggleCheat('neverHungry')" style="accent-color: var(--accent-warning); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Can Eat Anything</div><div style="color: var(--text-muted); font-size: 12px;">Ignore size restrictions for vore</div></div><input type="checkbox" id="cheat-eat" onchange="App.toggleCheat('canEatAnything')" style="accent-color: var(--accent-warning); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Overpowered</div><div style="color: var(--text-muted); font-size: 12px;">Max all stats</div></div><input type="checkbox" id="cheat-op" onchange="App.toggleCheat('overpowered')" style="accent-color: var(--accent-warning); width: 20px; height: 20px;"></label>
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><div style="color: var(--text-primary);">Instant Win</div><div style="color: var(--text-muted); font-size: 12px;">End any combat immediately</div></div><input type="checkbox" id="cheat-win" onchange="App.toggleCheat('instantWin')" style="accent-color: var(--accent-warning); width: 20px; height: 20px;"></label>
             </div>
         </div>
         

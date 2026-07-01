@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 163/163 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 164/164 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -109,7 +109,7 @@
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, screen-reader status roles, and an export action that emits the currently filtered log as text
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
-- Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
+- Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
 
 ---
 
@@ -119,7 +119,7 @@
 
 #### 1. Remaining Multi-Creature Interaction Model
 - Expand the first-pass target-selection UI with clearer mobile affordances and target summaries if playtesting shows the new `Target` buttons are too subtle
-- Further harden party-to-party feeding when mixed self-target/helper/prey groups are selected; selected helpers now reject or route more clearly in the covered one-to-many/many-to-one cases, self-included `fight` spars across participants, self-included `feed` tends the target instead of consuming helpers, and self-included social actions share pleasure with participants, but self-included feast and richer non-asymmetric groups still need explicit semantics
+- Further harden party-to-party feeding when mixed self-target/helper/prey groups are selected; selected helpers now reject or route more clearly in the covered one-to-many/many-to-one cases, self-included `fight` spars across participants, self-included `feed` tends the target instead of consuming helpers, self-included social actions share pleasure with participants, and self-included `feast` rejects with selection guidance, but richer non-asymmetric groups still need explicit semantics
 - Continue testing multi-select stability through more edge cases: current coverage includes target cleanup for dismissal, creature defeat, containment, and load/reset; still test save/load persistence expectations, target removal from tile transitions, and more self-included group combinations
 - Expand asymmetric one-to-many and many-to-one exploration action resolution:
   - `c2 + c3 -> c1`: both selected actors act together on one target; fight is two-against-one, feast uses a primary consumer unless chewing/splitting is available

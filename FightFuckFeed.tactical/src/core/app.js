@@ -3544,6 +3544,10 @@
                     }
                     case 'feast': {
                         const primary = livingActors[0];
+                        if (this.party.includes(target) && livingActors.includes(target)) {
+                            result = `${target.name} cannot feast on themself. Select other party members as actors to consume this target, or select ${target.name} alone to feast on another target.`;
+                            break;
+                        }
                         if (this.settings.chewing && livingActors.length > 1) {
                             result = this._groupChewFeast(livingActors, target);
                             break;

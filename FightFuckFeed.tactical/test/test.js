@@ -1294,6 +1294,22 @@ test('Self-included group fight spars across participants instead of self-attack
   assertContains(App.log[App.log.length - 1].text, 'spar together', 'Self-included fight should log sparring semantics');
 });
 
+test('Self-included group feast rejects instead of routing self-consumption', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', size: 4, appetite: 4, Feas: 30, Flee: 1 });
+  const helper = makeUnit('Helper', { id: 'helper-1', size: 6, appetite: 6, Feas: 30 });
+  App.player = player;
+  App.party = [player, target, helper];
+  App.explorationActorIds = ['target-1', 'helper-1'];
+  App.outsideActionForParty('feast', 1);
+  assertEqual(App.party.includes(target), true, 'Rejected self-included feast should leave target in party');
+  assertEqual(App.party.includes(helper), true, 'Rejected self-included feast should leave helper in party');
+  assertEqual(target.stomach.length, 0, 'Rejected self-included feast should not put target in their own stomach');
+  assertEqual(helper.stomach.length, 0, 'Rejected self-included feast should not silently route target into helper');
+  assertContains(App.log[App.log.length - 1].text, 'cannot feast on themself', 'Self-included feast should explain the rule');
+});
+
 test('Single selected party member can be fed to another full-health party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

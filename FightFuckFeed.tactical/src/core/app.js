@@ -24,6 +24,10 @@
                 enemies: 'Enemies'
             },
             SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
+            NOCTURNAL_SPECIES: ['bat', 'rat'],
+            DIURNAL_SPECIES: ['bunny', 'deer'],
+            DAY_VISIBILITY_RADIUS: 2,
+            NIGHT_VISIBILITY_PENALTY: 2,
             SUB_ACTIONS: {
                 feast: {
                     swallow: { label: 'Swallow', sfwLabel: 'Consume', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
@@ -111,6 +115,59 @@
             },
             _actionIcon(key) {
                 return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', interact: '💋', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+            },
+            _isNight(hour = this.timeHour) {
+                const normalized = ((hour % 24) + 24) % 24;
+                return normalized >= 20 || normalized < 6;
+            },
+            _timeLabel() {
+                const hour = ((this.timeHour % 24) + 24) % 24;
+                return `${this._isNight(hour) ? '🌙' : '☀️'} ${String(hour).padStart(2, '0')}:00`;
+            },
+            _renderTime() {
+                const label = this._timeLabel();
+                ['time-display', 'mobile-time-display'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = label;
+                });
+            },
+            _advanceTime(hours = 1) {
+                this.timeHour = (((this.timeHour || 0) + hours) % 24 + 24) % 24;
+                this._renderTime();
+            },
+            _partyHasDarkvision() {
+                return this.party.some(unit => unit && unit.CPun > 0 && unit.darkvision);
+            },
+            _mapVisibilityRadius() {
+                if (!this._isNight() || this._partyHasDarkvision()) return this.DAY_VISIBILITY_RADIUS;
+                return Math.max(1, this.DAY_VISIBILITY_RADIUS - this.NIGHT_VISIBILITY_PENALTY);
+            },
+            _isNocturnalSpecies(sid) {
+                return this.NOCTURNAL_SPECIES.includes(sid) || Boolean(this.SPECIES_TEMPERAMENT[sid]?.nocturnal);
+            },
+            _isDiurnalSpecies(sid) {
+                return this.DIURNAL_SPECIES.includes(sid);
+            },
+            _timeAdjustedEncounterTable(table) {
+                if (!this._isNight() || !Array.isArray(table)) return table;
+                return table.map(entry => {
+                    if (typeof entry === 'string') {
+                        if (this._isNocturnalSpecies(entry)) return { id: entry, weight: 15 };
+                        if (this._isDiurnalSpecies(entry)) return { id: entry, weight: 2 };
+                        return { id: entry, weight: 10 };
+                    }
+                    let weight = entry.weight || 10;
+                    if (this._isNocturnalSpecies(entry.id)) weight *= 1.5;
+                    if (this._isDiurnalSpecies(entry.id)) weight *= 0.2;
+                    return { ...entry, weight: Math.max(1, Math.round(weight)) };
+                });
+            },
+            _applyTimeOfDayToCreature(creature) {
+                if (!creature || !this._isNight() || !this._isDiurnalSpecies(creature.species)) return creature;
+                creature.status = creature.status || {};
+                creature.status.sleep = creature.status.sleep || { turns: 2 };
+                creature.asleep = true;
+                return creature;
             },
             _contextActionKeys() {
                 const keys = ['inventory'];
@@ -289,6 +346,7 @@
             creatures: [], // ALL creatures at location with disposition
             inventory: [],
             location: { x: 0, y: 0 },
+            timeHour: 8,
             log: [],
             worldMap: new Map(),
             exploredTiles: new Set(),
@@ -634,6 +692,7 @@
                 this.party = [this.player];
                 this.creatures = [];
                 this.location = { x: 0, y: 0 };
+                this.timeHour = 8;
                 this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
                 this.worldMap = new Map();
                 this.exploredTiles = new Set();
@@ -645,6 +704,7 @@
                 this.activeActor = null;
                 this.exploreTile(0, 0);
                 this.showScreen('game');
+                this._renderTime();
                 this.renderMap();
                 this.renderParty();
                 this.renderCreatures();
@@ -1079,6 +1139,7 @@
                     oldTile.items = this.inventory.slice();
                 }
                 this.location.x += dx; this.location.y += dy;
+                this._advanceTime(1);
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
 
                 // Check if destination was explored BEFORE we call exploreTile (which marks it)
@@ -1144,7 +1205,7 @@
                 const count = isBoss ? 1 : Math.max(1, Math.floor(Math.random() * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
                 const creatures = [];
                 for (let i = 0; i < count; i++) {
-                    const pool = biome.encounterTable;
+                    const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
                     let sid = this._weightedPick(pool);
                     const danger = biome.danger || 3;
                     const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
@@ -1177,6 +1238,7 @@
                         expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.3,
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
+                    this._applyTimeOfDayToCreature(creature);
                     // Calculate disposition based on temperament
                     creature.disposition = this._calculateEncounterDisposition(creature, this.player);
                     creatures.push(creature);
@@ -1217,7 +1279,7 @@
                 // Structure always has an encounter inside
                 if (Math.random() < struct.encounterChance) {
                     // Pick from structure-appropriate pool or biome pool
-                    const pool = biome.encounterTable;
+                    const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
                     const sid = this._weightedPick(pool);
                     const sp = this.species.find(s => s.id === sid);
                     if (!sp) return;
@@ -1246,6 +1308,7 @@
                             expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: disp === this.DISPOSITION.FRIENDLY,
                             ...this.SPECIES_ABILITIES[sid] || {}
                         };
+                        this._applyTimeOfDayToCreature(creature);
                         enemies.push(creature);
                     }
                     this.creatures = this._tileCreatures([...(this.creatures || []), ...enemies]);
@@ -3377,6 +3440,7 @@
             // ===== MAP RENDERING =====
             renderMap() {
                 const cx = this.location.x, cy = this.location.y;
+                const visibilityRadius = this._mapVisibilityRadius();
                 let html = '';
                 for (let dy = -2; dy <= 2; dy++) {
                     html += '<div style="display:flex;gap:4px;justify-content:center;">';
@@ -3385,13 +3449,14 @@
                         const isCenter = dx === 0 && dy === 0;
                         const isExplored = this.isExplored(tx, ty);
                         const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
-                        const tile = (isExplored || isAdjacent) ? this.getTile(tx, ty) : null;
+                        const isVisible = Math.abs(dx) <= visibilityRadius && Math.abs(dy) <= visibilityRadius;
+                        const tile = (isVisible && (isExplored || isAdjacent)) ? this.getTile(tx, ty) : null;
                         const biome = tile ? this.biomes[tile.biome] : null;
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
-                        const isFar = Math.abs(dx) > 1 || Math.abs(dy) > 1;
-                        let content = (isExplored || isAdjacent) ? (biome ? biome.icon : '?') : '·';
+                        let content = tile ? (biome ? biome.icon : '?') : '·';
                         let classes = 'map-tile';
                         if (isCenter) classes += ' center';
+                        else if (!isVisible) classes += ' far';
                         else if (isExplored) classes += ' explored';
                         else if (isAdjacent) classes += ' moveable';
                         else classes += ' far';
@@ -3406,6 +3471,7 @@
 	                containers.forEach(container => { container.innerHTML = html; });
 	                const mobileCoords = document.getElementById('mobile-coords');
 	                if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
+	                this._renderTime();
 	            },
 
             // ===== SCENE / LOG =====
@@ -3470,6 +3536,7 @@
 	            },
             clearLog() { this.log = []; this.renderLog(); },
             search() {
+                this._advanceTime(1);
                 const tile = this.getTile(this.location.x, this.location.y);
                 const roll = Math.random();
                 let result = '';
@@ -3897,8 +3964,9 @@ Enter 1, 2, or 3:`);
 	                        this.player.mc = true;
 	                    } else {
 	                        this.party.unshift(this.player);
-	                    }
+                    }
                     this.currentBiome = loaded.currentBiome || 'forest';
+                    this.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;
                     this.log = (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];

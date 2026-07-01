@@ -159,6 +159,7 @@
         Binary.array(Binary.string).preencode(s, obj.log || []); Binary.string.preencode(s, obj.currentBiome || 'forest');
         Binary.json.preencode(s, obj.worldMap || {}); Binary.json.preencode(s, obj.exploredTiles || []);
         Binary.json.preencode(s, obj.inventory || []);
+        Binary.vuint.preencode(s, obj.timeHour || 0);
       },
       encode(s, obj) {
         Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
@@ -169,6 +170,7 @@
         Binary.array(Binary.string).encode(s, obj.log || []); Binary.string.encode(s, obj.currentBiome || 'forest');
         Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
         Binary.json.encode(s, obj.inventory || []);
+        Binary.vuint.encode(s, obj.timeHour || 0);
       },
       decode(s) {
         const version = Binary.vuint.decode(s);
@@ -199,6 +201,11 @@
         } else {
           result.inventory = [];
         }
+        if (version >= 5 && s.start < s.end) {
+          try { result.timeHour = Binary.vuint.decode(s); } catch(e) { result.timeHour = 8; }
+        } else {
+          result.timeHour = 8;
+        }
         return result;
       }
     }
@@ -216,7 +223,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 4,
+      version: 5,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -230,7 +237,8 @@
       currentBiome: appState.currentBiome || 'forest',
       worldMap: worldMapObj,
       exploredTiles: exploredArray,
-      inventory: appState.inventory || []
+      inventory: appState.inventory || [],
+      timeHour: appState.timeHour || 0
     };
     return Binary.encode(Binary.codecs.save, saveData);
   };
@@ -241,5 +249,4 @@
 
   window.Binary = Binary;
 })();
-
 

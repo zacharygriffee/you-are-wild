@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 101/101 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 105/105 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -94,6 +94,7 @@
 - Terrain effects now modify combat: water changes speed for swimmers/non-swimmers, dense forest grants cover and slows units, cave darkness can cause non-darkvision physical misses, swamp can stick grounded combatants, and flying creatures cannot be hit by ground melee
 - Combat cards and mobile chips show live attack-order badges, including the current focused actor/target (`Now #n`) and queued group-action badges (`Group/Target Action #n`) that resolve at the slowest participant's turn while intervening turns remain available
 - Status expansion supports bleed, burn spread, freeze, stun, sleep, charm, and fear, with combat hooks for damage ticks, skip turns, wake-on-damage, reversed target selection, and fear flee
+- Day-night cycle tracks an in-game hour, advances on movement/search, persists in saves, displays in desktop/mobile map UI, boosts nocturnal encounter weights at night, suppresses diurnal encounter weights, puts diurnal spawns to sleep, and narrows night minimap visibility unless the party has darkvision
 
 ---
 
@@ -101,29 +102,20 @@
 
 ### 🟡 Tier 2: High Impact
 
-#### 1. Day-Night Cycle
-- Time tracking: each `move` or `search` advances time by 1 hour
-- Night (20:00–06:00): nocturnal creatures active (bat, rat), diurnal creatures sleep (bunny, deer)
-- Night encounter rates: +50% for nocturnal, -80% for diurnal
-- Visibility: -2 tiles at night; darkvision creatures unaffected
-- UI: display current time, sun/moon icon in header
-
----
-
 ### 🟢 Tier 3: Medium Impact
 
-#### 2. Party AI Orders
+#### 1. Party AI Orders
 - Per-ally tactic assignment: `aggressive` (always attack), `defensive` (protect player), `healer` (feed wounded), `scavenger` (feast on corpses), `passive` (do nothing unless attacked)
 - UI: accordion in party panel, dropdown per ally
 - AI overrides: healer ally prioritizes `feed.heal` on most wounded; scavenger ally auto-feasts on corpses after combat
 
-#### 3. Enemy AI Improvements
+#### 2. Enemy AI Improvements
 - Flee when outnumbered: if `enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5`, 50% flee chance
 - Call for reinforcements: pack animals (`pack: true`) on low HP have 30% chance to spawn 1 more same-species ally
 - Prioritize livestock: predators (`isPredatorOf`) target livestock/prey creatures first, even if weaker than player
 - Ambush behavior: `ambush: true` creatures get first strike if player hasn't explored tile yet
 
-#### 4. Landmark Interiors (Sub-Maps)
+#### 3. Landmark Interiors (Sub-Maps)
 - Cabins, shrines, caves have persistent interior maps (5×5 or 7×7 grid)
 - Entering a structure switches to interior map, new biome-specific encounter table
 - Exiting returns to overworld tile

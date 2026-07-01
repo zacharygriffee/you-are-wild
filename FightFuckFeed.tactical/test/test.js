@@ -241,6 +241,7 @@ test('Binary save/load preserves full world tile state', () => {
     party: [makeSerializableUnit('You')],
     location: { x: 1, y: 2 },
     currentBiome: 'forest',
+    timeHour: 21,
     inventory: [{ id: 'i1', name: 'Apple' }],
     log: [{ text: 'saved' }],
     exploredTiles: new Set(['1,2']),
@@ -265,6 +266,7 @@ test('Binary save/load preserves full world tile state', () => {
   assertEqual(tile.creatures.length, 2, 'World save should preserve tile creatures');
   assertEqual(tile.creatures[0].disposition, 'corpse', 'World save should preserve corpse disposition');
   assertEqual(tile.creatures[1].disposition, 'friendly', 'World save should preserve friendly disposition');
+  assertEqual(loaded.timeHour, 21, 'World save should preserve current hour');
 });
 
 test('Binary load tolerates old saves without world data', () => {
@@ -305,6 +307,7 @@ test('Binary load tolerates old saves without world data', () => {
   assertEqual(Object.keys(loaded.worldMap).length, 0, 'Old save without worldMap should load empty worldMap');
   assertEqual(loaded.exploredTiles.length, 0, 'Old save without exploredTiles should load empty exploredTiles');
   assertEqual(loaded.inventory.length, 0, 'Old save without inventory should load empty inventory');
+  assertEqual(loaded.timeHour, 8, 'Old save without time should default to morning');
 });
 
 // === CONTENT SYSTEM TESTS ===
@@ -1277,6 +1280,64 @@ test('Minimap resolves adjacent tile biomes without exploring them', () => {
   const adjacentBiome = App.biomes[adjacentTile.biome];
   assertContains(elements.get('mini-map').innerHTML, adjacentBiome.icon, 'Adjacent tile biome icon should render on minimap');
   assertContains(elements.get('mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
+});
+
+test('Movement and search advance the in-game hour', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.timeHour = 8;
+  App.worldMap = new Map();
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.getTile(0, 0).explored = true;
+  App.getTile(1, 0).explored = true;
+  App.move(1, 0);
+  assertEqual(App.timeHour, 9, 'Move should advance time by one hour');
+  assertEqual(elements.get('time-display').textContent, '☀️ 09:00', 'Header time should update after movement');
+  App.search();
+  assertEqual(App.timeHour, 10, 'Search should advance time by one hour');
+});
+
+test('Night encounter table favors nocturnal species and suppresses diurnal species', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.timeHour = 21;
+  const table = App._timeAdjustedEncounterTable([
+    { id: 'bat', weight: 10 },
+    { id: 'bunny', weight: 10 },
+    { id: 'wolf', weight: 10 }
+  ]);
+  assertEqual(table.find(entry => entry.id === 'bat').weight, 15, 'Nocturnal weight should increase at night');
+  assertEqual(table.find(entry => entry.id === 'bunny').weight, 2, 'Diurnal weight should drop at night');
+  assertEqual(table.find(entry => entry.id === 'wolf').weight, 10, 'Neutral species weight should stay stable');
+});
+
+test('Night map visibility shrinks unless the party has darkvision', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.timeHour = 21;
+  App.worldMap = new Map();
+  App.exploredTiles = new Set(['0,0', '2,0']);
+  App.getTile(0, 0).explored = true;
+  const farTile = App.getTile(2, 0);
+  farTile.biome = 'cave';
+  farTile.explored = true;
+  App.renderMap();
+  assertNotContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Far explored tile should be hidden by night visibility');
+  App.player.darkvision = true;
+  App.renderMap();
+  assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Darkvision should restore full minimap visibility');
+});
+
+test('Diurnal creatures spawned at night start asleep', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.timeHour = 21;
+  const bunny = { species: 'bunny', status: {} };
+  App._applyTimeOfDayToCreature(bunny);
+  assert(bunny.status.sleep, 'Diurnal creature should receive sleep status at night');
+  assertEqual(bunny.asleep, true, 'Diurnal creature should be marked asleep at night');
 });
 
 test('Combat target selection is rendered on creature panel cards', () => {

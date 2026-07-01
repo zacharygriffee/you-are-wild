@@ -141,6 +141,20 @@
             min-width: 0;
         }
 
+        .time-display {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 74px;
+            padding: var(--space-xs) var(--space-sm);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
         .nav-btn {
             padding: var(--space-sm) var(--space-md);
             background: var(--bg-tertiary);
@@ -1512,6 +1526,7 @@
                     <span class="app-logo">🐺</span>
                     <span class="app-title">FightFuckFeed.me</span>
                 </div>
+                <div class="time-display" id="time-display">☀️ 08:00</div>
                 <nav class="app-nav">
                     <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
                     <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
@@ -1545,7 +1560,7 @@
 	                            <div class="mobile-map-card">
 	                                <div class="mobile-map-header">
 	                                    <span>Map</span>
-	                                    <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span>
+	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map"></div>
 	                            </div>

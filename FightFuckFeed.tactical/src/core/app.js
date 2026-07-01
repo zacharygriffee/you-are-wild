@@ -156,6 +156,7 @@
             selectedSpecies: 'human',
             selectedGender: 'female',
             selectedParts: ['clit'], // 'cock', 'clit', 'tits', 'pecs', 'none'
+            selectedEncounterPreference: 'any',
             selectedBodyParts: [],
             playerName: 'You',
 
@@ -171,6 +172,13 @@
                     this.showTutorial();
                     localStorage.setItem('tactical-has-played', 'true');
                 }
+                // Load saved settings
+                try {
+                    const savedSettings = JSON.parse(localStorage.getItem('fff-settings') || '{}');
+                    for (const k of Object.keys(savedSettings)) { this.settings[k] = savedSettings[k]; }
+                    const savedPrefs = JSON.parse(localStorage.getItem('fff-content-prefs') || '{}');
+                    for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
+                } catch(e) { console.warn('Settings load failed', e); }
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
@@ -1594,6 +1602,43 @@
                 req2.onerror = () => console.error('Failed to delete saves DB');
                 alert('All data cleared. Refresh the page to start fresh.');
                 location.reload();
+            },
+            selectEncounterPreference(val) { this.selectedEncounterPreference = val; },
+            updateTierButtons() {
+                const btns = { safe: 'tier-safe', mature: 'tier-mature', adult: 'tier-adult' };
+                for (const [tier, id] of Object.entries(btns)) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.background = (tier === 'safe' && CONTENT.preferences.maxTier === 1) ||
+                                            (tier === 'mature' && CONTENT.preferences.maxTier === 2) ||
+                                            (tier === 'adult' && CONTENT.preferences.maxTier === 3)
+                                            ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
+                        el.style.color = (tier === 'safe' && CONTENT.preferences.maxTier === 1) ||
+                                         (tier === 'mature' && CONTENT.preferences.maxTier === 2) ||
+                                         (tier === 'adult' && CONTENT.preferences.maxTier === 3)
+                                         ? 'var(--bg-primary)' : 'var(--text-secondary)';
+                    }
+                }
+            },
+            saveSettings() {
+                localStorage.setItem('fff-settings', JSON.stringify({
+                    endoMode: this.settings.endoMode,
+                    fatalVore: this.settings.fatalVore,
+                    slowDigestion: this.settings.slowDigestion,
+                    statAbsorption: this.settings.statAbsorption,
+                    chewing: this.settings.chewing,
+                    allTheWayThrough: this.settings.allTheWayThrough,
+                    powerDynamics: this.settings.powerDynamics,
+                    refractoryPeriod: this.settings.refractoryPeriod,
+                    sameSpeciesBonus: this.settings.sameSpeciesBonus,
+                    fluidEnabled: this.settings.fluidEnabled,
+                    scat: this.settings.scat,
+                    watersports: this.settings.watersports,
+                    boneCrushing: this.settings.boneCrushing,
+                    unwillingWarnings: this.settings.unwillingWarnings,
+                    hardcore: this.settings.hardcore,
+                }));
+                this.updateTierButtons();
             },
             showSettings() {
                 document.getElementById('screen-settings').style.display = 'block';

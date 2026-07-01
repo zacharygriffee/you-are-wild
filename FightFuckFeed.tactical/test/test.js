@@ -1916,7 +1916,7 @@ test('Quest state persists through binary saves', () => {
   App.inventory = [];
   App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
   const loaded = Binary.loadGame(Binary.saveGame(App));
-  assertEqual(loaded.version, 8, 'Save version should include quest, merchant timing, and equipment state');
+  assertEqual(loaded.version, 9, 'Save version should include quest, merchant timing, equipment, and perk state');
   assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
   assertEqual(loaded.questState.dayCount, 0, 'Day count should persist');
   assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');
@@ -2036,6 +2036,60 @@ test('Equipment state persists through binary saves', () => {
   App.inventory = [];
   const loaded = Binary.loadGame(Binary.saveGame(App));
   assertEqual(loaded.questState.playerEquipment.head.name, 'Leather Cap', 'Equipped item should persist in save metadata');
+});
+
+test('Perk tree queues player choices on level up instead of random perks', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { level: 1, xp: 90, xpToNext: 100, perks: [], pendingPerkChoices: 0 });
+  App.party = [App.player];
+  App.gainXP(20);
+  assertEqual(App.player.level, 2, 'XP should level the player');
+  assertEqual(App.player.pendingPerkChoices, 1, 'Level up should queue a perk choice');
+  assertEqual(App.player.perks.length, 0, 'Level up should not randomly assign a perk');
+  assertContains(elements.get('scene-description').innerHTML, 'Choose Perk', 'Level up should show perk selection UI');
+});
+
+test('Perk choices apply bonuses and enforce tree prerequisites', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { Figh: 10, Feas: 10, str: 10, perks: [], pendingPerkChoices: 1 });
+  App.party = [App.player];
+  assertEqual(App._canChoosePerk(App.PERK_TREES.predator.perks[1], 'predator'), false, 'Voracious should require one predator perk');
+  App.choosePerk('predator_instinct');
+  assertEqual(App.player.Figh, 12, 'Chosen perk should apply its stat bonus');
+  assertEqual(App.player.pendingPerkChoices, 0, 'Choosing a perk should consume one pending choice');
+  App.player.pendingPerkChoices = 1;
+  assertEqual(App._canChoosePerk(App.PERK_TREES.predator.perks[1], 'predator'), true, 'Prerequisite should pass after one predator perk');
+  App.choosePerk('voracious');
+  assertEqual(App.player.Feas, 13, 'Second-tier perk should apply bonus');
+});
+
+test('Character stats expose pending perk selection', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { perks: [], pendingPerkChoices: 2 });
+  App.party = [App.player];
+  App.showCharacterStats();
+  assertContains(elements.get('scene-description').innerHTML, 'Choose Perk (2)', 'Character stats should show pending perk button');
+  App.showPerkSelection();
+  assertContains(elements.get('scene-description').innerHTML, 'Predator', 'Perk selection should render predator tree');
+  assertContains(elements.get('scene-description').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
+  assertContains(elements.get('scene-description').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
+});
+
+test('Perk state persists through binary saves', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    perks: [{ id: 'predator_instinct', tree: 'predator', name: 'Predator Instinct', stat: 'Figh', val: 2 }],
+    pendingPerkChoices: 1
+  });
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.exploredTiles = new Set();
+  App.inventory = [];
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.questState.playerPerks[0].id, 'predator_instinct', 'Selected perks should persist');
+  assertEqual(loaded.questState.pendingPerkChoices, 1, 'Pending perk choices should persist');
 });
 
 // === SUMMARY ===

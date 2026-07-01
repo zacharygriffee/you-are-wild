@@ -2132,7 +2132,7 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
 
     const saveData = {
-      version: 8,
+      version: 9,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
@@ -2152,7 +2152,9 @@
         quests: appState.quests || [],
         playerGold: appState.player?.gold || 0,
         dayCount: appState.dayCount || 0,
-        playerEquipment: appState.player?.equipment || {}
+        playerEquipment: appState.player?.equipment || {},
+        playerPerks: appState.player?.perks || [],
+        pendingPerkChoices: appState.player?.pendingPerkChoices || 0
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);
@@ -2530,6 +2532,32 @@
                 'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, value: 55, desc: 'Ring. Flir +2, CHA +1' }
             },
             EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
+            PERK_TREES: {
+                predator: {
+                    label: 'Predator',
+                    perks: [
+                        { id: 'predator_instinct', name: 'Predator Instinct', stat: 'Figh', val: 2, desc: 'Figh +2.' },
+                        { id: 'voracious', name: 'Voracious', stat: 'Feas', val: 3, desc: 'Feas +3.', requires: { tree: 'predator', count: 1 } },
+                        { id: 'apex_pressure', name: 'Apex Pressure', stat: 'str', val: 2, desc: 'STR +2.', requires: { tree: 'predator', count: 2 } }
+                    ]
+                },
+                seducer: {
+                    label: 'Seducer',
+                    perks: [
+                        { id: 'soft_approach', name: 'Soft Approach', stat: 'Flir', val: 2, desc: 'Flir +2.' },
+                        { id: 'seductive_aura', name: 'Seductive Aura', stat: 'cha', val: 2, desc: 'CHA +2.', requires: { tree: 'seducer', count: 1 } },
+                        { id: 'devoted_attention', name: 'Devoted Attention', stat: 'Fuck', val: 3, desc: 'Fuck +3.', requires: { tree: 'seducer', count: 2 } }
+                    ]
+                },
+                survivor: {
+                    label: 'Survivor',
+                    perks: [
+                        { id: 'iron_will', name: 'Iron Will', stat: 'wis', val: 2, desc: 'WIS +2.' },
+                        { id: 'swift_strides', name: 'Swift Strides', stat: 'spd', val: 2, desc: 'SPD +2.', requires: { tree: 'survivor', count: 1 } },
+                        { id: 'iron_gut', name: 'Iron Gut', stat: 'con', val: 3, desc: 'CON +3.', requires: { tree: 'survivor', count: 2 } }
+                    ]
+                }
+            },
             XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 60, flirtEnemy: 35, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
 
             // === STATE ===
@@ -3295,6 +3323,7 @@
                 unit.bodyParts = unit.bodyParts || this.SPECIES_DEFAULT_PARTS[unit.species] || [];
                 unit.tags = unit.tags || [species?.name || unit.species || 'Unknown'];
                 unit.perks = unit.perks || [];
+                unit.pendingPerkChoices = unit.pendingPerkChoices || 0;
                 unit.stomach = unit.stomach || [];
                 unit.womb = unit.womb || [];
                 unit.balls = unit.balls || [];
@@ -5898,23 +5927,88 @@
                     this.player.Figh += 1; this.player.Feas += 1; this.player.Flir += 1; this.player.Fuck += 1; this.player.Flee += 1; this.player.Feed += 1;
                     this.player.str += 1; this.player.con += 1; this.player.spd += 1; this.player.int += 1; this.player.wis += 1; this.player.cha += 1;
                     this.log.push({ text: 'Level up! You are now level ' + this.player.level + '. All stats increased!', type: 'discovery' });
-                    if (this.player.level % 5 === 0) this._grantPerk();
+                    this._queuePerkChoice();
                 }
                 this.renderParty();
+                if ((this.player.pendingPerkChoices || 0) > 0) this.showPerkSelection();
             },
-            _grantPerk() {
-                const perks = [
-                    { name: 'Iron Gut', stat: 'con', val: 2, desc: 'CON +2, stomach capacity +1' },
-                    { name: 'Seductive Aura', stat: 'cha', val: 2, desc: 'CHA +2, seduce bonus' },
-                    { name: 'Swift Strikes', stat: 'spd', val: 2, desc: 'SPD +2, priority bonus' },
-                    { name: 'Voracious', stat: 'Feas', val: 3, desc: 'Feas +3, feast bonus' },
-                    { name: 'Iron Will', stat: 'wis', val: 2, desc: 'WIS +2, resist seduction' },
-                    { name: 'Predator', stat: 'str', val: 2, desc: 'STR +2, fight bonus' }
-                ];
-                const perk = perks[Math.floor(Math.random() * perks.length)];
-                this.player.perks.push(perk);
-                this.player[perk.stat] += perk.val;
-                this.log.push({ text: 'Perk gained: ' + perk.name + '! ' + perk.desc, type: 'discovery' });
+
+            _queuePerkChoice() {
+                if (!this.player) return;
+                this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + 1;
+                this.log.push({ text: 'Choose a new perk from the perk tree.', type: 'discovery' });
+            },
+
+            _perkTreeCount(treeId, unit = this.player) {
+                return (unit?.perks || []).filter(perk => perk.tree === treeId).length;
+            },
+
+            _hasPerk(perkId, unit = this.player) {
+                return (unit?.perks || []).some(perk => perk.id === perkId);
+            },
+
+            _canChoosePerk(perk, treeId, unit = this.player) {
+                if (!perk || !unit || this._hasPerk(perk.id, unit)) return false;
+                if (!perk.requires) return true;
+                if (perk.requires.perk && !this._hasPerk(perk.requires.perk, unit)) return false;
+                if (perk.requires.tree && this._perkTreeCount(perk.requires.tree, unit) < (perk.requires.count || 1)) return false;
+                return true;
+            },
+
+            _availablePerkChoices(unit = this.player) {
+                const choices = [];
+                for (const [treeId, tree] of Object.entries(this.PERK_TREES)) {
+                    for (const perk of tree.perks) {
+                        choices.push({ ...perk, tree: treeId, treeLabel: tree.label, available: this._canChoosePerk(perk, treeId, unit) });
+                    }
+                }
+                return choices;
+            },
+
+            choosePerk(perkId) {
+                if (!this.player || (this.player.pendingPerkChoices || 0) <= 0) return;
+                const choice = this._availablePerkChoices().find(perk => perk.id === perkId);
+                if (!choice || !choice.available) {
+                    this.log.push({ text: 'That perk is not available yet.', type: 'discovery' });
+                    this.renderLog();
+                    this.showPerkSelection();
+                    return;
+                }
+                this.player.perks = this.player.perks || [];
+                this.player.perks.push({
+                    id: choice.id,
+                    tree: choice.tree,
+                    name: choice.name,
+                    stat: choice.stat,
+                    val: choice.val,
+                    desc: choice.desc
+                });
+                if (choice.stat) this.player[choice.stat] = (this.player[choice.stat] || 0) + (choice.val || 0);
+                this.player.pendingPerkChoices = Math.max(0, (this.player.pendingPerkChoices || 0) - 1);
+                this.log.push({ text: 'Perk chosen: ' + choice.name + '. ' + choice.desc, type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                if (this.player.pendingPerkChoices > 0) this.showPerkSelection();
+                else this.showCharacterStats();
+                this.autoSave();
+            },
+
+            showPerkSelection() {
+                if (!this.player) return;
+                const pending = this.player.pendingPerkChoices || 0;
+                const choices = this._availablePerkChoices();
+                let html = `<h3>Choose Perk</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Pending choices: ${pending}</p><div style="display:grid;gap:12px;">`;
+                for (const [treeId, tree] of Object.entries(this.PERK_TREES)) {
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${tree.label}</div><div style="display:grid;gap:8px;margin-top:8px;">`;
+                    choices.filter(perk => perk.tree === treeId).forEach(perk => {
+                        const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
+                        const req = perk.requires ? ` Requires ${perk.requires.count || 1} ${this.PERK_TREES[perk.requires.tree]?.label || perk.requires.tree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.` : '';
+                        html += `<button class="nav-btn" style="text-align:left;white-space:normal;padding:8px;" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
+                    });
+                    html += `</div></div>`;
+                }
+                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showCharacterStats()">Back</button>`;
+                document.getElementById('scene-description').innerHTML = html;
             },
 
             // ===== MERCHANTS / TRADE =====
@@ -6716,6 +6810,7 @@
             showCharacterStats() {
                 if (!this.player) return;
                 const p = this.player;
+                const perkButton = (p.pendingPerkChoices || 0) > 0 ? `<button class="nav-btn" style="margin-top:12px" onclick="App.showPerkSelection()">Choose Perk (${p.pendingPerkChoices})</button>` : '';
                 let html = `<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary)">📊 ${p.name}</h1>
                     <p>Level ${p.level} ${p.species} | XP: ${p.xp}/${p.xpToNext}</p>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
@@ -6727,7 +6822,7 @@
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Equipment</h3><p>${this._equipmentSummary(p)}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${(p.perks || []).map(pk => pk.name).join(', ') || 'None'}</p></div>
                     </div>
-                    <button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
+                    ${perkButton}<button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
@@ -7087,6 +7182,8 @@ Enter 1, 2, or 3:`);
                     this.quests = loaded.questState?.quests || [];
                     this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
                     this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
+                    this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
+                    this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };

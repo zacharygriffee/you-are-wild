@@ -1926,7 +1926,7 @@ Enter 1, 2, or 3:`);
             document.getElementById('screen-mods').style.display = 'none';
             document.getElementById('screen-market').style.display = 'none';
             document.getElementById('save-manager').style.display = 'none';
-            document.getElementById('screen-save-manager')?.style && (document.getElementById('screen-save-manager').style.display = 'none');
+            // screen-save-manager doesn't exist; save-manager is the actual id
             if (App.player && App.player.CPun > 0) {
                 document.getElementById('screen-menu').style.display = 'none';
                 document.getElementById('app').style.display = 'grid';

@@ -1642,7 +1642,14 @@
             exploredTiles: new Set(),
             currentBiome: 'forest',
             activeSlot: 'slot1',
-            settings: { powerDynamics: false, endoMode: true, slowDigestion: false },
+            settings: {
+                powerDynamics: false, endoMode: false, slowDigestion: false,
+                fatalVore: true, chewing: false, allTheWayThrough: false,
+                hardcore: false, scat: false, watersports: false,
+                boneCrushing: false, unwillingWarnings: false,
+                statAbsorption: true, refractoryPeriod: false,
+                sameSpeciesBonus: true, fluidEnabled: true
+            },
 
             combatState: {
                 active: false, turnQueue: [], currentTurn: 0, round: 1,
@@ -1787,7 +1794,7 @@
                     MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),
                     Figh: baseStats.Figh, Feas: baseStats.Feas, Flir: baseStats.Flir, Fuck: baseStats.Fuck, Flee: baseStats.Flee, Feed: baseStats.Feed,
                     str: baseStats.str, con: baseStats.con, spd: baseStats.spd, int: baseStats.int, wis: baseStats.wis, cha: baseStats.cha,
-                    tags: [species.name], perks: [], stomach: [], womb: [], balls: [], cum: 0,
+                    tags: [species.name], perks: [], stomach: [], womb: [], balls: [], cum: 0, status: {},
                     expanded: true, hero: true, ally: false, mc: true, obedient: true, willing: true
                 };
                 this.party = [this.player];
@@ -1866,6 +1873,13 @@
                     this.renderLog();
                     return;
                 }
+                // Save current tile state before moving
+                const oldKey = `${this.location.x},${this.location.y}`;
+                const oldTile = this.worldMap.get(oldKey);
+                if (oldTile) {
+                    oldTile.creatures = [...this.creatures];
+                    oldTile.items = this.inventory.slice(); // snapshot of dropped items could be added here
+                }
                 this.location.x += dx; this.location.y += dy;
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                 const tile = this.exploreTile(this.location.x, this.location.y);
@@ -1874,8 +1888,18 @@
                 if (tile.hasLandmark) {
                     this.log.push({ text: `Discovered ${tile.landmarkName}!`, type: 'discovery' });
                 }
-                this.creatures = [];
-                if (Math.random() < biome.encounterChance) { this.spawnEncounter(tile); }
+                // Restore creatures from tile if revisiting, or clear
+                if (tile.creatures && tile.creatures.length > 0) {
+                    this.creatures = tile.creatures;
+                    const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+                    if (enemies.length > 0) {
+                        this.log.push({ text: `You encounter ${enemies.map(e => e.name).join(', ')}!`, type: 'combat' });
+                        this.startCombat(enemies);
+                    }
+                } else {
+                    this.creatures = [];
+                    if (Math.random() < biome.encounterChance) { this.spawnEncounter(tile); }
+                }
                 this.renderMap();
                 this.renderCreatures();
                 this.renderLog();
@@ -1906,7 +1930,7 @@
                         Flee: Math.floor(base.Flee * (0.8 + lvl * 0.15)), Feed: Math.floor(base.Feed * (0.8 + lvl * 0.15)),
                         str: Math.floor(base.str * (0.8 + lvl * 0.15)), con: Math.floor(base.con * (0.8 + lvl * 0.15)), spd: Math.floor(base.spd * (0.8 + lvl * 0.15)),
                         int: Math.floor(base.int * (0.8 + lvl * 0.15)), wis: Math.floor(base.wis * (0.8 + lvl * 0.15)), cha: Math.floor(base.cha * (0.8 + lvl * 0.15)),
-                        tags: [sp.name], stomach: [], womb: [], balls: [], cum: 0, disposition: this.DISPOSITION.ENEMY,
+                        tags: [sp.name], stomach: [], womb: [], balls: [], cum: 0, status: {}, disposition: this.DISPOSITION.ENEMY,
                         expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.2
                     };
                     enemies.push(enemy);
@@ -2008,6 +2032,13 @@
                         if (!prey.alive) continue;
                         const dmg = this.settings.slowDigestion ? 2 : 5;
                         prey.CPun -= dmg;
+                        // Stat absorption: attacker gains from prey
+                        if (this.settings.statAbsorption && prey.stats) {
+                            const absorb = Math.floor(dmg * 0.1);
+                            unit.str = (unit.str || 10) + absorb;
+                            unit.con = (unit.con || 10) + absorb;
+                            unit.Figh = (unit.Figh || 10) + absorb;
+                        }
                         if (prey.CPun <= 0) {
                             if (this.settings.endoMode) {
                                 prey.CPun = 1;
@@ -2022,6 +2053,12 @@
                         if (!prey.alive) continue;
                         const dmg = this.settings.slowDigestion ? 1 : 3;
                         prey.CPun -= dmg;
+                        if (this.settings.statAbsorption && prey.stats) {
+                            const absorb = Math.floor(dmg * 0.1);
+                            unit.cha = (unit.cha || 10) + absorb;
+                            unit.Flir = (unit.Flir || 10) + absorb;
+                            unit.Fuck = (unit.Fuck || 10) + absorb;
+                        }
                         if (prey.CPun <= 0) {
                             if (this.settings.endoMode) { prey.CPun = 1; prey.alive = true; }
                             else { prey.alive = false; this.log.push({ text: `${prey.name} perishes in ${unit.name}'s womb`, type: 'combat' }); }
@@ -2031,6 +2068,11 @@
                         if (!prey.alive) continue;
                         const dmg = this.settings.slowDigestion ? 1 : 3;
                         prey.CPun -= dmg;
+                        if (this.settings.statAbsorption && prey.stats) {
+                            const absorb = Math.floor(dmg * 0.1);
+                            unit.Feas = (unit.Feas || 10) + absorb;
+                            unit.Fuck = (unit.Fuck || 10) + absorb;
+                        }
                         if (prey.CPun <= 0) {
                             if (this.settings.endoMode) { prey.CPun = 1; prey.alive = true; }
                             else { prey.alive = false; this.log.push({ text: `${prey.name} dissolves in ${unit.name}'s balls`, type: 'combat' }); }
@@ -2062,7 +2104,7 @@
                 const targets = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 let html = `<h3>Select target to ${action}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
                 targets.forEach((e, i) => {
-                    html += `<button class="option-card" onclick="App.executeAction('\${action}', ${i})">`;
+                    html += `<button class="option-card" onclick="App.executeAction('${action}', ${i})">`;
                     html += `<div style="font-size:32px">${e.icon}</div>`;
                     html += `<div style="color:var(--text-primary);font-weight:600">${e.name}</div>`;
                     html += `<div style="color:var(--text-muted);font-size:12px">HP: ${e.CPun}/${e.MPun}</div>`;
@@ -2157,7 +2199,7 @@
                     html += `<div style="font-size:28px">${a.icon}</div><div>${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.CPun}/${a.MPun}</div>`;
                     html += `</button>`;
                 });
-                html += `</div><div style="margin-top:12px"><button class="action-btn primary" onclick="App.confirmSyncParticipants('\${syncType}')">Confirm Participants</button></div>`;
+                html += `</div><div style="margin-top:12px"><button class="action-btn primary" onclick="App.confirmSyncParticipants('${syncType}')">Confirm Participants</button></div>`;
                 html += `<button class="nav-btn" onclick="App.showSyncMenu()">Back</button>`;
                 document.getElementById('scene-description').innerHTML = html;
                 this._syncSelected = [];
@@ -2176,14 +2218,14 @@
             confirmSyncParticipants(syncType) {
                 const participants = this._syncSelected.map(i => this.party[i]).filter(Boolean);
                 if (participants.length < 2) {
-                    document.getElementById('scene-description').innerHTML = `<p>Need at least 2 participants for a sync action.</p><button class="nav-btn" onclick="App.selectSyncParticipants('\${syncType}')">Back</button>`;
+                    document.getElementById('scene-description').innerHTML = `<p>Need at least 2 participants for a sync action.</p><button class="nav-btn" onclick="App.selectSyncParticipants('${syncType}')">Back</button>`;
                     return;
                 }
                 // Select target
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 let html = `<h3>Select sync target</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
                 enemies.forEach((e, i) => {
-                    html += `<button class="option-card" onclick="App.queueSyncAction('\${syncType}', ${i})">`;
+                    html += `<button class="option-card" onclick="App.queueSyncAction('${syncType}', ${i})">`;
                     html += `<div style="font-size:32px">${e.icon}</div><div style="color:var(--text-primary);font-weight:600">${e.name}</div><div style="color:var(--text-muted);font-size:12px">HP: ${e.CPun}/${e.MPun}</div>`;
                     html += `</button>`;
                 });
@@ -2368,7 +2410,19 @@
                     if (target.name === this.player.name) {
                         this.log.push({ text: 'You have fallen! Game Over!', type: 'combat' });
                         this.renderLog();
-                        setTimeout(() => { if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); } }, 1000);
+                        if (this.settings.hardcore) {
+                            this.log.push({ text: 'HARDCORE MODE: Your save has been deleted.', type: 'combat' });
+                            this.renderLog();
+                            localStorage.removeItem('fff-last-slot');
+                            localStorage.removeItem('fff-last-save-time');
+                            for (let i = 1; i <= 5; i++) {
+                                localStorage.removeItem('fff-save-time-slot' + i);
+                            }
+                            this._dbDelete('saves', this.activeSlot).catch(() => {});
+                            setTimeout(() => { App.showScreen('menu'); }, 2000);
+                        } else {
+                            setTimeout(() => { if (confirm('Game Over! Return to menu?')) { App.showScreen('menu'); } }, 1000);
+                        }
                         this.combatState.active = false;
                         return;
                     }
@@ -2422,7 +2476,7 @@
                 let html = `<h3>Interact with creatures</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
                 [...allies, ...friendlies].forEach((c, i) => {
                     const type = this.party.includes(c) ? 'party' : 'creature';
-                    html += `<button class="option-card" onclick="App.showCreatureInteract('\${type}', ${i})">`;
+                    html += `<button class="option-card" onclick="App.showCreatureInteract('${type}', ${i})">`;
                     html += `<div style="font-size:32px">${c.icon}</div><div style="color:var(--text-primary);font-weight:600">${c.name}</div>`;
                     html += `<div style="color:var(--text-muted);font-size:12px">${type === 'party' ? 'Ally' : 'Friendly'} | HP: ${c.CPun}/${c.MPun}</div>`;
                     html += `</button>`;
@@ -2435,14 +2489,14 @@
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return;
                 let html = `<h3>${target.name}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
-                html += `<button class="action-btn" onclick="App.outsideAction('fight', '\${type}', ${index})">⚔️ Fight</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('fuck', '\${type}', ${index})">🔥 Fuck</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('feast', '\${type}', ${index})">🍽️ Feast</button>`;
+                html += `<button class="action-btn" onclick="App.outsideAction('fight', '${type}', ${index})">⚔️ Fight</button>`;
+                html += `<button class="action-btn" onclick="App.outsideAction('fuck', '${type}', ${index})">🔥 Fuck</button>`;
+                html += `<button class="action-btn" onclick="App.outsideAction('feast', '${type}', ${index})">🍽️ Feast</button>`;
                 if (type === 'creature' && target.disposition === this.DISPOSITION.FRIENDLY) {
                     html += `<button class="action-btn primary" onclick="App.recruitCreatureFromIndex(${index})">💕 Recruit</button>`;
                 }
                 if (type === 'party') {
-                    html += `<button class="action-btn" onclick="App.outsideAction('inspect', '\${type}', ${index})">👁️ Inspect</button>`;
+                    html += `<button class="action-btn" onclick="App.outsideAction('inspect', '${type}', ${index})">👁️ Inspect</button>`;
                 }
                 html += `<button class="nav-btn" style="margin-top:8px" onclick="App.showInteractMenu()">Back</button>`;
                 html += `</div>`;
@@ -2648,7 +2702,7 @@
                     else if (unit.disposition === this.DISPOSITION.NEUTRAL) dispLabel = 'Neutral';
                 }
                 const stomachCount = (unit.stomach?.length || 0) + (unit.womb?.length || 0) + (unit.balls?.length || 0);
-                return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" onclick="App.toggleUnit(${index},'\${type}')">
+                return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
                         <span class="unit-icon">${unit.icon}</span>
                         <div class="unit-info">

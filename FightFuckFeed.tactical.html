@@ -1364,6 +1364,11 @@
                         break;
                 }
                 
+                // Enemy retaliation (if still alive and not seduced/fled)
+                if (this.enemies.length > 0 && this.enemies[0].hp > 0 && action !== 'fuck') {
+                    this.enemyRetaliation(this.enemies[0]);
+                }
+                
                 this.log.push({ text: result, type: 'combat' });
                 this.renderLog();
                 this.renderEnemies();
@@ -1385,7 +1390,47 @@
                 this.renderParty();
             },
             
-            // Log rendering
+            // Enemy AI retaliation
+            enemyRetaliation(enemy) {
+                const player = this.player;
+                const ctx = {
+                    attacker: enemy.name,
+                    defender: 'You',
+                    target: 'you',
+                    damage: Math.floor(Math.random() * 12) + 5
+                };
+                
+                // Simple AI: 70% attack, 20% special, 10% hesitate
+                const roll = Math.random();
+                let actionText = '';
+                
+                if (roll < 0.7) {
+                    // Normal attack
+                    player.hp -= ctx.damage;
+                    actionText = `${enemy.name} strikes you for ${ctx.damage} damage!`;
+                    
+                    if (player.hp <= 0) {
+                        actionText += ' You collapse!';
+                        setTimeout(() => {
+                            alert('Game Over! You were defeated.');
+                        }, 500);
+                    }
+                } else if (roll < 0.9) {
+                    // Special (grapple)
+                    const grappleDmg = Math.floor(ctx.damage * 0.7);
+                    player.hp -= grappleDmg;
+                    actionText = `${enemy.name} grapples you, dealing ${grappleDmg} damage!`;
+                } else {
+                    // Hesitate
+                    actionText = `${enemy.name} hesitates, sizing you up.`;
+                }
+                
+                this.log.push({ text: actionText, type: 'combat' });
+                this.renderLog();
+                this.renderParty();
+            },
+
+    // Log rendering
             renderLog() {
                 const container = document.getElementById('log-content');
                 if (!container) return;

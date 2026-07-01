@@ -192,14 +192,21 @@ const CONTENT_SYSTEM = {
         const type = parts[1];
         const variant = parts[2] || 'default';
         
-        // Try to get templates
+        // Try to get templates (with variant)
         let templates = this.templates[category]?.[type]?.[variant];
         
-        // Fallback to any available variant
+        // If no variant found, check if the type itself IS a tier container
         if (!templates && this.templates[category]?.[type]) {
-            const variants = Object.keys(this.templates[category][type]);
-            if (variants.length > 0) {
-                templates = this.templates[category][type][variants[0]];
+            const all = this.templates[category][type];
+            const hasTiers = 'safe' in all || 'mature' in all || 'adult' in all;
+            if (hasTiers) {
+                templates = all; // The type is a direct tier container (safe/mature/adult)
+            } else {
+                // It's a variant container, pick first available variant
+                const variants = Object.keys(all);
+                if (variants.length > 0) {
+                    templates = all[variants[0]];
+                }
             }
         }
         

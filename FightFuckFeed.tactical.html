@@ -1855,8 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
-</body>
-</html>
 
 <!-- ============================================= -->
 <!-- MODULAR DLC SYSTEM -->
@@ -2139,6 +2137,9 @@ MODULE_SYSTEM.init().then(() => {
 <div id="screen-mods" class="screen" style="display: none; background: var(--bg-primary); padding: 24px; overflow: auto;">
     <div style="max-width: 900px; margin: 0 auto;">
         <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Module Manager</h1>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+            <button class="nav-btn" onclick="returnToGame()">← Return to Game</button>
+        </div>
         <p style="color: var(--text-muted); margin-bottom: 24px;">
             Install and manage custom content packs, biomes, species, and gameplay features.
         </p>
@@ -3043,6 +3044,10 @@ window.MARKET = MODULE_MARKETPLACE;
 
 <!-- Marketplace Screen -->
 <div id="screen-market" class="screen" style="display: none; background: var(--bg-primary); overflow: auto;">
+    <div style="max-width: 900px; margin: 0 auto;">
+        <div style="display: flex; justify-content: flex-end; padding: 16px 0;">
+            <button class="nav-btn" onclick="returnToGame()">← Return to Game</button>
+        </div>
     <div id="market-content">
         <!-- Populated by JS -->
     </div>
@@ -3066,3 +3071,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+
+<script>
+// Global navigation helpers
+window.returnToGame = function() {
+    document.getElementById('screen-settings').style.display = 'none';
+    document.getElementById('screen-mods').style.display = 'none';
+    document.getElementById('screen-market').style.display = 'none';
+    document.getElementById('app').style.display = 'grid';
+    document.getElementById('screen-game').classList.add('active');
+};
+</script>
+
+</body>
+</html>

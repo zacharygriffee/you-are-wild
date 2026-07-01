@@ -1592,7 +1592,10 @@
                 
                 this.startCombat([enemy]);
                 
-                this.log.push({ text: `Encountered ${enemy.name}!`, type: 'combat' });
+                const ctx = { species: enemySpecies.id, mood: 'hostile', voreEnabled: true, explicit: true };
+                let encounterText = CONTENT.encounter(enemySpecies.id, ctx);
+                if (encounterText.includes('Missing content')) encounterText = `Encountered ${enemy.name}!`;
+                this.log.push({ text: encounterText, type: 'combat' });
                 this.renderLog();
                 
                 // Show mobile actions if on mobile
@@ -1768,34 +1771,47 @@ executeAction(action, enemyIndex) {
     if (!enemy || enemy.hp <= 0) return;
     
     const player = this.player;
+    const ctx = {
+        target: enemy.name,
+        species: enemy.species,
+        attacker: 'You',
+        defender: enemy.name,
+        voreEnabled: true,
+        explicit: true
+    };
     let result = '';
     
     switch(action) {
         case 'attack':
             const dmg = (player.stats?.str || 10) + Math.floor(Math.random() * 10);
             enemy.hp -= dmg;
-            result = `You hit ${enemy.name} for ${dmg} damage!`;
+            ctx.damage = dmg;
+            result = CONTENT.combat('attack', ctx);
+            if (result.includes('Missing content')) result = `You hit ${enemy.name} for ${dmg} damage!`;
             if (enemy.hp <= 0) {
-                result += ` ${enemy.name} defeated!`;
+                result += ' ' + CONTENT.combat('defeat', ctx);
+                if (result.includes('Missing content')) result += ` ${enemy.name} defeated!`;
                 this.enemies = this.enemies.filter(e => e.hp > 0);
             }
             break;
         case 'seduce':
             const success = (player.stats?.cha || 10) + Math.random() * 10 > (enemy.stats?.wis || 10);
             if (success) {
-                result = `${enemy.name} joins you!`;
                 this.party.push({...enemy, hp: enemy.maxHp, tags: ['Lover']});
                 this.enemies = this.enemies.filter(e => e !== enemy);
+                result = CONTENT.actionResult('seduce', ctx);
+                if (result.includes('Missing content')) result = `${enemy.name} joins you!`;
             } else {
-                result = `${enemy.name} resists!`;
+                result = `${enemy.name} resists your advances!`;
             }
             break;
         case 'consume':
             if (enemy.hp < enemy.maxHp * 0.3 || player.stats.str > enemy.stats.con) {
-                result = `You devour ${enemy.name}!`;
                 player.hp = Math.min(player.maxHp, player.hp + 20);
                 player.stats.str += 1;
                 this.enemies = this.enemies.filter(e => e !== enemy);
+                result = CONTENT.actionResult('consume', ctx);
+                if (result.includes('Missing content')) result = `You devour ${enemy.name}!`;
             } else {
                 result = `${enemy.name} is too strong to consume!`;
             }
@@ -1838,6 +1854,7 @@ allyAction(allyIndex) {
     let html = `<h3>Act on ${ally.name}</h3>`;
     html += `<div style="display:flex;flex-direction:column;gap:12px;">`;
     html += `<button class="action-btn" onclick="App.executeAllyAction('consume', ${allyIndex})">🍽️ Consume</button>`;
+    html += `<button class="action-btn" onclick="App.executeAllyAction('fuck', ${allyIndex})">🔥 Fuck</button>`;
     html += `<button class="action-btn" onclick="App.executeAllyAction('seduce', ${allyIndex})">💕 Seduce</button>`;
     html += `<button class="action-btn" onclick="App.executeAllyAction('inspect', ${allyIndex})">👁️ Inspect</button>`;
     html += `<button class="nav-btn" style="margin-top:8px" onclick="App.showAllyMenu()">Back</button>`;
@@ -1850,17 +1867,26 @@ executeAllyAction(action, allyIndex) {
     if (!ally) return;
     
     let result = '';
+    const ctx = {
+        target: ally.name,
+        species: ally.species,
+        voreEnabled: true,
+        explicit: true
+    };
+    
     switch(action) {
         case 'consume':
             this.party.splice(allyIndex, 1);
             this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
             this.player.stats.str += 2;
-            result = `You consumed ${ally.name}. Power grows!`;
+            result = CONTENT.actionResult('consume', ctx);
+            if (result.includes('Missing content')) result = `You consumed ${ally.name}. Power grows!`;
             break;
         case 'seduce':
             ally.tags = ally.tags.filter(t => !['Angry'].includes(t));
             ally.tags.push('Lover');
-            result = `${ally.name} is devoted to you.`;
+            result = CONTENT.actionResult('seduce', ctx);
+            if (result.includes('Missing content')) result = `${ally.name} is devoted to you.`;
             break;
         case 'fuck':
             ally.hp = Math.min(ally.maxHp, ally.hp + 20);
@@ -1868,7 +1894,8 @@ executeAllyAction(action, allyIndex) {
             ally.tags = ally.tags.filter(t => !['Angry'].includes(t));
             if (!ally.tags.includes('Lover')) ally.tags.push('Lover');
             if (!ally.tags.includes('Satisfied')) ally.tags.push('Satisfied');
-            result = `You and ${ally.name} share an intimate moment. Both feel renewed!`;
+            result = CONTENT.actionResult('fuck', ctx);
+            if (result.includes('Missing content')) result = `You and ${ally.name} share an intimate moment. Both feel renewed!`;
             break;
         case 'inspect':
             result = `${ally.name} [${ally.species}]: HP ${ally.hp}/${ally.maxHp}, STR ${ally.stats?.str}, CON ${ally.stats?.con}, SPD ${ally.stats?.spd}, INT ${ally.stats?.int}, WIS ${ally.stats?.wis}, CHA ${ally.stats?.cha}`;

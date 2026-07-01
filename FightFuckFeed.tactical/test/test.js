@@ -1249,6 +1249,21 @@ test('Selected party members can be fed into another party member as consumer', 
   assertEqual(App.party.includes(preyB), false, 'Second contained party member should leave active party list');
 });
 
+test('Self-included group feed tends target instead of consuming helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 20, MPun: 100, Feed: 10, size: 6, appetite: 6 });
+  const helper = makeUnit('Helper', { id: 'helper-1', Feed: 20, size: 2 });
+  App.player = player;
+  App.party = [player, target, helper];
+  App.explorationActorIds = ['target-1', 'helper-1'];
+  App.outsideActionForParty('feed', 1);
+  assertEqual(target.CPun, 80, 'Self-included group feed should combine target and helper feed stats');
+  assertEqual(target.stomach.length, 0, 'Self-included group feed should not consume helper');
+  assertEqual(App.party.includes(helper), true, 'Helper should remain in party after tending target');
+  assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Self-included feed should log tending semantics');
+});
+
 test('Single selected party member can be fed to another full-health party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

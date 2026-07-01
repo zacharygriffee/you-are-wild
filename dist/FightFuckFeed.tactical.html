@@ -5824,11 +5824,11 @@
                     case 'feed': {
                         if (this.party.includes(target)) {
                             const prey = livingActors.filter(actor => actor !== target);
-                            if (prey.length === 0) {
+                            if (livingActors.includes(target) || prey.length === 0) {
                                 const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                                 const healAmount = Math.floor(totalFeed * 2);
                                 target.CPun = Math.min(target.MPun, target.CPun + healAmount);
-                                result = `${names} tend ${target.name}, restoring ${healAmount} punishment.`;
+                                result = `${names} tend ${target.name}${livingActors.includes(target) ? ' together' : ''}, restoring ${healAmount} punishment.`;
                             } else {
                                 const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
                                 result = texts.join(' ');

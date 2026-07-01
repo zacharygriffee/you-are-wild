@@ -2370,6 +2370,41 @@ test('Merchant stock refreshes every three in-game days', () => {
   assertEqual(merchant.stockLastRefreshDay, 3, 'Refresh day should update');
 });
 
+test('Authored merchant stock tables create normalized stock and refresh by table', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const stock = App._merchantStockFromTable('outfitter');
+  assert(stock.some(item => item.name === 'Hide Armor'), 'Outfitter table should include authored equipment');
+  assert(stock.every(item => item.id && item.price > 0 && item.qty > 0), 'Authored stock should normalize ids prices and quantities');
+  const merchant = makeUnit('Outfitter', {
+    disposition: App.DISPOSITION.MERCHANT,
+    stockTable: 'outfitter',
+    stock: [{ name: 'Healing Herb', price: 10, qty: 0 }],
+    stockLastRefreshDay: 0
+  });
+  App.dayCount = 3;
+  App._refreshMerchantStock(merchant);
+  assert(merchant.stock.some(item => item.name === 'Clawed Gloves'), 'Refresh should rebuild from the merchant stock table');
+  assert(!merchant.stock.some(item => item.name === 'Monster Fang'), 'Refresh should not fall back to generic stock when a table is set');
+});
+
+test('Structure encounters can place authored merchants with trade actions', () => {
+  const rolls = [0, 0, 0.99];
+  const { App, elements } = loadAppForCombat(() => rolls.length ? rolls.shift() : 0.99);
+  App.player = makeUnit('You', { level: 2, gold: 100 });
+  App.party = [App.player];
+  App.currentBiome = 'road';
+  App.creatures = [];
+  const tile = { x: 1, y: 0, biome: 'road', structure: 'camp', creatures: [], structureSpawned: false };
+  App.spawnStructureEncounter(tile, true);
+  const merchant = App.creatures.find(c => c.disposition === App.DISPOSITION.MERCHANT);
+  assert(merchant, 'Camp structure should be able to place a merchant');
+  assertEqual(merchant.stockTable, 'traveler', 'Camp merchant should use the authored traveler table');
+  assert(merchant.stock.some(item => item.name === 'Lucky Charm'), 'Placed merchant should carry authored traveler stock');
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'Trade', 'Placed merchant should expose trade action');
+  assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after merchant placement');
+});
+
 test('Equipment registry defines slots and item bonuses', () => {
   assertContains(appContent, 'EQUIPMENT_SLOTS', 'Equipment slots registry missing');
   assertContains(appContent, "slot: 'body'", 'Body equipment slot missing from item registry');

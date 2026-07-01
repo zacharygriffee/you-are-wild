@@ -2737,6 +2737,33 @@
                 'Lucky Charm': { type: 'equipment', icon: '📿', slot: 'accessory1', equipBonus: { Flee: 2, wis: 1 }, value: 35, desc: 'Accessory. Flee +2, WIS +1' },
                 'Focus Ring': { type: 'equipment', icon: '💍', slot: 'accessory2', equipBonus: { Flir: 2, cha: 1 }, value: 55, desc: 'Ring. Flir +2, CHA +1' }
             },
+            MERCHANT_STOCK_TABLES: {
+                general: [
+                    { name: 'Healing Herb', qty: 2 },
+                    { name: 'Old Coin', qty: 2 },
+                    { name: 'Monster Fang', qty: 1 }
+                ],
+                traveler: [
+                    { name: 'Healing Herb', qty: 1 },
+                    { name: 'Leather Cap', qty: 1 },
+                    { name: 'Lucky Charm', qty: 1 }
+                ],
+                herbalist: [
+                    { name: 'Healing Herb', qty: 3 },
+                    { name: 'Strange Mushroom', qty: 1 },
+                    { name: 'Enchanted Berry', qty: 2 }
+                ],
+                relic: [
+                    { name: 'Old Coin', qty: 3 },
+                    { name: 'Crystal Shard', qty: 1 },
+                    { name: 'Focus Ring', qty: 1 }
+                ],
+                outfitter: [
+                    { name: 'Leather Cap', qty: 1 },
+                    { name: 'Hide Armor', qty: 1 },
+                    { name: 'Clawed Gloves', qty: 1 }
+                ]
+            },
             EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
             PERK_TREES: {
                 predator: {
@@ -3000,22 +3027,27 @@
             // ===== STRUCTURES (tile features) =====
             STRUCTURES: {
                 cabin: { name: 'Cabin', icon: '🏠', encounterChance: 0.25, disposition: 'neutral', threat: 1,
+                    merchant: { chance: 0.25, stockTable: 'general', species: ['human', 'cat'] },
                     descriptions: ['A small wooden cabin stands before you.','A lone cabin, smoke curling from its chimney.','A weathered cabin with a welcoming glow.'] },
                 hut: { name: 'Hut', icon: '🛖', encounterChance: 0.20, disposition: 'neutral', threat: 1,
+                    merchant: { chance: 0.20, stockTable: 'herbalist', species: ['human', 'shroom'] },
                     descriptions: ['A rustic hut built from sticks and mud.','A simple hut with a thatched roof.','A travelers hut, abandoned or inhabited.'] },
                 cave: { name: 'Cave Mouth', icon: '🕳️', encounterChance: 0.35, disposition: 'enemy', threat: 3,
                     descriptions: ['A dark cave mouth yawns before you.','A shallow cave, something stirs within.','A narrow cave, the air is cold and damp.'] },
                 ruins: { name: 'Ruins', icon: '🏛️', encounterChance: 0.30, disposition: 'enemy', threat: 3,
                     descriptions: ['Ancient ruins crumble around you.','A collapsed structure, something lurks.','A forgotten ruin, treasures and dangers.'] },
                 camp: { name: 'Camp', icon: '⛺', encounterChance: 0.15, disposition: 'neutral', threat: 1,
+                    merchant: { chance: 0.45, stockTable: 'traveler', species: ['human', 'horse', 'fox'] },
                     descriptions: ['A small campsite, recently used.','A bandit camp, abandoned or occupied.','A makeshift camp, signs of recent travelers.'] },
                 shrine: { name: 'Shrine', icon: '⛩️', encounterChance: 0.10, disposition: 'neutral', threat: 0,
+                    merchant: { chance: 0.25, stockTable: 'relic', species: ['human', 'drow'] },
                     descriptions: ['A tiny shrine to a forgotten deity.','A weathered shrine, offerings still fresh.','A serene shrine, peaceful energy radiates.'] },
                 pond: { name: 'Pond', icon: '🏞️', encounterChance: 0.15, disposition: 'neutral', threat: 1,
                     descriptions: ['A crystal-clear pond reflects the sky.','A murky pond, something swims beneath.','A still pond, dragonflies dance overhead.'] },
                 tree: { name: 'Great Tree', icon: '🌳', encounterChance: 0.10, disposition: 'neutral', threat: 0,
                     descriptions: ['An ancient tree, its trunk wider than a house.','A great tree, its branches form a canopy.','A magical tree, faint light pulses within.'] },
                 spring: { name: 'Hot Spring', icon: '♨️', encounterChance: 0.20, disposition: 'friendly', threat: 0,
+                    merchant: { chance: 0.30, stockTable: 'herbalist', species: ['human', 'otter', 'frog'] },
                     descriptions: ['A natural hot spring, steam rises lazily.','A warm spring, perfect for a soak.','A hidden spring, the water is inviting.'] },
                 burrow: { name: 'Burrow', icon: '🕳️', encounterChance: 0.25, disposition: 'enemy', threat: 2,
                     descriptions: ['A small burrow in the earth.','A network of burrows, something lives here.','A freshly dug burrow, tracks lead inside.'] },
@@ -3895,6 +3927,7 @@
                 if (!tile.structure || !this.STRUCTURES[tile.structure]) return;
                 const struct = this.STRUCTURES[tile.structure];
                 tile.structureSpawned = true;
+                const merchant = this._maybeSpawnStructureMerchant(tile);
                 // Structure always has an encounter inside
                 if (Math.random() < struct.encounterChance) {
                     // Pick from structure-appropriate pool or biome pool
@@ -3949,6 +3982,14 @@
                         this.renderCreatures();
                         this.renderExplorationActions();
                     }
+                } else if (merchant) {
+                    const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
+                    const structDesc = struct.descriptions[descIdx];
+                    const encounterText = `You found a ${struct.name}. ${structDesc} ${merchant.name} is trading here.`;
+                    this.updateScene(`${struct.name} - ${biome.name}`, encounterText, false);
+                    this.log.push({ text: encounterText, type: 'discovery' });
+                    this.renderCreatures();
+                    this.renderExplorationActions();
                 } else {
                     // Empty structure
                     const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
@@ -6433,6 +6474,54 @@
                 });
             },
 
+            _merchantStockFromTable(tableId = 'general') {
+                const table = this.MERCHANT_STOCK_TABLES[tableId] || this.MERCHANT_STOCK_TABLES.general || [];
+                return this._normalizeMerchantStock(table).map((entry, index) => ({
+                    ...entry,
+                    id: `${tableId}_stock_${index}_${entry.name.replace(/\s+/g, '_').toLowerCase()}`
+                }));
+            },
+
+            _createStructureMerchant(structureId, biomeId = this.currentBiome || 'forest') {
+                const struct = this.STRUCTURES[structureId];
+                if (!struct?.merchant) return null;
+                const merchantConfig = struct.merchant;
+                const speciesPool = merchantConfig.species || ['human'];
+                const sid = speciesPool[Math.floor(Math.random() * speciesPool.length)] || 'human';
+                const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
+                const stockTable = merchantConfig.stockTable || 'general';
+                return this._normalizeUnit({
+                    id: `merchant_${structureId}_${Date.now()}`,
+                    name: `${sp?.name || 'Traveling'} Merchant`,
+                    species: sid,
+                    icon: sp?.icon || '👤',
+                    disposition: this.DISPOSITION.MERCHANT,
+                    level: Math.max(1, this.player?.level || 1),
+                    bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [],
+                    stockTable,
+                    stock: this._merchantStockFromTable(stockTable),
+                    stockLastRefreshDay: this.dayCount || 0,
+                    tags: [sp?.name || sid, 'Merchant', this.biomes[biomeId]?.name || biomeId],
+                    expanded: false,
+                    hero: false,
+                    ally: false,
+                    mc: false,
+                    obedient: false,
+                    willing: true
+                });
+            },
+
+            _maybeSpawnStructureMerchant(tile) {
+                if (!tile?.structure || !this.STRUCTURES[tile.structure]?.merchant) return null;
+                const config = this.STRUCTURES[tile.structure].merchant;
+                if (Math.random() >= (config.chance ?? 0)) return null;
+                const merchant = this._createStructureMerchant(tile.structure, tile.biome);
+                if (!merchant) return null;
+                this.creatures = this._tileCreatures([...(this.creatures || []), merchant]);
+                tile.creatures = this._tileCreatures(this.creatures);
+                return merchant;
+            },
+
             _itemCategory(item) {
                 return this._getItemDef(item).type || 'misc';
             },
@@ -6487,7 +6576,7 @@
                 const needsStock = !merchant.stock || merchant.stock.length === 0;
                 const stale = currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= 3;
                 if (force || needsStock || stale) {
-                    merchant.stock = this._defaultMerchantStock();
+                    merchant.stock = merchant.stockTable ? this._merchantStockFromTable(merchant.stockTable) : this._defaultMerchantStock();
                     merchant.stockLastRefreshDay = currentDay;
                 } else {
                     merchant.stock = this._normalizeMerchantStock(merchant.stock);

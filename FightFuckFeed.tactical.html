@@ -1556,6 +1556,7 @@
                 const species = this.species.find(s => s.id === this.selectedSpecies);
                 
                 this.player = {
+                    id: 'player_' + Date.now(),
                     name: 'You',
                     species: species.id,
                     icon: species.icon,
@@ -2129,6 +2130,7 @@ selectTarget(action) {
 },
 
 executeAction(action, enemyIndex) {
+    this.combatState.processing = true;
     const enemy = this.enemies[enemyIndex];
     if (!enemy || enemy.hp <= 0) return;
     
@@ -2161,7 +2163,12 @@ executeAction(action, enemyIndex) {
             const success = (player.stats?.cha || 10) + Math.random() * 10 > (enemy.stats?.wis || 10);
             if (success) {
                 if (this.canAddToParty()) {
-                    this.party.push({...enemy, hp: enemy.maxHp, tags: ['Lover']});
+                    // Check if this enemy is already in party (prevent duplicates)
+                    const alreadyInParty = this.party.some(p => p.id === enemy.id || p.name === enemy.name);
+                    if (!alreadyInParty) {
+                        const ally = {...enemy, id: 'ally_' + Date.now(), hp: enemy.maxHp, tags: ['Lover']};
+                        this.party.push(ally);
+                    }
                     this.enemies = this.enemies.filter(e => e !== enemy);
                     this.gainXP(this.XP_REWARDS.seduceEnemy);
                     result = CONTENT.actionResult('seduce', ctx);
@@ -2197,6 +2204,7 @@ executeAction(action, enemyIndex) {
     } else {
         this.nextTurn();
     }
+    this.combatState.processing = false;
 },
 
 showAllyMenu() {
@@ -2232,6 +2240,7 @@ allyAction(allyIndex) {
 },
 
 executeAllyAction(action, allyIndex) {
+    this.combatState.processing = true;
     const ally = this.party[allyIndex];
     if (!ally) return;
     
@@ -2278,6 +2287,7 @@ executeAllyAction(action, allyIndex) {
     
     if (this.combatState.active) this.nextTurn();
     else this.updateScene('Exploring', null, false);
+    this.combatState.processing = false;
 },
 
 allyTurn(ally) {
@@ -2359,6 +2369,7 @@ nextTurn() {
 
 endCombat(victory) {
     this.combatState.active = false;
+    this.combatState.processing = false;
     this.combatState.turnQueue = [];
     this.combatState.currentTurn = 0;
     if (victory) {
@@ -2377,7 +2388,11 @@ showExplorationActions() {
         <button class="action-btn" onclick="App.search()"><span class="action-icon">🔍</span>Search</button>
         <button class="action-btn" onclick="App.rest()"><span class="action-icon">🏕️</span>Rest</button>
     `;
-    document.getElementById('scene-description').textContent = 'You travel through the wilderness...';
+    const tile = this.getTile(this.location.x, this.location.y);
+    const biome = this.biomes[tile.biome];
+    document.getElementById('scene-description').textContent = tile.explored ? 
+        `You are in the ${biome.name}. ${tile.description}` : 
+        'You stand at the edge of the unknown...';
 },
             
             search() {
@@ -2454,6 +2469,12 @@ showExplorationActions() {
             combatAction(action) {
                 if (!this.combatState.active) {
                     this.log.push({ text: "Not in combat!", type: "combat" });
+                    this.renderLog();
+                    return;
+                }
+                // Prevent double-clicking during action processing
+                if (this.combatState.processing) {
+                    this.log.push({ text: "Wait for your turn!", type: "combat" });
                     this.renderLog();
                     return;
                 }

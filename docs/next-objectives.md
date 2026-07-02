@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 197/197 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 198/198 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -103,7 +103,7 @@
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
 - Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, authored quest templates can spawn quest givers from structure encounters, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, optional deferred reward turn-in, defeat/find/consume/seduce/travel objective progress uses a shared matcher, escort objectives support explicit ordered route/checkpoints, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
 - Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, expensive/rare purchases require confirmation, merchant stock can refresh after three in-game days, authored stock tables can place merchants in safe/commercial structures, inventory/trade surfaces support item category filtering and value/name/type sorting, corpse loot can grant generated or authored gold rewards, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
-- Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, inventory exposes equip/unequip actions, bonuses/effects apply and remove from player stats/state, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata
+- Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, normalized creatures carry equipment slots plus inventory for future/modded use, inventory exposes equip/unequip actions, equipment stat baselines recalculate deterministically on equip/unequip/load, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata plus baseline stats
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
@@ -162,8 +162,7 @@
 - Expand route/checkpoint quest UX beyond first-pass ordered checkpoint progress, such as route preview, checkpoint guidance text, and quest-giver turn-in routing
 
 #### 16. Advanced Equipment
-- Decide whether non-player creatures should use equipment slots or creature inventory only
-- Rework save/load stat baselines if equipment needs full recalculation instead of persisted equipped metadata
+- Decide whether non-player creatures should expose player-like equipment UI or keep equipment slots creature-internal/mod-only for now
 
 ### 🟣 Tier 5: UI/UX & Polish
 
@@ -204,7 +203,7 @@
 ```
 app/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~6611 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~6650 lines)
     content-system.js — Template engine, content tiers, localization registry (~467 lines)
     serialization.js  — Binary save/load codec (~276 lines)
     module-system.js  — Mod loader and hook system (~276 lines)
@@ -216,7 +215,7 @@ app/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2203 lines)
-  test/test.js       — 197 tests, syntax/structure/combat behavior
+  test/test.js       — 198 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

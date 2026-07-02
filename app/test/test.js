@@ -2771,11 +2771,35 @@ test('Equipping and unequipping items updates player stats and slots', () => {
   App.equipItem('armor-1');
   assertEqual(App.player.equipment.body.name, 'Hide Armor', 'Equipped item should occupy its slot');
   assertEqual(App.player.con, 13, 'Equipment bonus should apply to stats');
+  assertEqual(App.player.equipmentBaseStats.con, 10, 'Equipment should capture unmodified baseline stats');
   assertEqual(App.inventory.length, 0, 'Equipped item should leave inventory');
   App.unequipItem('body');
   assertEqual(App.player.equipment.body, null, 'Unequipped slot should be empty');
   assertEqual(App.player.con, 10, 'Equipment bonus should be removed');
   assertEqual(App.inventory[0].name, 'Hide Armor', 'Unequipped item should return to inventory');
+});
+
+test('Equipment recalculation infers legacy baselines without stat drift', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', {
+    con: 13,
+    equipment: {
+      head: null,
+      body: { id: 'armor-1', name: 'Hide Armor' },
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    }
+  });
+  App.player = player;
+  App.party = [player];
+  App._recalculateEquipment(player, { inferBase: true });
+  assertEqual(player.equipmentBaseStats.con, 10, 'Legacy equipped stats should infer pre-equipment baseline');
+  assertEqual(player.con, 13, 'Recalculation should keep equipped stat total stable');
+  App.inventory = [];
+  App.unequipItem('body');
+  assertEqual(player.con, 10, 'Unequipping inferred legacy equipment should return to baseline');
 });
 
 test('Accessory equipment can apply non-numeric special effects', () => {
@@ -2861,8 +2885,10 @@ test('Equipment state persists through binary saves', () => {
   App.worldMap = new Map();
   App.exploredTiles = new Set();
   App.inventory = [];
+  App.player.equipmentBaseStats = { con: 10, str: 10, spd: 10, int: 10, wis: 10, cha: 10, Figh: 10, Feas: 10, Flir: 10, Fuck: 10, Flee: 10, Feed: 10 };
   const loaded = Binary.loadGame(Binary.saveGame(App));
   assertEqual(loaded.questState.playerEquipment.head.name, 'Leather Cap', 'Equipped item should persist in save metadata');
+  assertEqual(loaded.questState.playerEquipmentBaseStats.con, 10, 'Equipment baseline stats should persist in save metadata');
 });
 
 test('Perk tree queues player choices on level up instead of random perks', () => {

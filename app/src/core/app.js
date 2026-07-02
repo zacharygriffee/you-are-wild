@@ -452,6 +452,7 @@
                 ]
             },
             EQUIPMENT_SLOTS: { head: 'Head', body: 'Body', hands: 'Hands', feet: 'Feet', accessory1: 'Accessory 1', accessory2: 'Accessory 2' },
+            EQUIPMENT_STAT_KEYS: ['Figh', 'Feas', 'Flir', 'Fuck', 'Flee', 'Feed', 'str', 'con', 'spd', 'int', 'wis', 'cha'],
             PERK_TREES: {
                 predator: {
                     label: 'Predator',
@@ -1369,8 +1370,7 @@
                 for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
                     if (!(slot in unit.equipment)) unit.equipment[slot] = null;
                 }
-                unit.equipmentEffects = unit.equipmentEffects || {};
-                this._rebuildEquipmentEffects(unit);
+                this._recalculateEquipment(unit, { inferBase: !unit.equipmentBaseStats });
                 unit.gold = unit.gold || 0;
                 unit.quest = unit.quest || null;
                 unit.questAccepted = Boolean(unit.questAccepted);
@@ -4998,6 +4998,29 @@
                 }
             },
 
+            _equipmentBonusTotals(unit) {
+                const totals = {};
+                for (const item of Object.values(unit?.equipment || {})) {
+                    if (!item) continue;
+                    const bonus = this._getItemDef(item).equipBonus || {};
+                    for (const [stat, amount] of Object.entries(bonus)) {
+                        totals[stat] = (totals[stat] || 0) + amount;
+                    }
+                }
+                return totals;
+            },
+
+            _captureEquipmentBaseStats(unit, { inferBase = false } = {}) {
+                if (!unit) return {};
+                const totals = inferBase ? this._equipmentBonusTotals(unit) : {};
+                const base = {};
+                for (const stat of this.EQUIPMENT_STAT_KEYS) {
+                    const current = unit[stat];
+                    if (typeof current === 'number') base[stat] = current - (totals[stat] || 0);
+                }
+                return base;
+            },
+
             _applyEquipmentEffect(unit, item, direction = 1) {
                 const effect = this._getItemDef(item).equipEffect;
                 if (!effect) return;
@@ -5019,6 +5042,24 @@
                 }
             },
 
+            _recalculateEquipment(unit, { inferBase = false } = {}) {
+                if (!unit) return;
+                unit.equipment = unit.equipment || {};
+                for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
+                    if (!(slot in unit.equipment)) unit.equipment[slot] = null;
+                }
+                if (!unit.equipmentBaseStats) {
+                    unit.equipmentBaseStats = this._captureEquipmentBaseStats(unit, { inferBase });
+                }
+                for (const [stat, value] of Object.entries(unit.equipmentBaseStats || {})) {
+                    if (typeof value === 'number') unit[stat] = value;
+                }
+                for (const item of Object.values(unit.equipment || {})) {
+                    if (item) this._applyEquipmentBonus(unit, item, 1);
+                }
+                this._rebuildEquipmentEffects(unit);
+            },
+
             equipItem(itemId) {
                 if (!this.player) return;
                 const item = this.inventory.find(i => String(i.id) === String(itemId));
@@ -5026,16 +5067,14 @@
                 const def = this._getItemDef(item);
                 const slot = def.slot;
                 this.player.equipment = this.player.equipment || {};
+                if (!this.player.equipmentBaseStats) this.player.equipmentBaseStats = this._captureEquipmentBaseStats(this.player);
                 const current = this.player.equipment[slot];
                 if (current) {
-                    this._applyEquipmentBonus(this.player, current, -1);
-                    this._applyEquipmentEffect(this.player, current, -1);
                     this.inventory.push(current);
                 }
                 this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
                 this.player.equipment[slot] = item;
-                this._applyEquipmentBonus(this.player, item, 1);
-                this._applyEquipmentEffect(this.player, item, 1);
+                this._recalculateEquipment(this.player);
                 this.log.push({ text: `Equipped ${item.name}.`, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
@@ -5051,9 +5090,8 @@
                     return;
                 }
                 const item = this.player.equipment[slot];
-                this._applyEquipmentBonus(this.player, item, -1);
-                this._applyEquipmentEffect(this.player, item, -1);
                 this.player.equipment[slot] = null;
+                this._recalculateEquipment(this.player);
                 this.inventory.push(item);
                 this.log.push({ text: `Unequipped ${item.name}.`, type: 'discovery' });
                 this.renderLog();
@@ -6375,7 +6413,8 @@ Enter 1, 2, or 3:`);
                     this.quests = loaded.questState?.quests || [];
                     this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
                     this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
-                    this._rebuildEquipmentEffects(this.player);
+                    this.player.equipmentBaseStats = loaded.questState?.playerEquipmentBaseStats || null;
+                    this._recalculateEquipment(this.player, { inferBase: !loaded.questState?.playerEquipmentBaseStats });
                     this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
                     this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
                     this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);

@@ -259,6 +259,7 @@
         playerGold: appState.player?.gold || 0,
         dayCount: appState.dayCount || 0,
         playerEquipment: appState.player?.equipment || {},
+        playerEquipmentBaseStats: appState.player?.equipmentBaseStats || null,
         playerPerks: appState.player?.perks || [],
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
         partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null

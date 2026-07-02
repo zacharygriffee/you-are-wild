@@ -3267,12 +3267,23 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
   const dangerPressure = WorldGen.getEncounterPressure(dangerTile, { biomeDanger: 3 });
   assert(roadPressure.finalChance < wildPressure.finalChance, 'Road overlay should lower wilderness encounter pressure');
   assert(dangerPressure.finalChance > wildPressure.finalChance, 'Danger POI should raise encounter pressure');
-  const summary = WorldGen.getTileMapSummary({ ...roadTile, structure: 'camp', explored: true }, { biomeDanger: 3 });
+  const summary = WorldGen.getTileMapSummary({
+    ...roadTile,
+    structure: 'camp',
+    explored: true,
+    creatures: [
+      { name: 'Merchant', disposition: 'merchant', stock: [{ id: 'ration' }] },
+      { name: 'Guide', disposition: 'friendly' }
+    ]
+  }, { biomeDanger: 3, questRelevant: true });
   assertEqual(summary.biome, 'forest', 'Summary should keep the display/base biome visible');
   assertEqual(summary.coords.x, 8, 'Summary should expose coordinates');
   assertEqual(summary.traversal.passable, true, 'Summary should expose traversal contract');
   assertEqual(summary.restAvailable, true, 'Summary should expose safe rest availability');
   assert(summary.markers.includes('Road'), 'Summary should expose route markers');
+  assert(summary.markers.includes('Merchant'), 'Summary should expose merchant markers from tile creatures');
+  assert(summary.markers.includes('Quest'), 'Summary should expose quest relevance markers');
+  assertEqual(summary.questRelevant, true, 'Summary should preserve quest relevance flag');
 });
 
 test('POI budgets create stable spaced region candidates and route anchors', () => {

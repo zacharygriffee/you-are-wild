@@ -248,6 +248,8 @@ const WorldGen = (() => {
         if (tile.overlays?.poi?.category) markers.push(tile.overlays.poi.category);
         if (tile.structure) markers.push('Structure');
         if (tile.hasLandmark) markers.push('Landmark');
+        if (Array.isArray(tile.creatures) && tile.creatures.some(creature => creature?.disposition === 'merchant' || creature?.merchant || creature?.stock)) markers.push('Merchant');
+        if (context.questRelevant) markers.push('Quest');
         return {
             biome: biomeId,
             coords: { x: Number(tile.x ?? 0), y: Number(tile.y ?? 0) },

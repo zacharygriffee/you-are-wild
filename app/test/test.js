@@ -425,6 +425,13 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(template, '.save-slot-card', 'Save slot cards should have responsive layout styles');
   assertContains(template, '.save-slot-card.empty', 'Empty save slots should have distinct styling');
   assertContains(template, '.save-manager-toolbar', 'Save manager should style its top-level New Game action');
+  assertContains(template, 'id="save-manager" class="screen screen-overlay" role="dialog" aria-modal="true"', 'Save manager should behave as a modal dialog');
+  assertContains(template, '#save-manager.screen', 'Save manager overlay styles should be explicit');
+  assertContains(template, 'height: 100dvh', 'Save manager should use dynamic viewport height on mobile');
+  assertContains(template, 'overflow: hidden', 'Save manager overlay should keep scrolling inside the dialog surface');
+  assertContains(template, 'overscroll-behavior: contain', 'Save manager shell should contain mobile scroll gestures');
+  assertContains(template, '-webkit-overflow-scrolling: touch', 'Save manager shell should use momentum scrolling on iOS');
+  assertContains(template, 'calc(32px + env(safe-area-inset-bottom))', 'Save manager shell should reserve safe-area bottom padding');
   assertContains(template, 'grid-template-columns: repeat(2, minmax(0, 1fr))', 'Save slot actions should collapse to mobile grid');
   assertContains(appContent, 'class="save-manager-shell"', 'Save manager should render responsive shell');
   assertContains(appContent, 'class="save-slot-actions"', 'Save slot actions should use responsive action group');

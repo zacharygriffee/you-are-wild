@@ -2599,6 +2599,10 @@
             _t(key, vars = {}) {
                 return CONTENT?.t ? CONTENT.t(key, vars) : key;
             },
+            _label(key, fallback, vars = {}) {
+                const label = this._t(key, vars);
+                return label === key ? fallback : label;
+            },
             _uiLabel(key) {
                 const isSFW = CONTENT.preferences.maxTier < 2;
                 if (isSFW) {
@@ -2627,7 +2631,7 @@
                 return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', quests: '📜', interact: '💋', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;
@@ -8897,13 +8901,20 @@
                 if (!target || this._isCorpse(target)) return;
                 this.closeMobileContextMenu();
                 const canRecruit = this._canRecruit(this._getExplorationActor(), target);
-                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="Creature actions"><div class="mobile-context-menu-title">${target.icon || ''} ${target.name}</div><div class="mobile-context-menu-actions" role="menu">`;
-                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('fight','${targetId}')">⚔️ Fight</button>`;
-                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('flirt','${targetId}')">😘 Flirt</button>`;
-                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('feed','${targetId}')">🍲 Feed</button>`;
-                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('inspect','${targetId}')">👁️ Inspect</button>`;
-                if (canRecruit) html += `<button class="action-btn primary" role="menuitem" onclick="App.mobileCreatureContextAction('recruit','${targetId}')">💕 Recruit</button>`;
-                html += `<button class="action-btn" role="menuitem" onclick="App.closeMobileContextMenu()">Close</button></div></div>`;
+                const actionButton = (key, action = key, extraClass = '') => {
+                    const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
+                    const icon = this._actionIcon(key);
+                    return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="${action === 'close' ? 'App.closeMobileContextMenu()' : `App.mobileCreatureContextAction('${action}','${targetId}')`}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
+                };
+                const menuLabel = this._label('ui.creatureActions', 'Creature actions');
+                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${target.icon || ''} ${this._escapeHtml(target.name)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                html += actionButton('fight');
+                html += actionButton('flirt');
+                html += actionButton('feed');
+                html += actionButton('inspect');
+                if (canRecruit) html += actionButton('recruit', 'recruit', ' primary');
+                html += actionButton('close', 'close');
+                html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
                 this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
             },
@@ -9835,11 +9846,15 @@ const CONTENT_SYSTEM = {
             'action.inventory': 'Items',
             'action.quests': 'Quests',
             'action.interact': 'Interact',
+            'action.inspect': 'Inspect',
+            'action.recruit': 'Recruit',
             'action.enter': 'Enter',
             'action.exit': 'Exit',
             'action.map': 'Map',
             'action.party': 'Party',
             'action.enemies': 'Enemies',
+            'ui.close': 'Close',
+            'ui.creatureActions': 'Creature actions',
             'target.actors': 'Actors',
             'target.targets': 'Targets',
             'target.clear': 'Clear',
@@ -9864,11 +9879,15 @@ const CONTENT_SYSTEM = {
             'action.inventory': 'Objetos',
             'action.quests': 'Misiones',
             'action.interact': 'Interactuar',
+            'action.inspect': 'Inspeccionar',
+            'action.recruit': 'Reclutar',
             'action.enter': 'Entrar',
             'action.exit': 'Salir',
             'action.map': 'Mapa',
             'action.party': 'Grupo',
             'action.enemies': 'Enemigos',
+            'ui.close': 'Cerrar',
+            'ui.creatureActions': 'Acciones de criatura',
             'target.actors': 'Actores',
             'target.targets': 'Objetivos',
             'target.clear': 'Limpiar',

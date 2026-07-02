@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 200/200 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 201/201 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -115,7 +115,7 @@
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; overlays and mobile context menus trap focus, close with Escape where applicable, and restore opener focus; combat cards/chips expose screen-reader status text for current turn, queued group action, and target selection state; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
-- Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, and high-traffic action/target labels now route through locale keys
+- Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, high-traffic action/target labels route through locale keys, and mobile creature context-menu labels localize through the active language
 - New-game/save-slot UX has a first pass: main-menu New Game opens slot selection, the general slot manager also exposes per-slot New Run takeover, occupied slots require irreversible overwrite confirmation, autosaves update per-slot timestamps, manual saves warn before overwriting another occupied slot, and delete-slot warnings are scoped to the selected slot
 - Large-map low-LOD discovery has a first pass: the map panel renders a discovered-region grid around the player, overlays landmarks/structures/entity/item points of interest plus next active quest checkpoint markers, supports zoom/pan/recenter controls with a visible viewed-region label, and avoids materializing unknown generated tiles into the compatibility `worldMap`
 - Save-slot world migration has a first pass: autosave/manual save persist tile deltas to `YAW_Worlds` first, then write compact slot payloads with `worldMeta.worldId`, explored keys, and player/session state instead of duplicating durable tile payloads; if the world-store write fails, the slot payload keeps the old full `worldMap` fallback
@@ -191,7 +191,7 @@
 - Device-test high-contrast, reduced-motion, and font-size scaling against the mobile layout
 
 #### 22. Localization Framework
-- Expand locale coverage to remaining hardcoded user-facing strings beyond the current action/target/settings-language foundation
+- Expand locale coverage to remaining hardcoded user-facing strings beyond the current action/target/settings/mobile-context foundation
 - Decide whether to keep the in-code locale registry or move it to `locales/en.json` / `locales/es.json` once the build pipeline supports external locale assets cleanly
 - Content templates still use hardcoded safe/mature/adult strings; migrate them to locale keys when narrative text coverage becomes a priority
 - Add community-facing translation workflow once English/Spanish coverage is broad enough to maintain

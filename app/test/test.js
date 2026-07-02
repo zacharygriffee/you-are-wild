@@ -373,6 +373,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, 'setLanguage(language)', 'Language setter missing');
   assertContains(contentContent, "'action.fight': 'Fight'", 'English action label missing');
   assertContains(contentContent, "'action.fight': 'Luchar'", 'Spanish action label missing');
+  assertContains(contentContent, "'action.inspect': 'Inspect'", 'English inspect label missing');
+  assertContains(contentContent, "'action.inspect': 'Inspeccionar'", 'Spanish inspect label missing');
+  assertContains(contentContent, "'ui.creatureActions': 'Creature actions'", 'English creature action label missing');
+  assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -585,8 +589,14 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     {
       preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
       locales: {
-        en: { 'action.fight': 'Fight', 'target.actors': 'Actors', 'target.targets': 'Targets' },
-        es: { 'action.fight': 'Luchar', 'target.actors': 'Actores', 'target.targets': 'Objetivos' }
+        en: {
+          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit',
+          'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'target.actors': 'Actors', 'target.targets': 'Targets'
+        },
+        es: {
+          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar',
+          'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'target.actors': 'Actores', 'target.targets': 'Objetivos'
+        }
       },
       setPreference(key, value) { this.preferences[key] = value; },
       setMaxTier(value) { this.preferences.maxTier = value; },
@@ -3283,6 +3293,22 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
   App.closeMobileContextMenu();
   assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');
+});
+
+test('Mobile creature long-press menu uses localized action labels', () => {
+  const { App, body } = loadAppForCombat();
+  App.player = makeUnit('You', { Flir: 40, Fuck: 40, cha: 40 });
+  App.party = [App.player];
+  App.creatures = [makeUnit('Willing', { id: 'willing-es', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true })];
+  App.updateLanguage('es');
+  App.showMobileCreatureContext('willing-es');
+  assertContains(body.innerHTML, 'aria-label="Acciones de criatura"', 'Creature menu label should localize');
+  assertContains(body.innerHTML, 'Luchar', 'Fight menu item should localize');
+  assertContains(body.innerHTML, 'Coquetear', 'Flirt menu item should localize');
+  assertContains(body.innerHTML, 'Alimentar', 'Feed menu item should localize');
+  assertContains(body.innerHTML, 'Inspeccionar', 'Inspect menu item should localize');
+  assertContains(body.innerHTML, 'Reclutar', 'Recruit menu item should localize');
+  assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
 test('Mobile map pinch changes zoom and applies transform', () => {

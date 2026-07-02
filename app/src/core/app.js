@@ -3562,13 +3562,20 @@
                 if (enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5) return Math.random() < 0.5;
                 return enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3 && Math.random() < 0.3;
             },
+            _combatStateRoll(namespace, unit = null, purpose = 'roll') {
+                const x = Number(this.location?.x ?? 0);
+                const y = Number(this.location?.y ?? 0);
+                const unitId = this._unitSelectionId(unit || {});
+                return this._worldRoll(namespace, x, y, unitId, this.combatState.round || 0, this.combatState.currentTurn || 0, this.dayCount || 0, this.timeHour || 0, purpose);
+            },
             _enemyCallReinforcement(enemy) {
                 const temp = this._getSpeciesTemperament(enemy.species);
-                if (!temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || Math.random() >= 0.3) return false;
+                if (!temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || this._combatStateRoll('combat-reinforcement', enemy, 'call') >= 0.3) return false;
                 const sp = this.species.find(s => s.id === enemy.species) || { name: enemy.species || 'Creature', icon: enemy.icon || '❓' };
                 const base = this._getSpeciesBaseStats(enemy.species);
+                const enemyId = this._unitSelectionId(enemy);
                 const reinforcement = this._normalizeUnit({
-                    id: 'reinforce_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    id: `reinforce_${enemyId}_${this.combatState.round || 0}_${this.combatState.currentTurn || 0}`,
                     name: sp.name + ' Reinforcement',
                     species: enemy.species,
                     icon: sp.icon,

@@ -3916,6 +3916,8 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');
   assertNotContains(App._attemptTimidCreatureFlee.toString(), 'Math.random', 'Exploration timid threat reactions should not use Math.random');
   assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
+  assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
+  assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
 });
 
 test('Map tile inspector renders safe biome and terrain details', () => {
@@ -4830,11 +4832,15 @@ test('Outnumbered low-health enemies can flee', () => {
 
 test('Pack enemies can call reinforcements when wounded', () => {
   const { App } = loadAppForCombat(() => 0);
-  const wolf = makeUnit('Wolf', { species: 'wolf', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.worldMeta = { seed: 'call-seed', generatorVersion: 2 };
+  const wolf = makeUnit('Wolf', { id: 'pack-wolf', species: 'wolf', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
   App.player = makeUnit('You');
   App.party = [App.player];
   App.creatures = [wolf];
-  App.combatState = { active: true, currentTurn: 0, turnQueue: [{ unit: wolf, initiative: 10 }], syncActions: [] };
+  App.location = { x: 0, y: 0 };
+  App.dayCount = 0;
+  App.timeHour = 0;
+  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: wolf, initiative: 10 }], syncActions: [] };
   App.updateLanguage('es');
   const called = App._enemyCallReinforcement(wolf);
   assertEqual(called, true, 'Wounded pack enemy should call reinforcement on successful roll');
@@ -4842,6 +4848,27 @@ test('Pack enemies can call reinforcements when wounded', () => {
   assertEqual(App.combatState.turnQueue.length, 2, 'Reinforcement should be inserted into turn queue');
   assertContains(App.log[App.log.length - 1].text, 'Wolf pide ayuda!', 'Reinforcement call log should localize');
   assertContains(App.log[App.log.length - 1].text, 'se une al combate.', 'Reinforcement join log should localize');
+});
+
+test('Pack reinforcement calls are deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'call-seed', generatorVersion: 2 };
+    const wolf = makeUnit('Wolf', { id: 'pack-wolf', species: 'wolf', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+    App.player = makeUnit('You');
+    App.party = [App.player];
+    App.creatures = [wolf];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: wolf, initiative: 10 }], syncActions: [] };
+    const called = App._enemyCallReinforcement(wolf);
+    const reinforcement = App.creatures.find(c => c !== wolf && c.species === 'wolf');
+    return { called, id: reinforcement?.id || '', queueLength: App.combatState.turnQueue.length };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Reinforcement outcome and id should not depend on ambient Math.random');
 });
 
 test('Enemy status combat logs localize', () => {

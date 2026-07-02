@@ -161,6 +161,7 @@
         Binary.json.preencode(s, obj.inventory || []);
         Binary.vuint.preencode(s, obj.timeHour || 0);
         Binary.json.preencode(s, obj.questState || {});
+        Binary.json.preencode(s, obj.worldMeta || {});
       },
       encode(s, obj) {
         Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
@@ -173,6 +174,7 @@
         Binary.json.encode(s, obj.inventory || []);
         Binary.vuint.encode(s, obj.timeHour || 0);
         Binary.json.encode(s, obj.questState || {});
+        Binary.json.encode(s, obj.worldMeta || {});
       },
       decode(s) {
         const version = Binary.vuint.decode(s);
@@ -213,6 +215,11 @@
         } else {
           result.questState = {};
         }
+        if (s.start < s.end) {
+          try { result.worldMeta = Binary.json.decode(s); } catch(e) { result.worldMeta = null; }
+        } else {
+          result.worldMeta = null;
+        }
         return result;
       }
     }
@@ -242,6 +249,7 @@
       party: appState.party || [],
       log: appState.log?.map(e => e.text) || [],
       currentBiome: appState.currentBiome || 'forest',
+      worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 1, mapModsHash: 'core' },
       worldMap: worldMapObj,
       exploredTiles: exploredArray,
       inventory: appState.inventory || [],

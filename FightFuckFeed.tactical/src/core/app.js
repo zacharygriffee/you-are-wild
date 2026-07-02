@@ -537,6 +537,7 @@
             worldMap: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 1, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
@@ -608,7 +609,7 @@
                 { id: 'eagle', name: 'Eagle', icon: '🦅', desc: 'Sky predator' }
             ],
             biomes: {
-                grove: { name: 'Grove', icon: '🌳', color: '#3a6b2a', bgColor: '#2a4a1a', danger: 1, encounterChance: 0.08, friendlyChance: 0.12, structureChance: 0.05,
+                grove: { name: 'Grove', role: 'region', icon: '🌳', color: '#3a6b2a', bgColor: '#2a4a1a', danger: 1, encounterChance: 0.08, friendlyChance: 0.12, structureChance: 0.05,
                     encounterTable: [
                         { id: 'bunny', weight: 50 }, { id: 'mouse', weight: 20 }, { id: 'sheep', weight: 15 },
                         { id: 'deer', weight: 10 }, { id: 'human', weight: 5 }
@@ -617,7 +618,7 @@
                         { id: 'human', weight: 10 }
                     ], structureTable: ['tree', 'spring', 'shrine', 'pond'],
                     descriptions: ['A peaceful grove of young trees.','Wildflowers carpet the ground.','A gentle stream bubbles nearby.','Birdsong fills the air.','Sunlight dapples through leaves.'] },
-                forest: { name: 'Forest', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', danger: 3, encounterChance: 0.15, friendlyChance: 0.06, structureChance: 0.08,
+                forest: { name: 'Forest', role: 'region', icon: '🌲', color: '#2d5016', bgColor: '#1a3310', danger: 3, encounterChance: 0.15, friendlyChance: 0.06, structureChance: 0.08,
                     encounterTable: [
                         { id: 'bunny', weight: 25 }, { id: 'deer', weight: 20 }, { id: 'wolf', weight: 15 },
                         { id: 'slime', weight: 15 }, { id: 'harpy', weight: 15 }, { id: 'bear', weight: 10 }
@@ -626,7 +627,7 @@
                         { id: 'fox', weight: 15 }, { id: 'cat', weight: 10 }, { id: 'horse', weight: 5 }
                     ], structureTable: ['cabin', 'hut', 'camp', 'tree', 'burrow', 'nest'],
                     descriptions: ['Ancient trees tower overhead.','The forest is dense and humid.','Sunlight filters through leaves.','A clearing opens before you.','Fallen logs and twisted roots make travel slow.'] },
-                swamp: { name: 'Swamp', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', danger: 4, encounterChance: 0.20, friendlyChance: 0.03, structureChance: 0.06,
+                swamp: { name: 'Swamp', role: 'region', icon: '🐊', color: '#3d4a1e', bgColor: '#2a3310', danger: 4, encounterChance: 0.20, friendlyChance: 0.03, structureChance: 0.06,
                     encounterTable: [
                         { id: 'frog', weight: 25 }, { id: 'shroom', weight: 20 }, { id: 'slime', weight: 20 },
                         { id: 'naga', weight: 15 }, { id: 'plant', weight: 20 }
@@ -634,7 +635,7 @@
                         { id: 'frog', weight: 40 }, { id: 'otter', weight: 20 }, { id: 'human', weight: 10 }
                     ], structureTable: ['hut', 'ruins', 'pond', 'burrow', 'spring'],
                     descriptions: ['Murky waters stretch through twisted cypress trees.','The ground squelches beneath your feet.','Fireflies drift through the fog.','A sunken log bridges a channel.','Gnarled roots form natural archways.'] },
-                plains: { name: 'Plains', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', danger: 2, encounterChance: 0.12, friendlyChance: 0.08, structureChance: 0.06,
+                plains: { name: 'Plains', role: 'region', icon: '🌾', color: '#6b5b1e', bgColor: '#4a4010', danger: 2, encounterChance: 0.12, friendlyChance: 0.08, structureChance: 0.06,
                     encounterTable: [
                         { id: 'bunny', weight: 25 }, { id: 'deer', weight: 20 }, { id: 'human', weight: 15 },
                         { id: 'horse', weight: 15 }, { id: 'wolf', weight: 15 }, { id: 'tiger', weight: 10 }
@@ -643,7 +644,7 @@
                         { id: 'human', weight: 15 }, { id: 'cow', weight: 10 }
                     ], structureTable: ['cabin', 'camp', 'ruins', 'tree', 'pond'],
                     descriptions: ['Tall grasses sway in the warm breeze.','Open grasslands stretch to the horizon.','The plains are peaceful.','A stream cuts through the prairie.','Wind rustles the grass in waves.'] },
-                cave: { name: 'Cave', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', danger: 5, encounterChance: 0.25, friendlyChance: 0.02, structureChance: 0.10,
+                cave: { name: 'Cave', role: 'region', icon: '🦇', color: '#2a2a3a', bgColor: '#1a1a2e', danger: 5, encounterChance: 0.25, friendlyChance: 0.02, structureChance: 0.10,
                     encounterTable: [
                         { id: 'bat', weight: 25 }, { id: 'goblin', weight: 20 }, { id: 'rat', weight: 20 },
                         { id: 'slime', weight: 20 }, { id: 'naga', weight: 10 }, { id: 'dragon', weight: 5 }
@@ -651,7 +652,7 @@
                         { id: 'bat', weight: 30 }, { id: 'goblin', weight: 15 }
                     ], structureTable: ['cave', 'ruins', 'burrow', 'web', 'hut'],
                     descriptions: ['Stalactites hang like teeth from the ceiling.','The cave opens into a vast chamber.','A narrow passage forces you to squeeze through.','An underground river rushes through.','Crystal formations glitter in the darkness.'] },
-                jungle: { name: 'Jungle', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', danger: 4, encounterChance: 0.20, friendlyChance: 0.04, structureChance: 0.08,
+                jungle: { name: 'Jungle', role: 'region', icon: '🌿', color: '#1a5c1a', bgColor: '#0f3d0f', danger: 4, encounterChance: 0.20, friendlyChance: 0.04, structureChance: 0.08,
                     encounterTable: [
                         { id: 'frog', weight: 20 }, { id: 'plant', weight: 20 }, { id: 'harpy', weight: 20 },
                         { id: 'tiger', weight: 20 }, { id: 'naga', weight: 15 }, { id: 'slime', weight: 5 }
@@ -659,7 +660,7 @@
                         { id: 'frog', weight: 30 }, { id: 'human', weight: 10 }, { id: 'horse', weight: 10 }
                     ], structureTable: ['ruins', 'hut', 'spring', 'nest', 'pond', 'tree'],
                     descriptions: ['Vines hang like curtains.','The jungle is alive with sound.','Humidity presses down like a weight.','A waterfall crashes into a hidden pool.','Thick vegetation forces you to hack forward.'] },
-                dungeon: { name: 'Dungeon', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', danger: 5, encounterChance: 0.30, friendlyChance: 0.01, structureChance: 0.12,
+                dungeon: { name: 'Dungeon', role: 'region', icon: '⛓️', color: '#3a2a3a', bgColor: '#1e0a1e', danger: 5, encounterChance: 0.30, friendlyChance: 0.01, structureChance: 0.12,
                     encounterTable: [
                         { id: 'rat', weight: 25 }, { id: 'goblin', weight: 25 }, { id: 'skeleton', weight: 20 },
                         { id: 'spider', weight: 20 }, { id: 'drow', weight: 10 }
@@ -667,7 +668,7 @@
                         { id: 'goblin', weight: 20 }, { id: 'human', weight: 5 }
                     ], structureTable: ['cave', 'ruins', 'camp', 'web', 'burrow', 'hut'],
                     descriptions: ['Stone corridors stretch endlessly.','Iron-barred cells line the walls.','The air is stale and cold.','A brazier smolders with dying coals.','Chains rattle in the darkness.'] },
-                manor: { name: 'Manor', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', danger: 3, encounterChance: 0.15, friendlyChance: 0.05, structureChance: 0.15,
+                manor: { name: 'Manor', role: 'region', icon: '🏰', color: '#4a3a2a', bgColor: '#2e2010', danger: 3, encounterChance: 0.15, friendlyChance: 0.05, structureChance: 0.15,
                     encounterTable: [
                         { id: 'human', weight: 30 }, { id: 'cat', weight: 25 }, { id: 'rat', weight: 20 },
                         { id: 'mouse', weight: 15 }, { id: 'spider', weight: 10 }
@@ -675,7 +676,7 @@
                         { id: 'human', weight: 40 }, { id: 'cat', weight: 30 }, { id: 'mouse', weight: 20 }
                     ], structureTable: ['cabin', 'hut', 'ruins', 'web', 'shrine', 'spring'],
                     descriptions: ['Grand hallways echo with emptiness.','Antique furniture gathers dust.','A portrait gallery watches your passage.','The ballroom is frozen in decay.','Servants quarters hide secrets.'] },
-                beach: { name: 'Beach', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', danger: 2, encounterChance: 0.12, friendlyChance: 0.08, structureChance: 0.06,
+                beach: { name: 'Beach', role: 'region', icon: '🏖️', color: '#1a4a5a', bgColor: '#0f2a3a', danger: 2, encounterChance: 0.12, friendlyChance: 0.08, structureChance: 0.06,
                     encounterTable: [
                         { id: 'crab', weight: 30 }, { id: 'fish', weight: 25 }, { id: 'frog', weight: 20 },
                         { id: 'otter', weight: 15 }, { id: 'siren', weight: 10 }
@@ -684,7 +685,7 @@
                         { id: 'frog', weight: 20 }
                     ], structureTable: ['cabin', 'camp', 'spring', 'pond', 'ruins'],
                     descriptions: ['Waves lap against white sand.','Palm trees sway overhead.','Seashells scatter the shore.','A tide pool teems with life.','A distant ship lies wrecked on the reef.'] },
-                road: { name: 'Road', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', danger: 2, encounterChance: 0.10, friendlyChance: 0.06, structureChance: 0.04,
+                road: { name: 'Road', role: 'route', icon: '🛤️', color: '#5a5a2a', bgColor: '#3a3a10', danger: 2, encounterChance: 0.10, friendlyChance: 0.06, structureChance: 0.04,
                     encounterTable: [
                         { id: 'human', weight: 25 }, { id: 'mouse', weight: 20 }, { id: 'rat', weight: 20 },
                         { id: 'goblin', weight: 20 }, { id: 'wolf', weight: 10 }, { id: 'bandit', weight: 5 }
@@ -693,7 +694,7 @@
                         { id: 'cow', weight: 15 }, { id: 'pig', weight: 15 }
                     ], structureTable: ['cabin', 'camp', 'hut', 'shrine', 'ruins'],
                     descriptions: ['A dirt path stretches between biomes.','Wagon ruts mark the earth.','A weathered signpost points onward.','A campfire ring marks a resting spot.','The road is well-traveled.'] },
-                cliff: { name: 'Cliff', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', danger: 3, encounterChance: 0.15, friendlyChance: 0.04, structureChance: 0.06,
+                cliff: { name: 'Cliff', role: 'region', icon: '🏔️', color: '#5a5a5a', bgColor: '#3a3a3a', danger: 3, encounterChance: 0.15, friendlyChance: 0.04, structureChance: 0.06,
                     encounterTable: [
                         { id: 'goat', weight: 25 }, { id: 'bat', weight: 20 }, { id: 'eagle', weight: 20 },
                         { id: 'wolf', weight: 20 }, { id: 'harpy', weight: 15 }
@@ -701,7 +702,7 @@
                         { id: 'goat', weight: 40 }, { id: 'eagle', weight: 20 }, { id: 'horse', weight: 15 }
                     ], structureTable: ['cave', 'ruins', 'nest', 'hut', 'camp'],
                     descriptions: ['Rocky outcrops offer treacherous footing.','The wind howls at your back.','A narrow ledge skirts a drop.','A goat path winds upward.','The view from the edge is dizzying.'] },
-                water: { name: 'Water', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', danger: 3, encounterChance: 0.20, friendlyChance: 0.05, structureChance: 0.05,
+                water: { name: 'Water', role: 'region', icon: '💧', color: '#1a3a5a', bgColor: '#0f1e3a', danger: 3, encounterChance: 0.20, friendlyChance: 0.05, structureChance: 0.05,
                     encounterTable: [
                         { id: 'fish', weight: 25 }, { id: 'frog', weight: 25 }, { id: 'otter', weight: 20 },
                         { id: 'slime', weight: 20 }, { id: 'naga', weight: 10 }
@@ -710,7 +711,7 @@
                         { id: 'crab', weight: 15 }
                     ], structureTable: ['pond', 'spring', 'ruins', 'cave', 'hut'],
                     descriptions: ['The river rushes past.','A lake reflects the sky like glass.','Water cascades over smooth rocks.','The current pulls at your feet.','A hidden spring bubbles from the earth.'] },
-                bridge: { name: 'Bridge', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', danger: 4, encounterChance: 0.15, friendlyChance: 0.03, structureChance: 0.08,
+                bridge: { name: 'Bridge', role: 'feature', icon: '🌉', color: '#5a4a2a', bgColor: '#3a2e10', danger: 4, encounterChance: 0.15, friendlyChance: 0.03, structureChance: 0.08,
                     encounterTable: [
                         { id: 'frog', weight: 25 }, { id: 'human', weight: 25 }, { id: 'goblin', weight: 20 },
                         { id: 'bandit', weight: 20 }, { id: 'troll', weight: 10 }
@@ -718,7 +719,7 @@
                         { id: 'human', weight: 30 }, { id: 'frog', weight: 20 }, { id: 'horse', weight: 10 }
                     ], structureTable: ['cabin', 'hut', 'camp', 'ruins', 'shrine'],
                     descriptions: ['A wooden span creaks beneath you.','Rope bridges sway in the wind.','Stone arches rise from the water.','A toll booth stands abandoned.','The bridge offers a commanding view.'] },
-                farm: { name: 'Farm', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', danger: 1, encounterChance: 0.12, friendlyChance: 0.15, structureChance: 0.08,
+                farm: { name: 'Farm', role: 'settlement', icon: '🚜', color: '#5a5a2a', bgColor: '#3a3a10', danger: 1, encounterChance: 0.12, friendlyChance: 0.15, structureChance: 0.08,
                     encounterTable: [
                         { id: 'cow', weight: 30 }, { id: 'sheep', weight: 25 }, { id: 'pig', weight: 20 },
                         { id: 'horse', weight: 15 }, { id: 'human', weight: 10 }
@@ -727,7 +728,7 @@
                         { id: 'horse', weight: 15 }, { id: 'human', weight: 10 }
                     ], structureTable: ['cabin', 'hut', 'camp', 'shrine', 'spring', 'pond'],
                     descriptions: ['Barns loom in the golden fields.','A windmill turns lazily.','Plowed earth stretches to the horizon.','Chicken coops clatter with activity.','A silo casts a long shadow.'] },
-                indoors: { name: 'Indoors', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', danger: 2, encounterChance: 0.10, friendlyChance: 0.08, structureChance: 0.10,
+                indoors: { name: 'Indoors', role: 'interior', icon: '🏠', color: '#4a3a2a', bgColor: '#2e2010', danger: 2, encounterChance: 0.10, friendlyChance: 0.08, structureChance: 0.10,
                     encounterTable: [
                         { id: 'human', weight: 25 }, { id: 'cat', weight: 25 }, { id: 'mouse', weight: 25 },
                         { id: 'rat', weight: 15 }, { id: 'spider', weight: 10 }
@@ -736,7 +737,7 @@
                         { id: 'rat', weight: 10 }, { id: 'spider', weight: 10 }
                     ], structureTable: ['cabin', 'hut', 'shrine', 'ruins', 'web', 'spring'],
                     descriptions: ['Walls enclose the space.','A hearth glows with dying embers.','Furniture is arranged cozily.','The ceiling is low and beamed.','A door leads to other rooms.'] },
-                entrance: { name: 'Entrance', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', danger: 4, encounterChance: 0.15, encounterTable: [
+                entrance: { name: 'Entrance', role: 'feature', icon: '🚪', color: '#3a3a3a', bgColor: '#1e1e1e', danger: 4, encounterChance: 0.15, encounterTable: [
                     { id: 'human', weight: 25 }, { id: 'goblin', weight: 25 }, { id: 'bat', weight: 20 },
                     { id: 'wolf', weight: 20 }, { id: 'skeleton', weight: 10 }
                 ], descriptions: ['A cave mouth yawns in darkness.','A dungeon door stands reinforced.','A portal shimmers with energy.','A gatehouse guards the passage.','An ancient archway frames the way.'] }
@@ -899,6 +900,14 @@
                 this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
                 this.worldMap = new Map();
                 this.exploredTiles = new Set();
+                this.worldMeta = {
+                    worldId: `world_${Date.now()}`,
+                    seed: `${name || 'You'}:${this.selectedSpecies}:default`,
+                    generatorVersion: 1,
+                    mapModsHash: 'core',
+                    createdAt: Date.now()
+                };
+                this.superPatchMap = new Map();
                 this.currentBiome = 'forest';
                 this.inventory = [];
                 this.quests = [];
@@ -1343,12 +1352,25 @@
             // ===== WORLD / REGION SYSTEM =====
             // Biomes are large contiguous regions (super-patches of 30x30 tiles)
             // Deterministic assignment based on super-patch coordinates
+            _mapSeed() {
+                return String(this.worldMeta?.seed || 'default');
+            },
+            _seededNoise(...parts) {
+                const input = `${this._mapSeed()}|v${this.worldMeta?.generatorVersion || 1}|${parts.join('|')}`;
+                let hash = 2166136261;
+                for (let i = 0; i < input.length; i++) {
+                    hash ^= input.charCodeAt(i);
+                    hash = Math.imul(hash, 16777619);
+                }
+                return (hash >>> 0) / 4294967296;
+            },
             _patchNoise(spx, spy) {
-                const n1 = Math.abs(spx * 374761393 + spy * 668265263);
-                const n2 = Math.abs((spx + 1000) * 668265263 + (spy + 1000) * 374761393);
-                const v1 = ((n1 * 9301 + 49297) % 233280) / 233280;
-                const v2 = ((n2 * 49297 + 9301) % 233280) / 233280;
-                return (v1 + v2 * 0.5) / 1.5;
+                return this._seededNoise('biome', 'region', spx, spy);
+            },
+            _regionBiomeKeys() {
+                return Object.entries(this.biomes)
+                    .filter(([, biome]) => (biome.role || 'region') === 'region')
+                    .map(([id]) => id);
             },
             _getSuperPatchBiome(spx, spy) {
                 const key = `${spx},${spy}`;
@@ -1359,7 +1381,7 @@
                     return 'grove';
                 }
                 const noise = this._patchNoise(spx, spy);
-                const biomeKeys = Object.keys(this.biomes);
+                const biomeKeys = this._regionBiomeKeys();
                 const biomeIndex = Math.floor(noise * biomeKeys.length) % biomeKeys.length;
                 const biomeId = biomeKeys[biomeIndex];
                 this.superPatchMap.set(key, biomeId);
@@ -6007,6 +6029,12 @@ Enter 1, 2, or 3:`);
                     this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
                     this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
                     this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);
+                    this.worldMeta = loaded.worldMeta || {
+                        worldId: 'world_legacy',
+                        seed: loaded.currentBiome || 'default',
+                        generatorVersion: 1,
+                        mapModsHash: 'legacy'
+                    };
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };
@@ -6038,6 +6066,7 @@ Enter 1, 2, or 3:`);
             _restoreWorldState(loaded) {
                 this.worldMap = new Map();
                 this.exploredTiles = new Set(loaded.exploredTiles || []);
+                this.worldMeta = loaded.worldMeta || this.worldMeta || { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
                 this.superPatchMap = new Map();
                 if (loaded.worldMap) {
                     for (const [key, tile] of Object.entries(loaded.worldMap)) {

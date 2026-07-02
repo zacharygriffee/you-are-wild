@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 185/185 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 186/186 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -108,6 +108,7 @@
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
 - Combat log view preferences now persist independently: selected filter and search text are saved to `fff-log-view`, reloaded on app init, and invalid stored values fall back safely
+- Sparse map generation has a first-pass foundation: biome role metadata separates region/route/feature/interior concepts, super-patch generation selects only region biomes, seeded deterministic helpers drive region selection, world seed/version metadata persists through saves, and non-region entries such as bridge/road/indoors/entrance no longer become large super-patch biomes
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
@@ -135,6 +136,11 @@
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
 ### 🔵 Tier 4: Lower Priority
+
+#### 7. Sparse Map Generation Foundation
+- Implement the durable map delta boundary from `docs/sparse-map-generation.md`: `getBaseTile()`, `getTileDelta()`, `applyTileDelta()`, and `persistTileDelta()` compatibility helpers that keep generated baseline data separate from discovered/changed state
+- Add the planned IndexedDB map/world store (`worlds`, `tileDeltas`, later `chunkDeltas`/`entityIndex`) once save-slot migration is ready
+- Add large-map low-LOD discovery view after the delta boundary exists
 
 #### 8. Advanced Quest Scripting
 - Add explicit escort routing/checkpoints instead of only API-level objective matching
@@ -177,9 +183,9 @@
 ```
 FightFuckFeed.tactical/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~6144 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~6173 lines)
     content-system.js — Template engine, content tiers, localization registry (~463 lines)
-    serialization.js  — Binary save/load codec (~268 lines)
+    serialization.js  — Binary save/load codec (~276 lines)
     module-system.js  — Mod loader and hook system (~275 lines)
     marketplace.js    — Built-in content pack metadata (~140 lines)
   src/ui/
@@ -189,7 +195,7 @@ FightFuckFeed.tactical/
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 185 tests, syntax/structure/combat behavior
+  test/test.js       — 186 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

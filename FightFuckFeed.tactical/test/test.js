@@ -126,6 +126,8 @@ test('Biomes are defined', () => {
   assertContains(appContent, 'manor:', 'Manor biome missing');
   assertContains(appContent, 'beach:', 'Beach biome missing');
   assertContains(appContent, 'entrance:', 'Entrance biome missing');
+  assertContains(appContent, "role: 'region'", 'Region biome role metadata missing');
+  assertContains(appContent, "role: 'feature'", 'Feature biome role metadata missing');
 });
 
 test('Species abilities are defined', () => {
@@ -1707,6 +1709,32 @@ test('Minimap resolves adjacent tile biomes without exploring them', () => {
   assertContains(elements.get('mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
 });
 
+test('Super-patch generation uses seeded region biomes only', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-a', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.superPatchMap = new Map();
+  const regionKeys = App._regionBiomeKeys();
+  assert(regionKeys.includes('forest'), 'Region biome list should include normal terrain');
+  assert(!regionKeys.includes('bridge'), 'Bridge should not be a region biome');
+  assert(!regionKeys.includes('road'), 'Road should not be a region biome');
+  assert(!regionKeys.includes('indoors'), 'Indoors should not be a region biome');
+  assert(!regionKeys.includes('entrance'), 'Entrance should not be a region biome');
+  for (let spx = -4; spx <= 4; spx++) {
+    for (let spy = -4; spy <= 4; spy++) {
+      const biome = App._getSuperPatchBiome(spx, spy);
+      assert(regionKeys.includes(biome), `Super-patch generated non-region biome ${biome}`);
+    }
+  }
+  const first = App._getSuperPatchBiome(4, -3);
+  App.superPatchMap = new Map();
+  const second = App._getSuperPatchBiome(4, -3);
+  assertEqual(first, second, 'Same seed should produce same super-patch biome');
+  App.worldMeta.seed = 'different-seed';
+  App.superPatchMap = new Map();
+  const otherSeed = App._getSuperPatchBiome(4, -3);
+  assert(App._regionBiomeKeys().includes(otherSeed), 'Different seed should still produce a valid region biome');
+});
+
 test('Movement and search advance the in-game hour', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.player = makeUnit('You');
@@ -2304,6 +2332,7 @@ test('Quest state persists through binary saves', () => {
   App.location = { x: 2, y: -1 };
   App.worldMap = new Map();
   App.exploredTiles = new Set();
+  App.worldMeta = { worldId: 'world-save-test', seed: 'stable-seed', generatorVersion: 1, mapModsHash: 'core' };
   App.inventory = [];
   App.quests = [{ id: 'saved_quest', title: 'Saved Quest', status: 'active', objectives: [], reward: {} }];
   const loaded = Binary.loadGame(Binary.saveGame(App));
@@ -2311,6 +2340,8 @@ test('Quest state persists through binary saves', () => {
   assertEqual(loaded.questState.playerGold, 12, 'Player gold should persist');
   assertEqual(loaded.questState.dayCount, 0, 'Day count should persist');
   assertEqual(loaded.questState.quests[0].id, 'saved_quest', 'Quest log should persist');
+  assertEqual(loaded.worldMeta.seed, 'stable-seed', 'World seed metadata should persist');
+  assertEqual(loaded.worldMeta.worldId, 'world-save-test', 'World id metadata should persist');
 });
 
 test('Merchant cards expose trade actions', () => {

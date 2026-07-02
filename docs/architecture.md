@@ -36,6 +36,10 @@ UI modules live in `src/ui/`:
 - `market-nav.js`
 - `global-nav.js`
 
+## Map Direction
+
+The current overworld uses lazy deterministic super-patch biome generation. The intended next architecture is a sparse, seeded, layered map model with durable IndexedDB deltas over generated baseline data. See `docs/sparse-map-generation.md` for the quadtree/chunk plan, seed contract, map delta model, and migration path.
+
 ## Legacy And Archive Areas
 
 - `legacy/` contains the original monolithic HTML app and backup.

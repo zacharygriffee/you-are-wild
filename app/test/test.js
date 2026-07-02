@@ -480,6 +480,9 @@ test('Template has all panels', () => {
 
 test('Scene description supports rich bounded content', () => {
   assertContains(template, '<div class="scene-description" id="scene-description">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
+  assertContains(template, '.scene-actions > .action-btn', 'Desktop scene action buttons should have scoped sizing rules');
+  assertContains(template, 'flex-wrap: wrap;', 'Desktop scene action rows should wrap instead of forcing horizontal scroll');
+  assertContains(template, 'overflow-x: hidden;', 'Desktop scene action rows should not create horizontal page overflow');
   assertContains(template, '.party-stats-view', 'Party stats view should have bounded scroll styles');
   assertContains(template, '.party-stats-footer', 'Party stats view should have a sticky footer action area');
   assertContains(template, '.mobile-scene-sheet.rich-content', 'Mobile scene sheet should have an expanded rich-content mode');
@@ -2922,6 +2925,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="mobile-context-menu"', 'Selected-target sub-action buttons should advertise and target their dialog popup');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
+  assertContains(template, '.scene-actions > .action-btn', 'Selected-target action buttons should use bounded desktop scene-action sizing');
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');

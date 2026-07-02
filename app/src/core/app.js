@@ -4552,7 +4552,7 @@
                     this.player.MPle += 5;
                     this.player.Figh += 1; this.player.Feas += 1; this.player.Flir += 1; this.player.Fuck += 1; this.player.Flee += 1; this.player.Feed += 1;
                     this.player.str += 1; this.player.con += 1; this.player.spd += 1; this.player.int += 1; this.player.wis += 1; this.player.cha += 1;
-                    this.log.push({ text: 'Level up! You are now level ' + this.player.level + '. All stats increased!', type: 'discovery' });
+                    this.log.push({ text: this._label('perk.levelUp', 'Level up! You are now level {level}. All stats increased!', { level: this.player.level }), type: 'discovery' });
                     this._queuePerkChoice();
                 }
                 this.renderParty();
@@ -4562,7 +4562,7 @@
             _queuePerkChoice() {
                 if (!this.player) return;
                 this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + 1;
-                this.log.push({ text: 'Choose a new perk from the perk tree.', type: 'discovery' });
+                this.log.push({ text: this._label('perk.chooseNew', 'Choose a new perk from the perk tree.'), type: 'discovery' });
             },
 
             _perkTreeCount(treeId, unit = this.player) {
@@ -4616,7 +4616,7 @@
                 if (!this.player || (this.player.pendingPerkChoices || 0) <= 0) return;
                 const choice = this._availablePerkChoices().find(perk => perk.id === perkId);
                 if (!choice || !choice.available) {
-                    this.log.push({ text: 'That perk is not available yet.', type: 'discovery' });
+                    this.log.push({ text: this._label('perk.notAvailable', 'That perk is not available yet.'), type: 'discovery' });
                     this.renderLog();
                     this.showPerkSelection();
                     return;
@@ -4634,7 +4634,7 @@
                 });
                 if (choice.stat) this.player[choice.stat] = (this.player[choice.stat] || 0) + (choice.val || 0);
                 this.player.pendingPerkChoices = Math.max(0, (this.player.pendingPerkChoices || 0) - 1);
-                this.log.push({ text: 'Perk chosen: ' + choice.name + '. ' + choice.desc, type: 'discovery' });
+                this.log.push({ text: this._label('perk.chosen', 'Perk chosen: {name}. {description}', { name: choice.name, description: choice.desc }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 if (this.player.pendingPerkChoices > 0) this.showPerkSelection();
@@ -4646,11 +4646,11 @@
                 if (!this.player) return;
                 const selected = this.player.perks || [];
                 if (!selected.length) {
-                    this.log.push({ text: 'No perks selected to respec.', type: 'discovery' });
+                    this.log.push({ text: this._label('perk.noneToRespec', 'No perks selected to respec.'), type: 'discovery' });
                     this.renderLog();
                     return;
                 }
-                if (!skipConfirm && !confirm('Reset selected perks and refund their choices?')) return;
+                if (!skipConfirm && !confirm(this._label('perk.confirmRespec', 'Reset selected perks and refund their choices?'))) return;
                 selected.forEach(perk => {
                     if (perk.stat && typeof perk.val === 'number') {
                         this.player[perk.stat] = Math.max(0, (this.player[perk.stat] || 0) - perk.val);
@@ -4659,7 +4659,7 @@
                 this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + selected.length;
                 this.player.perks = [];
                 this.perkTreeFilter = 'all';
-                this.log.push({ text: `Perks reset. Refunded ${selected.length} choice${selected.length === 1 ? '' : 's'}.`, type: 'discovery' });
+                this.log.push({ text: this._label(selected.length === 1 ? 'perk.respecDoneOne' : 'perk.respecDoneMany', selected.length === 1 ? 'Perks reset. Refunded {count} choice.' : 'Perks reset. Refunded {count} choices.', { count: selected.length }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.showCharacterStats();

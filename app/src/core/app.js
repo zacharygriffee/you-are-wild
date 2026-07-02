@@ -2157,7 +2157,7 @@
             },
 
             _calcInitiative(c) {
-                let base = this._effectiveSpeed(c) + Math.random() * 10;
+                let base = this._effectiveSpeed(c) + this._combatStateRoll('combat-initiative', c, 'jitter') * 10;
                 if (c.bodyParts) {
                     for (const bp of c.bodyParts) {
                         const part = this.BODY_PARTS[bp];

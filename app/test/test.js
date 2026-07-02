@@ -4015,6 +4015,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.enemyTurn.toString(), 'enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random', 'Menacing fear status should not use raw Math.random');
   assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
   assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
+  assertNotContains(App._calcInitiative.toString(), 'Math.random', 'Persistent combat initiative should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -4369,6 +4370,23 @@ test('Combat unit cards show turn order and current focus badges', () => {
   assertContains(allyCard, '#3', 'Waiting party card should show turn order number');
   assertContains(allyCard, 'Ally esta en cola para el turno 3', 'Waiting party card should announce localized queued turn order');
   assertContains(App.renderMobileUnitChip(enemy, 0, 'creature'), 'Enemy es el actor de combate actual en el turno 2.', 'Mobile chip should announce localized current combat focus');
+});
+
+test('Combat initiative jitter is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'initiative-seed', generatorVersion: 2 };
+    App.location = { x: -2, y: 5 };
+    App.dayCount = 2;
+    App.timeHour = 11;
+    App.combatState = { active: true, round: 3, currentTurn: 0, turnQueue: [], syncActions: [] };
+    const player = makeUnit('You', { id: 'initiative-player', spd: 12 });
+    const enemy = makeUnit('Enemy', { id: 'initiative-enemy', disposition: App.DISPOSITION.ENEMY, spd: 12 });
+    return [App._calcInitiative(player), App._calcInitiative(enemy)];
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Combat initiative should not depend on ambient Math.random');
 });
 
 test('Queued group actions show the slowest participant order and preserve intervening turns', () => {

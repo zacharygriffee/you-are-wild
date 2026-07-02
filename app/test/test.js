@@ -4096,6 +4096,10 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
+  assertNotContains(App.buyFromMerchant.toString(), 'Date.now', 'Persistent merchant purchase item ids should not use Date.now');
+  assertNotContains(App.sellToMerchant.toString(), 'Date.now', 'Persistent merchant sold-stock ids should not use Date.now');
+  assertNotContains(App._normalizeQuest.toString(), 'Date.now', 'Persistent fallback quest ids should not use Date.now');
+  assertNotContains(App._grantQuestReward.toString(), 'Date.now', 'Persistent quest reward item ids should not use Date.now');
 });
 
 test('Map tile inspector renders safe biome and terrain details', () => {
@@ -5377,6 +5381,7 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
   assertEqual(App.player.gold, 7, 'Quest reward should grant gold');
   assertEqual(App.player.xp, 10, 'Quest reward should grant XP');
   assertEqual(App.inventory[0].name, 'Old Coin', 'Quest reward should grant item');
+  assertEqual(App.inventory[0].id, 'quest_item_wolf-hunt_old-coin_0', 'Quest reward item id should be stable without timestamp entropy');
 });
 
 test('Quest turn-in can defer rewards until claimed from quest log', () => {
@@ -5412,6 +5417,7 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertEqual(App.player.gold, 7, 'Turn-in should grant deferred gold');
   assertEqual(App.player.xp, 10, 'Turn-in should grant deferred XP');
   assertEqual(App.inventory[0].name, 'Old Coin', 'Turn-in should grant deferred item');
+  assertEqual(App.inventory[0].id, 'quest_item_deferred-wolf-hunt_old-coin_0', 'Deferred quest reward item id should be stable without timestamp entropy');
   assertEqual(App.quests[0].rewardClaimed, true, 'Turn-in should mark reward claimed');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Quest turned in: Deferred Wolf Hunt.', 'Turn-in success feedback should be logged');
   App.updateLanguage('es');
@@ -5735,12 +5741,14 @@ test('Merchant buy and sell update gold inventory and stock', () => {
   App.buyFromMerchant('trader-1', 0);
   assertEqual(App.player.gold, 30, 'Buying should spend gold');
   assert(App.inventory.some(item => item.name === 'Healing Herb'), 'Buying should add item to inventory');
+  assert(App.inventory.some(item => item.id === 'buy_trader-1_healing-herb_1'), 'Bought item id should be stable without timestamp entropy');
   assertEqual(merchant.stock[0].qty, 0, 'Buying should reduce stock quantity');
   assertEqual(App.log[App.log.length - 1].text, 'Bought Healing Herb for 10 gold.', 'Buying should log localized purchase feedback');
   App.sellToMerchant('trader-1', 'gem-1');
   assertEqual(App.player.gold, 55, 'Selling should grant half item value');
   assert(!App.inventory.some(item => item.id === 'gem-1'), 'Selling should remove item from inventory');
   assert(merchant.stock.some(item => item.name === 'Shiny Gem'), 'Sold item should enter merchant stock');
+  assert(merchant.stock.some(item => item.id === 'sold_trader-1_shiny-gem_1'), 'Sold stock id should be stable without timestamp entropy');
   assertEqual(App.log[App.log.length - 1].text, 'Sold Shiny Gem for 25 gold.', 'Selling should log localized sale feedback');
 });
 

@@ -1969,6 +1969,10 @@
                 const index = Math.floor(this._worldRoll(namespace, x, y, ...parts) * items.length) % items.length;
                 return items[index];
             },
+            _stableIdPart(value, fallback = 'item') {
+                const raw = String(value ?? fallback).toLowerCase();
+                return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+            },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 const tileX = Number.isFinite(tile?.x) ? tile.x : 0;
@@ -5606,7 +5610,7 @@
                 }
                 this.player.gold -= item.price;
                 item.qty -= 1;
-                this.inventory.push({ id: `buy_${Date.now()}_${this.inventory.length}`, name: item.name });
+                this.inventory.push({ id: `buy_${this._stableIdPart(targetId, 'merchant')}_${this._stableIdPart(item.name)}_${this.inventory.length}`, name: item.name });
                 this.log.push({ text: this._label('trade.bought', 'Bought {name} for {price} gold.', { name: item.name, price: item.price }), type: 'loot' });
                 this.renderLog();
                 this.renderParty();
@@ -5625,7 +5629,7 @@
                 this.player.gold = (this.player.gold || 0) + price;
                 const existing = merchant.stock.find(s => s.name === item.name);
                 if (existing) existing.qty += 1;
-                else merchant.stock.push({ id: `sold_${Date.now()}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
+                else merchant.stock.push({ id: `sold_${this._stableIdPart(targetId, 'merchant')}_${this._stableIdPart(item.name)}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
                 this.log.push({ text: this._label('trade.sold', 'Sold {name} for {price} gold.', { name: item.name, price }), type: 'loot' });
                 this.renderLog();
                 this.renderParty();
@@ -5636,7 +5640,7 @@
             // ===== QUESTS =====
             _normalizeQuest(quest, giver = null) {
                 const source = quest || {};
-                const id = source.id || `quest_${giver?.id || giver?.name || Date.now()}`;
+                const id = source.id || `quest_${this._stableIdPart(giver?.id || giver?.name, 'giver')}`;
                 return {
                     id,
                     title: source.title || 'Untitled Quest',
@@ -5789,7 +5793,7 @@
                 if (reward.gold) this.player.gold = (this.player.gold || 0) + reward.gold;
                 for (const itemName of reward.items || []) {
                     if (this.inventory.length < this.MAX_INVENTORY) {
-                        this.inventory.push({ id: `quest_item_${Date.now()}_${this.inventory.length}`, name: itemName });
+                        this.inventory.push({ id: `quest_item_${this._stableIdPart(quest.id, 'quest')}_${this._stableIdPart(itemName)}_${this.inventory.length}`, name: itemName });
                     }
                 }
                 if (reward.recruit && this.party.length < this.MAX_PARTY_SIZE) {

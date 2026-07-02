@@ -4047,7 +4047,9 @@
                 if (targets.length === 1 && actors.length > 1) {
                     resolved = this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
-                    if (actors.length === targets.length) {
+                    if (this._sameUnitSet(actors, targets)) {
+                        resolved = this.outsideMutualGroupAction(action, actors);
+                    } else if (actors.length === targets.length) {
                         resolved = this.outsidePairedActionsOnTargets(action, actors, targets);
                     } else {
                         this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
@@ -4304,6 +4306,70 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
+                this._normalizeExplorationSelections();
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+                return true;
+            },
+
+            _sameUnitSet(left = [], right = []) {
+                const leftIds = [...new Set((left || []).filter(Boolean).map(unit => this._unitSelectionId(unit)))].sort();
+                const rightIds = [...new Set((right || []).filter(Boolean).map(unit => this._unitSelectionId(unit)))].sort();
+                return leftIds.length > 0 && leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
+            },
+
+            outsideMutualGroupAction(action, participants = []) {
+                const living = [...new Set((participants || []).filter(unit => unit && this._isLivingCreature(unit)))];
+                if (living.length <= 1) return false;
+                const names = living.map(unit => unit.name).join(', ');
+                let result = '';
+                switch (action) {
+                    case 'fight': {
+                        const totalFigh = living.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
+                        const avgCon = living.reduce((sum, actor) => sum + (actor.con || 10), 0) / living.length;
+                        const dmg = Math.max(1, Math.floor(this._AR(totalFigh + 4) / living.length - avgCon * 0.2));
+                        const outcomes = [];
+                        living.forEach(unit => {
+                            const outcome = this._resolvePartyPlayFight(living, unit, dmg);
+                            if (outcome) outcomes.push(`${unit.name}: ${outcome}`);
+                        });
+                        result = this._label('group.mutual.fight', '{actors} spar as a mutual group, each taking {amount} punishment.', { actors: names, amount: dmg });
+                        if (outcomes.length > 0) result += ` ${outcomes.join(' ')}`;
+                        break;
+                    }
+                    case 'feed': {
+                        const totalFeed = living.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
+                        const healAmount = Math.max(1, Math.floor(totalFeed / living.length));
+                        living.forEach(unit => {
+                            unit.CPun = Math.min(unit.MPun, (unit.CPun || 0) + healAmount);
+                            unit.hunger = Math.max(0, (unit.hunger || 0) - 10);
+                        });
+                        result = this._label('group.mutual.feed', '{actors} tend each other, restoring {amount} punishment where needed.', { actors: names, amount: healAmount });
+                        break;
+                    }
+                    case 'flirt':
+                    case 'fuck': {
+                        const stat = action === 'fuck' ? 'Fuck' : 'Flir';
+                        const totalCharm = living.reduce((sum, actor) => sum + (actor[stat] || 10) + Math.floor((actor.cha || 10) * 0.5), 0);
+                        const gain = Math.max(1, Math.floor(totalCharm / living.length * (action === 'fuck' ? 0.35 : 0.25)));
+                        living.forEach(unit => {
+                            unit.CPle = Math.min(unit.MPle, (unit.CPle || 0) + gain);
+                        });
+                        result = this._label('group.mutual.social', '{actors} share {action} as a mutual group. Pleasure rises for everyone involved.', {
+                            actors: names,
+                            action: this._uiLabel(action).toLowerCase()
+                        });
+                        break;
+                    }
+                    case 'feast':
+                        result = this._label('group.mutual.feastBlocked', '{actors} cannot feast on themselves as a mutual group. Choose a primary target instead.', { actors: names });
+                        break;
+                    default:
+                        return false;
+                }
+                this.log.push({ text: result, type: 'discovery' });
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();

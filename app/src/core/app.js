@@ -4102,6 +4102,8 @@
                         resolved = this.outsideMutualGroupAction(action, actors);
                     } else if (this._isUnitSubset(targets, actors)) {
                         resolved = this.outsideMutualGroupAction(action, actors);
+                    } else if (this._isUnitSubset(actors, targets)) {
+                        resolved = this.outsideMutualGroupAction(action, [...actors, ...targets]);
                     } else if (actors.length === targets.length) {
                         resolved = this.outsidePairedActionsOnTargets(action, actors, targets, options);
                     } else {

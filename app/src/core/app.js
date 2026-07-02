@@ -6284,6 +6284,12 @@
                     }
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
+                const canOpenIntentMenu = isParty
+                    ? !this.combatState.active
+                    : unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
+                const contextMenuAttr = canOpenIntentMenu
+                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
+                    : '';
                 const partyRole = isParty && unit.name !== this.player?.name ? this._partyRoleLabel(this._getPartyRole(unit)) : '';
                 const partyStatus = unit.name === this.player?.name ? this._label('party.you', 'You') : `${this._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
                 const status = isParty ? partyStatus : this._unitDispositionLabel(unit);
@@ -6293,7 +6299,7 @@
                 const pressHandlers = isParty
                     ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
                     : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
-                return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
+                return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
@@ -6435,7 +6441,13 @@
                     equipment: this._escapeHtml(this._label('party.equipment', 'Equipment'))
                 };
                 const noneLabel = this._escapeHtml(this._label('party.none', 'None'));
-                return `<div class="${cardClass}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs} onclick="App.toggleUnit(${index},'${type}')">
+                const cardCanOpenIntentMenu = isParty
+                    ? !this.combatState.active
+                    : unit.CPun > 0 && !isCorpse && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
+                const cardContextMenuAttr = cardCanOpenIntentMenu
+                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
+                    : '';
+                return `<div class="${cardClass}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
@@ -7782,7 +7794,7 @@
                     source
                 };
             },
-            showIntentMenu(type, targetRef) {
+            showIntentMenu(type, targetRef, source = 'sheet') {
                 const isParty = type === 'party';
                 const target = isParty
                     ? this.party[Number(targetRef)]
@@ -7793,13 +7805,14 @@
                 const menuLabel = this._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
                 const targetLabel = this._escapeHtml(targetName);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
+                const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
                 const actionButton = (key, action = key, extraClass = '') => {
                     const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
                     const icon = this._actionIcon(key);
                     const title = key === 'close' ? label : `${label} ${targetName}`;
                     const handler = action === 'close'
                         ? 'App.closeMobileContextMenu()'
-                        : `App.selectIntent('${type}',${targetArg},'${action}','sheet')`;
+                        : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
                     return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
                 let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
@@ -7818,12 +7831,12 @@
                     const key = target.questAccepted ? 'viewQuest' : 'acceptQuest';
                     const label = this._uiLabel(key);
                     const title = this._label(target.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', target.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName });
-                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest','sheet')">📜 ${this._escapeHtml(label)}</button>`;
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest','${commandSource}')">📜 ${this._escapeHtml(label)}</button>`;
                 }
                 if (!isParty && target.disposition === this.DISPOSITION.MERCHANT) {
                     const label = this._uiLabel('trade');
                     const title = this._label('action.tradeWith', 'Trade with {name}', { name: targetName });
-                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade','sheet')">🪙 ${this._escapeHtml(label)}</button>`;
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade','${commandSource}')">🪙 ${this._escapeHtml(label)}</button>`;
                 }
                 html += actionButton('close', 'close');
                 html += '</div></div>';

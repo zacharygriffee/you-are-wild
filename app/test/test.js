@@ -4091,6 +4091,8 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.allyTurn.toString(), 'ally.obedient && Math.random', 'Dumb AI obedience checks should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'enemies[Math.floor(Math.random()', 'Dumb AI target picks should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'ally.Fuck + ally.Flir + Math.random', 'Dumb AI charm rolls should not use raw Math.random');
+  assertNotContains(App.allyTurn.toString(), 'if (Math.random() < targetDodge)', 'Ally dodge checks should not use raw Math.random');
+  assertNotContains(App.enemyTurn.toString(), 'if (Math.random() < targetDodge)', 'Enemy dodge checks should not use raw Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -5079,6 +5081,31 @@ test('Dumb ally arousal action is deterministic by combat state', () => {
   assert(lowRandom.enemyA > 0 || lowRandom.enemyB > 0, 'Dumb ally should apply pleasure to one enemy');
 });
 
+test('Ally target dodge is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'dodge-hit-0', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'dodge-player' });
+    const ally = makeUnit('Ally', { id: 'ally-dodge', Figh: 50, combatRow: 'front' });
+    const target = makeUnit('Swimmer', { id: 'swim-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, swimming: true, combatRow: 'front' });
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = [target];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: ally, initiative: 10 }], syncActions: [] };
+    App.nextTurn = function() { this._allyDodgeAdvanced = true; };
+    App.allyTurn(ally);
+    return { targetPun: target.CPun, advanced: !!App._allyDodgeAdvanced, log: App.log.map(entry => entry.text).join('|') };
+  };
+
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Ally dodge outcome should not depend on ambient Math.random');
+  assertContains(lowRandom.log, 'dodges Ally', 'Seeded ally dodge fixture should exercise the dodge branch');
+});
+
 test('Scavenger AI order feasts on corpses after victory', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { xp: 0, xpToNext: 100 });
@@ -5144,6 +5171,32 @@ test('Enemy morale flee is deterministic by combat state', () => {
     return App._enemyShouldFlee(enemy, [player, ally]);
   };
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Enemy morale flee should not depend on ambient Math.random');
+});
+
+test('Enemy target dodge is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'enemy-dodge-4', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'swim-player', CPun: 100, MPun: 100, swimming: true, combatRow: 'front' });
+    const enemy = makeUnit('Enemy', { id: 'enemy-dodge', disposition: App.DISPOSITION.ENEMY, Figh: 50, combatRow: 'front' });
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: enemy, initiative: 10 }], syncActions: [] };
+    App._enemyShouldFlee = function() { return false; };
+    App._enemyCallReinforcement = function() { return false; };
+    App.nextTurn = function() { this._enemyDodgeAdvanced = true; };
+    App.enemyTurn(enemy);
+    return { playerPun: player.CPun, advanced: !!App._enemyDodgeAdvanced, log: App.log.map(entry => entry.text).join('|') };
+  };
+
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Enemy dodge outcome should not depend on ambient Math.random');
+  assertContains(lowRandom.log, 'dodges Enemy', 'Seeded enemy dodge fixture should exercise the dodge branch');
 });
 
 test('Menacing enemy fear is deterministic by combat state', () => {

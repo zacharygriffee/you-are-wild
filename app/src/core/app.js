@@ -2336,6 +2336,9 @@
                 if (actor?.combatRow === 'back' && target?.combatRow === 'front' && (actor.ranged || actor.antiflying)) mult -= 0.1;
                 return Math.max(0.5, mult);
             },
+            _targetDodgeRoll(actor, target, action = 'fight') {
+                return this._combatStateRoll('combat-target-dodge', actor, `${this._unitSelectionId(target)}:${action}`);
+            },
 
             _wakeOnDamage(unit) {
                 if (unit?.status?.sleep) {
@@ -3522,7 +3525,7 @@
                 // Flying dodge check
                 const allyIsRanged = ally.ranged || ally.antiflying;
                 const targetDodge = target.flying && !allyIsRanged && !ally.ranged ? 0.5 : (target.swimming && !ally.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
-                if (Math.random() < targetDodge) {
+                if (this._targetDodgeRoll(ally, target, 'fight') < targetDodge) {
                     this.log.push({ text: `${target.name} dodges ${ally.name}'s attack!`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
@@ -3660,7 +3663,7 @@
                 // Flying/swimming/floopy dodge check
                 const isRanged = enemy.ranged || enemy.antiflying;
                 const targetDodge = target.flying && !isRanged && !enemy.ranged ? 0.5 : (target.swimming && !enemy.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
-                if (Math.random() < targetDodge) {
+                if (this._targetDodgeRoll(enemy, target, 'fight') < targetDodge) {
                     this.log.push({ text: `${target.name} dodges ${enemy.name}'s attack! (${target.flying ? 'flying' : target.swimming ? 'swimming' : 'floopy'})`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }

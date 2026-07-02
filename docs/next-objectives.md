@@ -139,7 +139,8 @@
 2. **Keep the save-slot/new-game flow tight.** Validate that the load menu exposes a clear New Game path, slot cards can start a new run or take over an existing slot, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
 3. **Device-test mobile save and party surfaces.** Confirm viewport-bounded modals, slot cards, long-press party management, and target buttons remain reachable with real mobile browser chrome and safe-area variants.
 4. **Continue accessibility/localization pass on high-traffic controls.** Prefer labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
-5. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
+5. **Evaluate the proposed terrain tileset for map rendering.** Determine whether the attached painted square tiles can replace or augment emoji map cells for current biomes, routes, bridges, POIs, and structures; identify missing tile kinds before implementation.
+6. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
 
 ### 🟡 Tier 2: High Impact
 
@@ -174,6 +175,7 @@
 
 #### 7. Sparse Map Generation Foundation
 - Expand the large-map low-LOD view with mobile-specific ergonomics once traversal controls settle
+- Evaluate the proposed painted tileset as a first map-art pass. The sheet appears to cover current `grove`/forest/plains/swamp/jungle/cliff/water/beach/cave/dungeon terrain, road straight/corner/intersection variants, horizontal/vertical bridges, camp/spring/cabin/farm/settlement/cave/web/fog features, and generic POI markers. Before implementation, confirm licensing/source image ownership, extract individual tiles into generated assets, map each tile to `displayBiome`/`terrainTags`/`overlays`, and decide whether more tiles are needed for manor/interior rooms, road-water/coast transitions, river shapes, and any future snow/desert/special biomes.
 
 #### 8. Advanced Quest Scripting
 - Expand quest scripting beyond the first-pass checkpoint/turn-in routing foundation, such as richer branching quest steps, multiple valid turn-in NPCs, and smarter route planning that can choose roads/terrain-aware paths instead of only summarizing known direct-path terrain

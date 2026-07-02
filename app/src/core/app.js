@@ -4072,7 +4072,9 @@
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+                const menu = document.getElementById('mobile-context-menu');
+                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateOutsideContextDismiss(menu);
             },
 
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
@@ -7354,11 +7356,29 @@
                 if (typeof document.addEventListener === 'function') document.addEventListener('keydown', this._focusTrapHandler);
                 setTimeout(() => this._focusFirstIn(container), 0);
             },
+            _activateOutsideContextDismiss(container) {
+                if (!container || typeof document.addEventListener !== 'function') return;
+                this._mobileContextOutsideHandler = (event) => {
+                    const target = event && event.target;
+                    const inside = target && (target === container || (typeof container.contains === 'function' && container.contains(target)));
+                    if (inside) return;
+                    this.closeMobileContextMenu();
+                };
+                setTimeout(() => {
+                    if (this._mobileContextOutsideHandler) {
+                        document.addEventListener('pointerdown', this._mobileContextOutsideHandler);
+                    }
+                }, 0);
+            },
             _restoreFocusTrap(options = {}) {
                 const trap = this._focusTrap;
                 if (this._focusTrapHandler && typeof document.removeEventListener === 'function') {
                     document.removeEventListener('keydown', this._focusTrapHandler);
                 }
+                if (this._mobileContextOutsideHandler && typeof document.removeEventListener === 'function') {
+                    document.removeEventListener('pointerdown', this._mobileContextOutsideHandler);
+                }
+                this._mobileContextOutsideHandler = null;
                 this._focusTrapHandler = null;
                 this._focusTrap = null;
                 if (options.restoreFocus !== false && trap?.previous && typeof trap.previous.focus === 'function') {
@@ -7931,7 +7951,9 @@
                 html += actionButton('close', 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+                const menu = document.getElementById('mobile-context-menu');
+                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateOutsideContextDismiss(menu);
             },
             showRadialIntentMenu(type, targetRef, source = 'radial') {
                 return this.showIntentMenu(type, targetRef, source, 'radial');
@@ -7964,7 +7986,9 @@
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+                const menu = document.getElementById('mobile-context-menu');
+                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateOutsideContextDismiss(menu);
             },
             selectIntent(type, targetRef, action, source = 'sheet', subAction = null) {
                 this._haptic(8);
@@ -8018,7 +8042,9 @@
                 html += actionButton(this._label('ui.close', 'Close'), 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+                const menu = document.getElementById('mobile-context-menu');
+                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateOutsideContextDismiss(menu);
             },
             mobilePartyContextAction(action, index) {
                 this._haptic(8);

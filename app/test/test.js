@@ -737,6 +737,7 @@ function makeElement() {
     setAttribute(name, value) { attributes.set(name, String(value)); },
     getAttribute(name) { return attributes.get(name) || null; },
     hasAttribute(name) { return attributes.has(name); },
+    contains(target) { return target === this || target?.parentNode === this; },
     querySelectorAll() { return []; },
     remove() { this.removed = true; },
     insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
@@ -5945,6 +5946,27 @@ test('Overlays trap focus and restore the opener on close', () => {
   assertEqual(prevented, true, 'Escape should be consumed by the overlay focus trap');
   assertEqual(elements.get('screen-settings').style.display, 'none', 'Escape should close the overlay');
   assertEqual(opener.focused, true, 'Closing overlay should restore focus to opener');
+});
+
+test('Mobile context menus dismiss on outside pointer only', () => {
+  const { App, elements, document } = loadAppForCombat();
+  const opener = makeElement();
+  document.activeElement = opener;
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [makeUnit('Friendly', { id: 'friendly-outside', disposition: App.DISPOSITION.FRIENDLY })];
+  App.showIntentMenu('creature', 'friendly-outside');
+  const menu = elements.get('mobile-context-menu');
+  menu.removed = undefined;
+  const inside = makeElement();
+  inside.parentNode = menu;
+  assert(App._mobileContextOutsideHandler, 'Mobile context menu should register outside pointer dismissal');
+  App._mobileContextOutsideHandler({ target: inside });
+  assertEqual(menu.removed, undefined, 'Pointer inside the menu should not dismiss it');
+  App._mobileContextOutsideHandler({ target: makeElement() });
+  assertEqual(menu.removed, true, 'Pointer outside the menu should dismiss it');
+  assertEqual(App._mobileContextOutsideHandler, null, 'Closing the menu should clear outside pointer dismissal');
+  assertEqual(opener.focused, true, 'Outside dismissal should restore focus to the opener');
 });
 
 test('Newer interaction settings persist through saveSettings', () => {

@@ -5525,7 +5525,7 @@
                 this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
                 this.player.equipment[slot] = item;
                 this._recalculateEquipment(this.player);
-                this.log.push({ text: `Equipped ${item.name}.`, type: 'discovery' });
+                this.log.push({ text: this._label('inventory.equipped', 'Equipped {name}.', { name: item.name }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.showInventory();
@@ -5543,7 +5543,7 @@
                 this.player.equipment[slot] = null;
                 this._recalculateEquipment(this.player);
                 this.inventory.push(item);
-                this.log.push({ text: `Unequipped ${item.name}.`, type: 'discovery' });
+                this.log.push({ text: this._label('inventory.unequipped', 'Unequipped {name}.', { name: item.name }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.showInventory();
@@ -5565,7 +5565,7 @@
                         return item ? `${label}: ${item.name}` : '';
                     })
                     .filter(Boolean);
-                return equipped.length ? equipped.map(entry => this._escapeHtml(entry)).join('<br>') : 'No equipment';
+                return equipped.length ? equipped.map(entry => this._escapeHtml(entry)).join('<br>') : this._escapeHtml(this._label('inventory.noEquipment', 'No equipment'));
             },
 
             _equipmentBonusText(item) {
@@ -5573,15 +5573,17 @@
                 const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
                 const effect = this._getItemDef(item).equipEffect;
                 if (effect) entries.push(`Effect: ${effect}`);
-                return entries.length ? entries.join(', ') : 'No bonus';
+                return entries.length ? entries.join(', ') : this._label('inventory.noBonus', 'No bonus');
             },
 
             // ===== INVENTORY =====
             showInventory() {
                 const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
                 const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
-                let html = `<h3>Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3>`;
-                html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">Equipped</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
+                const title = this._escapeHtml(this._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: this.inventory.length, max: this.MAX_INVENTORY }));
+                const equippedLabel = this._escapeHtml(this._label('inventory.equippedSection', 'Equipped'));
+                let html = `<h3>${title}</h3>`;
+                html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">${equippedLabel}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
                 Object.entries(this.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
                     const equipped = this.player?.equipment?.[slot];
                     if (equipped) {

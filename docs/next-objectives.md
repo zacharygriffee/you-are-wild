@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 260/260 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 261/261 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -81,7 +81,7 @@
 - Loading a save restores current-tile creatures into the active scene
 - Minimap resolves immediate adjacent tile biome icons/names without marking those tiles explored
 - Icon-only runtime action controls now use localizable labels, `title`/`aria-label`, captions, and a compact action legend
-- Default main-context actions are simplified: creature interactions live on party/creature panels, Search is hidden until stronger mechanics exist, Inventory remains available
+- Default main-context actions are simplified: creature interactions live on party/creature panels in exploration and combat, Search is hidden until stronger mechanics exist, Inventory remains available
 - Rest appears and heals only at safe rest structures (`cabin`, `hut`, `camp`, `shrine`, `spring`) and refuses direct use elsewhere
 - Normalized creatures now carry an `inventory` array for future/modded creature inventory support
 - Non-player party members killed by combat/status damage are removed from party and dropped onto the current tile as corpses

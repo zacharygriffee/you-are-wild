@@ -2488,9 +2488,6 @@
                     const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
                     html += `<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="App.moveCombatRow()">↕️ ${moveRowLabel}</button>`;
                 }
-                if (allies.length > 0 || friendlies.length > 0) {
-                    html += this._iconActionButton('interact', this._actionIcon('interact'), 'App.showInteractMenu()');
-                }
                 if (this.activeActor?.name === this.player?.name) {
                     html += this._iconActionButton('flee', this._actionIcon('flee'), 'App.attemptFlee()');
                 } else {
@@ -5742,7 +5739,7 @@
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabled.trim())}</div>`;
-                    } else if (!this.combatState.active) {
+                    } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`)}${chipButton('action-btn', '⚔️', `${this._uiLabel('fight')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')`)}${chipButton('action-btn', '😘', `${this._uiLabel('flirt')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')`)}${chipButton('action-btn', '🔥', `${this._uiLabel('fuck')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')`)}${chipButton('action-btn', '🍽️', `${this._uiLabel('feast')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')`)}${chipButton('action-btn', '🍲', `${this._uiLabel('feed')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')`)}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
@@ -5862,7 +5859,7 @@
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
                         const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
-                    } else if (!this.combatState.active) {
+                    } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetName = unit.name || 'creature';
                         const targetLabel = this._escapeHtml(targetName);
                         const targetClass = this._isExplorationTarget('creature', String(unit.id || unit.name)) ? ' primary' : '';

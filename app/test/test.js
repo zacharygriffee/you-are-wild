@@ -1586,6 +1586,27 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
 
+test('Combat context keeps non-enemy creature interaction in panels', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You');
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
+  const neutral = makeUnit('Neutral', { id: 'neutral-1', disposition: App.DISPOSITION.NEUTRAL });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy, neutral];
+  App.combatState.active = true;
+  App.showActorActions(player);
+  App.renderCreatures();
+  const actionsHtml = elements.get('scene-actions').innerHTML;
+  assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
+  assertContains(actionsHtml, "selectTarget('fight')", 'Combat action bar should still expose enemy action targeting');
+  assertContains(actionsHtml, 'App.executeFeedAction()', 'Combat action bar should still expose party feed action');
+  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','neutral-1')", 'Neutral creature card should keep baseline interaction actions');
+  App.selectTarget('fight');
+  assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
+});
+
 test('Selected party actor resolves exploration attacks against creatures', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Figh: 1 });
@@ -2892,7 +2913,8 @@ test('Player combat action bar localizes visible and accessible labels', () => {
   assertContains(html, 'aria-label="Devorar"', 'Feast action should localize accessible label');
   assertContains(html, '>Seducir<', 'Adult action label should localize visible label');
   assertContains(html, 'aria-label="Alimentar"', 'Feed action should localize accessible label');
-  assertContains(html, 'aria-label="Interactuar"', 'Interact action should localize accessible label');
+  assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
+  assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
 });
 

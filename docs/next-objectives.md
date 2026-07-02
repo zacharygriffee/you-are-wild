@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 190/190 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 191/191 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -116,6 +116,7 @@
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
 - Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, and high-traffic action/target labels now route through locale keys
+- New-game/save-slot UX has a first pass: main-menu New Game opens slot selection, occupied slots require irreversible overwrite confirmation, autosaves update per-slot timestamps, manual saves warn before overwriting another occupied slot, and delete-slot warnings are scoped to the selected slot
 
 ---
 
@@ -172,10 +173,8 @@
 - Decide whether mobile chips need the same full management surface or a long-press menu
 
 #### 19. New Game And Save Slot UX
-- Add an explicit `New Game` path from the main menu that can start fresh without relying on delete-all-saves or browser state resets
-- From the load/save manager, support choosing a slot for a new run so multiple playthroughs can coexist cleanly
-- Ensure each save slot exposes clear load, overwrite/new-run, and delete actions with irreversible warning copy before destructive changes
-- Keep delete-slot behavior scoped to the selected slot; reserve delete-all-saves for settings/maintenance and keep its stronger warning
+- Improve visual polish and mobile ergonomics for the slot manager now that New Game, Load, Save, and Delete actions are all present per slot
+- Consider separating in-game save mode from main-menu load/new-run mode if the combined slot manager becomes visually crowded
 - Verify mobile dialogs/menus for save-slot management scroll correctly and do not clip confirmation actions
 
 #### 20. Advanced Mobile Gestures

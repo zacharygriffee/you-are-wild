@@ -1493,7 +1493,7 @@
                 <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
                     ▶ Continue Last Game
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('create')">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showNewGameManager()">
                     🆕 New Game
                 </button>
                 <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showSaveManager()">
@@ -8266,11 +8266,25 @@
                 this.syncAccessibilityControls();
                 this.syncLanguageControl();
             },
-            showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
-            renderSaveManager() {
+            showNewGameManager() { this.showSaveManager('new'); },
+            showSaveManager(mode = 'load') {
+                this.saveManagerMode = mode;
+                this.showScreen('save-manager');
+                this.renderSaveManager(mode);
+            },
+            beginNewGameInSlot(slotName) {
+                const saveTime = this._getSaveTime(slotName);
+                const hasData = parseInt(saveTime) > 0;
+                if (hasData && !confirm('Start a new game in ' + slotName + '? This will overwrite that save slot. This cannot be undone.')) return;
+                this.activeSlot = slotName;
+                this._setStoredValue('lastSlot', slotName);
+                this.showScreen('create');
+            },
+            renderSaveManager(mode = this.saveManagerMode || 'load') {
                 const saves = {};
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
-                let html = '<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary);margin-bottom:8px;">Save Slots</h1><p style="color:var(--text-muted);margin-bottom:24px;">Auto-save is always on.</p>';
+                const isNewMode = mode === 'new';
+                let html = '<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:24px;">' + (isNewMode ? 'Pick a slot for the new run. Occupied slots require irreversible overwrite confirmation.' : 'Auto-save is always on. Delete only removes the selected slot.') + '</p>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
@@ -8280,9 +8294,10 @@
                     html += '<div style="background:' + (isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)') + ';border:1px solid ' + (isActive ? 'var(--accent-primary)' : 'var(--border-default)') + ';border-radius:var(--radius-md);padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">';
                     html += '<div><div style="font-weight:600;color:var(--text-primary);">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + timeStr + '</div></div>';
                     html += '<div style="display:flex;gap:8px;">';
+                    if (isNewMode) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 Use Slot</button>';
                     if (hasData) html += '<button class="nav-btn" onclick="App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })">📂 Load</button>';
                     html += '<button class="nav-btn" onclick="App.saveToSlot(\'' + slotName + '\')">💾 Save</button>';
-                    if (hasData) html += '<button class="nav-btn" style="color:var(--accent-danger);" onclick="App.deleteSlot(\'' + slotName + '\')">🗑️</button>';
+                    if (hasData) html += '<button class="nav-btn" style="color:var(--accent-danger);" onclick="App.deleteSlot(\'' + slotName + '\')">🗑️ Delete</button>';
                     html += '</div></div>';
                 }
                 html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;"><button class="nav-btn" onclick="returnToGame()">Close</button></div></div>';
@@ -8463,11 +8478,14 @@
                     await this._dbPut('saves', this.activeSlot, saveData);
                     this._setStoredValue('lastSlot', this.activeSlot);
                     this._setStoredValue('lastSaveTime', Date.now().toString());
+                    this._setSaveTime(this.activeSlot, Date.now().toString());
                     console.log('Auto-saved to', this.activeSlot);
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
             async saveToSlot(slotName) {
                 if (!this.player) { alert('No game to save!'); return; }
+                const saveTime = this._getSaveTime(slotName);
+                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm('Overwrite ' + slotName + ' with the current game? This cannot be undone.')) return;
                 try {
                     this.persistAllTileDeltas();
                     await this.persistWorldStateToMapStore().catch(e => console.warn('World map persistence failed', e));
@@ -8616,7 +8634,7 @@ Enter 1, 2, or 3:`);
                 return await this.loadFromSlot(lastSlot);
             },
             async deleteSlot(slotName) {
-                if (!confirm('Delete save slot ' + slotName + '?')) return;
+                if (!confirm('Delete save slot ' + slotName + '? This permanently removes only this slot and cannot be undone.')) return;
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);

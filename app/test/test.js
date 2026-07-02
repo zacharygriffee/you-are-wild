@@ -162,6 +162,8 @@ test('Save/load system present', () => {
   assertContains(appContent, 'saveToSlot(', 'saveToSlot method missing');
   assertContains(appContent, 'loadFromSlot(', 'loadFromSlot method missing');
   assertContains(appContent, 'loadLastPlayed()', 'loadLastPlayed method missing');
+  assertContains(appContent, 'showNewGameManager()', 'New game slot manager method missing');
+  assertContains(appContent, 'beginNewGameInSlot(', 'New game slot selection method missing');
 });
 
 test('Cheat system present', () => {
@@ -380,6 +382,15 @@ test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(template, 'App.deleteAllSaves()', 'settings clear saves button should call deleteAllSaves');
   assertContains(appContent, 'async deleteAllSaves()', 'deleteAllSaves handler missing');
   assertContains(appContent, 'location.reload()', 'deleteAllSaves should refresh UI after clearing saves');
+});
+
+test('New game flow is slot-aware and warns before destructive slot changes', () => {
+  assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
+  assertContains(appContent, "showSaveManager('new')", 'New game manager should render save slots in new-run mode');
+  assertContains(appContent, 'Start a new game in ', 'New game overwrite warning should name the selected slot');
+  assertContains(appContent, 'This will overwrite that save slot. This cannot be undone.', 'New game overwrite warning should be irreversible');
+  assertContains(appContent, 'with the current game? This cannot be undone.', 'Manual save should warn before overwriting another occupied slot');
+  assertContains(appContent, 'permanently removes only this slot and cannot be undone', 'Delete slot should warn that it is scoped and irreversible');
 });
 
 test('Accessibility settings controls are available', () => {

@@ -136,12 +136,15 @@
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
 #### 2. Brand Transformation
-- Choose a neutral project name before changing user-facing branding; keep candidate names vanilla/non-explicit and check final commercial availability separately
+- Use **You Are Wild** as the canonical project title unless a final availability check finds a blocker; acceptable shorthand/acronym options are **YAW** or **YW**, with "You're wild" reserved for tagline/UI copy rather than as a separate brand
+- Check final commercial availability before release naming is locked; the quick search looked cleaner than `Wildbound`, but this is not a legal clearance substitute
 - Replace visible original branding in the active app shell: document title, start screen heading, desktop/mobile header title, welcome/log text, and any generated dist output
-- Rename active package/build metadata once the final name is chosen: root package name, tactical package name/description, build output filename, generated banner, README/build docs, and architecture references
+- Rename active package/build metadata: root package name, tactical package name/description, folder references where practical, build output filename, generated banner, README/build docs, and architecture references
+- Scrape active project paths for legacy naming, including file and directory names, not just source text; expected active surfaces include `package.json`, `package-lock.json`, `build.js`, `template.html`, `src/`, `test/`, `README.md`, `docs/`, and `dist/`
 - Replace internal `FFF`/`FFFme` identifiers for new durable state, but preserve backward-compatible reads/migrations for existing saves, settings, modules, content preferences, log view preferences, and world data
 - Keep legacy/archive references quarantined unless the project decides to remove archived source entirely; active source, docs, and distributable output should be free of original branding
 - Add a branding audit check using `rg` so future work can verify no original active-surface branding remains outside explicitly allowed archive/legacy paths
+- Verify the full build/test/lint pipeline passes after the rename and rebuild generated output so `dist/` matches the chosen branding
 
 ### 🔵 Tier 4: Lower Priority
 

@@ -4951,7 +4951,7 @@
                 const item = merchant?.stock?.[stockIndex];
                 if (!merchant || !item || item.qty <= 0) return;
                 if ((this.player.gold || 0) < item.price) {
-                    this.log.push({ text: `You need ${item.price} gold to buy ${item.name}.`, type: 'discovery' });
+                    this.log.push({ text: this._label('trade.needGold', 'You need {price} gold to buy {name}.', { price: item.price, name: item.name }), type: 'discovery' });
                     this.renderLog();
                     this.showTrade(targetId);
                     return;
@@ -4962,8 +4962,8 @@
                     this.showTrade(targetId);
                     return;
                 }
-                if (this._requiresPurchaseConfirmation(item) && !confirm(`Buy ${item.name} for ${item.price} gold?`)) {
-                    this.log.push({ text: `Purchase cancelled: ${item.name}.`, type: 'discovery' });
+                if (this._requiresPurchaseConfirmation(item) && !confirm(this._label('trade.confirmBuy', 'Buy {name} for {price} gold?', { name: item.name, price: item.price }))) {
+                    this.log.push({ text: this._label('trade.purchaseCancelled', 'Purchase cancelled: {name}.', { name: item.name }), type: 'discovery' });
                     this.renderLog();
                     this.showTrade(targetId);
                     return;
@@ -4971,7 +4971,7 @@
                 this.player.gold -= item.price;
                 item.qty -= 1;
                 this.inventory.push({ id: `buy_${Date.now()}_${this.inventory.length}`, name: item.name });
-                this.log.push({ text: `Bought ${item.name} for ${item.price} gold.`, type: 'loot' });
+                this.log.push({ text: this._label('trade.bought', 'Bought {name} for {price} gold.', { name: item.name, price: item.price }), type: 'loot' });
                 this.renderLog();
                 this.renderParty();
                 this.showTrade(targetId);
@@ -4990,7 +4990,7 @@
                 const existing = merchant.stock.find(s => s.name === item.name);
                 if (existing) existing.qty += 1;
                 else merchant.stock.push({ id: `sold_${Date.now()}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
-                this.log.push({ text: `Sold ${item.name} for ${price} gold.`, type: 'loot' });
+                this.log.push({ text: this._label('trade.sold', 'Sold {name} for {price} gold.', { name: item.name, price }), type: 'loot' });
                 this.renderLog();
                 this.renderParty();
                 this.showTrade(targetId);

@@ -1985,8 +1985,8 @@
             <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
             <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
             <div style="display: flex; gap: 16px; justify-content: center;">
-                <button class="nav-btn" onclick="skipTutorial()">Skip Tutorial</button>
-                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" onclick="nextTutorial()">Next →</button>
+                <button class="nav-btn" data-i18n="ui.tutorial.skip" onclick="skipTutorial()">Skip Tutorial</button>
+                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" data-i18n="ui.tutorial.next" onclick="nextTutorial()">Next →</button>
             </div>
         </div>
     </div>
@@ -9818,19 +9818,19 @@
             },
             nextTutorial() {
                 const steps = [
-                    { title: 'Welcome', content: 'You are a predator in a world of monstergirls. Hunt, consume, and grow stronger. But choose your prey wisely...' },
-                    { title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Fuck, or Feast. Sync actions let multiple allies act together!' },
-                    { title: 'Vore', content: 'Feast on weakened enemies to consume them. They will be stored in your stomach and slowly digested. Enable Endo mode for safe vore.' },
-                    { title: 'Party', content: 'Recruit submissive enemies by seducing them or defeating them. Manage your party size and keep allies satisfied.' },
-                    { title: 'Ready', content: 'Press Begin Adventure to start your journey. Good luck!' }
+                    { titleKey: 'ui.tutorial.welcome.title', contentKey: 'ui.tutorial.welcome.content', title: 'Welcome', content: 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.' },
+                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.' },
+                    { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Feast', content: 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.' },
+                    { titleKey: 'ui.tutorial.party.title', contentKey: 'ui.tutorial.party.content', title: 'Party', content: 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.' },
+                    { titleKey: 'ui.tutorial.ready.title', contentKey: 'ui.tutorial.ready.content', title: 'Ready', content: 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.' }
                 ];
                 if (this.tutorialStep >= steps.length) {
                     this.closeTutorial();
                     return;
                 }
                 const step = steps[this.tutorialStep];
-                document.getElementById('tutorial-title').textContent = step.title;
-                document.getElementById('tutorial-content').textContent = step.content;
+                document.getElementById('tutorial-title').textContent = this._label(step.titleKey, step.title);
+                document.getElementById('tutorial-content').textContent = this._label(step.contentKey, step.content);
                 this.tutorialStep++;
             },
             skipTutorial() { this.closeTutorial(); },
@@ -11124,6 +11124,18 @@ const CONTENT_SYSTEM = {
             'ui.menu.marketTitle': 'Open market',
             'ui.menu.tutorial': 'Tutorial',
             'ui.menu.tutorialTitle': 'Open tutorial',
+            'ui.tutorial.skip': 'Skip Tutorial',
+            'ui.tutorial.next': 'Next ->',
+            'ui.tutorial.welcome.title': 'Welcome',
+            'ui.tutorial.welcome.content': 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.',
+            'ui.tutorial.combat.title': 'Combat',
+            'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.',
+            'ui.tutorial.feast.title': 'Feast',
+            'ui.tutorial.feast.content': 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.',
+            'ui.tutorial.party.title': 'Party',
+            'ui.tutorial.party.content': 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.',
+            'ui.tutorial.ready.title': 'Ready',
+            'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.',
             'ui.menu.edition': 'Dark mode tactical edition',
             'ui.menu.contentDefault': 'All content is enabled by default',
             'ui.nav.mapTitle': 'Toggle map panel',
@@ -11599,6 +11611,18 @@ const CONTENT_SYSTEM = {
             'ui.menu.marketTitle': 'Abrir mercado',
             'ui.menu.tutorial': 'Tutorial',
             'ui.menu.tutorialTitle': 'Abrir tutorial',
+            'ui.tutorial.skip': 'Saltar tutorial',
+            'ui.tutorial.next': 'Siguiente ->',
+            'ui.tutorial.welcome.title': 'Bienvenida',
+            'ui.tutorial.welcome.content': 'Eres salvaje en un mundo vivo y extrano. Explora, aprende tus limites y hazte mas fuerte. Elige tus riesgos con cuidado.',
+            'ui.tutorial.combat.title': 'Combate',
+            'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Coquetear, Seducir, Devorar, Alimentar o Huir. Las acciones sincronizadas permiten que varios aliados actuen juntos.',
+            'ui.tutorial.feast.title': 'Devorar',
+            'ui.tutorial.feast.content': 'Devora objetivos debilitados para contenerlos. La capacidad importa, y algunos ajustes cambian si los resultados son seguros o mas duros.',
+            'ui.tutorial.party.title': 'Grupo',
+            'ui.tutorial.party.content': 'Recluta criaturas dispuestas, asigna roles, elige ordenes de IA y gestiona quien actua durante exploracion o combate.',
+            'ui.tutorial.ready.title': 'Listo',
+            'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.',
             'ui.menu.edition': 'Edicion tactica oscura',
             'ui.menu.contentDefault': 'Todo el contenido esta activado por defecto',
             'ui.nav.mapTitle': 'Alternar panel de mapa',

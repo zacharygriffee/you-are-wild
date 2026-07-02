@@ -7073,19 +7073,19 @@
             },
             nextTutorial() {
                 const steps = [
-                    { title: 'Welcome', content: 'You are a predator in a world of monstergirls. Hunt, consume, and grow stronger. But choose your prey wisely...' },
-                    { title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Fuck, or Feast. Sync actions let multiple allies act together!' },
-                    { title: 'Vore', content: 'Feast on weakened enemies to consume them. They will be stored in your stomach and slowly digested. Enable Endo mode for safe vore.' },
-                    { title: 'Party', content: 'Recruit submissive enemies by seducing them or defeating them. Manage your party size and keep allies satisfied.' },
-                    { title: 'Ready', content: 'Press Begin Adventure to start your journey. Good luck!' }
+                    { titleKey: 'ui.tutorial.welcome.title', contentKey: 'ui.tutorial.welcome.content', title: 'Welcome', content: 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.' },
+                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.' },
+                    { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Feast', content: 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.' },
+                    { titleKey: 'ui.tutorial.party.title', contentKey: 'ui.tutorial.party.content', title: 'Party', content: 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.' },
+                    { titleKey: 'ui.tutorial.ready.title', contentKey: 'ui.tutorial.ready.content', title: 'Ready', content: 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.' }
                 ];
                 if (this.tutorialStep >= steps.length) {
                     this.closeTutorial();
                     return;
                 }
                 const step = steps[this.tutorialStep];
-                document.getElementById('tutorial-title').textContent = step.title;
-                document.getElementById('tutorial-content').textContent = step.content;
+                document.getElementById('tutorial-title').textContent = this._label(step.titleKey, step.title);
+                document.getElementById('tutorial-content').textContent = this._label(step.contentKey, step.content);
                 this.tutorialStep++;
             },
             skipTutorial() { this.closeTutorial(); },

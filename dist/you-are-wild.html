@@ -6656,7 +6656,7 @@
                 if (targets.length === 1 && actors.length > 1) {
                     this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
-                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group actions.', {
+                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
                         action: this._uiLabel(action).toLowerCase()
                     }), type: 'discovery' });
                     this.renderLog();
@@ -11294,7 +11294,7 @@ const CONTENT_SYSTEM = {
             'target.selectAs': 'Select {name} as {action} target',
             'target.cannotSelectAs': 'Cannot select {name} as {action} target',
             'target.selectedSummary': 'Selected exploration targets',
-            'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group actions.',
+            'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.',
             'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.',
             'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.',
             'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.',
@@ -11746,7 +11746,7 @@ const CONTENT_SYSTEM = {
             'target.selectAs': 'Seleccionar {name} como objetivo de {action}',
             'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}',
             'target.selectedSummary': 'Objetivos de exploracion seleccionados',
-            'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales.',
+            'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}.',
             'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.',
             'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.',
             'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.',

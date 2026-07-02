@@ -3917,7 +3917,7 @@
                 if (targets.length === 1 && actors.length > 1) {
                     this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
-                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group actions.', {
+                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
                         action: this._uiLabel(action).toLowerCase()
                     }), type: 'discovery' });
                     this.renderLog();

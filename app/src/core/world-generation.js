@@ -156,6 +156,157 @@ const WorldGen = (() => {
         return tags;
     }
 
+    function getBiomeTraits(biomeId, biomeDef = null) {
+        const builtin = {
+            grove: ['organic', 'safe', 'lowland'],
+            forest: ['organic', 'dense', 'rough'],
+            swamp: ['wet', 'rough', 'lowland', 'organic'],
+            plains: ['open', 'lowland'],
+            cave: ['rocky', 'dark', 'rough'],
+            jungle: ['wet', 'dense', 'organic', 'rough'],
+            dungeon: ['dangerous', 'built', 'dark'],
+            manor: ['built', 'settled'],
+            beach: ['coast', 'open', 'lowland'],
+            cliff: ['rocky', 'rough', 'highland'],
+            water: ['water', 'deep'],
+            road: ['route'],
+            bridge: ['route', 'crossing'],
+            farm: ['settled', 'resource'],
+            indoors: ['interior', 'built'],
+            entrance: ['feature', 'transition']
+        };
+        return [...new Set([...(builtin[biomeId] || []), ...((biomeDef && Array.isArray(biomeDef.traits)) ? biomeDef.traits : [])])];
+    }
+
+    function getTraversal(tile = {}, biomeDef = null) {
+        const overlays = tile.overlays || {};
+        const biome = tile.derivedBiome || tile.baseBiome || tile.biome || 'plains';
+        const traits = getBiomeTraits(biome, biomeDef);
+        let passable = true;
+        let traversalCost = 1;
+        let requiredCapability = null;
+        let routeModifier = 0;
+
+        if (tile.water || biome === 'water' || traits.includes('water')) {
+            passable = false;
+            traversalCost = 5;
+            requiredCapability = 'swim';
+        }
+        if (biome === 'swamp' || traits.includes('wet')) traversalCost += 2;
+        if (biome === 'forest' || biome === 'jungle' || traits.includes('dense')) traversalCost += 1;
+        if (biome === 'cave' || biome === 'cliff' || traits.includes('rocky') || traits.includes('rough')) traversalCost += 2;
+        if (biome === 'beach' || traits.includes('coast')) {
+            passable = true;
+            requiredCapability = null;
+            traversalCost = Math.min(traversalCost, 2);
+        }
+        if (overlays.road) {
+            routeModifier -= 1;
+            traversalCost = Math.max(1, traversalCost - 1);
+        }
+        if (overlays.bridge) {
+            passable = true;
+            requiredCapability = null;
+            routeModifier -= 2;
+            traversalCost = 1;
+        }
+        return {
+            passable,
+            traversalCost,
+            requiredCapability,
+            routeModifier,
+            traits
+        };
+    }
+
+    function getEncounterPressure(tile = {}, context = {}) {
+        const terrainDanger = Number(tile.dangerPressure ?? 0);
+        const biomeDanger = Number(context.biomeDanger ?? 0) / 5;
+        const baseDanger = clamp01(Math.max(terrainDanger, biomeDanger));
+        const roadModifier = tile.overlays?.road ? -0.12 : 0;
+        const poiCategory = tile.overlays?.poi?.category || null;
+        const poiModifier = poiCategory === 'dangerSite' ? 0.18 : (poiCategory === 'restSite' || poiCategory === 'settlement' ? -0.08 : 0);
+        const timeModifier = context.isNight ? 0.08 : 0;
+        const localStateModifier = Number(context.localStateModifier || 0);
+        return {
+            baseDanger: Number(baseDanger.toFixed(4)),
+            roadModifier,
+            poiModifier,
+            timeModifier,
+            localStateModifier,
+            finalChance: Number(clamp01(baseDanger + roadModifier + poiModifier + timeModifier + localStateModifier).toFixed(4))
+        };
+    }
+
+    function getTileMapSummary(tile = {}, context = {}) {
+        const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
+        const traversal = tile.traversal || getTraversal(tile, context.biomeDef);
+        const pressure = getEncounterPressure(tile, context);
+        const markers = [];
+        if (tile.overlays?.road) markers.push('Road');
+        if (tile.overlays?.bridge) markers.push('Bridge');
+        if (tile.overlays?.poi?.category) markers.push(tile.overlays.poi.category);
+        if (tile.structure) markers.push('Structure');
+        if (tile.hasLandmark) markers.push('Landmark');
+        return {
+            biome: biomeId,
+            coords: { x: Number(tile.x ?? 0), y: Number(tile.y ?? 0) },
+            terrain: {
+                water: Boolean(tile.water || tile.terrain?.water),
+                tags: Array.isArray(tile.terrainTags) ? tile.terrainTags.slice() : []
+            },
+            traversal: {
+                passable: traversal.passable,
+                traversalCost: traversal.traversalCost,
+                requiredCapability: traversal.requiredCapability,
+                routeModifier: traversal.routeModifier
+            },
+            danger: pressure.finalChance >= 0.66 ? 'high' : (pressure.finalChance >= 0.36 ? 'elevated' : 'low'),
+            markers,
+            discovered: Boolean(tile.explored),
+            restAvailable: ['cabin', 'hut', 'camp', 'shrine', 'spring'].includes(tile.structure),
+            questRelevant: Boolean(context.questRelevant)
+        };
+    }
+
+    function validateStartArea(worldMeta, regionBiomes = [], options = {}) {
+        const radius = options.radius ?? 8;
+        const routeRadius = options.routeRadius ?? 12;
+        const restRadius = options.restRadius ?? 18;
+        let safeTiles = 0;
+        let blockedAdjacent = 0;
+        let lowDangerResource = false;
+        let routeAccess = false;
+        let restCandidate = false;
+        let poiCandidate = false;
+        for (let x = -restRadius; x <= restRadius; x++) {
+            for (let y = -restRadius; y <= restRadius; y++) {
+                const distance = Math.abs(x) + Math.abs(y);
+                const tile = generateBaseTile(worldMeta, x, y, regionBiomes);
+                if (distance <= radius && tile.traversal.passable && tile.dangerPressure <= 0.36 && ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)) safeTiles++;
+                if (distance === 1 && !tile.traversal.passable) blockedAdjacent++;
+                if (distance <= radius && tile.traversal.passable && tile.dangerPressure <= 0.32 && ['grove', 'plains', 'forest'].includes(tile.baseBiome)) lowDangerResource = true;
+                if (distance <= routeRadius && tile.overlays?.road) routeAccess = true;
+                if (distance <= restRadius && tile.traversal.passable && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) restCandidate = true;
+                if (distance <= restRadius && tile.traversal.passable && tile.overlays?.poi) poiCandidate = true;
+            }
+        }
+        const minSafeTiles = options.minSafeTiles ?? Math.max(12, Math.floor(radius * radius * 0.3));
+        const checks = {
+            safeBiomeRadius: safeTiles >= minSafeTiles,
+            noHardLockout: blockedAdjacent < 4,
+            lowDangerResource,
+            routeAccess,
+            restCandidate,
+            earlyPoi: poiCandidate
+        };
+        return {
+            ok: Object.values(checks).every(Boolean),
+            checks,
+            metrics: { safeTiles, blockedAdjacent, radius, routeRadius, restRadius }
+        };
+    }
+
     function classifyBiome(fields, macroBiome, availableBiomes = []) {
         const allowed = new Set(availableBiomes);
         if (fields.water) return allowed.has('water') ? 'water' : 'plains';
@@ -221,6 +372,15 @@ const WorldGen = (() => {
     }
 
     function getPoiForTile(seed, version, x, y, regionCell = null) {
+        if ((version || 1) >= 2 && x === 4 && y === 0) {
+            return {
+                id: 'poi_start_rest',
+                category: 'restSite',
+                regionId: 'start',
+                anchor: { x, y },
+                startArea: true
+            };
+        }
         const cell = regionCell || cellular2D(seed, version, 'macro-region', x, y, 36);
         const center = cellCenter(seed, version, 'macro-region', cell.cellX, cell.cellY, 36);
         const nearestX = Math.round(center.x);
@@ -263,6 +423,9 @@ const WorldGen = (() => {
     }
 
     function getRoadOverlay(seed, version, x, y, fields) {
+        if ((version || 1) >= 2 && y === 0 && Math.abs(x) <= 6) {
+            return { id: 'road_start_axis', direction: 'east-west', startArea: true };
+        }
         if (fields.roughness > 0.86) return null;
         let best = null;
         for (const segment of routeSegmentsForTile(seed, version, x, y)) {
@@ -320,6 +483,8 @@ const WorldGen = (() => {
         const bridge = getBridgeOverlay(seed, version, x, y, fields, road);
         const poi = getPoiForTile(seed, version, x, y, regionCell);
         const overlays = { road, bridge, poi, structure: null };
+        const traversal = getTraversal({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, overlays });
+        const encounterPressure = getEncounterPressure({ biome: derivedBiome, baseBiome: derivedBiome, derivedBiome, water: fields.water, dangerPressure: fields.dangerPressure, overlays });
         return {
             biome: derivedBiome,
             baseBiome: derivedBiome,
@@ -341,8 +506,36 @@ const WorldGen = (() => {
                 roughness: Number(fields.roughness.toFixed(4)),
                 water: Boolean(fields.water),
                 waterPressure: Number(fields.waterPressure.toFixed(4)),
-                dangerPressure: Number(fields.dangerPressure.toFixed(4))
+                dangerPressure: Number(fields.dangerPressure.toFixed(4)),
+                traversal: {
+                    passable: traversal.passable,
+                    traversalCost: traversal.traversalCost,
+                    requiredCapability: traversal.requiredCapability,
+                    routeModifier: traversal.routeModifier
+                }
             },
+            traversal: {
+                passable: traversal.passable,
+                traversalCost: traversal.traversalCost,
+                requiredCapability: traversal.requiredCapability,
+                routeModifier: traversal.routeModifier
+            },
+            encounterPressure,
+            mapSummary: getTileMapSummary({
+                x,
+                y,
+                biome: derivedBiome,
+                baseBiome: derivedBiome,
+                derivedBiome,
+                displayBiome: bridge ? 'bridge' : (road ? 'road' : derivedBiome),
+                water: Boolean(fields.water),
+                dangerPressure: Number(fields.dangerPressure.toFixed(4)),
+                overlays,
+                terrainTags: terrainTags(fields, derivedBiome, overlays),
+                traversal,
+                encounterPressure,
+                explored: false
+            }),
             overlays,
             regionCell: {
                 id: regionCell.id,
@@ -366,6 +559,11 @@ const WorldGen = (() => {
         getPoiForTile,
         getRoadOverlay,
         getBridgeOverlay,
+        getBiomeTraits,
+        getTraversal,
+        getEncounterPressure,
+        getTileMapSummary,
+        validateStartArea,
         classifyBiome,
         generateBaseTile
     };

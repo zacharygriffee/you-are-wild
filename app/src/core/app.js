@@ -591,7 +591,7 @@
             tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
-            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 1, mapModsHash: 'core' },
+            worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 2, mapModsHash: 'core' },
             PATCH_SIZE: 10,
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
@@ -1006,7 +1006,7 @@
                 this.worldMeta = {
                     worldId: `world_${Date.now()}`,
                     seed: `${name || 'You'}:${this.selectedSpecies}:default`,
-                    generatorVersion: 1,
+                    generatorVersion: 2,
                     mapModsHash: 'core',
                     createdAt: Date.now()
                 };
@@ -1676,6 +1676,9 @@
                         const list = landmarks[tile.biome] || ['Mysterious Structure'];
                         tile.hasLandmark = true;
                         tile.landmarkName = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-landmark-name', x, y, list) || list[0];
+                    }
+                    if (!tile.structure && tile.overlays?.poi?.category === 'restSite') {
+                        tile.structure = 'camp';
                     }
                     if (!tile.structure && typeof WorldGen !== 'undefined' && WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure', x, y, biome.structureChance || 0)) {
                         const table = biome.structureTable || [];
@@ -6441,6 +6444,29 @@
                 if (value >= 0.36) return this._label('ui.tileInfo.pressureElevated', 'Elevated');
                 return this._label('ui.tileInfo.pressureLow', 'Low');
             },
+            getTileMapSummary(tile = null) {
+                const current = tile || this.getTile(this.location.x, this.location.y);
+                if (typeof WorldGen === 'undefined') {
+                    return {
+                        biome: current.displayBiome || current.biome,
+                        coords: { x: current.x, y: current.y },
+                        terrain: { water: Boolean(current.water), tags: Array.isArray(current.terrainTags) ? current.terrainTags.slice() : [] },
+                        traversal: current.traversal || { passable: true, traversalCost: 1, requiredCapability: null, routeModifier: 0 },
+                        danger: 'low',
+                        markers: [],
+                        discovered: Boolean(current.explored),
+                        restAvailable: ['cabin', 'hut', 'camp', 'shrine', 'spring'].includes(current.structure),
+                        questRelevant: false
+                    };
+                }
+                const biome = this.biomes[current.displayBiome || current.biome] || this.biomes[current.biome] || {};
+                return WorldGen.getTileMapSummary(current, {
+                    biomeDef: biome,
+                    biomeDanger: biome.danger || 0,
+                    isNight: this._isNight(),
+                    questRelevant: Boolean(this._largeMapQuestMarker(current.x, current.y))
+                });
+            },
             _tileInfoHtml(tile = null) {
                 if (this.inInterior && this.activeInterior) {
                     const room = this._currentInteriorTile();
@@ -6452,14 +6478,10 @@
                 const biome = this.biomes[current.displayBiome || current.biome] || this.biomes[current.biome] || {};
                 const structure = current.structure ? (this.STRUCTURES[current.structure]?.name || current.structure) : this._label('ui.tileInfo.none', 'None');
                 const landmark = current.hasLandmark && current.landmarkName ? current.landmarkName : this._label('ui.tileInfo.none', 'None');
-                const overlayTags = [];
-                if (current.overlays?.road) overlayTags.push('road');
-                if (current.overlays?.bridge) overlayTags.push('bridge');
-                if (current.overlays?.poi?.category) overlayTags.push(current.overlays.poi.category);
-                const tags = [...(Array.isArray(current.terrainTags) ? current.terrainTags : []), ...overlayTags];
-                const tagText = tags.length ? [...new Set(tags)].join(', ') : this._label('ui.tileInfo.none', 'None');
+                const summary = this.getTileMapSummary(current);
+                const tagText = summary.terrain.tags.length || summary.markers.length ? [...new Set([...summary.terrain.tags, ...summary.markers.map(tag => String(tag).toLowerCase())])].join(', ') : this._label('ui.tileInfo.none', 'None');
                 const phase = this._isNight() ? this._label('ui.tileInfo.night', 'Night') : this._label('ui.tileInfo.day', 'Day');
-                const danger = this._dangerPressureLabel(current.dangerPressure ?? biome.danger / 5 ?? 0);
+                const danger = this._dangerPressureLabel(summary.danger === 'high' ? 0.66 : (summary.danger === 'elevated' ? 0.36 : 0));
                 return `<div style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">${this._escapeHtml(this._label('ui.tileInfo.title', 'Current Tile'))}</div>` +
                     `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.biome', 'Biome'))}:</strong> ${biome.icon || ''} ${this._escapeHtml(biome.name || current.biome)}</div>` +
                     `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.coords', 'Coords'))}:</strong> ${current.x}, ${current.y} · <strong>${this._escapeHtml(this._label('ui.tileInfo.time', 'Time'))}:</strong> ${this._escapeHtml(this._timeLabel())} ${this._escapeHtml(phase)}</div>` +

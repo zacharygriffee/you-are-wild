@@ -2965,6 +2965,74 @@ test('Road and bridge overlays are deterministic constrained features', () => {
   assertEqual(Boolean(waterWithoutRoad.overlays?.bridge), false, 'Bridge should not appear without a road overlay');
 });
 
+test('Terrain traversal metadata defines conservative passability and route costs', () => {
+  const WorldGen = loadWorldGenForTest();
+  const plain = WorldGen.getTraversal({ biome: 'plains', water: false, overlays: {} });
+  const forest = WorldGen.getTraversal({ biome: 'forest', water: false, overlays: {} });
+  const forestRoad = WorldGen.getTraversal({ biome: 'forest', baseBiome: 'forest', water: false, overlays: { road: { id: 'road-test' } } });
+  const water = WorldGen.getTraversal({ biome: 'water', water: true, overlays: {} });
+  const bridge = WorldGen.getTraversal({ biome: 'water', water: true, overlays: { road: { id: 'road-test' }, bridge: { id: 'bridge-test' } } });
+  const beach = WorldGen.getTraversal({ biome: 'beach', water: false, overlays: {} });
+  const cliff = WorldGen.getTraversal({ biome: 'cliff', water: false, overlays: {} });
+  assertEqual(plain.passable, true, 'Plain terrain should be passable');
+  assertEqual(water.passable, false, 'Deep water should be blocked without capability or bridge');
+  assertEqual(water.requiredCapability, 'swim', 'Blocked water should declare a swim capability contract');
+  assertEqual(bridge.passable, true, 'Bridge should make water crossing passable');
+  assertEqual(bridge.traversalCost, 1, 'Bridge should provide road-like traversal cost');
+  assertEqual(beach.passable, true, 'Beach/coast should be passable');
+  assert(cliff.traversalCost > plain.traversalCost, 'Cliff should cost more to traverse than plain terrain');
+  assert(forestRoad.traversalCost < forest.traversalCost, 'Road overlay should lower traversal cost without replacing the forest biome');
+});
+
+test('Versioned start area validation guarantees early route and rest access', () => {
+  const WorldGen = loadWorldGenForTest();
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-start-safe', seed: 'default', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  const result = WorldGen.validateStartArea(App.worldMeta, App._regionBiomeKeys());
+  assertEqual(result.ok, true, 'Default versioned start area should satisfy safety invariants');
+  assertEqual(result.checks.safeBiomeRadius, true, 'Start area should have enough low-danger passable terrain');
+  assertEqual(result.checks.noHardLockout, true, 'Start should not be surrounded by blocked terrain');
+  assertEqual(result.checks.routeAccess, true, 'Start should have nearby route access');
+  assertEqual(result.checks.restCandidate, true, 'Start should have a nearby rest-site candidate');
+  const restBase = App.getBaseTile(4, 0);
+  assert(restBase.overlays?.road, 'Start rest candidate should sit on a deterministic route seam');
+  assertEqual(restBase.overlays?.poi?.category, 'restSite', 'Start rest candidate should be a deterministic rest-site POI');
+  const discovered = App.exploreTile(4, 0);
+  assertEqual(discovered.structure, 'camp', 'Rest-site POI should resolve to a rest-capable structure on discovery');
+});
+
+test('Map summary and encounter pressure expose safe UI metadata', () => {
+  const WorldGen = loadWorldGenForTest();
+  const wildTile = {
+    x: 8,
+    y: -2,
+    biome: 'forest',
+    baseBiome: 'forest',
+    derivedBiome: 'forest',
+    displayBiome: 'forest',
+    dangerPressure: 0.5,
+    overlays: {},
+    terrainTags: ['dense-growth'],
+    explored: false
+  };
+  const roadTile = { ...wildTile, overlays: { road: { id: 'road-test' } }, terrainTags: ['dense-growth', 'road'] };
+  const dangerTile = { ...wildTile, overlays: { poi: { category: 'dangerSite' } } };
+  const wildPressure = WorldGen.getEncounterPressure(wildTile, { biomeDanger: 3 });
+  const roadPressure = WorldGen.getEncounterPressure(roadTile, { biomeDanger: 3 });
+  const dangerPressure = WorldGen.getEncounterPressure(dangerTile, { biomeDanger: 3 });
+  assert(roadPressure.finalChance < wildPressure.finalChance, 'Road overlay should lower wilderness encounter pressure');
+  assert(dangerPressure.finalChance > wildPressure.finalChance, 'Danger POI should raise encounter pressure');
+  const summary = WorldGen.getTileMapSummary({ ...roadTile, structure: 'camp', explored: true }, { biomeDanger: 3 });
+  assertEqual(summary.biome, 'forest', 'Summary should keep the display/base biome visible');
+  assertEqual(summary.coords.x, 8, 'Summary should expose coordinates');
+  assertEqual(summary.traversal.passable, true, 'Summary should expose traversal contract');
+  assertEqual(summary.restAvailable, true, 'Summary should expose safe rest availability');
+  assert(summary.markers.includes('Road'), 'Summary should expose route markers');
+});
+
 test('Landmarks and structures are deterministic by seed and coordinate', () => {
   const first = loadAppForCombat(() => 1);
   const App = first.App;
@@ -4582,6 +4650,7 @@ test('Structure encounters can place authored quest givers', () => {
   App.currentBiome = 'road';
   App.creatures = [];
   App.quests = [];
+  App.STRUCTURES.shrine.quest.chance = 1;
   const tile = { x: 2, y: 0, biome: 'road', structure: 'shrine', creatures: [], structureSpawned: false };
   App.spawnStructureEncounter(tile, true);
   const giver = App.creatures.find(c => c.disposition === App.DISPOSITION.QUEST_GIVER);

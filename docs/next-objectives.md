@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 285/285 tests pass, 10/10 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 300/300 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -128,6 +128,8 @@
 - Large-map low-LOD discovery has a first pass: the map panel renders a discovered-region grid around the player, overlays landmarks/structures/entity/item points of interest plus next active quest checkpoint markers, supports zoom/pan/recenter controls with a visible viewed-region label, and avoids materializing unknown generated tiles into the compatibility `worldMap`
 - Save-slot world migration has a first pass: autosave/manual save persist tile deltas to `YAW_Worlds` first, then write compact slot payloads with `worldMeta.worldId`, explored keys, and player/session state instead of duplicating durable tile payloads; if the world-store write fails, the slot payload keeps the old full `worldMap` fallback
 - Deterministic organic biome generation has a first-pass foundation: `WorldGen` provides seed/version/purpose-based hash, value noise, fractal noise, cellular macro-region cells, deterministic chance, and weighted picking; `getBaseTile()` now derives biome, macro biome, elevation, moisture, heat, fertility, danger pressure, region-cell metadata, and terrain tags from seed + coordinates instead of square super-patch regions; beach is derived from land near water, POIs/roads/bridges are deterministic overlays, bridges require road-water crossings, first-discovery descriptions/landmarks/structures plus first-entry wild and structure occupants use seeded coordinate rolls; mutable tile state still persists as deltas over the generated baseline; and the map panel/mobile map card expose a safe current-tile readout for biome, coords/time, danger, known structure/landmark, and terrain tags
+- Biome traversal mechanics have a first-pass deterministic contract: base tiles expose traversal metadata (`passable`, `traversalCost`, `requiredCapability`, `routeModifier`), water is blocked without a capability or bridge, bridges make crossings passable, roads reduce route cost without replacing base biome identity, biome trait lookup has backward-compatible defaults for current/modded biome rules, encounter-pressure summaries can factor roads/POIs/night/local modifiers, and effective map summaries are recomputed through `App.getTileMapSummary()` so discovered structures and deltas do not leave stale UI metadata
+- Starting-area safety has a first-pass generator-versioned guarantee for new worlds: version 2 worlds add a deterministic short start road plus nearby rest-site POI, the rest-site resolves to a rest-capable camp when discovered, `WorldGen.validateStartArea()` checks safe passable radius, low-danger resource loop, route access, rest candidate, early POI, and hard-lockout risk, and new-game/default serialization metadata now uses generator version 2 while loaded legacy saves preserve their stored version
 
 ---
 

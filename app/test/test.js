@@ -413,6 +413,8 @@ test('Settings clear saves button is wired to an implemented handler', () => {
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
   assertContains(appContent, "showSaveManager('new')", 'New game manager should render save slots in new-run mode');
+  assertContains(appContent, '🆕 New Run', 'Load/save slot manager should expose new-run slot takeover');
+  assertContains(appContent, 'load, start a new run in, save over, or delete an individual slot', 'Slot manager copy should describe per-slot actions');
   assertContains(appContent, 'Start a new game in ', 'New game overwrite warning should name the selected slot');
   assertContains(appContent, 'This will overwrite that save slot. This cannot be undone.', 'New game overwrite warning should be irreversible');
   assertContains(appContent, 'with the current game? This cannot be undone.', 'Manual save should warn before overwriting another occupied slot');

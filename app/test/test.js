@@ -1163,6 +1163,20 @@ test('Authored loot tables can place equipment on corpses and structures', () =>
   assertEqual(tile.structureLooted, true, 'Structure loot should be marked consumed after search');
 });
 
+test('Gatherer party role improves search find chance', () => {
+  const { App } = loadAppForCombat(() => 0.35);
+  const player = makeUnit('You');
+  const gatherer = makeUnit('Forager', { id: 'gatherer-1', partyRole: 'gatherer' });
+  App.player = player;
+  App.party = [player, gatherer];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'quiet', creatures: [], structure: null }]]);
+  App.search();
+  assertEqual(App.inventory.length, 1, 'Gatherer role should raise search chance enough to find an item');
+  assertContains(App.log[App.log.length - 1].text, 'You found a ', 'Search log should report the gatherer-assisted find');
+});
+
 test('Scavenging a corpse uses corpse-specific result and does not remove it', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { hunger: 50, CPun: 80, MPun: 100 });
@@ -1714,6 +1728,19 @@ test('Rest only appears and heals at safe structures', () => {
   assertEqual(player.CPun, 80, 'Rest should heal at safe rest structures');
 });
 
+test('Support party role improves safe rest recovery', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { CPun: 40, MPun: 100 });
+  const support = makeUnit('Helper', { id: 'support-1', partyRole: 'support', CPun: 20, MPun: 100 });
+  App.player = player;
+  App.party = [player, support];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin' }]]);
+  App.rest();
+  assertEqual(player.CPun, 80, 'Support role should increase player rest healing');
+  assertEqual(support.CPun, 60, 'Support role should also benefit resting allies');
+});
+
 test('Structures expose enter action and create persistent interiors', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   const player = makeUnit('You');
@@ -2084,6 +2111,23 @@ test('Night map visibility shrinks unless the party has darkvision', () => {
   App.player.darkvision = true;
   App.renderMap();
   assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Darkvision should restore full minimap visibility');
+});
+
+test('Scout party role improves night map visibility', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const scout = makeUnit('Scout', { id: 'scout-1', partyRole: 'scout' });
+  App.player = makeUnit('You');
+  App.party = [App.player, scout];
+  App.location = { x: 0, y: 0 };
+  App.timeHour = 21;
+  App.worldMap = new Map();
+  App.exploredTiles = new Set(['0,0', '2,0']);
+  App.getTile(0, 0).explored = true;
+  const farTile = App.getTile(2, 0);
+  farTile.biome = 'cave';
+  farTile.explored = true;
+  App.renderMap();
+  assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Scout role should recover one tile of night visibility');
 });
 
 test('Diurnal creatures spawned at night start asleep', () => {
@@ -2532,6 +2576,20 @@ test('Ambush creatures on first-entry encounters get first strike initiative', (
   App.startCombat([spider]);
   assertEqual(App.combatState.turnQueue[0].unit, spider, 'Ambush-ready enemy should act before faster player');
   assertContains(App.log.map(e => e.text).join('\n'), 'ambush from hiding', 'Ambush should be logged');
+});
+
+test('Guard party role reduces ambush first-strike advantage', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { spd: 80 });
+  const guard = makeUnit('Guard', { id: 'guard-1', partyRole: 'guard', spd: 10 });
+  const spider = makeUnit('Spider', { species: 'spider', disposition: App.DISPOSITION.ENEMY, spd: 1, ambushReady: true });
+  App.player = player;
+  App.party = [player, guard];
+  App.creatures = [spider];
+  App.processTurn = function() {};
+  App.startCombat([spider]);
+  assertEqual(App.combatState.turnQueue[0].unit, player, 'Guard role should reduce ambush initiative enough for a very fast leader to react first');
+  assertContains(App.log.map(e => e.text).join('\n'), 'ambush from hiding', 'Guard mitigation should not hide the ambush event');
 });
 
 test('Create accordion keeps only the selected section open', () => {

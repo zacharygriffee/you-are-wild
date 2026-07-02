@@ -2824,9 +2824,16 @@
             _partyHasDarkvision() {
                 return this.party.some(unit => unit && unit.CPun > 0 && unit.darkvision);
             },
+            _partyRoleCount(role) {
+                return (this.party || []).filter(unit => unit && unit !== this.player && unit.CPun > 0 && this._getPartyRole(unit) === role).length;
+            },
+            _partyRoleEffect(role, amount = 1, cap = Infinity) {
+                return Math.min(cap, this._partyRoleCount(role) * amount);
+            },
             _mapVisibilityRadius() {
                 if (!this._isNight() || this._partyHasDarkvision()) return this.DAY_VISIBILITY_RADIUS;
-                return Math.max(1, this.DAY_VISIBILITY_RADIUS - this.NIGHT_VISIBILITY_PENALTY);
+                const scoutBonus = this._partyRoleEffect('scout', this.NIGHT_VISIBILITY_PENALTY, this.NIGHT_VISIBILITY_PENALTY);
+                return Math.max(1, this.DAY_VISIBILITY_RADIUS - this.NIGHT_VISIBILITY_PENALTY + scoutBonus);
             },
             _isNocturnalSpecies(sid) {
                 return this.NOCTURNAL_SPECIES.includes(sid) || Boolean(this.SPECIES_TEMPERAMENT[sid]?.nocturnal);
@@ -4565,7 +4572,7 @@
                 this._assignCombatRows(allCombatants);
                 this.combatState.turnQueue = allCombatants
                     .filter(c => c.CPun > 0 && !c.knockedOut)
-                    .map(c => ({ unit: c, initiative: this._calcInitiative(c) + (c.ambushReady ? 100 : 0) }))
+                    .map(c => ({ unit: c, initiative: this._calcInitiative(c) + (c.ambushReady ? this._ambushInitiativeBonus() : 0) }))
                     .sort((a, b) => b.initiative - a.initiative);
                 this.combatState.currentTurn = 0;
                 const ambushers = enemies.filter(e => e.ambushReady);
@@ -4575,6 +4582,10 @@
                 this.renderParty();
                 this.renderCreatures();
                 this.processTurn();
+            },
+
+            _ambushInitiativeBonus() {
+                return Math.max(25, 100 - this._partyRoleEffect('guard', 35, 75));
             },
 
             _calcInitiative(c) {
@@ -8675,7 +8686,7 @@
                 this._advanceTime(1);
                 const tile = this._currentExplorationTile();
                 const roll = Math.random();
-                const findChance = 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0);
+                const findChance = Math.min(0.85, 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0) + this._partyRoleEffect('gatherer', 0.1, 0.25));
                 let result = '';
                 if (roll < findChance) {
                     const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;
@@ -8703,8 +8714,9 @@
                     this.renderExplorationActions();
                     return;
                 }
+                const healAmount = 30 + this._partyRoleEffect('support', 10, 20);
                 const healed = new Set([this.player, ...this.party]);
-                healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + 30); });
+                healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + healAmount); });
                 this.log.push({ text: 'Rested and recovered.', type: 'heal' });
                 this.renderLog(); this.renderParty();
             },

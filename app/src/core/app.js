@@ -4893,7 +4893,7 @@
 
             lootCorpse(targetId) {
                 const corpse = this._findCorpseById(targetId);
-                if (!corpse) return;
+                if (!corpse) return false;
                 let item = null;
                 let gold = 0;
                 if (!corpse.looted) {
@@ -4925,11 +4925,12 @@
                 this.renderCreatures();
                 this.renderExplorationActions();
                 this.autoSave();
+                return true;
             },
 
             scavengeCorpse(targetId) {
                 const corpse = this._findCorpseById(targetId);
-                if (!corpse) return;
+                if (!corpse) return false;
                 corpse.scavenged = true;
                 this.player.hunger = Math.max(0, (this.player.hunger || 0) - 20);
                 this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 5);
@@ -4945,6 +4946,7 @@
                 this.renderCreatures();
                 this.renderExplorationActions();
                 this.autoSave();
+                return true;
             },
 
             recruitCreatureFromIndex(index) {

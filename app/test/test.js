@@ -1595,15 +1595,18 @@ test('Looting a corpse can grant an item without starting combat', () => {
   App.creatures = [corpse];
   App.inventory = [];
   App.combatState.active = false;
-  App.lootCorpse('loot-corpse');
+  const looted = App.lootCorpse('loot-corpse');
+  assertEqual(looted, true, 'Loot corpse should report successful action');
   assertEqual(corpse.looted, true, 'Looted corpse should be marked');
   assertEqual(App.inventory.length, 1, 'Successful corpse loot should add one item');
   assertEqual(App.player.gold, 2, 'Corpse loot should grant generated gold');
   assertEqual(App.combatState.active, false, 'Corpse loot should not start combat');
   assertContains(App.log[App.log.length - 1].text, App.inventory[0].name, 'Loot log should mention found item');
   assertContains(App.log[App.log.length - 1].text, '2 gold', 'Loot log should mention found gold');
-  App.lootCorpse('loot-corpse');
+  const relooted = App.lootCorpse('loot-corpse');
+  assertEqual(relooted, true, 'Already-looted corpse should still report handled action');
   assertEqual(App.player.gold, 2, 'Already-looted corpse should not grant gold twice');
+  assertEqual(App.lootCorpse('missing-corpse'), false, 'Missing corpse loot should report failure');
 });
 
 test('Authored corpse loot can grant explicit gold without an item', () => {
@@ -1661,12 +1664,14 @@ test('Scavenging a corpse uses corpse-specific result and does not remove it', (
   App.player = player;
   App.party = [player];
   App.creatures = [corpse];
-  App.scavengeCorpse('scavenge-corpse');
+  const scavenged = App.scavengeCorpse('scavenge-corpse');
+  assertEqual(scavenged, true, 'Scavenge corpse should report successful action');
   assertEqual(corpse.scavenged, true, 'Scavenged corpse should be marked');
   assert(App.creatures.includes(corpse), 'Scavenging should keep corpse on tile');
   assertEqual(player.hunger, 30, 'Scavenging should reduce hunger');
   assertEqual(player.CPun, 85, 'Scavenging should restore a small amount of punishment');
   assertContains(App.log[App.log.length - 1].text, 'Fallen', 'Scavenge log should use corpse content');
+  assertEqual(App.scavengeCorpse('missing-corpse'), false, 'Missing corpse scavenge should report failure');
 });
 
 test('Threatened timid non-hostile can flee without XP', () => {

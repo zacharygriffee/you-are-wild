@@ -4836,20 +4836,27 @@
 
             _itemListOptions(prefix, targetId = null) {
                 const targetArg = targetId ? `,'${String(targetId).replace(/'/g, "\\'")}'` : '';
+                const categoryLabel = this._escapeHtml(this._label('item.category', 'Category'));
+                const sortLabel = this._escapeHtml(this._label('item.sort', 'Sort'));
+                const filterOptions = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].map(type => {
+                    const label = this._escapeHtml(this._label(`item.category.${type}`, type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)));
+                    return `<option value="${type}" ${this[`${prefix.toLowerCase()}Filter`] === type ? 'selected' : ''}>${label}</option>`;
+                }).join('');
+                const sortOptions = [
+                    ['name', this._label('item.sort.name', 'Name')],
+                    ['type', this._label('item.sort.type', 'Type')],
+                    ['value-desc', this._label('item.sort.valueDesc', 'Value ↓')],
+                    ['value-asc', this._label('item.sort.valueAsc', 'Value ↑')]
+                ].map(([value, label]) => `<option value="${value}" ${this[`${prefix.toLowerCase()}Sort`] === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('');
                 return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Category
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${categoryLabel}
                         <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Filter(this.value${targetArg})">
-                            ${['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].map(type => `<option value="${type}" ${this[`${prefix.toLowerCase()}Filter`] === type ? 'selected' : ''}>${type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}</option>`).join('')}
+                            ${filterOptions}
                         </select>
                     </label>
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Sort
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
                         <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Sort(this.value${targetArg})">
-                            ${[
-                                ['name', 'Name'],
-                                ['type', 'Type'],
-                                ['value-desc', 'Value ↓'],
-                                ['value-asc', 'Value ↑']
-                            ].map(([value, label]) => `<option value="${value}" ${this[`${prefix.toLowerCase()}Sort`] === value ? 'selected' : ''}>${label}</option>`).join('')}
+                            ${sortOptions}
                         </select>
                     </label>
                 </div>`;
@@ -4900,12 +4907,14 @@
                 const buyLabel = this._escapeHtml(this._label('trade.buy', 'Buy'));
                 const sellLabel = this._escapeHtml(this._label('trade.sell', 'Sell'));
                 const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                let html = `<h3>${merchant.name} Trade</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Gold: ${gold}</p>`;
+                const title = this._escapeHtml(this._label('trade.title', '{name} Trade', { name: merchant.name }));
+                const goldText = this._escapeHtml(this._label('trade.gold', 'Gold: {gold}', { gold }));
+                let html = `<h3>${title}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${goldText}</p>`;
                 html += this._itemListOptions('Trade', this._unitKey(merchant));
-                html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">Buy</h4><div style="display:grid;gap:8px;">`;
+                html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">${buyLabel}</h4><div style="display:grid;gap:8px;">`;
                 const stockEntries = this._filterAndSortItemEntries((merchant.stock || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
                 if (stockEntries.length === 0) {
-                    html += `<p style="color:var(--text-muted)">No stock matches the current filter.</p>`;
+                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noStockMatches', 'No stock matches the current filter.'))}</p>`;
                 }
                 stockEntries.forEach(({ item, index }) => {
                     const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
@@ -4913,12 +4922,12 @@
                     const buyTitle = this._escapeHtml(this._label('trade.buyItem', 'Buy {name}', { name: item.name }));
                     html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${buyTitle}" aria-label="${buyTitle}" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">${buyLabel}</button></div>`;
                 });
-                html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">Sell</h4><div style="display:grid;gap:8px;">`;
+                html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">${sellLabel}</h4><div style="display:grid;gap:8px;">`;
                 const sellEntries = this._filterAndSortItemEntries((this.inventory || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
                 if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted)">No items to sell.</p>`;
+                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noItemsToSell', 'No items to sell.'))}</p>`;
                 } else if (sellEntries.length === 0) {
-                    html += `<p style="color:var(--text-muted)">No inventory items match the current filter.</p>`;
+                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noInventoryMatches', 'No inventory items match the current filter.'))}</p>`;
                 } else {
                     sellEntries.forEach(({ item }) => {
                         const def = this.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
@@ -5583,14 +5592,14 @@
                 });
                 html += `</div></div>`;
                 if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">Empty.</p>${backButton}`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.empty', 'Empty.'))}</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }
                 html += this._itemListOptions('Inventory');
                 const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
                 if (entries.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">No items match the current filter.</p>${backButton}`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }

@@ -690,8 +690,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       locales: {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
-          'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.',
-          'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.',
+          'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}', 'inventory.full': 'Inventory is full.', 'inventory.empty': 'Empty.', 'inventory.noItemsMatch': 'No items match the current filter.',
+          'item.category': 'Category', 'item.category.all': 'All', 'item.category.consumable': 'Consumable', 'item.category.equipment': 'Equipment', 'item.category.valuable': 'Valuable', 'item.category.material': 'Material', 'item.category.misc': 'Misc', 'item.sort': 'Sort', 'item.sort.name': 'Name', 'item.sort.type': 'Type', 'item.sort.valueDesc': 'Value ↓', 'item.sort.valueAsc': 'Value ↑',
+          'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close', 'perk.levelUp': 'Level up! You are now level {level}. All stats increased!', 'perk.chooseNew': 'Choose a new perk from the perk tree.', 'perk.notAvailable': 'That perk is not available yet.', 'perk.chosen': 'Perk chosen: {name}. {description}', 'perk.noneToRespec': 'No perks selected to respec.', 'perk.confirmRespec': 'Reset selected perks and refund their choices?', 'perk.respecDoneOne': 'Perks reset. Refunded {count} choice.', 'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
           'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here', 'target.chooseFromPanel': 'Select a target from the creature panel.', 'target.cancelAction': 'Cancel {action}', 'log.movedTo': 'Moved to {x}, {y} ({biome})', 'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.', 'log.discoveredLandmark': 'Discovered {name}!', 'log.restUnavailable': 'There is no safe place to rest here.', 'log.rested': 'Rested and recovered.', 'recruit.partyFull': 'Party is full! Cannot recruit {name}', 'recruit.notReady': '{name} is not ready to join the party.', 'recruit.joined': '{name} joins your party!', 'recruit.confirmSubmissive': '{name} is submissive. Recruit them to your party?', 'feed.optionsTitle': 'Feed Options', 'feed.noOptions': 'No feed options available right now.', 'feed.noWoundedAllies': 'No wounded allies to feed.', 'feed.noWillingLivestock': 'No willing livestock to sacrifice.', 'feed.noForceFeedEnemies': 'No enemies to force-feed.', 'feed.noValidTarget': 'No valid target for this feed action.',
@@ -706,8 +707,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
-          'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.',
-          'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.',
+          'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}', 'inventory.full': 'El inventario esta lleno.', 'inventory.empty': 'Vacio.', 'inventory.noItemsMatch': 'No hay articulos que coincidan con el filtro actual.',
+          'item.category': 'Categoria', 'item.category.all': 'Todos', 'item.category.consumable': 'Consumible', 'item.category.equipment': 'Equipo', 'item.category.valuable': 'Valioso', 'item.category.material': 'Material', 'item.category.misc': 'Varios', 'item.sort': 'Ordenar', 'item.sort.name': 'Nombre', 'item.sort.type': 'Tipo', 'item.sort.valueDesc': 'Valor ↓', 'item.sort.valueAsc': 'Valor ↑',
+          'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar', 'perk.levelUp': 'Subiste de nivel! Ahora eres nivel {level}. Todas las estadisticas aumentaron!', 'perk.chooseNew': 'Elige una nueva mejora del arbol de mejoras.', 'perk.notAvailable': 'Esa mejora aun no esta disponible.', 'perk.chosen': 'Mejora elegida: {name}. {description}', 'perk.noneToRespec': 'No hay mejoras seleccionadas para reiniciar.', 'perk.confirmRespec': 'Reiniciar mejoras seleccionadas y reembolsar sus opciones?', 'perk.respecDoneOne': 'Mejoras reiniciadas. Se reembolso {count} opcion.', 'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
           'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui', 'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.', 'target.cancelAction': 'Cancelar {action}', 'log.movedTo': 'Movimiento a {x}, {y} ({biome})', 'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.', 'log.discoveredLandmark': 'Descubriste {name}!', 'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.', 'log.rested': 'Descansaste y te recuperaste.', 'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}', 'recruit.notReady': '{name} aun no esta listo para unirse al grupo.', 'recruit.joined': '{name} se une a tu grupo!', 'recruit.confirmSubmissive': '{name} esta sumiso. Reclutarlo para tu grupo?', 'feed.optionsTitle': 'Opciones de alimentacion', 'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.', 'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.', 'feed.noWillingLivestock': 'No hay ganado dispuesto para sacrificar.', 'feed.noForceFeedEnemies': 'No hay enemigos para forzar alimentacion.', 'feed.noValidTarget': 'No hay objetivo valido para esta accion de alimentar.',
@@ -3606,6 +3608,31 @@ test('Merchant trade action labels localize with accessible names', () => {
   assertContains(html, 'aria-label="Vender Old Coin"', 'Sell control should expose localized accessible label');
   assertContains(html, '>Vender<', 'Sell visible label should localize');
   assertContains(html, 'aria-label="Volver"', 'Trade back control should expose localized accessible label');
+  assertContains(html, 'Comercio con Trader', 'Trade heading should localize');
+  assertContains(html, 'Oro: 100', 'Trade gold label should localize');
+  assertContains(html, 'Categoria', 'Trade category control should localize');
+  assertContains(html, '<option value="equipment" >Equipo</option>', 'Trade category option should localize');
+  assertContains(html, 'Ordenar', 'Trade sort control should localize');
+  assertContains(html, '<option value="value-desc" >Valor ↓</option>', 'Trade sort option should localize');
+});
+
+test('Merchant trade empty states localize', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { gold: 0 });
+  App.party = [App.player];
+  App.inventory = [];
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
+  });
+  App.creatures = [merchant];
+  App.updateLanguage('es');
+  App.setTradeFilter('equipment', 'trader-1');
+  App.showTrade('trader-1');
+  const html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'No hay existencias que coincidan con el filtro actual.', 'Empty merchant stock message should localize');
+  assertContains(html, 'No hay articulos para vender.', 'Empty sell inventory message should localize');
 });
 
 test('Expensive merchant purchases require confirmation', () => {
@@ -3908,8 +3935,27 @@ test('Inventory supports item categories and sorting', () => {
   App.setInventorySort('value-asc');
   html = elements.get('scene-description').innerHTML;
   assert(html.indexOf('Old Coin') < html.indexOf('Healing Herb'), 'Value ascending sort should show cheaper items first');
-  assertContains(html, 'Category', 'Inventory should expose category control');
-  assertContains(html, 'Sort', 'Inventory should expose sort control');
+  App.updateLanguage('es');
+  App.showInventory();
+  html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Categoria', 'Inventory should expose localized category control');
+  assertContains(html, '<option value="all" selected>Todos</option>', 'Inventory all-category option should localize');
+  assertContains(html, 'Ordenar', 'Inventory should expose localized sort control');
+  assertContains(html, '<option value="value-asc" selected>Valor ↑</option>', 'Inventory value sort option should localize');
+});
+
+test('Inventory empty states localize', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.updateLanguage('es');
+  App.inventory = [];
+  App.showInventory();
+  assertContains(elements.get('scene-description').innerHTML, 'Vacio.', 'Empty inventory message should localize');
+
+  App.inventory = [{ id: 'herb-1', name: 'Healing Herb' }];
+  App.setInventoryFilter('equipment');
+  assertContains(elements.get('scene-description').innerHTML, 'No hay articulos que coincidan con el filtro actual.', 'Filtered-empty inventory message should localize');
 });
 
 test('Non-player equipment renders as read-only card metadata', () => {

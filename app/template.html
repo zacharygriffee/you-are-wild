@@ -1448,6 +1448,23 @@
                 overflow: auto;
             }
 
+            .mobile-scene-sheet.rich-content {
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                top: 72px;
+                bottom: calc(var(--mobile-actions-height) + env(safe-area-inset-bottom) + 8px);
+                z-index: 95;
+                max-height: none;
+                overscroll-behavior: contain;
+            }
+
+            .mobile-scene-sheet.rich-content .mobile-scene-description {
+                max-height: calc(100% - 32px);
+                overflow: auto;
+                overscroll-behavior: contain;
+            }
+
             .mobile-scene-title {
                 color: var(--text-accent);
                 font-weight: 700;
@@ -1459,6 +1476,16 @@
                 color: var(--text-secondary);
                 font-size: 13px;
                 line-height: 1.45;
+            }
+
+            .mobile-scene-description .party-stats-view {
+                width: 100%;
+                max-height: none;
+                padding: 0;
+            }
+
+            .mobile-scene-description .party-stats-header {
+                background: var(--bg-secondary);
             }
 
             .mobile-log-summary {

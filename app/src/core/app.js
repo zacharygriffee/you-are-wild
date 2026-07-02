@@ -156,7 +156,7 @@
                 return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;
@@ -234,6 +234,7 @@
                     rest: 'App.rest()',
                     inventory: 'App.showInventory()',
                     quests: 'App.showQuestLog()',
+                    stats: 'App.showCharacterStats()',
                     enter: 'App.enterStructure()',
                     exit: 'App.exitStructure()',
                     map: "togglePanel('map')",
@@ -244,7 +245,7 @@
             },
             _renderContextActions(includePanels = false) {
                 const keys = this._contextActionKeys();
-                const panelKeys = includePanels ? ['map', 'party', 'enemies'] : [];
+                const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
                 const targetActions = this._renderExplorationTargetActions();
                 return targetActions + allKeys.map(key => this._contextActionButton(key)).join('') + (includePanels ? '' : this._actionLegend(allKeys));
@@ -3636,7 +3637,7 @@
                 const html = `<div class="party-stats-view" role="region" aria-label="${this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
                     <div class="party-stats-header">
                         <div><h3>${unit.icon || ''} ${this._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
-                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.showExplorationActions()">${closeLabel}</button>
+                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
                     </div>
                     <div class="party-stats-grid">
                         ${statCard('party.punishment', 'Punishment', `${unit.CPun}/${unit.MPun}`)}
@@ -3647,8 +3648,8 @@
                         ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
                         ${statCard('party.perks', 'Perks', perks)}
                     </div>
-                    <button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button></div>`;
-                document.getElementById('scene-description').innerHTML = html;
+                    <button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closeSceneDetails()">${backLabel}</button></div>`;
+                this._setRichSceneContent(`${unit.icon || ''} ${unit.name}`, html);
             },
 
             selectExplorationActor(index) {
@@ -5423,7 +5424,7 @@
                 const equipment = unit?.equipment || {};
                 return Object.entries(this.EQUIPMENT_SLOTS).map(([slot, label]) => {
                     const item = equipment[slot];
-                    return `${label}: ${item ? item.name : 'Empty'}`;
+                    return `${this._escapeHtml(label)}: ${item ? this._escapeHtml(item.name) : this._escapeHtml(this._label('save.empty', 'Empty'))}`;
                 }).join('<br>');
             },
             _equipmentCompactSummary(unit = this.player) {
@@ -6020,6 +6021,19 @@
 	            },
 
             // ===== SCENE / LOG =====
+            _setRichSceneContent(title, html) {
+                const titleEl = document.getElementById('scene-title');
+                const descEl = document.getElementById('scene-description');
+                if (titleEl) titleEl.textContent = title || '';
+                if (descEl) descEl.innerHTML = html || '';
+                const mobileTitle = document.getElementById('mobile-scene-title');
+                const mobileDesc = document.getElementById('mobile-scene-description');
+                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
+                if (mobileTitle) mobileTitle.textContent = title || '';
+                if (mobileDesc) mobileDesc.innerHTML = html || '';
+                if (mobileSheet) mobileSheet.classList.add('rich-content');
+            },
+
             updateScene(title, description, inCombat) {
 	                const titleEl = document.getElementById('scene-title');
 	                const descEl = document.getElementById('scene-description');
@@ -6027,8 +6041,10 @@
 	                if (descEl) descEl.textContent = description || '';
 	                const mobileTitle = document.getElementById('mobile-scene-title');
 	                const mobileDesc = document.getElementById('mobile-scene-description');
+	                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
 	                if (mobileTitle) mobileTitle.textContent = title || '';
 	                if (mobileDesc) mobileDesc.textContent = description || '';
+	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
 	                const actions = document.getElementById('scene-actions');
                 const mobileActions = document.getElementById('mobile-actions');
 	                const mobileCombat = document.getElementById('mobile-combat-actions');
@@ -6064,6 +6080,14 @@
                 const title = this.inInterior && this.activeInterior ? `${this.activeInterior.structureName} Interior` : biome.name;
                 this.updateScene(title, tile.explored ? 'You are in the ' + biome.name + '. ' + tile.description : 'You stand at the edge of the unknown...', false);
                 this.renderExplorationActions();
+            },
+            closeSceneDetails() {
+                try {
+                    this.showExplorationActions();
+                } catch (err) {
+                    this.updateScene(this._label('ui.exploration', 'Exploration'), this._label('ui.chooseAction', 'Choose your next action.'), false);
+                    this.renderExplorationActions();
+                }
             },
             _escapeHtml(value) {
                 return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -6344,20 +6368,31 @@
                 const closeLabel = this._escapeHtml(this._label('perk.closeStats', 'Close'));
                 const perkButton = pendingCount > 0 ? `<button class="nav-btn" style="margin-top:12px" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
                 const respecDisabled = (p.perks || []).length ? '' : ' disabled';
-                let html = `<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary)">📊 ${p.name}</h1>
-                    <p>Level ${p.level} ${p.species} | XP: ${p.xp}/${p.xpToNext}</p>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Punishment</h3><p>${p.CPun}/${p.MPun}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Pleasure</h3><p>${p.CPle}/${p.MPle}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Combat Stats</h3><p>Figh: ${p.Figh} | Feas: ${p.Feas} | Flir: ${p.Flir}<br>Fuck: ${p.Fuck} | Flee: ${p.Flee} | Feed: ${p.Feed}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Attributes</h3><p>STR: ${p.str} | CON: ${p.con} | SPD: ${p.spd}<br>INT: ${p.int} | WIS: ${p.wis} | CHA: ${p.cha}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Body</h3><p>Size: ${p.size} | Appetite: ${p.appetite}<br>Parts: ${p.parts || 'none'} | Chest: ${p.chest || 'none'}<br>Body: ${(p.bodyParts || []).map(b => this.BODY_PARTS[b]?.label || b).join(', ') || 'None'}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Equipment</h3><p>${this._equipmentSummary(p)}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${(p.perks || []).map(pk => pk.name).join(', ') || 'None'}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perk Tools</h3><p style="color:var(--text-muted);font-size:12px">Balance/debug controls.</p><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button></div>
+                const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
+                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: p.level, species: p.species }));
+                const xpText = this._escapeHtml(this._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: p.xp, xpToNext: p.xpToNext }));
+                const noneText = this._escapeHtml(this._label('party.none', 'None'));
+                const parts = this._escapeHtml(p.parts || this._label('party.none', 'None'));
+                const chest = this._escapeHtml(p.chest || this._label('party.none', 'None'));
+                const bodyParts = (p.bodyParts || []).map(b => this._escapeHtml(this.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
+                const perks = (p.perks || []).map(pk => this._escapeHtml(pk.name)).join(', ') || noneText;
+                let html = `<div class="party-stats-view character-stats-view" role="region" aria-label="${closeLabel}">
+                    <div class="party-stats-header">
+                        <div><h1 style="color:var(--accent-primary)">📊 ${this._escapeHtml(p.name)}</h1><p style="color:var(--text-muted);margin-top:4px">${levelText} | ${xpText}</p></div>
+                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
                     </div>
-                    ${perkButton}<button class="nav-btn" style="margin-top:24px" title="${closeLabel}" aria-label="${closeLabel}" onclick="returnToGame()">${closeLabel}</button></div>`;
-                document.getElementById('scene-description').innerHTML = html;
+                    <div class="party-stats-grid">
+                        ${statCard('party.punishment', 'Punishment', `${p.CPun}/${p.MPun}`)}
+                        ${statCard('party.pleasure', 'Pleasure', `${p.CPle}/${p.MPle}`)}
+                        ${statCard('character.combatStats', 'Combat Stats', `Figh: ${p.Figh} | Feas: ${p.Feas} | Flir: ${p.Flir}<br>${this._escapeHtml(this._uiLabel('fuck'))}: ${p.Fuck} | Flee: ${p.Flee} | Feed: ${p.Feed}`)}
+                        ${statCard('party.attributes', 'Attributes', `STR: ${p.str} | CON: ${p.con} | SPD: ${p.spd}<br>INT: ${p.int} | WIS: ${p.wis} | CHA: ${p.cha}`)}
+                        ${statCard('character.body', 'Body', `${this._escapeHtml(this._label('character.size', 'Size'))}: ${p.size} | ${this._escapeHtml(this._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${this._escapeHtml(this._label('character.parts', 'Parts'))}: ${parts} | ${this._escapeHtml(this._label('character.chest', 'Chest'))}: ${chest}<br>${this._escapeHtml(this._label('character.bodyParts', 'Body'))}: ${bodyParts}`)}
+                        ${statCard('party.equipment', 'Equipment', this._equipmentSummary(p))}
+                        ${statCard('party.perks', 'Perks', perks)}
+                        ${statCard('character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
+                    </div>
+                    ${perkButton}<button class="nav-btn" style="margin-top:12px" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button></div>`;
+                this._setRichSceneContent(`${p.name} ${this._label('party.stats', 'Stats')}`, html);
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
             toggleCheat(cheat) {

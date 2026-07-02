@@ -5578,7 +5578,7 @@
                 const bonus = this._getItemDef(item).equipBonus || {};
                 const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
                 const effect = this._getItemDef(item).equipEffect;
-                if (effect) entries.push(`Effect: ${effect}`);
+                if (effect) entries.push(`${this._label('inventory.effect', 'Effect')}: ${effect}`);
                 return entries.length ? entries.join(', ') : this._label('inventory.noBonus', 'No bonus');
             },
 
@@ -6339,7 +6339,7 @@
 	                    if (type) cn += ` ${type}`;
 	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span><span class="log-category" aria-label="${this._escapeHtml(meta.label)}"><span aria-hidden="true">${this._escapeHtml(meta.icon)}</span> ${this._escapeHtml(meta.label)}</span>${this._escapeHtml(e.text)}</div>`;
 	                }).join('');
-	                if (container) container.innerHTML = entries || '<div class="log-entry text-muted">No log entries match the current filter.</div>';
+	                if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${this._escapeHtml(this._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
                     document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.logFilter === (this.logFilter || 'all'));
                     });

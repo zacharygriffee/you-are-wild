@@ -8300,7 +8300,7 @@
                 const bonus = this._getItemDef(item).equipBonus || {};
                 const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
                 const effect = this._getItemDef(item).equipEffect;
-                if (effect) entries.push(`Effect: ${effect}`);
+                if (effect) entries.push(`${this._label('inventory.effect', 'Effect')}: ${effect}`);
                 return entries.length ? entries.join(', ') : this._label('inventory.noBonus', 'No bonus');
             },
 
@@ -9061,7 +9061,7 @@
 	                    if (type) cn += ` ${type}`;
 	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span><span class="log-category" aria-label="${this._escapeHtml(meta.label)}"><span aria-hidden="true">${this._escapeHtml(meta.icon)}</span> ${this._escapeHtml(meta.label)}</span>${this._escapeHtml(e.text)}</div>`;
 	                }).join('');
-	                if (container) container.innerHTML = entries || '<div class="log-entry text-muted">No log entries match the current filter.</div>';
+	                if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${this._escapeHtml(this._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
                     document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.logFilter === (this.logFilter || 'all'));
                     });
@@ -10704,6 +10704,7 @@ const CONTENT_SYSTEM = {
             'inventory.unequipped': 'Unequipped {name}.',
             'inventory.noEquipment': 'No equipment',
             'inventory.noBonus': 'No bonus',
+            'inventory.effect': 'Effect',
             'item.category': 'Category',
             'item.category.all': 'All',
             'item.category.consumable': 'Consumable',
@@ -10795,6 +10796,7 @@ const CONTENT_SYSTEM = {
             'log.discoveredLandmark': 'Discovered {name}!',
             'log.restUnavailable': 'There is no safe place to rest here.',
             'log.rested': 'Rested and recovered.',
+            'log.noEntriesMatchFilter': 'No log entries match the current filter.',
             'recruit.partyFull': 'Party is full! Cannot recruit {name}',
             'recruit.notReady': '{name} is not ready to join the party.',
             'recruit.joined': '{name} joins your party!',
@@ -11018,6 +11020,7 @@ const CONTENT_SYSTEM = {
             'inventory.unequipped': 'Desequipaste {name}.',
             'inventory.noEquipment': 'Sin equipo',
             'inventory.noBonus': 'Sin bonificacion',
+            'inventory.effect': 'Efecto',
             'item.category': 'Categoria',
             'item.category.all': 'Todos',
             'item.category.consumable': 'Consumible',
@@ -11109,6 +11112,7 @@ const CONTENT_SYSTEM = {
             'log.discoveredLandmark': 'Descubriste {name}!',
             'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.',
             'log.rested': 'Descansaste y te recuperaste.',
+            'log.noEntriesMatchFilter': 'No hay entradas de registro que coincidan con el filtro actual.',
             'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}',
             'recruit.notReady': '{name} aun no esta listo para unirse al grupo.',
             'recruit.joined': '{name} se une a tu grupo!',

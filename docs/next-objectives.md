@@ -135,6 +135,14 @@
 - Keep non-party persuasion deferred: exploration group actions remain player-controlled for party members only
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
+#### 2. Brand Transformation
+- Choose a neutral project name before changing user-facing branding; keep candidate names vanilla/non-explicit and check final commercial availability separately
+- Replace visible original branding in the active app shell: document title, start screen heading, desktop/mobile header title, welcome/log text, and any generated dist output
+- Rename active package/build metadata once the final name is chosen: root package name, tactical package name/description, build output filename, generated banner, README/build docs, and architecture references
+- Replace internal `FFF`/`FFFme` identifiers for new durable state, but preserve backward-compatible reads/migrations for existing saves, settings, modules, content preferences, log view preferences, and world data
+- Keep legacy/archive references quarantined unless the project decides to remove archived source entirely; active source, docs, and distributable output should be free of original branding
+- Add a branding audit check using `rg` so future work can verify no original active-surface branding remains outside explicitly allowed archive/legacy paths
+
 ### 🔵 Tier 4: Lower Priority
 
 #### 7. Sparse Map Generation Foundation

@@ -2075,6 +2075,36 @@ test('Self-included group feast rejects instead of routing self-consumption', ()
   assertContains(App.log[App.log.length - 1].text, 'cannot feast on themself', 'Self-included feast should explain the rule');
 });
 
+test('Single actor feast rejects direct self-targeting', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', size: 6, appetite: 6, Feas: 50, Flee: 1 });
+  App.player = player;
+  App.party = [player, target];
+  App.explorationActorIds = ['target-1'];
+  App.outsideActionForParty('feast', 1);
+  assertEqual(App.party.includes(target), true, 'Direct self-feast should leave the actor in party');
+  assertEqual(target.stomach.length, 0, 'Direct self-feast should not place actor into their own stomach');
+  assertContains(App.log[App.log.length - 1].text, 'cannot feast on themself', 'Direct self-feast should explain the rule');
+});
+
+test('Multi-target feast skips the actor self-target but resolves valid prey', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', size: 8, appetite: 8, Feas: 50 });
+  const prey = makeUnit('Prey', { id: 'prey-1', disposition: App.DISPOSITION.FRIENDLY, size: 2, Flee: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [prey];
+  App.toggleExplorationTarget('party', 'actor-1');
+  App.toggleExplorationTarget('creature', 'prey-1');
+  App.resolveExplorationTargetAction('feast');
+  assertEqual(App.party.includes(actor), true, 'Self-target skipped during multi-target feast should leave actor in party');
+  assertEqual(actor.stomach.length, 1, 'Valid prey should still be consumed during mixed multi-target feast');
+  assertEqual(actor.stomach[0].name, 'Prey', 'Multi-target feast should consume the valid non-self target');
+  assertEqual(App.creatures.includes(prey), false, 'Consumed area prey should leave active creatures');
+  assertContains(App.log[App.log.length - 1].text, 'Prey', 'Multi-target feast summary should name only the valid affected target');
+});
+
 test('Single selected party member can be fed to another full-health party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

@@ -4221,7 +4221,8 @@
                         skippedSet.add(target);
                         continue;
                     }
-                    this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
+                    if (resolved === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
                 let summary = affected.length > 0
@@ -4491,6 +4492,10 @@
                         break;
                     }
                     case 'feast': {
+                        if (actor === target) {
+                            result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
+                            break;
+                        }
                         const canEatOutside = this.cheats.canEatAnything || (actor.size >= target.size - 2 && actor.Feas + 5 > target.Flee);
                         if (canEatOutside) {
                             if (!this._canFitPrey(actor, target, 'stomach')) {
@@ -4575,9 +4580,10 @@
                 this.renderCreatures();
                 if (startCombatAfter) {
                     this.startCombat(combatTargets);
-                    return;
+                    return true;
                 }
                 if (!this.combatState.active) this.renderExplorationActions();
+                return !(action === 'feast' && actor === target);
             },
 
             _findCorpseById(targetId) {

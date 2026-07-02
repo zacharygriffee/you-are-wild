@@ -3205,7 +3205,10 @@
                 const unit = this.party[index];
                 if (!unit || unit === this.player || !this.PARTY_AI_ORDERS[order]) return;
                 unit.aiOrder = order;
-                this.log.push({ text: `${unit.name} will act ${this._partyAIOrderLabel(order).toLowerCase()}.`, type: 'discovery' });
+                this.log.push({ text: this._label('party.aiOrderSet', '{name} will act {order}.', {
+                    name: unit.name,
+                    order: this._partyAIOrderLabel(order).toLowerCase()
+                }), type: 'discovery' });
                 this.renderParty();
                 this.renderLog();
                 this.autoSave();
@@ -3214,7 +3217,10 @@
                 const unit = this.party[index];
                 if (!unit || unit === this.player || !this.PARTY_ROLES[role]) return;
                 unit.partyRole = role;
-                this.log.push({ text: `${unit.name} is assigned as ${this._partyRoleLabel(role).toLowerCase()}.`, type: 'discovery' });
+                this.log.push({ text: this._label('party.roleSet', '{name} is assigned as {role}.', {
+                    name: unit.name,
+                    role: this._partyRoleLabel(role).toLowerCase()
+                }), type: 'discovery' });
                 this.renderParty();
                 this.renderLog();
                 this.autoSave();

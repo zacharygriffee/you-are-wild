@@ -5192,15 +5192,27 @@
             },
 
             _questLogControls() {
+                const statusLabel = this._escapeHtml(this._label('quest.status', 'Status'));
+                const sortLabel = this._escapeHtml(this._label('quest.sort', 'Sort'));
+                const filterOptions = [
+                    ['all', this._label('quest.filter.all', 'All')],
+                    ['active', this._label('quest.filter.active', 'Active')],
+                    ['turn-in', this._label('quest.filter.turnIn', 'Turn In')],
+                    ['completed', this._label('quest.filter.completed', 'Completed')]
+                ];
+                const sortOptions = [
+                    ['status', this._label('quest.sort.status', 'Status')],
+                    ['title', this._label('quest.sort.title', 'Title')]
+                ];
                 return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Status
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.setQuestFilter(this.value)">
-                            ${[['all', 'All'], ['active', 'Active'], ['turn-in', 'Turn In'], ['completed', 'Completed']].map(([value, label]) => `<option value="${value}" ${this.questFilter === value ? 'selected' : ''}>${label}</option>`).join('')}
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${statusLabel}
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${statusLabel}" aria-label="${statusLabel}" onchange="App.setQuestFilter(this.value)">
+                            ${filterOptions.map(([value, label]) => `<option value="${value}" ${this.questFilter === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('')}
                         </select>
                     </label>
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">Sort
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.setQuestSort(this.value)">
-                            ${[['status', 'Status'], ['title', 'Title']].map(([value, label]) => `<option value="${value}" ${this.questSort === value ? 'selected' : ''}>${label}</option>`).join('')}
+                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
+                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${sortLabel}" aria-label="${sortLabel}" onchange="App.setQuestSort(this.value)">
+                            ${sortOptions.map(([value, label]) => `<option value="${value}" ${this.questSort === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('')}
                         </select>
                     </label>
                 </div>`;
@@ -5218,14 +5230,17 @@
 
             showQuestLog() {
                 const quests = this.quests || [];
+                const titleLabel = this._escapeHtml(this._label('quest.title', 'Quests'));
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
                 if (quests.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<h3>Quests</h3><p style="color:var(--text-muted)">No active quests.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    document.getElementById('scene-description').innerHTML = `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">No active quests.</p>${backButton}`;
                     return;
                 }
                 const visibleQuests = this._filteredQuestEntries();
-                let html = `<h3>Quests</h3>${this._questLogControls()}`;
+                let html = `<h3>${titleLabel}</h3>${this._questLogControls()}`;
                 if (visibleQuests.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">No quests match the current filter.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">No quests match the current filter.</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }
@@ -5241,20 +5256,28 @@
                         const marker = this._nextQuestObjectiveMarker(objective);
                         if (!routePreview && !marker) continue;
                         html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
-                        if (marker && quest.status === 'active') html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show On Map</button>`;
+                        if (marker && quest.status === 'active') {
+                            const showMapLabel = this._escapeHtml(this._label('quest.showOnMap', 'Show On Map'));
+                            const showMapTitle = this._escapeHtml(this._label('quest.showOnMapFor', 'Show {name} on map', { name: quest.title }));
+                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showMapTitle}" aria-label="${showMapTitle}" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showMapLabel}</button>`;
+                        }
                     }
                     if (needsTurnIn) {
                         const turnInMarker = this._questTurnInMarker(quest);
                         if (turnInMarker) {
                             const guidance = this._questCheckpointGuidance(turnInMarker);
                             html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">Turn in with ${this._escapeHtml(turnInMarker.label)} (${turnInMarker.x}, ${turnInMarker.y})${guidance ? ` · ${this._escapeHtml(guidance)}` : ''}</div>`;
-                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show Turn-In</button>`;
+                            const showTurnInLabel = this._escapeHtml(this._label('quest.showTurnIn', 'Show Turn-In'));
+                            const showTurnInTitle = this._escapeHtml(this._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: quest.title }));
+                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
                         }
-                        html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">Turn In</button>`;
+                        const turnInLabel = this._escapeHtml(this._label('quest.turnIn', 'Turn In'));
+                        const turnInTitle = this._escapeHtml(this._label('quest.turnInQuest', 'Turn in {name}', { name: quest.title }));
+                        html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
                     }
                     html += `</div>`;
                 });
-                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                html += `</div>${backButton}`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 

@@ -627,6 +627,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}',
           'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}',
+          'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -638,6 +639,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}',
           'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}',
+          'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -2924,6 +2926,47 @@ test('Quest log supports status filtering and title sorting', () => {
   assert(html.indexOf('A Task') < html.indexOf('B Task'), 'Title sort should order quests alphabetically');
   assertContains(html, 'Status', 'Quest log should expose status filter control');
   assertContains(html, 'Sort', 'Quest log should expose sort control');
+});
+
+test('Quest log controls localize with accessible names', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.quests = [
+    App._normalizeQuest({
+      id: 'route_quest',
+      title: 'Route Quest',
+      status: 'active',
+      objectives: [{ type: 'travel', label: 'Reach camp', location: { x: 2, y: 0, label: 'Camp' }, required: 1, progress: 0 }],
+      reward: {}
+    }),
+    App._normalizeQuest({
+      id: 'turn_quest',
+      title: 'Turn Quest',
+      status: 'completed',
+      turnInRequired: true,
+      rewardClaimed: false,
+      giverLocation: { x: 1, y: 0, label: 'Guide' },
+      objectives: [],
+      reward: {}
+    })
+  ];
+  App.updateLanguage('es');
+  App.showQuestLog();
+  const html = elements.get('scene-description').innerHTML;
+  assertContains(html, '<h3>Misiones</h3>', 'Quest log title should localize');
+  assertContains(html, 'aria-label="Estado"', 'Quest filter select should expose localized accessible label');
+  assertContains(html, '>Activas<', 'Quest active filter option should localize');
+  assertContains(html, 'aria-label="Ordenar"', 'Quest sort select should expose localized accessible label');
+  assertContains(html, '>Titulo<', 'Quest title sort option should localize');
+  assertContains(html, 'aria-label="Mostrar Route Quest en mapa"', 'Quest map action should expose localized accessible label');
+  assertContains(html, '>Mostrar en mapa<', 'Quest map visible label should localize');
+  assertContains(html, 'aria-label="Mostrar entrega de Turn Quest"', 'Quest turn-in map action should expose localized accessible label');
+  assertContains(html, '>Mostrar entrega<', 'Quest turn-in map visible label should localize');
+  assertContains(html, 'aria-label="Entregar Turn Quest"', 'Quest turn-in action should expose localized accessible label');
+  assertContains(html, '>Entregar<', 'Quest turn-in visible label should localize');
+  assertContains(html, 'aria-label="Volver"', 'Quest back action should expose localized accessible label');
 });
 
 test('Quest log previews routes and can focus the large map on a checkpoint', () => {

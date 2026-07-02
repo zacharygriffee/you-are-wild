@@ -5118,6 +5118,26 @@ test('Mobile party long-press menu uses localized management labels', () => {
   assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
+test('Mobile party long-press role selectors refresh after changes', () => {
+  const { App, body } = loadAppForCombat(() => 0, { confirm: true });
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-mobile', partyRole: 'companion', aiOrder: 'aggressive' });
+  App.player = player;
+  App.party = [player, ally];
+  App.updateLanguage('es');
+  App.showMobilePartyContext(1);
+
+  App.mobilePartyContextSetRole(1, 'support');
+  assertEqual(ally.partyRole, 'support', 'Mobile role selector should update party role');
+  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile role selector should keep the management menu open');
+  assertContains(body.innerHTML, '<option value="support" selected>Apoyo</option>', 'Mobile role selector should refresh selected role label');
+
+  App.mobilePartyContextSetAIOrder(1, 'healer');
+  assertEqual(ally.aiOrder, 'healer', 'Mobile AI selector should update party AI order');
+  assertContains(body.innerHTML, 'id="mobile-context-menu"', 'Mobile AI selector should keep the management menu open');
+  assertContains(body.innerHTML, '<option value="healer" selected>Sanador</option>', 'Mobile AI selector should refresh selected AI order label');
+});
+
 test('Mobile creature long-press menu exposes core actions', () => {
   const { App, body, document } = loadAppForCombat();
   const opener = makeElement();

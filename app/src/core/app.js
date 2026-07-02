@@ -7129,8 +7129,8 @@
                 html += actionButton(this._label('party.stats', 'Stats'), 'stats');
                 if (unit !== this.player && !unit.mc) {
                     if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select></label>`;
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${orderOptions}</select></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select></label>`;
                     html += actionButton(this._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
                 }
                 html += actionButton(this._label('ui.close', 'Close'), 'close');
@@ -7148,6 +7148,20 @@
                 if (action === 'stats') return this.showPartyMemberStats(index);
                 if (action === 'lead') return this.setPartyLeader(index);
                 if (action === 'dismiss') return this.dismissPartyMember(index);
+            },
+            mobilePartyContextSetRole(index, role) {
+                this._haptic(8);
+                this.setPartyRole(index, role);
+                if (this.party[index] && document.getElementById('mobile-context-menu')) {
+                    this.showMobilePartyContext(index);
+                }
+            },
+            mobilePartyContextSetAIOrder(index, order) {
+                this._haptic(8);
+                this.setPartyAIOrder(index, order);
+                if (this.party[index] && document.getElementById('mobile-context-menu')) {
+                    this.showMobilePartyContext(index);
+                }
             },
             showMobileCreatureContext(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));

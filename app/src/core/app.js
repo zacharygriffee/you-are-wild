@@ -6406,7 +6406,6 @@
                 </div>`;
             },
             renderUnitCard(unit, index, type) {
-                const stats = this._unitDisplayStats(unit);
                 const isExpanded = unit.expanded || false;
                 const isParty = type === 'party';
                 const isPlayer = isParty && unit.name === this.player?.name;
@@ -6534,13 +6533,8 @@
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
                 const compactStatus = this._escapeHtml(`${isParty ? (isPlayer ? this._label('party.you', 'You') : this._label('party.ally', 'Ally')) : dispLabel || this._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
                 const statLabels = {
-                    size: this._escapeHtml(this._label('character.size', 'Size')),
-                    appetite: this._escapeHtml(this._label('character.appetite', 'Appetite')),
-                    parts: this._escapeHtml(this._label('character.parts', 'Parts')),
-                    chest: this._escapeHtml(this._label('character.chest', 'Chest')),
                     equipment: this._escapeHtml(this._label('party.equipment', 'Equipment'))
                 };
-                const noneLabel = this._escapeHtml(this._label('party.none', 'None'));
                 const cardCanOpenIntentMenu = isParty
                     ? !this.combatState.active
                     : unit.CPun > 0 && !isCorpse && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
@@ -6560,14 +6554,9 @@
 		                    </div>
 	                    ${actionButtons}
 	                    ${isExpanded ? `<div class="unit-details">
-	                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-	                            <div><span style="color:var(--text-muted)">Figh:</span> ${stats.Figh}</div><div><span style="color:var(--text-muted)">Feas:</span> ${stats.Feas}</div>
-                            <div><span style="color:var(--text-muted)">Flir:</span> ${stats.Flir}</div><div><span style="color:var(--text-muted)">Fuck:</span> ${stats.Fuck}</div>
-                            <div><span style="color:var(--text-muted)">Flee:</span> ${stats.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${stats.Feed}</div>
-	                            <div><span style="color:var(--text-muted)">${statLabels.size}:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">${statLabels.appetite}:</span> ${unit.appetite}</div>
-	                            <div><span style="color:var(--text-muted)">${statLabels.parts}:</span> ${unit.parts || noneLabel}</div><div><span style="color:var(--text-muted)">${statLabels.chest}:</span> ${unit.chest || noneLabel}</div>
-		                            <div style="grid-column:1/-1;color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
-                                    <div style="grid-column:1/-1;color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
+	                        <div style="display:grid;grid-template-columns:1fr;gap:8px;font-size:12px;">
+		                            <div style="color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
+                                    <div style="color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
 	                        </div>
 	                        ${partyManagementControls}
 	                    </div>` : ''}

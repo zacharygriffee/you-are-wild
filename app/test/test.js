@@ -4288,8 +4288,8 @@ test('Desktop creature card status and detail labels localize', () => {
   assertEqual(elements.get('enemies-title').textContent, 'Enemigos', 'Enemy panel title should localize');
   assertContains(panelHtml, '[Hostil]', 'Creature disposition badge should localize');
   assertContains(panelHtml, 'Fila:Retaguardia', 'Combat row label should localize');
-  assertContains(panelHtml, 'Tamano:', 'Expanded size label should localize');
-  assertContains(panelHtml, 'Apetito:', 'Expanded appetite label should localize');
+  assertNotContains(panelHtml, 'Tamano:', 'Expanded creature card should keep exact body stats in Stats/detail instead of the card body');
+  assertNotContains(panelHtml, 'Apetito:', 'Expanded creature card should keep exact body stats in Stats/detail instead of the card body');
   assertContains(panelHtml, 'Estomago: 2/8', 'Capacity summary should localize container labels');
   assertContains(panelHtml, 'Equipo:', 'Expanded equipment label should localize');
 
@@ -5360,7 +5360,7 @@ test('Player card and character stats use the same live display stats', () => {
   assertContains(cardHtml, 'aria-label="Pleasure: 42%"', 'Player card pleasure bar should use live top-level vitals');
   assertContains(cardHtml, 'aria-label="Hunger: 0%"', 'Player card hunger bar should safely default when hunger is missing');
   assertNotContains(cardHtml, 'Pun:90/120 Ple:55/130', 'Default card should not render dense live top-level vitals');
-  assertContains(cardHtml, 'Figh:</span> 21', 'Expanded card stats should use live top-level combat stats');
+  assertNotContains(cardHtml, 'Figh:</span> 21', 'Expanded card should keep exact combat stats in Stats/detail instead of the card body');
   assertContains(statsHtml, '90/120', 'Character stats should match player card punishment');
   assertContains(statsHtml, '55/130', 'Character stats should match player card pleasure');
   assertContains(statsHtml, 'Figh: 21', 'Character stats should use live top-level combat stats');

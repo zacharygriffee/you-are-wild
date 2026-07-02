@@ -624,7 +624,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
       locales: {
         en: {
-          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
+          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -633,7 +633,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target'
         },
         es: {
-          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
+          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -1651,6 +1651,28 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'Actors: Actor', 'Context actions should show selected actor names');
   assertContains(actionsHtml, 'Targets: Ally Target, Creature Target', 'Context actions should show selected target names');
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt')", 'Context actions should resolve selected targets');
+});
+
+test('Desktop creature card action labels localize', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, Fuck: 30, cha: 20 });
+  const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, MPle: 100, willing: true, quest: { id: 'quest-1', title: 'Help' } });
+  const merchant = makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [friendly, merchant];
+  App.updateLanguage('es');
+  App.renderCreatures();
+  const html = elements.get('enemies-content').innerHTML;
+  assertContains(html, 'aria-label="Marcar Friendly como objetivo"', 'Creature target button should localize accessible label');
+  assertContains(html, '>Objetivo<', 'Creature target visible label should localize');
+  assertContains(html, 'aria-label="Luchar Friendly"', 'Creature fight icon should localize accessible label');
+  assertContains(html, 'aria-label="Seducir Friendly"', 'Creature pleasure icon should localize accessible label');
+  assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
+  assertContains(html, 'aria-label="Aceptar mision de Friendly"', 'Quest action should localize accessible label');
+  assertContains(html, '>📜 Aceptar mision<', 'Quest visible label should localize');
+  assertContains(html, 'aria-label="Comerciar con Merchant"', 'Merchant trade action should localize accessible label');
+  assertContains(html, '>🪙 Comerciar<', 'Merchant trade visible label should localize');
 });
 
 test('Exploration target summary escapes actor and target names', () => {

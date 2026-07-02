@@ -8272,17 +8272,26 @@
                         const targetHint = `${canTarget ? 'Select' : 'Cannot select'} ${targetLabel} as ${actionLabel} target`;
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
-                        const targetLabel = this._escapeHtml(unit.name || 'creature');
+                        const targetName = unit.name || 'creature';
+                        const targetLabel = this._escapeHtml(targetName);
                         const targetClass = this._isExplorationTarget('creature', String(unit.id || unit.name)) ? ' primary' : '';
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="Mark ${targetLabel} as target" aria-label="Mark ${targetLabel} as target" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">Target</button><button class="action-btn" title="Fight ${targetLabel}" aria-label="Fight ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="Flirt with ${targetLabel}" aria-label="Flirt with ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="Pleasure ${targetLabel}" aria-label="Pleasure ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="Feast on ${targetLabel}" aria-label="Feast on ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="Feed ${targetLabel}" aria-label="Feed ${targetLabel}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        const actionTitle = action => this._escapeHtml(`${this._uiLabel(action)} ${targetName}`);
+                        const markLabel = this._escapeHtml(this._label('target.mark', 'Target'));
+                        const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('fight')}" aria-label="${actionTitle('fight')}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="${actionTitle('flirt')}" aria-label="${actionTitle('flirt')}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="${actionTitle('fuck')}" aria-label="${actionTitle('fuck')}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="${actionTitle('feast')}" aria-label="${actionTitle('feast')}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="${actionTitle('feed')}" aria-label="${actionTitle('feed')}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
-                            actionButtons += `<button class="action-btn primary" title="Recruit ${targetLabel}" aria-label="Recruit ${targetLabel}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
+                            const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
+                            actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
                         }
                         if (unit.quest) {
-                            actionButtons += `<button class="action-btn primary" title="${unit.questAccepted ? 'View quest from' : 'Accept quest from'} ${targetLabel}" aria-label="${unit.questAccepted ? 'View quest from' : 'Accept quest from'} ${targetLabel}" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${unit.questAccepted ? 'View Quest' : 'Accept Quest'}</button>`;
+                            const questLabel = this._escapeHtml(this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'));
+                            const questTitle = this._escapeHtml(this._label(unit.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', unit.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName }));
+                            actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${questLabel}</button>`;
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
-                            actionButtons += `<button class="action-btn primary" title="Trade with ${targetLabel}" aria-label="Trade with ${targetLabel}" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 Trade</button>`;
+                            const tradeLabel = this._escapeHtml(this._uiLabel('trade'));
+                            const tradeTitle = this._escapeHtml(this._label('action.tradeWith', 'Trade with {name}', { name: targetName }));
+                            actionButtons += `<button class="action-btn primary" title="${tradeTitle}" aria-label="${tradeTitle}" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 ${tradeLabel}</button>`;
                         }
                         actionButtons += `</div>`;
                     }
@@ -10324,6 +10333,9 @@ const CONTENT_SYSTEM = {
             'action.acceptQuest': 'Accept Quest',
             'action.viewQuest': 'View Quest',
             'action.trade': 'Trade',
+            'action.acceptQuestFrom': 'Accept quest from {name}',
+            'action.viewQuestFrom': 'View quest from {name}',
+            'action.tradeWith': 'Trade with {name}',
             'action.loot': 'Loot',
             'action.scavenge': 'Scavenge',
             'action.interact': 'Interact',
@@ -10406,6 +10418,9 @@ const CONTENT_SYSTEM = {
             'action.acceptQuest': 'Aceptar mision',
             'action.viewQuest': 'Ver mision',
             'action.trade': 'Comerciar',
+            'action.acceptQuestFrom': 'Aceptar mision de {name}',
+            'action.viewQuestFrom': 'Ver mision de {name}',
+            'action.tradeWith': 'Comerciar con {name}',
             'action.loot': 'Saquear',
             'action.scavenge': 'Rebuscar',
             'action.interact': 'Interactuar',

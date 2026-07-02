@@ -2876,6 +2876,25 @@ test('Marked explicit feed sacrifice does not skip full-health willing party tar
   assertEqual(App.lastIntentCommand.subAction, 'sacrifice', 'Marked feed command should record sacrifice sub-action');
 });
 
+test('Marked mutual feed rejects non-heal sub-actions without tending', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'actor-a', CPun: 40, MPun: 100, Feed: 30, willingPrey: true });
+  const actorB = makeUnit('Actor B', { id: 'actor-b', CPun: 50, MPun: 100, Feed: 30, willingPrey: true });
+  App.player = actorA;
+  App.party = [actorA, actorB];
+  App.explorationActorIds = ['actor-a', 'actor-b'];
+  App.toggleExplorationTarget('party', 'actor-a');
+  App.toggleExplorationTarget('party', 'actor-b');
+  App.resolveExplorationTargetAction('feed', 'sacrifice', 'target-bar');
+  assertEqual(actorA.CPun, 40, 'Invalid mutual sacrifice should not heal the first participant');
+  assertEqual(actorB.CPun, 50, 'Invalid mutual sacrifice should not heal the second participant');
+  assertEqual(actorA.stomach.length, 0, 'Invalid mutual sacrifice should not contain the first participant');
+  assertEqual(actorB.stomach.length, 0, 'Invalid mutual sacrifice should not contain the second participant');
+  assertEqual(App.explorationActorIds.join(','), 'actor-a,actor-b', 'Invalid mutual sacrifice should preserve selected actors for correction');
+  assertEqual(App.explorationTargetIds.join(','), 'party:actor-a,party:actor-b', 'Invalid mutual sacrifice should preserve selected targets for correction');
+  assertContains(App.log[App.log.length - 1].text, 'No valid target for this feed action.', 'Invalid mutual sacrifice should report no valid feed target');
+});
+
 test('Identical actor and target sets resolve as mutual group actions', () => {
   const fight = loadAppForCombat(() => 0);
   const fighterA = makeUnit('Fighter A', { id: 'fighter-a', CPun: 100, MPun: 100, Figh: 40, con: 1 });

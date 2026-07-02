@@ -4099,11 +4099,11 @@
                     resolved = this.outsideGroupActionOnTarget(action, targets[0], actors, options);
                 } else if (targets.length > 1 && actors.length > 1) {
                     if (this._sameUnitSet(actors, targets)) {
-                        resolved = this.outsideMutualGroupAction(action, actors);
+                        resolved = this.outsideMutualGroupAction(action, actors, options);
                     } else if (this._isUnitSubset(targets, actors)) {
-                        resolved = this.outsideMutualGroupAction(action, actors);
+                        resolved = this.outsideMutualGroupAction(action, actors, options);
                     } else if (this._isUnitSubset(actors, targets)) {
-                        resolved = this.outsideMutualGroupAction(action, [...actors, ...targets]);
+                        resolved = this.outsideMutualGroupAction(action, [...actors, ...targets], options);
                     } else if (actors.length === targets.length) {
                         resolved = this.outsidePairedActionsOnTargets(action, actors, targets, options);
                     } else {
@@ -4398,10 +4398,19 @@
                 return subsetIds.every(id => supersetIds.has(id));
             },
 
-            outsideMutualGroupAction(action, participants = []) {
+            outsideMutualGroupAction(action, participants = [], options = {}) {
                 const living = [...new Set((participants || []).filter(unit => unit && this._isLivingCreature(unit)))];
                 if (living.length <= 1) return false;
+                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 const names = living.map(unit => unit.name).join(', ');
+                if (action === 'feed' && selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                    this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'discovery' });
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    this.renderExplorationActions();
+                    return false;
+                }
                 let result = '';
                 switch (action) {
                     case 'fight': {

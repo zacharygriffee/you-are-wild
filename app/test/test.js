@@ -1706,6 +1706,23 @@ test('Selected party members can be fed into another party member as consumer', 
   assertEqual(App.party.includes(preyB), false, 'Second contained party member should leave active party list');
 });
 
+test('Player can assist group feeding without becoming prey', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', size: 4, appetite: 4 });
+  const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 8, hunger: 80 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  App.player = player;
+  App.party = [player, consumer, prey];
+  App.explorationActorIds = ['player-1', 'prey-1'];
+  App.outsideActionForParty('feed', 1);
+  assertEqual(consumer.stomach.length, 1, 'Consumer should receive the eligible selected prey');
+  assertEqual(consumer.stomach[0].name, 'Prey', 'Selected prey should be the contained party member');
+  assertEqual(App.party.includes(player), true, 'Player should remain in the party after assisting');
+  assertEqual(App.party.includes(prey), false, 'Eligible prey should leave active party list after feeding');
+  assertContains(App.log[App.log.length - 1].text, 'You help feed Prey to Consumer', 'Player helper should be described as assisting the feed');
+  assertNotContains(App.log[App.log.length - 1].text, 'cannot be handed off as prey', 'Player should not be routed through prey rejection when helping a group feed');
+});
+
 test('Self-included group feed tends target instead of consuming helpers', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

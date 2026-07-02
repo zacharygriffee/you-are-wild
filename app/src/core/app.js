@@ -4175,14 +4175,21 @@
                     }
                     case 'feed': {
                         if (this.party.includes(target)) {
-                            const prey = livingActors.filter(actor => actor !== target);
-                            if (livingActors.includes(target) || prey.length === 0) {
+                            const candidates = livingActors.filter(actor => actor !== target);
+                            const prey = candidates.filter(actor => actor !== this.player && !actor.mc);
+                            const helpers = candidates.filter(actor => !prey.includes(actor));
+                            if (livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
                                 const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                                 const healAmount = Math.floor(totalFeed * 2);
                                 target.CPun = Math.min(target.MPun, target.CPun + healAmount);
                                 result = `${names} tend ${target.name}${livingActors.includes(target) ? ' together' : ''}, restoring ${healAmount} punishment.`;
                             } else {
                                 const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
+                                if (helpers.length > 0) {
+                                    const helperNames = helpers.map(actor => actor.name).join(', ');
+                                    const helperVerb = helpers.length === 1 && helpers[0] !== this.player ? 'helps' : 'help';
+                                    texts.push(`${helperNames} ${helperVerb} feed ${prey.map(actor => actor.name).join(', ')} to ${target.name}.`);
+                                }
                                 result = texts.join(' ');
                             }
                         } else {

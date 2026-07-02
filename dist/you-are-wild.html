@@ -7652,8 +7652,24 @@
                     const bg = state === 'current' ? 'var(--bg-elevated)' : 'transparent';
                     const border = state === 'current' ? 'var(--accent-primary)' : (state === 'complete' ? 'var(--accent-success)' : 'var(--border-subtle)');
                     const color = state === 'complete' ? 'var(--accent-success)' : (state === 'current' ? 'var(--text-primary)' : 'var(--text-muted)');
-                    return `<div class="quest-route-step ${state}" aria-label="${stateLabel} checkpoint ${index + 1}: ${this._escapeHtml(label)} at ${checkpoint.x}, ${checkpoint.y}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span><span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
+                    const guidance = state === 'current' ? this._questCheckpointGuidance(checkpoint) : '';
+                    const guidanceHtml = guidance ? `<span style="color:var(--accent-primary);font-size:10px;">${this._escapeHtml(guidance)}</span>` : '';
+                    const ariaGuidance = guidance ? `, ${guidance}` : '';
+                    return `<div class="quest-route-step ${state}" aria-label="${stateLabel} checkpoint ${index + 1}: ${this._escapeHtml(label)} at ${checkpoint.x}, ${checkpoint.y}${this._escapeHtml(ariaGuidance)}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span>${guidanceHtml}<span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
                 }).join('');
+            },
+
+            _questCheckpointGuidance(checkpoint) {
+                const dx = Number(checkpoint?.x ?? 0) - Number(this.location?.x ?? 0);
+                const dy = Number(checkpoint?.y ?? 0) - Number(this.location?.y ?? 0);
+                const distance = Math.abs(dx) + Math.abs(dy);
+                if (distance === 0) return 'You are here';
+                const directions = [];
+                if (dy < 0) directions.push(`${Math.abs(dy)} north`);
+                if (dy > 0) directions.push(`${Math.abs(dy)} south`);
+                if (dx > 0) directions.push(`${Math.abs(dx)} east`);
+                if (dx < 0) directions.push(`${Math.abs(dx)} west`);
+                return `${distance} step${distance === 1 ? '' : 's'} ${directions.join(', ')}`;
             },
 
             focusQuestOnMap(questId, objectiveId) {

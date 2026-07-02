@@ -1353,10 +1353,17 @@
                     this.renderLog();
                 }
             },
+            _threatReactionRoll(unit, threat, purpose = 'react') {
+                const unitId = this._unitSelectionId(unit);
+                const threatId = this._unitSelectionId(threat || this.player);
+                const x = Number(this.location?.x ?? 0);
+                const y = Number(this.location?.y ?? 0);
+                return this._worldRoll('threat-reaction', x, y, unitId, threatId, this.dayCount || 0, this.timeHour || 0, purpose);
+            },
             _attemptTimidCreatureFlee(unit, threat = this.player) {
                 if (!this._isTimid(unit) || unit.disposition === this.DISPOSITION.ENEMY || this._isCorpse(unit)) return null;
                 const chance = Math.min(1, Math.max(0, (unit.Flee || 10) / 20));
-                if (Math.random() < chance) {
+                if (this._threatReactionRoll(unit, threat, 'timid') < chance) {
                     return this._makeCreatureFlee(unit, threat);
                 }
                 const hostile = this._turnCreatureHostile(unit);
@@ -1368,7 +1375,7 @@
                 if (this._isTimid(unit)) return this._attemptTimidCreatureFlee(unit, threat);
                 if (this._shouldFleeThreat(unit)) {
                     const chance = Math.min(0.75, Math.max(0.15, (unit.Flee || 10) / 30));
-                    if (Math.random() < chance) return this._makeCreatureFlee(unit, threat);
+                    if (this._threatReactionRoll(unit, threat, 'threat') < chance) return this._makeCreatureFlee(unit, threat);
                 }
                 return this._turnCreatureHostile(unit);
             },

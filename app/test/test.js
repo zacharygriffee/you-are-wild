@@ -1744,6 +1744,30 @@ test('Failed timid flee turns non-hostile creature hostile and starts combat', (
   assertEqual(App.combatState.active, true, 'Failed timid flee should start combat');
 });
 
+test('Non-hostile threat reactions are deterministic by world seed and tile state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'reaction-seed', generatorVersion: 2 };
+    App.player = makeUnit('You', { id: 'player-1', xp: 0, xpToNext: 1000 });
+    const timid = makeUnit('Startled Mouse', { id: 'startled-mouse', species: 'bunny', disposition: App.DISPOSITION.NEUTRAL, Flee: 8 });
+    App.party = [App.player];
+    App.creatures = [timid];
+    App.location = { x: 2, y: -1 };
+    App.dayCount = 1;
+    App.timeHour = 9;
+    App.worldMap = new Map([['2,-1', { x: 2, y: -1, biome: 'forest', explored: true, creatures: [timid] }]]);
+    App.outsideActionOnTarget('fight', timid);
+    return {
+      active: App.combatState.active,
+      disposition: timid.disposition,
+      present: App.creatures.includes(timid)
+    };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Threat reaction outcome should not depend on ambient Math.random');
+});
+
 test('Attacking a timid group can make same-species creatures flee together', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { xp: 0, xpToNext: 1000 });
@@ -3890,6 +3914,8 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.lootCorpse.toString(), 'Math.random', 'Persistent corpse loot generation should not use Math.random');
   assertNotContains(App.search.toString(), 'Math.random', 'Persistent search finds should not use Math.random');
   assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');
+  assertNotContains(App._attemptTimidCreatureFlee.toString(), 'Math.random', 'Exploration timid threat reactions should not use Math.random');
+  assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
 });
 
 test('Map tile inspector renders safe biome and terrain details', () => {

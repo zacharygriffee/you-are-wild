@@ -2641,7 +2641,7 @@
                                 // Offer recruitment if not in auto-AI mode
                                 if (actor.name === this.player?.name) {
                                     setTimeout(() => {
-                                        if (confirm(`${target.name} is submissive. Recruit them to your party?`)) {
+                                        if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }))) {
                                             this.recruitCreature(target);
                                         }
                                     }, 100);
@@ -3039,7 +3039,7 @@
 	                }
 	                this._syncCurrentTileCreatures();
 	                if (slowestIdx === -1) {
-	                    this.log.push({ text: 'Sync failed! Participants are no longer in the turn queue.', type: 'combat' });
+	                    this.log.push({ text: this._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
 	                    this.renderLog();
 	                    this.nextTurn();
 	                    return;
@@ -3066,7 +3066,7 @@
                 // Check if any participant incapacitated
                 const incapacitated = sync.participants.filter(p => p.CPun <= 0);
                 if (incapacitated.length > 0) {
-                    this.log.push({ text: `Sync failed! ${incapacitated.map(p => p.name).join(', ')} cannot participate.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p.name).join(', ') }), type: 'combat' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -3100,7 +3100,7 @@
                             }
                             // Offer recruitment
                             setTimeout(() => {
-                                if (confirm(`${sync.target.name} is submissive. Recruit them to your party?`)) {
+                                if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: sync.target.name }))) {
                                     this.recruitCreature(sync.target);
                                 }
                             }, 100);

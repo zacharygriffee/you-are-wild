@@ -5363,7 +5363,7 @@
                                 // Offer recruitment if not in auto-AI mode
                                 if (actor.name === this.player?.name) {
                                     setTimeout(() => {
-                                        if (confirm(`${target.name} is submissive. Recruit them to your party?`)) {
+                                        if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }))) {
                                             this.recruitCreature(target);
                                         }
                                     }, 100);
@@ -5761,7 +5761,7 @@
 	                }
 	                this._syncCurrentTileCreatures();
 	                if (slowestIdx === -1) {
-	                    this.log.push({ text: 'Sync failed! Participants are no longer in the turn queue.', type: 'combat' });
+	                    this.log.push({ text: this._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
 	                    this.renderLog();
 	                    this.nextTurn();
 	                    return;
@@ -5788,7 +5788,7 @@
                 // Check if any participant incapacitated
                 const incapacitated = sync.participants.filter(p => p.CPun <= 0);
                 if (incapacitated.length > 0) {
-                    this.log.push({ text: `Sync failed! ${incapacitated.map(p => p.name).join(', ')} cannot participate.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p.name).join(', ') }), type: 'combat' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -5822,7 +5822,7 @@
                             }
                             // Offer recruitment
                             setTimeout(() => {
-                                if (confirm(`${sync.target.name} is submissive. Recruit them to your party?`)) {
+                                if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: sync.target.name }))) {
                                     this.recruitCreature(sync.target);
                                 }
                             }, 100);
@@ -10742,6 +10742,7 @@ const CONTENT_SYSTEM = {
             'recruit.partyFull': 'Party is full! Cannot recruit {name}',
             'recruit.notReady': '{name} is not ready to join the party.',
             'recruit.joined': '{name} joins your party!',
+            'recruit.confirmSubmissive': '{name} is submissive. Recruit them to your party?',
             'feed.optionsTitle': 'Feed Options',
             'feed.noOptions': 'No feed options available right now.',
             'feed.noWoundedAllies': 'No wounded allies to feed.',
@@ -10798,6 +10799,8 @@ const CONTENT_SYSTEM = {
             'combat.sync.needParticipants': 'Need at least 2 participants for a sync action.',
             'combat.sync.selectTarget': 'Select sync target',
             'combat.sync.selectTargetFor': 'Select {name} as sync target',
+            'combat.sync.failedNoQueue': 'Sync failed! Participants are no longer in the turn queue.',
+            'combat.sync.failedIncapacitated': 'Sync failed! {names} cannot participate.',
             'capacity.stomach': 'Stomach',
             'capacity.womb': 'Womb',
             'capacity.balls': 'Balls',
@@ -11009,6 +11012,7 @@ const CONTENT_SYSTEM = {
             'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}',
             'recruit.notReady': '{name} aun no esta listo para unirse al grupo.',
             'recruit.joined': '{name} se une a tu grupo!',
+            'recruit.confirmSubmissive': '{name} esta sumiso. Reclutarlo para tu grupo?',
             'feed.optionsTitle': 'Opciones de alimentacion',
             'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.',
             'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.',
@@ -11065,6 +11069,8 @@ const CONTENT_SYSTEM = {
             'combat.sync.needParticipants': 'Necesitas al menos 2 participantes para una accion sincronizada.',
             'combat.sync.selectTarget': 'Seleccionar objetivo sincronizado',
             'combat.sync.selectTargetFor': 'Seleccionar {name} como objetivo sincronizado',
+            'combat.sync.failedNoQueue': 'Sincronizacion fallida! Los participantes ya no estan en la cola de turnos.',
+            'combat.sync.failedIncapacitated': 'Sincronizacion fallida! {names} no puede participar.',
             'capacity.stomach': 'Estomago',
             'capacity.womb': 'Vientre',
             'capacity.balls': 'Bolas',

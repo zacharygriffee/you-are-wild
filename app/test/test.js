@@ -3916,6 +3916,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');
   assertNotContains(App._attemptTimidCreatureFlee.toString(), 'Math.random', 'Exploration timid threat reactions should not use Math.random');
   assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
+  assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
 });
@@ -4816,18 +4817,42 @@ test('Predator enemy AI prioritizes livestock and prey targets', () => {
 
 test('Outnumbered low-health enemies can flee', () => {
   const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'enemy-flee', generatorVersion: 2 };
   const player = makeUnit('You');
   const ally = makeUnit('Ally');
-  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  const enemy = makeUnit('Enemy', { id: 'flee-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
   App.player = player;
   App.party = [player, ally];
   App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.dayCount = 0;
+  App.timeHour = 0;
+  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: enemy, initiative: 10 }], syncActions: [] };
   App.updateLanguage('es');
   App.nextTurn = function() { this._enemyFledAdvanced = true; };
   App.enemyTurn(enemy);
   assertEqual(enemy.disposition, App.DISPOSITION.NEUTRAL, 'Outnumbered wounded enemy should flee on morale roll');
   assertEqual(enemy.CPun, 0, 'Fleeing enemy should be removed from combat by HP gate');
   assertContains(App.log[App.log.length - 1].text, 'Enemy huye aterrorizado!', 'Enemy morale flee log should localize');
+});
+
+test('Enemy morale flee is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'enemy-flee', generatorVersion: 2 };
+    const player = makeUnit('You');
+    const ally = makeUnit('Ally');
+    const enemy = makeUnit('Enemy', { id: 'flee-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = [enemy];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: enemy, initiative: 10 }], syncActions: [] };
+    return App._enemyShouldFlee(enemy, [player, ally]);
+  };
+  assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Enemy morale flee should not depend on ambient Math.random');
 });
 
 test('Pack enemies can call reinforcements when wounded', () => {

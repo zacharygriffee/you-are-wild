@@ -3559,8 +3559,11 @@
             _enemyShouldFlee(enemy, targets) {
                 const enemyCount = this._livingEnemies(this.creatures).length;
                 const partyCount = targets.filter(t => t.CPun > 0 && !t.knockedOut).length;
-                if (enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5) return Math.random() < 0.5;
-                return enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3 && Math.random() < 0.3;
+                if (enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5) {
+                    return this._combatStateRoll('combat-enemy-flee', enemy, 'outnumbered') < 0.5;
+                }
+                return enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3
+                    && this._combatStateRoll('combat-enemy-flee', enemy, 'wounded') < 0.3;
             },
             _combatStateRoll(namespace, unit = null, purpose = 'roll') {
                 const x = Number(this.location?.x ?? 0);

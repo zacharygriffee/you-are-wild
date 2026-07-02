@@ -3961,6 +3961,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._attemptTimidCreatureFlee.toString(), 'Math.random', 'Exploration timid threat reactions should not use Math.random');
   assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
   assertNotContains(App._attemptTimidAllyFlee.toString(), 'Math.random', 'Persistent combat timid ally flee should not use Math.random');
+  assertNotContains(App._selectEnemyTarget.toString(), 'Math.random', 'Persistent combat target tie-breaks should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -4784,6 +4785,26 @@ test('Enemy target priority prefers party leader when no prey override applies',
   App.partyLeaderId = 'leader-1';
   const target = App._selectEnemyTarget(enemy, App.party);
   assertEqual(target, leader, 'Enemy target selection should prefer party leader after prey/tasty checks');
+});
+
+test('Enemy tasty target tie-break is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'tasty-target', generatorVersion: 2 };
+    App.location = { x: 1, y: -2 };
+    App.dayCount = 1;
+    App.timeHour = 13;
+    App.combatState = { active: true, round: 2, currentTurn: 1, turnQueue: [], syncActions: [] };
+    const enemy = makeUnit('Enemy', { id: 'hungry-enemy', species: 'human', disposition: App.DISPOSITION.ENEMY });
+    const player = makeUnit('You', { id: 'player-1', tasty: true, CPun: 100, MPun: 100 });
+    const ally = makeUnit('Tasty Ally', { id: 'ally-1', tasty: true, CPun: 100, MPun: 100 });
+    App.player = player;
+    App.party = [player, ally];
+    return App._unitSelectionId(App._selectEnemyTarget(enemy, App.party));
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(lowRandom, highRandom, 'Tasty target tie-break should not depend on ambient Math.random');
 });
 
 test('Party leader state persists through binary saves', () => {

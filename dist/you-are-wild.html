@@ -7220,7 +7220,10 @@ const WorldGen = (() => {
                     return preyTargets.reduce((best, t) => (t.CPun / t.MPun < best.CPun / best.MPun) ? t : best, preyTargets[0]);
                 }
                 const tastyTargets = targets.filter(t => t.tasty);
-                if (tastyTargets.length > 0) return tastyTargets[Math.floor(Math.random() * tastyTargets.length)];
+                if (tastyTargets.length > 0) {
+                    const index = Math.floor(this._combatStateRoll('combat-target-tasty', enemy, 'choice') * tastyTargets.length) % tastyTargets.length;
+                    return tastyTargets[index];
+                }
                 const leader = this.partyLeaderId ? this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId)) : null;
                 if (leader && targets.includes(leader)) return leader;
                 return targets.reduce((weakest, t) => (t.CPun / t.MPun < weakest.CPun / weakest.MPun) ? t : weakest, targets[0]);

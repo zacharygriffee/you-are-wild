@@ -99,10 +99,16 @@ section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
+const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
+const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
 const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
+
+function loadWorldGenForTest() {
+  return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
+}
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
@@ -788,7 +794,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${appContent}\nreturn window.App;`
   );
   const App = appFactory(
     {},
@@ -2798,6 +2804,143 @@ test('Super-patch generation uses seeded region biomes only', () => {
   assert(App._regionBiomeKeys().includes(otherSeed), 'Different seed should still produce a valid region biome');
 });
 
+test('Noise biome generation is stable by seed and coordinate', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-noise-a', seed: 'organic-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  const first = App.getBaseTile(37, -22);
+  const second = App.getBaseTile(37, -22);
+  assertEqual(JSON.stringify(first), JSON.stringify(second), 'Same seed and coordinate should produce identical base tile data');
+  assert(App._regionBiomeKeys().includes(first.biome), 'Generated biome should be a region biome');
+  assertEqual(typeof first.elevation, 'number', 'Base tile should include deterministic elevation');
+  assertEqual(typeof first.moisture, 'number', 'Base tile should include deterministic moisture');
+  assertEqual(typeof first.heat, 'number', 'Base tile should include deterministic heat');
+  assertEqual(typeof first.dangerPressure, 'number', 'Base tile should include deterministic danger pressure');
+  assert(first.regionCell?.id, 'Base tile should include cellular macro-region metadata');
+  assert(Array.isArray(first.terrainTags), 'Base tile should include terrain tags');
+});
+
+test('WorldGen deterministic helpers are stable by seed namespace and version', () => {
+  const WorldGen = loadWorldGenForTest();
+  const a = WorldGen.hash01('seed-a', 2, 'terrain', 12, -4);
+  const b = WorldGen.hash01('seed-a', 2, 'terrain', 12, -4);
+  const otherNamespace = WorldGen.hash01('seed-a', 2, 'poi', 12, -4);
+  const otherVersion = WorldGen.hash01('seed-a', 3, 'terrain', 12, -4);
+  assertEqual(a, b, 'Same seed version namespace and coords should produce same hash');
+  assert(a !== otherNamespace, 'Different namespaces should produce different deterministic streams');
+  assert(a !== otherVersion, 'Different generator versions should be able to change deterministic streams');
+  const table = [{ id: 'forest', weight: 2 }, { id: 'grove', weight: 5 }, { id: 'swamp', weight: 1 }];
+  const pickA = WorldGen.pickWeighted('seed-a', 2, 'macro-biome', 7, -3, table);
+  const pickB = WorldGen.pickWeighted('seed-a', 2, 'macro-biome', 7, -3, table);
+  assertEqual(pickA, pickB, 'Weighted pick should be stable for the same deterministic inputs');
+});
+
+test('Different seeds can produce different biome layouts', () => {
+  const { App } = loadAppForCombat();
+  const coords = [[-45, -12], [-18, 33], [0, 0], [12, 9], [28, -31], [44, 17]];
+  App.worldMeta = { worldId: 'world-seed-a', seed: 'layout-a', generatorVersion: 2, mapModsHash: 'core' };
+  const layoutA = coords.map(([x, y]) => {
+    const tile = App.getBaseTile(x, y);
+    return `${tile.biome}:${tile.macroBiome}:${tile.elevation}:${tile.moisture}:${tile.heat}`;
+  });
+  App.worldMeta = { worldId: 'world-seed-b', seed: 'layout-b', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  const layoutB = coords.map(([x, y]) => {
+    const tile = App.getBaseTile(x, y);
+    return `${tile.biome}:${tile.macroBiome}:${tile.elevation}:${tile.moisture}:${tile.heat}`;
+  });
+  assert(layoutA.join('|') !== layoutB.join('|'), 'Different seeds should be able to produce different terrain field/layout output');
+});
+
+test('Beach biome is derived only near deterministic water', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-beach', seed: 'coastal-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  let beach = null;
+  let inland = null;
+  const hasNearbyWater = (x, y) => {
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        if (Math.abs(dx) + Math.abs(dy) > 2 || (dx === 0 && dy === 0)) continue;
+        if (App.getBaseTile(x + dx, y + dy).water) return true;
+      }
+    }
+    return false;
+  };
+  for (let x = -90; x <= 90 && (!beach || !inland); x++) {
+    for (let y = -90; y <= 90 && (!beach || !inland); y++) {
+      const tile = App.getBaseTile(x, y);
+      const nearWater = hasNearbyWater(x, y);
+      if (!beach && tile.biome === 'beach') beach = { tile, nearWater };
+      if (!inland && !tile.water && !nearWater) inland = tile;
+    }
+  }
+  assert(beach, 'Test seed should produce at least one deterministic beach in the sampled area');
+  assertEqual(beach.tile.water, false, 'Beach should be land, not water');
+  assert(beach.nearWater, 'Beach should be adjacent or near deterministic water');
+  assert(inland, 'Test seed should produce a far-inland land tile in the sampled area');
+  assert(inland.biome !== 'beach', 'Far-inland land should not classify as beach');
+});
+
+test('Road and bridge overlays are deterministic constrained features', () => {
+  const { App } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-routes', seed: 'route-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  let roadTile = null;
+  let bridgeTile = null;
+  let waterWithoutRoad = null;
+  for (let x = -140; x <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad); x++) {
+    for (let y = -140; y <= 140 && (!roadTile || !bridgeTile || !waterWithoutRoad); y++) {
+      const tile = App.getBaseTile(x, y);
+      if (!roadTile && tile.overlays?.road) roadTile = tile;
+      if (!bridgeTile && tile.overlays?.bridge) bridgeTile = tile;
+      if (!waterWithoutRoad && tile.water && !tile.overlays?.road) waterWithoutRoad = tile;
+    }
+  }
+  assert(roadTile, 'Test seed should produce at least one deterministic road overlay');
+  assertEqual(roadTile.biome === 'road', false, 'Road should be an overlay, not a base biome replacement');
+  assert(bridgeTile, 'Test seed should produce at least one deterministic bridge overlay in the sampled area');
+  assert(bridgeTile.overlays.road, 'Bridge requires a road overlay');
+  assertEqual(bridgeTile.water, true, 'Bridge requires a water crossing tile');
+  assert(['east-west', 'north-south'].includes(bridgeTile.overlays.bridge.direction), 'Bridge direction should be coherent');
+  assertEqual(bridgeTile.overlays.bridge.roadId, bridgeTile.overlays.road.id, 'Bridge should reference its road overlay');
+  assertEqual(bridgeTile.biome === 'bridge', false, 'Bridge should be an overlay, not a base biome replacement');
+  assert(waterWithoutRoad, 'Test seed should produce a water tile without road overlay');
+  assertEqual(Boolean(waterWithoutRoad.overlays?.bridge), false, 'Bridge should not appear without a road overlay');
+});
+
+test('Landmarks and structures are deterministic by seed and coordinate', () => {
+  const first = loadAppForCombat(() => 1);
+  const App = first.App;
+  App.worldMeta = { worldId: 'world-features-a', seed: 'feature-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  let landmarkA = null;
+  let structureA = null;
+  for (let x = -80; x <= 80 && (!landmarkA || !structureA); x++) {
+    for (let y = -80; y <= 80 && (!landmarkA || !structureA); y++) {
+      const tile = App.exploreTile(x, y);
+      if (!landmarkA && tile.hasLandmark) landmarkA = { coord: [x, y], name: tile.landmarkName };
+      if (!structureA && tile.structure) structureA = { coord: [x, y], structure: tile.structure };
+    }
+  }
+  assert(landmarkA, 'Test seed should produce at least one deterministic landmark coordinate even when Math.random is 1');
+  assert(structureA, 'Test seed should produce at least one deterministic structure coordinate even when Math.random is 1');
+  const second = loadAppForCombat(() => 0);
+  second.App.worldMeta = { ...App.worldMeta };
+  second.App.worldMap = new Map();
+  second.App.tileDeltas = new Map();
+  const landmarkB = second.App.exploreTile(landmarkA.coord[0], landmarkA.coord[1]);
+  const structureB = second.App.exploreTile(structureA.coord[0], structureA.coord[1]);
+  assertEqual(landmarkB.landmarkName, landmarkA.name, 'Same seed and coordinate should reproduce landmark name');
+  assertEqual(structureB.structure, structureA.structure, 'Same seed and coordinate should reproduce structure kind');
+});
+
 test('Sparse map helpers separate generated base tiles from durable deltas', () => {
   const { App } = loadAppForCombat(() => 1);
   App.worldMeta = { worldId: 'world-delta', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };
@@ -2819,7 +2962,38 @@ test('Sparse map helpers separate generated base tiles from durable deltas', () 
   assertEqual(delta.creatures.length, 1, 'Delta should preserve tile entities');
   const effective = App.applyTileDelta(base, delta);
   assertEqual(effective.biome, base.biome, 'Effective tile should inherit generated biome when biome is unchanged');
+  assertEqual(effective.elevation, base.elevation, 'Effective tile should retain generated field metadata');
   assertEqual(effective.creatures[0].name, 'Mouse', 'Effective tile should restore delta entities');
+});
+
+test('Deterministic world generation paths do not use Math.random', () => {
+  const { App } = loadAppForCombat();
+  assertNotContains(worldGenerationContent, 'Math.random', 'WorldGen module should not use Math.random');
+  assertNotContains(App.getBaseTile.toString(), 'Math.random', 'Base tile generation should not use Math.random');
+  assertNotContains(App._getSuperPatchBiome.toString(), 'Math.random', 'Macro-region compatibility helper should not use Math.random');
+  assertNotContains(App.exploreTile.toString(), 'Math.random', 'Landmark and structure first-discovery generation should not use Math.random');
+  assertNotContains(App.spawnStructureEncounter.toString(), 'Math.random', 'Structure encounter generation should not use Math.random');
+  assertNotContains(App._maybeSpawnStructureMerchant.toString(), 'Math.random', 'Structure merchant placement should not use Math.random');
+  assertNotContains(App._maybeSpawnStructureQuestGiver.toString(), 'Math.random', 'Structure quest-giver placement should not use Math.random');
+  assertNotContains(App._questTemplateForStructure.toString(), 'Math.random', 'Structure quest template selection should not use Math.random');
+});
+
+test('Map tile inspector renders safe biome and terrain details', () => {
+  const { App, elements } = loadAppForCombat();
+  App.worldMeta = { worldId: 'world-info', seed: 'info-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.location = { x: 3, y: -2 };
+  App.party = [makeUnit('You')];
+  App.exploreTile(3, -2);
+  App.renderMap();
+  const html = elements.get('tile-info').innerHTML;
+  assertContains(html, 'Current Tile', 'Tile inspector should render a safe current tile heading');
+  assertContains(html, 'Biome', 'Tile inspector should include biome label');
+  assertContains(html, '3, -2', 'Tile inspector should include coordinates');
+  assertContains(html, 'Danger', 'Tile inspector should include danger pressure');
+  assertContains(elements.get('mobile-tile-info').innerHTML, 'Current Tile', 'Mobile tile inspector should render the same safe summary');
 });
 
 test('Loaded world state rebuilds tile deltas over deterministic base tiles', () => {
@@ -3052,6 +3226,8 @@ test('Night map visibility shrinks unless the party has darkvision', () => {
   App.getTile(0, 0).explored = true;
   const farTile = App.getTile(2, 0);
   farTile.biome = 'cave';
+  farTile.displayBiome = 'cave';
+  farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
   assertNotContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Far explored tile should be hidden by night visibility');
@@ -3072,6 +3248,8 @@ test('Scout party role improves night map visibility', () => {
   App.getTile(0, 0).explored = true;
   const farTile = App.getTile(2, 0);
   farTile.biome = 'cave';
+  farTile.displayBiome = 'cave';
+  farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
   assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Scout role should recover one tile of night visibility');
@@ -4332,6 +4510,7 @@ test('Structure encounters can place authored merchants with trade actions', () 
   App.party = [App.player];
   App.currentBiome = 'road';
   App.creatures = [];
+  App.STRUCTURES.camp.merchant.chance = 1;
   const tile = { x: 1, y: 0, biome: 'road', structure: 'camp', creatures: [], structureSpawned: false };
   App.spawnStructureEncounter(tile, true);
   const merchant = App.creatures.find(c => c.disposition === App.DISPOSITION.MERCHANT);

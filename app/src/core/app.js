@@ -1522,22 +1522,19 @@
 
             // ===== MAP SYSTEM =====
             // ===== WORLD / REGION SYSTEM =====
-            // Biomes are large contiguous regions (super-patches of 30x30 tiles)
-            // Deterministic assignment based on super-patch coordinates
+            // Base terrain is reconstructed from worldMeta seed + generator version + coordinates.
+            // Durable player/world changes live in tile deltas over this generated baseline.
             _mapSeed() {
                 return String(this.worldMeta?.seed || 'default');
             },
             _seededNoise(...parts) {
-                const input = `${this._mapSeed()}|v${this.worldMeta?.generatorVersion || 1}|${parts.join('|')}`;
-                let hash = 2166136261;
-                for (let i = 0; i < input.length; i++) {
-                    hash ^= input.charCodeAt(i);
-                    hash = Math.imul(hash, 16777619);
+                if (typeof WorldGen !== 'undefined') {
+                    return WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, parts.shift() || 'seeded', ...parts);
                 }
-                return (hash >>> 0) / 4294967296;
+                return 0;
             },
             _patchNoise(spx, spy) {
-                return this._seededNoise('biome', 'region', spx, spy);
+                return this._seededNoise('legacy-biome-region', spx, spy);
             },
             _tileKey(x, y) {
                 return `${x},${y}`;
@@ -1560,15 +1557,10 @@
             _getSuperPatchBiome(spx, spy) {
                 const key = `${spx},${spy}`;
                 if (this.superPatchMap.has(key)) return this.superPatchMap.get(key);
-                // Starting super-patch (0,0) and immediate neighbors are Grove
-                if (Math.abs(spx) <= 1 && Math.abs(spy) <= 1) {
-                    this.superPatchMap.set(key, 'grove');
-                    return 'grove';
-                }
-                const noise = this._patchNoise(spx, spy);
                 const biomeKeys = this._regionBiomeKeys();
-                const biomeIndex = Math.floor(noise * biomeKeys.length) % biomeKeys.length;
-                const biomeId = biomeKeys[biomeIndex];
+                const biomeId = typeof WorldGen !== 'undefined'
+                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'legacy-super-patch-biome', spx, spy, biomeKeys.map(id => ({ id, weight: id === 'grove' ? 2 : 1 }))) || 'plains')
+                    : biomeKeys[Math.floor(this._patchNoise(spx, spy) * biomeKeys.length) % biomeKeys.length];
                 this.superPatchMap.set(key, biomeId);
                 return biomeId;
             },
@@ -1585,10 +1577,10 @@
                 }
             },
             getBaseTile(x, y) {
-                const spx = Math.floor(Math.floor(x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
-                const spy = Math.floor(Math.floor(y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
-                const biomeId = this._getSuperPatchBiome(spx, spy);
-                return { x, y, biome: biomeId, baseBiome: biomeId, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
+                const generated = typeof WorldGen !== 'undefined'
+                    ? WorldGen.generateBaseTile(this.worldMeta, x, y, this._regionBiomeKeys())
+                    : { biome: 'plains', baseBiome: 'plains', macroBiome: 'plains', elevation: 0.5, moisture: 0.5, heat: 0.5, fertility: 0.5, dangerPressure: 0.3, regionCell: null, terrainTags: [] };
+                return { x, y, ...generated, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
             },
             getTileDelta(x, y) {
                 return this.tileDeltas?.get(this._tileKey(x, y)) || null;
@@ -1674,16 +1666,20 @@
                     tile.explored = true;
                     this.exploredTiles.add(key);
                     const biome = this.biomes[tile.biome];
-                    tile.description = biome.descriptions[Math.abs(x * 31 + y * 17) % biome.descriptions.length];
-                    if (Math.random() < 0.1) {
-                        const landmarks = { grove: ['Sacred Spring','Old Bench','Butterfly Garden'], forest: ['Ancient Tree','Fairy Ring','Hunter\'s Camp'], swamp: ['Sunken Shrine','Witch\'s Hut','Bone Pile'], plains: ['Lone Tree','Abandoned Wagon','Stone Circle'], cave: ['Crystal Chamber','Underground Lake','Collapsed Tunnel'], jungle: ['Waterfall','Hidden Pool','Rope Bridge'] };
+                    const descriptions = biome.descriptions || [''];
+                    const descIndex = typeof WorldGen !== 'undefined'
+                        ? Math.floor(WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-description', x, y) * descriptions.length) % descriptions.length
+                        : Math.abs(x * 31 + y * 17) % descriptions.length;
+                    tile.description = descriptions[descIndex];
+                    if (typeof WorldGen !== 'undefined' && WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-landmark', x, y, 0.1)) {
+                        const landmarks = { grove: ['Sacred Spring','Old Bench','Butterfly Garden'], forest: ['Ancient Tree','Fairy Ring','Hunter\'s Camp'], swamp: ['Sunken Shrine','Witch\'s Hut','Bone Pile'], plains: ['Lone Tree','Abandoned Wagon','Stone Circle'], cave: ['Crystal Chamber','Underground Lake','Collapsed Tunnel'], jungle: ['Waterfall','Hidden Pool','Rope Bridge'], beach: ['Tide Pool','Shell Ring','Wreck Marker'], cliff: ['High Overlook','Goat Trail','Wind Carved Arch'], water: ['Quiet Inlet','River Bend','Blue Spring'], dungeon: ['Sealed Door','Old Watchpost','Broken Obelisk'], manor: ['Garden Gate','Fountain Court','Old Conservatory'] };
                         const list = landmarks[tile.biome] || ['Mysterious Structure'];
                         tile.hasLandmark = true;
-                        tile.landmarkName = list[Math.abs(x + y) % list.length];
+                        tile.landmarkName = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-landmark-name', x, y, list) || list[0];
                     }
-                    if (!tile.structure && Math.random() < (biome.structureChance || 0)) {
+                    if (!tile.structure && typeof WorldGen !== 'undefined' && WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure', x, y, biome.structureChance || 0)) {
                         const table = biome.structureTable || [];
-                        tile.structure = table[Math.abs(x * 13 + y * 19) % Math.max(1, table.length)] || null;
+                        tile.structure = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure-kind', x, y, table) || null;
                     }
                     this.currentBiome = tile.biome;
                     this.persistTileDelta(x, y, tile);
@@ -1767,7 +1763,7 @@
                     x: nx,
                     y: ny
                 }), type: 'move' });
-                if (!wasExplored && Math.random() < (biome.encounterChance || 0)) {
+                if (!wasExplored && this._worldChance('interior-encounter', this.activeInterior.origin.x, this.activeInterior.origin.y, biome.encounterChance || 0, nx, ny)) {
                     this.spawnWildEncounter(room, false, true);
                 }
                 room.creatures = this._tileCreatures(this.creatures);
@@ -1840,7 +1836,7 @@
                     // Try structure encounter first (guaranteed if structure present and not yet spawned)
                     if (tile.structure && !tile.structureSpawned) {
                         this.spawnStructureEncounter(tile, !wasExplored);
-                    } else if (Math.random() < biome.encounterChance) {
+                    } else if (this._worldChance('tile-wild-encounter', tile.x, tile.y, biome.encounterChance || 0)) {
                         // Roll for friendly vs hostile encounter
                         this.spawnWildEncounter(tile, false, !wasExplored);
                     }
@@ -1875,13 +1871,31 @@
                 }
                 return table[0].id;
             },
+            _worldRoll(namespace, x = 0, y = 0, ...parts) {
+                if (typeof WorldGen === 'undefined') return Math.random();
+                return WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, namespace, x, y, ...parts);
+            },
+            _worldChance(namespace, x, y, probability, ...parts) {
+                return this._worldRoll(namespace, x, y, ...parts) < Math.max(0, Math.min(1, probability || 0));
+            },
+            _weightedPickWorld(table, namespace, x, y, ...parts) {
+                if (!table || table.length === 0) return 'bunny';
+                if (typeof WorldGen === 'undefined') return this._weightedPick(table);
+                const entries = table.map(entry => typeof entry === 'string'
+                    ? { id: entry, weight: 1 }
+                    : { id: entry.id, weight: entry.weight || 10 });
+                return WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, namespace, x, y, entries) || entries[0]?.id || 'bunny';
+            },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
-                const count = isBoss ? 1 : Math.max(1, Math.floor(Math.random() * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
+                const deterministic = firstEntry && tile && Number.isFinite(tile.x) && Number.isFinite(tile.y);
+                const roll = (purpose, index = 0, salt = '') => deterministic ? this._worldRoll(`wild-${purpose}`, tile.x, tile.y, index, salt) : Math.random();
+                const pick = (table, purpose, index = 0, salt = '') => deterministic ? this._weightedPickWorld(table, `wild-${purpose}`, tile.x, tile.y, index, salt) : this._weightedPick(table);
+                const count = isBoss ? 1 : Math.max(1, Math.floor(roll('count') * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
                 const creatures = [];
                 for (let i = 0; i < count; i++) {
                     const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
-                    let sid = this._weightedPick(pool);
+                    let sid = pick(pool, 'species', i);
                     const danger = biome.danger || 3;
                     const playerMaxDiff = this.player.level <= 3 ? 2 : (this.player.level <= 6 ? 3 : 4);
                     const maxDiff = isBoss ? 5 : Math.min(danger, playerMaxDiff);
@@ -1889,19 +1903,19 @@
                     while (attempts > 0) {
                         const diff = this.SPECIES_DIFFICULTY[sid] || 2;
                         if (diff <= maxDiff) break;
-                        sid = this._weightedPick(pool);
+                        sid = pick(pool, 'species', i, attempts);
                         attempts--;
                     }
                     const sp = this.species.find(s => s.id === sid);
-                    const lvl = isBoss ? Math.max(1, this.player.level) : Math.max(1, this.player.level - 1 + Math.floor(Math.random() * 2));
+                    const lvl = isBoss ? Math.max(1, this.player.level) : Math.max(1, this.player.level - 1 + Math.floor(roll('level', i) * 2));
                     const base = this._getSpeciesBaseStats(sid);
-                    const statMult = isBoss ? 1.0 : (0.6 + Math.random() * 0.3);
-                    const hpMult = isBoss ? 1.2 : (0.5 + Math.random() * 0.3);
+                    const statMult = isBoss ? 1.0 : (0.6 + roll('stat', i) * 0.3);
+                    const hpMult = isBoss ? 1.2 : (0.5 + roll('hp', i) * 0.3);
                     const creature = {
-                        id: 'enc_' + Date.now() + '_' + i, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
-                        species: sid, icon: sp.icon, gender: Math.random() < 0.5 ? 'female' : 'male',
-                        identity: Math.random() < 0.5 ? 'female' : 'male', parts: Math.random() < 0.3 ? 'cock' : 'clit', chest: Math.random() < 0.5 ? 'tits' : 'pecs',
-                        bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(Math.random() * 4) + 2,
+                        id: deterministic ? `enc_${tile.x}_${tile.y}_${i}` : 'enc_' + Date.now() + '_' + i, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
+                        species: sid, icon: sp.icon, gender: roll('gender', i) < 0.5 ? 'female' : 'male',
+                        identity: roll('identity', i) < 0.5 ? 'female' : 'male', parts: roll('parts', i) < 0.3 ? 'cock' : 'clit', chest: roll('chest', i) < 0.5 ? 'tits' : 'pecs',
+                        bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(roll('appetite', i) * 4) + 2,
                         level: lvl, MPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)), CPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)),
                         MPle: base.MPle, CPle: Math.floor(base.MPle * 0.3),
                         Figh: Math.floor(base.Figh * statMult), Feas: Math.floor(base.Feas * statMult),
@@ -1910,7 +1924,7 @@
                         hunger: Math.floor((base.hunger || 40) * 0.7), str: Math.floor(base.str * statMult), con: Math.floor(base.con * statMult), spd: Math.floor(base.spd * statMult),
                         int: Math.floor(base.int * statMult), wis: Math.floor(base.wis * statMult), cha: Math.floor(base.cha * statMult),
                         tags: [sp.name], stomach: [], womb: [], balls: [], cum: 0, status: {},
-                        expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: Math.random() < 0.3,
+                        expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: roll('willing', i) < 0.3,
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
                     creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
@@ -1957,26 +1971,26 @@
                 const questGiver = this._maybeSpawnStructureQuestGiver(tile);
                 this.persistTileDelta(tile.x, tile.y, tile);
                 // Structure always has an encounter inside
-                if (Math.random() < struct.encounterChance) {
+                if (this._worldChance('structure-encounter', tile.x, tile.y, struct.encounterChance || 0)) {
                     // Pick from structure-appropriate pool or biome pool
                     const pool = this._timeAdjustedEncounterTable(biome.encounterTable);
-                    const sid = this._weightedPick(pool);
+                    const sid = this._weightedPickWorld(pool, 'structure-encounter-species', tile.x, tile.y);
                     const sp = this.species.find(s => s.id === sid);
                     if (!sp) return;
-                    const lvl = Math.max(1, this.player.level - 1 + Math.floor(Math.random() * 2));
+                    const lvl = Math.max(1, this.player.level - 1 + Math.floor(this._worldRoll('structure-encounter-level', tile.x, tile.y) * 2));
                     const base = this._getSpeciesBaseStats(sid);
-                    const statMult = 0.6 + Math.random() * 0.3;
-                    const hpMult = 0.5 + Math.random() * 0.3;
+                    const statMult = 0.6 + this._worldRoll('structure-encounter-stat', tile.x, tile.y) * 0.3;
+                    const hpMult = 0.5 + this._worldRoll('structure-encounter-hp', tile.x, tile.y) * 0.3;
                     const disp = struct.disposition === 'friendly' ? this.DISPOSITION.FRIENDLY :
                                  struct.disposition === 'neutral' ? this.DISPOSITION.NEUTRAL : this.DISPOSITION.ENEMY;
-                    const count = struct.threat >= 2 ? Math.max(1, Math.floor(Math.random() * 2) + 1) : 1;
+                    const count = struct.threat >= 2 ? Math.max(1, Math.floor(this._worldRoll('structure-encounter-count', tile.x, tile.y) * 2) + 1) : 1;
                     const enemies = [];
                     for (let i = 0; i < count; i++) {
                         const creature = {
-                            id: 'struct_' + Date.now() + '_' + i, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
-                            species: sid, icon: sp.icon, gender: Math.random() < 0.5 ? 'female' : 'male',
-                            identity: Math.random() < 0.5 ? 'female' : 'male', parts: Math.random() < 0.3 ? 'cock' : 'clit', chest: Math.random() < 0.5 ? 'tits' : 'pecs',
-                            bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(Math.random() * 4) + 2,
+                            id: `struct_${tile.x}_${tile.y}_${i}`, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
+                            species: sid, icon: sp.icon, gender: this._worldRoll('structure-encounter-gender', tile.x, tile.y, i) < 0.5 ? 'female' : 'male',
+                            identity: this._worldRoll('structure-encounter-identity', tile.x, tile.y, i) < 0.5 ? 'female' : 'male', parts: this._worldRoll('structure-encounter-parts', tile.x, tile.y, i) < 0.3 ? 'cock' : 'clit', chest: this._worldRoll('structure-encounter-chest', tile.x, tile.y, i) < 0.5 ? 'tits' : 'pecs',
+                            bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(this._worldRoll('structure-encounter-appetite', tile.x, tile.y, i) * 4) + 2,
                             level: lvl, MPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)), CPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)),
                             MPle: base.MPle, CPle: Math.floor(base.MPle * 0.3),
                             Figh: Math.floor(base.Figh * statMult), Feas: Math.floor(base.Feas * statMult),
@@ -4965,16 +4979,20 @@
                 }));
             },
 
-            _createStructureMerchant(structureId, biomeId = this.currentBiome || 'forest') {
+            _createStructureMerchant(structureId, biomeId = this.currentBiome || 'forest', tile = null) {
                 const struct = this.STRUCTURES[structureId];
                 if (!struct?.merchant) return null;
                 const merchantConfig = struct.merchant;
                 const speciesPool = merchantConfig.species || ['human'];
-                const sid = speciesPool[Math.floor(Math.random() * speciesPool.length)] || 'human';
+                const x = tile?.x ?? 0;
+                const y = tile?.y ?? 0;
+                const sid = typeof WorldGen !== 'undefined'
+                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-merchant-species', x, y, speciesPool) || 'human')
+                    : speciesPool[0] || 'human';
                 const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
                 const stockTable = merchantConfig.stockTable || 'general';
                 return this._normalizeUnit({
-                    id: `merchant_${structureId}_${Date.now()}`,
+                    id: `merchant_${structureId}_${x}_${y}`,
                     name: `${sp?.name || 'Traveling'} Merchant`,
                     species: sid,
                     icon: sp?.icon || '👤',
@@ -4997,8 +5015,9 @@
             _maybeSpawnStructureMerchant(tile) {
                 if (!tile?.structure || !this.STRUCTURES[tile.structure]?.merchant) return null;
                 const config = this.STRUCTURES[tile.structure].merchant;
-                if (Math.random() >= (config.chance ?? 0)) return null;
-                const merchant = this._createStructureMerchant(tile.structure, tile.biome);
+                if (typeof WorldGen !== 'undefined' && !WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-merchant', tile.x, tile.y, config.chance ?? 0)) return null;
+                if (typeof WorldGen === 'undefined' && (config.chance ?? 0) <= 0) return null;
+                const merchant = this._createStructureMerchant(tile.structure, tile.biome, tile);
                 if (!merchant) return null;
                 this.creatures = this._tileCreatures([...(this.creatures || []), merchant]);
                 tile.creatures = this._tileCreatures(this.creatures);
@@ -5009,7 +5028,11 @@
                 const config = this.STRUCTURES[structureId]?.quest;
                 const templates = config?.templates || [];
                 if (!templates.length) return null;
-                const templateId = templates[Math.floor(Math.random() * templates.length)] || templates[0];
+                const x = tile?.x ?? 0;
+                const y = tile?.y ?? 0;
+                const templateId = typeof WorldGen !== 'undefined'
+                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-template', x, y, templates) || templates[0])
+                    : templates[0];
                 const source = this.QUEST_TEMPLATES[templateId];
                 if (!source) return null;
                 const quest = JSON.parse(JSON.stringify(source));
@@ -5027,10 +5050,14 @@
                 const quest = this._questTemplateForStructure(structureId, tile);
                 if (!quest) return null;
                 const speciesPool = questConfig.species || ['human'];
-                const sid = speciesPool[Math.floor(Math.random() * speciesPool.length)] || 'human';
+                const x = tile?.x ?? 0;
+                const y = tile?.y ?? 0;
+                const sid = typeof WorldGen !== 'undefined'
+                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-species', x, y, speciesPool) || 'human')
+                    : speciesPool[0] || 'human';
                 const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
                 return this._normalizeUnit({
-                    id: `questgiver_${structureId}_${tile?.x ?? 0}_${tile?.y ?? 0}_${Date.now()}`,
+                    id: `questgiver_${structureId}_${x}_${y}`,
                     name: `${sp?.name || 'Local'} Guide`,
                     species: sid,
                     icon: sp?.icon || '👤',
@@ -5051,7 +5078,8 @@
             _maybeSpawnStructureQuestGiver(tile) {
                 if (!tile?.structure || !this.STRUCTURES[tile.structure]?.quest) return null;
                 const config = this.STRUCTURES[tile.structure].quest;
-                if (Math.random() >= (config.chance ?? 0)) return null;
+                if (typeof WorldGen !== 'undefined' && !WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-giver', tile.x, tile.y, config.chance ?? 0)) return null;
+                if (typeof WorldGen === 'undefined' && (config.chance ?? 0) <= 0) return null;
                 const questGiver = this._createStructureQuestGiver(tile.structure, tile);
                 if (!questGiver) return null;
                 this.creatures = this._tileCreatures([...(this.creatures || []), questGiver]);
@@ -6331,7 +6359,7 @@
                         const y = cy + dy;
                         const isCurrent = x === this.location.x && y === this.location.y;
                         const tile = this._resolveLargeMapTile(x, y);
-                        const biome = tile ? this.biomes[tile.biome] : null;
+                        const biome = tile ? this.biomes[tile.displayBiome || tile.biome] || this.biomes[tile.biome] : null;
                         const poi = this._largeMapPoiLabel(tile);
                         const questMarker = this._largeMapQuestMarker(x, y);
                         let classes = 'large-map-tile';
@@ -6341,7 +6369,7 @@
                         if (questMarker) classes += ' quest';
                         const label = tile && biome ? `${biome.name} (${x}, ${y})` : `Unknown (${x}, ${y})`;
                         const markerLabel = questMarker || poi;
-                        const content = isCurrent ? '●' : (questMarker ? '◆' : (biome ? biome.icon : '·'));
+                        const content = isCurrent ? '●' : (questMarker ? '◆' : (tile?.overlays?.bridge ? '🌉' : (tile?.overlays?.road ? '🛤️' : (tile?.overlays?.poi ? '◆' : (biome ? biome.icon : '·')))));
                         html += `<div class="${classes}" title="${this._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${this._escapeHtml(label)}">${content}</div>`;
                         if (poi) points.push({ x, y, biome: biome?.name || 'Known area', poi });
                         if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
@@ -6355,6 +6383,44 @@
                         : '<div>No discovered points of interest nearby.</div>';
                 }
                 return html;
+            },
+
+            _dangerPressureLabel(value = 0) {
+                if (value >= 0.66) return this._label('ui.tileInfo.pressureHigh', 'High');
+                if (value >= 0.36) return this._label('ui.tileInfo.pressureElevated', 'Elevated');
+                return this._label('ui.tileInfo.pressureLow', 'Low');
+            },
+            _tileInfoHtml(tile = null) {
+                if (this.inInterior && this.activeInterior) {
+                    const room = this._currentInteriorTile();
+                    const biome = this.biomes[room?.biome] || this.biomes.indoors;
+                    return `<div style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">${this._escapeHtml(this._label('ui.tileInfo.title', 'Current Tile'))}</div>` +
+                        `<div>${biome?.icon || '□'} ${this._escapeHtml(biome?.name || this._label('ui.largeMap.interior', 'Interior'))} · ${this._escapeHtml(this.activeInterior.structureName)} (${this.interiorLocation.x}, ${this.interiorLocation.y})</div>`;
+                }
+                const current = tile || this.getTile(this.location.x, this.location.y);
+                const biome = this.biomes[current.displayBiome || current.biome] || this.biomes[current.biome] || {};
+                const structure = current.structure ? (this.STRUCTURES[current.structure]?.name || current.structure) : this._label('ui.tileInfo.none', 'None');
+                const landmark = current.hasLandmark && current.landmarkName ? current.landmarkName : this._label('ui.tileInfo.none', 'None');
+                const overlayTags = [];
+                if (current.overlays?.road) overlayTags.push('road');
+                if (current.overlays?.bridge) overlayTags.push('bridge');
+                if (current.overlays?.poi?.category) overlayTags.push(current.overlays.poi.category);
+                const tags = [...(Array.isArray(current.terrainTags) ? current.terrainTags : []), ...overlayTags];
+                const tagText = tags.length ? [...new Set(tags)].join(', ') : this._label('ui.tileInfo.none', 'None');
+                const phase = this._isNight() ? this._label('ui.tileInfo.night', 'Night') : this._label('ui.tileInfo.day', 'Day');
+                const danger = this._dangerPressureLabel(current.dangerPressure ?? biome.danger / 5 ?? 0);
+                return `<div style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">${this._escapeHtml(this._label('ui.tileInfo.title', 'Current Tile'))}</div>` +
+                    `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.biome', 'Biome'))}:</strong> ${biome.icon || ''} ${this._escapeHtml(biome.name || current.biome)}</div>` +
+                    `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.coords', 'Coords'))}:</strong> ${current.x}, ${current.y} · <strong>${this._escapeHtml(this._label('ui.tileInfo.time', 'Time'))}:</strong> ${this._escapeHtml(this._timeLabel())} ${this._escapeHtml(phase)}</div>` +
+                    `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.danger', 'Danger'))}:</strong> ${this._escapeHtml(danger)} · <strong>${this._escapeHtml(this._label('ui.tileInfo.tags', 'Tags'))}:</strong> ${this._escapeHtml(tagText)}</div>` +
+                    `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.structure', 'Structure'))}:</strong> ${this._escapeHtml(structure)} · <strong>${this._escapeHtml(this._label('ui.tileInfo.landmark', 'Landmark'))}:</strong> ${this._escapeHtml(landmark)}</div>`;
+            },
+            renderTileInfo(tile = null) {
+                const html = this._tileInfoHtml(tile);
+                ['tile-info', 'mobile-tile-info'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = html;
+                });
             },
 
             renderMap() {
@@ -6387,6 +6453,7 @@
                     if (coords) coords.textContent = `Inside ${this.activeInterior.structureName}`;
                     const mobileCoords = document.getElementById('mobile-coords');
                     if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
+                    this.renderTileInfo();
                     this.renderLargeMap();
                     this._renderTime();
                     return;
@@ -6403,9 +6470,9 @@
                         const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
                         const isVisible = Math.abs(dx) <= visibilityRadius && Math.abs(dy) <= visibilityRadius;
                         const tile = (isVisible && (isExplored || isAdjacent)) ? this.getTile(tx, ty) : null;
-                        const biome = tile ? this.biomes[tile.biome] : null;
+                        const biome = tile ? this.biomes[tile.displayBiome || tile.biome] || this.biomes[tile.biome] : null;
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
-                        let content = tile ? (biome ? biome.icon : '?') : '·';
+                        let content = tile ? (tile.overlays?.bridge ? '🌉' : (tile.overlays?.road ? '🛤️' : (tile.overlays?.poi ? '◆' : (biome ? biome.icon : '?')))) : '·';
                         let classes = 'map-tile';
                         if (isCenter) classes += ' center';
                         else if (!isVisible) classes += ' far';
@@ -6423,6 +6490,7 @@
 	                containers.forEach(container => { container.innerHTML = html; });
                     const mobileCoords = document.getElementById('mobile-coords');
                     if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
+                    this.renderTileInfo(this.getTile(cx, cy));
                     this.renderLargeMap();
                     this.applyMobileMapZoom();
 	                this._renderTime();

@@ -17,6 +17,7 @@ const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/sr
 
 const SCRIPT_ORDER = [
   'src/core/serialization.js',
+  'src/core/world-generation.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',
   'src/core/module-system.js',

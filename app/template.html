@@ -2023,6 +2023,9 @@
                         <div class="mini-map" id="mini-map">
                         <!-- Populated by App.renderMap() -->
                     </div>
+                    <div class="tile-info" id="tile-info" aria-live="polite" style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);font-size:12px;line-height:1.5;color:var(--text-secondary);">
+                        <!-- Populated by App.renderMap() -->
+                    </div>
                     <div class="large-map-wrap">
                         <div class="large-map-toolbar">
                             <span><span data-i18n="ui.largeMap.discoveredRegion">Discovered Region</span> <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
@@ -2052,6 +2055,9 @@
 	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
+	                                <div class="tile-info mobile-tile-info" id="mobile-tile-info" aria-live="polite" style="margin-top:8px;font-size:11px;line-height:1.45;color:var(--text-secondary);">
+	                                    <!-- Populated by App.renderMap() -->
+	                                </div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
 	                                <div class="mobile-strip-card">

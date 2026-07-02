@@ -412,6 +412,20 @@ The durable delta boundary now keeps the current gameplay-facing tile shape:
 
 The IndexedDB `YAW_Worlds` first pass also exists: world metadata and tile deltas are written separately from compact save-slot data, with object stores reserved for future chunk/entity indexing.
 
+## Organic Noise Generation Slice - Complete
+
+The square super-patch base-biome model has been superseded for active base tiles:
+
+1. `app/src/core/world-generation.js` provides deterministic hash, value noise, fractal noise, cellular macro-region cells, seeded chance, and seeded weighted selection helpers.
+2. `getBaseTile(x, y)` now resolves a seed-stable base tile from `worldMeta.seed`, `worldMeta.generatorVersion`, coordinates, and purpose keys.
+3. Generated base tiles include `biome`, `baseBiome`, `macroBiome`, `elevation`, `moisture`, `heat`, `fertility`, `dangerPressure`, `regionCell`, and `terrainTags`.
+4. Biome classification keeps existing biome definitions and chooses only region biomes for base identity; roads, bridges, entrances, and interiors remain route/feature/interior concepts rather than broad random regions.
+5. Beach is derived from coastal terrain only: non-water land near deterministic water with suitable elevation/roughness can become beach; far-inland land cannot randomly become beach.
+6. POI candidates, road routes, and bridge crossings are deterministic overlays. Roads connect seeded macro-region anchors as route intent; bridges only appear where a road crosses water with a valid span.
+7. First-discovery descriptions, landmark chance/name, structure chance/kind, first-entry wild encounters, and structure occupants use deterministic coordinate rolls instead of `Math.random()`.
+8. Tile deltas remain the mutable layer for explored state, creatures, items, structures after discovery, interiors, and quest effects.
+9. The map UI includes a compact safe current-tile readout for biome, coordinates/time, danger pressure, known structure/landmark, and terrain tags.
+
 ## Current Large-Map Slice
 
 The map panel now includes a first-pass discovered-region view:

@@ -11,7 +11,7 @@ The sheet appears usable for a first pass over the current wilderness map:
 - Structures/features: camp, spring/pond, cabin/hut, farm/garden, settlement, cave mouth, ruins/stonework, web, fog/unknown.
 - Markers: generic focus/POI, alert/danger, gold/market, camp/rest, tower/landmark.
 
-The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, and `data-map-kind` on minimap and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state.
+The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata on minimap and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state. Route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible neighboring route tiles.
 
 ## Missing Or Deferred Tiles
 
@@ -21,7 +21,7 @@ Before using the sheet as the main map art, we likely need additional or clarifi
 - Interior rooms, entrances, exits, walls, and doors.
 - Road-water and road-coast transitions beyond simple bridge spans.
 - River bends, shore curves, marsh edges, and rocky/coastal cliff edges.
-- Road corners/intersections driven by actual route connectivity; current road generation only exposes east-west or north-south direction.
+- Direction-specific bridge span variants beyond the current horizontal/vertical bridge keys.
 - POI-specific markers for quest, merchant, rest, danger, resource, structure, and settlement categories.
 - Future special biomes such as snow, desert, lava, corrupted terrain, or modded environments.
 - Asset-state variants for discovered, adjacent but undiscovered, hidden, current position, selected route, quest focus, and blocked terrain.
@@ -32,8 +32,9 @@ Use the sheet as an optional first art layer after licensing is confirmed:
 
 1. Extract individual tiles into a generated/owned asset bundle.
 2. Map each asset to the existing tileset keys in `App.MAP_TILESET_KEYS`.
-3. Keep emoji/text fallback for accessibility, missing assets, and low-bandwidth builds.
-4. Keep roads, bridges, structures, and POIs as overlays. Do not replace `baseBiome` or deterministic terrain identity with art choices.
-5. Add visual tests after the actual image assets are present.
+3. Include route variants for straight roads, corners, T-junctions, intersections, dead ends, and bridge directions.
+4. Keep emoji/text fallback for accessibility, missing assets, and low-bandwidth builds.
+5. Keep roads, bridges, structures, and POIs as overlays. Do not replace `baseBiome` or deterministic terrain identity with art choices.
+6. Add visual tests after the actual image assets are present.
 
 The current code seam is deliberately metadata-first: terrain and overlays still decide what exists, while CSS/assets can decide how it looks.

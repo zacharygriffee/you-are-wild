@@ -2903,6 +2903,7 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   const campVisual = App._mapTileVisual(campTile);
   assertEqual(roadVisual.tilesetKey, 'route-road-vertical', 'Road visual should expose a direction-specific tileset key');
   assertEqual(roadVisual.baseTilesetKey, 'terrain-forest', 'Road visual should preserve forest base terrain key');
+  assertEqual(roadVisual.routeShape, 'north-south', 'Road visual should use stored direction when no neighbor resolver is available');
   assertEqual(forestRoad.biome, 'forest', 'Visual mapping should not replace the base biome with road');
   assertEqual(bridgeVisual.tilesetKey, 'route-bridge-horizontal', 'Bridge visual should expose a direction-specific tileset key');
   assertEqual(bridgeVisual.baseTilesetKey, 'terrain-water', 'Bridge visual should preserve water base terrain key');
@@ -2920,10 +2921,57 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.exploredTiles = new Set(['0,0', '1,0', '0,1']);
   App.renderMap();
   App.renderLargeMap();
-  assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-vertical"', 'Minimap should render route tileset keys');
+  assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Minimap should infer route shape from known neighbors');
   assertContains(elements.get('mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Minimap should render base terrain tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
+});
+
+test('Map route visuals infer corners and intersections from known neighbors', () => {
+  const { App, elements } = loadAppForCombat();
+  const road = (x, y, direction = 'east-west') => ({
+    x,
+    y,
+    biome: 'plains',
+    baseBiome: 'plains',
+    derivedBiome: 'plains',
+    displayBiome: 'road',
+    explored: true,
+    creatures: [],
+    overlays: { road: { id: `road-${x}-${y}`, direction } }
+  });
+  const cornerCenter = road(0, 0, 'east-west');
+  const cornerTiles = new Map([
+    ['0,0', cornerCenter],
+    ['0,-1', road(0, -1, 'north-south')],
+    ['1,0', road(1, 0, 'east-west')]
+  ]);
+  const cornerResolver = (x, y) => cornerTiles.get(`${x},${y}`) || null;
+  const cornerVisual = App._mapTileVisual(cornerCenter, { neighborResolver: cornerResolver });
+  assertEqual(cornerVisual.routeShape, 'corner-ne', 'Known north/east road neighbors should infer a corner shape');
+  assertEqual(cornerVisual.tilesetKey, 'route-road-corner-ne', 'Corner route shape should map to a directional tileset key');
+
+  const intersectionCenter = road(5, 5, 'east-west');
+  const intersectionTiles = new Map([
+    ['5,5', intersectionCenter],
+    ['5,4', road(5, 4, 'north-south')],
+    ['6,5', road(6, 5, 'east-west')],
+    ['5,6', road(5, 6, 'north-south')],
+    ['4,5', road(4, 5, 'east-west')]
+  ]);
+  const intersectionResolver = (x, y) => intersectionTiles.get(`${x},${y}`) || null;
+  const intersectionVisual = App._mapTileVisual(intersectionCenter, { neighborResolver: intersectionResolver });
+  assertEqual(intersectionVisual.routeShape, 'intersection', 'Four known road neighbors should infer an intersection');
+  assertEqual(intersectionVisual.tilesetKey, 'route-road-intersection', 'Intersection route shape should map to the intersection tileset key');
+
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = cornerTiles;
+  App.exploredTiles = new Set(['0,0', '0,-1', '1,0']);
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'data-route-shape="corner-ne"', 'Rendered large map should expose inferred corner route shape from known tiles');
+  assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-road-corner-ne"', 'Rendered large map should expose inferred corner tileset key from known tiles');
 });
 
 test('Super-patch generation uses seeded region biomes only', () => {

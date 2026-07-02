@@ -54,7 +54,16 @@
                     'east-west': 'route-road-horizontal',
                     'north-south': 'route-road-vertical',
                     corner: 'route-road-corner',
-                    intersection: 'route-road-intersection'
+                    'corner-ne': 'route-road-corner-ne',
+                    'corner-es': 'route-road-corner-es',
+                    'corner-sw': 'route-road-corner-sw',
+                    'corner-wn': 'route-road-corner-wn',
+                    intersection: 'route-road-intersection',
+                    't-n': 'route-road-t-n',
+                    't-e': 'route-road-t-e',
+                    't-s': 'route-road-t-s',
+                    't-w': 'route-road-t-w',
+                    end: 'route-road-end'
                 },
                 bridges: {
                     'east-west': 'route-bridge-horizontal',
@@ -6483,6 +6492,37 @@
                 }
                 return '';
             },
+            _isRouteVisualTile(tile) {
+                return Boolean(tile?.overlays?.road || tile?.overlays?.bridge);
+            },
+            _routeVisualShape(tile, resolver = null) {
+                const fallback = tile?.overlays?.bridge?.direction || tile?.overlays?.road?.direction || 'east-west';
+                if (!tile || typeof resolver !== 'function' || !Number.isFinite(Number(tile.x)) || !Number.isFinite(Number(tile.y))) return fallback;
+                const x = Number(tile.x);
+                const y = Number(tile.y);
+                const north = this._isRouteVisualTile(resolver(x, y - 1));
+                const east = this._isRouteVisualTile(resolver(x + 1, y));
+                const south = this._isRouteVisualTile(resolver(x, y + 1));
+                const west = this._isRouteVisualTile(resolver(x - 1, y));
+                const count = [north, east, south, west].filter(Boolean).length;
+                if (count >= 4) return 'intersection';
+                if (count === 3) {
+                    if (!north) return 't-s';
+                    if (!east) return 't-w';
+                    if (!south) return 't-n';
+                    return 't-e';
+                }
+                if (count === 2) {
+                    if (east && west) return 'east-west';
+                    if (north && south) return 'north-south';
+                    if (north && east) return 'corner-ne';
+                    if (east && south) return 'corner-es';
+                    if (south && west) return 'corner-sw';
+                    if (west && north) return 'corner-wn';
+                }
+                if (count === 1) return 'end';
+                return fallback;
+            },
             _mapTileVisual(tile, options = {}) {
                 const known = Boolean(tile);
                 if (!known) {
@@ -6504,19 +6544,21 @@
                 let icon = biome.icon || '□';
                 let tilesetKey = baseTilesetKey;
                 let kind = 'biome';
+                let routeShape = null;
                 const classes = ['map-visual', `map-visual-${baseBiomeId}`];
                 if (tile.overlays?.bridge) {
                     const direction = tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west';
                     tilesetKey = this.MAP_TILESET_KEYS.bridges[direction] || 'route-bridge-horizontal';
                     icon = '🌉';
                     kind = 'bridge';
+                    routeShape = direction;
                     classes.push('map-visual-bridge');
                 } else if (tile.overlays?.road) {
-                    const direction = tile.overlays.road.direction || 'east-west';
-                    tilesetKey = this.MAP_TILESET_KEYS.roads[direction] || 'route-road-horizontal';
+                    routeShape = this._routeVisualShape(tile, options.neighborResolver);
+                    tilesetKey = this.MAP_TILESET_KEYS.roads[routeShape] || this.MAP_TILESET_KEYS.roads[tile.overlays.road.direction] || 'route-road-horizontal';
                     icon = '🛤️';
                     kind = 'road';
-                    classes.push('map-visual-road');
+                    classes.push('map-visual-road', `map-visual-route-${routeShape}`);
                 } else if (tile.overlays?.poi) {
                     const category = tile.overlays.poi.category || 'landmark';
                     tilesetKey = this.MAP_TILESET_KEYS.poi[category] || 'poi-landmark';
@@ -6548,6 +6590,7 @@
                     tilesetKey,
                     baseTilesetKey,
                     kind,
+                    routeShape,
                     classes: classes.join(' '),
                     label: biome.name || biomeId,
                     marker: options.questMarker || options.poi || null,
@@ -6558,7 +6601,8 @@
                 const key = this._escapeHtml(visual?.tilesetKey || 'unknown');
                 const base = this._escapeHtml(visual?.baseTilesetKey || key);
                 const kind = this._escapeHtml(visual?.kind || 'unknown');
-                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"`;
+                const shape = visual?.routeShape ? ` data-route-shape="${this._escapeHtml(visual.routeShape)}"` : '';
+                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}`;
             },
 
             setLargeMapZoom(delta) {
@@ -6610,7 +6654,12 @@
                         const tile = this._resolveLargeMapTile(x, y);
                         const poi = this._largeMapPoiLabel(tile);
                         const questMarker = this._largeMapQuestMarker(x, y);
-                        const visual = this._mapTileVisual(tile, { isCurrent, questMarker, poi });
+                        const visual = this._mapTileVisual(tile, {
+                            isCurrent,
+                            questMarker,
+                            poi,
+                            neighborResolver: (nx, ny) => this._resolveLargeMapTile(nx, ny)
+                        });
                         let classes = 'large-map-tile';
                         if (tile) classes += ' known';
                         if (isCurrent) classes += ' current';
@@ -6738,7 +6787,16 @@
                         const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
                         const isVisible = Math.abs(dx) <= visibilityRadius && Math.abs(dy) <= visibilityRadius;
                         const tile = (isVisible && (isExplored || isAdjacent)) ? this.getTile(tx, ty) : null;
-                        const visual = this._mapTileVisual(tile, { isCurrent: false });
+                        const visual = this._mapTileVisual(tile, {
+                            isCurrent: false,
+                            neighborResolver: (nx, ny) => {
+                                const vx = nx - cx;
+                                const vy = ny - cy;
+                                const known = this.isExplored(nx, ny) || (Math.abs(vx) <= 1 && Math.abs(vy) <= 1);
+                                const visible = Math.abs(vx) <= visibilityRadius && Math.abs(vy) <= visibilityRadius;
+                                return visible && known ? this.getTile(nx, ny) : null;
+                            }
+                        });
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
                         let classes = 'map-tile';
                         if (isCenter) classes += ' center';

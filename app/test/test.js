@@ -2600,6 +2600,7 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
     status: 'active',
     turnInRequired: true,
     giverName: 'Guide',
+    giverLocation: { x: 3, y: -1, label: 'Guide Camp' },
     objectives: [{ type: 'defeat', species: 'wolf', label: 'Defeat wolf', required: 1, progress: 0, complete: false }],
     reward: { xp: 10, gold: 7, items: ['Old Coin'] }
   }];
@@ -2611,6 +2612,12 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertEqual(App.player.xp, 0, 'Deferred quest should not grant XP immediately');
   App.showQuestLog();
   assertContains(elements.get('scene-description').innerHTML, 'Turn In', 'Quest log should expose turn-in action for deferred rewards');
+  assertContains(elements.get('scene-description').innerHTML, 'Turn in with Guide Camp (3, -1)', 'Quest log should show turn-in route when giver location is known');
+  assertContains(elements.get('scene-description').innerHTML, 'Show Turn-In', 'Quest log should expose map focus for turn-in location');
+  const focused = App.focusQuestTurnInOnMap('deferred_wolf_hunt');
+  assertEqual(focused, true, 'Turn-in map focus should succeed when giver location is known');
+  assertEqual(App.largeMapOffset.x, 3, 'Turn-in map focus should pan to giver x offset');
+  assertEqual(App.largeMapOffset.y, -1, 'Turn-in map focus should pan to giver y offset');
   App.turnInQuest('deferred_wolf_hunt');
   assertEqual(App.player.gold, 7, 'Turn-in should grant deferred gold');
   assertEqual(App.player.xp, 10, 'Turn-in should grant deferred XP');
@@ -2927,6 +2934,8 @@ test('Structure encounters can place authored quest givers', () => {
   assertEqual(App.quests.length, 1, 'Accepted authored structure quest should enter quest log');
   assertEqual(App.quests[0].title, 'Shrine Offering', 'Accepted structure quest should preserve authored title');
   assertEqual(App.quests[0].turnInRequired, true, 'Accepted structure quest should preserve authored turn-in behavior');
+  assertEqual(App.quests[0].giverLocation.x, 2, 'Accepted structure quest should store giver x for turn-in routing');
+  assertEqual(App.quests[0].giverLocation.y, 0, 'Accepted structure quest should store giver y for turn-in routing');
   assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after quest placement');
 });
 

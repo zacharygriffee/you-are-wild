@@ -4602,6 +4602,7 @@
                 const tileId = tile ? `${tile.x}_${tile.y}` : 'local';
                 quest.id = quest.id || `${templateId}_${tileId}`;
                 quest.templateId = templateId;
+                if (tile) quest.giverLocation = { x: Number(tile.x), y: Number(tile.y), label: this.STRUCTURES[structureId]?.name || 'Quest giver' };
                 return quest;
             },
 
@@ -4820,6 +4821,7 @@
                     description: source.description || '',
                     giverId: source.giverId || giver?.id || giver?.name || null,
                     giverName: source.giverName || giver?.name || null,
+                    giverLocation: source.giverLocation || giver?.giverLocation || (giver ? { x: Number(this.location?.x || 0), y: Number(this.location?.y || 0), label: giver.name || 'Quest giver' } : null),
                     status: source.status || 'available',
                     turnInRequired: Boolean(source.turnInRequired || source.rewardOnTurnIn),
                     rewardClaimed: Boolean(source.rewardClaimed),
@@ -5057,6 +5059,34 @@
                 return true;
             },
 
+            _questTurnInMarker(quest) {
+                const location = quest?.giverLocation;
+                if (!location || !Number.isFinite(Number(location.x)) || !Number.isFinite(Number(location.y))) return null;
+                return {
+                    x: Number(location.x),
+                    y: Number(location.y),
+                    label: location.label || quest.giverName || 'Quest giver'
+                };
+            },
+
+            focusQuestTurnInOnMap(questId) {
+                const quest = (this.quests || []).find(entry => String(entry.id) === String(questId));
+                const marker = this._questTurnInMarker(quest);
+                if (!quest || !marker) {
+                    this.log.push({ text: 'No turn-in location is available for that quest.', type: 'discovery' });
+                    this.renderLog();
+                    return false;
+                }
+                this.largeMapOffset = {
+                    x: Number(marker.x) - Number(this.location.x || 0),
+                    y: Number(marker.y) - Number(this.location.y || 0)
+                };
+                this.renderLargeMap();
+                this.log.push({ text: `Map focused on ${quest.title} turn-in: ${marker.label}.`, type: 'discovery' });
+                this.renderLog();
+                return true;
+            },
+
             _filteredQuestEntries() {
                 const filter = ['all', 'active', 'completed', 'turn-in'].includes(this.questFilter) ? this.questFilter : 'all';
                 const sort = ['status', 'title'].includes(this.questSort) ? this.questSort : 'status';
@@ -5124,7 +5154,15 @@
                         html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
                         if (marker && quest.status === 'active') html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show On Map</button>`;
                     }
-                    if (needsTurnIn) html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">Turn In</button>`;
+                    if (needsTurnIn) {
+                        const turnInMarker = this._questTurnInMarker(quest);
+                        if (turnInMarker) {
+                            const guidance = this._questCheckpointGuidance(turnInMarker);
+                            html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">Turn in with ${this._escapeHtml(turnInMarker.label)} (${turnInMarker.x}, ${turnInMarker.y})${guidance ? ` · ${this._escapeHtml(guidance)}` : ''}</div>`;
+                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show Turn-In</button>`;
+                        }
+                        html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">Turn In</button>`;
+                    }
                     html += `</div>`;
                 });
                 html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;

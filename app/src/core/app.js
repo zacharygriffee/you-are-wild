@@ -4424,17 +4424,17 @@
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                 const enemy = enemies[0];
                 if (!enemy) {
-                    this.log.push({ text: 'No enemies to flee from!', type: 'combat' });
+                    this.log.push({ text: this._label('combat.flee.noEnemies', 'No enemies to flee from!'), type: 'combat' });
                     this.renderLog(); return;
                 }
                 const fleeChance = 0.6 + (this.player.Flee - enemy.spd) * 0.02;
 	                if (Math.random() < Math.max(0.1, Math.min(0.95, fleeChance))) {
-	                    this.log.push({ text: 'You flee successfully!', type: 'combat' });
+	                    this.log.push({ text: this._label('combat.flee.success', 'You flee successfully!'), type: 'combat' });
 	                    this.creatures = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY);
 	                    this._emitCombatAction('flee', this.player, enemy, 'success');
 	                    this.endCombat('flee');
 	                } else {
-	                    this.log.push({ text: 'Flee failed! ' + enemy.name + ' intercepts you!', type: 'combat' });
+	                    this.log.push({ text: this._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name }), type: 'combat' });
 	                    this._emitCombatAction('flee', this.player, enemy, 'failed');
 	                    this.renderLog();
                     this.nextTurn();

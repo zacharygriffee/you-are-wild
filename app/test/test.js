@@ -4086,6 +4086,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
   assertNotContains(App._processStatusEffects.toString(), 'spreadTarget && Math.random', 'Persistent combat status spread should not use raw Math.random');
   assertNotContains(App._terrainCausesMiss.toString(), 'Math.random', 'Persistent combat terrain miss should not use Math.random');
+  assertNotContains(App._applyTerrainRoundEffects.toString(), 'Math.random', 'Persistent combat terrain round effects should not use Math.random');
   assertNotContains(App._calcInitiative.toString(), 'Math.random', 'Persistent combat initiative should not use Math.random');
   assertNotContains(App.allyTurn.toString(), 'ally.obedient && Math.random', 'Dumb AI obedience checks should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'enemies[Math.floor(Math.random()', 'Dumb AI target picks should not use raw Math.random');
@@ -4627,19 +4628,37 @@ test('Cave terrain miss outcome is deterministic by combat state', () => {
 });
 
 test('Swamp terrain can stick grounded combatants for their turn', () => {
-  const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You');
+  const { App } = loadAppForCombat(() => 0.99);
+  App.worldMeta = { seed: 'swamp-stuck-0', generatorVersion: 2 };
+  const player = makeUnit('You', { id: 'swamp-unit' });
   App.player = player;
   App.party = [player];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'swamp', explored: true, creatures: [] }]]);
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }], syncActions: [] };
   App._applyTerrainRoundEffects([player]);
   assert(player.status.stuck, 'Swamp should apply stuck status when hazard rolls');
-  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }], syncActions: [] };
   App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
   App.nextTurn = function() { this._stuckSkipped = true; };
   App.processTurn();
   assertEqual(App._stuckSkipped, true, 'Stuck unit should lose its turn');
+});
+
+test('Swamp terrain stuck outcome is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'swamp-stuck-0', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'swamp-unit' });
+    App.player = player;
+    App.party = [player];
+    App.location = { x: 0, y: 0 };
+    App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'swamp', explored: true, creatures: [] }]]);
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }], syncActions: [] };
+    App._applyTerrainRoundEffects([player]);
+    return Boolean(player.status.stuck);
+  };
+
+  assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Swamp terrain stuck should not depend on ambient Math.random');
 });
 
 test('Flying creatures are immune to ground melee target selection', () => {

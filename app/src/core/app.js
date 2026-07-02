@@ -2323,7 +2323,7 @@
                 if (this._currentBiomeId() !== 'swamp') return;
                 for (const unit of living) {
                     if (!unit || unit.CPun <= 0 || unit.flying || unit.status?.stuck) continue;
-                    if (Math.random() < 0.2) {
+                    if (this._combatStateRoll('combat-terrain-stuck', unit, 'round-effect') < 0.2) {
                         unit.status = unit.status || {};
                         unit.status.stuck = { turns: 1 };
                     }

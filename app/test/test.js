@@ -612,6 +612,9 @@ test('Save manager separates save and load mode actions', () => {
 test('Accessibility settings controls are available', () => {
   assertContains(template, 'body.high-contrast', 'High contrast CSS class missing');
   assertContains(template, 'body.reduced-motion *', 'Reduced motion CSS class missing');
+  assertContains(template, ':focus-visible', 'Visible keyboard focus styling should exist');
+  assertContains(template, '[role="button"]', 'Custom button-role controls should share focus styling');
+  assertContains(template, 'body.high-contrast :where(button, [role="button"]', 'High contrast mode should strengthen visible focus styling');
   assertContains(template, 'id="setting-high-contrast"', 'High contrast setting missing');
   assertContains(template, 'id="setting-reduced-motion"', 'Reduced motion setting missing');
   assertContains(template, 'id="setting-font-size"', 'Font size setting missing');
@@ -5432,6 +5435,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(allyCard, 'aria-label="Hunger: 0%"', 'Missing hunger should default safely');
   assertContains(creatureCard, 'aria-label="Hunger: 100%"', 'Hunger bar should clamp overfilled values');
   assertContains(partyCard, 'showPartyMemberStats(0)', 'Stats action should remain available from party card');
+  assertContains(partyCard, 'role="button" tabindex="0"', 'Desktop unit cards should be keyboard focusable');
+  assertContains(partyCard, "event.key==='Enter'||event.key===' '", 'Desktop unit cards should activate with Enter or Space');
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
@@ -5439,6 +5444,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(creatureCard, "showIntentMenu('creature','fox-1')", 'Existing creature actions should move behind the card action menu');
   assertNotContains(creatureCard, "outsideActionForCreature('fight'", 'Default creature card should not show primary action spam');
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
+  assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
+  assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');

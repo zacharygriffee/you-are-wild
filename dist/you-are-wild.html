@@ -9545,17 +9545,11 @@
                         loaded = Binary.loadGame(saveData);
                     } catch (e) {
                         console.error('Incompatible save:', e);
-                        const choice = prompt(`Save data is incompatible or corrupted. Options:
-
-1 = Delete save
-2 = Download backup (as base64)
-3 = Cancel
-
-Enter 1, 2, or 3:`);
+                        const choice = prompt(this._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:'));
                         if (choice === '1') {
                             await this._dbDelete('saves', slotName);
                             this._removeSaveTime(slotName);
-                            alert('Save deleted.');
+                            alert(this._label('save.recovery.deleted', 'Save deleted.'));
                         } else if (choice === '2') {
                             const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)));
                             const blob = new Blob([base64], { type: 'text/plain' });
@@ -9563,7 +9557,7 @@ Enter 1, 2, or 3:`);
                             const a = document.createElement('a');
                             a.href = url; a.download = 'yaw_save_' + slotName + '_backup.txt'; a.click();
                             URL.revokeObjectURL(url);
-                            alert('Backup downloaded. Save remains intact.');
+                            alert(this._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
                         }
                         return false;
                     }
@@ -10494,6 +10488,9 @@ const CONTENT_SYSTEM = {
             'save.error.saveFailed': 'Save failed: {message}',
             'save.error.loadFailed': 'Load failed: {message}',
             'save.error.deleteFailed': 'Delete failed: {message}',
+            'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:',
+            'save.recovery.deleted': 'Save deleted.',
+            'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
             'target.actors': 'Actors',
             'target.targets': 'Targets',
             'target.act': 'Act',
@@ -10626,6 +10623,9 @@ const CONTENT_SYSTEM = {
             'save.error.saveFailed': 'Error al guardar: {message}',
             'save.error.loadFailed': 'Error al cargar: {message}',
             'save.error.deleteFailed': 'Error al borrar: {message}',
+            'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:',
+            'save.recovery.deleted': 'Partida borrada.',
+            'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
             'target.actors': 'Actores',
             'target.targets': 'Objetivos',
             'target.act': 'Actuar',

@@ -6904,17 +6904,11 @@
                         loaded = Binary.loadGame(saveData);
                     } catch (e) {
                         console.error('Incompatible save:', e);
-                        const choice = prompt(`Save data is incompatible or corrupted. Options:
-
-1 = Delete save
-2 = Download backup (as base64)
-3 = Cancel
-
-Enter 1, 2, or 3:`);
+                        const choice = prompt(this._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:'));
                         if (choice === '1') {
                             await this._dbDelete('saves', slotName);
                             this._removeSaveTime(slotName);
-                            alert('Save deleted.');
+                            alert(this._label('save.recovery.deleted', 'Save deleted.'));
                         } else if (choice === '2') {
                             const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)));
                             const blob = new Blob([base64], { type: 'text/plain' });
@@ -6922,7 +6916,7 @@ Enter 1, 2, or 3:`);
                             const a = document.createElement('a');
                             a.href = url; a.download = 'yaw_save_' + slotName + '_backup.txt'; a.click();
                             URL.revokeObjectURL(url);
-                            alert('Backup downloaded. Save remains intact.');
+                            alert(this._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
                         }
                         return false;
                     }

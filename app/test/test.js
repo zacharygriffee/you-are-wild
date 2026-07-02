@@ -565,6 +565,7 @@ function makeElement() {
     checked: false,
     style,
     disabled: false,
+    click() { this.clicked = true; },
     focus() { this.focused = true; },
     setAttribute(name, value) { attributes.set(name, String(value)); },
     getAttribute(name) { return attributes.get(name) || null; },
@@ -614,6 +615,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   };
   const alerts = [];
   const confirmations = [];
+  const prompts = [];
   const hooks = [];
   const moduleSystem = {
     executeHook(event, payload) {
@@ -646,7 +648,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
-          'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}!', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}',
+          'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}!', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
           'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target'
         },
         es: {
@@ -660,7 +662,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
-          'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}!', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}',
+          'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}!', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}', 'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'save.recovery.deleted': 'Partida borrada.', 'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
           'target.actors': 'Actores', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Objetivo', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}'
         }
       },
@@ -676,11 +678,11 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       encounter: () => '',
       actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}`
     },
-    { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
+    options.binary || { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
     { open() {}, deleteDatabase() { return {}; } },
     message => { confirmations.push(message); return Boolean(options.confirm); },
-    () => null,
+    message => { prompts.push(message); return options.prompt ?? null; },
     message => alerts.push(message),
     fn => fn(),
     math
@@ -690,7 +692,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, confirmations, body, document, listeners };
+  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -3864,6 +3866,40 @@ test('Save slot destructive confirmations localize', async () => {
   deleteSlot.App.updateLanguage('es');
   await deleteSlot.App.deleteSlot('slot4');
   assertEqual(deleteSlot.confirmations[0], 'Borrar el slot slot4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale');
+});
+
+test('Incompatible save recovery prompt localizes and scopes actions', async () => {
+  const corruptedSave = new Uint8Array([1, 2, 3, 4]);
+  const deleted = [];
+  const deleteRecovery = loadAppForCombat(() => 0.5, {
+    prompt: '1',
+    binary: { saveGame: () => new Uint8Array(), loadGame: () => { throw new Error('bad save'); } }
+  });
+  deleteRecovery.App.updateLanguage('es');
+  deleteRecovery.App._dbGet = async () => corruptedSave;
+  deleteRecovery.App._dbDelete = async (_store, key) => { deleted.push(key); };
+  deleteRecovery.storage.set('yaw-save-time-slot3', '1710000000000');
+  const deleteResult = await deleteRecovery.App.loadFromSlot('slot3');
+  assertEqual(deleteResult, false, 'Corrupted save recovery should not continue loading');
+  assertEqual(deleteRecovery.prompts[0], 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'Recovery prompt should use active locale');
+  assertEqual(deleted.join(','), 'slot3', 'Delete recovery should remove only the selected corrupted slot');
+  assertEqual(deleteRecovery.storage.has('yaw-save-time-slot3'), false, 'Delete recovery should remove selected slot timestamp');
+  assertEqual(deleteRecovery.alerts[0], 'Partida borrada.', 'Delete recovery alert should localize');
+
+  const backupRecovery = loadAppForCombat(() => 0.5, {
+    prompt: '2',
+    binary: { saveGame: () => new Uint8Array(), loadGame: () => { throw new Error('bad save'); } }
+  });
+  const backupDeletes = [];
+  backupRecovery.App.updateLanguage('es');
+  backupRecovery.App._dbGet = async () => corruptedSave;
+  backupRecovery.App._dbDelete = async (_store, key) => { backupDeletes.push(key); };
+  backupRecovery.storage.set('yaw-save-time-slot4', '1710000000000');
+  const backupResult = await backupRecovery.App.loadFromSlot('slot4');
+  assertEqual(backupResult, false, 'Backup recovery should not continue loading');
+  assertEqual(backupDeletes.length, 0, 'Backup recovery should preserve the corrupted save slot');
+  assertEqual(backupRecovery.storage.get('yaw-save-time-slot4'), '1710000000000', 'Backup recovery should keep selected slot timestamp');
+  assertEqual(backupRecovery.alerts[0], 'Respaldo descargado. La partida queda intacta.', 'Backup recovery alert should localize');
 });
 
 test('Delete save slot is scoped to one selected slot', async () => {

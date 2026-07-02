@@ -3984,14 +3984,18 @@
                 if (targets.length === 1 && actors.length > 1) {
                     resolved = this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
-                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
-                        action: this._uiLabel(action).toLowerCase()
-                    }), type: 'discovery' });
-                    this.renderLog();
-                    this.renderParty();
-                    this.renderCreatures();
-                    this.renderExplorationActions();
-                    return;
+                    if (actors.length === targets.length) {
+                        resolved = this.outsidePairedActionsOnTargets(action, actors, targets);
+                    } else {
+                        this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
+                            action: this._uiLabel(action).toLowerCase()
+                        }), type: 'discovery' });
+                        this.renderLog();
+                        this.renderParty();
+                        this.renderCreatures();
+                        this.renderExplorationActions();
+                        return;
+                    }
                 } else {
                     resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player);
                 }
@@ -4237,6 +4241,47 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
+                this._normalizeExplorationSelections();
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+                return true;
+            },
+
+            outsidePairedActionsOnTargets(action, actors, targets) {
+                const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
+                const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
+                if (livingActors.length === 0 || livingActors.length !== targetList.length) return false;
+                const resolvedPairs = [];
+                const skipped = [];
+                for (let i = 0; i < livingActors.length; i++) {
+                    const actor = livingActors[i];
+                    const target = targetList[i];
+                    if (action === 'feed' && this.party.includes(target) && target.CPun >= target.MPun) {
+                        skipped.push(target.name);
+                        continue;
+                    }
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
+                    if (resolved === false) {
+                        skipped.push(target.name);
+                        continue;
+                    }
+                    resolvedPairs.push(`${actor.name} -> ${target.name}`);
+                }
+                const summary = resolvedPairs.length > 0
+                    ? this._label('target.pairedActionDone', 'Paired {action} actions resolved: {pairs}.', {
+                        action: this._uiLabel(action).toLowerCase(),
+                        pairs: resolvedPairs.join(', ')
+                    })
+                    : this._label('target.multiActionNone', '{name} finds no valid targets for multi-target {action}.', {
+                        name: livingActors.map(actor => actor.name).join(', '),
+                        action: this._uiLabel(action).toLowerCase()
+                    });
+                const skippedText = skipped.length > 0
+                    ? ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`
+                    : '';
+                this.log.push({ text: summary + skippedText, type: 'discovery' });
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();

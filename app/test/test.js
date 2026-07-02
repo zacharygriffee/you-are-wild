@@ -6258,9 +6258,12 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
   assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
-  assertContains(body.innerHTML, "App.selectIntent('creature','willing-1','fight','longpress')", 'Long-press menu should route through shared intent dispatch');
-  App.selectIntent('creature', 'willing-1', 'flirt', 'longpress');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','willing-1','fight','longpress')", 'Long-press menu should route registered primary actions through the sub-action picker');
+  App.openIntentSubActionSheet('creature', 'willing-1', 'flirt', 'longpress');
+  assertContains(body.innerHTML, "App.selectIntent('creature','willing-1','flirt','longpress','tease')", 'Long-press sub-action sheet should preserve command source');
+  App.selectIntent('creature', 'willing-1', 'flirt', 'longpress', 'tease');
   assertEqual(App.lastIntentCommand.source, 'longpress', 'Long-press selection should record its command source');
+  assertEqual(App.lastIntentCommand.subAction, 'tease', 'Long-press selection should record selected sub-action');
   assertEqual(App.lastIntentCommand.action, 'flirt', 'Long-press selection should record selected intent');
   App.closeMobileContextMenu();
   assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');

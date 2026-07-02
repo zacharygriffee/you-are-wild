@@ -3626,19 +3626,28 @@
             showPartyMemberStats(index) {
                 const unit = this.party[index];
                 if (!unit) return;
-                const leaderText = this._getPartyLeader() === unit ? 'Leader' : (unit === this.player ? 'You' : 'Ally');
-                const html = `<div style="max-width:600px;margin:0 auto;padding:24px;"><h3>${unit.icon} ${unit.name}</h3>
-                    <p style="color:var(--text-muted)">${leaderText} | Level ${unit.level} ${unit.species}</p>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:12px;">
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Punishment</strong><br>${unit.CPun}/${unit.MPun}</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Pleasure</strong><br>${unit.CPle}/${unit.MPle}</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Combat</strong><br>Figh ${unit.Figh} | Feas ${unit.Feas}<br>Flir ${unit.Flir} | Fuck ${unit.Fuck}<br>Flee ${unit.Flee} | Feed ${unit.Feed}</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Attributes</strong><br>STR ${unit.str} | CON ${unit.con} | SPD ${unit.spd}<br>INT ${unit.int} | WIS ${unit.wis} | CHA ${unit.cha}</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Capacity</strong><br>${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Equipment</strong><br>${this._equipmentCompactSummary(unit)}</div>
-                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Perks</strong><br>${(unit.perks || []).map(perk => perk.name).join(', ') || 'None'}</div>
+                const statusKey = this._getPartyLeader() === unit ? 'party.leader' : (unit === this.player ? 'party.you' : 'party.ally');
+                const statusText = this._escapeHtml(this._label(statusKey, statusKey === 'party.leader' ? 'Leader' : statusKey === 'party.you' ? 'You' : 'Ally'));
+                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: unit.level, species: unit.species }));
+                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
+                const perks = (unit.perks || []).map(perk => this._escapeHtml(perk.name)).join(', ') || this._escapeHtml(this._label('party.none', 'None'));
+                const html = `<div class="party-stats-view" role="region" aria-label="${this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
+                    <div class="party-stats-header">
+                        <div><h3>${unit.icon || ''} ${this._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
+                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.showExplorationActions()">${closeLabel}</button>
                     </div>
-                    <button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button></div>`;
+                    <div class="party-stats-grid">
+                        ${statCard('party.punishment', 'Punishment', `${unit.CPun}/${unit.MPun}`)}
+                        ${statCard('party.pleasure', 'Pleasure', `${unit.CPle}/${unit.MPle}`)}
+                        ${statCard('party.combat', 'Combat', `Figh ${unit.Figh} | Feas ${unit.Feas}<br>Flir ${unit.Flir} | ${this._escapeHtml(this._uiLabel('fuck'))} ${unit.Fuck}<br>Flee ${unit.Flee} | Feed ${unit.Feed}`)}
+                        ${statCard('party.attributes', 'Attributes', `STR ${unit.str} | CON ${unit.con} | SPD ${unit.spd}<br>INT ${unit.int} | WIS ${unit.wis} | CHA ${unit.cha}`)}
+                        ${statCard('party.capacity', 'Capacity', `${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls`)}
+                        ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
+                        ${statCard('party.perks', 'Perks', perks)}
+                    </div>
+                    <button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 

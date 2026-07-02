@@ -465,7 +465,44 @@
             font-size: 15px;
             line-height: 1.7;
             color: var(--text-secondary);
-            max-width: 600px;
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .party-stats-view {
+            width: min(100%, 720px);
+            max-height: min(72dvh, 680px);
+            overflow: auto;
+            text-align: left;
+            padding: var(--space-md);
+            overscroll-behavior: contain;
+        }
+
+        .party-stats-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--space-md);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            padding-bottom: var(--space-sm);
+            margin-bottom: var(--space-sm);
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .party-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .party-stats-view .option-card {
+            text-align: left;
+            cursor: default;
+            min-width: 0;
         }
 
         .scene-actions {
@@ -1988,10 +2025,10 @@
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
                             <h2 class="scene-title" id="scene-title">The Wilderness</h2>
-                            <p class="scene-description" id="scene-description">
+                            <div class="scene-description" id="scene-description">
                                 You find yourself in an untamed land where predators roam and only the strong survive.
                                 The air is thick with the scent of pine and the distant calls of creatures unknown.
-                            </p>
+                            </div>
                             <div class="scene-actions" id="scene-actions">
                                 <button class="action-btn" onclick="App.search()">
                                     <span class="action-icon">🔍</span>

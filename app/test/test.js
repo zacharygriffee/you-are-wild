@@ -413,6 +413,13 @@ test('Template has all panels', () => {
   assertContains(template, 'id="log-content"', 'log content missing');
 });
 
+test('Scene description supports rich bounded content', () => {
+  assertContains(template, '<div class="scene-description" id="scene-description">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
+  assertContains(template, '.party-stats-view', 'Party stats view should have bounded scroll styles');
+  assertContains(template, 'overscroll-behavior: contain', 'Bounded stats and modal surfaces should contain scroll gestures');
+  assertNotContains(template, '<p class="scene-description" id="scene-description">', 'Scene description should not be a paragraph when injected content contains divs');
+});
+
 test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(template, 'App.deleteAllSaves()', 'settings clear saves button should call deleteAllSaves');
   assertContains(appContent, 'async deleteAllSaves()', 'deleteAllSaves handler missing');
@@ -644,7 +651,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
-          'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
+          'party.stats': 'Stats', 'party.you': 'You', 'party.ally': 'Ally', 'party.leader': 'Leader', 'party.levelSpecies': 'Level {level} {species}', 'party.punishment': 'Punishment', 'party.pleasure': 'Pleasure', 'party.combat': 'Combat', 'party.attributes': 'Attributes', 'party.capacity': 'Capacity', 'party.equipment': 'Equipment', 'party.perks': 'Perks', 'party.none': 'None', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
@@ -658,7 +665,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
-          'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
+          'party.stats': 'Estadisticas', 'party.you': 'Tu', 'party.ally': 'Aliado', 'party.leader': 'Lider', 'party.levelSpecies': 'Nivel {level} {species}', 'party.punishment': 'Castigo', 'party.pleasure': 'Placer', 'party.combat': 'Combate', 'party.attributes': 'Atributos', 'party.capacity': 'Capacidad', 'party.equipment': 'Equipo', 'party.perks': 'Mejoras', 'party.none': 'Ninguno', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
@@ -3463,10 +3470,26 @@ test('Non-player equipment renders as read-only card metadata', () => {
   assertContains(elements.get('enemies-content').innerHTML, 'Head: Leather Cap', 'Creature equipment should render read-only equipped item names');
   App.showPartyMemberStats(1);
   const statsHtml = elements.get('scene-description').innerHTML;
+  assertContains(statsHtml, 'class="party-stats-view"', 'Ally stats should render in a bounded stats view');
+  assertContains(statsHtml, 'aria-label="Close"', 'Ally stats should expose an immediate localized close action');
   assertContains(statsHtml, '<strong>Equipment</strong>', 'Ally stats should expose equipment section');
   assertContains(statsHtml, 'Body: Hide Armor', 'Ally equipment should render read-only in stats');
   assertNotContains(statsHtml, 'equipItem(', 'Non-player equipment stats should not expose player equip controls');
   assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
+});
+
+test('Party member stats labels localize and escape names', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally <One>', { id: 'ally-1', species: 'wolf' });
+  App.player = player;
+  App.party = [player, ally];
+  App.updateLanguage('es');
+  App.showPartyMemberStats(1);
+  const html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Ally &lt;One&gt;', 'Party stats should escape unit names');
+  assertContains(html, '<strong>Equipo</strong>', 'Party stats equipment label should localize');
+  assertContains(html, 'aria-label="Cerrar"', 'Party stats close action should localize');
 });
 
 test('Equipment state persists through binary saves', () => {

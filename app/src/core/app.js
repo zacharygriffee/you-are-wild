@@ -5677,10 +5677,11 @@
                     if (this.targetSelection) {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabled = canTarget ? '' : ' disabled';
-                        const targetLabel = this._escapeHtml(unit.name || 'creature');
-                        const actionLabel = this._escapeHtml(this.targetSelection.action || 'action');
-                        const targetHint = `${canTarget ? 'Select' : 'Cannot select'} ${targetLabel} as ${actionLabel} target`;
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
+                        const targetName = unit.name || 'creature';
+                        const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
+                        const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
+                        const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (!this.combatState.active) {
                         const targetName = unit.name || 'creature';
                         const targetLabel = this._escapeHtml(targetName);

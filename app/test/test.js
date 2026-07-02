@@ -2278,10 +2278,26 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.selectTarget('fight');
   assertContains(elements.get('scene-description').innerHTML, 'creature panel', 'Target picker should not replace center with target cards');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should execute selected action');
-  assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as fight target"', 'Target button should describe selected combat action');
+  assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as Fight target"', 'Target button should describe selected combat action');
   assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
   App.executeActionOnTarget('fight', 'enemy-1');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
+});
+
+test('Combat creature target button localizes visible and accessible labels', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { Figh: 30 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+  App.updateLanguage('es');
+  App.selectTarget('fight');
+  const html = elements.get('enemies-content').innerHTML;
+  assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
+  assertContains(html, '>Objetivo<', 'Combat target button visible label should localize');
 });
 
 test('Combat unit cards show turn order and current focus badges', () => {

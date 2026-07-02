@@ -5855,8 +5855,69 @@
             },
 
             // ===== SCREEN MANAGEMENT =====
+            _focusableSelector() {
+                return 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+            },
+            _focusableChildren(container) {
+                if (!container || typeof container.querySelectorAll !== 'function') return [];
+                return Array.from(container.querySelectorAll(this._focusableSelector())).filter(el => !el.disabled && el.style?.display !== 'none');
+            },
+            _focusFirstIn(container) {
+                const focusables = this._focusableChildren(container);
+                const target = focusables[0] || container;
+                if (target && typeof target.focus === 'function') {
+                    try { target.focus(); } catch(e) {}
+                }
+            },
+            _activateFocusTrap(container, options = {}) {
+                if (!container) return;
+                this._restoreFocusTrap({ restoreFocus: false });
+                const previous = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+                this._focusTrap = { container, previous, close: options.close || null };
+                if (typeof container.hasAttribute === 'function' && typeof container.setAttribute === 'function' && !container.hasAttribute('tabindex')) {
+                    container.setAttribute('tabindex', '-1');
+                }
+                this._focusTrapHandler = (event) => {
+                    if (!this._focusTrap || this._focusTrap.container !== container) return;
+                    if (event.key === 'Escape' && this._focusTrap.close) {
+                        if (typeof event.preventDefault === 'function') event.preventDefault();
+                        this._focusTrap.close();
+                        return;
+                    }
+                    if (event.key !== 'Tab') return;
+                    const focusables = this._focusableChildren(container);
+                    if (focusables.length === 0) {
+                        if (typeof event.preventDefault === 'function') event.preventDefault();
+                        this._focusFirstIn(container);
+                        return;
+                    }
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        if (typeof event.preventDefault === 'function') event.preventDefault();
+                        last.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        if (typeof event.preventDefault === 'function') event.preventDefault();
+                        first.focus();
+                    }
+                };
+                if (typeof document.addEventListener === 'function') document.addEventListener('keydown', this._focusTrapHandler);
+                setTimeout(() => this._focusFirstIn(container), 0);
+            },
+            _restoreFocusTrap(options = {}) {
+                const trap = this._focusTrap;
+                if (this._focusTrapHandler && typeof document.removeEventListener === 'function') {
+                    document.removeEventListener('keydown', this._focusTrapHandler);
+                }
+                this._focusTrapHandler = null;
+                this._focusTrap = null;
+                if (options.restoreFocus !== false && trap?.previous && typeof trap.previous.focus === 'function') {
+                    try { trap.previous.focus(); } catch(e) {}
+                }
+            },
             showScreen(name) {
                 this.screen = name;
+                this._restoreFocusTrap({ restoreFocus: false });
                 document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
                 const el = document.getElementById('screen-' + name);
                 if (el) { el.style.display = 'flex'; el.classList.add('active'); }
@@ -5885,6 +5946,23 @@
                     document.getElementById('save-manager').style.display = 'block';
                     document.getElementById('save-manager').classList.add('active');
                     this.renderSaveManager();
+                }
+                const overlayId = name === 'save-manager' ? 'save-manager' : ['settings', 'mods', 'market'].includes(name) ? `screen-${name}` : '';
+                if (overlayId) this._activateFocusTrap(document.getElementById(overlayId), { close: () => this.returnToGame() });
+            },
+            returnToGame() {
+                this._restoreFocusTrap();
+                ['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.style.display = 'none'; el.classList.remove('active'); }
+                });
+                if (this.player && this.player.CPun > 0) {
+                    document.getElementById('screen-menu').style.display = 'none';
+                    document.getElementById('app').style.display = 'grid';
+                    document.getElementById('screen-game').style.display = 'flex';
+                } else {
+                    document.getElementById('app').style.display = 'none';
+                    document.getElementById('screen-menu').style.display = 'flex';
                 }
             },
             showCharacterStats() {
@@ -6183,8 +6261,15 @@
             showMarketScreen() { MODULE_MARKETPLACE.ui.showMarketplace(); },
             showTutorial() {
                 this.tutorialStep = 0;
-                document.getElementById('tutorial-overlay').style.display = 'flex';
+                const overlay = document.getElementById('tutorial-overlay');
+                overlay.style.display = 'flex';
+                this._activateFocusTrap(overlay, { close: () => this.closeTutorial() });
                 this.nextTutorial();
+            },
+            closeTutorial() {
+                const overlay = document.getElementById('tutorial-overlay');
+                if (overlay) overlay.style.display = 'none';
+                this._restoreFocusTrap();
             },
             nextTutorial() {
                 const steps = [
@@ -6195,7 +6280,7 @@
                     { title: 'Ready', content: 'Press Begin Adventure to start your journey. Good luck!' }
                 ];
                 if (this.tutorialStep >= steps.length) {
-                    document.getElementById('tutorial-overlay').style.display = 'none';
+                    this.closeTutorial();
                     return;
                 }
                 const step = steps[this.tutorialStep];
@@ -6203,7 +6288,7 @@
                 document.getElementById('tutorial-content').textContent = step.content;
                 this.tutorialStep++;
             },
-            skipTutorial() { document.getElementById('tutorial-overlay').style.display = 'none'; },
+            skipTutorial() { this.closeTutorial(); },
             continueLastGame() { this.loadLastPlayed(); },
             combatAction(action) {
                 if (!this.combatState.active) { this.log.push({ text: 'Not in combat!', type: 'combat' }); this.renderLog(); return; }
@@ -6283,20 +6368,22 @@
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');
                 if (menu) menu.remove();
+                this._restoreFocusTrap();
             },
             showMobileCreatureContext(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target || this._isCorpse(target)) return;
                 this.closeMobileContextMenu();
                 const canRecruit = this._canRecruit(this._getExplorationActor(), target);
-                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="menu"><div class="mobile-context-menu-title">${target.icon || ''} ${target.name}</div><div class="mobile-context-menu-actions">`;
-                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('fight','${targetId}')">⚔️ Fight</button>`;
-                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('flirt','${targetId}')">😘 Flirt</button>`;
-                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('feed','${targetId}')">🍲 Feed</button>`;
-                html += `<button class="action-btn" onclick="App.mobileCreatureContextAction('inspect','${targetId}')">👁️ Inspect</button>`;
-                if (canRecruit) html += `<button class="action-btn primary" onclick="App.mobileCreatureContextAction('recruit','${targetId}')">💕 Recruit</button>`;
-                html += `<button class="action-btn" onclick="App.closeMobileContextMenu()">Close</button></div></div>`;
+                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="Creature actions"><div class="mobile-context-menu-title">${target.icon || ''} ${target.name}</div><div class="mobile-context-menu-actions" role="menu">`;
+                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('fight','${targetId}')">⚔️ Fight</button>`;
+                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('flirt','${targetId}')">😘 Flirt</button>`;
+                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('feed','${targetId}')">🍲 Feed</button>`;
+                html += `<button class="action-btn" role="menuitem" onclick="App.mobileCreatureContextAction('inspect','${targetId}')">👁️ Inspect</button>`;
+                if (canRecruit) html += `<button class="action-btn primary" role="menuitem" onclick="App.mobileCreatureContextAction('recruit','${targetId}')">💕 Recruit</button>`;
+                html += `<button class="action-btn" role="menuitem" onclick="App.closeMobileContextMenu()">Close</button></div></div>`;
                 document.body.insertAdjacentHTML('beforeend', html);
+                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
             },
             mobileCreatureContextAction(action, targetId) {
                 this._haptic(8);
@@ -6671,19 +6758,5 @@ Enter 1, 2, or 3:`);
         window.clearLog = () => App.clearLog();
         window.createCharacter = () => App.createCharacter();
         window.move = (dx, dy) => App.move(dx, dy);
-        window.returnToGame = () => {
-            document.getElementById('screen-settings').style.display = 'none';
-            document.getElementById('screen-mods').style.display = 'none';
-            document.getElementById('screen-market').style.display = 'none';
-            document.getElementById('save-manager').style.display = 'none';
-            // screen-save-manager doesn't exist; save-manager is the actual id
-            if (App.player && App.player.CPun > 0) {
-                document.getElementById('screen-menu').style.display = 'none';
-                document.getElementById('app').style.display = 'grid';
-                document.getElementById('screen-game').style.display = 'flex';
-            } else {
-                document.getElementById('app').style.display = 'none';
-                document.getElementById('screen-menu').style.display = 'flex';
-            }
-        };
+        window.returnToGame = () => App.returnToGame();
         document.addEventListener('DOMContentLoaded', () => App.init());

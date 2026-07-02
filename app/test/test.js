@@ -503,6 +503,7 @@ section('Combat Behavior Tests', 'core');
 
 function makeElement() {
   const classes = new Set();
+  const attributes = new Map();
   const style = {
     setProperty(name, value) {
       this[name] = value;
@@ -514,6 +515,12 @@ function makeElement() {
     value: '',
     checked: false,
     style,
+    disabled: false,
+    focus() { this.focused = true; },
+    setAttribute(name, value) { attributes.set(name, String(value)); },
+    getAttribute(name) { return attributes.get(name) || null; },
+    hasAttribute(name) { return attributes.has(name); },
+    querySelectorAll() { return []; },
     remove() { this.removed = true; },
     insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
     dataset: {},
@@ -533,9 +540,14 @@ function makeElement() {
 function loadAppForCombat(random = () => 0.5, options = {}) {
   const elements = new Map();
   const body = makeElement();
+  const listeners = new Map();
   const document = {
     body,
-    addEventListener() {},
+    activeElement: body,
+    addEventListener(type, handler) { listeners.set(type, handler); },
+    removeEventListener(type, handler) {
+      if (listeners.get(type) === handler) listeners.delete(type);
+    },
     getElementById(id) {
       if (!elements.has(id)) elements.set(id, makeElement());
       return elements.get(id);
@@ -602,7 +614,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, body };
+  return { App, elements, hooks, storage, alerts, body, document, listeners };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -3184,6 +3196,20 @@ test('Accessibility settings apply, sync, and persist', () => {
   assertEqual(saved.fontSize, 20, 'Font size setting should persist');
 });
 
+test('Overlays trap focus and restore the opener on close', () => {
+  const { App, elements, document, listeners } = loadAppForCombat();
+  const opener = makeElement();
+  document.activeElement = opener;
+  App.showScreen('settings');
+  assert(App._focusTrap, 'Settings overlay should activate a focus trap');
+  assert(listeners.has('keydown'), 'Focus trap should register keydown handling');
+  let prevented = false;
+  listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
+  assertEqual(prevented, true, 'Escape should be consumed by the overlay focus trap');
+  assertEqual(elements.get('screen-settings').style.display, 'none', 'Escape should close the overlay');
+  assertEqual(opener.focused, true, 'Closing overlay should restore focus to opener');
+});
+
 test('Newer interaction settings persist through saveSettings', () => {
   const { App, storage } = loadAppForCombat();
   App.settings.cockVoreEnabled = true;
@@ -3230,16 +3256,23 @@ test('Mobile creature chips expose long-press context handlers', () => {
 });
 
 test('Mobile creature long-press menu exposes core actions', () => {
-  const { App, body } = loadAppForCombat();
+  const { App, body, document } = loadAppForCombat();
+  const opener = makeElement();
+  document.activeElement = opener;
   App.player = makeUnit('You', { Flir: 40, Fuck: 40, cha: 40 });
   App.party = [App.player];
   App.creatures = [makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true })];
   App.showMobileCreatureContext('willing-1');
+  assertContains(body.innerHTML, 'role="dialog"', 'Long-press menu should expose dialog semantics');
+  assertContains(body.innerHTML, 'aria-modal="true"', 'Long-press menu should behave as a modal action menu');
+  assertContains(body.innerHTML, 'role="menu"', 'Long-press menu should expose menu semantics for actions');
   assertContains(body.innerHTML, 'Fight', 'Long-press menu should expose Fight');
   assertContains(body.innerHTML, 'Flirt', 'Long-press menu should expose Flirt');
   assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
   assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
+  App.closeMobileContextMenu();
+  assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');
 });
 
 test('Mobile map pinch changes zoom and applies transform', () => {

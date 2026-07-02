@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 199/199 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 200/200 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -113,7 +113,7 @@
 - Sparse map delta boundary exists: `getBaseTile()`, `getTileDelta()`, `applyTileDelta()`, and `persistTileDelta()` keep deterministic generated baseline data separate from explored/changed tile state while `worldMap` remains a compatibility cache for existing gameplay systems
 - Sparse map store foundation exists: `YAW_Worlds` creates `worlds`, `tileDeltas`, `chunkDeltas`, and `entityIndex` object stores; save/load persists and reloads world metadata plus tile deltas while new successful slot saves primarily reference `worldId` and keep full `worldMap` payloads only as a failure/legacy compatibility fallback
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
-- Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
+- Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; overlays and mobile context menus trap focus, close with Escape where applicable, and restore opener focus; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
 - Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, and high-traffic action/target labels now route through locale keys
 - New-game/save-slot UX has a first pass: main-menu New Game opens slot selection, the general slot manager also exposes per-slot New Run takeover, occupied slots require irreversible overwrite confirmation, autosaves update per-slot timestamps, manual saves warn before overwriting another occupied slot, and delete-slot warnings are scoped to the selected slot
@@ -186,7 +186,7 @@
 
 #### 21. Advanced Accessibility
 - Audit every remaining custom control for keyboard focus order, visible focus, and complete `aria-label` coverage
-- Add focus trapping/restoration for overlays and mobile context menus
+- Expand focus-trap coverage if new overlays are added; current settings/mods/market/save/tutorial overlays and mobile context menus use the shared focus trap
 - Add screen-reader labels for dynamic combat targeting state beyond the current log/status support
 - Device-test high-contrast, reduced-motion, and font-size scaling against the mobile layout
 

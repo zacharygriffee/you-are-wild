@@ -3222,6 +3222,28 @@
                 const key = this.PARTY_ROLES[role] ? role : 'companion';
                 return this._label(`party.role.${key}`, this.PARTY_ROLES[key]);
             },
+            _partyAIOrderDescription(order) {
+                const key = this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
+                const fallback = {
+                    aggressive: 'Prioritizes attacking reachable threats.',
+                    defensive: 'Favors safer positioning and protecting allies.',
+                    healer: 'Feeds the most wounded ally first.',
+                    scavenger: 'Looks for corpse-feast opportunities after victory.',
+                    passive: 'Avoids acting unless wounded or pressured.'
+                }[key];
+                return this._label(`party.aiOrderDescription.${key}`, fallback);
+            },
+            _partyRoleDescription(role) {
+                const key = this.PARTY_ROLES[role] ? role : 'companion';
+                const fallback = {
+                    companion: 'No special exploration role.',
+                    scout: 'Improves night visibility and route awareness.',
+                    guard: 'Reduces ambush advantage and helps protect camp.',
+                    support: 'Improves recovery when resting somewhere safe.',
+                    gatherer: 'Improves search and foraging results.'
+                }[key];
+                return this._label(`party.roleDescription.${key}`, fallback);
+            },
             setPartyAIOrder(index, order) {
                 const unit = this.party[index];
                 if (!unit || unit === this.player || !this.PARTY_AI_ORDERS[order]) return;
@@ -5931,12 +5953,12 @@
                     if (isAlly) {
                         const role = this._getPartyRole(unit);
                         const roleOptions = Object.keys(this.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${this._escapeHtml(this._partyRoleLabel(key))}</option>`).join('');
-                        const roleTitle = this._escapeHtml(this._label('party.role', 'Role'));
+                        const roleTitle = this._escapeHtml(`${this._label('party.role', 'Role')}: ${this._partyRoleDescription(role)}`);
                         const roleAria = this._escapeHtml(this._label('party.roleFor', 'Party role for {name}', { name: unitName }));
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${roleTitle}" aria-label="${roleAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select>`;
                         const order = this._getPartyAIOrder(unit);
                         const options = Object.keys(this.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${this._escapeHtml(this._partyAIOrderLabel(key))}</option>`).join('');
-                        const orderTitle = this._escapeHtml(this._label('party.aiOrder', 'AI Order'));
+                        const orderTitle = this._escapeHtml(`${this._label('party.aiOrder', 'AI Order')}: ${this._partyAIOrderDescription(order)}`);
                         const orderAria = this._escapeHtml(this._label('party.aiOrderFor', 'AI order for {name}', { name: unitName }));
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
                         const dismissLabel = this._escapeHtml(this._label('party.dismiss', 'Dismiss'));
@@ -7125,12 +7147,14 @@
                 const orderLabel = this._label('party.aiOrder', 'AI Order');
                 const roleAria = this._label('party.roleFor', 'Party role for {name}', { name: unit.name || 'party member' });
                 const orderAria = this._label('party.aiOrderFor', 'AI order for {name}', { name: unit.name || 'party member' });
+                const roleDescription = this._partyRoleDescription(role);
+                const orderDescription = this._partyAIOrderDescription(order);
                 let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += actionButton(this._label('party.stats', 'Stats'), 'stats');
                 if (unit !== this.player && !unit.mc) {
                     if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select></label>`;
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" title="${this._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${this._escapeHtml(roleDescription)}</small></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" title="${this._escapeHtml(orderDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select><small>${this._escapeHtml(orderDescription)}</small></label>`;
                     html += actionButton(this._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
                 }
                 html += actionButton(this._label('ui.close', 'Close'), 'close');

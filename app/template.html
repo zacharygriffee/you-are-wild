@@ -648,6 +648,67 @@
             border-top: 1px solid var(--border-default);
         }
 
+        .unit-bars {
+            display: grid;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .unit-bar {
+            display: grid;
+            grid-template-columns: 18px minmax(0, 1fr);
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .unit-bar-icon {
+            font-size: 11px;
+            line-height: 1;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .unit-bar-track {
+            height: 5px;
+            min-width: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .unit-bar-fill {
+            display: block;
+            height: 100%;
+            background: var(--accent-primary);
+        }
+
+        .unit-bar-health .unit-bar-fill {
+            background: var(--accent-primary);
+        }
+
+        .unit-bar-pleasure .unit-bar-fill {
+            background: var(--accent-secondary);
+        }
+
+        .unit-bar-hunger .unit-bar-fill {
+            background: var(--accent-warning);
+        }
+
+        .unit-card-status {
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        body.high-contrast .unit-bar-track {
+            border-color: var(--border-default);
+        }
+
         .stat {
             text-align: center;
             padding: var(--space-xs);
@@ -1384,17 +1445,18 @@
                 font-size: 11px;
             }
 
-            .mobile-chip-bar {
-                height: 5px;
-                background: var(--bg-primary);
-                border-radius: 999px;
-                overflow: hidden;
+            .mobile-unit-chip .unit-bars {
                 margin-top: 6px;
+                gap: 3px;
             }
 
-            .mobile-chip-fill {
-                height: 100%;
-                background: var(--accent-primary);
+            .mobile-unit-chip .unit-bar {
+                grid-template-columns: 14px minmax(0, 1fr);
+                gap: 4px;
+            }
+
+            .mobile-unit-chip .unit-bar-track {
+                height: 4px;
             }
 
             .mobile-context-menu {

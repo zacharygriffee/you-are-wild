@@ -6038,10 +6038,35 @@
                     ? living.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
                     : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
             },
+            _unitBarPercent(current, max) {
+                const safeMax = Number(max);
+                if (!Number.isFinite(safeMax) || safeMax <= 0) return 0;
+                const value = Number(current);
+                if (!Number.isFinite(value)) return 0;
+                return Math.max(0, Math.min(100, Math.round((value / safeMax) * 100)));
+            },
+            _unitTacticalBar(key, label, icon, current, max) {
+                const percent = this._unitBarPercent(current, max);
+                const title = this._escapeHtml(`${label}: ${percent}%`);
+                return `<div class="unit-bar unit-bar-${key}" title="${title}" aria-label="${title}"><span class="unit-bar-icon" aria-hidden="true">${icon}</span><span class="unit-bar-track" aria-hidden="true"><span class="unit-bar-fill" style="width:${percent}%"></span></span>${this._srOnly(title)}</div>`;
+            },
+            _unitTacticalBars(unit, options = {}) {
+                const stats = this._unitDisplayStats(unit || {});
+                const compact = Boolean(options.compact);
+                const healthLabel = this._label('party.punishment', 'Punishment');
+                const pleasureLabel = this._label('party.pleasure', 'Pleasure');
+                const hungerLabel = this._label('party.hunger', 'Hunger');
+                const maxHunger = unit?.maxHunger || 100;
+                const hunger = unit?.hunger ?? 0;
+                const bars = [
+                    this._unitTacticalBar('health', healthLabel, compact ? '❤' : '❤', stats.CPun, stats.MPun),
+                    this._unitTacticalBar('pleasure', pleasureLabel, compact ? '✦' : '✦', stats.CPle, stats.MPle),
+                    this._unitTacticalBar('hunger', hungerLabel, compact ? '🍖' : '🍖', hunger, maxHunger)
+                ].join('');
+                return `<div class="unit-bars${compact ? ' compact' : ''}" aria-label="${this._escapeHtml(this._label('ui.tacticalStatus', 'Tactical status'))}">${bars}</div>`;
+            },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
-                const stats = this._unitDisplayStats(unit);
-                const hpPercent = Math.max(0, Math.min(100, Math.round((stats.CPun / stats.MPun) * 100)));
                 const isParty = type === 'party';
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
                 const rawTargetId = this._unitSelectionId(unit);
@@ -6092,15 +6117,13 @@
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
-                    <div class="mobile-chip-meta">${status} | ${stats.CPun}/${stats.MPun}${rowText}</div>
-                    <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
+                    <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
+                    ${this._unitTacticalBars(unit, { compact: true })}
                     ${actionButtons}
                 </div>`;
             },
             renderUnitCard(unit, index, type) {
                 const stats = this._unitDisplayStats(unit);
-                const hpPercent = Math.max(0, Math.min(100, Math.round((stats.CPun / stats.MPun) * 100)));
-                const plePercent = Math.max(0, Math.min(100, Math.round((stats.CPle / stats.MPle) * 100)));
                 const isExpanded = unit.expanded || false;
                 const isParty = type === 'party';
                 const isPlayer = isParty && unit.name === this.player?.name;
@@ -6225,6 +6248,7 @@
                 const rowLabel = this.combatState.active && unit.combatRow ? ` ${this._label('combat.row', 'Row')}:${this._combatRowLabel(unit.combatRow)}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
+                const compactStatus = this._escapeHtml(`${isParty ? (isPlayer ? this._label('party.you', 'You') : this._label('party.ally', 'Ally')) : dispLabel || this._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
                 const statLabels = {
                     size: this._escapeHtml(this._label('character.size', 'Size')),
                     appetite: this._escapeHtml(this._label('character.appetite', 'Appetite')),
@@ -6237,12 +6261,12 @@
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
-                            <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${roleLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + roleLabel + ']</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
-                            ${combatStatus}
-                            <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
-                            <div class="unit-stats">Pun:${stats.CPun}/${stats.MPun} Ple:${stats.CPle}/${stats.MPle} Lv:${stats.level}${rowLabel}</div>
-	                        </div>
-	                    </div>
+	                            <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${roleLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + roleLabel + ']</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
+	                            ${combatStatus}
+	                            <div class="unit-card-status">${compactStatus}</div>
+	                            ${this._unitTacticalBars(unit)}
+		                        </div>
+		                    </div>
 	                    ${actionButtons}
 	                    ${isExpanded ? `<div class="unit-details">
 	                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">

@@ -3033,6 +3033,40 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
   assert(summary.markers.includes('Road'), 'Summary should expose route markers');
 });
 
+test('POI budgets create stable spaced region candidates and route anchors', () => {
+  const WorldGen = loadWorldGenForTest();
+  const seed = 'poi-budget-seed';
+  const version = 2;
+  const budgetA = WorldGen.getPoiBudgetForRegion(seed, version, 3, -2);
+  const budgetB = WorldGen.getPoiBudgetForRegion(seed, version, 3, -2);
+  assertEqual(JSON.stringify(budgetA), JSON.stringify(budgetB), 'POI budget should be stable for a seed/version/region');
+  assertEqual(budgetA.regionId, '3,-2', 'POI budget should expose stable region identity');
+  assert(budgetA.categories.restSite.count >= 1, 'Region budget should include at least one rest-site opportunity');
+  assert(budgetA.categories.resourceSite.count >= 1, 'Region budget should include at least one resource opportunity');
+  assert(budgetA.categories.landmark.count >= 1, 'Region budget should include at least one landmark opportunity');
+
+  const candidatesA = WorldGen.getPoiCandidatesForRegion(seed, version, 3, -2);
+  const candidatesB = WorldGen.getPoiCandidatesForRegion(seed, version, 3, -2);
+  assertEqual(JSON.stringify(candidatesA), JSON.stringify(candidatesB), 'POI candidates should be stable for a seed/version/region');
+  assert(candidatesA.length > 0, 'Region should expose deterministic POI candidates');
+  for (let i = 0; i < candidatesA.length; i++) {
+    for (let j = i + 1; j < candidatesA.length; j++) {
+      if (candidatesA[i].category !== candidatesA[j].category) continue;
+      const dx = candidatesA[i].anchor.x - candidatesA[j].anchor.x;
+      const dy = candidatesA[i].anchor.y - candidatesA[j].anchor.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      assert(dist >= candidatesA[i].minDistance, `POI candidates in ${candidatesA[i].category} should respect minimum spacing`);
+    }
+  }
+  const routeAnchors = WorldGen.getRouteAnchorsForRegion(seed, version, 3, -2);
+  assert(routeAnchors.length > 0, 'Region should expose route anchors');
+  assert(routeAnchors.every(anchor => anchor.routeAnchor), 'Route anchor seam should only return route-capable anchors');
+  const first = candidatesA[0];
+  const tilePoi = WorldGen.getPoiForTile(seed, version, first.anchor.x, first.anchor.y);
+  assert(tilePoi, 'Tile lookup should resolve deterministic POI candidate anchors');
+  assertEqual(tilePoi.id, first.id, 'Tile POI lookup should return the matching candidate id');
+});
+
 test('Landmarks and structures are deterministic by seed and coordinate', () => {
   const first = loadAppForCombat(() => 1);
   const App = first.App;

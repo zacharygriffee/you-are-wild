@@ -371,6 +371,98 @@ const WorldGen = (() => {
         return { distance: Math.sqrt(dx * dx + dy * dy), t, sx, sy, dx: vx, dy: vy };
     }
 
+    const POI_BUDGET_RULES = {
+        settlement: { min: 0, max: 1, minDistance: 20, weight: 2 },
+        restSite: { min: 1, max: 2, minDistance: 8, weight: 3 },
+        resourceSite: { min: 1, max: 3, minDistance: 5, weight: 3 },
+        dangerSite: { min: 1, max: 2, minDistance: 8, weight: 2 },
+        landmark: { min: 1, max: 3, minDistance: 8, weight: 3 },
+        structure: { min: 0, max: 2, minDistance: 6, weight: 2 }
+    };
+
+    function budgetCount(seed, version, category, cellX, cellY, rule) {
+        const min = Math.max(0, rule.min || 0);
+        const max = Math.max(min, rule.max || min);
+        const spread = max - min + 1;
+        return min + Math.floor(hash01(seed, version, `poi-budget:${category}`, cellX, cellY) * spread);
+    }
+
+    function getPoiBudgetForRegion(seed, version, cellX, cellY) {
+        const categories = {};
+        for (const [category, rule] of Object.entries(POI_BUDGET_RULES)) {
+            categories[category] = {
+                count: budgetCount(seed, version, category, cellX, cellY, rule),
+                minDistance: rule.minDistance,
+                weight: rule.weight
+            };
+        }
+        return {
+            regionId: `${cellX},${cellY}`,
+            cellX,
+            cellY,
+            categories
+        };
+    }
+
+    function poiCandidatePoint(seed, version, cellX, cellY, category, index, cellSize = 36) {
+        const margin = Math.max(3, Math.floor(cellSize * 0.12));
+        const span = Math.max(1, cellSize - margin * 2);
+        return {
+            x: Math.round(cellX * cellSize + margin + hash01(seed, version, `poi-x:${category}`, cellX, cellY, index) * span),
+            y: Math.round(cellY * cellSize + margin + hash01(seed, version, `poi-y:${category}`, cellX, cellY, index) * span)
+        };
+    }
+
+    function poiSpacingOk(candidate, accepted) {
+        return accepted.every(other => {
+            const minDistance = Math.min(candidate.minDistance || 0, other.minDistance || 0);
+            if (candidate.category !== other.category && minDistance > 6) return true;
+            const dx = candidate.anchor.x - other.anchor.x;
+            const dy = candidate.anchor.y - other.anchor.y;
+            return Math.sqrt(dx * dx + dy * dy) >= minDistance;
+        });
+    }
+
+    function getPoiCandidatesForRegion(seed, version, cellX, cellY) {
+        const budget = getPoiBudgetForRegion(seed, version, cellX, cellY);
+        const accepted = [];
+        const categories = Object.keys(POI_BUDGET_RULES)
+            .sort((a, b) => (POI_BUDGET_RULES[b].weight || 1) - (POI_BUDGET_RULES[a].weight || 1) || a.localeCompare(b));
+        for (const category of categories) {
+            const rule = budget.categories[category];
+            const desired = rule.count;
+            let acceptedForCategory = 0;
+            for (let attempt = 0; attempt < desired * 5 && acceptedForCategory < desired; attempt++) {
+                const anchor = poiCandidatePoint(seed, version, cellX, cellY, category, attempt);
+                const candidate = {
+                    id: `poi_${cellX}_${cellY}_${category}_${acceptedForCategory}`,
+                    category,
+                    regionId: budget.regionId,
+                    anchor,
+                    minDistance: rule.minDistance,
+                    routeAnchor: ['settlement', 'restSite', 'landmark', 'structure'].includes(category)
+                };
+                if (!poiSpacingOk(candidate, accepted)) continue;
+                accepted.push(candidate);
+                acceptedForCategory++;
+            }
+        }
+        return accepted.sort((a, b) => a.anchor.y - b.anchor.y || a.anchor.x - b.anchor.x || a.category.localeCompare(b.category));
+    }
+
+    function getRouteAnchorsForRegion(seed, version, cellX, cellY) {
+        const anchors = getPoiCandidatesForRegion(seed, version, cellX, cellY).filter(candidate => candidate.routeAnchor);
+        if (anchors.length) return anchors;
+        const center = cellCenter(seed, version, 'macro-region', cellX, cellY, 36);
+        return [{
+            id: `route_anchor_${cellX}_${cellY}`,
+            category: 'routeAnchor',
+            regionId: `${cellX},${cellY}`,
+            anchor: { x: Math.round(center.x), y: Math.round(center.y) },
+            routeAnchor: true
+        }];
+    }
+
     function getPoiForTile(seed, version, x, y, regionCell = null) {
         if ((version || 1) >= 2 && x === 4 && y === 0) {
             return {
@@ -382,24 +474,14 @@ const WorldGen = (() => {
             };
         }
         const cell = regionCell || cellular2D(seed, version, 'macro-region', x, y, 36);
-        const center = cellCenter(seed, version, 'macro-region', cell.cellX, cell.cellY, 36);
-        const nearestX = Math.round(center.x);
-        const nearestY = Math.round(center.y);
-        if (Math.abs(x - nearestX) > 1 || Math.abs(y - nearestY) > 1) return null;
-        const category = pickWeighted(seed, version, 'poi-category', cell.cellX, cell.cellY, [
-            { id: 'settlement', weight: 2 },
-            { id: 'restSite', weight: 3 },
-            { id: 'dangerSite', weight: 2 },
-            { id: 'resourceSite', weight: 2 },
-            { id: 'landmark', weight: 3 },
-            { id: 'structure', weight: 2 }
-        ]) || 'landmark';
-        return {
-            id: `poi_${cell.cellX}_${cell.cellY}`,
-            category,
-            regionId: cell.id,
-            anchor: { x: nearestX, y: nearestY }
-        };
+        for (let oy = -1; oy <= 1; oy++) {
+            for (let ox = -1; ox <= 1; ox++) {
+                const match = getPoiCandidatesForRegion(seed, version, cell.cellX + ox, cell.cellY + oy)
+                    .find(candidate => Math.abs(x - candidate.anchor.x) <= 1 && Math.abs(y - candidate.anchor.y) <= 1);
+                if (match) return match;
+            }
+        }
+        return null;
     }
 
     function routeSegmentsForTile(seed, version, x, y) {
@@ -411,11 +493,13 @@ const WorldGen = (() => {
             for (let ox = -1; ox <= 1; ox++) {
                 const cellX = cx + ox;
                 const cellY = cy + oy;
-                const from = cellCenter(seed, version, 'macro-region', cellX, cellY, cellSize);
+                const fromAnchor = getRouteAnchorsForRegion(seed, version, cellX, cellY)[0];
+                const from = fromAnchor.anchor;
                 for (const [nx, ny, suffix] of [[cellX + 1, cellY, 'e'], [cellX, cellY + 1, 's']]) {
                     if (!chance(seed, version, `road-edge-${suffix}`, cellX, cellY, 0.62)) continue;
-                    const to = cellCenter(seed, version, 'macro-region', nx, ny, cellSize);
-                    segments.push({ id: `road_${cellX}_${cellY}_${nx}_${ny}`, from, to });
+                    const toAnchor = getRouteAnchorsForRegion(seed, version, nx, ny)[0];
+                    const to = toAnchor.anchor;
+                    segments.push({ id: `road_${fromAnchor.id}_${toAnchor.id}`, from, to, fromAnchorId: fromAnchor.id, toAnchorId: toAnchor.id });
                 }
             }
         }
@@ -557,6 +641,9 @@ const WorldGen = (() => {
         pickWeighted,
         getTerrainFields,
         getPoiForTile,
+        getPoiBudgetForRegion,
+        getPoiCandidatesForRegion,
+        getRouteAnchorsForRegion,
         getRoadOverlay,
         getBridgeOverlay,
         getBiomeTraits,

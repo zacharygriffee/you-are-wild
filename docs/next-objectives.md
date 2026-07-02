@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 300/300 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 301/301 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -130,6 +130,7 @@
 - Deterministic organic biome generation has a first-pass foundation: `WorldGen` provides seed/version/purpose-based hash, value noise, fractal noise, cellular macro-region cells, deterministic chance, and weighted picking; `getBaseTile()` now derives biome, macro biome, elevation, moisture, heat, fertility, danger pressure, region-cell metadata, and terrain tags from seed + coordinates instead of square super-patch regions; beach is derived from land near water, POIs/roads/bridges are deterministic overlays, bridges require road-water crossings, first-discovery descriptions/landmarks/structures plus first-entry wild and structure occupants use seeded coordinate rolls; mutable tile state still persists as deltas over the generated baseline; and the map panel/mobile map card expose a safe current-tile readout for biome, coords/time, danger, known structure/landmark, and terrain tags
 - Biome traversal mechanics have a first-pass deterministic contract: base tiles expose traversal metadata (`passable`, `traversalCost`, `requiredCapability`, `routeModifier`), water is blocked without a capability or bridge, bridges make crossings passable, roads reduce route cost without replacing base biome identity, biome trait lookup has backward-compatible defaults for current/modded biome rules, encounter-pressure summaries can factor roads/POIs/night/local modifiers, and effective map summaries are recomputed through `App.getTileMapSummary()` so discovered structures and deltas do not leave stale UI metadata
 - Starting-area safety has a first-pass generator-versioned guarantee for new worlds: version 2 worlds add a deterministic short start road plus nearby rest-site POI, the rest-site resolves to a rest-capable camp when discovered, `WorldGen.validateStartArea()` checks safe passable radius, low-danger resource loop, route access, rest candidate, early POI, and hard-lockout risk, and new-game/default serialization metadata now uses generator version 2 while loaded legacy saves preserve their stored version
+- POI and route-anchor generation has a first-pass deterministic budget/spacing seam: each macro region exposes stable category budgets and spaced candidates for settlement, rest-site, resource-site, danger-site, landmark, and structure POIs; route-capable POIs become route anchors for road segment intent with center fallback; and tile POI lookup resolves candidate anchors without materializing unknown tiles
 
 ---
 
@@ -143,7 +144,8 @@
 4. **Continue accessibility/localization pass on high-traffic controls.** Prefer labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
 5. **Evaluate the proposed terrain tileset for map rendering.** Determine whether the attached painted square tiles can replace or augment emoji map cells for current biomes, routes, bridges, POIs, and structures; identify missing tile kinds before implementation.
 6. **Strengthen biome/map mechanics and traversal.** Make deterministic worldgen mechanically playable, not just organic: formalize start-area safety, traversal metadata, beach derivation, roads/bridges as overlays, POI budgets, route seams, encounter pressure hooks, and safe map UI summaries while preserving sparse-grid architecture and save compatibility.
-7. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
+7. **Improve creature and party card readability.** Replace dense always-visible numeric card stats with compact tactical bars for health/punishment, pleasure/pressure, and hunger/need, while keeping exact numbers behind Stats/detail views and preserving existing actions.
+8. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
 
 ### 🟡 Tier 2: High Impact
 
@@ -207,6 +209,14 @@
 - Expand party role configuration beyond the first mechanical Scout/Gatherer/Guard/Support hooks if roles need deeper progression, visible tuning controls, or mod-authored role effects
 - Expand dismissal consequences/dialogue if party relationship systems become meaningful beyond the current neutral former-ally tile drop
 - Device-test the mobile party long-press management menu and decide whether it needs richer role/order descriptions or a dedicated full-screen management view
+
+#### 18a. Creature And Party Card Readability
+- Improve creature and party card readability under this UI doctrine: creature cards show tactical state, Stats screens show numerical state, combat log shows event history, and actions show available intent. Keep this task strictly about UI density, creature/party card readability, tactical stat bars, and safe UI metadata; do not expand explicit content or change game balance.
+- Replace dense always-visible numeric stat blocks in default compact cards with three thin tactical progress bars: health/punishment from `CPun / MPun`, pleasure/pressure from `CPle / MPle`, and hunger/need from `hunger / (maxHunger || 100)` with `hunger ?? 0` fallback. Do not remove exact stats from the game; keep them available through the existing Stats/detail views.
+- Default compact cards should always show icon, name, disposition/role/status summary, the three bars, and minimal contextual actions. Do not show `Figh`, `Feas`, `Flir`, `Fuck`, `Flee`, `Feed`, attributes, equipment, perks, or body detail by default; those belong behind Stats/expanded detail.
+- Prefer reusable helpers such as `_unitBarPercent(current, max)`, `_unitTacticalBars(unit, options)`, and `_unitTacticalBar(key, label, icon, current, max)` so desktop cards and mobile chips do not duplicate bar logic. Bars must clamp 0-100, handle missing/zero max values safely, expose non-color accessible labels/tooltips, and remain usable in high-contrast mode.
+- Keep `Act`, `Target`, and `Stats` as core card actions; contextual actions such as Recruit, Trade, Quest, Loot, and Scavenge should appear only when relevant. If existing behavior currently shows many buttons, preserve functionality while improving grouping and density instead of removing actions.
+- Testing should prove unit cards render health/pleasure/hunger bars, missing hunger defaults safely, bar accessibility labels exist, exact numeric stats remain in Stats/detail, existing action buttons remain available, mobile chip rendering does not overflow or break, and `npm run full-build` passes.
 
 #### 19. New Game And Save Slot UX
 - Further improve visual polish if playtesting shows the responsive slot cards/action grids are still too dense on small devices

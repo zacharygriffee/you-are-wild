@@ -2532,6 +2532,13 @@ test('Desktop party card management labels localize', () => {
   App.updateLanguage('es');
   App.renderParty();
   const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'aria-label="Seleccionar Ally B para actuar"', 'Actor selection control should expose localized accessible label');
+  assertContains(html, '>Actuar<', 'Actor selection visible label should localize');
+  assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
+  assertContains(html, '>Objetivo<', 'Target mark visible label should localize');
+  assertContains(html, 'aria-label="Luchar Ally B"', 'Fight icon should expose localized accessible label');
+  assertContains(html, 'aria-label="Seducir Ally B"', 'Pleasure icon should expose localized accessible label');
+  assertContains(html, 'aria-label="Inspeccionar Ally B"', 'Inspect icon should expose localized accessible label');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
   assertContains(html, '>Estadisticas<', 'Stats visible label should localize');
   assertContains(html, 'aria-label="Hacer lider a Ally B"', 'Leader control should expose localized accessible label');

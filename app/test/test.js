@@ -3658,6 +3658,40 @@ test('Save manager renders localized accessible slot actions', () => {
   assertContains(html, 'aria-label="Iniciar partida nueva en Slot 2"', 'Empty slot new-game action should expose localized accessible label');
 });
 
+test('New-game slot takeover warns before overwriting occupied slots', () => {
+  const cancelled = loadAppForCombat(() => 0.5, { confirm: false });
+  cancelled.storage.set('yaw-save-time-slot2', '1710000000000');
+  cancelled.App.activeSlot = 'slot1';
+  cancelled.App.beginNewGameInSlot('slot2');
+  assertEqual(cancelled.App.activeSlot, 'slot1', 'Cancelled occupied-slot takeover should keep the current active slot');
+  assertEqual(cancelled.storage.get('yaw-last-slot'), undefined, 'Cancelled occupied-slot takeover should not update lastSlot');
+  assertNotContains(cancelled.document.getElementById('screen-create').style.display || '', 'flex', 'Cancelled occupied-slot takeover should not open character creation');
+
+  const approved = loadAppForCombat(() => 0.5, { confirm: true });
+  approved.storage.set('yaw-save-time-slot2', '1710000000000');
+  approved.App.activeSlot = 'slot1';
+  approved.App.beginNewGameInSlot('slot2');
+  assertEqual(approved.App.activeSlot, 'slot2', 'Approved occupied-slot takeover should select that slot for the new run');
+  assertEqual(approved.storage.get('yaw-last-slot'), 'slot2', 'Approved occupied-slot takeover should persist the chosen slot');
+  assertEqual(approved.document.getElementById('screen-create').style.display, 'flex', 'Approved occupied-slot takeover should open character creation');
+});
+
+test('Delete save slot is scoped to one selected slot', async () => {
+  const { App, elements, storage } = loadAppForCombat(() => 0.5, { confirm: true });
+  const deleted = [];
+  App._dbDelete = async (_store, key) => { deleted.push(key); };
+  storage.set('yaw-save-time-slot2', '1710000000000');
+  storage.set('yaw-save-time-slot3', '1720000000000');
+  App.activeSlot = 'slot2';
+  await App.deleteSlot('slot2');
+  assertEqual(deleted.join(','), 'slot2', 'Delete slot should remove only the selected slot from IndexedDB');
+  assertEqual(storage.has('yaw-save-time-slot2'), false, 'Delete slot should remove only the selected slot timestamp');
+  assertEqual(storage.get('yaw-save-time-slot3'), '1720000000000', 'Delete slot should leave other slot timestamps intact');
+  assertEqual(App.activeSlot, 'slot1', 'Deleting the active slot should return activeSlot to the default slot');
+  assertContains(elements.get('save-manager').innerHTML, 'Slot 2', 'Delete slot should refresh the slot manager UI');
+  assertContains(elements.get('save-manager').innerHTML, 'Open slot', 'Deleted slot should render as open after refresh');
+});
+
 test('Combat log export returns filtered text', () => {
   const { App } = loadAppForCombat();
   App.log = [

@@ -2243,6 +2243,27 @@ test('Group feast respects explicit swallow sub-action when chewing is enabled',
   assertContains(App.log[App.log.length - 1].text, 'help Primary swallow Prey', 'Explicit swallow should log helper-assisted primary consumption');
 });
 
+test('Marked target sub-action sheet can resolve explicit group swallow intent', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const helper = makeUnit('Helper', { id: 'helper-1', size: 1, appetite: 0, Feas: 50 });
+  const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
+  App.player = player;
+  App.party = [player, helper, primary, prey];
+  App.settings.chewing = true;
+  App.explorationActorIds = ['helper-1', 'primary-1'];
+  App.toggleExplorationTarget('party', 'prey-1');
+  App.openExplorationTargetSubActionSheet('feast', 'target-bar');
+  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feast','swallow','target-bar')", 'Marked target sub-action sheet should dispatch default feast sub-action');
+  App.resolveExplorationTargetAction('feast', 'swallow', 'target-bar');
+  assertEqual(App.lastIntentCommand.source, 'target-bar', 'Marked target command should record its source');
+  assertEqual(App.lastIntentCommand.subAction, 'swallow', 'Marked target command should record selected sub-action');
+  assertEqual(primary.stomach.length, 1, 'Marked explicit swallow should choose a primary consumer instead of splitting portions');
+  assertEqual(helper.stomach.length, 0, 'Marked explicit swallow should keep helper out of stomach portion handling');
+  assertEqual(App.party.includes(prey), false, 'Marked swallowed party target should leave active party list');
+});
+
 test('Group feast chooses a selected primary consumer that can fit the target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -2472,7 +2493,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
-  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt')", 'Context actions should resolve selected targets');
+  assertContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','target-bar')", 'Context actions should route registered actions through the selected-target sub-action picker');
 });
 
 test('Desktop creature card action labels localize', () => {

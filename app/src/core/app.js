@@ -4040,25 +4040,64 @@
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
-                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
+                    const handler = this.SUB_ACTIONS[key]
+                        ? `App.openExplorationTargetSubActionSheet('${key}','target-bar')`
+                        : `App.resolveExplorationTargetAction('${key}',null,'target-bar')`;
+                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
                 return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
             },
 
-            resolveExplorationTargetAction(action) {
+            openExplorationTargetSubActionSheet(action, source = 'target-bar') {
+                const targets = this._getExplorationTargets();
+                if (targets.length === 0 || !this.SUB_ACTIONS[action]) return this.resolveExplorationTargetAction(action, null, source);
+                this.closeMobileContextMenu();
+                const actor = this._getExplorationActor();
+                const subActions = this._getAvailableSubActions(action, actor, targets[0]);
+                const commandSource = String(source || 'target-bar').replace(/'/g, "\\'");
+                const title = `${this._uiLabel(action)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
+                const defaultSub = this._getDefaultSubAction(action);
+                const defaultLabel = this._getActionLabel(action, defaultSub);
+                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}"><div class="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${this._escapeHtml(defaultLabel)}</button>`;
+                subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
+                    const label = this._escapeHtml(sub.label);
+                    const disabled = sub.available ? '' : ' disabled';
+                    const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
+                    html += `<button class="action-btn" role="menuitem" title="${label}${this._escapeHtml(settingHint)}" aria-label="${label}${this._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
+                });
+                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
+                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
+                html += '</div></div>';
+                document.body.insertAdjacentHTML('beforeend', html);
+                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+            },
+
+            resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0) return;
                 const actors = this._getExplorationActors();
+                if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
+                this.lastIntentCommand = {
+                    actorIds: actors.map(actor => actor.id || actor.name),
+                    action,
+                    subAction,
+                    targetIds: targets.map(target => target.id || target.name),
+                    targetType: 'marked',
+                    source
+                };
+                this.closeMobileContextMenu();
                 let resolved = true;
+                const options = { subAction };
                 if (targets.length === 1 && actors.length > 1) {
-                    resolved = this.outsideGroupActionOnTarget(action, targets[0], actors);
+                    resolved = this.outsideGroupActionOnTarget(action, targets[0], actors, options);
                 } else if (targets.length > 1 && actors.length > 1) {
                     if (this._sameUnitSet(actors, targets)) {
                         resolved = this.outsideMutualGroupAction(action, actors);
                     } else if (actors.length === targets.length) {
-                        resolved = this.outsidePairedActionsOnTargets(action, actors, targets);
+                        resolved = this.outsidePairedActionsOnTargets(action, actors, targets, options);
                     } else {
                         this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
                             action: this._uiLabel(action).toLowerCase(),
@@ -4072,7 +4111,7 @@
                         return;
                     }
                 } else {
-                    resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player);
+                    resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
                 }
                 if (resolved !== false) this.clearExplorationTargets();
             },
@@ -4276,7 +4315,7 @@
                 return stat >= difficulty;
             },
 
-            outsideActionOnTargets(action, targets, actor = this._getExplorationActor()) {
+            outsideActionOnTargets(action, targets, actor = this._getExplorationActor(), options = {}) {
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
                 actor = actor || this.player;
@@ -4300,7 +4339,7 @@
                         skippedSet.add(target);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false });
                     if (resolved === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
@@ -4388,7 +4427,7 @@
                 return true;
             },
 
-            outsidePairedActionsOnTargets(action, actors, targets) {
+            outsidePairedActionsOnTargets(action, actors, targets, options = {}) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (livingActors.length === 0 || livingActors.length !== targetList.length) return false;
@@ -4401,7 +4440,7 @@
                         skipped.push(target.name);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false });
                     if (resolved === false) {
                         skipped.push(target.name);
                         continue;

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 320/320 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 321/321 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -111,6 +111,7 @@
 - Card action density has a first-pass intent-menu seam: default party/creature cards keep required selectors (`Act`, `Target`, Stats/Inspect) visible, repeated primary interaction buttons move behind a localized action menu, contextual quest/trade/recruit actions stay visible only when relevant, registered primary actions can open a sub-action sheet that records `lastIntentCommand.subAction`, mobile creature long-press and marked-target primary actions now use the same sheet path, long-press creature menus use a radial presentation scaffold over the shared intent dispatcher, single-actor outside-combat feast/feed sub-actions including forceFeed can route through the shared sub-action engine with target cleanup, group feed can choose an eligible selected primary for explicit non-heal sub-actions, group feast respects explicit swallow-vs-chew sub-action intent, explicit group feed heal intent tends the target instead of consuming selected party members, menu selection records a normalized `lastIntentCommand` shape, and dispatch still routes through existing outside-combat action functions so multi-character selection behavior is preserved
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
 - Combat log view preferences now persist independently: selected filter and search text are saved to `yaw-log-view`, reloaded on app init, and invalid stored values fall back safely; legacy `fff-log-view` is still read for migration
+- Save-slot/new-game UX has explicit mode separation: in-game Save opens a save-focused slot surface, Load opens a load/new-run/delete-focused surface, New Game keeps its deliberate slot takeover flow, occupied-slot destructive actions keep localized irreversible warnings, and delete remains scoped to the selected slot
 - Repository organization/rebrand first pass is complete: active source lives under `app/`, root scripts point at that layout, generated output is `dist/you-are-wild.html`, visible active UI branding says **You Are Wild**, package/build metadata uses the new slug, and `npm run audit:branding` verifies only approved legacy migration references remain
 - Sparse map generation has a first-pass foundation: biome role metadata separates region/route/feature/interior concepts, super-patch generation selects only region biomes, seeded deterministic helpers drive region selection, world seed/version metadata persists through saves, and non-region entries such as bridge/road/indoors/entrance no longer become large super-patch biomes
 - Sparse map delta boundary exists: `getBaseTile()`, `getTileDelta()`, `applyTileDelta()`, and `persistTileDelta()` keep deterministic generated baseline data separate from explored/changed tile state while `worldMap` remains a compatibility cache for existing gameplay systems
@@ -142,7 +143,7 @@
 ## Next Execution Goals
 
 1. **Harden self-included multi-creature interactions.** Identical actor/target sets now have mutual-group handling; continue edge-case coverage for richer unequal non-asymmetric groups and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.
-2. **Keep the save-slot/new-game flow tight.** Validate that the load menu exposes a clear New Game path, slot cards can start a new run or take over an existing slot, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
+2. **Keep the save-slot/new-game flow tight.** Explicit save/load/new mode separation is in place; continue device-testing that the load menu exposes a clear New Game path, slot cards can start a new run or take over an existing slot, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
 3. **Device-test mobile save and party surfaces.** Automated viewport smoke now covers standard mobile modal, slot, panel, and long-press menu bounds; confirm the same surfaces with real mobile browser chrome and safe-area variants.
 4. **Continue accessibility/localization pass on high-traffic controls.** Automated viewport smoke now covers high-contrast, reduced-motion, and max-font rendering; keep preferring labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
 5. **Evaluate the proposed terrain tileset for map rendering.** First-pass evaluation, metadata seam, neighbor-aware route shape keys, and interior room/exit/wall metadata are complete; do not import the image until licensing/source ownership is confirmed. Next work is extracting owned assets, mapping them to `MAP_TILESET_KEYS`, and adding visual coverage for missing transitions/special biomes.
@@ -233,8 +234,8 @@
 
 #### 19. New Game And Save Slot UX
 - Further improve visual polish if playtesting shows the responsive slot cards/action grids are still too dense on small devices
-- Keep the load-menu slot takeover flow explicit after device testing: the load menu should support New Game, per-slot new-run takeover, and per-slot delete without forcing users through settings; empty slots should stay obvious new-game starting points, occupied slots must warn about irreversible overwrite, delete remains scoped to one selected slot, and localized accessible button labels should remain clear in compact layouts
-- Consider separating in-game save mode from main-menu load/new-run mode if the combined slot manager becomes visually crowded
+- Keep the load-menu slot takeover flow explicit after device testing: the load menu supports New Game, per-slot new-run takeover, and per-slot delete without forcing users through settings; empty slots stay obvious new-game starting points, occupied slots must warn about irreversible overwrite, delete remains scoped to one selected slot, and localized accessible button labels should remain clear in compact layouts
+- In-game Save and Load now open separate focused slot surfaces instead of one crowded mixed surface; preserve that split while polishing visuals or mobile density
 - Device-test mobile save-slot management to confirm the responsive shell scrolls correctly across real browser chrome and safe-area variants; automated viewport smoke covers the standard mobile viewport
 
 #### 20. Advanced Mobile Gestures

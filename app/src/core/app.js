@@ -7711,9 +7711,10 @@
             },
             showNewGameManager() { this.showSaveManager('new'); },
             showSaveManager(mode = 'load') {
-                this.saveManagerMode = mode;
+                const safeMode = ['load', 'save', 'new'].includes(mode) ? mode : 'load';
+                this.saveManagerMode = safeMode;
                 this.showScreen('save-manager');
-                this.renderSaveManager(mode);
+                this.renderSaveManager(safeMode);
             },
             _slotDisplayLabel(slotName) {
                 const match = String(slotName || '').match(/^slot(\d+)$/);
@@ -7731,12 +7732,16 @@
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 const isNewMode = mode === 'new';
-                const title = this._label(isNewMode ? 'save.newTitle' : 'save.title', isNewMode ? 'Choose New Game Slot' : 'Save Slots');
+                const isSaveMode = mode === 'save';
+                const titleKey = isNewMode ? 'save.newTitle' : (isSaveMode ? 'save.saveTitle' : 'save.loadTitle');
+                const title = this._label(titleKey, isNewMode ? 'Choose New Game Slot' : (isSaveMode ? 'Save Game' : 'Load Game'));
                 const saveManager = document.getElementById('save-manager');
                 if (saveManager) saveManager.setAttribute('aria-label', title);
                 const saveButton = (classes, label, title, onclick, style = '') => `<button class="${classes}" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}"${style ? ` style="${style}"` : ''} onclick="${onclick}">${this._escapeHtml(label)}</button>`;
-                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + this._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newDescription' : 'save.description', isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.')) + '</p>';
-                if (!isNewMode) html += '<div class="save-manager-toolbar">' + saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()') + '<span>' + this._escapeHtml(this._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
+                const descriptionKey = isNewMode ? 'save.newDescription' : (isSaveMode ? 'save.saveDescription' : 'save.loadDescription');
+                const description = this._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose where to save the current game. Occupied slots warn before overwrite.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
+                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + this._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + this._escapeHtml(description) + '</p>';
+                if (!isNewMode && !isSaveMode) html += '<div class="save-manager-toolbar">' + saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()') + '<span>' + this._escapeHtml(this._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
@@ -7747,16 +7752,18 @@
                     const slotStatus = hasData ? this._label('save.savedGame', 'Saved game') : this._label('save.openSlot', 'Open slot');
                     const hintKey = isNewMode
                         ? (hasData ? 'save.slotHint.occupiedNew' : 'save.slotHint.emptyNew')
-                        : (hasData ? 'save.slotHint.occupiedLoad' : 'save.slotHint.emptyLoad');
+                        : (isSaveMode
+                            ? (hasData ? 'save.slotHint.occupiedSave' : 'save.slotHint.emptySave')
+                            : (hasData ? 'save.slotHint.occupiedLoad' : 'save.slotHint.emptyLoad'));
                     const slotHint = this._label(hintKey, hasData ? 'Saved slot.' : 'Empty slot.');
                     html += '<div class="save-slot-card ' + (hasData ? 'occupied' : 'empty') + (isActive ? ' active' : '') + '">';
                     html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + this._escapeHtml(slotLabel) + '<span class="save-slot-badge">' + this._escapeHtml(slotStatus) + '</span></div><div class="save-slot-time">' + this._escapeHtml(timeStr) + '</div><div class="save-slot-hint">' + this._escapeHtml(slotHint) + '</div></div>';
                     html += '<div class="save-slot-actions">';
                     if (isNewMode) html += saveButton('nav-btn primary', '🆕 ' + this._label(hasData ? 'save.overwriteSlot' : 'save.useEmpty', hasData ? 'Overwrite Slot' : 'Use Empty Slot'), this._label(hasData ? 'save.action.overwrite' : 'save.action.useEmpty', hasData ? 'Overwrite {slot} with a new game' : 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
-                    if (!isNewMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
-                    if (!isNewMode && hasData) html += saveButton('nav-btn', '🆕 ' + this._label('save.newRun', 'New Run'), this._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
-                    if (hasData) html += saveButton('nav-btn', '📂 ' + this._label('save.load', 'Load'), this._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })');
-                    if (!isNewMode) html += saveButton('nav-btn', '💾 ' + this._label('save.save', 'Save'), this._label('save.action.save', 'Save current game to {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
+                    if (!isNewMode && !isSaveMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
+                    if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '🆕 ' + this._label('save.newRun', 'New Run'), this._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
+                    if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '📂 ' + this._label('save.load', 'Load'), this._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })');
+                    if (isSaveMode) html += saveButton('nav-btn primary', '💾 ' + this._label('save.save', 'Save'), this._label('save.action.save', 'Save current game to {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
                     if (hasData) html += saveButton('nav-btn', '🗑️ ' + this._label('save.delete', 'Delete'), this._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
                     html += '</div></div>';
                 }

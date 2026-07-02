@@ -1739,7 +1739,7 @@
                     return;
                 }
                 if (this.mode === this.GAME_MODE.COMBAT) {
-                    this.log.push({ text: 'You are in combat! Use Flee to escape.', type: 'combat' });
+                    this.log.push({ text: this._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.'), type: 'combat' });
                     this.renderLog();
                     return;
                 }
@@ -1769,7 +1769,10 @@
                     type: 'move'
                 });
                 if (tile.hasLandmark) {
-                    this.log.push({ text: `Discovered ${tile.landmarkName}!`, type: 'discovery' });
+                    this.log.push({
+                        text: this._label('log.discoveredLandmark', 'Discovered {name}!', { name: tile.landmarkName }),
+                        type: 'discovery'
+                    });
                 }
 
                 if (wasExplored) {

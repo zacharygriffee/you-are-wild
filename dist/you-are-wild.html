@@ -4461,7 +4461,7 @@
                     return;
                 }
                 if (this.mode === this.GAME_MODE.COMBAT) {
-                    this.log.push({ text: 'You are in combat! Use Flee to escape.', type: 'combat' });
+                    this.log.push({ text: this._label('log.inCombatCannotMove', 'You are in combat! Use Flee to escape.'), type: 'combat' });
                     this.renderLog();
                     return;
                 }
@@ -4491,7 +4491,10 @@
                     type: 'move'
                 });
                 if (tile.hasLandmark) {
-                    this.log.push({ text: `Discovered ${tile.landmarkName}!`, type: 'discovery' });
+                    this.log.push({
+                        text: this._label('log.discoveredLandmark', 'Discovered {name}!', { name: tile.landmarkName }),
+                        type: 'discovery'
+                    });
                 }
 
                 if (wasExplored) {
@@ -10669,6 +10672,8 @@ const CONTENT_SYSTEM = {
             'ui.noCreaturesPresent': 'No creatures present',
             'ui.noCreaturesHere': 'No creatures here',
             'log.movedTo': 'Moved to {x}, {y} ({biome})',
+            'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.',
+            'log.discoveredLandmark': 'Discovered {name}!',
             'disposition.hostile': 'Hostile',
             'disposition.friendly': 'Friendly',
             'disposition.neutral': 'Neutral',
@@ -10860,6 +10865,8 @@ const CONTENT_SYSTEM = {
             'ui.noCreaturesPresent': 'No hay criaturas presentes',
             'ui.noCreaturesHere': 'No hay criaturas aqui',
             'log.movedTo': 'Movimiento a {x}, {y} ({biome})',
+            'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.',
+            'log.discoveredLandmark': 'Descubriste {name}!',
             'disposition.hostile': 'Hostil',
             'disposition.friendly': 'Amistoso',
             'disposition.neutral': 'Neutral',

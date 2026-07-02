@@ -1329,13 +1329,13 @@
                     ally.fledCombat = true;
                     this.combatState.turnQueue = this.combatState.turnQueue.filter(entry => entry.unit !== ally);
                     this.combatState.currentTurn = Math.max(-1, this.combatState.currentTurn - 1);
-                    this.log.push({ text: `${ally.name} loses their nerve and flees from the fight!`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.allyFlees', '{name} loses their nerve and flees from the fight!', { name: ally.name }), type: 'combat' });
                     this.renderLog();
                     this.renderParty();
                     this.nextTurn();
                     return true;
                 }
-                this.log.push({ text: `${ally.name} tries to flee but cannot get away!`, type: 'combat' });
+                this.log.push({ text: this._label('combat.allyFleeFailed', '{name} tries to flee but cannot get away!', { name: ally.name }), type: 'combat' });
                 this.renderLog();
                 return false;
             },
@@ -2244,15 +2244,15 @@
                 if (status.stun?.turns > 0) {
                     status.stun.turns--;
                     if (status.stun.turns <= 0) delete status.stun;
-                    return `${unit.name} is stunned and loses their turn!`;
+                    return this._label('combat.status.stunned', '{name} is stunned and loses their turn!', { name: unit.name });
                 }
                 if (status.freeze?.skip) {
                     status.freeze.skip = false;
                     status.freeze.slowTurns = Math.max(status.freeze.slowTurns || 0, 2);
-                    return `${unit.name} is frozen in place and loses their turn!`;
+                    return this._label('combat.status.frozen', '{name} is frozen in place and loses their turn!', { name: unit.name });
                 }
                 if (status.sleep?.turns > 0) {
-                    return `${unit.name} is asleep and cannot act!`;
+                    return this._label('combat.status.asleep', '{name} is asleep and cannot act!', { name: unit.name });
                 }
 	                if (status.fear?.turns > 0) {
                     if (this._hasPerkEffect('fearResist', unit)) {
@@ -2262,9 +2262,9 @@
 	                    const lowHp = unit.CPun < unit.MPun * 0.3;
                     if (lowHp) {
                         unit.fledCombat = true;
-                        return `${unit.name} panics and flees from fear!`;
+                        return this._label('combat.status.fearFlee', '{name} panics and flees from fear!', { name: unit.name });
                     }
-                    if (Math.random() < 0.5) return `${unit.name} freezes in fear and loses their turn!`;
+                    if (Math.random() < 0.5) return this._label('combat.status.fearFrozen', '{name} freezes in fear and loses their turn!', { name: unit.name });
                 }
                 return null;
             },
@@ -2324,7 +2324,7 @@
                 // Refractory period: skip turn if recovering from orgasm
                 if (currentUnit.refractory) {
                     currentUnit.refractory = false;
-                    this._pushLog(`${currentUnit.name} is recovering from orgasm and skips their turn.`, 'combat', { actor: currentUnit, phase: 'skip' });
+                    this._pushLog(this._label('combat.status.recovering', '{name} is recovering and skips their turn.', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'skip' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -2354,13 +2354,13 @@
                 }
                 // Check if restrained (skip turn)
                 if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
-                    this._pushLog(`${currentUnit.name} is restrained and cannot act!`, 'combat', { actor: currentUnit, phase: 'status' });
+                    this._pushLog(this._label('combat.status.restrainedSkip', '{name} is restrained and cannot act!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'status' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 if (currentUnit.status?.stuck && currentUnit.status.stuck.turns > 0) {
                     currentUnit.status.stuck.turns--;
                     if (currentUnit.status.stuck.turns <= 0) delete currentUnit.status.stuck;
-                    this._pushLog(`${currentUnit.name} is stuck in the terrain and loses their turn!`, 'combat', { actor: currentUnit, phase: 'terrain' });
+                    this._pushLog(this._label('combat.status.stuck', '{name} is stuck in the terrain and loses their turn!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'terrain' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 // Check if enveloped (skip turn, take damage)
@@ -3343,7 +3343,7 @@
                     // High pleasure (>90% MPle): may disobey and auto-fuck
                     if (ally.CPle >= ally.MPle * 0.9) {
                         if (ally.obedient && Math.random() < 0.7) {
-                            this.log.push({ text: `${ally.name} is too aroused to obey!`, type: 'combat' });
+                            this.log.push({ text: this._label('combat.allyTooAroused', '{name} is too aroused to obey!', { name: ally.name }), type: 'combat' });
                             ally.obedient = false;
                         }
                     }
@@ -3530,7 +3530,7 @@
                     return;
                 }
                 if (!this._canReachCombatTarget(enemy, target, 'fight')) {
-                    this.log.push({ text: `${enemy.name} cannot reach ${target.name}.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.enemyCannotReach', '{enemy} cannot reach {target}.', { enemy: enemy.name, target: target.name }), type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 if (this._terrainCausesMiss(enemy, target, 'fight')) {

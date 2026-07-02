@@ -5594,7 +5594,10 @@
                 }
                 if (!isParty && isCorpse) {
                     const targetKey = this._unitKey(unit);
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">Loot</button><button class="action-btn" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">Scavenge</button></div>`;
+                    const corpseLabel = this._escapeHtml(unit.corpseName || unit.name || 'remains');
+                    const lootLabel = this._escapeHtml(this._uiLabel('loot'));
+                    const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);

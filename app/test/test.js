@@ -624,7 +624,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
       locales: {
         en: {
-          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade',
+          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -633,7 +633,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target'
         },
         es: {
-          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar',
+          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -1132,6 +1132,21 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertContains(html, "scavengeCorpse('fallen-1')", 'Corpse card should expose scavenge action');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
+});
+
+test('Corpse card loot actions expose localized accessible labels', () => {
+  const { App, elements } = loadAppForCombat();
+  const corpse = makeUnit('Fallen', { id: 'fallen-1', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [corpse];
+  App.updateLanguage('es');
+  App.renderCreatures();
+  const html = elements.get('enemies-content').innerHTML;
+  assertContains(html, 'aria-label="Saquear Fallen"', 'Corpse loot action should expose localized accessible label');
+  assertContains(html, 'aria-label="Rebuscar Fallen"', 'Corpse scavenge action should expose localized accessible label');
+  assertContains(html, '>Saquear<', 'Corpse loot visible label should localize');
+  assertContains(html, '>Rebuscar<', 'Corpse scavenge visible label should localize');
 });
 
 test('Looting a corpse can grant an item without starting combat', () => {

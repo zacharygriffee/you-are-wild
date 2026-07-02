@@ -3148,6 +3148,37 @@ test('Inventory supports item categories and sorting', () => {
   assertContains(html, 'Sort', 'Inventory should expose sort control');
 });
 
+test('Non-player equipment renders as read-only card metadata', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You');
+  const ally = makeUnit('Ally', {
+    id: 'ally-equipped',
+    equipment: { body: { id: 'armor-ally', name: 'Hide Armor' } },
+    equipmentBaseStats: null
+  });
+  const merchant = makeUnit('Outfitter', {
+    id: 'npc-equipped',
+    disposition: App.DISPOSITION.MERCHANT,
+    expanded: true,
+    equipment: { head: { id: 'cap-npc', name: 'Leather Cap' } },
+    equipmentBaseStats: null
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [merchant];
+  App._normalizeUnit(ally, { disposition: App.DISPOSITION.PARTY });
+  App._normalizeUnit(merchant, { disposition: App.DISPOSITION.MERCHANT });
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'Equipment:', 'Expanded creature card should expose equipment metadata');
+  assertContains(elements.get('enemies-content').innerHTML, 'Head: Leather Cap', 'Creature equipment should render read-only equipped item names');
+  App.showPartyMemberStats(1);
+  const statsHtml = elements.get('scene-description').innerHTML;
+  assertContains(statsHtml, '<strong>Equipment</strong>', 'Ally stats should expose equipment section');
+  assertContains(statsHtml, 'Body: Hide Armor', 'Ally equipment should render read-only in stats');
+  assertNotContains(statsHtml, 'equipItem(', 'Non-player equipment stats should not expose player equip controls');
+  assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
+});
+
 test('Equipment state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

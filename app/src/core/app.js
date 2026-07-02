@@ -3607,6 +3607,7 @@
                         <div class="option-card" style="text-align:left;cursor:default;"><strong>Combat</strong><br>Figh ${unit.Figh} | Feas ${unit.Feas}<br>Flir ${unit.Flir} | Fuck ${unit.Fuck}<br>Flee ${unit.Flee} | Feed ${unit.Feed}</div>
                         <div class="option-card" style="text-align:left;cursor:default;"><strong>Attributes</strong><br>STR ${unit.str} | CON ${unit.con} | SPD ${unit.spd}<br>INT ${unit.int} | WIS ${unit.wis} | CHA ${unit.cha}</div>
                         <div class="option-card" style="text-align:left;cursor:default;"><strong>Capacity</strong><br>${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls</div>
+                        <div class="option-card" style="text-align:left;cursor:default;"><strong>Equipment</strong><br>${this._equipmentCompactSummary(unit)}</div>
                         <div class="option-card" style="text-align:left;cursor:default;"><strong>Perks</strong><br>${(unit.perks || []).map(perk => perk.name).join(', ') || 'None'}</div>
                     </div>
                     <button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button></div>`;
@@ -5350,6 +5351,16 @@
                     return `${label}: ${item ? item.name : 'Empty'}`;
                 }).join('<br>');
             },
+            _equipmentCompactSummary(unit = this.player) {
+                const equipment = unit?.equipment || {};
+                const equipped = Object.entries(this.EQUIPMENT_SLOTS)
+                    .map(([slot, label]) => {
+                        const item = equipment[slot];
+                        return item ? `${label}: ${item.name}` : '';
+                    })
+                    .filter(Boolean);
+                return equipped.length ? equipped.map(entry => this._escapeHtml(entry)).join('<br>') : 'No equipment';
+            },
 
             _equipmentBonusText(item) {
                 const bonus = this._getItemDef(item).equipBonus || {};
@@ -5597,6 +5608,7 @@
                     `Womb: ${this._containerSummary(unit, 'womb')}`,
                     `Balls: ${this._containerSummary(unit, 'balls')}`
                 ].join(' | ');
+                const equipmentSummary = this._equipmentCompactSummary(unit);
                 const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
@@ -5616,9 +5628,10 @@
 	                            <div><span style="color:var(--text-muted)">Figh:</span> ${unit.Figh}</div><div><span style="color:var(--text-muted)">Feas:</span> ${unit.Feas}</div>
                             <div><span style="color:var(--text-muted)">Flir:</span> ${unit.Flir}</div><div><span style="color:var(--text-muted)">Fuck:</span> ${unit.Fuck}</div>
                             <div><span style="color:var(--text-muted)">Flee:</span> ${unit.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${unit.Feed}</div>
-                            <div><span style="color:var(--text-muted)">Size:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">App:</span> ${unit.appetite}</div>
+	                            <div><span style="color:var(--text-muted)">Size:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">App:</span> ${unit.appetite}</div>
 	                            <div><span style="color:var(--text-muted)">Parts:</span> ${unit.parts || 'none'}</div><div><span style="color:var(--text-muted)">Chest:</span> ${unit.chest || 'none'}</div>
 		                            <div style="grid-column:1/-1;color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
+                                    <div style="grid-column:1/-1;color:var(--text-muted)"><span style="color:var(--text-primary)">Equipment:</span><br>${equipmentSummary}</div>
 	                        </div>
 	                    </div>` : ''}
 	                </div>`;

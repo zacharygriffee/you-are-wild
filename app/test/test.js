@@ -625,6 +625,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       locales: {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
+          'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -634,6 +635,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
+          'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -3280,6 +3282,37 @@ test('Inventory and character stats render equipped items', () => {
   assertContains(elements.get('scene-description').innerHTML, 'Equip', 'Inventory should expose equip action');
   App.showCharacterStats();
   assertContains(elements.get('scene-description').innerHTML, 'Leather Cap', 'Character stats should list equipped item');
+});
+
+test('Inventory action labels localize with accessible names', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    equipment: {
+      head: { id: 'cap-1', name: 'Leather Cap' },
+      body: null,
+      hands: null,
+      feet: null,
+      accessory1: null,
+      accessory2: null
+    }
+  });
+  App.party = [App.player];
+  App.inventory = [
+    { id: 'herb-1', name: 'Healing Herb' },
+    { id: 'ring-1', name: 'Focus Ring' }
+  ];
+  App.updateLanguage('es');
+  App.showInventory();
+  const html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
+  assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
+  assertContains(html, 'aria-label="Usar Healing Herb"', 'Use control should expose localized accessible label');
+  assertContains(html, '>Usar<', 'Use visible label should localize');
+  assertContains(html, 'aria-label="Equipar Focus Ring"', 'Equip control should expose localized accessible label');
+  assertContains(html, '>Equipar<', 'Equip visible label should localize');
+  assertContains(html, 'aria-label="Soltar Focus Ring"', 'Drop control should expose localized accessible label');
+  assertContains(html, '>Soltar<', 'Drop visible label should localize');
+  assertContains(html, 'aria-label="Volver"', 'Back control should expose localized accessible label');
 });
 
 test('Inventory supports item categories and sorting', () => {

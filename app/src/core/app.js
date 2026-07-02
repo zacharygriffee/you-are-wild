@@ -5400,22 +5400,28 @@
 
             // ===== INVENTORY =====
             showInventory() {
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
                 let html = `<h3>Inventory (${this.inventory.length}/${this.MAX_INVENTORY})</h3>`;
                 html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">Equipped</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
                 Object.entries(this.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
                     const equipped = this.player?.equipment?.[slot];
-                    if (equipped) html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px" onclick="App.unequipItem('${slot}')">Unequip ${label}</button>`;
+                    if (equipped) {
+                        const unequipTitle = this._escapeHtml(this._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label }));
+                        const unequipLabel = this._escapeHtml(`${this._label('inventory.unequip', 'Unequip')} ${label}`);
+                        html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${slot}')">${unequipLabel}</button>`;
+                    }
                 });
                 html += `</div></div>`;
                 if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">Empty.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">Empty.</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }
                 html += this._itemListOptions('Inventory');
                 const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
                 if (entries.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">No items match the current filter.</p><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">No items match the current filter.</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }
@@ -5428,11 +5434,17 @@
                     html += `<div style="font-size:24px">${def.icon}</div><div style="font-weight:600;color:var(--text-primary)">${item.name}</div>`;
                     html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.type || 'misc'} · ${def.desc}${canEquip ? '<br>' + this._equipmentBonusText(item) : ''}</div><div style="display:flex;gap:8px;margin-top:8px">`;
                     const itemKey = String(item.id).replace(/'/g, "\\'");
-                    if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.useItem('${itemKey}')">Use</button>`;
-                    if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">Equip</button>`;
-                    html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" onclick="App.dropItem('${itemKey}')">Drop</button></div></div>`;
+                    const useLabel = this._escapeHtml(this._label('inventory.use', 'Use'));
+                    const equipLabel = this._escapeHtml(this._label('inventory.equip', 'Equip'));
+                    const dropLabel = this._escapeHtml(this._label('inventory.drop', 'Drop'));
+                    const useTitle = this._escapeHtml(this._label('inventory.useItem', 'Use {name}', { name: item.name }));
+                    const equipTitle = this._escapeHtml(this._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
+                    const dropTitle = this._escapeHtml(this._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
+                    if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
+                    if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">${equipLabel}</button>`;
+                    html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
                 });
-                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                html += `</div>${backButton}`;
                 document.getElementById('scene-description').innerHTML = html;
             },
             setInventoryFilter(filter) {

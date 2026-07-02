@@ -2600,7 +2600,10 @@
     <!-- MODS OVERLAY -->
     <div id="screen-mods" class="screen screen-overlay">
         <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
+                <h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
+                <button class="nav-btn" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
             <!-- Install -->
@@ -2623,7 +2626,10 @@
     <!-- MARKETPLACE OVERLAY -->
     <div id="screen-market" class="screen screen-overlay">
         <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
+                <h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>
+                <button class="nav-btn" title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Discover community-made biomes, species, and features</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
                 <button class="nav-btn" title="Browse marketplace" aria-label="Browse marketplace" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>

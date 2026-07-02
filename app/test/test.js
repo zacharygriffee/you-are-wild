@@ -102,6 +102,7 @@ const appContent = fs.readFileSync(appPath, 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
+const globalNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'global-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
 const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
@@ -505,6 +506,8 @@ test('Settings clear saves button is wired to an implemented handler', () => {
 test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(template, 'data-i18n="mod.title"', 'Mod manager fallback title should opt into static localization');
   assertContains(template, 'data-i18n="mod.subtitle"', 'Mod manager fallback subtitle should opt into static localization');
+  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>', 'Mod manager header should leave room for a persistent close button');
+  assertContains(template, 'title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle"', 'Mod manager should expose a persistent localized close button');
   assertContains(template, 'data-i18n="mod.import"', 'Mod import label should opt into static localization');
   assertContains(template, 'data-i18n-title="mod.importTitle"', 'Mod import title should opt into static localization');
   assertContains(template, 'data-i18n="mod.createExample"', 'Mod create-example label should opt into static localization');
@@ -527,6 +530,8 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
 test('Marketplace UI uses localized safe rendering for catalog metadata', () => {
   assertContains(template, 'data-i18n="market.title"', 'Marketplace fallback title should opt into static localization');
   assertContains(template, 'data-i18n="market.subtitle"', 'Marketplace fallback subtitle should opt into static localization');
+  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>', 'Marketplace header should leave room for a persistent close button');
+  assertContains(template, 'title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Marketplace should expose a persistent localized close button');
   assertContains(template, 'data-i18n="market.browse"', 'Marketplace fallback browse button should localize');
   assertContains(marketScreenContent, "label(key, fallback, vars = {})", 'Marketplace localization helper missing');
   assertContains(marketScreenContent, "escapeHtml(value)", 'Marketplace HTML escaping helper missing');
@@ -542,6 +547,11 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
   assertContains(marketScreenContent, 'aria-label="${installTitle}"', 'Marketplace install buttons should expose accessible localized titles');
   assertNotContains(marketScreenContent, '${mod.name}</h3>', 'Marketplace module names should not be inserted directly into HTML');
   assertNotContains(marketScreenContent, '${mod.description}', 'Marketplace descriptions should not be inserted directly into HTML');
+});
+
+test('Overlay close controls clear active overlay state', () => {
+  assertContains(globalNavContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'returnToGame should close all overlay surfaces together');
+  assertContains(globalNavContent, "el.classList?.remove('active')", 'returnToGame should clear active class from closed overlays');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {

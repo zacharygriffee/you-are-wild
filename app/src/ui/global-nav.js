@@ -1,10 +1,12 @@
 
 // Global navigation helpers
 window.returnToGame = function() {
-    document.getElementById('screen-settings').style.display = 'none';
-    document.getElementById('screen-mods').style.display = 'none';
-    document.getElementById('screen-market').style.display = 'none';
-    document.getElementById('save-manager').style.display = 'none';
+    ['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = 'none';
+        el.classList?.remove('active');
+    });
     if (App.player && App.player.CPun > 0) {
         document.getElementById('screen-menu').style.display = 'none';
         document.getElementById('screen-menu').classList.remove('active');

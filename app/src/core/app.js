@@ -7865,6 +7865,7 @@
                 const orderDescription = this._partyAIOrderDescription(order);
                 let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += actionButton(this._label('party.stats', 'Stats'), 'stats');
+                html += actionButton(menuLabel, 'actions', ' primary');
                 if (unit !== this.player && !unit.mc) {
                     if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
                     html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" title="${this._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${this._escapeHtml(roleDescription)}</small></label>`;
@@ -7884,6 +7885,7 @@
                 }
                 this.closeMobileContextMenu();
                 if (action === 'stats') return this.showPartyMemberStats(index);
+                if (action === 'actions') return this.showIntentMenu('party', index);
                 if (action === 'lead') return this.setPartyLeader(index);
                 if (action === 'dismiss') return this.dismissPartyMember(index);
             },

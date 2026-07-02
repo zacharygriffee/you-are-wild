@@ -6087,10 +6087,16 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'aria-modal="true"', 'Party long-press menu should behave as a modal action menu');
   assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
   assertContains(body.innerHTML, 'Stats', 'Party menu should expose stats');
+  assertContains(body.innerHTML, 'aria-label="Party actions"', 'Party menu should expose an intent-sheet entry');
   assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
   assertContains(body.innerHTML, 'Party role for Ally', 'Party menu should expose role selector');
   assertContains(body.innerHTML, 'AI order for Ally', 'Party menu should expose AI selector');
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
+  App.mobilePartyContextAction('actions', 1);
+  assertContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party long-press actions entry should open the shared intent sheet');
+  assertContains(body.innerHTML, "App.selectIntent('party',1,'fight','sheet')", 'Party intent sheet should keep shared dispatch');
+  App.closeMobileContextMenu();
+  App.showMobilePartyContext(1);
   App.mobilePartyContextAction('lead', 1);
   assertEqual(App._getPartyLeader(), ally, 'Party menu leader action should update leader');
   App.showMobilePartyContext(1);
@@ -6112,6 +6118,7 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'aria-label="Acciones del grupo"', 'Party menu label should localize');
   assertContains(body.innerHTML, 'Estadisticas', 'Stats menu item should localize');
+  assertContains(body.innerHTML, '>Acciones del grupo<', 'Intent-sheet menu entry should localize');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
   assertContains(body.innerHTML, '>Rol<', 'Role field label should localize');
   assertContains(body.innerHTML, 'aria-label="Rol de grupo para Ally"', 'Role select accessible label should localize');

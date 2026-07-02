@@ -6775,10 +6775,22 @@
                     this.renderCreatures();
                     return;
                 }
+                const skipped = [];
+                const skippedSet = new Set();
                 for (const target of targetList) {
+                    if (action === 'feed' && this.party.includes(target) && target.CPun >= target.MPun) {
+                        skipped.push(target.name);
+                        skippedSet.add(target);
+                        continue;
+                    }
                     this.outsideActionOnTarget(action, target, actor, { allowPartySacrifice: false });
                 }
-                this.log.push({ text: `${actor.name} finishes a multi-target ${this._uiLabel(action).toLowerCase()} action on ${targetList.map(t => t.name).join(', ')}.`, type: 'discovery' });
+                const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
+                let summary = affected.length > 0
+                    ? `${actor.name} finishes a multi-target ${this._uiLabel(action).toLowerCase()} action on ${affected.join(', ')}.`
+                    : `${actor.name} finds no valid targets for multi-target ${this._uiLabel(action).toLowerCase()}.`;
+                if (skipped.length > 0) summary += ` Skipped full targets: ${skipped.join(', ')}.`;
+                this.log.push({ text: summary, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();

@@ -1954,6 +1954,23 @@ test('Multi-target feed does not consume the acting party member', () => {
   assertEqual(App.party.includes(actor), true, 'Multi-target feed should not hand the actor off as prey');
   assertEqual(fullTarget.stomach.length, 0, 'Full party target should not consume the actor during multi-target feed');
   assertEqual(woundedTarget.CPun, 60, 'Wounded target should still be fed/healed');
+  assertContains(App.log[App.log.length - 1].text, 'Wounded Target', 'Multi-target feed summary should name affected targets');
+  assertContains(App.log[App.log.length - 1].text, 'Skipped full targets: Full Target', 'Multi-target feed summary should explain skipped full party targets');
+});
+
+test('Multi-target feed reports when all party targets are already full', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Feeder', { id: 'feeder-1', Feed: 20 });
+  const fullA = makeUnit('Full A', { id: 'full-a', CPun: 100, MPun: 100, size: 6, appetite: 6 });
+  const fullB = makeUnit('Full B', { id: 'full-b', CPun: 80, MPun: 80, size: 6, appetite: 6 });
+  App.player = actor;
+  App.party = [actor, fullA, fullB];
+  App.outsideActionForPartyTargets('feed', [1, 2]);
+  assertEqual(App.party.includes(actor), true, 'All-full multi-target feed should not consume the actor');
+  assertEqual(fullA.stomach.length, 0, 'First full target should not consume the actor');
+  assertEqual(fullB.stomach.length, 0, 'Second full target should not consume the actor');
+  assertContains(App.log[App.log.length - 1].text, 'finds no valid targets', 'All-full feed should report that no target was affected');
+  assertContains(App.log[App.log.length - 1].text, 'Skipped full targets: Full A, Full B', 'All skipped full targets should be named');
 });
 
 test('Multiple actors against multiple marked targets are rejected clearly', () => {

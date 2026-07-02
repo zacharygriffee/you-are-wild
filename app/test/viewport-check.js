@@ -65,6 +65,32 @@ async function checkViewport(browser, name, width, height) {
   assert(shell.largeMapControlsLocalized, `${name}: large-map control group should expose localization hook`);
   assert(shell.zoomTitle.length > 0, `${name}: large-map zoom control should have a title`);
 
+  await page.evaluate(() => {
+    App.updateAccessibilitySetting('highContrast', true);
+    App.updateAccessibilitySetting('reducedMotion', true);
+    App.updateAccessibilitySetting('fontSize', 20);
+  });
+  await page.waitForTimeout(50);
+  const accessibility = await page.evaluate(() => {
+    const bodyStyle = getComputedStyle(document.body);
+    const button = document.querySelector('button');
+    const buttonStyle = button ? getComputedStyle(button) : null;
+    return {
+      highContrast: document.body.classList.contains('high-contrast'),
+      reducedMotion: document.body.classList.contains('reduced-motion'),
+      fontSize: bodyStyle.fontSize,
+      baseFontSize: document.body.style.getPropertyValue('--base-font-size'),
+      background: bodyStyle.backgroundColor,
+      transitionDuration: buttonStyle?.transitionDuration || ''
+    };
+  });
+  assert.strictEqual(accessibility.highContrast, true, `${name}: high contrast should apply to body`);
+  assert.strictEqual(accessibility.reducedMotion, true, `${name}: reduced motion should apply to body`);
+  assert.strictEqual(accessibility.fontSize, '20px', `${name}: maximum font size should apply to rendered body`);
+  assert.strictEqual(accessibility.baseFontSize.trim(), '20px', `${name}: base font CSS variable should sync`);
+  assert(accessibility.background === 'rgb(0, 0, 0)' || accessibility.background === '#000000', `${name}: high contrast should update rendered background`);
+  assert(accessibility.transitionDuration.split(',').every(value => value.trim() === '0s'), `${name}: reduced motion should suppress button transitions`);
+
   await page.evaluate(() => App.showSaveManager('new'));
   await page.waitForTimeout(50);
   const save = await page.evaluate(() => {
@@ -111,6 +137,11 @@ async function checkViewport(browser, name, width, height) {
     assert(party.panelLeft >= 0, `${name}: party panel should be inside viewport`);
     assert(party.panelRight <= party.viewportWidth + 1, `${name}: party panel should not extend beyond viewport`);
     assert.deepStrictEqual(party.clippedButtons, [], `${name}: party panel buttons should not clip`);
+    const largeFontShell = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    assert(largeFontShell.scrollWidth <= largeFontShell.clientWidth + 1, `${name}: large font/high contrast mobile shell should not horizontally overflow`);
 
     const readContextMenuBounds = async label => page.evaluate(menuLabel => {
       const menu = document.getElementById('mobile-context-menu');

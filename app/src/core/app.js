@@ -1762,7 +1762,11 @@
                 this.creatures = this._tileCreatures(room.creatures || []);
                 this.currentBiome = room.biome;
                 const biome = this.biomes[room.biome] || this.biomes.indoors;
-                this.log.push({ text: `Moved inside ${this.activeInterior.structureName} to ${nx}, ${ny}.`, type: 'move' });
+                this.log.push({ text: this._label('structure.movedInside', 'Moved inside {name} to {x}, {y}.', {
+                    name: this.activeInterior.structureName,
+                    x: nx,
+                    y: ny
+                }), type: 'move' });
                 if (!wasExplored && Math.random() < (biome.encounterChance || 0)) {
                     this.spawnWildEncounter(room, false, true);
                 }
@@ -6501,14 +6505,17 @@
                         const unit = entry?.unit;
                         if (unit) {
                             document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`)}</p>`;
+                            const turnDescription = unit === this.player || this.party.includes(unit)
+                                ? this._label('ui.chooseAction', 'Choose your next action.')
+                                : this._label('ui.actorActing', '{name} is acting...', { name: unit.name });
+                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(turnDescription)}</p>`;
                             const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
                             const mobileTitle = document.getElementById('mobile-scene-title');
                             const mobileDesc = document.getElementById('mobile-scene-description');
                             const actions = document.getElementById('scene-actions');
                             if (mobileSheet) mobileSheet.classList.remove('rich-content');
                             if (mobileTitle) mobileTitle.textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            if (mobileDesc) mobileDesc.textContent = unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`;
+                            if (mobileDesc) mobileDesc.textContent = turnDescription;
                             if (actions?.dataset?.richHidden) {
                                 delete actions.dataset.richHidden;
                                 actions.style.display = '';
@@ -6642,7 +6649,7 @@
 	                const mobileLog = document.getElementById('mobile-log-summary');
 	                if (mobileLog) {
 	                    const latest = this.log[this.log.length - 1];
-	                    mobileLog.textContent = latest ? latest.text : 'Welcome to You Are Wild';
+	                    mobileLog.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
 	                }
 	            },
             clearLog() { this.log = []; this.renderLog(); },

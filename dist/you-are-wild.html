@@ -2075,7 +2075,7 @@
 	                                <div class="mobile-scene-description" id="mobile-scene-description">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
-	                                <div class="mobile-log-summary" id="mobile-log-summary">Welcome to You Are Wild</div>
+	                                <div class="mobile-log-summary" id="mobile-log-summary" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
@@ -2139,7 +2139,7 @@
                     <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" data-i18n-placeholder="ui.log.search" data-i18n-aria-label="ui.log.search" oninput="App.setLogSearch(this.value)">
                 </div>
                 <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
-                    <div class="log-entry" role="status">Welcome to You Are Wild</div>
+                    <div class="log-entry" role="status" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
                     <div class="log-entry discovery" role="status">Created your character. The journey begins...</div>
                 </div>
             </div>
@@ -4507,7 +4507,11 @@
                 this.creatures = this._tileCreatures(room.creatures || []);
                 this.currentBiome = room.biome;
                 const biome = this.biomes[room.biome] || this.biomes.indoors;
-                this.log.push({ text: `Moved inside ${this.activeInterior.structureName} to ${nx}, ${ny}.`, type: 'move' });
+                this.log.push({ text: this._label('structure.movedInside', 'Moved inside {name} to {x}, {y}.', {
+                    name: this.activeInterior.structureName,
+                    x: nx,
+                    y: ny
+                }), type: 'move' });
                 if (!wasExplored && Math.random() < (biome.encounterChance || 0)) {
                     this.spawnWildEncounter(room, false, true);
                 }
@@ -9246,14 +9250,17 @@
                         const unit = entry?.unit;
                         if (unit) {
                             document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`)}</p>`;
+                            const turnDescription = unit === this.player || this.party.includes(unit)
+                                ? this._label('ui.chooseAction', 'Choose your next action.')
+                                : this._label('ui.actorActing', '{name} is acting...', { name: unit.name });
+                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(turnDescription)}</p>`;
                             const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
                             const mobileTitle = document.getElementById('mobile-scene-title');
                             const mobileDesc = document.getElementById('mobile-scene-description');
                             const actions = document.getElementById('scene-actions');
                             if (mobileSheet) mobileSheet.classList.remove('rich-content');
                             if (mobileTitle) mobileTitle.textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            if (mobileDesc) mobileDesc.textContent = unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`;
+                            if (mobileDesc) mobileDesc.textContent = turnDescription;
                             if (actions?.dataset?.richHidden) {
                                 delete actions.dataset.richHidden;
                                 actions.style.display = '';
@@ -9387,7 +9394,7 @@
 	                const mobileLog = document.getElementById('mobile-log-summary');
 	                if (mobileLog) {
 	                    const latest = this.log[this.log.length - 1];
-	                    mobileLog.textContent = latest ? latest.text : 'Welcome to You Are Wild';
+	                    mobileLog.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
 	                }
 	            },
             clearLog() { this.log = []; this.renderLog(); },
@@ -11237,6 +11244,8 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Party actions',
             'ui.exploration': 'Exploration',
             'ui.chooseAction': 'Choose your next action.',
+            'ui.actorActing': '{name} is acting...',
+            'ui.welcomeLog': 'Welcome to You Are Wild',
             'ui.area': 'Area',
             'ui.enemies': 'Enemies',
             'ui.creatures': 'Creatures',
@@ -11452,6 +11461,7 @@ const CONTENT_SYSTEM = {
             'structure.noStructure': 'There is no structure to enter here.',
             'structure.entered': 'Entered {name}.',
             'structure.exited': 'Exited {name}.',
+            'structure.movedInside': 'Moved inside {name} to {x}, {y}.',
             'structure.fallbackName': 'the structure',
             'structure.wallBlocked': 'A wall blocks the way.',
             'party.stats': 'Stats',
@@ -11803,6 +11813,8 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Acciones del grupo',
             'ui.exploration': 'Exploracion',
             'ui.chooseAction': 'Elige tu proxima accion.',
+            'ui.actorActing': '{name} esta actuando...',
+            'ui.welcomeLog': 'Bienvenido a You Are Wild',
             'ui.area': 'Area',
             'ui.enemies': 'Enemigos',
             'ui.creatures': 'Criaturas',
@@ -12018,6 +12030,7 @@ const CONTENT_SYSTEM = {
             'structure.noStructure': 'No hay una estructura para entrar aqui.',
             'structure.entered': 'Entraste en {name}.',
             'structure.exited': 'Saliste de {name}.',
+            'structure.movedInside': 'Movimiento dentro de {name} a {x}, {y}.',
             'structure.fallbackName': 'la estructura',
             'structure.wallBlocked': 'Una pared bloquea el camino.',
             'party.stats': 'Estadisticas',

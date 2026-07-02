@@ -2237,6 +2237,25 @@ test('One actor needs enough stats to handle multiple exploration targets', () =
   assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con coquetear todavia.', 'Failed multi-target action should localize the stat gate');
 });
 
+test('Marked multi-target stat gate preserves selections for correction', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 5, cha: 5 });
+  const targetA = makeUnit('Target A', { id: 'target-a', CPle: 0, MPle: 100 });
+  const targetB = makeUnit('Target B', { id: 'target-b', CPle: 0, MPle: 100 });
+  App.player = actor;
+  App.party = [actor, targetA, targetB];
+  App.explorationActorIds = ['actor-1'];
+  App.updateLanguage('es');
+  App.toggleExplorationTarget('party', 'target-a');
+  App.toggleExplorationTarget('party', 'target-b');
+  App.resolveExplorationTargetAction('flirt');
+  assertEqual(targetA.CPle, 0, 'Blocked marked multi-target action should not affect first target');
+  assertEqual(targetB.CPle, 0, 'Blocked marked multi-target action should not affect second target');
+  assertEqual(App.explorationActorIds.join(','), 'actor-1', 'Blocked marked multi-target action should preserve selected actor');
+  assertEqual(App.explorationTargetIds.join(','), 'party:target-a,party:target-b', 'Blocked marked multi-target action should preserve selected targets');
+  assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con coquetear todavia.', 'Blocked marked multi-target action should localize the stat gate');
+});
+
 test('Capable actor can resolve one action across multiple exploration targets', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });

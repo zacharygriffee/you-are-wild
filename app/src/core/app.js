@@ -3941,8 +3941,9 @@
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0) return;
                 const actors = this._getExplorationActors();
+                let resolved = true;
                 if (targets.length === 1 && actors.length > 1) {
-                    this.outsideGroupActionOnTarget(action, targets[0], actors);
+                    resolved = this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
                     this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
                         action: this._uiLabel(action).toLowerCase()
@@ -3953,9 +3954,9 @@
                     this.renderExplorationActions();
                     return;
                 } else {
-                    this.outsideActionOnTargets(action, targets, actors[0] || this.player);
+                    resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player);
                 }
-                this.clearExplorationTargets();
+                if (resolved !== false) this.clearExplorationTargets();
             },
 
             _getRecruitScore(actor, target) {
@@ -4159,7 +4160,7 @@
 
             outsideActionOnTargets(action, targets, actor = this._getExplorationActor()) {
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
-                if (targetList.length === 0) return;
+                if (targetList.length === 0) return false;
                 actor = actor || this.player;
                 if (!this._canHandleMultipleTargets(actor, action, targetList)) {
                     this.log.push({ text: this._label('target.cannotHandleMultiple', '{name} cannot handle {count} targets with {action} yet.', {
@@ -4170,7 +4171,8 @@
                     this.renderLog();
                     this.renderParty();
                     this.renderCreatures();
-                    return;
+                    this.renderExplorationActions();
+                    return false;
                 }
                 const skipped = [];
                 const skippedSet = new Set();
@@ -4198,6 +4200,7 @@
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
+                return true;
             },
 
             outsideActionForPartyTargets(action, targetIndexes, actorId = null) {
@@ -4215,7 +4218,7 @@
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 if (livingActors.length <= 1) {
                     this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
-                    return;
+                    return true;
                 }
                 const names = livingActors.map(actor => actor.name).join(', ');
                 let result = '';
@@ -4373,7 +4376,7 @@
                     }
                     default:
                         this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
-                        return;
+                        return true;
                 }
                 this.log.push({ text: result, type: 'discovery' });
                 this.renderLog();
@@ -4381,9 +4384,10 @@
                 this.renderCreatures();
                 if (startCombatAfter) {
                     this.startCombat(combatTargets);
-                    return;
+                    return true;
                 }
                 if (!this.combatState.active) this.renderExplorationActions();
+                return true;
             },
 
             outsideActionOnTarget(action, target, actor = this.player, options = {}) {

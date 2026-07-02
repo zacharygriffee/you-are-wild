@@ -534,6 +534,8 @@
             tradeFilter: 'all',
             tradeSort: 'name',
             mobileMapZoom: 1,
+            largeMapRadius: 8,
+            largeMapOffset: { x: 0, y: 0 },
             worldMap: new Map(),
             tileDeltas: new Map(),
             exploredTiles: new Set(),
@@ -942,6 +944,8 @@
                 this.partyLeaderId = this._unitSelectionId(this.player);
                 this.creatures = [];
                 this.location = { x: 0, y: 0 };
+                this.largeMapOffset = { x: 0, y: 0 };
+                this.largeMapRadius = 8;
                 this.timeHour = 8;
                 this.dayCount = 0;
                 this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
@@ -5372,19 +5376,44 @@
                 return '';
             },
 
+            setLargeMapZoom(delta) {
+                const current = this.largeMapRadius || 8;
+                this.largeMapRadius = Math.max(4, Math.min(12, current + delta));
+                return this.renderLargeMap();
+            },
+
+            panLargeMap(dx, dy) {
+                const offset = this.largeMapOffset || { x: 0, y: 0 };
+                const step = Math.max(1, Math.floor((this.largeMapRadius || 8) / 2));
+                this.largeMapOffset = {
+                    x: offset.x + dx * step,
+                    y: offset.y + dy * step
+                };
+                return this.renderLargeMap();
+            },
+
+            recenterLargeMap() {
+                this.largeMapOffset = { x: 0, y: 0 };
+                return this.renderLargeMap();
+            },
+
             renderLargeMap() {
                 const container = document.getElementById('large-map');
                 const poiContainer = document.getElementById('large-map-pois');
+                const viewLabel = document.getElementById('large-map-view');
                 if (!container) return '';
                 if (this.inInterior && this.activeInterior) {
                     const message = 'Discovered region is available outside.';
                     container.innerHTML = `<div class="large-map-tile known" style="width:auto;min-width:180px;padding:8px;">${this._escapeHtml(message)}</div>`;
                     if (poiContainer) poiContainer.innerHTML = '';
+                    if (viewLabel) viewLabel.textContent = 'Interior';
                     return container.innerHTML;
                 }
-                const cx = this.location.x;
-                const cy = this.location.y;
-                const radius = 8;
+                const offset = this.largeMapOffset || { x: 0, y: 0 };
+                const cx = this.location.x + (offset.x || 0);
+                const cy = this.location.y + (offset.y || 0);
+                const radius = this.largeMapRadius || 8;
+                if (viewLabel) viewLabel.textContent = `${cx}, ${cy} · ${radius * 2 + 1}x${radius * 2 + 1}`;
                 const points = [];
                 let html = '';
                 for (let dy = -radius; dy <= radius; dy++) {
@@ -5392,7 +5421,7 @@
                     for (let dx = -radius; dx <= radius; dx++) {
                         const x = cx + dx;
                         const y = cy + dy;
-                        const isCurrent = dx === 0 && dy === 0;
+                        const isCurrent = x === this.location.x && y === this.location.y;
                         const tile = this._resolveLargeMapTile(x, y);
                         const biome = tile ? this.biomes[tile.biome] : null;
                         const poi = this._largeMapPoiLabel(tile);
@@ -6259,6 +6288,8 @@ Enter 1, 2, or 3:`);
 	                    };
 	                    this._normalizeUnit(this.player, { disposition: this.DISPOSITION.PARTY, hero: true, ally: false, mc: true, obedient: true, willing: true });
 	                    this.location = { x: loaded.locationX, y: loaded.locationY };
+	                    this.largeMapOffset = { x: 0, y: 0 };
+	                    this.largeMapRadius = this.largeMapRadius || 8;
 	                    const loadedParty = loaded.party && loaded.party.length ? loaded.party : [this.player];
 	                    this.party = loadedParty.map((unit, index) => this._normalizeUnit(unit, {
 	                        disposition: this.DISPOSITION.PARTY,

@@ -352,6 +352,20 @@
             margin-bottom: var(--space-sm);
             color: var(--text-secondary);
             font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .large-map-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .large-map-controls .nav-btn {
+            min-width: 30px;
+            padding: 4px 8px;
+            font-size: 11px;
         }
 
         .large-map {
@@ -1774,8 +1788,16 @@
                     </div>
                     <div class="large-map-wrap">
                         <div class="large-map-toolbar">
-                            <span>Discovered Region</span>
-                            <button class="nav-btn" style="padding:4px 8px;font-size:11px;" onclick="App.renderLargeMap()">Refresh</button>
+                            <span>Discovered Region <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
+                            <div class="large-map-controls" aria-label="Large map controls">
+                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" onclick="App.setLargeMapZoom(-1)">＋</button>
+                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" onclick="App.setLargeMapZoom(1)">－</button>
+                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" onclick="App.panLargeMap(0,-1)">↑</button>
+                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" onclick="App.panLargeMap(-1,0)">←</button>
+                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" onclick="App.recenterLargeMap()">⌾</button>
+                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" onclick="App.panLargeMap(1,0)">→</button>
+                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" onclick="App.panLargeMap(0,1)">↓</button>
+                            </div>
                         </div>
                         <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>
                         <div class="large-map-pois" id="large-map-pois"></div>

@@ -480,6 +480,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
 test('Large map discovery surface exists', () => {
   assertContains(template, 'id="large-map"', 'Large map container missing');
   assertContains(template, 'id="large-map-pois"', 'Large map point-of-interest container missing');
+  assertContains(template, 'id="large-map-view"', 'Large map view label missing');
+  assertContains(template, 'App.setLargeMapZoom(-1)', 'Large map zoom-in control missing');
+  assertContains(template, 'App.panLargeMap(0,-1)', 'Large map pan control missing');
+  assertContains(template, 'App.recenterLargeMap()', 'Large map recenter control missing');
   assertContains(template, '.large-map-tile', 'Large map tile styles missing');
   assertContains(appContent, 'renderLargeMap()', 'Large map renderer missing');
 });
@@ -1896,6 +1900,30 @@ test('Large map renders discovered tiles without materializing unknown tiles', (
   assertContains(elements.get('large-map').innerHTML, 'Old Tree', 'Known point of interest should be labeled');
   assertContains(elements.get('large-map-pois').innerHTML, 'Old Tree', 'Point of interest list should include known landmark');
   assertEqual(App.worldMap.has('6,6'), false, 'Unknown large-map tiles should not materialize into worldMap');
+});
+
+test('Large map controls zoom pan and recenter the discovered region', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.getTile(0, 0).explored = true;
+  App.largeMapRadius = 8;
+  App.largeMapOffset = { x: 0, y: 0 };
+  App.setLargeMapZoom(-1);
+  assertEqual(App.largeMapRadius, 7, 'Zooming in should reduce the rendered region radius');
+  assertContains(elements.get('large-map-view').textContent, '15x15', 'View label should reflect zoomed region size');
+  App.panLargeMap(1, 0);
+  assertEqual(App.largeMapOffset.x, 3, 'Panning should move by half the current radius');
+  assertContains(elements.get('large-map-view').textContent, '3, 0', 'View label should reflect panned center');
+  assertEqual(App.worldMap.has('8,0'), false, 'Panning should not materialize unknown generated tiles');
+  App.recenterLargeMap();
+  assertEqual(App.largeMapOffset.x, 0, 'Recenter should clear x offset');
+  assertEqual(App.largeMapOffset.y, 0, 'Recenter should clear y offset');
+  assertContains(elements.get('large-map-view').textContent, '0, 0', 'View label should return to player center');
 });
 
 test('Movement and search advance the in-game hour', () => {

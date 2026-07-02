@@ -420,5 +420,6 @@ The map panel now includes a first-pass discovered-region view:
 2. It overlays explored/known tiles from tile deltas and the in-memory explored set.
 3. It surfaces landmarks, structures, creatures, and items as nearby discovery markers.
 4. It avoids calling `getTile()` for unknown locations, so broad map viewing does not fill the compatibility `worldMap` cache.
+5. It includes zoom, pan, and recenter controls so the player can inspect nearby discovered regions without changing traversal position.
 
-The next code slice should focus on large-map controls such as zoom/pan, quest-vector markers, and mobile-specific ergonomics, or on chunk/entity indexing once gameplay systems need it.
+The next code slice should focus on quest-vector markers, mobile-specific ergonomics, or chunk/entity indexing once gameplay systems need it.

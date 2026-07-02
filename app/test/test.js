@@ -2431,6 +2431,9 @@ test('Party management can reorder set leader and dismiss allies', () => {
   const allyB = makeUnit('Ally B', { id: 'ally-b' });
   App.player = player;
   App.party = [player, allyA, allyB];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }]]);
+  App.creatures = [];
   App.partyLeaderId = 'player-1';
   App.explorationActorIds = ['ally-b'];
   App.movePartyMember(2, -1);
@@ -2443,6 +2446,12 @@ test('Party management can reorder set leader and dismiss allies', () => {
   assertEqual(App.party.includes(allyB), false, 'Dismiss should remove ally from party');
   assertEqual(App.partyLeaderId, 'player-1', 'Dismissing leader should fall back to player');
   assertEqual(App.explorationActorIds.includes('ally-b'), false, 'Dismiss should clear selected actor id');
+  assertEqual(App.creatures[0].id, 'ally-b', 'Dismissed ally should remain in the current tile creature list');
+  assertEqual(App.creatures[0].disposition, App.DISPOSITION.NEUTRAL, 'Dismissed ally should become neutral instead of staying party-owned');
+  assertEqual(App.creatures[0].formerPartyMember, true, 'Dismissed ally should be marked as a former party member');
+  assertEqual(App.creatures[0].formerPartyRole, 'guard', 'Dismissed ally should remember their former party role');
+  assertEqual(App.worldMap.get('0,0').creatures[0].id, 'ally-b', 'Dismissed ally should persist on the current tile');
+  assertContains(App.log[App.log.length - 1].text, 'remains nearby', 'Dismiss log should explain where the ally went');
 });
 
 test('Party drag reorder keeps player anchored', () => {

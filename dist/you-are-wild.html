@@ -6223,16 +6223,44 @@
                 return this.reorderPartyMember(draggedIndex, targetIndex);
             },
 
+            _dropDismissedPartyMember(unit) {
+                const tile = this._currentExplorationTile();
+                if (!unit || !tile) return null;
+                const dismissed = this._normalizeUnit({
+                    ...unit,
+                    disposition: this.DISPOSITION.NEUTRAL,
+                    ally: false,
+                    mc: false,
+                    obedient: false,
+                    formerPartyMember: true,
+                    formerPartyRole: this._getPartyRole(unit),
+                    partyRole: 'companion'
+                }, {});
+                const sameUnit = candidate => this._unitSelectionId(candidate) === this._unitSelectionId(dismissed);
+                this.creatures = this._tileCreatures([...(this.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);
+                tile.creatures = this._tileCreatures([...(tile.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);
+                if (this.inInterior && this.activeInterior?.origin) {
+                    const origin = this.getTile(this.activeInterior.origin.x, this.activeInterior.origin.y);
+                    origin.interior = this.activeInterior;
+                    this.persistTileDelta(origin.x, origin.y, origin);
+                } else if (Number.isFinite(Number(tile.x)) && Number.isFinite(Number(tile.y))) {
+                    this.persistTileDelta(tile.x, tile.y, tile);
+                }
+                return dismissed;
+            },
+
             dismissPartyMember(index) {
                 const unit = this.party[index];
                 if (!unit || unit === this.player || unit.mc) return;
                 if (typeof confirm === 'function' && !confirm(`Dismiss ${unit.name} from the party?`)) return;
                 this.party.splice(index, 1);
+                const dropped = this._dropDismissedPartyMember(unit);
                 this._normalizeExplorationSelections();
                 if (this.partyLeaderId === this._unitSelectionId(unit)) this.partyLeaderId = this._unitSelectionId(this.player);
-                this.log.push({ text: `${unit.name} leaves the party.`, type: 'discovery' });
+                this.log.push({ text: dropped ? `${unit.name} leaves the party and remains nearby.` : `${unit.name} leaves the party.`, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
+                this.renderCreatures();
                 this.autoSave();
             },
 

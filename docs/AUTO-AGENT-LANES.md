@@ -19,15 +19,21 @@ workspaces without turning broad product direction into unattended code changes.
    - Docs-first lane for traversal, selection, intent, and inspection controls.
    - This should complete before broad autonomous UI work.
 
-2. `desktop-intent-menu`
+2. `center-tile-traversal-doctrine`
+   - Docs-first lane for the unified 3x3 center-tile navigation/context surface.
+   - Defines how the center semantic/event slot, directional movement affordances,
+     expanded map mode, and future desktop hotkeys should relate before UI code
+     changes.
+
+3. `desktop-intent-menu`
    - Desktop-only action menu layout work.
    - Preserve mobile bottom-sheet and long-press behavior.
 
-3. `quest-preview`
+4. `quest-preview`
    - Low-priority feature lane.
    - Adds a localized, safe preview path before quest acceptance.
 
-4. `asset-tileset-manifest`
+5. `asset-tileset-manifest`
    - Feature lane for asset/tileset metadata, AI-generated provenance, relative
      paths, and fallback behavior.
    - Does not import the tilesheet yet.

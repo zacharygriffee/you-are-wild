@@ -146,6 +146,128 @@
       }
     },
     {
+      "laneId": "center-tile-traversal-doctrine",
+      "priority": 15,
+      "title": "Center Tile Traversal Doctrine",
+      "objective": "Define the unified 3x3 center-tile navigation and semantic context surface before implementation, including current-event display, directional tile affordances, expanded map mode, and desktop hotkey direction.",
+      "dependencies": [
+        "controls-doctrine"
+      ],
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Center tile",
+              "3x3",
+              "current event",
+              "Expanded map mode"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Unified Center-Tile Traversal Surface"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Control model defines the center tile as the primary semantic play surface.",
+          "Control model defines surrounding 3x3 direction tiles as normal movement affordances.",
+          "Control model keeps expanded/large map mode separate from routine traversal.",
+          "Control model states that the existing combat/debug log remains durable history while the center tile gets an immediate current-event semantic slot.",
+          "Next objectives reference the unified center-tile traversal surface.",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Control model defines the center tile as the primary semantic play surface.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Center tile",
+              "semantic play surface"
+            ]
+          },
+          {
+            "criterion": "Control model defines surrounding 3x3 direction tiles as normal movement affordances.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "3x3",
+              "movement affordances"
+            ]
+          },
+          {
+            "criterion": "Control model keeps expanded/large map mode separate from routine traversal.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Expanded map mode",
+              "routine traversal"
+            ]
+          },
+          {
+            "criterion": "Control model states that the existing combat/debug log remains durable history while the center tile gets an immediate current-event semantic slot.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "combat/debug log",
+              "current-event"
+            ]
+          },
+          {
+            "criterion": "Next objectives reference the unified center-tile traversal surface.",
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Unified Center-Tile Traversal Surface"
+            ]
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "dist/you-are-wild.html",
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not implement the 3x3 surface.",
+          "Does not redesign party area enemy panels.",
+          "Does not expand or review explicit content."
+        ]
+      }
+    },
+    {
       "laneId": "desktop-intent-menu",
       "priority": 20,
       "title": "Desktop Intent Menu Layout",

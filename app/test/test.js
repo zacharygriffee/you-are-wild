@@ -3908,6 +3908,7 @@ test('Save manager renders localized accessible slot actions', () => {
   App.updateLanguage('es');
   App.renderSaveManager('load');
   const html = elements.get('save-manager').innerHTML;
+  assertEqual(elements.get('save-manager').getAttribute('aria-label'), 'Partidas', 'Save manager dialog label should localize in load mode');
   assertContains(html, 'Partidas', 'Save manager title should localize');
   assertContains(html, 'Nueva partida', 'New game entry should localize');
   assertContains(html, 'Partida guardada', 'Occupied slot badge should localize');
@@ -3916,6 +3917,8 @@ test('Save manager renders localized accessible slot actions', () => {
   assertContains(html, 'aria-label="Cargar Slot 1"', 'Load action should expose localized accessible label');
   assertContains(html, 'aria-label="Borrar Slot 1"', 'Delete action should expose localized accessible label');
   assertContains(html, 'aria-label="Iniciar partida nueva en Slot 2"', 'Empty slot new-game action should expose localized accessible label');
+  App.renderSaveManager('new');
+  assertEqual(elements.get('save-manager').getAttribute('aria-label'), 'Elegir slot de partida nueva', 'Save manager dialog label should describe new-game mode');
 });
 
 test('New-game slot takeover warns before overwriting occupied slots', () => {

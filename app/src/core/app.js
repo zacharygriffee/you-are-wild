@@ -6644,8 +6644,11 @@
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 const isNewMode = mode === 'new';
+                const title = this._label(isNewMode ? 'save.newTitle' : 'save.title', isNewMode ? 'Choose New Game Slot' : 'Save Slots');
+                const saveManager = document.getElementById('save-manager');
+                if (saveManager) saveManager.setAttribute('aria-label', title);
                 const saveButton = (classes, label, title, onclick, style = '') => `<button class="${classes}" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}"${style ? ` style="${style}"` : ''} onclick="${onclick}">${this._escapeHtml(label)}</button>`;
-                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newTitle' : 'save.title', isNewMode ? 'Choose New Game Slot' : 'Save Slots')) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newDescription' : 'save.description', isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.')) + '</p>';
+                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + this._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newDescription' : 'save.description', isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.')) + '</p>';
                 if (!isNewMode) html += '<div class="save-manager-toolbar">' + saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()') + '<span>' + this._escapeHtml(this._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
@@ -6667,8 +6670,10 @@
                     html += '</div></div>';
                 }
                 html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;">' + saveButton('nav-btn save-manager-close', this._label('save.close', 'Close'), this._label('save.close', 'Close'), 'returnToGame()') + '</div></div>';
-                document.getElementById('save-manager').innerHTML = html;
-                document.getElementById('save-manager').style.display = 'block';
+                if (saveManager) {
+                    saveManager.innerHTML = html;
+                    saveManager.style.display = 'block';
+                }
             },
             showModScreen() { ModUI.showModScreen(); },
             showMarketScreen() { MODULE_MARKETPLACE.ui.showMarketplace(); },

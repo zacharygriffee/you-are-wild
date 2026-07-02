@@ -414,6 +414,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Party actions'", 'English party action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
+  assertContains(contentContent, "'mod.noneInstalled': 'No modules installed. Install one above or create an example.'", 'English mod manager empty-state label missing');
+  assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.'", 'Spanish mod manager empty-state label missing');
+  assertContains(contentContent, "'mod.confirmDelete': 'Delete this module? This cannot be undone.'", 'English mod manager delete warning missing');
+  assertContains(contentContent, "'mod.confirmDelete': 'Borrar este modulo? Esta accion no se puede deshacer.'", 'Spanish mod manager delete warning missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -464,6 +468,21 @@ test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(appContent, "this._label('save.error.deleteAllFailed'", 'deleteAllSaves failure alert should come from localized copy');
   assertContains(appContent, "this._label('settings.confirmClearAllData'", 'clearAllData warning should come from localized copy');
   assertContains(appContent, "this._label('settings.clearAllDataDone'", 'clearAllData success alert should come from localized copy');
+});
+
+test('Mod manager UI uses localized safe rendering for module metadata', () => {
+  assertContains(modUiContent, "label(key, fallback, vars = {})", 'ModUI localization helper missing');
+  assertContains(modUiContent, "escapeHtml(value)", 'ModUI HTML escaping helper missing');
+  assertContains(modUiContent, "this.label('mod.installedLog'", 'Mod install log should localize');
+  assertContains(modUiContent, "this.label('mod.confirmDelete'", 'Mod delete confirmation should localize');
+  assertContains(modUiContent, "this.label('mod.noneInstalled'", 'Mod empty state should localize');
+  assertContains(modUiContent, "this.label('mod.noDescription'", 'Mod missing-description fallback should localize');
+  assertContains(modUiContent, "this.escapeHtml(manifest.name", 'Mod names should be escaped before rendering');
+  assertContains(modUiContent, "this.escapeHtml(manifest.description", 'Mod descriptions should be escaped before rendering');
+  assertContains(modUiContent, 'aria-label="${enableTitle}"', 'Mod enable button should expose accessible localized title');
+  assertContains(modUiContent, 'aria-label="${deleteTitle}"', 'Mod delete button should expose accessible localized title');
+  assertNotContains(modUiContent, '${mod.manifest.name}', 'Mod names should not be inserted directly into HTML');
+  assertNotContains(modUiContent, "${mod.manifest.description || 'No description'}", 'Mod descriptions should not be inserted directly into HTML');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {

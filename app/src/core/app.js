@@ -4216,7 +4216,9 @@
             outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return false;
-                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
+                const actors = this._getExplorationActors(actorId);
+                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
+                return this.outsideGroupActionOnTarget(action, target, actors, options);
             },
 
             _removeContainedPartyMember(unit) {
@@ -4509,13 +4511,17 @@
 
             outsideActionForPartyTargets(action, targetIndexes, actorId = null, options = {}) {
                 const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
-                return this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
+                const actors = this._getExplorationActors(actorId);
+                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
+                return this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
             },
 
             outsideActionForCreatureTargets(action, targetIds, actorId = null, options = {}) {
                 const ids = new Set((targetIds || []).map(id => String(id)));
                 const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
-                return this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
+                const actors = this._getExplorationActors(actorId);
+                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
+                return this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
             },
 
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {

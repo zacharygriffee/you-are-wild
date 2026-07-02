@@ -2656,6 +2656,27 @@ test('Single-target exploration wrappers return resolver outcomes', () => {
   assertEqual(App.outsideActionForParty('flirt', 99), false, 'Party wrapper should report missing target failure');
   assertEqual(App.outsideActionForCreature('flirt', 'missing-creature'), false, 'Creature wrapper should report missing target failure');
   assertEqual(App.outsideActionForCreatureAs('missing-actor', 'flirt', 'missing-creature'), false, 'Actor-specific creature wrapper should report missing target failure');
+  const creaturePleAfterValidActor = creatureTarget.CPle;
+  assertEqual(App.outsideActionForCreatureAs('missing-actor', 'flirt', 'creature-target'), false, 'Actor-specific creature wrapper should report stale actor failure');
+  assertEqual(creatureTarget.CPle, creaturePleAfterValidActor, 'Stale actor wrapper should not mutate the target through player fallback');
+});
+
+test('Explicit actor multi-target wrappers reject stale actor ids', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const partyTarget = makeUnit('Party Target', { id: 'party-target', CPle: 0, MPle: 100, wis: 1 });
+  const creatureTarget = makeUnit('Creature Target', { id: 'creature-target', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = actor;
+  App.party = [actor, partyTarget];
+  App.creatures = [creatureTarget];
+  assertEqual(App.outsideActionForPartyTargets('flirt', [1], 'missing-actor'), false, 'Party multi-target wrapper should reject stale explicit actor ids');
+  assertEqual(App.outsideActionForCreatureTargets('flirt', ['creature-target'], 'missing-actor'), false, 'Creature multi-target wrapper should reject stale explicit actor ids');
+  assertEqual(partyTarget.CPle, 0, 'Stale explicit actor should not affect party target');
+  assertEqual(creatureTarget.CPle, 0, 'Stale explicit actor should not affect creature target');
+  assertEqual(App.outsideActionForPartyTargets('flirt', [1], 'actor-1'), true, 'Party multi-target wrapper should still accept a valid explicit actor');
+  assertEqual(App.outsideActionForCreatureTargets('flirt', ['creature-target'], 'actor-1'), true, 'Creature multi-target wrapper should still accept a valid explicit actor');
+  assert(partyTarget.CPle > 0, 'Valid explicit actor should affect party target');
+  assert(creatureTarget.CPle > 0, 'Valid explicit actor should affect creature target');
 });
 
 test('Single-actor group wrapper preserves rejected action outcomes', () => {

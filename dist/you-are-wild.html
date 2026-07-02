@@ -4457,6 +4457,35 @@
                 return `<span class="turn-order-badge" title="Turn order" aria-label="Turn order ${base}${sync}" style="font-size:10px;font-weight:800;background:${bg};color:${color};border:1px solid var(--border-default);border-radius:6px;padding:2px 5px;margin-left:4px;white-space:nowrap;">${base}${acted}${sync}</span>`;
             },
 
+            _srOnly(text, attrs = '') {
+                if (!text) return '';
+                return `<span ${attrs} style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${this._escapeHtml(text)}</span>`;
+            },
+
+            _combatStatusText(unit) {
+                if (!this.combatState.active || !unit) return '';
+                const bits = [];
+                const info = this._turnOrderInfo(unit);
+                if (info?.current) bits.push(`${unit.name} is the current combat actor at turn ${info.order}.`);
+                else if (info?.order) bits.push(`${unit.name} is queued at turn ${info.order}${info.acted ? ' and has already acted this round' : ''}.`);
+                if (info?.sync) {
+                    const role = info.syncRole === 'Target' ? 'target of' : 'participant in';
+                    bits.push(`${unit.name} is ${role} queued group ${this._syncActionLabel(info.sync.type)} resolving at turn ${info.syncOrder}.`);
+                }
+                if (this.targetSelection && !this._isCorpse(unit)) {
+                    const action = this.targetSelection.action || 'action';
+                    if (!this.party.includes(unit)) {
+                        bits.push(this.canSelectCreatureTarget(unit)
+                            ? `${unit.name} can be selected as the ${action} target.`
+                            : `${unit.name} cannot be selected as the ${action} target.`);
+                    } else {
+                        const actor = this.activeActor || this.player;
+                        if (actor === unit) bits.push(`${unit.name} is choosing a ${action} target.`);
+                    }
+                }
+                return bits.join(' ');
+            },
+
             _currentBiomeId() {
                 const tile = this.worldMap?.get(`${this.location.x},${this.location.y}`);
                 return tile?.biome || this.currentBiome || null;
@@ -7752,7 +7781,10 @@
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
                         const disabled = isTargetable ? '' : ' disabled';
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
+                        const targetLabel = this._escapeHtml(unit.name || 'creature');
+                        const actionLabel = this._escapeHtml(this.targetSelection.action || 'action');
+                        const targetHint = `${isTargetable ? 'Select' : 'Cannot select'} ${targetLabel} as ${actionLabel} target`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
                         const targetClass = targetSelected ? ' primary' : '';
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${targetClass}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">Target</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
@@ -7772,9 +7804,11 @@
                 const status = isParty ? (unit.name === this.player?.name ? 'You' : 'Ally') : (unit.disposition === this.DISPOSITION.MERCHANT ? 'Merchant' : unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
+                const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
                 const pressHandlers = !isParty ? ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"` : '';
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span>${turnBadge}</div>
+                    ${combatStatus}
                     <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
                     ${actionButtons}
@@ -7820,8 +7854,12 @@
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);
                     if (this.targetSelection) {
-                        const disabled = this.canSelectCreatureTarget(unit) ? '' : ' disabled';
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
+                        const canTarget = this.canSelectCreatureTarget(unit);
+                        const disabled = canTarget ? '' : ' disabled';
+                        const targetLabel = this._escapeHtml(unit.name || 'creature');
+                        const actionLabel = this._escapeHtml(this.targetSelection.action || 'action');
+                        const targetHint = `${canTarget ? 'Select' : 'Cannot select'} ${targetLabel} as ${actionLabel} target`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
                     } else if (!this.combatState.active) {
                         const targetLabel = this._escapeHtml(unit.name || 'creature');
                         const targetClass = this._isExplorationTarget('creature', String(unit.id || unit.name)) ? ' primary' : '';
@@ -7858,11 +7896,13 @@
                 ].join(' | ');
                 const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
+                const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
                 return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
                             <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
+                            ${combatStatus}
                             <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
                             <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}${rowLabel}</div>
 	                        </div>

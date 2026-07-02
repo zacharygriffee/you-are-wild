@@ -2036,6 +2036,8 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.selectTarget('fight');
   assertContains(elements.get('scene-description').innerHTML, 'creature panel', 'Target picker should not replace center with target cards');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should execute selected action');
+  assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as fight target"', 'Target button should describe selected combat action');
+  assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
   App.executeActionOnTarget('fight', 'enemy-1');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
 });
@@ -2060,7 +2062,11 @@ test('Combat unit cards show turn order and current focus badges', () => {
   const enemyCard = App.renderUnitCard(enemy, 0, 'creature');
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   assertContains(enemyCard, 'Now #2', 'Current target card should show focused turn order');
+  assertContains(enemyCard, 'role="status"', 'Current combat unit should expose a screen-reader status');
+  assertContains(enemyCard, 'Enemy is the current combat actor at turn 2.', 'Current combat unit should announce focus state');
   assertContains(allyCard, '#3', 'Waiting party card should show turn order number');
+  assertContains(allyCard, 'Ally is queued at turn 3', 'Waiting party card should announce queued turn order');
+  assertContains(App.renderMobileUnitChip(enemy, 0, 'creature'), 'Enemy is the current combat actor at turn 2.', 'Mobile chip should announce current combat focus');
 });
 
 test('Queued group actions show the slowest participant order and preserve intervening turns', () => {
@@ -2095,7 +2101,11 @@ test('Queued group actions show the slowest participant order and preserve inter
   assertEqual(sync.resolveAtIndex, 2, 'Group action should resolve on slowest participant index');
   assertEqual(App.combatState.turnQueue[1].actedThisRound || false, false, 'Intervening turn before slowest participant should remain available');
   assertContains(App.renderUnitCard(player, 0, 'party'), 'Group Fight #3', 'Participant card should show group action order');
-  assertContains(App.renderUnitCard(enemy, 0, 'creature'), 'Target Fight #3', 'Target card should show group target order');
+  const playerCard = App.renderUnitCard(player, 0, 'party');
+  const enemyCard = App.renderUnitCard(enemy, 0, 'creature');
+  assertContains(playerCard, 'participant in queued group Fight resolving at turn 3.', 'Participant card should announce queued group action');
+  assertContains(enemyCard, 'Target Fight #3', 'Target card should show group target order');
+  assertContains(enemyCard, 'target of queued group Fight resolving at turn 3.', 'Target card should announce queued group action');
 });
 
 test('Combat auto-position assigns flying and ranged units to back row', () => {

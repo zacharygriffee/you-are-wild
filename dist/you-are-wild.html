@@ -8058,7 +8058,7 @@ const WorldGen = (() => {
                             const candidates = livingActors.filter(actor => actor !== target);
                             const prey = candidates.filter(actor => actor !== this.player && !actor.mc);
                             const helpers = candidates.filter(actor => !prey.includes(actor));
-                            if (livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
+                            if (selectedSubAction === 'heal' || livingActors.includes(target) || candidates.length === 0 || prey.length === 0) {
                                 const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                                 const healAmount = Math.floor(totalFeed * 2);
                                 target.CPun = Math.min(target.MPun, target.CPun + healAmount);

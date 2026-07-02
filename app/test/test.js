@@ -2174,6 +2174,22 @@ test('Single selected party member can be fed to another full-health party membe
   assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
 });
 
+test('Group feed respects explicit heal sub-action instead of consuming selected party members', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 40, MPun: 100, size: 6, appetite: 6 });
+  const helper = makeUnit('Helper', { id: 'helper-1', Feed: 20 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2, Feed: 20 });
+  App.player = player;
+  App.party = [player, consumer, helper, prey];
+  App.explorationActorIds = ['helper-1', 'prey-1'];
+  App.outsideActionForParty('feed', 1, null, { subAction: 'heal' });
+  assertEqual(consumer.CPun, 100, 'Explicit heal should restore the party target with combined group Feed');
+  assertEqual(consumer.stomach.length, 0, 'Explicit heal should not route selected party members into the target stomach');
+  assertEqual(App.party.includes(prey), true, 'Explicit heal should keep selected party members in the active party');
+  assertContains(App.log[App.log.length - 1].text, 'restoring 80 punishment', 'Explicit heal should log tending instead of containment');
+});
+
 test('Single feast removes consumed area creature from active tile', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 6, Feas: 40 });

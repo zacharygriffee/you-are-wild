@@ -4151,15 +4151,9 @@
                 switch (action) {
                     case 'fight': {
                         if (target.disposition !== this.DISPOSITION.ENEMY && !this.party.includes(target)) {
-                            const hostiles = [];
-                            const texts = [];
-                            for (const actor of livingActors) {
-                                const reaction = this._reactToNonHostileAttack(target, actor);
-                                if (reaction?.text) texts.push(reaction.text);
-                                hostiles.push(...(reaction?.hostiles || []));
-                            }
-                            result = texts.join(' ');
-                            combatTargets = [...new Set(hostiles)];
+                            const reaction = this._reactToNonHostileAttack(target, livingActors[0] || this.player);
+                            result = reaction?.text || `${target.name} recoils from the attack.`;
+                            combatTargets = [...new Set(reaction?.hostiles || [])];
                             startCombatAfter = combatTargets.length > 0;
                             break;
                         }

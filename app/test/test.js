@@ -1504,6 +1504,26 @@ test('Attacking a timid group can make same-species creatures flee together', ()
   assertEqual(App.combatState.active, false, 'All-flee reaction should not start combat');
 });
 
+test('Group attacking a timid social group resolves one shared flee reaction', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', xp: 0, xpToNext: 1000 });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const target = makeUnit('Mouse A', { id: 'mouse-a', species: 'bunny', disposition: App.DISPOSITION.NEUTRAL, Flee: 20 });
+  const bystander = makeUnit('Mouse B', { id: 'mouse-b', species: 'bunny', disposition: App.DISPOSITION.FRIENDLY, Flee: 20 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [target, bystander];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [target, bystander] }]]);
+  App.location = { x: 0, y: 0 };
+  App.explorationActorIds = ['player-1', 'ally-1'];
+  App.outsideActionForCreature('fight', 'mouse-a');
+  const text = App.log[App.log.length - 1].text;
+  assertEqual(App.creatures.length, 0, 'Shared group threat should still make the timid social group flee');
+  assertEqual((text.match(/Mouse A panics/g) || []).length, 1, 'Target should only react once to a group attack');
+  assertEqual((text.match(/Mouse B panics/g) || []).length, 1, 'Social bystander should only react once to a group attack');
+  assertEqual(App.combatState.active, false, 'All-flee group reaction should not start combat');
+});
+
 test('Attacking a non-timid creature can turn same-species group hostile', () => {
   const { App } = loadAppForCombat(() => 1);
   const player = makeUnit('You');

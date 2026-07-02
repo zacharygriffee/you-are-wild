@@ -1217,9 +1217,14 @@
                 return this._isTimid(unit) || temp.fastFlee || temp.passive || (temp.prey && !temp.aggressive);
             },
             _makeCreatureFlee(unit, threat = this.player) {
-                this.creatures = this.creatures.filter(c => c !== unit);
-                this._syncCurrentTileCreatures();
+                this._removeCreatureFromArea(unit);
                 return { fled: true, text: `${unit.name} panics and flees from ${threat?.name || 'the threat'}!` };
+            },
+            _removeCreatureFromArea(unit) {
+                if (!unit) return;
+                this.creatures = this.creatures.filter(c => c !== unit);
+                this._normalizeExplorationSelections();
+                this._syncCurrentTileCreatures();
             },
             _turnCreatureHostile(unit) {
                 unit.disposition = this.DISPOSITION.ENEMY;
@@ -4108,7 +4113,7 @@
                 }
                 target.CPun = 0;
                 if (this.party.includes(target)) this._removeContainedPartyMember(target);
-                else this._makeCorpse(target, 'feast');
+                else this._removeCreatureFromArea(target);
                 this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                 return this._label('group.feast.split', '{actors} split {target} into chewable portions.', {
                     actors: portions.map(actor => actor.name).join(', '),
@@ -4318,6 +4323,7 @@
                         primary.stomach.push(this._createStomachPrey(target));
                         target.CPun = 0;
                         if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
+                        else if (this.creatures.includes(target)) this._removeCreatureFromArea(target);
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = this._label('group.feast.swallow', '{helpers} help {primary} swallow {target}.', {
                             helpers: helpers.map(actor => actor.name).join(', ') || primary.name,
@@ -4442,7 +4448,9 @@
                             actor.stomach.push(this._createStomachPrey(target));
                             target.CPun = 0;
                             if (this.party.includes(target) && target !== actor) {
-                                this.party = this.party.filter(p => p !== target);
+                                this._removeContainedPartyMember(target);
+                            } else if (this.creatures.includes(target)) {
+                                this._removeCreatureFromArea(target);
                             }
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             result = `${actorName} swallow${actorVerb} ${target.name} whole. They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;

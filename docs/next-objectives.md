@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 277/277 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 279/279 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -99,7 +99,7 @@
 - Enemy AI now has morale flee when outnumbered and wounded, wounded pack creatures can call same-species reinforcements, predators prioritize livestock/prey targets, and first-entry ambushers get first-strike initiative
 - Exploration party interaction has a first-pass multi-actor model: party cards can toggle multiple active actors, selected actors can act together against one party/creature target, party play-fighting is nonlethal by default, group feast uses a selected primary consumer with helpers, and group/single feed can place selected party members into another party member's stomach with capacity checks
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
-- Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow, and non-chewing group feast chooses a selected actor that can fit the target as primary instead of forcing the first selected helper to consume
+- Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow, non-chewing group feast chooses a selected actor that can fit the target as primary instead of forcing the first selected helper to consume, and swallowed area creatures are removed from the active tile/persisted tile creature list instead of lingering as hidden non-corpse entries
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
 - Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, authored quest templates can spawn quest givers from structure encounters, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, styled route/checkpoint previews with complete/current/pending states plus current-checkpoint distance/direction guidance, known-terrain route hints for roads/bridges/rough terrain without materializing unknown tiles, map-focus actions for next objective markers, optional deferred reward turn-in, quest-giver turn-in routing with map focus when giver location is known, defeat/find/consume/seduce/travel objective progress uses a shared matcher, escort objectives support explicit ordered route/checkpoints, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
 - Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, expensive/rare purchases require confirmation, merchant stock can refresh after three in-game days, authored stock tables can place merchants in safe/commercial structures, inventory/trade surfaces support item category filtering and value/name/type sorting, corpse loot can grant generated or authored gold rewards, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
@@ -231,7 +231,7 @@ app/
     market-screen.js  — Marketplace UI (~343 lines)
     market-nav.js     — Marketplace nav (~17 lines)
   template.html      — HTML shell, CSS, inline screens (~2428 lines)
-  test/test.js       — 277 tests, syntax/structure/combat behavior
+  test/test.js       — 279 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

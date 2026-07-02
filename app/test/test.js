@@ -2019,6 +2019,23 @@ test('Single selected party member can be fed to another full-health party membe
   assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
 });
 
+test('Single feast removes consumed area creature from active tile', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 6, Feas: 40 });
+  const prey = makeUnit('Prey', { id: 'prey-1', disposition: App.DISPOSITION.FRIENDLY, size: 2, Flee: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [prey];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [prey] }]]);
+  App.toggleExplorationTarget('creature', 'prey-1');
+  App.outsideActionForCreature('feast', 'prey-1');
+  assertEqual(player.stomach.length, 1, 'Single feast should place area creature in actor stomach');
+  assertEqual(App.creatures.includes(prey), false, 'Consumed area creature should leave active creatures');
+  assertEqual(App.worldMap.get('0,0').creatures.includes(prey), false, 'Consumed area creature should leave persisted tile creatures');
+  assertEqual(App.explorationTargetIds.includes('creature:prey-1'), false, 'Consumed area creature should clear selected target state');
+});
+
 test('Chewing-enabled group feast splits target among selected actors', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -2053,6 +2070,27 @@ test('Group feast chooses a selected primary consumer that can fit the target', 
   assertEqual(primary.stomach[0].name, 'Prey', 'Primary consumer should receive the target');
   assertEqual(App.party.includes(prey), false, 'Consumed party target should leave active party list');
   assertContains(App.log[App.log.length - 1].text, 'Small Helper help Primary swallow Prey', 'Group feast summary should name helper and selected primary');
+});
+
+test('Group feast removes consumed area creature from active tile', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const helper = makeUnit('Helper', { id: 'helper-1', size: 1, appetite: 1, Feas: 30 });
+  const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
+  const prey = makeUnit('Prey', { id: 'prey-1', disposition: App.DISPOSITION.FRIENDLY, size: 4, Flee: 1 });
+  App.player = player;
+  App.party = [player, helper, primary];
+  App.creatures = [prey];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [prey] }]]);
+  App.settings.chewing = false;
+  App.explorationActorIds = ['helper-1', 'primary-1'];
+  App.toggleExplorationTarget('creature', 'prey-1');
+  App.outsideActionForCreature('feast', 'prey-1');
+  assertEqual(primary.stomach.length, 1, 'Group feast should place area creature in selected primary stomach');
+  assertEqual(App.creatures.includes(prey), false, 'Consumed area creature should leave active creatures after group feast');
+  assertEqual(App.worldMap.get('0,0').creatures.includes(prey), false, 'Consumed area creature should leave persisted tile after group feast');
+  assertEqual(App.explorationTargetIds.includes('creature:prey-1'), false, 'Consumed group target should clear selected target state');
 });
 
 test('Group exploration outcome summaries localize', () => {

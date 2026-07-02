@@ -3929,34 +3929,50 @@
             showInteractMenu() {
                 const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
-                let html = `<h3>Interact with creatures</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
-                [...allies, ...friendlies].forEach((c, i) => {
-                    const type = this.party.includes(c) ? 'party' : 'creature';
-                    html += `<button class="option-card" onclick="App.showCreatureInteract('${type}', ${i})">`;
-                    html += `<div style="font-size:32px">${c.icon}</div><div style="color:var(--text-primary);font-weight:600">${c.name}</div>`;
-                    html += `<div style="color:var(--text-muted);font-size:12px">${type === 'party' ? 'Ally' : 'Friendly'} | HP: ${c.CPun}/${c.MPun}</div>`;
-                    html += `</button>`;
+                const title = this._escapeHtml(this._label('ui.creatureActions', 'Creature actions'));
+                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                const card = (c, type, index, statusLabel) => {
+                    const name = this._escapeHtml(c.name || 'creature');
+                    const label = this._escapeHtml(`${this._uiLabel('interact')} ${c.name || 'creature'}`);
+                    const status = `${statusLabel} | ${this._label('party.punishment', 'Punishment')}: ${c.CPun}/${c.MPun}`;
+                    return `<button class="option-card" title="${label}" aria-label="${label}" onclick="App.showCreatureInteract('${type}', ${index})"><div style="font-size:32px">${this._escapeHtml(c.icon || '')}</div><div style="color:var(--text-primary);font-weight:600">${name}</div><div style="color:var(--text-muted);font-size:12px">${this._escapeHtml(status)}</div></button>`;
+                };
+                let html = `<h3>${title}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
+                allies.forEach((c, i) => {
+                    html += card(c, 'party', i, this._label('party.ally', 'Ally'));
                 });
-                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Cancel</button>`;
+                friendlies.forEach((c, i) => {
+                    html += card(c, 'creature', i, this._unitDispositionLabel(c));
+                });
+                html += `</div><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.showExplorationActions()">${cancelLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 
             showCreatureInteract(type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return;
-                let html = `<h3>${target.name}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
-                html += `<button class="action-btn" onclick="App.outsideAction('fight', '${type}', ${index})">⚔️ Fight</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('flirt', '${type}', ${index})">😘 Flirt</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('fuck', '${type}', ${index})">🔥 Fuck</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('feast', '${type}', ${index})">🍽️ Feast</button>`;
-                html += `<button class="action-btn" onclick="App.outsideAction('feed', '${type}', ${index})">🍲 Feed</button>`;
+                const targetName = this._escapeHtml(target.name || 'creature');
+                const actionButton = action => {
+                    const label = this._escapeHtml(this._uiLabel(action));
+                    const title = this._escapeHtml(`${this._uiLabel(action)} ${target.name || 'creature'}`);
+                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.outsideAction('${action}', '${type}', ${index})">${this._actionIcon(action)} ${label}</button>`;
+                };
+                let html = `<h3>${targetName}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
+                html += actionButton('fight');
+                html += actionButton('flirt');
+                html += actionButton('fuck');
+                html += actionButton('feast');
+                html += actionButton('feed');
                 if (type === 'creature' && target.disposition === this.DISPOSITION.FRIENDLY) {
-                    html += `<button class="action-btn primary" onclick="App.recruitCreatureFromIndex(${index})">💕 Recruit</button>`;
+                    const recruitLabel = this._escapeHtml(this._uiLabel('recruit'));
+                    const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${target.name || 'creature'}`);
+                    html += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="App.recruitCreatureFromIndex(${index})">💕 ${recruitLabel}</button>`;
                 }
                 if (type === 'party') {
-                    html += `<button class="action-btn" onclick="App.outsideAction('inspect', '${type}', ${index})">👁️ Inspect</button>`;
+                    html += actionButton('inspect');
                 }
-                html += `<button class="nav-btn" style="margin-top:8px" onclick="App.showInteractMenu()">Back</button>`;
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                html += `<button class="nav-btn" style="margin-top:8px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showInteractMenu()">${backLabel}</button>`;
                 html += `</div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },

@@ -1588,6 +1588,35 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
 
+test('Fallback interact menu localizes labels and keeps target indexes stable', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally <One>', { id: 'ally-1' });
+  const friendly = makeUnit('Friendly <Two>', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [friendly];
+  App.updateLanguage('es');
+
+  App.showInteractMenu();
+  const menuHtml = elements.get('scene-description').innerHTML;
+  assertContains(menuHtml, 'Acciones de criatura', 'Fallback interact menu title should localize');
+  assertContains(menuHtml, "showCreatureInteract('party', 0)", 'Ally card should use an ally-local index');
+  assertContains(menuHtml, "showCreatureInteract('creature', 0)", 'Creature card should use a creature-local index after allies');
+  assertContains(menuHtml, 'Ally &lt;One&gt;', 'Fallback menu should escape ally names');
+  assertContains(menuHtml, 'Friendly &lt;Two&gt;', 'Fallback menu should escape creature names');
+  assertContains(menuHtml, 'aria-label="Interactuar Friendly &lt;Two&gt;"', 'Creature card should expose a localized accessible label');
+  assertContains(menuHtml, 'aria-label="Cancelar"', 'Fallback cancel button should expose a localized accessible label');
+
+  App.showCreatureInteract('creature', 0);
+  const actionHtml = elements.get('scene-description').innerHTML;
+  assertContains(actionHtml, 'Friendly &lt;Two&gt;', 'Creature interaction heading should escape target names');
+  assertContains(actionHtml, 'aria-label="Luchar Friendly &lt;Two&gt;"', 'Creature fight action should localize its accessible label');
+  assertContains(actionHtml, '>🔥 Seducir<', 'Creature pleasure action should localize its visible label');
+  assertContains(actionHtml, 'aria-label="Reclutar Friendly &lt;Two&gt;"', 'Recruit action should localize its accessible label');
+  assertContains(actionHtml, 'aria-label="Volver"', 'Back button should expose a localized accessible label');
+});
+
 test('Combat context keeps non-enemy creature interaction in panels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You');

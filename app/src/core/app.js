@@ -1598,6 +1598,7 @@
                 tile.items = this.inventory.slice();
                 this.activeInterior = this._ensureStructureInterior(tile);
                 this.persistTileDelta(tile.x, tile.y, tile);
+                this.clearTileBoundExplorationTargets();
                 this.inInterior = true;
                 this.interiorLocation = { x: 0, y: 0 };
                 const room = this._currentInteriorTile();
@@ -1619,6 +1620,7 @@
                 if (room) room.creatures = this._tileCreatures(this.creatures);
                 const origin = this.activeInterior.origin;
                 const tile = this.getTile(origin.x, origin.y);
+                this.clearTileBoundExplorationTargets();
                 this.location = { x: origin.x, y: origin.y };
                 this.inInterior = false;
                 this.activeInterior = null;
@@ -1646,6 +1648,7 @@
                 }
                 const oldRoom = this._currentInteriorTile();
                 if (oldRoom) oldRoom.creatures = this._tileCreatures(this.creatures);
+                this.clearTileBoundExplorationTargets();
                 this.interiorLocation = { x: nx, y: ny };
                 this._advanceTime(1);
                 const room = this._currentInteriorTile();
@@ -1687,6 +1690,7 @@
                     oldTile.items = this.inventory.slice();
                     this.persistTileDelta(oldTile.x, oldTile.y, oldTile);
                 }
+                this.clearTileBoundExplorationTargets();
                 this.location.x += dx; this.location.y += dy;
                 this._advanceTime(1);
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
@@ -3509,6 +3513,10 @@
                     return;
                 }
                 this.explorationTargetIds = (this.explorationTargetIds || []).filter(key => this._explorationTargetFromKey(key));
+            },
+
+            clearTileBoundExplorationTargets() {
+                this.explorationTargetIds = (this.explorationTargetIds || []).filter(key => String(key).startsWith('party:'));
             },
 
             _getPartyLeader() {
@@ -6703,6 +6711,8 @@ Enter 1, 2, or 3:`);
                         if (role) unit.partyRole = role;
                         if (order) unit.aiOrder = order;
                     }
+                    this.explorationActorIds = Array.isArray(loaded.questState?.explorationActorIds) ? loaded.questState.explorationActorIds.map(String) : [];
+                    this.explorationTargetIds = Array.isArray(loaded.questState?.explorationPartyTargetIds) ? loaded.questState.explorationPartyTargetIds.map(String) : [];
                     this.currentBiome = loaded.currentBiome || 'forest';
                     this.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;
                     this.dayCount = loaded.questState?.dayCount || 0;
@@ -6729,7 +6739,7 @@ Enter 1, 2, or 3:`);
                     this.activeSlot = slotName;
                     this._restoreWorldState(loaded);
                     await this.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
-                    this._normalizeExplorationSelections({ resetTargets: true });
+                    this._normalizeExplorationSelections();
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);

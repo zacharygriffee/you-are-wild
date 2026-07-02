@@ -1629,6 +1629,48 @@ test('Exploration selection normalization resets stale save-load state', () => {
   assertEqual(App.explorationTargetIds.length, 0, 'Selection normalization should clear target ids on load/reset');
 });
 
+test('Exploration selection save metadata persists party selections only', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const save = Binary.saveGame({
+    player,
+    party: [player, ally],
+    location: { x: 0, y: 0 },
+    explorationActorIds: ['ally-1'],
+    explorationTargetIds: ['party:ally-1', 'creature:tile-creature'],
+    worldMap: new Map(),
+    exploredTiles: new Set(),
+    log: []
+  });
+  const loaded = Binary.loadGame(save);
+  assertEqual(loaded.questState.explorationActorIds[0], 'ally-1', 'Selected party actor should persist in save metadata');
+  assertEqual(loaded.questState.explorationPartyTargetIds[0], 'party:ally-1', 'Selected party target should persist in save metadata');
+  assertEqual(loaded.questState.explorationPartyTargetIds.includes('creature:tile-creature'), false, 'Tile-bound creature target should not persist in save metadata');
+});
+
+test('Moving tiles clears tile-bound creature targets but keeps party selections', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const creature = makeUnit('Creature', { id: 'creature-1', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [creature];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [creature], items: [], description: 'Start' }],
+    ['1,0', { x: 1, y: 0, biome: 'forest', explored: true, creatures: [], items: [], description: 'Next' }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.explorationActorIds = ['ally-1'];
+  App.explorationTargetIds = ['party:ally-1', 'creature:creature-1'];
+  App.move(1, 0);
+  assertEqual(App.explorationActorIds.includes('ally-1'), true, 'Selected party actor should survive tile movement');
+  assertEqual(App.explorationTargetIds.includes('party:ally-1'), true, 'Selected party target should survive tile movement');
+  assertEqual(App.explorationTargetIds.includes('creature:creature-1'), false, 'Selected creature target should clear when leaving its tile');
+});
+
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });

@@ -244,6 +244,12 @@
         if (unit.aiOrder) partyAIOrders[key] = unit.aiOrder;
       }
     }
+    const explorationActorIds = (appState.explorationActorIds || (appState.explorationActorId ? [appState.explorationActorId] : []))
+      .filter(Boolean)
+      .map(String);
+    const explorationPartyTargetIds = (appState.explorationTargetIds || [])
+      .filter(key => String(key).startsWith('party:'))
+      .map(String);
 
     const saveData = {
       version: 10,
@@ -273,7 +279,9 @@
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
         partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null,
         partyRoles,
-        partyAIOrders
+        partyAIOrders,
+        explorationActorIds,
+        explorationPartyTargetIds
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

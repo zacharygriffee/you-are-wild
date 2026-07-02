@@ -1131,9 +1131,16 @@
                 return this._containerUsed(predator, container) + (prey.size || 1) <= this._containerCapacity(predator, container);
             },
             _capacityFailureMessage(actor, target, container = 'stomach') {
-                const label = container === 'womb' ? 'womb' : container === 'balls' ? 'balls' : 'stomach';
-                const prefix = actor === this.player ? 'Your' : `${actor.name}'s`;
-                return `${prefix} ${label} is too full for ${target.name}!`;
+                const containerKey = container === 'womb' ? 'capacity.womb' : container === 'balls' ? 'capacity.balls' : 'capacity.stomach';
+                const fallbackContainer = container === 'womb' ? 'womb' : container === 'balls' ? 'balls' : 'stomach';
+                const owner = actor === this.player
+                    ? this._label('capacity.owner.your', 'Your')
+                    : this._label('capacity.owner.named', "{name}'s", { name: actor?.name || 'Someone' });
+                return this._label('capacity.tooFull', '{owner} {container} is too full for {target}!', {
+                    owner,
+                    container: this._label(containerKey, fallbackContainer),
+                    target: target?.name || 'target'
+                });
             },
             _containerSummary(unit, container = 'stomach') {
                 return `${this._containerUsed(unit, container)}/${this._containerCapacity(unit, container)}`;
@@ -1688,7 +1695,7 @@
                 if (this.inInterior) return;
                 const tile = this._currentOverworldTile();
                 if (!tile || !tile.structure) {
-                    this.log.push({ text: 'There is no structure to enter here.', type: 'discovery' });
+                    this.log.push({ text: this._label('structure.noStructure', 'There is no structure to enter here.'), type: 'discovery' });
                     this.renderLog();
                     return;
                 }
@@ -1703,7 +1710,7 @@
                 room.explored = true;
                 this.creatures = this._tileCreatures(room.creatures || []);
                 this.currentBiome = room.biome;
-                this.log.push({ text: `Entered ${this.activeInterior.structureName}.`, type: 'discovery' });
+                this.log.push({ text: this._label('structure.entered', 'Entered {name}.', { name: this.activeInterior.structureName }), type: 'discovery' });
                 this.updateScene(this.activeInterior.structureName, room.description, false);
                 this.renderMap();
                 this.renderCreatures();
@@ -1727,7 +1734,7 @@
                 this.currentBiome = tile.biome;
                 this.persistTileDelta(tile.x, tile.y, tile);
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
-                this.log.push({ text: `Exited ${this.STRUCTURES[tile.structure]?.name || 'the structure'}.`, type: 'move' });
+                this.log.push({ text: this._label('structure.exited', 'Exited {name}.', { name: this.STRUCTURES[tile.structure]?.name || this._label('structure.fallbackName', 'the structure') }), type: 'move' });
                 this.showExplorationActions();
                 this.renderMap();
                 this.renderCreatures();
@@ -1740,7 +1747,7 @@
                 const nx = this.interiorLocation.x + dx;
                 const ny = this.interiorLocation.y + dy;
                 if (Math.abs(nx) > 2 || Math.abs(ny) > 2) {
-                    this.log.push({ text: 'A wall blocks the way.', type: 'move' });
+                    this.log.push({ text: this._label('structure.wallBlocked', 'A wall blocks the way.'), type: 'move' });
                     this.renderLog();
                     return;
                 }

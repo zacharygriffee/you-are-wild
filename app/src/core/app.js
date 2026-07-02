@@ -6280,16 +6280,16 @@
                 const saves = {};
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 const isNewMode = mode === 'new';
-                let html = '<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:24px;">' + (isNewMode ? 'Pick a slot for the new run. Occupied slots require irreversible overwrite confirmation.' : 'Auto-save is always on. You can load, start a new run in, save over, or delete an individual slot.') + '</p>';
+                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:24px;">' + (isNewMode ? 'Pick a slot for the new run. Occupied slots require irreversible overwrite confirmation.' : 'Auto-save is always on. You can load, start a new run in, save over, or delete an individual slot.') + '</p>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
                     const saveTime = this._getSaveTime(slotName);
                     const hasData = parseInt(saveTime) > 0;
                     const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : 'Empty';
-                    html += '<div style="background:' + (isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)') + ';border:1px solid ' + (isActive ? 'var(--accent-primary)' : 'var(--border-default)') + ';border-radius:var(--radius-md);padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">';
-                    html += '<div><div style="font-weight:600;color:var(--text-primary);">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + timeStr + '</div></div>';
-                    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">';
+                    html += '<div class="save-slot-card' + (isActive ? ' active' : '') + '">';
+                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '</div><div class="save-slot-time">' + timeStr + '</div></div>';
+                    html += '<div class="save-slot-actions">';
                     if (isNewMode) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 Use Slot</button>';
                     if (!isNewMode) html += '<button class="nav-btn" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Run</button>';
                     if (hasData) html += '<button class="nav-btn" onclick="App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })">📂 Load</button>';
@@ -6297,7 +6297,7 @@
                     if (hasData) html += '<button class="nav-btn" style="color:var(--accent-danger);" onclick="App.deleteSlot(\'' + slotName + '\')">🗑️ Delete</button>';
                     html += '</div></div>';
                 }
-                html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;"><button class="nav-btn" onclick="returnToGame()">Close</button></div></div>';
+                html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;"><button class="nav-btn save-manager-close" onclick="returnToGame()">Close</button></div></div>';
                 document.getElementById('save-manager').innerHTML = html;
                 document.getElementById('save-manager').style.display = 'block';
             },

@@ -1369,8 +1369,12 @@ test('Status effects apply damage and expire during processing', () => {
 });
 
 test('Bleed and burn apply damage, stack, and burn can spread in row', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App } = loadAppForCombat(() => 0.99);
+  App.worldMeta = { seed: 'burn-spread-1', generatorVersion: 2 };
+  App.location = { x: 0, y: 0 };
+  App.combatState = { active: true, round: 1, currentTurn: 0 };
   const burned = makeUnit('Burned', {
+    id: 'burned-unit',
     CPun: 30,
     combatRow: 'front',
     status: {
@@ -1378,7 +1382,7 @@ test('Bleed and burn apply damage, stack, and burn can spread in row', () => {
       burn: { dmg: 3, turns: 1 }
     }
   });
-  const neighbor = makeUnit('Neighbor', { combatRow: 'front' });
+  const neighbor = makeUnit('Neighbor', { id: 'neighbor-unit', combatRow: 'front' });
   App.party = [burned, neighbor];
   App.creatures = [];
   App._processStatusEffects();
@@ -1386,6 +1390,32 @@ test('Bleed and burn apply damage, stack, and burn can spread in row', () => {
   assertEqual(Boolean(burned.status.bleed), false, 'Bleed should expire');
   assertEqual(Boolean(burned.status.burn), false, 'Burn should expire');
   assert(neighbor.status.burn, 'Burn should spread to same-row combatant when roll succeeds');
+});
+
+test('Burn spread outcome is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'burn-spread-1', generatorVersion: 2 };
+    App.location = { x: 0, y: 0 };
+    App.combatState = { active: true, round: 1, currentTurn: 0 };
+    const burned = makeUnit('Burned', {
+      id: 'burned-unit',
+      CPun: 30,
+      combatRow: 'front',
+      status: { burn: { dmg: 3, turns: 1 } }
+    });
+    const neighbor = makeUnit('Neighbor', { id: 'neighbor-unit', combatRow: 'front' });
+    App.party = [burned, neighbor];
+    App.creatures = [];
+    App._processStatusEffects();
+    return {
+      burnedPun: burned.CPun,
+      neighborBurned: Boolean(neighbor.status.burn),
+      log: App.log.map(entry => entry.text)
+    };
+  };
+
+  assertEqual(JSON.stringify(buildCase(() => 0)), JSON.stringify(buildCase(() => 0.99)), 'Burn spread should not depend on ambient Math.random');
 });
 
 test('Freeze skips once then applies temporary speed penalty', () => {
@@ -4015,6 +4045,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.enemyTurn.toString(), 'enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random', 'Menacing fear status should not use raw Math.random');
   assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
   assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
+  assertNotContains(App._processStatusEffects.toString(), 'spreadTarget && Math.random', 'Persistent combat status spread should not use raw Math.random');
   assertNotContains(App._calcInitiative.toString(), 'Math.random', 'Persistent combat initiative should not use Math.random');
   assertNotContains(App.allyTurn.toString(), 'ally.obedient && Math.random', 'Dumb AI obedience checks should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'enemies[Math.floor(Math.random()', 'Dumb AI target picks should not use raw Math.random');

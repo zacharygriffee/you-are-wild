@@ -4186,7 +4186,7 @@ test('Player combat action bar localizes visible and accessible labels', () => {
 test('Party panel exposes per-ally AI order controls', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You');
-  const ally = makeUnit('Ally', { aiOrder: 'defensive' });
+  const ally = makeUnit('Ally', { aiOrder: 'defensive', expanded: true });
   App.player = player;
   App.party = [player, ally];
   App.renderParty();
@@ -4203,14 +4203,20 @@ test('Party panel exposes management controls and leader badge', () => {
   App.party = [player, ally];
   App.partyLeaderId = 'player-1';
   App.renderParty();
-  const html = elements.get('party-content').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, '[Leader]', 'Party leader badge should render');
   assertContains(html, 'showPartyMemberStats(1)', 'Party card should expose detailed stats');
-  assertContains(html, 'setPartyLeader(1)', 'Party card should expose set leader action');
-  assertContains(html, 'dismissPartyMember(1)', 'Ally card should expose dismiss action');
+  assertNotContains(html, 'setPartyLeader(1)', 'Default party card should keep leader management out of the compact action row');
+  assertNotContains(html, 'dismissPartyMember(1)', 'Default party card should keep dismiss management out of the compact action row');
   assertContains(html, 'draggable="true"', 'Ally card should expose drag reorder affordance');
   assertContains(html, 'startPartyDrag(1)', 'Ally card should start drag reorder');
   assertContains(html, 'dropPartyMember(1)', 'Ally card should accept drag reorder drops');
+  assertNotContains(html, 'setPartyRole(1,this.value)', 'Default party card should keep role management out of the compact action row');
+  ally.expanded = true;
+  App.renderParty();
+  html = elements.get('party-content').innerHTML;
+  assertContains(html, 'setPartyLeader(1)', 'Expanded party card should expose set leader action');
+  assertContains(html, 'dismissPartyMember(1)', 'Expanded ally card should expose dismiss action');
   assertContains(html, 'setPartyRole(1,this.value)', 'Ally card should expose party role selector');
   assertContains(html, 'Party role for Ally', 'Party role selector should be labeled');
 });
@@ -4225,7 +4231,7 @@ test('Desktop party card management labels localize', () => {
   App.partyLeaderId = 'player-1';
   App.updateLanguage('es');
   App.renderParty();
-  const html = elements.get('party-content').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Ally B para actuar"', 'Actor selection control should expose localized accessible label');
   assertContains(html, '>Actuar<', 'Actor selection visible label should localize');
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
@@ -4235,6 +4241,11 @@ test('Desktop party card management labels localize', () => {
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
   assertContains(html, '>Estadisticas<', 'Stats visible label should localize');
+  assertNotContains(html, 'aria-label="Hacer lider a Ally B"', 'Compact party card should not expose leader management by default');
+  assertNotContains(html, 'aria-label="Rol de grupo para Ally B"', 'Compact party card should not expose role selector by default');
+  allyB.expanded = true;
+  App.renderParty();
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Hacer lider a Ally B"', 'Leader control should expose localized accessible label');
   assertContains(html, '>Hacer lider<', 'Leader visible label should localize');
   assertContains(html, 'aria-label="Arrastrar Ally B para reordenar"', 'Drag reorder handle should expose localized accessible label');

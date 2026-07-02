@@ -5268,6 +5268,8 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertContains(body.innerHTML, 'role="menu"', 'Long-press menu should expose menu semantics for actions');
   assertContains(body.innerHTML, 'Fight', 'Long-press menu should expose Fight');
   assertContains(body.innerHTML, 'Flirt', 'Long-press menu should expose Flirt');
+  assertContains(body.innerHTML, 'Fuck', 'Long-press menu should expose Fuck');
+  assertContains(body.innerHTML, 'Feast', 'Long-press menu should expose Feast');
   assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
   assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
@@ -5285,6 +5287,8 @@ test('Mobile creature long-press menu uses localized action labels', () => {
   assertContains(body.innerHTML, 'aria-label="Acciones de criatura"', 'Creature menu label should localize');
   assertContains(body.innerHTML, 'Luchar', 'Fight menu item should localize');
   assertContains(body.innerHTML, 'Coquetear', 'Flirt menu item should localize');
+  assertContains(body.innerHTML, 'Seducir', 'Fuck menu item should localize');
+  assertContains(body.innerHTML, 'Devorar', 'Feast menu item should localize');
   assertContains(body.innerHTML, 'Alimentar', 'Feed menu item should localize');
   assertContains(body.innerHTML, 'Inspeccionar', 'Inspect menu item should localize');
   assertContains(body.innerHTML, 'Reclutar', 'Recruit menu item should localize');

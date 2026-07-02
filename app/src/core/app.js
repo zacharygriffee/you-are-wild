@@ -6321,7 +6321,7 @@
             },
             rest() {
                 if (!this._canRestHere()) {
-                    this.log.push({ text: 'There is no safe place to rest here.', type: 'discovery' });
+                    this.log.push({ text: this._label('log.restUnavailable', 'There is no safe place to rest here.'), type: 'discovery' });
                     this.renderLog();
                     this.renderExplorationActions();
                     return;
@@ -6329,7 +6329,7 @@
                 const healAmount = 30 + this._partyRoleEffect('support', 10, 20);
                 const healed = new Set([this.player, ...this.party]);
                 healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + healAmount); });
-                this.log.push({ text: 'Rested and recovered.', type: 'heal' });
+                this.log.push({ text: this._label('log.rested', 'Rested and recovered.'), type: 'heal' });
                 this.renderLog(); this.renderParty();
             },
 

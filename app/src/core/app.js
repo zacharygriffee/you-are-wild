@@ -5037,7 +5037,51 @@
                 if (dy > 0) directions.push(`${Math.abs(dy)} south`);
                 if (dx > 0) directions.push(`${Math.abs(dx)} east`);
                 if (dx < 0) directions.push(`${Math.abs(dx)} west`);
-                return `${distance} step${distance === 1 ? '' : 's'} ${directions.join(', ')}`;
+                const terrain = this._questRouteTerrainHint(checkpoint);
+                return `${distance} step${distance === 1 ? '' : 's'} ${directions.join(', ')}${terrain ? `; ${terrain}` : ''}`;
+            },
+
+            _questRouteKnownTiles(checkpoint) {
+                const targetX = Number(checkpoint?.x ?? 0);
+                const targetY = Number(checkpoint?.y ?? 0);
+                let x = Number(this.location?.x ?? 0);
+                let y = Number(this.location?.y ?? 0);
+                const tiles = [];
+                const stepX = targetX === x ? 0 : (targetX > x ? 1 : -1);
+                while (x !== targetX) {
+                    x += stepX;
+                    const tile = this.worldMap?.get(this._tileKey(x, y));
+                    if (tile) tiles.push(tile);
+                }
+                const stepY = targetY === y ? 0 : (targetY > y ? 1 : -1);
+                while (y !== targetY) {
+                    y += stepY;
+                    const tile = this.worldMap?.get(this._tileKey(x, y));
+                    if (tile) tiles.push(tile);
+                }
+                return tiles;
+            },
+
+            _questRouteTerrainHint(checkpoint) {
+                const knownTiles = this._questRouteKnownTiles(checkpoint);
+                if (!knownTiles.length) return '';
+                const counts = knownTiles.reduce((acc, tile) => {
+                    const biomeId = tile?.biome;
+                    const role = this.biomes[biomeId]?.role || 'region';
+                    if (role === 'route' || biomeId === 'road') acc.road += 1;
+                    if (biomeId === 'bridge') acc.bridge += 1;
+                    if (['water', 'swamp', 'cave'].includes(biomeId)) acc.rough += 1;
+                    return acc;
+                }, { road: 0, bridge: 0, rough: 0 });
+                const notes = [];
+                if (counts.road || counts.bridge) {
+                    const routeParts = [];
+                    if (counts.road) routeParts.push(`${counts.road} road`);
+                    if (counts.bridge) routeParts.push(`${counts.bridge} bridge`);
+                    notes.push(`known route crosses ${routeParts.join(', ')}`);
+                }
+                if (counts.rough) notes.push(`${counts.rough} rough terrain`);
+                return notes.join('; ');
             },
 
             focusQuestOnMap(questId, objectiveId) {

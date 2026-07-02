@@ -2759,6 +2759,41 @@ test('Quest log previews routes and can focus the large map on a checkpoint', ()
   assertContains(html, 'Current checkpoint 2: Safe Camp at 6, 0, 6 steps 6 east', 'Quest log should advance current route guidance');
 });
 
+test('Quest route guidance can include known terrain without materializing unknown tiles', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [] }],
+    ['1,0', { x: 1, y: 0, biome: 'road', explored: true, creatures: [] }],
+    ['2,0', { x: 2, y: 0, biome: 'road', explored: true, creatures: [] }],
+    ['3,0', { x: 3, y: 0, biome: 'bridge', explored: true, creatures: [] }],
+    ['3,1', { x: 3, y: 1, biome: 'swamp', explored: true, creatures: [] }]
+  ]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '1,0', '2,0', '3,0', '3,1']);
+  const beforeSize = App.worldMap.size;
+  const guidance = App._questCheckpointGuidance({ label: 'Marsh Crossing', x: 3, y: 1 });
+  assertContains(guidance, '4 steps 1 south, 3 east', 'Terrain-aware guidance should keep base distance and direction');
+  assertContains(guidance, 'known route crosses 2 road, 1 bridge', 'Route guidance should summarize known route terrain');
+  assertContains(guidance, '1 rough terrain', 'Route guidance should flag known rough terrain');
+  assertEqual(App.worldMap.size, beforeSize, 'Route guidance should not materialize unknown tiles');
+  App.quests = [App._normalizeQuest({
+    id: 'terrain_route',
+    title: 'Terrain Route',
+    status: 'active',
+    objectives: [{
+      type: 'travel',
+      label: 'Cross the marsh',
+      checkpoints: [{ label: 'Marsh Crossing', x: 3, y: 1 }]
+    }],
+    reward: {}
+  })];
+  App.showQuestLog();
+  assertContains(elements.get('scene-description').innerHTML, 'known route crosses 2 road, 1 bridge; 1 rough terrain', 'Quest log should expose known terrain route guidance');
+});
+
 test('Quest state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

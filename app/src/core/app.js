@@ -1390,6 +1390,7 @@
                     if (!(slot in unit.equipment)) unit.equipment[slot] = null;
                 }
                 this._recalculateEquipment(unit, { inferBase: !unit.equipmentBaseStats });
+                unit.stats = this._unitCoreStats(unit);
                 unit.gold = unit.gold || 0;
                 unit.quest = unit.quest || null;
                 unit.questAccepted = Boolean(unit.questAccepted);
@@ -1411,6 +1412,41 @@
                 unit.partyRole = this.PARTY_ROLES[unit.partyRole] ? unit.partyRole : 'companion';
                 this._applySpeciesAbilities(unit);
                 return unit;
+            },
+
+            _unitCoreStats(unit) {
+                const source = unit || {};
+                const nested = source.stats || {};
+                const value = (key, fallback = 10) => source[key] ?? nested[key] ?? fallback;
+                return {
+                    str: value('str'),
+                    con: value('con'),
+                    spd: value('spd'),
+                    int: value('int'),
+                    wis: value('wis'),
+                    cha: value('cha')
+                };
+            },
+
+            _unitDisplayStats(unit) {
+                const source = unit || {};
+                const base = this._getSpeciesBaseStats(source.species || 'human');
+                const core = this._unitCoreStats(source);
+                const value = (key, fallback = 0) => source[key] ?? base[key] ?? fallback;
+                return {
+                    CPun: source.CPun ?? source.hp ?? source.MPun ?? source.maxHp ?? base.MPun ?? 100,
+                    MPun: source.MPun ?? source.maxHp ?? base.MPun ?? 100,
+                    CPle: source.CPle ?? 0,
+                    MPle: source.MPle ?? base.MPle ?? 100,
+                    level: source.level || 1,
+                    Figh: value('Figh', core.str),
+                    Feas: value('Feas', 10),
+                    Flir: value('Flir', core.cha),
+                    Fuck: value('Fuck', 10),
+                    Flee: value('Flee', core.spd),
+                    Feed: value('Feed', 10),
+                    ...core
+                };
             },
 
             _emitCombatAction(action, actor, target, result) {
@@ -3627,9 +3663,10 @@
             showPartyMemberStats(index) {
                 const unit = this.party[index];
                 if (!unit) return;
+                const stats = this._unitDisplayStats(unit);
                 const statusKey = this._getPartyLeader() === unit ? 'party.leader' : (unit === this.player ? 'party.you' : 'party.ally');
                 const statusText = this._escapeHtml(this._label(statusKey, statusKey === 'party.leader' ? 'Leader' : statusKey === 'party.you' ? 'You' : 'Ally'));
-                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: unit.level, species: unit.species }));
+                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: unit.species }));
                 const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
                 const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
                 const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
@@ -3640,10 +3677,10 @@
                         <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
                     </div>
                     <div class="party-stats-grid">
-                        ${statCard('party.punishment', 'Punishment', `${unit.CPun}/${unit.MPun}`)}
-                        ${statCard('party.pleasure', 'Pleasure', `${unit.CPle}/${unit.MPle}`)}
-                        ${statCard('party.combat', 'Combat', `Figh ${unit.Figh} | Feas ${unit.Feas}<br>Flir ${unit.Flir} | ${this._escapeHtml(this._uiLabel('fuck'))} ${unit.Fuck}<br>Flee ${unit.Flee} | Feed ${unit.Feed}`)}
-                        ${statCard('party.attributes', 'Attributes', `STR ${unit.str} | CON ${unit.con} | SPD ${unit.spd}<br>INT ${unit.int} | WIS ${unit.wis} | CHA ${unit.cha}`)}
+                        ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
+                        ${statCard('party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
+                        ${statCard('party.combat', 'Combat', `Figh ${stats.Figh} | Feas ${stats.Feas}<br>Flir ${stats.Flir} | ${this._escapeHtml(this._uiLabel('fuck'))} ${stats.Fuck}<br>Flee ${stats.Flee} | Feed ${stats.Feed}`)}
+                        ${statCard('party.attributes', 'Attributes', `STR ${stats.str} | CON ${stats.con} | SPD ${stats.spd}<br>INT ${stats.int} | WIS ${stats.wis} | CHA ${stats.cha}`)}
                         ${statCard('party.capacity', 'Capacity', `${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls`)}
                         ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
                         ${statCard('party.perks', 'Perks', perks)}
@@ -5556,7 +5593,8 @@
             },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
-                const hpPercent = Math.max(0, Math.min(100, Math.round((unit.CPun / unit.MPun) * 100)));
+                const stats = this._unitDisplayStats(unit);
+                const hpPercent = Math.max(0, Math.min(100, Math.round((stats.CPun / stats.MPun) * 100)));
                 const isParty = type === 'party';
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
                 const rawTargetId = this._unitSelectionId(unit);
@@ -5606,14 +5644,15 @@
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
-                    <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
+                    <div class="mobile-chip-meta">${status} | ${stats.CPun}/${stats.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>
                     ${actionButtons}
                 </div>`;
             },
             renderUnitCard(unit, index, type) {
-                const hpPercent = Math.max(0, Math.min(100, Math.round((unit.CPun / unit.MPun) * 100)));
-                const plePercent = Math.max(0, Math.min(100, Math.round((unit.CPle / unit.MPle) * 100)));
+                const stats = this._unitDisplayStats(unit);
+                const hpPercent = Math.max(0, Math.min(100, Math.round((stats.CPun / stats.MPun) * 100)));
+                const plePercent = Math.max(0, Math.min(100, Math.round((stats.CPle / stats.MPle) * 100)));
                 const isExpanded = unit.expanded || false;
                 const isParty = type === 'party';
                 const isPlayer = isParty && unit.name === this.player?.name;
@@ -5750,15 +5789,15 @@
                             <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${roleLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + roleLabel + ']</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
                             ${combatStatus}
                             <div class="unit-hp-bar"><div class="unit-hp-fill" style="width:${hpPercent}%;background:${hpPercent > 50 ? 'var(--accent-success)' : hpPercent > 25 ? 'var(--accent-warning)' : 'var(--accent-danger)'}"></div></div>
-                            <div class="unit-stats">Pun:${unit.CPun}/${unit.MPun} Ple:${unit.CPle}/${unit.MPle} Lv:${unit.level}${rowLabel}</div>
+                            <div class="unit-stats">Pun:${stats.CPun}/${stats.MPun} Ple:${stats.CPle}/${stats.MPle} Lv:${stats.level}${rowLabel}</div>
 	                        </div>
 	                    </div>
 	                    ${actionButtons}
 	                    ${isExpanded ? `<div class="unit-details">
 	                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-	                            <div><span style="color:var(--text-muted)">Figh:</span> ${unit.Figh}</div><div><span style="color:var(--text-muted)">Feas:</span> ${unit.Feas}</div>
-                            <div><span style="color:var(--text-muted)">Flir:</span> ${unit.Flir}</div><div><span style="color:var(--text-muted)">Fuck:</span> ${unit.Fuck}</div>
-                            <div><span style="color:var(--text-muted)">Flee:</span> ${unit.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${unit.Feed}</div>
+	                            <div><span style="color:var(--text-muted)">Figh:</span> ${stats.Figh}</div><div><span style="color:var(--text-muted)">Feas:</span> ${stats.Feas}</div>
+                            <div><span style="color:var(--text-muted)">Flir:</span> ${stats.Flir}</div><div><span style="color:var(--text-muted)">Fuck:</span> ${stats.Fuck}</div>
+                            <div><span style="color:var(--text-muted)">Flee:</span> ${stats.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${stats.Feed}</div>
 	                            <div><span style="color:var(--text-muted)">Size:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">App:</span> ${unit.appetite}</div>
 	                            <div><span style="color:var(--text-muted)">Parts:</span> ${unit.parts || 'none'}</div><div><span style="color:var(--text-muted)">Chest:</span> ${unit.chest || 'none'}</div>
 		                            <div style="grid-column:1/-1;color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
@@ -6361,6 +6400,7 @@
             showCharacterStats() {
                 if (!this.player) return;
                 const p = this.player;
+                const stats = this._unitDisplayStats(p);
                 const pendingCount = p.pendingPerkChoices || 0;
                 const choosePerkLabel = this._escapeHtml(this._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
                 const respecLabel = this._escapeHtml(this._label('perk.respec', 'Respec Perks'));
@@ -6369,7 +6409,7 @@
                 const perkButton = pendingCount > 0 ? `<button class="nav-btn" style="margin-top:12px" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
                 const respecDisabled = (p.perks || []).length ? '' : ' disabled';
                 const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
-                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: p.level, species: p.species }));
+                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: p.species }));
                 const xpText = this._escapeHtml(this._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: p.xp, xpToNext: p.xpToNext }));
                 const noneText = this._escapeHtml(this._label('party.none', 'None'));
                 const parts = this._escapeHtml(p.parts || this._label('party.none', 'None'));
@@ -6382,10 +6422,10 @@
                         <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
                     </div>
                     <div class="party-stats-grid">
-                        ${statCard('party.punishment', 'Punishment', `${p.CPun}/${p.MPun}`)}
-                        ${statCard('party.pleasure', 'Pleasure', `${p.CPle}/${p.MPle}`)}
-                        ${statCard('character.combatStats', 'Combat Stats', `Figh: ${p.Figh} | Feas: ${p.Feas} | Flir: ${p.Flir}<br>${this._escapeHtml(this._uiLabel('fuck'))}: ${p.Fuck} | Flee: ${p.Flee} | Feed: ${p.Feed}`)}
-                        ${statCard('party.attributes', 'Attributes', `STR: ${p.str} | CON: ${p.con} | SPD: ${p.spd}<br>INT: ${p.int} | WIS: ${p.wis} | CHA: ${p.cha}`)}
+                        ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
+                        ${statCard('party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
+                        ${statCard('character.combatStats', 'Combat Stats', `Figh: ${stats.Figh} | Feas: ${stats.Feas} | Flir: ${stats.Flir}<br>${this._escapeHtml(this._uiLabel('fuck'))}: ${stats.Fuck} | Flee: ${stats.Flee} | Feed: ${stats.Feed}`)}
+                        ${statCard('party.attributes', 'Attributes', `STR: ${stats.str} | CON: ${stats.con} | SPD: ${stats.spd}<br>INT: ${stats.int} | WIS: ${stats.wis} | CHA: ${stats.cha}`)}
                         ${statCard('character.body', 'Body', `${this._escapeHtml(this._label('character.size', 'Size'))}: ${p.size} | ${this._escapeHtml(this._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${this._escapeHtml(this._label('character.parts', 'Parts'))}: ${parts} | ${this._escapeHtml(this._label('character.chest', 'Chest'))}: ${chest}<br>${this._escapeHtml(this._label('character.bodyParts', 'Body'))}: ${bodyParts}`)}
                         ${statCard('party.equipment', 'Equipment', this._equipmentSummary(p))}
                         ${statCard('party.perks', 'Perks', perks)}

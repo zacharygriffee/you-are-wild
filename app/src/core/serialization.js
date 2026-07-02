@@ -100,6 +100,19 @@
     return { state, uint8, uint16, uint32, int8, int16, int32, vuint, bool, string, array, optional, json, encode, decode };
   })();
 
+  const liveStats = (obj = {}) => {
+    const nested = obj.stats || {};
+    const value = key => obj[key] ?? nested[key] ?? 10;
+    return {
+      str: value('str'),
+      con: value('con'),
+      spd: value('spd'),
+      int: value('int'),
+      wis: value('wis'),
+      cha: value('cha')
+    };
+  };
+
   // Save codecs
   Binary.codecs = {
     // Unit stats
@@ -126,7 +139,7 @@
         Binary.string.preencode(s, obj.disposition || 'party');
         Binary.vuint.preencode(s, obj.level); Binary.vuint.preencode(s, obj.CPun || obj.hp || 100);
         Binary.vuint.preencode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.preencode(s, obj.CPle || 0);
-        Binary.vuint.preencode(s, obj.MPle || 100); Binary.codecs.stats.preencode(s, obj.stats || obj);
+        Binary.vuint.preencode(s, obj.MPle || 100); Binary.codecs.stats.preencode(s, liveStats(obj));
         Binary.array(Binary.string).preencode(s, obj.tags || []);
         Binary.array(Binary.string).preencode(s, obj.bodyParts || []);
         Binary.json.preencode(s, obj.stomach || []); Binary.json.preencode(s, obj.womb || []);
@@ -138,7 +151,7 @@
         Binary.string.encode(s, obj.disposition || 'party');
         Binary.vuint.encode(s, obj.level); Binary.vuint.encode(s, obj.CPun || obj.hp || 100);
         Binary.vuint.encode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.encode(s, obj.CPle || 0);
-        Binary.vuint.encode(s, obj.MPle || 100); Binary.codecs.stats.encode(s, obj.stats || obj);
+        Binary.vuint.encode(s, obj.MPle || 100); Binary.codecs.stats.encode(s, liveStats(obj));
         Binary.array(Binary.string).encode(s, obj.tags || []);
         Binary.array(Binary.string).encode(s, obj.bodyParts || []);
         Binary.json.encode(s, obj.stomach || []); Binary.json.encode(s, obj.womb || []);
@@ -259,7 +272,7 @@
       locationY: appState.location?.y || 0,
       playerHp: appState.player?.CPun || 100,
       playerMaxHp: appState.player?.MPun || 100,
-      playerStats: appState.player?.stats || { str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+      playerStats: liveStats(appState.player),
       playerLevel: appState.player?.level || 1,
       party: appState.party || [],
       log: appState.log?.map(e => e.text) || [],

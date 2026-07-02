@@ -239,6 +239,38 @@ test('Binary codec has unit codec', () => {
   assertContains(serContent, 'balls:', 'unit balls field missing');
 });
 
+test('Binary save uses live top-level stats when nested stats are stale', () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('You', {
+    str: 14,
+    con: 15,
+    spd: 16,
+    int: 17,
+    wis: 18,
+    cha: 19,
+    stats: { str: 1, con: 1, spd: 1, int: 1, wis: 1, cha: 1 }
+  });
+  const ally = makeSerializableUnit('Ally', {
+    str: 24,
+    con: 25,
+    spd: 26,
+    int: 27,
+    wis: 28,
+    cha: 29,
+    stats: { str: 2, con: 2, spd: 2, int: 2, wis: 2, cha: 2 }
+  });
+  const loaded = Binary.loadGame(Binary.saveGame({
+    player,
+    party: [player, ally],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest'
+  }));
+  assertEqual(loaded.playerStats.str, 14, 'Root player stats should preserve live top-level STR');
+  assertEqual(loaded.playerStats.cha, 19, 'Root player stats should preserve live top-level CHA');
+  assertEqual(loaded.party[0].stats.con, 15, 'Serialized player unit should preserve live top-level CON');
+  assertEqual(loaded.party[1].stats.spd, 26, 'Serialized ally unit should preserve live top-level SPD');
+});
+
 test('Binary save/load preserves full world tile state', () => {
   const Binary = loadBinaryForTest();
   const corpse = makeSerializableUnit('Fallen', { disposition: 'corpse', CPun: 0, MPun: 100 });
@@ -3451,6 +3483,41 @@ test('Inventory and character stats render equipped items', () => {
   assertContains(elements.get('scene-description').innerHTML, 'Equip', 'Inventory should expose equip action');
   App.showCharacterStats();
   assertContains(elements.get('scene-description').innerHTML, 'Leather Cap', 'Character stats should list equipped item');
+});
+
+test('Player card and character stats use the same live display stats', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    CPun: 90,
+    MPun: 120,
+    CPle: 55,
+    MPle: 130,
+    level: 3,
+    str: 14,
+    con: 15,
+    spd: 16,
+    int: 17,
+    wis: 18,
+    cha: 19,
+    Figh: 21,
+    Feas: 22,
+    Flir: 23,
+    Fuck: 24,
+    Flee: 25,
+    Feed: 26,
+    expanded: true,
+    stats: { str: 1, con: 1, spd: 1, int: 1, wis: 1, cha: 1 }
+  });
+  App.party = [App.player];
+  const cardHtml = App.renderUnitCard(App.player, 0, 'party');
+  App.showCharacterStats();
+  const statsHtml = elements.get('scene-description').innerHTML;
+  assertContains(cardHtml, 'Pun:90/120 Ple:55/130 Lv:3', 'Player card should render live top-level vitals');
+  assertContains(cardHtml, 'Figh:</span> 21', 'Expanded card stats should use live top-level combat stats');
+  assertContains(statsHtml, '90/120', 'Character stats should match player card punishment');
+  assertContains(statsHtml, '55/130', 'Character stats should match player card pleasure');
+  assertContains(statsHtml, 'Figh: 21', 'Character stats should use live top-level combat stats');
+  assertContains(statsHtml, 'STR: 14', 'Character stats should ignore stale nested stats when live attributes exist');
 });
 
 test('Inventory action labels localize with accessible names', () => {

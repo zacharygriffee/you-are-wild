@@ -4098,6 +4098,8 @@
                 } else if (targets.length > 1 && actors.length > 1) {
                     if (this._sameUnitSet(actors, targets)) {
                         resolved = this.outsideMutualGroupAction(action, actors);
+                    } else if (this._isUnitSubset(targets, actors)) {
+                        resolved = this.outsideMutualGroupAction(action, actors);
                     } else if (actors.length === targets.length) {
                         resolved = this.outsidePairedActionsOnTargets(action, actors, targets, options);
                     } else {
@@ -4383,6 +4385,13 @@
                 const leftIds = [...new Set((left || []).filter(Boolean).map(unit => this._unitSelectionId(unit)))].sort();
                 const rightIds = [...new Set((right || []).filter(Boolean).map(unit => this._unitSelectionId(unit)))].sort();
                 return leftIds.length > 0 && leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
+            },
+
+            _isUnitSubset(subset = [], superset = []) {
+                const subsetIds = [...new Set((subset || []).filter(Boolean).map(unit => this._unitSelectionId(unit)))];
+                if (subsetIds.length === 0) return false;
+                const supersetIds = new Set((superset || []).filter(Boolean).map(unit => this._unitSelectionId(unit)));
+                return subsetIds.every(id => supersetIds.has(id));
             },
 
             outsideMutualGroupAction(action, participants = []) {

@@ -2720,6 +2720,42 @@ test('Unequal actors against marked targets are rejected clearly', () => {
   assertContains(App.log[App.log.length - 1].text, 'Elige un actor para acciones multiobjetivo de coquetear, o un objetivo para acciones grupales de coquetear. La seleccion actual tiene 2 actores y 3 objetivos.', 'Unequal many-to-many rejection should localize correction paths with selected counts');
 });
 
+test('Marked target subset of actors resolves as self-included mutual group', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'actor-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const actorB = makeUnit('Actor B', { id: 'actor-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const actorC = makeUnit('Actor C', { id: 'actor-c', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  App.player = actorA;
+  App.party = [actorA, actorB, actorC];
+  App.explorationActorIds = ['actor-a', 'actor-b', 'actor-c'];
+  App.toggleExplorationTarget('party', 'actor-a');
+  App.toggleExplorationTarget('party', 'actor-b');
+  App.resolveExplorationTargetAction('flirt');
+  assert(actorA.CPle > 0, 'Subset self-included mutual action should affect first marked participant');
+  assert(actorB.CPle > 0, 'Subset self-included mutual action should affect second marked participant');
+  assert(actorC.CPle > 0, 'Subset self-included mutual action should include unmarked selected helper as participant');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved subset self-included action should clear selected targets');
+  assertContains(App.log[App.log.length - 1].text, 'share flirt as a mutual group', 'Subset self-included action should route to mutual group semantics');
+});
+
+test('Marked target subset of actors blocks mutual feast safely', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 8, appetite: 8, Feas: 60 });
+  const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 8, appetite: 8, Feas: 60 });
+  const eaterC = makeUnit('Eater C', { id: 'eater-c', size: 8, appetite: 8, Feas: 60 });
+  App.player = eaterA;
+  App.party = [eaterA, eaterB, eaterC];
+  App.explorationActorIds = ['eater-a', 'eater-b', 'eater-c'];
+  App.toggleExplorationTarget('party', 'eater-a');
+  App.toggleExplorationTarget('party', 'eater-b');
+  App.resolveExplorationTargetAction('feast');
+  assertEqual(eaterA.stomach.length, 0, 'Subset mutual feast should not contain first participant');
+  assertEqual(eaterB.stomach.length, 0, 'Subset mutual feast should not contain second participant');
+  assertEqual(eaterC.stomach.length, 0, 'Subset mutual feast should not route marked targets into helper');
+  assertEqual(App.party.length, 3, 'Subset mutual feast should leave all participants in party');
+  assertContains(App.log[App.log.length - 1].text, 'cannot feast on themselves as a mutual group', 'Subset mutual feast should use safe rejection semantics');
+});
+
 test('Marked self-included group target resolves through shared group semantics', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

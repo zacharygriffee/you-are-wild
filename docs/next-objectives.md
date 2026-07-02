@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 343/343 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 344/344 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -107,6 +107,7 @@
 - Persistent loot/search reward rolls now use seeded world rolls: corpse item/gold rewards key off world seed/version plus corpse identity, authored loot-table picks use seeded table selection, and search discovery/item rolls key off tile coordinates plus deterministic day/hour scope
 - Exploration threat reactions for attacked non-hostile creatures now use seeded world rolls keyed by tile, creature, threat, day, and hour, so flee-vs-hostile outcomes do not depend on ambient `Math.random()` while combat-only volatility remains separate
 - Timid ally combat flee checks now use seeded combat-state rolls keyed by world seed/version, tile, ally, round/turn, day, and hour instead of ambient `Math.random()`
+- Player combat flee outcomes now use seeded combat-state rolls keyed by world seed/version, tile, player, enemy, round/turn, day, and hour instead of ambient `Math.random()`
 - Enemy tasty-target tie-breaks now use seeded combat-state rolls keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`
 - Menacing enemy fear application now uses seeded combat-state rolls keyed by world seed/version, tile, enemy, target, round/turn, day, and hour instead of ambient `Math.random()`
 - Enemy morale flee checks now use seeded combat-state rolls keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`

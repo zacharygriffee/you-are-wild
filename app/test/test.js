@@ -1018,12 +1018,16 @@ test('Cheat toggle feedback localizes', () => {
 
 test('Flee ends combat without granting victory XP', () => {
   const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { Flee: 50, xp: 0, xpToNext: 100 });
-  const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY, spd: 1 });
+  App.worldMeta = { seed: 'flee-success', generatorVersion: 2 };
+  const player = makeUnit('You', { id: 'player-1', Flee: 50, xp: 0, xpToNext: 100 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, spd: 1 });
   App.player = player;
   App.party = [player];
   App.creatures = [enemy];
-  App.combatState.active = true;
+  App.location = { x: 0, y: 0 };
+  App.dayCount = 0;
+  App.timeHour = 0;
+  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [] };
   App.updateLanguage('es');
   App.attemptFlee();
   assertEqual(App.combatState.active, false, 'Flee should end combat');
@@ -1041,17 +1045,43 @@ test('Flee failure and no-enemy feedback localize', () => {
   assertContains(empty.App.log[empty.App.log.length - 1].text, 'No hay enemigos de los que huir!', 'No-enemy flee log should localize');
 
   const failed = loadAppForCombat(() => 1);
-  const player = makeUnit('You', { Flee: 1 });
-  const enemy = makeUnit('Fast Enemy', { disposition: failed.App.DISPOSITION.ENEMY, spd: 50 });
+  failed.App.worldMeta = { seed: 'flee-fail', generatorVersion: 2 };
+  const player = makeUnit('You', { id: 'player-1', Flee: 1 });
+  const enemy = makeUnit('Fast Enemy', { id: 'enemy-1', disposition: failed.App.DISPOSITION.ENEMY, spd: 50 });
   failed.App.player = player;
   failed.App.party = [player];
   failed.App.creatures = [enemy];
-  failed.App.combatState.active = true;
+  failed.App.location = { x: 0, y: 0 };
+  failed.App.dayCount = 0;
+  failed.App.timeHour = 0;
+  failed.App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [] };
   failed.App.nextTurn = function() { this._fleeFailedTurnEnded = true; };
   failed.App.updateLanguage('es');
   failed.App.attemptFlee();
   assertEqual(failed.App._fleeFailedTurnEnded, true, 'Failed flee should still advance the turn');
   assertContains(failed.App.log[failed.App.log.length - 1].text, 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee log should localize');
+});
+
+test('Player flee result is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'player-flee', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'player-1', Flee: 20, xp: 0, xpToNext: 100 });
+    const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, spd: 20 });
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [] };
+    App.nextTurn = function() { this._fleeAdvanced = true; };
+    App.attemptFlee();
+    return { active: App.combatState.active, enemies: App.creatures.length, advanced: !!App._fleeAdvanced, log: App.log[0]?.type || '' };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Player flee result should not depend on ambient Math.random');
 });
 
 test('Feed unavailable feedback localizes and does not throw without a selected target', () => {
@@ -3963,6 +3993,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._attemptTimidAllyFlee.toString(), 'Math.random', 'Persistent combat timid ally flee should not use Math.random');
   assertNotContains(App._selectEnemyTarget.toString(), 'Math.random', 'Persistent combat target tie-breaks should not use Math.random');
   assertNotContains(App.enemyTurn.toString(), 'enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random', 'Menacing fear status should not use raw Math.random');
+  assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');

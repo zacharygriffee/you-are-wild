@@ -5034,7 +5034,8 @@
                     this.renderLog(); return;
                 }
                 const fleeChance = 0.6 + (this.player.Flee - enemy.spd) * 0.02;
-	                if (Math.random() < Math.max(0.1, Math.min(0.95, fleeChance))) {
+                const fleeRoll = this._combatStateRoll('combat-player-flee', this.player, this._unitSelectionId(enemy));
+	                if (fleeRoll < Math.max(0.1, Math.min(0.95, fleeChance))) {
 	                    this.log.push({ text: this._label('combat.flee.success', 'You flee successfully!'), type: 'combat' });
 	                    this.creatures = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY);
 	                    this._emitCombatAction('flee', this.player, enemy, 'success');

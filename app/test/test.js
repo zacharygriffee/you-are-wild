@@ -4093,6 +4093,13 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.allyTurn.toString(), 'ally.Fuck + ally.Flir + Math.random', 'Dumb AI charm rolls should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'if (Math.random() < targetDodge)', 'Ally dodge checks should not use raw Math.random');
   assertNotContains(App.enemyTurn.toString(), 'if (Math.random() < targetDodge)', 'Enemy dodge checks should not use raw Math.random');
+  assertNotContains(App.executeActionAgainstTarget.toString(), 'Math.random', 'Persistent direct combat damage should not use Math.random');
+  assertNotContains(App._resolveSyncAction.toString(), 'Math.random', 'Persistent synchronized combat damage should not use Math.random');
+  assertNotContains(App.allyTurn.toString(), 'Math.random() * 6', 'Persistent ally combat damage should not use raw Math.random');
+  assertNotContains(App.enemyTurn.toString(), 'Math.random() * 6', 'Persistent enemy combat damage should not use raw Math.random');
+  assertNotContains(App.outsideActionOnTarget.toString(), 'Math.random', 'Persistent single exploration fight damage should not use Math.random');
+  assertNotContains(App.outsideGroupActionOnTarget.toString(), 'Math.random', 'Persistent group exploration fight damage should not use Math.random');
+  assertNotContains(App.outsideMutualGroupAction.toString(), 'Math.random', 'Persistent mutual exploration fight damage should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -4565,7 +4572,9 @@ test('Flying attackers get flanking damage against back-row targets', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You');
   const flyer = makeUnit('Flyer', { id: 'flyer-1', Figh: 30, flying: true, combatRow: 'back' });
+  const ranged = makeUnit('Flyer', { id: 'flyer-1', Figh: 30, ranged: true, combatRow: 'back' });
   const target = makeUnit('Backline', { id: 'backline-flank', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 10, combatRow: 'back' });
+  const controlTarget = makeUnit('Backline', { id: 'backline-flank', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 10, combatRow: 'back' });
   App.player = player;
   App.party = [player, flyer];
   App.creatures = [target];
@@ -4574,7 +4583,31 @@ test('Flying attackers get flanking damage against back-row targets', () => {
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.executeActionAgainstTarget('fight', flyer, target);
-  assertEqual(target.CPun, 73, 'Flying flanking bonus should increase damage against back-row targets');
+  App.executeActionAgainstTarget('fight', ranged, controlTarget);
+  assert(target.CPun < controlTarget.CPun, 'Flying flanking bonus should increase deterministic damage against back-row targets');
+});
+
+test('Combat fight damage is deterministic by seed and combat state', () => {
+  function runDamage(seed) {
+    const { App } = loadAppForCombat(() => 0.99);
+    const player = makeUnit('You', { id: 'player-damage', Figh: 30 });
+    const target = makeUnit('Target', { id: 'target-damage', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 10 });
+    App.worldMeta = { worldId: `world-${seed}`, seed, generatorVersion: 2, mapModsHash: 'core' };
+    App.player = player;
+    App.party = [player];
+    App.creatures = [target];
+    App.location = { x: 4, y: -2 };
+    App.combatState.active = true;
+    App.combatState.round = 3;
+    App.combatState.currentTurn = 1;
+    App.dayCount = 2;
+    App.timeHour = 21;
+    App.nextTurn = function() {};
+    App.executeActionAgainstTarget('fight', player, target);
+    return target.CPun;
+  }
+
+  assertEqual(runDamage('damage-seed'), runDamage('damage-seed'), 'Same seed and combat state should produce the same fight damage');
 });
 
 test('Water terrain modifies combat speed for swimmers and non-swimmers', () => {

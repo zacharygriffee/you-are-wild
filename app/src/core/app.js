@@ -2340,6 +2340,30 @@
                 if (actor?.combatRow === 'back' && target?.combatRow === 'front' && (actor.ranged || actor.antiflying)) mult -= 0.1;
                 return Math.max(0.5, mult);
             },
+            _actionRatingFromRoll(entry, roll) {
+                if (entry > 55) return Math.round(entry + (roll * 21 - 10));
+                if (entry > 45) return Math.round(entry + (roll * 17 - 8));
+                if (entry > 35) return Math.round(entry + (roll * 13 - 6));
+                if (entry > 25) return Math.round(entry + (roll * 9 - 4));
+                return Math.max(1, Math.round(entry + (roll * 5 - 2)));
+            },
+            _combatActionRating(entry, actor, target = null, purpose = 'rating') {
+                return this._actionRatingFromRoll(entry, this._combatStateRoll('combat-action-rating', actor, `${this._unitSelectionId(target || {})}:${purpose}`));
+            },
+            _combatDamageVariance(actor, target, purpose = 'fight', scale = 6) {
+                return this._combatStateRoll('combat-damage-variance', actor, `${this._unitSelectionId(target || {})}:${purpose}`) * scale;
+            },
+            _explorationActionRoll(namespace, actor, target = null, purpose = 'roll') {
+                const x = Number(this.location?.x ?? 0);
+                const y = Number(this.location?.y ?? 0);
+                return this._worldRoll(namespace, x, y, this._unitSelectionId(actor || {}), this._unitSelectionId(target || {}), this.dayCount || 0, this.timeHour || 0, purpose);
+            },
+            _explorationActionRating(entry, actor, target = null, purpose = 'rating') {
+                return this._actionRatingFromRoll(entry, this._explorationActionRoll('exploration-action-rating', actor, target, purpose));
+            },
+            _explorationDamageVariance(actor, target = null, purpose = 'fight', scale = 6) {
+                return this._explorationActionRoll('exploration-damage-variance', actor, target, purpose) * scale;
+            },
             _targetDodgeRoll(actor, target, action = 'fight') {
                 return this._combatStateRoll('combat-target-dodge', actor, `${this._unitSelectionId(target)}:${action}`);
             },
@@ -2719,9 +2743,9 @@
                             result = `${actorName} miss${actorVerb} ${target.name}.`;
                             break;
                         }
-                        const ar = this._AR(actor.Figh);
+                        const ar = this._combatActionRating(actor.Figh, actor, target, 'player-fight');
                         const def = this._effectiveCon(target);
-                        const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                        const baseDmg = Math.max(1, ar - def * 0.3 + this._combatDamageVariance(actor, target, 'player-fight'));
                         const dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(actor, target)));
                         target.CPun -= dmg;
                         this._wakeOnDamage(target);
@@ -3294,7 +3318,7 @@
                     case 'sync_fight': {
                         const totalStr = sync.participants.reduce((sum, p) => sum + (p.Figh || 0), 0);
                         const def = this._effectiveCon(sync.target);
-                        const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + Math.random() * 10));
+                        const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + this._combatDamageVariance(sync.participants[0], sync.target, `sync-fight:${sync.participants.map(p => this._unitSelectionId(p)).join('|')}`, 10)));
                         sync.target.CPun -= dmg;
                         result = `${sync.participants.map(p => p.name).join(' and ')} gang up on ${sync.target.name}, dealing ${dmg} punishment!`;
                         if (sync.target.CPun <= 0) {
@@ -3533,9 +3557,9 @@
                     this.log.push({ text: `${target.name} dodges ${ally.name}'s attack!`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
-                const ar = this._AR(ally.Figh) * (ally.rage && ally.CPun < ally.MPun * 0.5 ? 1.5 : 1);
+                const ar = this._combatActionRating(ally.Figh, ally, target, 'ally-fight') * (ally.rage && ally.CPun < ally.MPun * 0.5 ? 1.5 : 1);
                 const def = this._effectiveCon(target);
-                const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                const baseDmg = Math.max(1, ar - def * 0.3 + this._combatDamageVariance(ally, target, 'ally-fight'));
                 let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(ally, target)));
                 if (ally.bloodsuck) { ally.CPun = Math.min(ally.MPun, ally.CPun + Math.floor(dmg * 0.3)); }
                 target.CPun -= dmg;
@@ -3671,9 +3695,9 @@
                     this.log.push({ text: `${target.name} dodges ${enemy.name}'s attack! (${target.flying ? 'flying' : target.swimming ? 'swimming' : 'floopy'})`, type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
-                const ar = this._AR(enemy.Figh) * (enemy.rage && enemy.CPun < enemy.MPun * 0.5 ? 1.5 : 1);
+                const ar = this._combatActionRating(enemy.Figh, enemy, target, 'enemy-fight') * (enemy.rage && enemy.CPun < enemy.MPun * 0.5 ? 1.5 : 1);
                 const def = this._effectiveCon(target);
-                const baseDmg = Math.max(1, ar - def * 0.3 + Math.random() * 6);
+                const baseDmg = Math.max(1, ar - def * 0.3 + this._combatDamageVariance(enemy, target, 'enemy-fight'));
                 let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(enemy, target)));
                 // Bloodsucker heals on hit
                 if (enemy.bloodsuck) { enemy.CPun = Math.min(enemy.MPun, enemy.CPun + Math.floor(dmg * 0.3)); }
@@ -4458,7 +4482,11 @@
                     case 'fight': {
                         const totalFigh = living.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
                         const avgCon = living.reduce((sum, actor) => sum + (actor.con || 10), 0) / living.length;
-                        const dmg = Math.max(1, Math.floor(this._AR(totalFigh + 4) / living.length - avgCon * 0.2));
+                        const actorKey = living.map(actor => this._unitSelectionId(actor)).join('|');
+                        const dmg = Math.max(1, Math.floor(
+                            this._explorationActionRating(totalFigh + 4, living[0] || this.player, living[0] || null, `mutual-fight:${actorKey}`) / living.length
+                            - avgCon * 0.2
+                        ));
                         const outcomes = [];
                         living.forEach(unit => {
                             const outcome = this._resolvePartyPlayFight(living, unit, dmg);
@@ -4584,7 +4612,12 @@
                             break;
                         }
                         const totalFigh = livingActors.reduce((sum, actor) => sum + (actor.Figh || 10), 0);
-                        const dmg = Math.max(1, Math.floor(this._AR(totalFigh) - (target.con || 10) * 0.3 + Math.random() * 6));
+                        const actorKey = livingActors.map(actor => this._unitSelectionId(actor)).join('|');
+                        const dmg = Math.max(1, Math.floor(
+                            this._explorationActionRating(totalFigh, livingActors[0] || this.player, target, `group-fight:${actorKey}`)
+                            - (target.con || 10) * 0.3
+                            + this._explorationDamageVariance(livingActors[0] || this.player, target, `group-fight:${actorKey}`)
+                        ));
                         if (this.party.includes(target) && livingActors.includes(target)) {
                             const sparDamage = Math.max(1, Math.floor(dmg / livingActors.length));
                             const outcomes = [];
@@ -4768,9 +4801,9 @@
                             startCombatAfter = combatTargets.length > 0;
                             break;
                         }
-                        const ar = this._AR(actor.Figh);
+                        const ar = this._explorationActionRating(actor.Figh, actor, target, 'single-fight');
                         const def = target.con || 10;
-                        const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
+                        const dmg = Math.max(1, Math.floor(ar - def * 0.3 + this._explorationDamageVariance(actor, target, 'single-fight')));
                         target.CPun -= dmg;
                         result = this._label('explore.fight.hit', '{actor} hits {target} for {amount} punishment.', { actor: actorName, target: target.name, amount: dmg });
                         if (target.CPun <= 0) {

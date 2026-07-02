@@ -1854,7 +1854,7 @@
             <!-- Name Input -->
             <div class="create-section">
                 <h3 class="section-title">Name</h3>
-                <input id="char-name" type="text" placeholder="Enter your name..." value="You"
+                <input id="char-name" type="text" placeholder="Enter your name..." value="You" data-i18n-placeholder="create.namePlaceholder"
                        style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
             </div>
 
@@ -2095,7 +2095,7 @@
                 <div class="panel panel-party" id="panel-party">
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" onclick="expandAll('party')">Expand</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
                     </div>
                     <div class="panel-content" id="party-content">
                         <!-- Populated by JS -->
@@ -2106,7 +2106,7 @@
                 <div class="panel panel-enemies" id="panel-enemies">
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" onclick="expandAll('enemies')">Expand</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
                     </div>
                     <div class="panel-content" id="enemies-content">
                         <p style="color: var(--text-muted); text-align: center;">No enemies present</p>
@@ -2196,8 +2196,8 @@
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
 
         <!-- Swipe hints for mobile -->
-        <div class="swipe-hint-left" title="Swipe right for map"></div>
-        <div class="swipe-hint-right" title="Swipe left for party"></div>
+        <div class="swipe-hint-left" title="Swipe right for map" data-i18n-title="ui.swipeRightMap"></div>
+        <div class="swipe-hint-right" title="Swipe left for party" data-i18n-title="ui.swipeLeftParty"></div>
     </div>
 
 
@@ -2395,7 +2395,7 @@
 
             <!-- Mod List -->
             <div id="mod-list" style="min-height: 100px;">
-                <p style="color: var(--text-muted); text-align: center; padding: 32px;">Loading modules...</p>
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;" data-i18n="mod.loading">Loading modules...</p>
             </div>
         </div>
     </div>

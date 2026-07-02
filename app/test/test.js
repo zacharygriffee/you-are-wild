@@ -423,6 +423,12 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'market.title': 'Mercado de modulos'", 'Spanish marketplace title missing');
   assertContains(contentContent, "'market.installModule': 'Install {name}'", 'English marketplace install action missing');
   assertContains(contentContent, "'market.installModule': 'Instalar {name}'", 'Spanish marketplace install action missing');
+  assertContains(contentContent, "'create.namePlaceholder': 'Enter your name...'", 'English create name placeholder missing');
+  assertContains(contentContent, "'create.namePlaceholder': 'Ingresa tu nombre...'", 'Spanish create name placeholder missing');
+  assertContains(contentContent, "'ui.expandCards': 'Expand'", 'English expand-card label missing');
+  assertContains(contentContent, "'ui.expandCards': 'Expandir'", 'Spanish expand-card label missing');
+  assertContains(contentContent, "'mod.loading': 'Loading modules...'", 'English module loading fallback missing');
+  assertContains(contentContent, "'mod.loading': 'Cargando modulos...'", 'Spanish module loading fallback missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -586,6 +592,13 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-title="ui.menu.newGameTitle"', 'Main menu new-game title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.nav.mapTitle"', 'Map nav accessible label should opt into localization');
   assertContains(template, 'data-i18n-placeholder="ui.log.search"', 'Log search placeholder should opt into localization');
+  assertContains(template, 'data-i18n-placeholder="create.namePlaceholder"', 'Create-name placeholder should opt into localization');
+  assertContains(template, 'data-i18n="ui.expandCards"', 'Panel expand buttons should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.expandPartyCardsTitle"', 'Party expand button title should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.expandCreatureCardsTitle"', 'Creature expand button title should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.swipeRightMap"', 'Swipe map hint title should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.swipeLeftParty"', 'Swipe party hint title should opt into localization');
+  assertContains(template, 'data-i18n="mod.loading"', 'Module loading fallback should opt into localization');
   assertContains(settingsNavContent, 'App.applyStaticLocalization?.(nav)', 'Injected settings nav should refresh static localization after insertion');
   assertContains(marketNavContent, 'App.applyStaticLocalization?.(nav)', 'Injected market nav should refresh static localization after insertion');
   assertContains(modUiContent, 'App.applyStaticLocalization?.(nav)', 'Injected mods nav should refresh static localization after insertion');

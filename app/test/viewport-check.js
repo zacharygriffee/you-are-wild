@@ -111,6 +111,59 @@ async function checkViewport(browser, name, width, height) {
     assert(party.panelLeft >= 0, `${name}: party panel should be inside viewport`);
     assert(party.panelRight <= party.viewportWidth + 1, `${name}: party panel should not extend beyond viewport`);
     assert.deepStrictEqual(party.clippedButtons, [], `${name}: party panel buttons should not clip`);
+
+    const readContextMenuBounds = async label => page.evaluate(menuLabel => {
+      const menu = document.getElementById('mobile-context-menu');
+      const toolbar = document.getElementById('mobile-actions');
+      if (!menu) return { label: menuLabel, exists: false };
+      const menuRect = menu.getBoundingClientRect();
+      const toolbarRect = toolbar?.getBoundingClientRect();
+      const toolbarVisible = toolbar && getComputedStyle(toolbar).display !== 'none' && toolbarRect.height > 0;
+      return {
+        label: menuLabel,
+        exists: true,
+        role: menu.getAttribute('role'),
+        ariaModal: menu.getAttribute('aria-modal'),
+        overflowY: getComputedStyle(menu).overflowY,
+        top: menuRect.top,
+        left: menuRect.left,
+        right: menuRect.right,
+        bottom: menuRect.bottom,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        toolbarTop: toolbarVisible ? toolbarRect.top : null,
+        toolbarVisible
+      };
+    }, label);
+
+    await page.evaluate(() => App.showMobilePartyContext(1));
+    await page.waitForTimeout(50);
+    const partyMenu = await readContextMenuBounds('party menu');
+    assert(partyMenu.exists, `${name}: party long-press menu should render`);
+    assert.strictEqual(partyMenu.role, 'dialog', `${name}: party long-press menu should use dialog semantics`);
+    assert.strictEqual(partyMenu.ariaModal, 'true', `${name}: party long-press menu should be modal`);
+    assert(partyMenu.overflowY === 'auto' || partyMenu.overflowY === 'scroll', `${name}: party long-press menu should be scrollable`);
+    assert(partyMenu.top >= -1, `${name}: party long-press menu should not clip above viewport`);
+    assert(partyMenu.left >= -1, `${name}: party long-press menu should not clip left`);
+    assert(partyMenu.right <= partyMenu.viewportWidth + 1, `${name}: party long-press menu should not clip right`);
+    assert(partyMenu.bottom <= partyMenu.viewportHeight + 1, `${name}: party long-press menu should not clip below viewport`);
+    if (partyMenu.toolbarVisible) assert(partyMenu.bottom <= partyMenu.toolbarTop + 1, `${name}: party long-press menu should stay above mobile toolbar`);
+
+    await page.evaluate(() => {
+      App.closeMobileContextMenu();
+      App.showMobileCreatureContext('creature-1');
+    });
+    await page.waitForTimeout(50);
+    const creatureMenu = await readContextMenuBounds('creature menu');
+    assert(creatureMenu.exists, `${name}: creature long-press menu should render`);
+    assert.strictEqual(creatureMenu.role, 'dialog', `${name}: creature long-press menu should use dialog semantics`);
+    assert.strictEqual(creatureMenu.ariaModal, 'true', `${name}: creature long-press menu should be modal`);
+    assert(creatureMenu.overflowY === 'auto' || creatureMenu.overflowY === 'scroll', `${name}: creature long-press menu should be scrollable`);
+    assert(creatureMenu.top >= -1, `${name}: creature long-press menu should not clip above viewport`);
+    assert(creatureMenu.left >= -1, `${name}: creature long-press menu should not clip left`);
+    assert(creatureMenu.right <= creatureMenu.viewportWidth + 1, `${name}: creature long-press menu should not clip right`);
+    assert(creatureMenu.bottom <= creatureMenu.viewportHeight + 1, `${name}: creature long-press menu should not clip below viewport`);
+    if (creatureMenu.toolbarVisible) assert(creatureMenu.bottom <= creatureMenu.toolbarTop + 1, `${name}: creature long-press menu should stay above mobile toolbar`);
   }
 
   await page.close();

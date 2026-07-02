@@ -2308,6 +2308,8 @@ test('Party panel exposes management controls and leader badge', () => {
   assertContains(html, 'draggable="true"', 'Ally card should expose drag reorder affordance');
   assertContains(html, 'startPartyDrag(1)', 'Ally card should start drag reorder');
   assertContains(html, 'dropPartyMember(1)', 'Ally card should accept drag reorder drops');
+  assertContains(html, 'setPartyRole(1,this.value)', 'Ally card should expose party role selector');
+  assertContains(html, 'Party role for Ally', 'Party role selector should be labeled');
 });
 
 test('Party management can reorder set leader and dismiss allies', () => {
@@ -2321,6 +2323,8 @@ test('Party management can reorder set leader and dismiss allies', () => {
   App.explorationActorIds = ['ally-b'];
   App.movePartyMember(2, -1);
   assertEqual(App.party[1], allyB, 'Move up should reorder ally without moving before player');
+  App.setPartyRole(1, 'guard');
+  assertEqual(App.party[1].partyRole, 'guard', 'Set role should update ally role');
   App.setPartyLeader(1);
   assertEqual(App._getPartyLeader(), allyB, 'Set leader should update leader lookup');
   App.dismissPartyMember(1);
@@ -2342,6 +2346,19 @@ test('Party drag reorder keeps player anchored', () => {
   assertEqual(App.startPartyDrag(1), true, 'Drag should still start after reorder');
   assertEqual(App.dropPartyMember(0), false, 'Drop should not move an ally before the player');
   assertEqual(App.party[0], player, 'Player should stay anchored at the first slot');
+});
+
+test('Party role and AI order state persist through binary saves', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'scout', aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, ally];
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  assertEqual(loaded.questState.partyRoles['ally-1'], 'scout', 'Party role should persist by id');
+  assertEqual(loaded.questState.partyRoles.Ally, 'scout', 'Party role should persist by name fallback');
+  assertEqual(loaded.questState.partyAIOrders['ally-1'], 'defensive', 'AI order should persist by id');
 });
 
 test('Enemy target priority prefers party leader when no prey override applies', () => {

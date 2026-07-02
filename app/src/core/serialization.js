@@ -235,6 +235,15 @@
         }
     }
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
+    const partyRoles = {};
+    const partyAIOrders = {};
+    for (const unit of appState.party || []) {
+      const keys = [unit?.id, unit?.name].filter(Boolean).map(String);
+      for (const key of keys) {
+        if (unit.partyRole) partyRoles[key] = unit.partyRole;
+        if (unit.aiOrder) partyAIOrders[key] = unit.aiOrder;
+      }
+    }
 
     const saveData = {
       version: 10,
@@ -262,7 +271,9 @@
         playerEquipmentBaseStats: appState.player?.equipmentBaseStats || null,
         playerPerks: appState.player?.perks || [],
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
-        partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null
+        partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null,
+        partyRoles,
+        partyAIOrders
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

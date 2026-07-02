@@ -3507,13 +3507,39 @@
 
             movePartyMember(index, direction) {
                 const targetIndex = index + direction;
-                if (index <= 0 || targetIndex <= 0 || targetIndex >= this.party.length) return;
+                return this.reorderPartyMember(index, targetIndex);
+            },
+
+            reorderPartyMember(index, targetIndex) {
+                if (index <= 0 || targetIndex <= 0 || targetIndex >= this.party.length || index === targetIndex) return false;
                 const [unit] = this.party.splice(index, 1);
                 this.party.splice(targetIndex, 0, unit);
                 this.log.push({ text: `${unit.name} changes party position.`, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.autoSave();
+                return true;
+            },
+
+            startPartyDrag(index) {
+                if (index <= 0 || !this.party[index] || this.combatState.active) return false;
+                this.draggedPartyIndex = index;
+                return true;
+            },
+
+            dragPartyOver(event) {
+                if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            },
+
+            clearPartyDrag() {
+                this.draggedPartyIndex = null;
+            },
+
+            dropPartyMember(targetIndex) {
+                const draggedIndex = Number(this.draggedPartyIndex);
+                this.clearPartyDrag();
+                if (!Number.isInteger(draggedIndex)) return false;
+                return this.reorderPartyMember(draggedIndex, targetIndex);
             },
 
             dismissPartyMember(index) {
@@ -5351,11 +5377,14 @@
                 const isAlly = isParty && !isPlayer;
                 const isCorpse = this._isCorpse(unit);
                 const isLeader = isParty && this._getPartyLeader() === unit;
+                const unitLabel = this._escapeHtml(unit.name || 'party member');
+                const canDragPartyMember = isAlly && !this.combatState.active;
+                const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
+                const cardClass = `unit-card ${isExpanded ? 'expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}`;
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
-                    const unitLabel = this._escapeHtml(unit.name || 'party member');
                     const targetClass = this._isExplorationTarget('party', this._unitSelectionId(unit)) ? ' primary' : '';
                     const targetKey = this._unitKey(unit);
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="Select ${unitLabel} to act" aria-label="Select ${unitLabel} to act" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button><button class="action-btn${targetClass}" title="Mark ${unitLabel} as target" aria-label="Mark ${unitLabel} as target" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">Target</button>`;
@@ -5365,8 +5394,9 @@
                     actionButtons += `<button class="action-btn" title="Inspect ${unitLabel}" aria-label="Inspect ${unitLabel}" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
                     actionButtons += `<button class="action-btn" title="Show stats for ${unitLabel}" aria-label="Show stats for ${unitLabel}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">Stats</button>`;
                     if (!isLeader) actionButtons += `<button class="action-btn" title="Make ${unitLabel} party leader" aria-label="Make ${unitLabel} party leader" onclick="event.stopPropagation();App.setPartyLeader(${index})">Lead</button>`;
-                    if (index > 1) actionButtons += `<button class="action-btn" title="Move up" aria-label="Move ${unit.name} up" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
-                    if (!isPlayer && index < this.party.length - 1) actionButtons += `<button class="action-btn" title="Move down" aria-label="Move ${unit.name} down" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
+                    if (canDragPartyMember) actionButtons += `<button class="action-btn party-drag-handle" draggable="true" title="Drag ${unitLabel} to reorder" aria-label="Drag ${unitLabel} to reorder" onclick="event.stopPropagation()" ondragstart="event.stopPropagation();App.startPartyDrag(${index})">↕</button>`;
+                    if (index > 1) actionButtons += `<button class="action-btn" title="Move up" aria-label="Move ${unitLabel} up" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
+                    if (!isPlayer && index < this.party.length - 1) actionButtons += `<button class="action-btn" title="Move down" aria-label="Move ${unitLabel} down" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
                     if (isAlly) {
                         const order = this._getPartyAIOrder(unit);
                         const options = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
@@ -5425,7 +5455,7 @@
                 const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
-                return `<div class="unit-card ${isExpanded ? 'expanded' : ''}" style="${isCorpse ? 'opacity:0.58;' : ''}" onclick="App.toggleUnit(${index},'${type}')">
+                return `<div class="${cardClass}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">

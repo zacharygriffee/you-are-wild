@@ -105,7 +105,7 @@
 - Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, expensive/rare purchases require confirmation, merchant stock can refresh after three in-game days, authored stock tables can place merchants in safe/commercial structures, inventory/trade surfaces support item category filtering and value/name/type sorting, corpse loot can grant generated or authored gold rewards, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, normalized creatures carry equipment slots plus inventory for future/modded use, inventory exposes equip/unequip actions, equipment stat baselines recalculate deterministically on equip/unequip/load, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata plus baseline stats
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
-- Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
+- Party management UI has a first-pass foundation: party cards expose drag/drop reorder with arrow-button fallback, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
 - Combat log view preferences now persist independently: selected filter and search text are saved to `yaw-log-view`, reloaded on app init, and invalid stored values fall back safely; legacy `fff-log-view` is still read for migration
 - Repository organization/rebrand first pass is complete: active source lives under `app/`, root scripts point at that layout, generated output is `dist/you-are-wild.html`, visible active UI branding says **You Are Wild**, package/build metadata uses the new slug, and `npm run audit:branding` verifies only approved legacy migration references remain
@@ -167,14 +167,15 @@
 ### 🟣 Tier 5: UI/UX & Polish
 
 #### 18. Advanced Party Management UI
-- Replace button-based reorder with drag-and-drop once the party panel has pointer/drag affordances
+- Polish drag/drop party reordering after device testing; arrow-button fallback remains for constrained browsers and touch layouts
 - Add richer party role configuration beyond leader and existing AI order
 - Add dismissal consequences/dialogue if party relationship systems become meaningful
 - Decide whether mobile chips need the same full management surface or a long-press menu
 
 #### 19. New Game And Save Slot UX
 - Further improve visual polish if playtesting shows the responsive slot cards/action grids are still too dense on small devices
-- Keep the load-menu slot takeover flow explicit: empty slots should be obvious starting points, occupied slots must warn about irreversible overwrite, and delete remains scoped to one selected slot
+- Keep the load-menu slot takeover flow explicit: empty slots should be obvious new-game starting points, occupied slots must warn about irreversible overwrite, and delete remains scoped to one selected slot
+- Consider adding an always-visible New Game entry point outside the current slot manager if users do not discover slot takeover from the load menu
 - Consider separating in-game save mode from main-menu load/new-run mode if the combined slot manager becomes visually crowded
 - Device-test mobile save-slot management to confirm the responsive shell scrolls correctly and confirmation actions are not clipped by browser chrome
 

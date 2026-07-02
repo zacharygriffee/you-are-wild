@@ -2299,6 +2299,9 @@ test('Party panel exposes management controls and leader badge', () => {
   assertContains(html, 'showPartyMemberStats(1)', 'Party card should expose detailed stats');
   assertContains(html, 'setPartyLeader(1)', 'Party card should expose set leader action');
   assertContains(html, 'dismissPartyMember(1)', 'Ally card should expose dismiss action');
+  assertContains(html, 'draggable="true"', 'Ally card should expose drag reorder affordance');
+  assertContains(html, 'startPartyDrag(1)', 'Ally card should start drag reorder');
+  assertContains(html, 'dropPartyMember(1)', 'Ally card should accept drag reorder drops');
 });
 
 test('Party management can reorder set leader and dismiss allies', () => {
@@ -2318,6 +2321,21 @@ test('Party management can reorder set leader and dismiss allies', () => {
   assertEqual(App.party.includes(allyB), false, 'Dismiss should remove ally from party');
   assertEqual(App.partyLeaderId, 'player-1', 'Dismissing leader should fall back to player');
   assertEqual(App.explorationActorIds.includes('ally-b'), false, 'Dismiss should clear selected actor id');
+});
+
+test('Party drag reorder keeps player anchored', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const allyA = makeUnit('Ally A', { id: 'ally-a' });
+  const allyB = makeUnit('Ally B', { id: 'ally-b' });
+  App.player = player;
+  App.party = [player, allyA, allyB];
+  assertEqual(App.startPartyDrag(2), true, 'Drag should start for ally cards');
+  assertEqual(App.dropPartyMember(1), true, 'Drop should reorder allies');
+  assertEqual(App.party[1], allyB, 'Dragged ally should move to the target slot');
+  assertEqual(App.startPartyDrag(1), true, 'Drag should still start after reorder');
+  assertEqual(App.dropPartyMember(0), false, 'Drop should not move an ally before the player');
+  assertEqual(App.party[0], player, 'Player should stay anchored at the first slot');
 });
 
 test('Enemy target priority prefers party leader when no prey override applies', () => {

@@ -204,10 +204,10 @@
 ```
 app/
   src/core/
-    app.js           — Main game state, combat loop, encounter system, AI (~6173 lines)
-    content-system.js — Template engine, content tiers, localization registry (~463 lines)
+    app.js           — Main game state, combat loop, encounter system, AI (~6522 lines)
+    content-system.js — Template engine, content tiers, localization registry (~467 lines)
     serialization.js  — Binary save/load codec (~276 lines)
-    module-system.js  — Mod loader and hook system (~275 lines)
+    module-system.js  — Mod loader and hook system (~276 lines)
     marketplace.js    — Built-in content pack metadata (~140 lines)
   src/ui/
     global-nav.js     — Navigation helpers (~20 lines)
@@ -215,8 +215,8 @@ app/
     mod-ui.js         — Mod manager UI (~204 lines)
     market-screen.js  — Marketplace UI (~287 lines)
     market-nav.js     — Marketplace nav (~17 lines)
-  template.html      — HTML shell, CSS, inline screens (~2000 lines)
-  test/test.js       — 186 tests, syntax/structure/combat behavior
+  template.html      — HTML shell, CSS, inline screens (~2175 lines)
+  test/test.js       — 194 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

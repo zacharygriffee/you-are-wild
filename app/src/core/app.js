@@ -7762,7 +7762,7 @@
                 if (this._mobilePartyPressTimer) clearTimeout(this._mobilePartyPressTimer);
                 this._mobilePartyPressTimer = null;
             },
-            _intentCommand(type, targetRef, action, subAction = null) {
+            _intentCommand(type, targetRef, action, subAction = null, source = 'sheet') {
                 const actorIds = this._getExplorationActors().map(actor => actor.id || actor.name);
                 const target = type === 'party'
                     ? this.party[Number(targetRef)]
@@ -7773,7 +7773,7 @@
                     subAction,
                     targetId: target?.id || target?.name || String(targetRef),
                     targetType: type,
-                    source: 'sheet'
+                    source
                 };
             },
             showIntentMenu(type, targetRef) {
@@ -7793,7 +7793,7 @@
                     const title = key === 'close' ? label : `${label} ${targetName}`;
                     const handler = action === 'close'
                         ? 'App.closeMobileContextMenu()'
-                        : `App.selectIntent('${type}',${targetArg},'${action}')`;
+                        : `App.selectIntent('${type}',${targetArg},'${action}','sheet')`;
                     return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
                 let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
@@ -7812,21 +7812,21 @@
                     const key = target.questAccepted ? 'viewQuest' : 'acceptQuest';
                     const label = this._uiLabel(key);
                     const title = this._label(target.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', target.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName });
-                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest')">📜 ${this._escapeHtml(label)}</button>`;
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest','sheet')">📜 ${this._escapeHtml(label)}</button>`;
                 }
                 if (!isParty && target.disposition === this.DISPOSITION.MERCHANT) {
                     const label = this._uiLabel('trade');
                     const title = this._label('action.tradeWith', 'Trade with {name}', { name: targetName });
-                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade')">🪙 ${this._escapeHtml(label)}</button>`;
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade','sheet')">🪙 ${this._escapeHtml(label)}</button>`;
                 }
                 html += actionButton('close', 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
                 this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
             },
-            selectIntent(type, targetRef, action) {
+            selectIntent(type, targetRef, action, source = 'sheet') {
                 this._haptic(8);
-                const command = this._intentCommand(type, targetRef, action);
+                const command = this._intentCommand(type, targetRef, action, null, source);
                 this.lastIntentCommand = command;
                 this.closeMobileContextMenu();
                 if (type === 'party') {
@@ -7909,7 +7909,8 @@
                 const actionButton = (key, action = key, extraClass = '') => {
                     const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
                     const icon = this._actionIcon(key);
-                    return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="${action === 'close' ? 'App.closeMobileContextMenu()' : `App.mobileCreatureContextAction('${action}','${targetId}')`}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
+                    const safeTarget = String(targetId).replace(/'/g, "\\'");
+                    return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="${action === 'close' ? 'App.closeMobileContextMenu()' : `App.selectIntent('creature','${safeTarget}','${action}','longpress')`}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
                 const menuLabel = this._label('ui.creatureActions', 'Creature actions');
                 let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${target.icon || ''} ${this._escapeHtml(target.name)}</div><div class="mobile-context-menu-actions" role="menu">`;

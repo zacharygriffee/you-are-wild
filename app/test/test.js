@@ -1861,6 +1861,7 @@ test('Intent menu dispatch keeps existing outside-combat action flow', () => {
   assertEqual(App.lastIntentCommand.action, 'fight', 'Intent command should record selected action');
   assertEqual(App.lastIntentCommand.targetId, 'enemy-intent', 'Intent command should record selected target');
   assertEqual(App.lastIntentCommand.targetType, 'creature', 'Intent command should record target type');
+  assertEqual(App.lastIntentCommand.source, 'sheet', 'Intent command should record action sheet source by default');
   assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-1', 'Intent command should preserve selected actor ids');
   assert(enemy.CPun < 70, 'Intent dispatch should reuse existing outside-combat creature action flow');
   assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Intent dispatch should preserve existing action log semantics');
@@ -6166,6 +6167,10 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
   assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
+  assertContains(body.innerHTML, "App.selectIntent('creature','willing-1','fight','longpress')", 'Long-press menu should route through shared intent dispatch');
+  App.selectIntent('creature', 'willing-1', 'flirt', 'longpress');
+  assertEqual(App.lastIntentCommand.source, 'longpress', 'Long-press selection should record its command source');
+  assertEqual(App.lastIntentCommand.action, 'flirt', 'Long-press selection should record selected intent');
   App.closeMobileContextMenu();
   assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');
 });

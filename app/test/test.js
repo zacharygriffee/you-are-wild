@@ -2037,6 +2037,24 @@ test('Chewing-enabled group feast splits target among selected actors', () => {
   assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
 });
 
+test('Group feast chooses a selected primary consumer that can fit the target', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const smallHelper = makeUnit('Small Helper', { id: 'small-helper', size: 1, appetite: 1, Feas: 50 });
+  const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 20 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 5, Flee: 1 });
+  App.player = player;
+  App.party = [player, smallHelper, primary, prey];
+  App.settings.chewing = false;
+  App.explorationActorIds = ['small-helper', 'primary-1'];
+  App.outsideActionForParty('feast', 3);
+  assertEqual(smallHelper.stomach.length, 0, 'Too-small first selected actor should not be forced as primary');
+  assertEqual(primary.stomach.length, 1, 'Later selected actor that can fit the target should become primary');
+  assertEqual(primary.stomach[0].name, 'Prey', 'Primary consumer should receive the target');
+  assertEqual(App.party.includes(prey), false, 'Consumed party target should leave active party list');
+  assertContains(App.log[App.log.length - 1].text, 'Small Helper help Primary swallow Prey', 'Group feast summary should name helper and selected primary');
+});
+
 test('Group exploration outcome summaries localize', () => {
   const feed = loadAppForCombat(() => 0);
   const feedPlayer = makeUnit('You', { id: 'player-1' });

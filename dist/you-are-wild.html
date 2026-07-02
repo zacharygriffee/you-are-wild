@@ -6860,6 +6860,25 @@
                     target: target.name
                 });
             },
+            _selectGroupFeastPrimary(actors, target) {
+                const candidates = (actors || []).filter(actor => actor && actor !== target);
+                const assessed = candidates.map(actor => {
+                    const helperBonus = candidates
+                        .filter(helper => helper !== actor)
+                        .reduce((sum, helper) => sum + Math.floor((helper.Feas || 10) * 0.5), 0);
+                    const canOverpower = this.cheats.canEatAnything || (actor.size >= target.size - 2 && (actor.Feas || 10) + helperBonus + 5 > target.Flee);
+                    return {
+                        actor,
+                        canOverpower,
+                        canFit: this._canFitPrey(actor, target, 'stomach')
+                    };
+                });
+                return {
+                    primary: assessed.find(entry => entry.canOverpower && entry.canFit)?.actor || null,
+                    canOverpower: assessed.some(entry => entry.canOverpower),
+                    capacityActor: assessed.find(entry => entry.canOverpower)?.actor || candidates[0] || null
+                };
+            },
 
             _multiTargetStat(actor, action) {
                 if (action === 'fight') return actor.Figh || actor.str || 10;
@@ -7020,7 +7039,6 @@
                         break;
                     }
                     case 'feast': {
-                        const primary = livingActors[0];
                         if (this.party.includes(target) && livingActors.includes(target)) {
                             result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
                             break;
@@ -7029,14 +7047,16 @@
                             result = this._groupChewFeast(livingActors, target);
                             break;
                         }
-                        const helperBonus = livingActors.slice(1).reduce((sum, actor) => sum + Math.floor((actor.Feas || 10) * 0.5), 0);
-                        const canEatOutside = this.cheats.canEatAnything || (primary.size >= target.size - 2 && primary.Feas + helperBonus + 5 > target.Flee);
-                        if (!canEatOutside) {
+                        const selection = this._selectGroupFeastPrimary(livingActors, target);
+                        if (!selection.canOverpower) {
                             result = this._label('group.feast.tooStrong', '{target} is too large or strong for {actors} to consume.', { target: target.name, actors: names });
                             break;
                         }
+                        const primary = selection.primary;
+                        const helpers = livingActors.filter(actor => actor !== primary);
+                        const capacityActor = selection.capacityActor || livingActors[0];
                         if (!this._canFitPrey(primary, target, 'stomach')) {
-                            result = this._capacityFailureMessage(primary, target, 'stomach');
+                            result = this._capacityFailureMessage(capacityActor, target, 'stomach');
                             break;
                         }
                         if (!primary.stomach) primary.stomach = [];
@@ -7045,7 +7065,7 @@
                         if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = this._label('group.feast.swallow', '{helpers} help {primary} swallow {target}.', {
-                            helpers: livingActors.slice(1).map(actor => actor.name).join(', ') || primary.name,
+                            helpers: helpers.map(actor => actor.name).join(', ') || primary.name,
                             primary: primary.name,
                             target: target.name
                         });

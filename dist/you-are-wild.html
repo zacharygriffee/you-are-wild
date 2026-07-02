@@ -8560,27 +8560,27 @@ const WorldGen = (() => {
 
             recruitCreatureFromIndex(index) {
                 const target = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
-                if (!target) return;
-                this.recruitCreature(target, this._getExplorationActor());
+                if (!target) return false;
+                return this.recruitCreature(target, this._getExplorationActor());
             },
 
             recruitCreatureById(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target || target.disposition !== this.DISPOSITION.FRIENDLY) return;
-                this.recruitCreature(target, this._getExplorationActor());
+                if (!target || target.disposition !== this.DISPOSITION.FRIENDLY) return false;
+                return this.recruitCreature(target, this._getExplorationActor());
             },
 
             recruitCreature(target, actor = this.player, options = {}) {
                 if (this.party.length >= this.MAX_PARTY_SIZE) {
                     this.log.push({ text: this._label('recruit.partyFull', 'Party is full! Cannot recruit {name}', { name: target.name }), type: 'combat' });
                     this.renderLog();
-                    return;
+                    return false;
                 }
                 if (!options.force && !this._canRecruit(actor, target)) {
                     this.log.push({ text: this._label('recruit.notReady', '{name} is not ready to join the party.', { name: target.name }), type: 'discovery' });
                     this.renderLog();
                     this.renderCreatures();
-                    return;
+                    return false;
                 }
 	                target.disposition = this.DISPOSITION.PARTY;
 	                target.ally = true;
@@ -8596,6 +8596,7 @@ const WorldGen = (() => {
                 this.renderLog();
                 this.showExplorationActions();
                 this.autoSave();
+                return true;
             },
 
             // ===== FLEE =====
@@ -9075,7 +9076,7 @@ const WorldGen = (() => {
 
             showTrade(targetId) {
                 const merchant = this._findMerchantById(targetId);
-                if (!merchant) return;
+                if (!merchant) return false;
                 const gold = this.player.gold || 0;
                 const buyLabel = this._escapeHtml(this._label('trade.buy', 'Buy'));
                 const sellLabel = this._escapeHtml(this._label('trade.sell', 'Sell'));
@@ -9111,6 +9112,7 @@ const WorldGen = (() => {
                 }
                 html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
+                return true;
             },
 
             setTradeFilter(filter, targetId) {
@@ -9245,8 +9247,8 @@ const WorldGen = (() => {
 
             acceptQuestFromUnit(targetId) {
                 const giver = this._getQuestGiverByKey(targetId);
-                if (!giver) return;
-                this.acceptQuest(giver.quest, giver);
+                if (!giver) return false;
+                return this.acceptQuest(giver.quest, giver);
             },
 
             acceptQuest(quest, giver = null) {
@@ -11677,9 +11679,9 @@ const WorldGen = (() => {
                 }
                 const targetId = String(targetRef);
                 if (action === 'close') return false;
-                if (action === 'recruit') return this.recruitCreatureById(targetId);
-                if (action === 'quest') return this.acceptQuestFromUnit(targetId);
-                if (action === 'trade') return this.showTrade(targetId);
+                if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
+                if (action === 'quest') return Boolean(this.acceptQuestFromUnit(targetId));
+                if (action === 'trade') return Boolean(this.showTrade(targetId));
                 return this.outsideActionForCreature(action, targetId, { subAction });
             },
             closeMobileContextMenu() {

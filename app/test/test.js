@@ -1922,6 +1922,30 @@ test('Intent dispatch reports canceled and missing-target outcomes', () => {
   assertEqual(App.selectIntent('creature', 'missing-creature', 'close'), false, 'Creature close intent should report canceled resolution');
 });
 
+test('Contextual intent dispatch reports recruit quest and trade outcomes', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', cha: 20, Flir: 30, Fuck: 30 });
+  const recruit = makeUnit('Recruit', { id: 'recruit-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, MPle: 100, willing: true });
+  const questGiver = makeUnit('Guide', {
+    id: 'guide-1',
+    disposition: App.DISPOSITION.FRIENDLY,
+    quest: { id: 'guide_task', title: 'Guide Task', objectives: [{ type: 'travel', location: { x: 1, y: 0 }, required: 1 }] }
+  });
+  const merchant = makeUnit('Trader', { id: 'trader-1', disposition: App.DISPOSITION.MERCHANT, stock: [] });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [recruit, questGiver, merchant];
+  assertEqual(App.selectIntent('creature', 'recruit-1', 'recruit'), true, 'Recruit intent should report successful recruitment');
+  assert(App.party.includes(recruit), 'Recruit intent should add the creature to party');
+  assertEqual(App.selectIntent('creature', 'recruit-1', 'recruit'), false, 'Recruit intent should report missing/non-recruitable target after recruitment');
+  assertEqual(App.selectIntent('creature', 'guide-1', 'quest'), true, 'Quest intent should report successful quest acceptance');
+  assertEqual(App.quests.length, 1, 'Quest intent should add the quest to the log');
+  assertEqual(App.selectIntent('creature', 'missing-guide', 'quest'), false, 'Quest intent should report missing giver failure');
+  assertEqual(App.selectIntent('creature', 'trader-1', 'trade'), true, 'Trade intent should report successful trade screen rendering');
+  assertContains(elements.get('scene-description').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen');
+  assertEqual(App.selectIntent('creature', 'missing-trader', 'trade'), false, 'Trade intent should report missing merchant failure');
+});
+
 test('Intent sub-action sheet records selected sub-action while preserving dispatch', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Flir: 30, cha: 20 });

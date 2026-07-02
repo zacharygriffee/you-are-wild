@@ -2070,27 +2070,27 @@
 	                                </div>
 	                            </div>
 	                            <div class="mobile-scene-sheet">
-	                                <div class="mobile-scene-title" id="mobile-scene-title">The Wilderness</div>
-	                                <div class="mobile-scene-description" id="mobile-scene-description">
+	                                <div class="mobile-scene-title" id="mobile-scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
+	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
 	                                <div class="mobile-log-summary" id="mobile-log-summary" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
-                            <h2 class="scene-title" id="scene-title">The Wilderness</h2>
+                            <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
                             <div class="scene-description" id="scene-description">
-                                You find yourself in an untamed land where predators roam and only the strong survive.
-                                The air is thick with the scent of pine and the distant calls of creatures unknown.
+                                <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
+                                <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
                             </div>
                             <div class="scene-actions" id="scene-actions">
-                                <button class="action-btn" onclick="App.search()">
-                                    <span class="action-icon">🔍</span>
-                                    Search
+                                <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
+                                    <span class="action-icon" aria-hidden="true">🔍</span>
+                                    <span class="action-caption" data-i18n="action.search">Search</span>
                                 </button>
-                                <button class="action-btn" onclick="rest()">
-                                    <span class="action-icon">🏕️</span>
-                                    Rest
+                                <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
+                                    <span class="action-icon" aria-hidden="true">🏕️</span>
+                                    <span class="action-caption" data-i18n="action.rest">Rest</span>
                                 </button>
                             </div>
                         </div>
@@ -2139,7 +2139,7 @@
                 </div>
                 <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
                     <div class="log-entry" role="status" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
-                    <div class="log-entry discovery" role="status">Created your character. The journey begins...</div>
+                    <div class="log-entry discovery" role="status" data-i18n="ui.log.createdCharacter">Created your character. The journey begins...</div>
                 </div>
             </div>
         </div>
@@ -2148,52 +2148,52 @@
         <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
             <!-- Combat buttons -->
             <div id="mobile-combat-actions" class="action-bar" style="display: none;">
-                <button class="action-btn primary" onclick="combatAction('fight')">
-                    <span class="action-icon">⚔️</span>
-                    Fight
+                <button class="action-btn primary" title="Fight" aria-label="Fight" data-i18n-title="action.fight" data-i18n-aria-label="action.fight" onclick="combatAction('fight')">
+                    <span class="action-icon" aria-hidden="true">⚔️</span>
+                    <span class="action-caption" data-i18n="action.fight">Fight</span>
                 </button>
-                <button class="action-btn" onclick="combatAction('flirt')">
-                    <span class="action-icon">😘</span>
-                    Flirt
+                <button class="action-btn" title="Flirt" aria-label="Flirt" data-i18n-title="action.flirt" data-i18n-aria-label="action.flirt" onclick="combatAction('flirt')">
+                    <span class="action-icon" aria-hidden="true">😘</span>
+                    <span class="action-caption" data-i18n="action.flirt">Flirt</span>
                 </button>
-                <button class="action-btn" onclick="combatAction('feast')">
-                    <span class="action-icon">🍽️</span>
-                    Feast
+                <button class="action-btn" title="Feast" aria-label="Feast" data-i18n-title="action.feast" data-i18n-aria-label="action.feast" onclick="combatAction('feast')">
+                    <span class="action-icon" aria-hidden="true">🍽️</span>
+                    <span class="action-caption" data-i18n="action.feast">Feast</span>
                 </button>
-                <button class="action-btn" onclick="combatAction('fuck')">
-                    <span class="action-icon">💕</span>
-                    Fuck
+                <button class="action-btn" title="Fuck" aria-label="Fuck" data-i18n-title="action.fuck" data-i18n-aria-label="action.fuck" onclick="combatAction('fuck')">
+                    <span class="action-icon" aria-hidden="true">💕</span>
+                    <span class="action-caption" data-i18n="action.fuck">Fuck</span>
                 </button>
-                <button class="action-btn" onclick="combatAction('feed')">
-                    <span class="action-icon">🍲</span>
-                    Feed
+                <button class="action-btn" title="Feed" aria-label="Feed" data-i18n-title="action.feed" data-i18n-aria-label="action.feed" onclick="combatAction('feed')">
+                    <span class="action-icon" aria-hidden="true">🍲</span>
+                    <span class="action-caption" data-i18n="action.feed">Feed</span>
                 </button>
-                <button class="action-btn" onclick="combatAction('flee')">
-                    <span class="action-icon">🏃</span>
-                    Flee
+                <button class="action-btn" title="Flee" aria-label="Flee" data-i18n-title="action.flee" data-i18n-aria-label="action.flee" onclick="combatAction('flee')">
+                    <span class="action-icon" aria-hidden="true">🏃</span>
+                    <span class="action-caption" data-i18n="action.flee">Flee</span>
                 </button>
             </div>
             <!-- Exploration buttons -->
             <div id="mobile-explore-actions" class="action-bar">
-                <button class="action-btn" onclick="App.search()">
-                    <span class="action-icon">🔍</span>
-                    Search
+                <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
+                    <span class="action-icon" aria-hidden="true">🔍</span>
+                    <span class="action-caption" data-i18n="action.search">Search</span>
                 </button>
-                <button class="action-btn" onclick="App.showInventory()">
-                    <span class="action-icon">🎒</span>
-                    Items
+                <button class="action-btn" title="Items" aria-label="Items" data-i18n-title="action.inventory" data-i18n-aria-label="action.inventory" onclick="App.showInventory()">
+                    <span class="action-icon" aria-hidden="true">🎒</span>
+                    <span class="action-caption" data-i18n="action.inventory">Items</span>
                 </button>
-                <button class="action-btn" onclick="togglePanel('map')">
-                    <span class="action-icon">🗺️</span>
-                    Map
+                <button class="action-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">
+                    <span class="action-icon" aria-hidden="true">🗺️</span>
+                    <span class="action-caption" data-i18n="ui.map">Map</span>
                 </button>
-	                <button class="action-btn" onclick="togglePanel('party')">
-	                    <span class="action-icon">👥</span>
-	                    Party
+	                <button class="action-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">
+	                    <span class="action-icon" aria-hidden="true">👥</span>
+	                    <span class="action-caption" data-i18n="ui.party">Party</span>
 	                </button>
-	                <button class="action-btn" onclick="togglePanel('enemies')">
-	                    <span class="action-icon">⚔️</span>
-	                    Enemies
+	                <button class="action-btn" title="Enemies" aria-label="Enemies" data-i18n-title="ui.enemies" data-i18n-aria-label="ui.enemies" onclick="togglePanel('enemies')">
+	                    <span class="action-icon" aria-hidden="true">⚔️</span>
+	                    <span class="action-caption" data-i18n="ui.enemies">Enemies</span>
 	                </button>
 	            </div>
         </div>

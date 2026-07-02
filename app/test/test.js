@@ -669,6 +669,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, '.mobile-context-menu', 'mobile context menu styles should exist');
   assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
   assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
+  assertContains(template, '.intent-menu-radial .mobile-context-menu-actions', 'radial intent menus should have dedicated mobile layout hooks');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
 });
@@ -6327,6 +6328,8 @@ test('Mobile creature long-press menu exposes core actions', () => {
   App.showMobileCreatureContext('willing-1');
   assertContains(body.innerHTML, 'role="dialog"', 'Long-press menu should expose dialog semantics');
   assertContains(body.innerHTML, 'aria-modal="true"', 'Long-press menu should behave as a modal action menu');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Long-press menu should use the radial intent presentation scaffold');
+  assertContains(body.innerHTML, 'data-intent-presentation="radial"', 'Long-press menu should mark radial presentation for styling and later gesture handling');
   assertContains(body.innerHTML, 'role="menu"', 'Long-press menu should expose menu semantics for actions');
   assertContains(body.innerHTML, 'Fight', 'Long-press menu should expose Fight');
   assertContains(body.innerHTML, 'Flirt', 'Long-press menu should expose Flirt');
@@ -6344,6 +6347,22 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertEqual(App.lastIntentCommand.action, 'flirt', 'Long-press selection should record selected intent');
   App.closeMobileContextMenu();
   assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');
+});
+
+test('Radial intent menu remains an accelerator over shared dispatch', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', Figh: 40 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-radial', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.showRadialIntentMenu('creature', 'enemy-radial');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','enemy-radial','fight','radial')", 'Radial primary actions should still route through the shared sub-action sheet');
+  App.selectIntent('creature', 'enemy-radial', 'fight', 'radial', 'attack');
+  assertEqual(App.lastIntentCommand.source, 'radial', 'Radial accelerator should record its command source');
+  assertEqual(App.lastIntentCommand.subAction, 'attack', 'Radial accelerator should preserve selected sub-action');
+  assert(enemy.CPun < 100, 'Radial accelerator should reuse existing outside-combat dispatch');
 });
 
 test('Mobile creature long-press menu uses localized action labels', () => {

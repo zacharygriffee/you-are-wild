@@ -1583,6 +1583,23 @@
                 color: var(--accent-danger);
             }
 
+            .intent-menu-radial .mobile-context-menu-actions {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                align-items: center;
+            }
+
+            .intent-menu-radial .intent-menu-item {
+                min-height: 48px;
+                border-radius: 999px;
+                padding: 8px 6px;
+                line-height: 1.15;
+            }
+
+            .intent-menu-radial .intent-menu-item.primary {
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35);
+            }
+
             .mobile-context-field {
                 flex: 1 1 100%;
                 display: grid;

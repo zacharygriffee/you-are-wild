@@ -415,6 +415,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Party actions'", 'English party action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
+  assertContains(contentContent, "'mod.title': 'Mod Manager'", 'English mod manager title missing');
+  assertContains(contentContent, "'mod.title': 'Gestor de modulos'", 'Spanish mod manager title missing');
+  assertContains(contentContent, "'mod.importTitle': 'Import mod file'", 'English mod import title missing');
+  assertContains(contentContent, "'mod.importTitle': 'Importar archivo de modulo'", 'Spanish mod import title missing');
   assertContains(contentContent, "'mod.noneInstalled': 'No modules installed. Install one above or create an example.'", 'English mod manager empty-state label missing');
   assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.'", 'Spanish mod manager empty-state label missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Delete this module? This cannot be undone.'", 'English mod manager delete warning missing');
@@ -482,6 +486,13 @@ test('Settings clear saves button is wired to an implemented handler', () => {
 });
 
 test('Mod manager UI uses localized safe rendering for module metadata', () => {
+  assertContains(template, 'data-i18n="mod.title"', 'Mod manager fallback title should opt into static localization');
+  assertContains(template, 'data-i18n="mod.subtitle"', 'Mod manager fallback subtitle should opt into static localization');
+  assertContains(template, 'data-i18n="mod.import"', 'Mod import label should opt into static localization');
+  assertContains(template, 'data-i18n-title="mod.importTitle"', 'Mod import title should opt into static localization');
+  assertContains(template, 'data-i18n="mod.createExample"', 'Mod create-example label should opt into static localization');
+  assertContains(template, 'data-i18n-title="mod.createExampleTitle"', 'Mod create-example title should opt into static localization');
+  assertContains(template, 'data-i18n-title="mod.closeTitle"', 'Mod close title should opt into static localization');
   assertContains(modUiContent, "label(key, fallback, vars = {})", 'ModUI localization helper missing');
   assertContains(modUiContent, "escapeHtml(value)", 'ModUI HTML escaping helper missing');
   assertContains(modUiContent, "this.label('mod.installedLog'", 'Mod install log should localize');

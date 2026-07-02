@@ -2386,17 +2386,17 @@
     <!-- MODS OVERLAY -->
     <div id="screen-mods" class="screen screen-overlay">
         <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Mod Manager</h1>
-            <p style="color: var(--text-muted); margin-bottom: 24px;">Install, enable, and manage game modules.</p>
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
             <!-- Install -->
             <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-                <label class="nav-btn" style="cursor: pointer; display: inline-block;">
-                    📁 Import Mod
+                <label class="nav-btn" style="cursor: pointer; display: inline-block;" title="Import mod file" aria-label="Import mod file" data-i18n-title="mod.importTitle" data-i18n-aria-label="mod.importTitle">
+                    📁 <span data-i18n="mod.import">Import Mod</span>
                     <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
                 </label>
-                <button class="nav-btn" onclick="ModUI.createExampleMod()">✨ Create Example</button>
-                <button class="nav-btn" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" title="Create example module" aria-label="Create example module" data-i18n-title="mod.createExampleTitle" data-i18n-aria-label="mod.createExampleTitle" onclick="ModUI.createExampleMod()">✨ <span data-i18n="mod.createExample">Create Example</span></button>
+                <button class="nav-btn" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
             </div>
 
             <!-- Mod List -->

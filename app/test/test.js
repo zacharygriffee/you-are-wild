@@ -1453,6 +1453,23 @@ test('Self-included group feed tends target instead of consuming helpers', () =>
   assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Self-included feed should log tending semantics');
 });
 
+test('Self-included group feed supports multiple helpers tending one target', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 10, MPun: 200, Feed: 10, size: 6, appetite: 6 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', Feed: 20, size: 2 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', Feed: 30, size: 2 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.outsideActionForParty('feed', 1);
+  assertEqual(target.CPun, 130, 'Self-included group feed should combine target and both helper feed stats');
+  assertEqual(target.stomach.length, 0, 'Self-included group feed should not consume helpers');
+  assertEqual(App.party.includes(helperA), true, 'First helper should remain in party after group tending');
+  assertEqual(App.party.includes(helperB), true, 'Second helper should remain in party after group tending');
+  assertContains(App.log[App.log.length - 1].text, 'Target, Helper A, Helper B tend Target together', 'Three-participant feed should log shared tending semantics');
+});
+
 test('Self-included group social action shares pleasure across participants', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -1465,6 +1482,22 @@ test('Self-included group social action shares pleasure across participants', ()
   assert(target.CPle > 0, 'Self-included social target should gain pleasure');
   assert(helper.CPle > 0, 'Self-included social helper should also gain shared pleasure');
   assertContains(App.log[App.log.length - 1].text, 'share fuck with Target', 'Self-included social action should log shared semantics');
+});
+
+test('Self-included group social action shares pleasure with multiple helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPle: 0, MPle: 100, Fuck: 20, Flir: 20, cha: 20, wis: 1 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', CPle: 0, MPle: 100, Fuck: 20, Flir: 20, cha: 20 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', CPle: 0, MPle: 100, Fuck: 20, Flir: 20, cha: 20 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.outsideActionForParty('fuck', 1);
+  assert(target.CPle > 0, 'Self-included social target should gain pleasure');
+  assert(helperA.CPle > 0, 'First helper should gain shared pleasure');
+  assert(helperB.CPle > 0, 'Second helper should gain shared pleasure');
+  assertContains(App.log[App.log.length - 1].text, 'Target, Helper A, Helper B share fuck with Target', 'Three-participant social action should log shared semantics');
 });
 
 test('Self-included group fight spars across participants instead of self-attacking target', () => {
@@ -1481,6 +1514,25 @@ test('Self-included group fight spars across participants instead of self-attack
   assertEqual(App.party.includes(target), true, 'Default self-included sparring should keep target in party');
   assertEqual(App.party.includes(helper), true, 'Default self-included sparring should keep helper in party');
   assertContains(App.log[App.log.length - 1].text, 'spar together', 'Self-included fight should log sparring semantics');
+});
+
+test('Self-included group fight spars across multiple helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.outsideActionForParty('fight', 1);
+  assert(target.CPun < 100, 'Three-participant sparring should affect the target');
+  assert(helperA.CPun < 100, 'Three-participant sparring should affect the first helper');
+  assert(helperB.CPun < 100, 'Three-participant sparring should affect the second helper');
+  assertEqual(App.party.includes(target), true, 'Default three-participant sparring should keep target in party');
+  assertEqual(App.party.includes(helperA), true, 'Default three-participant sparring should keep first helper in party');
+  assertEqual(App.party.includes(helperB), true, 'Default three-participant sparring should keep second helper in party');
+  assertContains(App.log[App.log.length - 1].text, 'Target, Helper A, Helper B spar together', 'Three-participant fight should log sparring semantics');
 });
 
 test('Self-included group feast rejects instead of routing self-consumption', () => {

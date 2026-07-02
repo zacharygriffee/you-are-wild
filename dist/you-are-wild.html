@@ -1813,35 +1813,35 @@
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
             <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
             <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">You Are Wild</h1>
-            <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Explore. Change. Survive.</p>
+            <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;" data-i18n="ui.tagline">Explore. Change. Survive.</p>
 
             <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
-                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" onclick="App.continueLastGame()">
-                    ▶ Continue Last Game
+                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
+                    ▶ <span data-i18n="ui.menu.continue">Continue Last Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Start a new game" aria-label="Start a new game" onclick="App.showNewGameManager()">
-                    🆕 New Game
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Start a new game" aria-label="Start a new game" data-i18n-title="ui.menu.newGameTitle" data-i18n-aria-label="ui.menu.newGameTitle" onclick="App.showNewGameManager()">
+                    🆕 <span data-i18n="ui.menu.newGame">New Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Load game" aria-label="Load game" onclick="App.showSaveManager()">
-                    📂 Load Game
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Load game" aria-label="Load game" data-i18n-title="ui.menu.loadGameTitle" data-i18n-aria-label="ui.menu.loadGameTitle" onclick="App.showSaveManager()">
+                    📂 <span data-i18n="ui.menu.loadGame">Load Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open settings" aria-label="Open settings" onclick="App.showScreen('settings'); App.showSettings();">
-                    ⚙️ Settings
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.showScreen('settings'); App.showSettings();">
+                    ⚙️ <span data-i18n="ui.menu.settings">Settings</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open mods" aria-label="Open mods" onclick="App.showModScreen()">
-                    📦 Mods
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.showModScreen()">
+                    📦 <span data-i18n="ui.menu.mods">Mods</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open market" aria-label="Open market" onclick="App.showMarketScreen()">
-                    🏪 Market
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.showMarketScreen()">
+                    🏪 <span data-i18n="ui.menu.market">Market</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open tutorial" aria-label="Open tutorial" onclick="App.showTutorial()">
-                    📖 Tutorial
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
+                    📖 <span data-i18n="ui.menu.tutorial">Tutorial</span>
                 </button>
             </div>
 
             <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
-                <p>Dark mode tactical edition</p>
-                <p>All content is enabled by default</p>
+                <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
+                <p data-i18n="ui.menu.contentDefault">All content is enabled by default</p>
             </div>
         </div>
     </div>
@@ -1996,13 +1996,13 @@
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>
                 <nav class="app-nav">
-                    <button class="nav-btn" title="Toggle map panel" aria-label="Toggle map panel" onclick="togglePanel('map')">🗺️ Map</button>
-                    <button class="nav-btn" title="Toggle party panel" aria-label="Toggle party panel" onclick="togglePanel('party')">👥 Party</button>
-                    <button class="nav-btn" title="Toggle creatures panel" aria-label="Toggle creatures panel" onclick="togglePanel('enemies')">⚔️ Enemies</button>
-                    <button class="nav-btn" title="Open character stats" aria-label="Open character stats" onclick="App.showCharacterStats()">📊 Stats</button>
-                    <button class="nav-btn" title="Open help tutorial" aria-label="Open help tutorial" onclick="showTutorial()">📖 Help</button>
-                    <button class="nav-btn" title="Open save slots" aria-label="Open save slots" onclick="App.showSaveManager()">💾 Save</button>
-                    <button class="nav-btn" title="Open load slots" aria-label="Open load slots" onclick="App.showSaveManager()">📂 Load</button>
+                    <button class="nav-btn" title="Toggle map panel" aria-label="Toggle map panel" data-i18n-title="ui.nav.mapTitle" data-i18n-aria-label="ui.nav.mapTitle" onclick="togglePanel('map')">🗺️ <span data-i18n="ui.map">Map</span></button>
+                    <button class="nav-btn" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
+                    <button class="nav-btn" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
+                    <button class="nav-btn" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
+                    <button class="nav-btn" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
+                    <button class="nav-btn" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.showSaveManager()">💾 <span data-i18n="save.save">Save</span></button>
+                    <button class="nav-btn" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.showSaveManager()">📂 <span data-i18n="save.load">Load</span></button>
                 </nav>
             </header>
 
@@ -2011,7 +2011,7 @@
                 <!-- Map Panel -->
                 <div class="panel panel-map" id="panel-map">
                     <div class="panel-header">
-                        <span>🗺️ Map</span>
+                        <span>🗺️ <span data-i18n="ui.map">Map</span></span>
                         <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
                     </div>
                     <div class="panel-content">
@@ -2095,7 +2095,7 @@
                 <!-- Party Panel -->
                 <div class="panel panel-party" id="panel-party">
                     <div class="panel-header">
-                        <span>👥 Party</span>
+                        <span>👥 <span data-i18n="ui.party">Party</span></span>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" onclick="expandAll('party')">Expand</button>
                     </div>
                     <div class="panel-content" id="party-content">
@@ -2106,7 +2106,7 @@
                 <!-- Enemies Panel -->
                 <div class="panel panel-enemies" id="panel-enemies">
                     <div class="panel-header">
-                        <span id="enemies-title">⚔️ Enemies</span>
+                        <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" onclick="expandAll('enemies')">Expand</button>
                     </div>
                     <div class="panel-content" id="enemies-content">
@@ -2118,19 +2118,19 @@
             <!-- Log Panel -->
             <div class="panel-log">
                 <div class="log-header">
-                    <span class="log-title">📜 Combat Log</span>
+                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span></span>
                     <div style="display:flex;gap:6px;">
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" onclick="App.exportLog()">Export</button>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Clear log entries" aria-label="Clear log entries" onclick="clearLog()">Clear</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" data-i18n-title="ui.log.export" data-i18n-aria-label="ui.log.export" data-i18n="ui.log.export" onclick="App.exportLog()">Export</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Clear log entries" aria-label="Clear log entries" data-i18n-title="ui.log.clear" data-i18n-aria-label="ui.log.clear" data-i18n="ui.log.clear" onclick="clearLog()">Clear</button>
                     </div>
                 </div>
                 <div class="log-controls" id="log-controls">
-                    <button class="nav-btn log-filter-btn active" data-log-filter="all" title="Show all log entries" aria-label="Show all log entries" onclick="App.setLogFilter('all')">All</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="combat" title="Show combat log entries" aria-label="Show combat log entries" onclick="App.setLogFilter('combat')">Combat</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" title="Show discovery log entries" aria-label="Show discovery log entries" onclick="App.setLogFilter('discovery')">Discovery</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="loot" title="Show loot log entries" aria-label="Show loot log entries" onclick="App.setLogFilter('loot')">Loot</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="heal" title="Show healing log entries" aria-label="Show healing log entries" onclick="App.setLogFilter('heal')">Heal</button>
-                    <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
+                    <button class="nav-btn log-filter-btn active" data-log-filter="all" title="Show all log entries" aria-label="Show all log entries" data-i18n-title="ui.log.all" data-i18n-aria-label="ui.log.all" data-i18n="ui.log.all" onclick="App.setLogFilter('all')">All</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="combat" title="Show combat log entries" aria-label="Show combat log entries" data-i18n-title="ui.log.combat" data-i18n-aria-label="ui.log.combat" data-i18n="ui.log.combat" onclick="App.setLogFilter('combat')">Combat</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" title="Show discovery log entries" aria-label="Show discovery log entries" data-i18n-title="ui.log.discovery" data-i18n-aria-label="ui.log.discovery" data-i18n="ui.log.discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="loot" title="Show loot log entries" aria-label="Show loot log entries" data-i18n-title="ui.log.loot" data-i18n-aria-label="ui.log.loot" data-i18n="ui.log.loot" onclick="App.setLogFilter('loot')">Loot</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="heal" title="Show healing log entries" aria-label="Show healing log entries" data-i18n-title="ui.log.heal" data-i18n-aria-label="ui.log.heal" data-i18n="ui.log.heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" data-i18n-placeholder="ui.log.search" data-i18n-aria-label="ui.log.search" oninput="App.setLogSearch(this.value)">
                 </div>
                 <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
                     <div class="log-entry" role="status">Welcome to You Are Wild</div>
@@ -2205,15 +2205,15 @@
     <!-- SETTINGS OVERLAY -->
     <div id="screen-settings" class="screen screen-overlay">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
-            <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ <span data-i18n="settings.title">Settings</span></h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">All content is enabled by default. Toggle off what you don't want.</p>
 
             <!-- Language -->
             <div style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Language</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.languageSection">Language</h3>
                 <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                    <span>Interface Language</span>
-                    <select id="setting-language" class="nav-btn" aria-label="Interface language" onchange="App.updateLanguage(this.value)">
+                    <span data-i18n="settings.interfaceLanguage">Interface Language</span>
+                    <select id="setting-language" class="nav-btn" aria-label="Interface language" data-i18n-aria-label="settings.interfaceLanguage" onchange="App.updateLanguage(this.value)">
                         <option value="en">English</option>
                         <option value="es">Espanol</option>
                     </select>
@@ -2222,11 +2222,11 @@
 
             <!-- Content Tiers -->
             <div style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.contentLevel">Content Level</h3>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button id="tier-safe" class="nav-btn" onclick="CONTENT.setMaxTier(1); App.updateTierButtons()">Safe</button>
-                    <button id="tier-mature" class="nav-btn" onclick="CONTENT.setMaxTier(2); App.updateTierButtons()">Mature</button>
-                    <button id="tier-adult" class="nav-btn" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
+                    <button id="tier-safe" class="nav-btn" data-i18n="settings.safe" onclick="CONTENT.setMaxTier(1); App.updateTierButtons()">Safe</button>
+                    <button id="tier-mature" class="nav-btn" data-i18n="settings.mature" onclick="CONTENT.setMaxTier(2); App.updateTierButtons()">Mature</button>
+                    <button id="tier-adult" class="nav-btn" data-i18n="settings.adult" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
                 </div>
             </div>
 
@@ -2340,26 +2340,26 @@
 
             <!-- Accessibility -->
             <div style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Accessibility</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.accessibility">Accessibility</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>High Contrast</span>
+                        <span data-i18n="settings.highContrast">High Contrast</span>
                         <input type="checkbox" id="setting-high-contrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span>Reduced Motion</span>
+                        <span data-i18n="settings.reducedMotion">Reduced Motion</span>
                         <input type="checkbox" id="setting-reduced-motion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
                     </label>
                     <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
-                        <span style="display:flex;justify-content:space-between;gap:12px;"><span>Base Font Size</span><span id="setting-font-size-value">14px</span></span>
-                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.baseFontSize">Base Font Size</span><span id="setting-font-size-value">14px</span></span>
+                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" data-i18n-aria-label="settings.baseFontSize" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
                     </label>
                 </div>
             </div>
 
             <!-- Cheats -->
             <div style="margin-bottom: 24px;">
-                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Cheats</h3>
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.cheats">Cheats</h3>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
                     <button id="cheat-godMode" class="nav-btn" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
                     <button id="cheat-neverHungry" class="nav-btn" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
@@ -2372,8 +2372,8 @@
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ Clear All Saves</button>
-                <button class="nav-btn" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ <span data-i18n="settings.clearAllSaves">Clear All Saves</span></button>
+                <button class="nav-btn" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>
@@ -2900,7 +2900,30 @@
             },
             _actionLegend(keys) {
                 if (keys.length <= 1) return '';
-                return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+                return `<div class="action-legend" aria-label="${this._escapeHtml(this._label('ui.actionLegend', 'Action legend'))}">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+            },
+            applyStaticLocalization(root = document) {
+                if (!root || !root.querySelectorAll) return;
+                root.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (!key) return;
+                    el.textContent = this._label(key, el.textContent || '');
+                });
+                root.querySelectorAll('[data-i18n-title]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-title');
+                    if (!key) return;
+                    el.setAttribute('title', this._label(key, el.getAttribute('title') || ''));
+                });
+                root.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-aria-label');
+                    if (!key) return;
+                    el.setAttribute('aria-label', this._label(key, el.getAttribute('aria-label') || ''));
+                });
+                root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    if (!key) return;
+                    el.setAttribute('placeholder', this._label(key, el.getAttribute('placeholder') || ''));
+                });
             },
             _actionIcon(key) {
                 return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
@@ -3622,6 +3645,7 @@
                 } catch(e) { console.warn('Settings load failed', e); }
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
+                this.applyStaticLocalization();
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
@@ -9539,6 +9563,7 @@
                 }
                 this.saveSettings();
                 this.syncLanguageControl();
+                this.applyStaticLocalization();
                 this.renderExplorationActions();
                 this.renderParty();
                 this.renderCreatures();
@@ -10900,6 +10925,31 @@ const CONTENT_SYSTEM = {
             'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
             'ui.close': 'Close',
             'ui.cancel': 'Cancel',
+            'ui.actionLegend': 'Action legend',
+            'ui.tagline': 'Explore. Change. Survive.',
+            'ui.menu.continue': 'Continue Last Game',
+            'ui.menu.continueTitle': 'Continue last game',
+            'ui.menu.newGame': 'New Game',
+            'ui.menu.newGameTitle': 'Start a new game',
+            'ui.menu.loadGame': 'Load Game',
+            'ui.menu.loadGameTitle': 'Load game',
+            'ui.menu.settings': 'Settings',
+            'ui.menu.settingsTitle': 'Open settings',
+            'ui.menu.mods': 'Mods',
+            'ui.menu.modsTitle': 'Open mods',
+            'ui.menu.market': 'Market',
+            'ui.menu.marketTitle': 'Open market',
+            'ui.menu.tutorial': 'Tutorial',
+            'ui.menu.tutorialTitle': 'Open tutorial',
+            'ui.menu.edition': 'Dark mode tactical edition',
+            'ui.menu.contentDefault': 'All content is enabled by default',
+            'ui.nav.mapTitle': 'Toggle map panel',
+            'ui.nav.partyTitle': 'Toggle party panel',
+            'ui.nav.creaturesTitle': 'Toggle creatures panel',
+            'ui.nav.statsTitle': 'Open character stats',
+            'ui.nav.helpTitle': 'Open help tutorial',
+            'ui.nav.saveTitle': 'Open save slots',
+            'ui.nav.loadTitle': 'Open load slots',
             'ui.creatureActions': 'Creature actions',
             'ui.partyActions': 'Party actions',
             'ui.exploration': 'Exploration',
@@ -10909,6 +10959,33 @@ const CONTENT_SYSTEM = {
             'ui.creatures': 'Creatures',
             'ui.noCreaturesPresent': 'No creatures present',
             'ui.noCreaturesHere': 'No creatures here',
+            'ui.map': 'Map',
+            'ui.party': 'Party',
+            'ui.stats': 'Stats',
+            'ui.help': 'Help',
+            'ui.combatLog': 'Combat Log',
+            'ui.log.export': 'Export',
+            'ui.log.clear': 'Clear',
+            'ui.log.all': 'All',
+            'ui.log.combat': 'Combat',
+            'ui.log.discovery': 'Discovery',
+            'ui.log.loot': 'Loot',
+            'ui.log.heal': 'Heal',
+            'ui.log.search': 'Search log',
+            'settings.title': 'Settings',
+            'settings.description': "All content is enabled by default. Toggle off what you don't want.",
+            'settings.languageSection': 'Language',
+            'settings.interfaceLanguage': 'Interface Language',
+            'settings.contentLevel': 'Content Level',
+            'settings.safe': 'Safe',
+            'settings.mature': 'Mature',
+            'settings.adult': 'Adult',
+            'settings.accessibility': 'Accessibility',
+            'settings.highContrast': 'High Contrast',
+            'settings.reducedMotion': 'Reduced Motion',
+            'settings.baseFontSize': 'Base Font Size',
+            'settings.cheats': 'Cheats',
+            'settings.clearAllSaves': 'Clear All Saves',
             'target.chooseFromPanel': 'Select a target from the creature panel.',
             'target.cancelAction': 'Cancel {action}',
             'log.movedTo': 'Moved to {x}, {y} ({biome})',
@@ -11224,6 +11301,31 @@ const CONTENT_SYSTEM = {
             'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
             'ui.close': 'Cerrar',
             'ui.cancel': 'Cancelar',
+            'ui.actionLegend': 'Leyenda de acciones',
+            'ui.tagline': 'Explora. Cambia. Sobrevive.',
+            'ui.menu.continue': 'Continuar ultima partida',
+            'ui.menu.continueTitle': 'Continuar ultima partida',
+            'ui.menu.newGame': 'Nueva partida',
+            'ui.menu.newGameTitle': 'Iniciar una partida nueva',
+            'ui.menu.loadGame': 'Cargar partida',
+            'ui.menu.loadGameTitle': 'Cargar partida',
+            'ui.menu.settings': 'Ajustes',
+            'ui.menu.settingsTitle': 'Abrir ajustes',
+            'ui.menu.mods': 'Mods',
+            'ui.menu.modsTitle': 'Abrir mods',
+            'ui.menu.market': 'Mercado',
+            'ui.menu.marketTitle': 'Abrir mercado',
+            'ui.menu.tutorial': 'Tutorial',
+            'ui.menu.tutorialTitle': 'Abrir tutorial',
+            'ui.menu.edition': 'Edicion tactica oscura',
+            'ui.menu.contentDefault': 'Todo el contenido esta activado por defecto',
+            'ui.nav.mapTitle': 'Alternar panel de mapa',
+            'ui.nav.partyTitle': 'Alternar panel de grupo',
+            'ui.nav.creaturesTitle': 'Alternar panel de criaturas',
+            'ui.nav.statsTitle': 'Abrir estadisticas del personaje',
+            'ui.nav.helpTitle': 'Abrir tutorial de ayuda',
+            'ui.nav.saveTitle': 'Abrir slots de guardado',
+            'ui.nav.loadTitle': 'Abrir slots de carga',
             'ui.creatureActions': 'Acciones de criatura',
             'ui.partyActions': 'Acciones del grupo',
             'ui.exploration': 'Exploracion',
@@ -11233,6 +11335,33 @@ const CONTENT_SYSTEM = {
             'ui.creatures': 'Criaturas',
             'ui.noCreaturesPresent': 'No hay criaturas presentes',
             'ui.noCreaturesHere': 'No hay criaturas aqui',
+            'ui.map': 'Mapa',
+            'ui.party': 'Grupo',
+            'ui.stats': 'Estadisticas',
+            'ui.help': 'Ayuda',
+            'ui.combatLog': 'Registro de combate',
+            'ui.log.export': 'Exportar',
+            'ui.log.clear': 'Limpiar',
+            'ui.log.all': 'Todo',
+            'ui.log.combat': 'Combate',
+            'ui.log.discovery': 'Descubrimiento',
+            'ui.log.loot': 'Botin',
+            'ui.log.heal': 'Curacion',
+            'ui.log.search': 'Buscar registro',
+            'settings.title': 'Ajustes',
+            'settings.description': 'Todo el contenido esta activado por defecto. Desactiva lo que no quieras.',
+            'settings.languageSection': 'Idioma',
+            'settings.interfaceLanguage': 'Idioma de interfaz',
+            'settings.contentLevel': 'Nivel de contenido',
+            'settings.safe': 'Seguro',
+            'settings.mature': 'Maduro',
+            'settings.adult': 'Adulto',
+            'settings.accessibility': 'Accesibilidad',
+            'settings.highContrast': 'Alto contraste',
+            'settings.reducedMotion': 'Movimiento reducido',
+            'settings.baseFontSize': 'Tamano base de fuente',
+            'settings.cheats': 'Trucos',
+            'settings.clearAllSaves': 'Borrar todas las partidas',
             'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.',
             'target.cancelAction': 'Cancelar {action}',
             'log.movedTo': 'Movimiento a {x}, {y} ({biome})',

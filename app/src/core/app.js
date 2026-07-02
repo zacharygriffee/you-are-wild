@@ -161,7 +161,30 @@
             },
             _actionLegend(keys) {
                 if (keys.length <= 1) return '';
-                return `<div class="action-legend" aria-label="Action legend">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+                return `<div class="action-legend" aria-label="${this._escapeHtml(this._label('ui.actionLegend', 'Action legend'))}">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+            },
+            applyStaticLocalization(root = document) {
+                if (!root || !root.querySelectorAll) return;
+                root.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (!key) return;
+                    el.textContent = this._label(key, el.textContent || '');
+                });
+                root.querySelectorAll('[data-i18n-title]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-title');
+                    if (!key) return;
+                    el.setAttribute('title', this._label(key, el.getAttribute('title') || ''));
+                });
+                root.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-aria-label');
+                    if (!key) return;
+                    el.setAttribute('aria-label', this._label(key, el.getAttribute('aria-label') || ''));
+                });
+                root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    if (!key) return;
+                    el.setAttribute('placeholder', this._label(key, el.getAttribute('placeholder') || ''));
+                });
             },
             _actionIcon(key) {
                 return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
@@ -883,6 +906,7 @@
                 } catch(e) { console.warn('Settings load failed', e); }
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
+                this.applyStaticLocalization();
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
@@ -6800,6 +6824,7 @@
                 }
                 this.saveSettings();
                 this.syncLanguageControl();
+                this.applyStaticLocalization();
                 this.renderExplorationActions();
                 this.renderParty();
                 this.renderCreatures();

@@ -4787,7 +4787,7 @@
                         break;
                     }
                     case 'feed': {
-                        if (selectedSubAction && selectedSubAction !== 'forceFeed') {
+                        if (selectedSubAction) {
                             result = this._doSubAction('feed', selectedSubAction, actor, target, actorName, actor.name === this.player?.name ? '' : 's');
                             this._cleanupOutsideSubActionTarget(action, selectedSubAction, actor, target);
                             break;

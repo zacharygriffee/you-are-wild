@@ -1900,6 +1900,25 @@ test('Intent feast sub-action affects outside-combat resolution and cleanup', ()
   assertContains(App.log[App.log.length - 1].text, 'chewing', 'Sub-action result should be logged');
 });
 
+test('Intent forceFeed sub-action resolves through outside-combat sub-action engine', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', { id: 'predator-1', size: 8, appetite: 8, Feed: 30 });
+  const holder = makeUnit('Holder', { id: 'holder-1', size: 4, Feed: 10 });
+  const prey = makeUnit('Prey', { id: 'prey-force', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, size: 2 });
+  App.player = predator;
+  App.party = [predator, holder];
+  App.creatures = [prey];
+  App.settings.forcedFeeding = true;
+  App.openIntentSubActionSheet('creature', 'prey-force', 'feed', 'sheet');
+  assertContains(body.innerHTML, "App.selectIntent('creature','prey-force','feed','sheet','forceFeed')", 'Feed sheet should expose forceFeed when a holder is available');
+  App.selectIntent('creature', 'prey-force', 'feed', 'sheet', 'forceFeed');
+  assertEqual(App.lastIntentCommand.subAction, 'forceFeed', 'Selected forceFeed sub-action should be recorded');
+  assertEqual(predator.stomach.length, 1, 'Selected forceFeed should use the sub-action engine instead of default healing');
+  assertEqual(predator.stomach[0].name, 'Prey', 'Predator should receive the target from forceFeed');
+  assertEqual(App.creatures.includes(prey), false, 'Resolved forceFeed should remove the area target');
+  assertEqual(prey.forcedFed, true, 'Resolved forceFeed should mark the original target state');
+});
+
 test('Selected party actor can interact with party targets outside combat', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

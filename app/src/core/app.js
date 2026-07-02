@@ -4468,7 +4468,7 @@
             },
 
             _availablePerkTreeFilters(unit = this.player) {
-                return [['all', 'All'], ...Object.entries(this._perkTreesForUnit(unit)).map(([treeId, tree]) => [treeId, tree.label])];
+                return [['all', this._label('perk.filter.all', 'All')], ...Object.entries(this._perkTreesForUnit(unit)).map(([treeId, tree]) => [treeId, tree.label])];
             },
 
             setPerkTreeFilter(filter) {
@@ -4548,11 +4548,16 @@
                 const filters = this._availablePerkTreeFilters(this.player);
                 if (!filters.some(([value]) => value === this.perkTreeFilter)) this.perkTreeFilter = 'all';
                 const visibleTrees = Object.entries(this._perkTreesForUnit(this.player)).filter(([treeId]) => this.perkTreeFilter === 'all' || this.perkTreeFilter === treeId);
-                let html = `<h3>Choose Perk</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Pending choices: ${pending}</p><div class="action-legend" role="tablist" aria-label="Perk trees" style="margin-bottom:12px;">`;
+                const titleLabel = this._escapeHtml(this._label('perk.choose', 'Choose Perk'));
+                const pendingLabel = this._escapeHtml(this._label('perk.pending', 'Pending choices: {count}', { count: pending }));
+                const treesLabel = this._escapeHtml(this._label('perk.trees', 'Perk trees'));
+                const backLabel = this._escapeHtml(this._label('perk.back', 'Back'));
+                let html = `<h3>${titleLabel}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${pendingLabel}</p><div class="action-legend" role="tablist" aria-label="${treesLabel}" style="margin-bottom:12px;">`;
                 filters.forEach(([value, label]) => {
                     const active = this.perkTreeFilter === value ? ' selected' : '';
                     const escapedValue = this._escapeHtml(value);
-                    html += `<button class="action-chip${active}" role="tab" aria-selected="${this.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" onclick="App.setPerkTreeFilter('${escapedValue}')">${this._escapeHtml(label)}</button>`;
+                    const filterLabel = this._escapeHtml(label);
+                    html += `<button class="action-chip${active}" role="tab" aria-selected="${this.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" title="${filterLabel}" aria-label="${filterLabel}" onclick="App.setPerkTreeFilter('${escapedValue}')">${filterLabel}</button>`;
                 });
                 html += `</div><div style="display:grid;gap:12px;">`;
                 for (const [treeId, tree] of visibleTrees) {
@@ -4561,11 +4566,12 @@
                         const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
                         const reqTree = perk.requires?.tree ? this._perkTreesForUnit(this.player)[perk.requires.tree]?.label || perk.requires.tree : null;
                         const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
-                        html += `<button class="nav-btn" style="text-align:left;white-space:normal;padding:8px;" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
+                        const chooseTitle = this._escapeHtml(this._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
+                        html += `<button class="nav-btn" style="text-align:left;white-space:normal;padding:8px;" title="${chooseTitle}" aria-label="${chooseTitle}" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
                     });
                     html += `</div></div>`;
                 }
-                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showCharacterStats()">Back</button>`;
+                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 
@@ -6317,7 +6323,12 @@
             showCharacterStats() {
                 if (!this.player) return;
                 const p = this.player;
-                const perkButton = (p.pendingPerkChoices || 0) > 0 ? `<button class="nav-btn" style="margin-top:12px" onclick="App.showPerkSelection()">Choose Perk (${p.pendingPerkChoices})</button>` : '';
+                const pendingCount = p.pendingPerkChoices || 0;
+                const choosePerkLabel = this._escapeHtml(this._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
+                const respecLabel = this._escapeHtml(this._label('perk.respec', 'Respec Perks'));
+                const debugGrantLabel = this._escapeHtml(this._label('perk.debugGrant', 'Debug +1 Perk Choice'));
+                const closeLabel = this._escapeHtml(this._label('perk.closeStats', 'Close'));
+                const perkButton = pendingCount > 0 ? `<button class="nav-btn" style="margin-top:12px" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
                 const respecDisabled = (p.perks || []).length ? '' : ' disabled';
                 let html = `<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary)">📊 ${p.name}</h1>
                     <p>Level ${p.level} ${p.species} | XP: ${p.xp}/${p.xpToNext}</p>
@@ -6329,9 +6340,9 @@
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Body</h3><p>Size: ${p.size} | Appetite: ${p.appetite}<br>Parts: ${p.parts || 'none'} | Chest: ${p.chest || 'none'}<br>Body: ${(p.bodyParts || []).map(b => this.BODY_PARTS[b]?.label || b).join(', ') || 'None'}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Equipment</h3><p>${this._equipmentSummary(p)}</p></div>
                         <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perks</h3><p>${(p.perks || []).map(pk => pk.name).join(', ') || 'None'}</p></div>
-                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perk Tools</h3><p style="color:var(--text-muted);font-size:12px">Balance/debug controls.</p><button class="nav-btn" style="margin-top:8px" onclick="App.respecPerks()"${respecDisabled}>Respec Perks</button><button class="nav-btn" style="margin-top:8px" onclick="App.debugGrantPerkChoice(1)">Debug +1 Perk Choice</button></div>
+                        <div style="background:var(--bg-secondary);padding:16px;border-radius:var(--radius-md);"><h3>Perk Tools</h3><p style="color:var(--text-muted);font-size:12px">Balance/debug controls.</p><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button></div>
                     </div>
-                    ${perkButton}<button class="nav-btn" style="margin-top:24px" onclick="returnToGame()">Close</button></div>`;
+                    ${perkButton}<button class="nav-btn" style="margin-top:24px" title="${closeLabel}" aria-label="${closeLabel}" onclick="returnToGame()">${closeLabel}</button></div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },

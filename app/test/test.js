@@ -628,6 +628,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}',
           'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}',
+          'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -640,6 +641,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}',
           'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}',
+          'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -3527,6 +3529,34 @@ test('Character stats expose pending perk selection', () => {
   assertContains(elements.get('scene-description').innerHTML, 'Predator', 'Perk selection should render predator tree');
   assertContains(elements.get('scene-description').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
   assertContains(elements.get('scene-description').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
+});
+
+test('Perk and stat progression controls localize with accessible names', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', {
+    species: 'wolf',
+    perks: [{ id: 'predator_instinct', tree: 'predator', name: 'Predator Instinct', stat: 'Figh', val: 2 }],
+    pendingPerkChoices: 1
+  });
+  App.party = [App.player];
+  App.updateLanguage('es');
+  App.showCharacterStats();
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
+  assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
+  assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
+  assertContains(html, '>Reiniciar mejoras<', 'Respec visible label should localize');
+  assertContains(html, 'aria-label="Debug +1 opcion de mejora"', 'Debug perk button should expose localized accessible label');
+  assertContains(html, 'aria-label="Cerrar"', 'Character stats close button should expose localized accessible label');
+
+  App.showPerkSelection();
+  html = elements.get('scene-description').innerHTML;
+  assertContains(html, '<h3>Elegir mejora</h3>', 'Perk picker title should localize');
+  assertContains(html, 'Opciones pendientes: 1', 'Perk pending choice copy should localize');
+  assertContains(html, 'aria-label="Arboles de mejoras"', 'Perk tree tablist should expose localized accessible label');
+  assertContains(html, 'aria-label="Todas"', 'Perk all filter should localize');
+  assertContains(html, 'aria-label="Elegir Pack Instinct"', 'Perk choice should expose localized accessible label');
+  assertContains(html, 'aria-label="Volver"', 'Perk picker back button should expose localized accessible label');
 });
 
 test('Perk selection filters trees without hiding available species perks', () => {

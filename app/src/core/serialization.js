@@ -294,7 +294,8 @@
         partyRoles,
         partyAIOrders,
         explorationActorIds,
-        explorationPartyTargetIds
+        explorationPartyTargetIds,
+        encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

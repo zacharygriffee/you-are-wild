@@ -1319,6 +1319,35 @@
             line-height: 1.4;
         }
 
+        .encounter-weight-controls {
+            display: grid;
+            gap: var(--space-sm);
+            margin-top: var(--space-md);
+            padding: var(--space-md);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+        }
+
+        .encounter-weight-row {
+            display: grid;
+            grid-template-columns: minmax(78px, auto) 1fr 44px;
+            align-items: center;
+            gap: var(--space-sm);
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .encounter-weight-row input[type="range"] {
+            width: 100%;
+        }
+
+        .encounter-weight-value {
+            color: var(--text-primary);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
         /* =============================================
            RESPONSIVE
            ============================================= */
@@ -2177,18 +2206,43 @@
                 </div>
                 <div class="accordion-body" id="body-preferences" style="display:none;">
                     <div class="option-grid" id="preference-grid">
-                        <div class="option-card selected" data-value="female" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" data-value="female" onclick="App.selectEncounterPreference('female')">
                             <div class="option-icon">♀️</div>
                             <div class="option-label">Females</div>
+                            <div class="option-desc">75% bias</div>
                         </div>
-                        <div class="option-card" data-value="male" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" data-value="male" onclick="App.selectEncounterPreference('male')">
                             <div class="option-icon">♂️</div>
                             <div class="option-label">Males</div>
+                            <div class="option-desc">75% bias</div>
                         </div>
-                        <div class="option-card" data-value="any" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')">
+                            <div class="option-icon">⚧</div>
+                            <div class="option-label">Non-Binary</div>
+                            <div class="option-desc">75% bias</div>
+                        </div>
+                        <div class="option-card selected" data-value="any" onclick="App.selectEncounterPreference('any')">
                             <div class="option-icon">🎲</div>
                             <div class="option-label">Any</div>
+                            <div class="option-desc">Even mix</div>
                         </div>
+                    </div>
+                    <div class="encounter-weight-controls" aria-label="Encounter identity weights">
+                        <label class="encounter-weight-row" for="encounter-weight-female">
+                            <span>Females</span>
+                            <input id="encounter-weight-female" type="range" min="0" max="100" value="34" oninput="App.updateEncounterWeight('female', this.value)">
+                            <span class="encounter-weight-value" id="encounter-weight-female-value">34%</span>
+                        </label>
+                        <label class="encounter-weight-row" for="encounter-weight-male">
+                            <span>Males</span>
+                            <input id="encounter-weight-male" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('male', this.value)">
+                            <span class="encounter-weight-value" id="encounter-weight-male-value">33%</span>
+                        </label>
+                        <label class="encounter-weight-row" for="encounter-weight-nonbinary">
+                            <span>Non-Binary</span>
+                            <input id="encounter-weight-nonbinary" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('nonbinary', this.value)">
+                            <span class="encounter-weight-value" id="encounter-weight-nonbinary-value">33%</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -2963,7 +3017,8 @@
         partyRoles,
         partyAIOrders,
         explorationActorIds,
-        explorationPartyTargetIds
+        explorationPartyTargetIds,
+        encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);
@@ -4548,6 +4603,7 @@ const WorldGen = (() => {
             selectedGender: null,
             selectedParts: [], // 'cock', 'clit', 'tits', 'pecs', 'none'
             selectedEncounterPreference: 'any',
+            selectedEncounterWeights: { female: 34, male: 33, nonbinary: 33 },
             selectedBodyParts: [],
             playerName: 'You',
             storageKeys: {
@@ -4623,6 +4679,7 @@ const WorldGen = (() => {
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
                 this.initBodyPartsGrid();
+                this._syncEncounterPreferenceUI();
                 this.showScreen('menu');
             },
 
@@ -4744,6 +4801,7 @@ const WorldGen = (() => {
                 const maxPun = baseStats.MPun;
                 const maxPle = baseStats.MPle;
                 this.encounterPreference = this.selectedEncounterPreference || 'any';
+                this.encounterWeights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
                 this.player = {
                     id: 'player_' + Date.now(), name: name, species: this.selectedSpecies,
                     icon: species.icon, gender: this.selectedGender,
@@ -5671,6 +5729,90 @@ const WorldGen = (() => {
                 const raw = String(value ?? fallback).toLowerCase();
                 return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
             },
+            _normalizeEncounterWeights(weights = null) {
+                const source = weights && typeof weights === 'object' ? weights : {};
+                const normalized = {
+                    female: Math.max(0, Math.min(100, Math.round(Number(source.female) || 0))),
+                    male: Math.max(0, Math.min(100, Math.round(Number(source.male) || 0))),
+                    nonbinary: Math.max(0, Math.min(100, Math.round(Number(source.nonbinary) || 0)))
+                };
+                const total = normalized.female + normalized.male + normalized.nonbinary;
+                if (total <= 0) return { female: 34, male: 33, nonbinary: 33 };
+                if (total === 100) return normalized;
+                const scaled = {
+                    female: Math.round((normalized.female / total) * 100),
+                    male: Math.round((normalized.male / total) * 100),
+                    nonbinary: Math.round((normalized.nonbinary / total) * 100)
+                };
+                const delta = 100 - (scaled.female + scaled.male + scaled.nonbinary);
+                const topKey = Object.entries(scaled).sort((a, b) => b[1] - a[1])[0][0];
+                scaled[topKey] += delta;
+                return scaled;
+            },
+            _encounterPresetWeights(value) {
+                if (value === 'female') return { female: 75, male: 13, nonbinary: 12 };
+                if (value === 'male') return { female: 13, male: 75, nonbinary: 12 };
+                if (value === 'nonbinary') return { female: 13, male: 12, nonbinary: 75 };
+                return { female: 34, male: 33, nonbinary: 33 };
+            },
+            _encounterPreferenceFromWeights(weights = this.selectedEncounterWeights) {
+                const w = this._normalizeEncounterWeights(weights);
+                const values = Object.entries(w);
+                const [topKey, topValue] = values.sort((a, b) => b[1] - a[1])[0];
+                return topValue >= 70 ? topKey : 'any';
+            },
+            _setEncounterWeights(weights, preset = null) {
+                this.selectedEncounterWeights = this._normalizeEncounterWeights(weights);
+                this.selectedEncounterPreference = preset || this._encounterPreferenceFromWeights(this.selectedEncounterWeights);
+                this._syncEncounterPreferenceUI();
+            },
+            _syncEncounterPreferenceUI() {
+                const weights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
+                for (const key of ['female', 'male', 'nonbinary']) {
+                    const input = document.getElementById(`encounter-weight-${key}`);
+                    const output = document.getElementById(`encounter-weight-${key}-value`);
+                    if (input) input.value = String(weights[key]);
+                    if (output) output.textContent = `${weights[key]}%`;
+                }
+                document.querySelectorAll('#preference-grid .option-card').forEach(c => {
+                    c.classList.toggle('selected', c.dataset.value === this.selectedEncounterPreference);
+                });
+            },
+            setEncounterPreferencePreset(value) {
+                this._setEncounterWeights(this._encounterPresetWeights(value), value);
+            },
+            updateEncounterWeight(key, value) {
+                const weights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
+                const nextValue = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+                const others = ['female', 'male', 'nonbinary'].filter(k => k !== key);
+                const remaining = 100 - nextValue;
+                const otherTotal = others.reduce((sum, k) => sum + weights[k], 0);
+                weights[key] = nextValue;
+                if (otherTotal <= 0) {
+                    weights[others[0]] = Math.ceil(remaining / 2);
+                    weights[others[1]] = Math.floor(remaining / 2);
+                } else {
+                    weights[others[0]] = Math.round((weights[others[0]] / otherTotal) * remaining);
+                    weights[others[1]] = remaining - weights[others[0]];
+                }
+                this._setEncounterWeights(weights);
+            },
+            _legacyEncounterWeights(preference = 'any') {
+                return this._encounterPresetWeights(preference);
+            },
+            _pickEncounterIdentity(rollValue, weights = this.encounterWeights || this.selectedEncounterWeights) {
+                const w = this._normalizeEncounterWeights(weights);
+                const total = w.female + w.male + w.nonbinary;
+                const pick = Math.max(0, Math.min(0.999999, rollValue)) * total;
+                if (pick < w.female) return 'female';
+                if (pick < w.female + w.male) return 'male';
+                return 'nonbinary';
+            },
+            _anatomyForIdentity(identity, rollValue) {
+                if (identity === 'male') return { parts: 'cock', chest: 'pecs' };
+                if (identity === 'female') return { parts: 'clit', chest: 'tits' };
+                return rollValue < 0.5 ? { parts: 'cock', chest: 'pecs' } : { parts: 'clit', chest: 'tits' };
+            },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 const tileX = Number.isFinite(tile?.x) ? tile.x : 0;
@@ -5698,10 +5840,12 @@ const WorldGen = (() => {
                     const base = this._getSpeciesBaseStats(sid);
                     const statMult = isBoss ? 1.0 : (0.6 + roll('stat', i) * 0.3);
                     const hpMult = isBoss ? 1.2 : (0.5 + roll('hp', i) * 0.3);
+                    const identity = this._pickEncounterIdentity(roll('identity', i));
+                    const anatomy = this._anatomyForIdentity(identity, roll('anatomy', i));
                     const creature = {
                         id: isBoss ? `enc_${tileKey}_boss_${i}` : `enc_${tileKey}_${i}`, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
-                        species: sid, icon: sp.icon, gender: roll('gender', i) < 0.5 ? 'female' : 'male',
-                        identity: roll('identity', i) < 0.5 ? 'female' : 'male', parts: roll('parts', i) < 0.3 ? 'cock' : 'clit', chest: roll('chest', i) < 0.5 ? 'tits' : 'pecs',
+                        species: sid, icon: sp.icon, gender: identity,
+                        identity, parts: anatomy.parts, chest: anatomy.chest,
                         bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(roll('appetite', i) * 4) + 2,
                         level: lvl, MPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)), CPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)),
                         MPle: base.MPle, CPle: Math.floor(base.MPle * 0.3),
@@ -5773,10 +5917,12 @@ const WorldGen = (() => {
                     const count = struct.threat >= 2 ? Math.max(1, Math.floor(this._worldRoll('structure-encounter-count', tile.x, tile.y) * 2) + 1) : 1;
                     const enemies = [];
                     for (let i = 0; i < count; i++) {
+                        const identity = this._pickEncounterIdentity(this._worldRoll('structure-encounter-identity', tile.x, tile.y, i));
+                        const anatomy = this._anatomyForIdentity(identity, this._worldRoll('structure-encounter-anatomy', tile.x, tile.y, i));
                         const creature = {
                             id: `struct_${tile.x}_${tile.y}_${i}`, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
-                            species: sid, icon: sp.icon, gender: this._worldRoll('structure-encounter-gender', tile.x, tile.y, i) < 0.5 ? 'female' : 'male',
-                            identity: this._worldRoll('structure-encounter-identity', tile.x, tile.y, i) < 0.5 ? 'female' : 'male', parts: this._worldRoll('structure-encounter-parts', tile.x, tile.y, i) < 0.3 ? 'cock' : 'clit', chest: this._worldRoll('structure-encounter-chest', tile.x, tile.y, i) < 0.5 ? 'tits' : 'pecs',
+                            species: sid, icon: sp.icon, gender: identity,
+                            identity, parts: anatomy.parts, chest: anatomy.chest,
                             bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(this._worldRoll('structure-encounter-appetite', tile.x, tile.y, i) * 4) + 2,
                             level: lvl, MPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)), CPun: Math.floor(base.MPun * hpMult * (0.7 + lvl * 0.1)),
                             MPle: base.MPle, CPle: Math.floor(base.MPle * 0.3),
@@ -11441,7 +11587,7 @@ const WorldGen = (() => {
 	                    alert(this._label('save.error.deleteAllFailed', 'Delete saves failed: {message}', { message: e.message }));
 	                }
             },
-            selectEncounterPreference(val) { this.selectedEncounterPreference = val; },
+            selectEncounterPreference(val) { this.setEncounterPreferencePreset(val); },
             updateTierButtons() {
                 const btns = { safe: 'tier-safe', mature: 'tier-mature', adult: 'tier-adult' };
                 for (const [tier, id] of Object.entries(btns)) {
@@ -12076,6 +12222,9 @@ const WorldGen = (() => {
                         return false;
                     }
                     this.encounterPreference = loaded.encounterPreference || 'any';
+                    this.encounterWeights = this._normalizeEncounterWeights(loaded.questState?.encounterWeights || this._legacyEncounterWeights(this.encounterPreference));
+                    this.selectedEncounterWeights = { ...this.encounterWeights };
+                    this.selectedEncounterPreference = this._encounterPreferenceFromWeights(this.encounterWeights);
 	                    this.player = {
 	                        name: loaded.playerName, species: loaded.playerSpecies, icon: this.species.find(s => s.id === loaded.playerSpecies)?.icon || '👤',
 	                        gender: loaded.playerGender || 'female', level: loaded.playerLevel, CPun: loaded.playerHp, MPun: loaded.playerMaxHp, CPle: Math.floor(loaded.playerMaxHp * 0.5), MPle: loaded.playerMaxHp,

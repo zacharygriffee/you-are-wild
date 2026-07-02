@@ -720,6 +720,21 @@ test('Create screen requires explicit gender and anatomy choices', () => {
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
 });
 
+test('Create screen encounter preferences use dynamic identity percentages', () => {
+  assertContains(template, 'id="encounter-weight-female"', 'female encounter percentage control missing');
+  assertContains(template, 'id="encounter-weight-male"', 'male encounter percentage control missing');
+  assertContains(template, 'id="encounter-weight-nonbinary"', 'non-binary encounter percentage control missing');
+  assertContains(template, "App.selectEncounterPreference('nonbinary')", 'non-binary preference preset missing');
+  assertContains(template, 'data-value="any" onclick="App.selectEncounterPreference(\'any\')"', 'Any preset should route through the preference helper');
+  assertContains(template, '<div class="option-card selected" data-value="any"', 'Any should be the default preferred-encounter preset');
+  assertContains(appContent, 'selectedEncounterWeights: { female: 34, male: 33, nonbinary: 33 }', 'default encounter weights should be explicit');
+  assertContains(appContent, "_encounterPresetWeights(value)", 'encounter preset helper missing');
+  assertContains(appContent, "_pickEncounterIdentity(rollValue", 'encounter identity picker missing');
+  assertContains(appContent, "updateEncounterWeight(key, value)", 'encounter percentage update helper missing');
+  assertContains(appContent, "this.encounterWeights = this._normalizeEncounterWeights(this.selectedEncounterWeights)", 'created character should persist selected encounter weights');
+  assertContains(serContent, 'encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null', 'encounter weights should persist in save metadata');
+});
+
 test('Species accordion is the default expanded section', () => {
   assertContains(template, 'id="body-species" style="display:block;"', 'species body should be open by default');
   assertContains(template, 'id="arrow-species">▼</span>', 'species arrow should be open by default');

@@ -270,19 +270,26 @@
 - In-game Save and Load now open separate focused slot surfaces instead of one crowded mixed surface; preserve that split while polishing visuals or mobile density
 - Device-test mobile save-slot management to confirm the responsive shell scrolls correctly across real browser chrome and safe-area variants; automated viewport smoke covers the standard mobile viewport
 
-#### 20. Advanced Mobile Gestures
+#### 20. Log And Toast Ergonomics
+- Add a clearer combat/log panel size model. The current log is useful but occupies a small fixed strip; support at least expanded and minimized states so players can inspect history when needed or recover play space when they are focused on traversal/combat.
+- Keep the full log inspectable, searchable, filterable, and exportable. Minimized mode should not destroy history or hide critical state permanently; it should only reduce the visible footprint.
+- Consider toast notifications as a later feature layer over the log. Toasts should summarize important recent events such as enemy encounters, quest updates, loot, dangerous conditions, or blocked movement while the full log remains the authoritative history.
+- Toasts should be restrained and state-aware: routine movement/combat spam should not flood the screen; high-importance toasts can remain until the player moves, changes tile, acknowledges them, or the relevant encounter state changes. Enemy encounter toasts may become a good bridge between the map/scene area and the creature/enemy panels.
+- Preserve accessibility and localization: toasts need roles/ARIA behavior that does not overwhelm screen readers, respect reduced motion, and route visible labels through locale helpers. Treat toasts as UI polish/feature work after mechanics/core priorities unless log visibility is actively blocking playtesting.
+
+#### 21. Advanced Mobile Gestures
 - Tune long-press duration and context-menu placement after device testing
 - Add richer haptic patterns per action outcome if the UX benefits from it
 - Consider radial/joystick map controls once core traversal semantics settle
 - Add dedicated gesture affordance hints if playtesting shows discoverability issues
 
-#### 21. Advanced Accessibility
+#### 22. Advanced Accessibility
 - Continue auditing lower-traffic custom controls for keyboard focus order, visible focus, and complete `aria-label` coverage; high-traffic mobile unit-chip actions, desktop party/creature-card actor/target/action controls, inventory/trade/quest-log/perk progression actions, and corpse card actions now expose localized accessible names
 - Expand focus-trap coverage if new overlays are added; current settings/mods/market/save/tutorial overlays and mobile context menus use the shared focus trap
 - Expand dynamic combat screen-reader coverage if new combat states are added; current turn order, group action, and target-selection states are announced on cards/chips
 - Device-test high-contrast, reduced-motion, and font-size scaling against the mobile layout on real devices; automated viewport smoke now verifies those settings at the standard mobile and desktop viewports
 
-#### 22. Localization Framework
+#### 23. Localization Framework
 - Expand locale coverage to remaining hardcoded user-facing strings beyond the current action/target/settings/mobile context foundation
 - Decide whether to keep the in-code locale registry or move it to `locales/en.json` / `locales/es.json` once the build pipeline supports external locale assets cleanly
 - Content templates still use hardcoded safe/mature/adult strings; migrate them to locale keys when narrative text coverage becomes a priority

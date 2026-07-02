@@ -101,6 +101,7 @@ const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
+const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
 
 test('App object is defined', () => {
@@ -418,6 +419,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.'", 'Spanish mod manager empty-state label missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Delete this module? This cannot be undone.'", 'English mod manager delete warning missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Borrar este modulo? Esta accion no se puede deshacer.'", 'Spanish mod manager delete warning missing');
+  assertContains(contentContent, "'market.title': 'Module Marketplace'", 'English marketplace title missing');
+  assertContains(contentContent, "'market.title': 'Mercado de modulos'", 'Spanish marketplace title missing');
+  assertContains(contentContent, "'market.installModule': 'Install {name}'", 'English marketplace install action missing');
+  assertContains(contentContent, "'market.installModule': 'Instalar {name}'", 'Spanish marketplace install action missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -483,6 +488,26 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, 'aria-label="${deleteTitle}"', 'Mod delete button should expose accessible localized title');
   assertNotContains(modUiContent, '${mod.manifest.name}', 'Mod names should not be inserted directly into HTML');
   assertNotContains(modUiContent, "${mod.manifest.description || 'No description'}", 'Mod descriptions should not be inserted directly into HTML');
+});
+
+test('Marketplace UI uses localized safe rendering for catalog metadata', () => {
+  assertContains(template, 'data-i18n="market.title"', 'Marketplace fallback title should opt into static localization');
+  assertContains(template, 'data-i18n="market.subtitle"', 'Marketplace fallback subtitle should opt into static localization');
+  assertContains(template, 'data-i18n="market.browse"', 'Marketplace fallback browse button should localize');
+  assertContains(marketScreenContent, "label(key, fallback, vars = {})", 'Marketplace localization helper missing');
+  assertContains(marketScreenContent, "escapeHtml(value)", 'Marketplace HTML escaping helper missing');
+  assertContains(marketScreenContent, "this.label('market.title'", 'Marketplace title should localize');
+  assertContains(marketScreenContent, "this.label('market.search'", 'Marketplace search placeholder should localize');
+  assertContains(marketScreenContent, "this.label('market.installModule'", 'Marketplace install button title should localize');
+  assertContains(marketScreenContent, "this.label('market.downloading'", 'Marketplace download log should localize');
+  assertContains(marketScreenContent, "this.label('market.createWizardPlaceholder'", 'Marketplace create placeholder should localize');
+  assertContains(marketScreenContent, 'const featured = MODULE_MARKETPLACE.featuredModules[0] || {}', 'Marketplace staff pick should read root featured module data');
+  assertContains(marketScreenContent, 'MODULE_MARKETPLACE.featuredModules.find', 'Marketplace install should read root featured module data');
+  assertContains(marketScreenContent, "this.escapeHtml(mod.name)", 'Marketplace module names should be escaped before rendering');
+  assertContains(marketScreenContent, "this.escapeHtml(mod.description)", 'Marketplace descriptions should be escaped before rendering');
+  assertContains(marketScreenContent, 'aria-label="${installTitle}"', 'Marketplace install buttons should expose accessible localized titles');
+  assertNotContains(marketScreenContent, '${mod.name}</h3>', 'Marketplace module names should not be inserted directly into HTML');
+  assertNotContains(marketScreenContent, '${mod.description}', 'Marketplace descriptions should not be inserted directly into HTML');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {

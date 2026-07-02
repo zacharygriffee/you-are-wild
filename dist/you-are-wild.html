@@ -2404,12 +2404,12 @@
     <!-- MARKETPLACE OVERLAY -->
     <div id="screen-market" class="screen screen-overlay">
         <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">🏪 Module Marketplace</h1>
-            <p style="color: var(--text-muted); margin-bottom: 24px;">Discover community-made biomes, species, and features.</p>
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Discover community-made biomes, species, and features</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
-                <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
-                <button class="nav-btn" onclick="ModUI.showModScreen()">My Modules</button>
-                <button class="nav-btn" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" title="Browse marketplace" aria-label="Browse marketplace" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
+                <button class="nav-btn" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
+                <button class="nav-btn" title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>
@@ -11083,6 +11083,37 @@ const CONTENT_SYSTEM = {
             'mod.disableModule': 'Disable {name}',
             'mod.deleteModule': 'Delete {name}',
             'mod.createdExample': 'Created example module: Crystal Caverns',
+            'market.title': 'Module Marketplace',
+            'market.subtitle': 'Discover community-made biomes, species, and features',
+            'market.myModules': 'My Modules',
+            'market.myModulesTitle': 'Open installed modules',
+            'market.create': 'Create',
+            'market.browse': 'Browse',
+            'market.browseTitle': 'Browse marketplace',
+            'market.closeTitle': 'Close marketplace',
+            'market.search': 'Search modules...',
+            'market.typeFilter': 'Module type',
+            'market.sort': 'Sort modules',
+            'market.type.all': 'All Types',
+            'market.type.biome_pack': 'Biomes',
+            'market.type.species_pack': 'Species',
+            'market.type.feature_pack': 'Features',
+            'market.type.content_pack': 'Content',
+            'market.sort.featured': 'Featured',
+            'market.sort.downloads': 'Most Downloaded',
+            'market.sort.rating': 'Highest Rated',
+            'market.sort.newest': 'Newest',
+            'market.staffPicks': 'Staff Picks',
+            'market.staffPickDescription': 'Our most popular biome expansion. Navigate scorching sands, discover hidden oases, and survive encounters with legendary sand-wyrms.',
+            'market.install': 'Install',
+            'market.installModule': 'Install {name}',
+            'market.downloadsCount': '{count} downloads',
+            'market.ratingCount': '{rating} rating',
+            'market.byline': 'by {author} • v{version} • {size}',
+            'market.downloading': 'Downloading {name}...',
+            'market.installedEnabled': 'Installed and enabled {name}!',
+            'market.installSuccess': 'Successfully installed {name}!',
+            'market.createWizardPlaceholder': 'Module creation wizard would open here!\n\nThis would guide you through:\n- Creating a manifest\n- Writing content templates\n- Testing in sandbox\n- Packaging for upload',
             'target.chooseFromPanel': 'Select a target from the creature panel.',
             'target.cancelAction': 'Cancel {action}',
             'log.movedTo': 'Moved to {x}, {y} ({biome})',
@@ -11497,6 +11528,37 @@ const CONTENT_SYSTEM = {
             'mod.disableModule': 'Desactivar {name}',
             'mod.deleteModule': 'Borrar {name}',
             'mod.createdExample': 'Modulo de ejemplo creado: Crystal Caverns',
+            'market.title': 'Mercado de modulos',
+            'market.subtitle': 'Descubre biomas, especies y funciones creadas por la comunidad',
+            'market.myModules': 'Mis modulos',
+            'market.myModulesTitle': 'Abrir modulos instalados',
+            'market.create': 'Crear',
+            'market.browse': 'Explorar',
+            'market.browseTitle': 'Explorar mercado',
+            'market.closeTitle': 'Cerrar mercado',
+            'market.search': 'Buscar modulos...',
+            'market.typeFilter': 'Tipo de modulo',
+            'market.sort': 'Ordenar modulos',
+            'market.type.all': 'Todos los tipos',
+            'market.type.biome_pack': 'Biomas',
+            'market.type.species_pack': 'Especies',
+            'market.type.feature_pack': 'Funciones',
+            'market.type.content_pack': 'Contenido',
+            'market.sort.featured': 'Destacados',
+            'market.sort.downloads': 'Mas descargados',
+            'market.sort.rating': 'Mejor valorados',
+            'market.sort.newest': 'Mas nuevos',
+            'market.staffPicks': 'Selecciones del equipo',
+            'market.staffPickDescription': 'Nuestra expansion de bioma mas popular. Recorre arenas ardientes, descubre oasis ocultos y sobrevive encuentros con legendarios gusanos de arena.',
+            'market.install': 'Instalar',
+            'market.installModule': 'Instalar {name}',
+            'market.downloadsCount': '{count} descargas',
+            'market.ratingCount': 'Valoracion {rating}',
+            'market.byline': 'por {author} • v{version} • {size}',
+            'market.downloading': 'Descargando {name}...',
+            'market.installedEnabled': '{name} instalado y activado!',
+            'market.installSuccess': '{name} instalado correctamente!',
+            'market.createWizardPlaceholder': 'El asistente de creacion de modulos se abriria aqui!\n\nTe guiaria para:\n- Crear un manifiesto\n- Escribir plantillas de contenido\n- Probar en sandbox\n- Empaquetar para subir',
             'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.',
             'target.cancelAction': 'Cancelar {action}',
             'log.movedTo': 'Movimiento a {x}, {y} ({biome})',
@@ -12319,22 +12381,61 @@ const MODULE_MARKETPLACE = {
     
     // UI Controller
     ui: {
+        label(key, fallback, vars = {}) {
+            if (typeof App !== 'undefined' && App._label) return App._label(key, fallback, vars);
+            if (typeof CONTENT !== 'undefined' && CONTENT.t) {
+                const text = CONTENT.t(key, vars);
+                return text === key ? fallback : text;
+            }
+            return fallback;
+        },
+
+        escapeHtml(value) {
+            if (typeof App !== 'undefined' && App._escapeHtml) return App._escapeHtml(value);
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[ch]));
+        },
+
+        jsString(value) {
+            return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        },
+
         showMarketplace() {
+            const featured = MODULE_MARKETPLACE.featuredModules[0] || {};
+            const title = this.escapeHtml(this.label('market.title', 'Module Marketplace'));
+            const subtitle = this.escapeHtml(this.label('market.subtitle', 'Discover community-made biomes, species, and features'));
+            const myModules = this.escapeHtml(this.label('market.myModules', 'My Modules'));
+            const create = this.escapeHtml(this.label('market.create', 'Create'));
+            const search = this.escapeHtml(this.label('market.search', 'Search modules...'));
+            const typeLabel = this.escapeHtml(this.label('market.typeFilter', 'Module type'));
+            const sortLabel = this.escapeHtml(this.label('market.sort', 'Sort modules'));
+            const staffPicks = this.escapeHtml(this.label('market.staffPicks', 'Staff Picks'));
+            const installLabel = this.escapeHtml(this.label('market.install', 'Install'));
+            const staffTitle = this.escapeHtml(featured.name || 'Desert of Whispers');
+            const staffDesc = this.escapeHtml(this.label('market.staffPickDescription', 'Our most popular biome expansion. Navigate scorching sands, discover hidden oases, and survive encounters with legendary sand-wyrms.'));
+            const downloadsText = this.escapeHtml(this.label('market.downloadsCount', '{count} downloads', { count: '15k+' }));
+            const ratingText = this.escapeHtml(this.label('market.ratingCount', '{rating} rating', { rating: '4.8' }));
+            const installTitle = this.escapeHtml(this.label('market.installModule', 'Install {name}', { name: featured.name || 'module' }));
             const html = `
                 <div style="max-width: 1000px; margin: 0 auto; padding: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <div>
-                            <h1 style="color: var(--accent-primary); margin: 0;">🏪 Module Marketplace</h1>
+                            <h1 style="color: var(--accent-primary); margin: 0;">🏪 ${title}</h1>
                             <p style="color: var(--text-muted); margin: 8px 0 0 0;">
-                                Discover community-made biomes, species, and features
+                                ${subtitle}
                             </p>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
-                                📦 My Modules
+                            <button class="nav-btn" title="${myModules}" aria-label="${myModules}" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
+                                📦 ${myModules}
                             </button>
-                            <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showCreate()">
-                                ✏️ Create
+                            <button class="nav-btn" title="${create}" aria-label="${create}" onclick="MODULE_MARKETPLACE.ui.showCreate()">
+                                ✏️ ${create}
                             </button>
                         </div>
                     </div>
@@ -12343,26 +12444,26 @@ const MODULE_MARKETPLACE = {
                     <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
                                     border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px;">
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <input type="text" placeholder="🔍 Search modules..." 
+                            <input type="text" placeholder="🔍 ${search}" aria-label="${search}"
                                    style="flex: 1; min-width: 200px; background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                           border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;"
                                    oninput="MODULE_MARKETPLACE.ui.filter(this.value)">
-                            <select onchange="MODULE_MARKETPLACE.ui.filterByType(this.value)"
+                            <select aria-label="${typeLabel}" onchange="MODULE_MARKETPLACE.ui.filterByType(this.value)"
                                     style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                            border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
-                                <option value="all">All Types</option>
-                                <option value="biome_pack">Biomes</option>
-                                <option value="species_pack">Species</option>
-                                <option value="feature_pack">Features</option>
-                                <option value="content_pack">Content</option>
+                                <option value="all">${this.escapeHtml(this.label('market.type.all', 'All Types'))}</option>
+                                <option value="biome_pack">${this.escapeHtml(this.label('market.type.biome_pack', 'Biomes'))}</option>
+                                <option value="species_pack">${this.escapeHtml(this.label('market.type.species_pack', 'Species'))}</option>
+                                <option value="feature_pack">${this.escapeHtml(this.label('market.type.feature_pack', 'Features'))}</option>
+                                <option value="content_pack">${this.escapeHtml(this.label('market.type.content_pack', 'Content'))}</option>
                             </select>
-                            <select onchange="MODULE_MARKETPLACE.ui.sort(this.value)"
+                            <select aria-label="${sortLabel}" onchange="MODULE_MARKETPLACE.ui.sort(this.value)"
                                     style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                            border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
-                                <option value="featured">Featured</option>
-                                <option value="downloads">Most Downloaded</option>
-                                <option value="rating">Highest Rated</option>
-                                <option value="newest">Newest</option>
+                                <option value="featured">${this.escapeHtml(this.label('market.sort.featured', 'Featured'))}</option>
+                                <option value="downloads">${this.escapeHtml(this.label('market.sort.downloads', 'Most Downloaded'))}</option>
+                                <option value="rating">${this.escapeHtml(this.label('market.sort.rating', 'Highest Rated'))}</option>
+                                <option value="newest">${this.escapeHtml(this.label('market.sort.newest', 'Newest'))}</option>
                             </select>
                         </div>
                     </div>
@@ -12375,28 +12476,28 @@ const MODULE_MARKETPLACE = {
                     <!-- Featured Section -->
                     <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default);">
                         <h2 style="color: var(--text-secondary); font-size: 18px; margin-bottom: 16px;">
-                            ⭐ Staff Picks
+                            ⭐ ${staffPicks}
                         </h2>
                         <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary)); 
                                         border: 1px solid var(--border-default); border-radius: var(--radius-md); 
                                         padding: 20px; display: flex; gap: 20px; align-items: center;">
                             <div style="font-size: 64px;">🏜️</div>
                             <div style="flex: 1;">
-                                <h3 style="color: var(--accent-primary); margin: 0 0 8px 0;">Desert of Whispers</h3>
+                                <h3 style="color: var(--accent-primary); margin: 0 0 8px 0;">${staffTitle}</h3>
                                 <p style="color: var(--text-secondary); margin: 0 0 12px 0;">
-                                    Our most popular biome expansion! Navigate scorching sands, discover hidden oases, 
-                                    and survive encounters with the legendary sand-wyrms.
+                                    ${staffDesc}
                                 </p>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
-                                                 font-size: 12px; color: var(--text-muted);">15k+ downloads</span>
+                                                 font-size: 12px; color: var(--text-muted);">${downloadsText}</span>
                                     <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
-                                                 font-size: 12px; color: var(--text-muted);">⭐ 4.8 rating</span>
+                                                 font-size: 12px; color: var(--text-muted);">⭐ ${ratingText}</span>
                                 </div>
                             </div>
                             <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);"
+                                    title="${installTitle}" aria-label="${installTitle}"
                                     onclick="MODULE_MARKETPLACE.ui.install('mod_desert_expansion')">
-                                Install
+                                ${installLabel}
                             </button>
                         </div>
                     </div>
@@ -12407,6 +12508,23 @@ const MODULE_MARKETPLACE = {
         },
         
         renderModuleCard(mod) {
+            const name = this.escapeHtml(mod.name);
+            const type = this.escapeHtml(String(mod.type || '').replace('_', ' '));
+            const description = this.escapeHtml(mod.description);
+            const preview = this.escapeHtml(mod.preview);
+            const author = this.escapeHtml(mod.author);
+            const version = this.escapeHtml(mod.version);
+            const size = this.escapeHtml(mod.size);
+            const id = this.escapeHtml(this.jsString(mod.id));
+            const installLabel = this.escapeHtml(this.label('market.install', 'Install'));
+            const installTitle = this.escapeHtml(this.label('market.installModule', 'Install {name}', { name: mod.name }));
+            const downloads = this.escapeHtml(this.formatNumber(mod.downloads));
+            const rating = this.escapeHtml(String(mod.rating));
+            const byline = this.escapeHtml(this.label('market.byline', 'by {author} • v{version} • {size}', {
+                author: mod.author,
+                version: mod.version,
+                size: mod.size
+            }));
             return `
                 <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
                                 border-radius: var(--radius-md); overflow: hidden; transition: all 0.2s; cursor: pointer;"
@@ -12414,31 +12532,32 @@ const MODULE_MARKETPLACE = {
                      onmouseleave="this.style.borderColor='var(--border-default)'; this.style.transform='translateY(0)'">
                     <div style="height: 100px; background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-elevated)); 
                                     display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                        ${mod.preview}
+                        ${preview}
                     </div>
                     <div style="padding: 16px;">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                            <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);">${mod.name}</h3>
+                            <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);">${name}</h3>
                             <span style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: var(--radius-sm); 
                                          font-size: 10px; color: var(--text-muted); text-transform: uppercase;">
-                                ${mod.type.replace('_', ' ')}
+                                ${type}
                             </span>
                         </div>
                         <p style="margin: 0 0 12px 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">
-                            ${mod.description}
+                            ${description}
                         </p>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);">
-                                <span>⬇️ ${this.formatNumber(mod.downloads)}</span>
-                                <span>⭐ ${mod.rating}</span>
+                                <span>⬇️ ${downloads}</span>
+                                <span>⭐ ${rating}</span>
                             </div>
                             <button class="nav-btn" style="padding: 6px 12px; font-size: 12px;"
-                                    onclick="event.stopPropagation(); MODULE_MARKETPLACE.ui.install('${mod.id}')">
-                                Install
+                                    title="${installTitle}" aria-label="${installTitle}"
+                                    onclick="event.stopPropagation(); MODULE_MARKETPLACE.ui.install('${id}')">
+                                ${installLabel}
                             </button>
                         </div>
                         <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
-                            by ${mod.author} • v${mod.version} • ${mod.size}
+                            ${byline}
                         </div>
                     </div>
                 </div>
@@ -12464,11 +12583,11 @@ const MODULE_MARKETPLACE = {
         },
         
         async install(moduleId) {
-            const mod = this.featuredModules.find(m => m.id === moduleId);
+            const mod = MODULE_MARKETPLACE.featuredModules.find(m => m.id === moduleId);
             if (!mod) return;
             
             // Simulate download
-            App.log.push({ text: `Downloading ${mod.name}...`, type: 'discovery' });
+            App.log.push({ text: this.label('market.downloading', 'Downloading {name}...', { name: mod.name }), type: 'discovery' });
             App.renderLog();
             
             await new Promise(r => setTimeout(r, 1500));
@@ -12493,10 +12612,10 @@ const MODULE_MARKETPLACE = {
             await MODULE_SYSTEM.installModule(mockModule);
             await MODULE_SYSTEM.setModuleEnabled(mod.id, true);
             
-            App.log.push({ text: `Installed and enabled ${mod.name}!`, type: 'discovery' });
+            App.log.push({ text: this.label('market.installedEnabled', 'Installed and enabled {name}!', { name: mod.name }), type: 'discovery' });
             App.renderLog();
             
-            alert(`Successfully installed ${mod.name}!`);
+            alert(this.label('market.installSuccess', 'Successfully installed {name}!', { name: mod.name }));
             
             // Refresh UI
             ModUI.refreshModList();
@@ -12507,7 +12626,7 @@ const MODULE_MARKETPLACE = {
         },
         
         showCreate() {
-            alert('Module creation wizard would open here!\n\nThis would guide you through:\n- Creating a manifest\n- Writing content templates\n- Testing in sandbox\n- Packaging for upload');
+            alert(this.label('market.createWizardPlaceholder', 'Module creation wizard would open here!\n\nThis would guide you through:\n- Creating a manifest\n- Writing content templates\n- Testing in sandbox\n- Packaging for upload'));
         }
     }
 };

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 273/273 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 274/274 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -120,8 +120,8 @@
 - Group exploration outcome summaries now route through locale keys for feed transfers, tending, play-fighting/sparring, chew-splitting, feast guardrails, feast assists, and shared social actions instead of leaking hardcoded English during non-English play
 - Group attacks against non-hostile social/timid creature groups now resolve one shared tile reaction instead of repeating flee/hostility reactions once per selected actor
 - Selected-target context actions now localize and escape target counts plus clear labels, preventing raw locale keys from appearing in the action bar
-- Persistent shell localization now has a reusable `data-i18n` pass for static text, titles, accessible labels, and placeholders; the main menu, top navigation, dynamically injected Settings/Market/Mods nav buttons, log controls, action legends, core settings shell, and mod-manager status/action copy opt into English/Spanish relabeling when the language changes
-- Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, high-traffic action/target labels route through locale keys, mobile unit-chip actor/target/action labels localize with accessible names, desktop party-card actor/target/action/management controls localize with accessible names, desktop creature-card actions and combat target-selection controls localize with accessible names, corpse loot/scavenge card actions localize with accessible names, inventory, trade, quest-log, and perk/stat progression action buttons localize with accessible names, mobile party/creature context-menu labels plus accessible management field labels localize through the active language, save-slot/new-game labels, accessible action names, destructive confirmations, settings data-clear/save-delete confirmations and alerts, merchant purchase confirmations, transaction feedback, trade/inventory filter controls, trade/inventory empty states, inventory equipment headings/summaries/effect labels, combat-log filtered-empty states, equipment feedback logs, quest empty states, quest accept/duplicate/complete feedback, party leader/reorder/role/order assignment feedback, multi-target selection summaries and guardrail feedback, incompatible-save recovery prompts, status alerts, flee feedback, combat outcome/turn-guard feedback, sync failure feedback, submissive recruit prompts, recruit feedback, feed-blocker feedback, inventory-full feedback, quest-routing feedback, and perk progression/respec feedback are localized
+- Persistent shell localization now has a reusable `data-i18n` pass for static text, titles, accessible labels, and placeholders; the main menu, top navigation, dynamically injected Settings/Market/Mods nav buttons, log controls, action legends, core settings shell, mod-manager status/action copy, and marketplace shell controls opt into English/Spanish relabeling when the language changes
+- Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, high-traffic action/target labels route through locale keys, mobile unit-chip actor/target/action labels localize with accessible names, desktop party-card actor/target/action/management controls localize with accessible names, desktop creature-card actions and combat target-selection controls localize with accessible names, corpse loot/scavenge card actions localize with accessible names, inventory, trade, quest-log, perk/stat progression, mod-manager, and marketplace action buttons localize with accessible names, mobile party/creature context-menu labels plus accessible management field labels localize through the active language, save-slot/new-game labels, accessible action names, destructive confirmations, settings data-clear/save-delete confirmations and alerts, merchant purchase confirmations, transaction feedback, trade/inventory filter controls, trade/inventory empty states, inventory equipment headings/summaries/effect labels, combat-log filtered-empty states, equipment feedback logs, quest empty states, quest accept/duplicate/complete feedback, party leader/reorder/role/order assignment feedback, marketplace install/download feedback, multi-target selection summaries and guardrail feedback, incompatible-save recovery prompts, status alerts, flee feedback, combat outcome/turn-guard feedback, sync failure feedback, submissive recruit prompts, recruit feedback, feed-blocker feedback, inventory-full feedback, quest-routing feedback, and perk progression/respec feedback are localized
 - Dormant fallback creature interaction menus now use localized visible/accessibility labels, escape rendered creature names/icons/status text, and keep party/creature indexes independent if a mod or old flow calls them directly
 - New-game/save-slot UX has a first pass: main-menu New Game opens slot selection, the load-mode slot manager exposes an always-visible New Game action plus per-slot New Run takeover, empty slots are labeled as open new-game starting points, occupied slots require irreversible overwrite confirmation, cancelled occupied-slot takeover preserves the current slot, approved takeover opens character creation for the chosen slot, autosaves update per-slot timestamps, manual saves warn before overwriting another occupied slot, delete-slot warnings are scoped to the selected slot, deleting a slot only clears that selected slot and refreshes the manager in the current load/new-run mode, failed load/recovery flows do not enter the game screen, new-run mode hides unrelated save-current-game actions, and the slot manager uses responsive slot cards/action grids plus a viewport-bounded scrollable modal surface with mode-specific localized dialog labels verified in browser at 393x852 mobile and 1365x768 desktop viewports
 - Large-map low-LOD discovery has a first pass: the map panel renders a discovered-region grid around the player, overlays landmarks/structures/entity/item points of interest plus next active quest checkpoint markers, supports zoom/pan/recenter controls with a visible viewed-region label, and avoids materializing unknown generated tiles into the compatibility `worldMap`
@@ -220,7 +220,7 @@
 app/
   src/core/
     app.js           — Main game state, combat loop, encounter system, AI (~6650 lines)
-    content-system.js — Template engine, content tiers, localization registry (~467 lines)
+    content-system.js — Template engine, content tiers, localization registry (~1298 lines)
     serialization.js  — Binary save/load codec (~276 lines)
     module-system.js  — Mod loader and hook system (~276 lines)
     marketplace.js    — Built-in content pack metadata (~140 lines)
@@ -228,10 +228,10 @@ app/
     global-nav.js     — Navigation helpers (~20 lines)
     settings-nav.js   — Settings overlay logic (~16 lines)
     mod-ui.js         — Mod manager UI (~248 lines)
-    market-screen.js  — Marketplace UI (~287 lines)
+    market-screen.js  — Marketplace UI (~343 lines)
     market-nav.js     — Marketplace nav (~17 lines)
-  template.html      — HTML shell, CSS, inline screens (~2203 lines)
-  test/test.js       — 257 tests, syntax/structure/combat behavior
+  template.html      — HTML shell, CSS, inline screens (~2428 lines)
+  test/test.js       — 274 tests, syntax/structure/combat behavior
   build.js           — Concatenates all modules into single HTML file
   dev.js             — Development server with watcher
 ```

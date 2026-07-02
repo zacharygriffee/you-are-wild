@@ -347,7 +347,7 @@
                 const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
                 const targetActions = this._renderExplorationTargetActions();
-                return targetActions + allKeys.map(key => this._contextActionButton(key)).join('') + (includePanels ? '' : this._actionLegend(allKeys));
+                return targetActions + allKeys.map(key => this._contextActionButton(key)).join('');
             },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
@@ -7242,7 +7242,7 @@
 	                if (inCombat) {
 	                    if (actions) {
 	                        const keys = ['fight', 'flirt', 'feast', 'fuck', 'feed', 'flee'];
-	                        actions.innerHTML = keys.map(key => this._iconActionButton(key, this._actionIcon(key), `combatAction('${key}')`, key === 'fight' ? 'primary' : '')).join('') + this._actionLegend(keys);
+	                        actions.innerHTML = keys.map(key => this._iconActionButton(key, this._actionIcon(key), `combatAction('${key}')`, key === 'fight' ? 'primary' : '')).join('');
 	                    }
                     if (mobileActions) mobileActions.style.display = 'block';
                     if (mobileCombat) mobileCombat.style.display = 'flex';

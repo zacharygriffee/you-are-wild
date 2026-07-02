@@ -2018,6 +2018,28 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
 
+test('Desktop action bars do not duplicate large buttons with tiny legends', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', creatures: [] }]]);
+  App.combatState.active = false;
+  App.renderExplorationActions();
+  const exploreHtml = elements.get('scene-actions').innerHTML;
+  assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop exploration should keep real Rest button');
+  assertContains(exploreHtml, 'aria-label="Enter"', 'Desktop exploration should keep real Enter button');
+  assertContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should keep real Items button');
+  assertNotContains(exploreHtml, 'action-legend', 'Desktop exploration should not render a duplicate tiny icon legend beside real buttons');
+
+  App.updateScene('Combat', 'Choose an action.', true);
+  const combatHtml = elements.get('scene-actions').innerHTML;
+  assertContains(combatHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button');
+  assertContains(combatHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button');
+  assertNotContains(combatHtml, 'action-legend', 'Desktop combat should not render a duplicate tiny icon legend beside real buttons');
+});
+
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });

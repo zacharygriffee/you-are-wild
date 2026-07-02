@@ -24,6 +24,7 @@ npm run build
 npm test
 npm run test:core
 npm run test:ui
+npm run test:viewport
 npm run lint
 npm run check
 npm run full-build
@@ -34,6 +35,8 @@ From the repository root, the same verification is available with:
 ```sh
 npm run full-build
 ```
+
+`npm run full-build` also runs the Playwright viewport smoke check against the built `dist/you-are-wild.html`. Use `npm run test:viewport` directly when touching mobile panels, save-slot UX, or desktop/mobile layout reachability.
 
 ## Development
 

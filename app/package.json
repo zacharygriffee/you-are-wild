@@ -14,7 +14,7 @@
     "watch": "node build.js --watch",
     "dev": "node dev.js",
     "clean": "rm -f ../dist/you-are-wild.html",
-    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check"
+    "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check && npm run test:viewport"
   },
   "keywords": [
     "game",

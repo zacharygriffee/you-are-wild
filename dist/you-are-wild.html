@@ -1498,6 +1498,11 @@
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25);
             }
 
+            .mobile-unit-chip.selected {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25), var(--shadow-glow);
+            }
+
             .mobile-unit-chip .unit-actions {
                 margin-top: 6px !important;
             }
@@ -9921,20 +9926,31 @@ const WorldGen = (() => {
                 const items = chips.map(chip => `<span class="unit-trait-chip ${this._escapeHtml(chip.tone)}" title="${this._escapeHtml(chip.label)}">${this._escapeHtml(chip.label)}</span>`).join('');
                 return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
             },
-            _unitSelectionChips(unit, type) {
-                if (!unit || this.combatState?.active) return '';
-                const chips = [];
-                const add = (key, label) => {
-                    const safeLabel = this._escapeHtml(label);
-                    chips.push(`<span class="unit-trait-chip selection" data-selection-role="${this._escapeHtml(key)}" title="${safeLabel}">${safeLabel}</span>`);
-                };
+            _unitSelectionRoles(unit, type) {
+                if (!unit || this.combatState?.active) return [];
+                const roles = [];
                 if (type === 'party' && this._getExplorationActors().includes(unit)) {
-                    add('actor', this._label('target.act', 'Act'));
+                    roles.push('actor');
                 }
                 const id = type === 'creature' ? String(unit.id || unit.name || '') : this._unitSelectionId(unit);
                 if (this._isExplorationTarget(type, id)) {
-                    add('target', this._label('target.mark', 'Target'));
+                    roles.push('target');
                 }
+                return roles;
+            },
+            _unitSelectionClass(unit, type) {
+                const roles = this._unitSelectionRoles(unit, type);
+                return roles.length ? ` selected ${roles.map(role => `selected-${role}`).join(' ')}` : '';
+            },
+            _unitSelectionChips(unit, type) {
+                const labels = {
+                    actor: this._label('target.act', 'Act'),
+                    target: this._label('target.mark', 'Target')
+                };
+                const chips = this._unitSelectionRoles(unit, type).map(role => {
+                    const safeLabel = this._escapeHtml(labels[role] || role);
+                    return `<span class="unit-trait-chip selection" data-selection-role="${this._escapeHtml(role)}" title="${safeLabel}">${safeLabel}</span>`;
+                });
                 if (chips.length === 0) return '';
                 const label = this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'));
                 return `<div class="unit-traits unit-selection-chips" aria-label="${label}">${chips.join('')}</div>`;
@@ -9996,7 +10012,8 @@ const WorldGen = (() => {
                 const pressHandlers = isParty
                     ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
                     : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
-                return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
+                const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${this._unitSelectionClass(unit, type)}`;
+                return `<div class="${chipClass}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
@@ -10018,7 +10035,7 @@ const WorldGen = (() => {
                 const roleLabel = isAlly ? this._escapeHtml(this._partyRoleLabel(this._getPartyRole(unit))) : '';
                 const canDragPartyMember = isAlly && !this.combatState.active;
                 const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
-                const cardClass = `unit-card ${isExpanded ? 'expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}`;
+                const cardClass = `unit-card${isExpanded ? ' expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}${this._unitSelectionClass(unit, type)}`;
                 let actionButtons = '';
                 let partyManagementControls = '';
                 if (isParty && !this.combatState.active) {

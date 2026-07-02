@@ -6339,6 +6339,24 @@
                 const items = chips.map(chip => `<span class="unit-trait-chip ${this._escapeHtml(chip.tone)}" title="${this._escapeHtml(chip.label)}">${this._escapeHtml(chip.label)}</span>`).join('');
                 return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
             },
+            _unitSelectionChips(unit, type) {
+                if (!unit || this.combatState?.active) return '';
+                const chips = [];
+                const add = (key, label) => {
+                    const safeLabel = this._escapeHtml(label);
+                    chips.push(`<span class="unit-trait-chip selection" data-selection-role="${this._escapeHtml(key)}" title="${safeLabel}">${safeLabel}</span>`);
+                };
+                if (type === 'party' && this._getExplorationActors().includes(unit)) {
+                    add('actor', this._label('target.act', 'Act'));
+                }
+                const id = type === 'creature' ? String(unit.id || unit.name || '') : this._unitSelectionId(unit);
+                if (this._isExplorationTarget(type, id)) {
+                    add('target', this._label('target.mark', 'Target'));
+                }
+                if (chips.length === 0) return '';
+                const label = this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'));
+                return `<div class="unit-traits unit-selection-chips" aria-label="${label}">${chips.join('')}</div>`;
+            },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
                 const isParty = type === 'party';
@@ -6402,6 +6420,7 @@
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
                     ${this._unitTacticalBars(unit, { compact: true })}
                     ${this._unitTraitChips(unit, type)}
+                    ${this._unitSelectionChips(unit, type)}
                     ${actionButtons}
                 </div>`;
             },
@@ -6550,6 +6569,7 @@
 	                            <div class="unit-card-status">${compactStatus}</div>
 	                            ${this._unitTacticalBars(unit)}
 	                            ${this._unitTraitChips(unit, type)}
+	                            ${this._unitSelectionChips(unit, type)}
 		                        </div>
 		                    </div>
 	                    ${actionButtons}

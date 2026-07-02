@@ -2555,6 +2555,17 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','creature-target')", 'Creature card should expose target selection');
   App.toggleExplorationTarget('party', 'ally-target');
   App.toggleExplorationTarget('creature', 'creature-target');
+  App.renderParty();
+  App.renderCreatures();
+  const partyHtml = elements.get('party-content').innerHTML;
+  const creatureHtml = elements.get('enemies-content').innerHTML;
+  assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="actor" title="Actuar">Actuar</span>', 'Selected party actor should render a localized card chip');
+  assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected party target should render a localized card chip');
+  assertContains(creatureHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected creature target should render a localized card chip');
+  const mobileActorChip = App.renderMobileUnitChip(actor, 0, 'party');
+  const mobileCreatureChip = App.renderMobileUnitChip(creatureTarget, 0, 'creature');
+  assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
+  assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
   const actionsHtml = elements.get('scene-actions').innerHTML;
   assertContains(actionsHtml, 'selected-target-summary', 'Context actions should include a selected-target summary');
   assertContains(actionsHtml, 'aria-label="Objetivos de exploracion seleccionados"', 'Target summary region label should localize');

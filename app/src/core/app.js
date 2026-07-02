@@ -6526,7 +6526,8 @@
                     const corpseLabel = this._escapeHtml(unit.corpseName || unit.name || 'remains');
                     const lootLabel = this._escapeHtml(this._uiLabel('loot'));
                     const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button></div>`;
+                    const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${unit.name || 'remains'}`);
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);
@@ -6587,7 +6588,7 @@
                 };
                 const cardCanOpenIntentMenu = isParty
                     ? !this.combatState.active
-                    : unit.CPun > 0 && !isCorpse && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
+                    : (isCorpse || (unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY)));
                 const cardContextMenuAttr = cardCanOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
                     : '';
@@ -7973,7 +7974,8 @@
             showIntentMenu(type, targetRef, source = 'sheet', presentation = 'sheet') {
                 const isParty = type === 'party';
                 const target = this._intentTarget(type, targetRef);
-                if (!target || this._isCorpse(target)) return;
+                if (!target) return;
+                const isCorpse = this._isCorpse(target);
                 this.closeMobileContextMenu();
                 const targetName = target.name || (isParty ? 'party member' : 'creature');
                 const menuLabel = this._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
@@ -7994,13 +7996,17 @@
                 };
                 let html = `<div class="mobile-context-menu intent-menu intent-menu-${menuPresentation}" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-intent-presentation="${menuPresentation}"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 const selectedActors = this._getExplorationActors();
-                const canUsePrimaryActions = !isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target)));
+                const canUsePrimaryActions = !isCorpse && (!isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target))));
                 if (canUsePrimaryActions) {
                     html += actionButton('fight');
                     html += actionButton('flirt');
                     html += actionButton('fuck');
                     html += actionButton('feast');
                     html += actionButton('feed');
+                }
+                if (isCorpse) {
+                    html += actionButton('loot');
+                    html += actionButton('scavenge');
                 }
                 html += actionButton('inspect');
                 if (!isParty && this._canRecruit(this._getExplorationActor(), target)) html += actionButton('recruit', 'recruit', ' primary');
@@ -8070,6 +8076,8 @@
                 }
                 const targetId = String(targetRef);
                 if (action === 'close') return false;
+                if (action === 'loot') return Boolean(this.lootCorpse(targetId));
+                if (action === 'scavenge') return Boolean(this.scavengeCorpse(targetId));
                 if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
                 if (action === 'quest') return Boolean(this.acceptQuestFromUnit(targetId));
                 if (action === 'trade') return Boolean(this.showTrade(targetId));

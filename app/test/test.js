@@ -1567,6 +1567,8 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertContains(html, '[Remains]', 'Corpse card should label remains');
   assertContains(html, "lootCorpse('fallen-1')", 'Corpse card should expose loot action');
   assertContains(html, "scavengeCorpse('fallen-1')", 'Corpse card should expose scavenge action');
+  assertContains(html, "showIntentMenu('creature','fallen-1')", 'Corpse card should expose contextual action menu');
+  assertContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Corpse card should support secondary-click contextual menu');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
 });
@@ -1949,6 +1951,31 @@ test('Contextual intent dispatch reports recruit quest and trade outcomes', () =
   assertEqual(App.selectIntent('creature', 'trader-1', 'trade'), true, 'Trade intent should report successful trade screen rendering');
   assertContains(elements.get('scene-description').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen');
   assertEqual(App.selectIntent('creature', 'missing-trader', 'trade'), false, 'Trade intent should report missing merchant failure');
+});
+
+test('Contextual intent dispatch reports corpse loot and scavenge outcomes', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', hunger: 50, CPun: 80, MPun: 100, gold: 0 });
+  const lootCorpse = makeUnit('Looted Remains', { id: 'corpse-loot-intent', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  const scavengeCorpse = makeUnit('Scavenge Remains', { id: 'corpse-scavenge-intent', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [lootCorpse, scavengeCorpse];
+  App.inventory = [];
+  App.showIntentMenu('creature', 'corpse-loot-intent');
+  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','loot','sheet')", 'Corpse intent menu should dispatch loot through shared intent selection');
+  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','scavenge','sheet')", 'Corpse intent menu should dispatch scavenge through shared intent selection');
+  assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','corpse-loot-intent','fight'", 'Corpse intent menu should not expose living primary action spam');
+  App.closeMobileContextMenu();
+  assertEqual(App.selectIntent('creature', 'corpse-loot-intent', 'loot', 'sheet'), true, 'Loot intent should report handled corpse action');
+  assertEqual(App.lastIntentCommand.action, 'loot', 'Loot intent should record selected contextual action');
+  assertEqual(App.lastIntentCommand.targetId, 'corpse-loot-intent', 'Loot intent should record corpse target id');
+  assertEqual(lootCorpse.looted, true, 'Loot intent should mark corpse as looted');
+  assertEqual(App.selectIntent('creature', 'corpse-scavenge-intent', 'scavenge', 'sheet'), true, 'Scavenge intent should report handled corpse action');
+  assertEqual(App.lastIntentCommand.action, 'scavenge', 'Scavenge intent should record selected contextual action');
+  assertEqual(scavengeCorpse.scavenged, true, 'Scavenge intent should mark corpse as scavenged');
+  assertEqual(App.selectIntent('creature', 'missing-corpse-intent', 'loot', 'sheet'), false, 'Missing corpse loot intent should report failure');
+  assertEqual(App.selectIntent('creature', 'missing-corpse-intent', 'scavenge', 'sheet'), false, 'Missing corpse scavenge intent should report failure');
 });
 
 test('Intent sub-action sheet records selected sub-action while preserving dispatch', () => {

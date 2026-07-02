@@ -448,6 +448,7 @@ test('Template has all panels', () => {
 test('Scene description supports rich bounded content', () => {
   assertContains(template, '<div class="scene-description" id="scene-description">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
   assertContains(template, '.party-stats-view', 'Party stats view should have bounded scroll styles');
+  assertContains(template, '.party-stats-footer', 'Party stats view should have a sticky footer action area');
   assertContains(template, '.mobile-scene-sheet.rich-content', 'Mobile scene sheet should have an expanded rich-content mode');
   assertContains(template, '.mobile-scene-description .party-stats-view', 'Mobile rich stats should fit inside the visible scene sheet');
   assertContains(template, 'overscroll-behavior: contain', 'Bounded stats and modal surfaces should contain scroll gestures');
@@ -4208,6 +4209,7 @@ test('Non-player equipment renders as read-only card metadata', () => {
   App.showPartyMemberStats(1);
   const statsHtml = elements.get('scene-description').innerHTML;
   assertContains(statsHtml, 'class="party-stats-view"', 'Ally stats should render in a bounded stats view');
+  assertContains(statsHtml, 'class="party-stats-footer"', 'Ally stats should keep the close action in a sticky footer');
   assertContains(statsHtml, 'aria-label="Close"', 'Ally stats should expose an immediate localized close action');
   assertContains(statsHtml, 'App.closeSceneDetails()', 'Ally stats close action should return to the current scene details');
   assertContains(statsHtml, '<strong>Equipment</strong>', 'Ally stats should expose equipment section');
@@ -4215,6 +4217,68 @@ test('Non-player equipment renders as read-only card metadata', () => {
   assertContains(elements.get('mobile-scene-description').innerHTML, 'class="party-stats-view"', 'Ally stats should also render in the mobile scene sheet');
   assertNotContains(statsHtml, 'equipItem(', 'Non-player equipment stats should not expose player equip controls');
   assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
+});
+
+test('Rich scene details suppress stale context actions while open', () => {
+  const { App, document } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  const actions = document.getElementById('scene-actions');
+  actions.innerHTML = '<button>Old action</button>';
+  actions.style.display = 'flex';
+  App.showCharacterStats();
+  assertEqual(actions.style.display, 'none', 'Rich stats should hide the main context action bar');
+  assertEqual(actions.dataset.richHidden, 'true', 'Hidden rich action state should be tracked');
+});
+
+test('Closing stats during combat restores the active party turn', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.showCharacterStats();
+  assertEqual(elements.get('scene-actions').style.display, 'none', 'Combat stats should hide stale combat actions while open');
+  App.closeSceneDetails();
+  assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
+  assertContains(elements.get('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should restore the combat turn title');
+  assertContains(elements.get('scene-actions').innerHTML, "selectTarget('fight')", 'Closing combat stats should restore player combat actions');
+  assertEqual(elements.get('scene-actions').style.display, '', 'Closing combat stats should restore action bar display');
+});
+
+test('Closing stats during an enemy turn does not reveal stale player actions', () => {
+  const { App, elements, document } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  document.getElementById('scene-actions').innerHTML = '<button>Stale player action</button>';
+  App.showCharacterStats();
+  App.closeSceneDetails();
+  assertEqual(App.combatState.active, true, 'Closing enemy-turn stats should keep combat mode active');
+  assertContains(elements.get('scene-title').textContent, "Round 2 - Enemy's turn", 'Closing enemy-turn stats should restore enemy turn title');
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'Closing enemy-turn stats should clear stale player actions');
+  assertEqual(elements.get('scene-actions').style.display, '', 'Closing enemy-turn stats should restore action bar display state');
 });
 
 test('Party member stats labels localize and escape names', () => {
@@ -4329,6 +4393,7 @@ test('Character stats expose pending perk selection', () => {
   App.showCharacterStats();
   let html = elements.get('scene-description').innerHTML;
   assertContains(html, 'class="party-stats-view character-stats-view"', 'Character stats should render in the bounded stats view');
+  assertContains(html, 'class="party-stats-footer"', 'Character stats should keep close/perk actions in a sticky footer');
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
   assertContains(html, 'App.closeSceneDetails()', 'Character stats close action should return to the current scene details');
   assertContains(html, 'Choose Perk (2)', 'Character stats should show pending perk button');

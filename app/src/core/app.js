@@ -3797,7 +3797,7 @@
                         ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
                         ${statCard('party.perks', 'Perks', perks)}
                     </div>
-                    <button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closeSceneDetails()">${backLabel}</button></div>`;
+                    <div class="party-stats-footer"><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.closeSceneDetails()">${backLabel}</button></div></div>`;
                 this._setRichSceneContent(`${unit.icon || ''} ${unit.name}`, html);
             },
 
@@ -6241,8 +6241,13 @@
             _setRichSceneContent(title, html) {
                 const titleEl = document.getElementById('scene-title');
                 const descEl = document.getElementById('scene-description');
+                const actions = document.getElementById('scene-actions');
                 if (titleEl) titleEl.textContent = title || '';
                 if (descEl) descEl.innerHTML = html || '';
+                if (actions) {
+                    actions.dataset.richHidden = 'true';
+                    actions.style.display = 'none';
+                }
                 const mobileTitle = document.getElementById('mobile-scene-title');
                 const mobileDesc = document.getElementById('mobile-scene-description');
                 const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
@@ -6263,6 +6268,10 @@
 	                if (mobileDesc) mobileDesc.textContent = description || '';
 	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
 	                const actions = document.getElementById('scene-actions');
+                if (actions?.dataset?.richHidden) {
+                    delete actions.dataset.richHidden;
+                    actions.style.display = '';
+                }
                 const mobileActions = document.getElementById('mobile-actions');
 	                const mobileCombat = document.getElementById('mobile-combat-actions');
 	                const mobileExplore = document.getElementById('mobile-explore-actions');
@@ -6300,6 +6309,31 @@
             },
             closeSceneDetails() {
                 try {
+                    if (this.combatState?.active) {
+                        const entry = this.combatState.turnQueue?.[this.combatState.currentTurn];
+                        const unit = entry?.unit;
+                        if (unit) {
+                            document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
+                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`)}</p>`;
+                            const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
+                            const mobileTitle = document.getElementById('mobile-scene-title');
+                            const mobileDesc = document.getElementById('mobile-scene-description');
+                            const actions = document.getElementById('scene-actions');
+                            if (mobileSheet) mobileSheet.classList.remove('rich-content');
+                            if (mobileTitle) mobileTitle.textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
+                            if (mobileDesc) mobileDesc.textContent = unit === this.player || this.party.includes(unit) ? this._label('ui.chooseAction', 'Choose your next action.') : `${unit.name} is acting...`;
+                            if (actions?.dataset?.richHidden) {
+                                delete actions.dataset.richHidden;
+                                actions.style.display = '';
+                            }
+                            if (unit === this.player || this.party.includes(unit)) {
+                                this.showActorActions(unit);
+                            } else if (actions) {
+                                actions.innerHTML = '';
+                            }
+                            return;
+                        }
+                    }
                     this.showExplorationActions();
                 } catch (err) {
                     this.updateScene(this._label('ui.exploration', 'Exploration'), this._label('ui.chooseAction', 'Choose your next action.'), false);
@@ -6609,7 +6643,7 @@
                         ${statCard('party.perks', 'Perks', perks)}
                         ${statCard('character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
                     </div>
-                    ${perkButton}<button class="nav-btn" style="margin-top:12px" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button></div>`;
+                    <div class="party-stats-footer">${perkButton}<button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button></div></div>`;
                 this._setRichSceneContent(`${p.name} ${this._label('party.stats', 'Stats')}`, html);
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },

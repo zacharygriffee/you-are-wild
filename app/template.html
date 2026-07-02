@@ -499,6 +499,19 @@
             margin-top: 12px;
         }
 
+        .party-stats-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 1;
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-sm);
+            padding-top: var(--space-sm);
+            margin-top: var(--space-sm);
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-subtle);
+        }
+
         .party-stats-view .option-card {
             text-align: left;
             cursor: default;
@@ -1489,6 +1502,10 @@
             }
 
             .mobile-scene-description .party-stats-header {
+                background: var(--bg-secondary);
+            }
+
+            .mobile-scene-description .party-stats-footer {
                 background: var(--bg-secondary);
             }
 

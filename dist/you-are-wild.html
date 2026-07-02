@@ -9143,27 +9143,29 @@
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 const isNewMode = mode === 'new';
-                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + (isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.') + '</p>';
-                if (!isNewMode) html += '<div class="save-manager-toolbar"><button class="nav-btn primary" onclick="App.showNewGameManager()">🆕 New Game</button><span>Choose a slot next; occupied slots warn before overwrite.</span></div>';
+                const saveButton = (classes, label, title, onclick, style = '') => `<button class="${classes}" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}"${style ? ` style="${style}"` : ''} onclick="${onclick}">${this._escapeHtml(label)}</button>`;
+                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newTitle' : 'save.title', isNewMode ? 'Choose New Game Slot' : 'Save Slots')) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + this._escapeHtml(this._label(isNewMode ? 'save.newDescription' : 'save.description', isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.')) + '</p>';
+                if (!isNewMode) html += '<div class="save-manager-toolbar">' + saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()') + '<span>' + this._escapeHtml(this._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
                     const saveTime = this._getSaveTime(slotName);
                     const hasData = parseInt(saveTime) > 0;
-                    const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : 'Empty';
-                    const slotStatus = hasData ? 'Saved game' : 'Open slot';
+                    const slotLabel = this._label('save.slotLabel', 'Slot {number}', { number: i });
+                    const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : this._label('save.empty', 'Empty');
+                    const slotStatus = hasData ? this._label('save.savedGame', 'Saved game') : this._label('save.openSlot', 'Open slot');
                     html += '<div class="save-slot-card ' + (hasData ? 'occupied' : 'empty') + (isActive ? ' active' : '') + '">';
-                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '<span class="save-slot-badge">' + slotStatus + '</span></div><div class="save-slot-time">' + timeStr + '</div></div>';
+                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + this._escapeHtml(slotLabel) + '<span class="save-slot-badge">' + this._escapeHtml(slotStatus) + '</span></div><div class="save-slot-time">' + this._escapeHtml(timeStr) + '</div></div>';
                     html += '<div class="save-slot-actions">';
-                    if (isNewMode) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">' + (hasData ? '🆕 Overwrite Slot' : '🆕 Use Empty Slot') + '</button>';
-                    if (!isNewMode && !hasData) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Game</button>';
-                    if (!isNewMode && hasData) html += '<button class="nav-btn" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Run</button>';
-                    if (hasData) html += '<button class="nav-btn" onclick="App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })">📂 Load</button>';
-                    if (!isNewMode) html += '<button class="nav-btn" onclick="App.saveToSlot(\'' + slotName + '\')">💾 Save</button>';
-                    if (hasData) html += '<button class="nav-btn" style="color:var(--accent-danger);" onclick="App.deleteSlot(\'' + slotName + '\')">🗑️ Delete</button>';
+                    if (isNewMode) html += saveButton('nav-btn primary', '🆕 ' + this._label(hasData ? 'save.overwriteSlot' : 'save.useEmpty', hasData ? 'Overwrite Slot' : 'Use Empty Slot'), this._label(hasData ? 'save.action.overwrite' : 'save.action.useEmpty', hasData ? 'Overwrite {slot} with a new game' : 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
+                    if (!isNewMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
+                    if (!isNewMode && hasData) html += saveButton('nav-btn', '🆕 ' + this._label('save.newRun', 'New Run'), this._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
+                    if (hasData) html += saveButton('nav-btn', '📂 ' + this._label('save.load', 'Load'), this._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })');
+                    if (!isNewMode) html += saveButton('nav-btn', '💾 ' + this._label('save.save', 'Save'), this._label('save.action.save', 'Save current game to {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
+                    if (hasData) html += saveButton('nav-btn', '🗑️ ' + this._label('save.delete', 'Delete'), this._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
                     html += '</div></div>';
                 }
-                html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;"><button class="nav-btn save-manager-close" onclick="returnToGame()">Close</button></div></div>';
+                html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;">' + saveButton('nav-btn save-manager-close', this._label('save.close', 'Close'), this._label('save.close', 'Close'), 'returnToGame()') + '</div></div>';
                 document.getElementById('save-manager').innerHTML = html;
                 document.getElementById('save-manager').style.display = 'block';
             },
@@ -10309,6 +10311,30 @@ const CONTENT_SYSTEM = {
             'party.dismiss': 'Dismiss',
             'party.roleFor': 'Party role for {name}',
             'party.aiOrderFor': 'AI order for {name}',
+            'save.title': 'Save Slots',
+            'save.newTitle': 'Choose New Game Slot',
+            'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.',
+            'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
+            'save.toolbarNew': 'New Game',
+            'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.',
+            'save.slotLabel': 'Slot {number}',
+            'save.savedGame': 'Saved game',
+            'save.openSlot': 'Open slot',
+            'save.empty': 'Empty',
+            'save.useEmpty': 'Use Empty Slot',
+            'save.overwriteSlot': 'Overwrite Slot',
+            'save.newRun': 'New Run',
+            'save.load': 'Load',
+            'save.save': 'Save',
+            'save.delete': 'Delete',
+            'save.close': 'Close',
+            'save.action.newGame': 'Choose a slot for a new game',
+            'save.action.useEmpty': 'Start new game in {slot}',
+            'save.action.overwrite': 'Overwrite {slot} with a new game',
+            'save.action.newRun': 'Start a new run in {slot}',
+            'save.action.load': 'Load {slot}',
+            'save.action.save': 'Save current game to {slot}',
+            'save.action.delete': 'Delete {slot}',
             'target.actors': 'Actors',
             'target.targets': 'Targets',
             'target.clear': 'Clear',
@@ -10350,6 +10376,30 @@ const CONTENT_SYSTEM = {
             'party.dismiss': 'Despedir',
             'party.roleFor': 'Rol de grupo para {name}',
             'party.aiOrderFor': 'Orden IA para {name}',
+            'save.title': 'Partidas',
+            'save.newTitle': 'Elegir slot de partida nueva',
+            'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.',
+            'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
+            'save.toolbarNew': 'Nueva partida',
+            'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.',
+            'save.slotLabel': 'Slot {number}',
+            'save.savedGame': 'Partida guardada',
+            'save.openSlot': 'Slot abierto',
+            'save.empty': 'Vacio',
+            'save.useEmpty': 'Usar slot vacio',
+            'save.overwriteSlot': 'Sobrescribir slot',
+            'save.newRun': 'Nueva partida',
+            'save.load': 'Cargar',
+            'save.save': 'Guardar',
+            'save.delete': 'Borrar',
+            'save.close': 'Cerrar',
+            'save.action.newGame': 'Elegir un slot para una partida nueva',
+            'save.action.useEmpty': 'Iniciar partida nueva en {slot}',
+            'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva',
+            'save.action.newRun': 'Iniciar una nueva partida en {slot}',
+            'save.action.load': 'Cargar {slot}',
+            'save.action.save': 'Guardar partida actual en {slot}',
+            'save.action.delete': 'Borrar {slot}',
             'target.actors': 'Actores',
             'target.targets': 'Objetivos',
             'target.clear': 'Limpiar',

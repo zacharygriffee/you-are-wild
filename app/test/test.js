@@ -419,9 +419,10 @@ test('Settings clear saves button is wired to an implemented handler', () => {
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
   assertContains(appContent, "showSaveManager('new')", 'New game manager should render save slots in new-run mode');
-  assertContains(appContent, 'App.showNewGameManager()">🆕 New Game', 'Load manager should expose an always-visible New Game entry point');
-  assertContains(appContent, '🆕 New Run', 'Load/save slot manager should expose new-run slot takeover');
-  assertContains(appContent, 'Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot', 'Slot manager copy should describe slot-specific actions');
+  assertContains(appContent, "saveButton('nav-btn primary'", 'Save manager should generate accessible action buttons');
+  assertContains(appContent, "this._label('save.toolbarNew'", 'Load manager should expose a localized always-visible New Game entry point');
+  assertContains(contentContent, "'save.newRun': 'New Run'", 'Load/save slot manager should expose localized new-run slot takeover');
+  assertContains(contentContent, "'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.'", 'Slot manager copy should describe slot-specific actions');
   assertContains(template, '.save-slot-card', 'Save slot cards should have responsive layout styles');
   assertContains(template, '.save-slot-card.empty', 'Empty save slots should have distinct styling');
   assertContains(template, '.save-manager-toolbar', 'Save manager should style its top-level New Game action');
@@ -435,9 +436,10 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(template, 'grid-template-columns: repeat(2, minmax(0, 1fr))', 'Save slot actions should collapse to mobile grid');
   assertContains(appContent, 'class="save-manager-shell"', 'Save manager should render responsive shell');
   assertContains(appContent, 'class="save-slot-actions"', 'Save slot actions should use responsive action group');
-  assertContains(appContent, 'Open slot', 'Empty slots should be labeled as open new-game slots');
-  assertContains(appContent, 'Use Empty Slot', 'New-game mode should label empty slot selection clearly');
-  assertContains(appContent, 'Overwrite Slot', 'New-game mode should label occupied slot takeover clearly');
+  assertContains(appContent, "this._label('save.openSlot'", 'Empty slots should be labeled as open new-game slots');
+  assertContains(contentContent, "'save.useEmpty': 'Use Empty Slot'", 'New-game mode should label empty slot selection clearly');
+  assertContains(contentContent, "'save.overwriteSlot': 'Overwrite Slot'", 'New-game mode should label occupied slot takeover clearly');
+  assertContains(appContent, 'aria-label="${this._escapeHtml(title)}"', 'Generated save slot buttons should expose accessible names');
   assertContains(appContent, 'Start a new game in ', 'New game overwrite warning should name the selected slot');
   assertContains(appContent, 'This will overwrite that save slot. This cannot be undone.', 'New game overwrite warning should be irreversible');
   assertContains(appContent, 'with the current game? This cannot be undone.', 'Manual save should warn before overwriting another occupied slot');
@@ -625,12 +627,18 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
+          'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
+          'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
+          'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
           'target.actors': 'Actors', 'target.targets': 'Targets'
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
+          'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
+          'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
+          'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
           'target.actors': 'Actores', 'target.targets': 'Objetivos'
         }
       },
@@ -3570,6 +3578,22 @@ test('Language setting persists and updates localized labels', () => {
   const prefs = JSON.parse(storage.get('yaw-content-prefs'));
   assertEqual(prefs.language, 'es', 'Language preference should persist');
   assertEqual(App._uiLabel('fight'), 'Luchar', 'Action labels should use active locale');
+});
+
+test('Save manager renders localized accessible slot actions', () => {
+  const { App, elements, storage } = loadAppForCombat();
+  storage.set('yaw-save-time-slot1', '1710000000000');
+  App.updateLanguage('es');
+  App.renderSaveManager('load');
+  const html = elements.get('save-manager').innerHTML;
+  assertContains(html, 'Partidas', 'Save manager title should localize');
+  assertContains(html, 'Nueva partida', 'New game entry should localize');
+  assertContains(html, 'Partida guardada', 'Occupied slot badge should localize');
+  assertContains(html, 'Slot abierto', 'Empty slot badge should localize');
+  assertContains(html, 'aria-label="Iniciar una nueva partida en Slot 1"', 'New run action should expose localized accessible label');
+  assertContains(html, 'aria-label="Cargar Slot 1"', 'Load action should expose localized accessible label');
+  assertContains(html, 'aria-label="Borrar Slot 1"', 'Delete action should expose localized accessible label');
+  assertContains(html, 'aria-label="Iniciar partida nueva en Slot 2"', 'Empty slot new-game action should expose localized accessible label');
 });
 
 test('Combat log export returns filtered text', () => {

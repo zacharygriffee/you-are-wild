@@ -1780,6 +1780,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   App.showIntentMenu('creature', 'friendly-1');
   assertContains(body.innerHTML, 'aria-label="Fight Friendly"', 'Creature action menu should expose fight');
   assertContains(body.innerHTML, 'aria-label="Flirt Friendly"', 'Creature action menu should expose baseline interaction');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','sheet')", 'Creature action menu should open sub-action sheet for registered primary actions');
   App.closeMobileContextMenu();
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
@@ -1865,6 +1866,22 @@ test('Intent menu dispatch keeps existing outside-combat action flow', () => {
   assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-1', 'Intent command should preserve selected actor ids');
   assert(enemy.CPun < 70, 'Intent dispatch should reuse existing outside-combat creature action flow');
   assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Intent dispatch should preserve existing action log semantics');
+});
+
+test('Intent sub-action sheet records selected sub-action while preserving dispatch', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', Flir: 30, cha: 20 });
+  const friendly = makeUnit('Friendly', { id: 'friendly-sub', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [friendly];
+  App.openIntentSubActionSheet('creature', 'friendly-sub', 'flirt', 'sheet');
+  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','tease')", 'Sub-action sheet should expose the default sub-action dispatch');
+  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
+  App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');
+  assertEqual(App.lastIntentCommand.subAction, 'dance', 'Selected sub-action should be recorded on the normalized intent command');
+  assertEqual(App.defaultSubActions.flirt, 'dance', 'Selected sub-action should become the new default for that primary action');
+  assert(friendly.CPle > 0, 'Sub-action selection should preserve existing outside-combat action execution');
 });
 
 test('Selected party actor can interact with party targets outside combat', () => {
@@ -2435,7 +2452,9 @@ test('Desktop creature card action labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
   App.closeMobileContextMenu();
   App.showIntentMenu('creature', 'friendly-1', 'secondary-click');
-  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-1','fight','secondary-click')", 'Secondary-click intent sheet should preserve command source');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','secondary-click')", 'Secondary-click intent sheet should preserve command source into sub-action picker');
+  App.openIntentSubActionSheet('creature', 'friendly-1', 'flirt', 'secondary-click');
+  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-1','flirt','secondary-click','tease')", 'Sub-action sheet should dispatch the default sub-action with preserved source');
   App.closeMobileContextMenu();
 });
 
@@ -4038,6 +4057,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Luchar Ally B"', 'Party action menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Ally B"', 'Party action menu should localize pleasure accessible label');
   assertContains(body.innerHTML, 'aria-label="Inspeccionar Ally B"', 'Party action menu should localize inspect accessible label');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',2,'fight','sheet')", 'Party action menu should open sub-action sheet for registered primary actions');
   App.closeMobileContextMenu();
 });
 
@@ -6106,7 +6126,9 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
   App.mobilePartyContextAction('actions', 1);
   assertContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party long-press actions entry should open the shared intent sheet');
-  assertContains(body.innerHTML, "App.selectIntent('party',1,'fight','sheet')", 'Party intent sheet should keep shared dispatch');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',1,'fight','sheet')", 'Party intent sheet should route primary actions through the sub-action picker');
+  App.openIntentSubActionSheet('party', 1, 'fight', 'sheet');
+  assertContains(body.innerHTML, "App.selectIntent('party',1,'fight','sheet','attack')", 'Party sub-action sheet should dispatch through shared intent selection');
   App.closeMobileContextMenu();
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('lead', 1);

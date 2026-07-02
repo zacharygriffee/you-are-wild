@@ -11342,9 +11342,7 @@ const WorldGen = (() => {
             },
             _intentCommand(type, targetRef, action, subAction = null, source = 'sheet') {
                 const actorIds = this._getExplorationActors().map(actor => actor.id || actor.name);
-                const target = type === 'party'
-                    ? this.party[Number(targetRef)]
-                    : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
+                const target = this._intentTarget(type, targetRef);
                 return {
                     actorIds,
                     action,
@@ -11354,11 +11352,14 @@ const WorldGen = (() => {
                     source
                 };
             },
-            showIntentMenu(type, targetRef, source = 'sheet') {
-                const isParty = type === 'party';
-                const target = isParty
+            _intentTarget(type, targetRef) {
+                return type === 'party'
                     ? this.party[Number(targetRef)]
                     : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
+            },
+            showIntentMenu(type, targetRef, source = 'sheet') {
+                const isParty = type === 'party';
+                const target = this._intentTarget(type, targetRef);
                 if (!target || this._isCorpse(target)) return;
                 this.closeMobileContextMenu();
                 const targetName = target.name || (isParty ? 'party member' : 'creature');
@@ -11372,6 +11373,8 @@ const WorldGen = (() => {
                     const title = key === 'close' ? label : `${label} ${targetName}`;
                     const handler = action === 'close'
                         ? 'App.closeMobileContextMenu()'
+                        : this.SUB_ACTIONS[action]
+                            ? `App.openIntentSubActionSheet('${type}',${targetArg},'${action}','${commandSource}')`
                         : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
                     return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
@@ -11403,9 +11406,40 @@ const WorldGen = (() => {
                 document.body.insertAdjacentHTML('beforeend', html);
                 this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
             },
-            selectIntent(type, targetRef, action, source = 'sheet') {
+            openIntentSubActionSheet(type, targetRef, action, source = 'sheet') {
+                const target = this._intentTarget(type, targetRef);
+                if (!target || this._isCorpse(target) || !this.SUB_ACTIONS[action]) {
+                    return this.selectIntent(type, targetRef, action, source);
+                }
+                this.closeMobileContextMenu();
+                const isParty = type === 'party';
+                const actor = this._getExplorationActor();
+                const subActions = this._getAvailableSubActions(action, actor, target);
+                const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
+                const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
+                const title = `${this._uiLabel(action)} ${target.name || ''}`.trim();
+                const defaultSub = this._getDefaultSubAction(action);
+                const defaultLabel = this._getActionLabel(action, defaultSub);
+                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}"><div class="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${this._escapeHtml(defaultLabel)}</button>`;
+                subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
+                    const label = this._escapeHtml(sub.label);
+                    const disabled = sub.available ? '' : ' disabled';
+                    const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
+                    html += `<button class="action-btn" role="menuitem" title="${label}${this._escapeHtml(settingHint)}" aria-label="${label}${this._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
+                });
+                const backLabel = this._escapeHtml(this._label('ui.back', 'Back'));
+                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
+                html += `<button class="action-btn" role="menuitem" title="${backLabel}" aria-label="${backLabel}" onclick="App.showIntentMenu('${type}',${targetArg},'${commandSource}')">${backLabel}</button>`;
+                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
+                html += '</div></div>';
+                document.body.insertAdjacentHTML('beforeend', html);
+                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+            },
+            selectIntent(type, targetRef, action, source = 'sheet', subAction = null) {
                 this._haptic(8);
-                const command = this._intentCommand(type, targetRef, action, null, source);
+                if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
+                const command = this._intentCommand(type, targetRef, action, subAction, source);
                 this.lastIntentCommand = command;
                 this.closeMobileContextMenu();
                 if (type === 'party') {
@@ -12633,6 +12667,7 @@ const CONTENT_SYSTEM = {
             'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
             'ui.close': 'Close',
             'ui.cancel': 'Cancel',
+            'ui.back': 'Back',
             'ui.actionLegend': 'Action legend',
             'ui.tagline': 'Explore. Change. Survive.',
             'ui.menu.continue': 'Continue Last Game',
@@ -13244,6 +13279,7 @@ const CONTENT_SYSTEM = {
             'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
             'ui.close': 'Cerrar',
             'ui.cancel': 'Cancelar',
+            'ui.back': 'Volver',
             'ui.actionLegend': 'Leyenda de acciones',
             'ui.tagline': 'Explora. Cambia. Sobrevive.',
             'ui.menu.continue': 'Continuar ultima partida',

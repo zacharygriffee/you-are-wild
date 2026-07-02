@@ -5866,11 +5866,19 @@
                 const role = unit?.partyRole || 'companion';
                 return this.PARTY_ROLES[role] ? role : 'companion';
             },
+            _partyAIOrderLabel(order) {
+                const key = this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
+                return this._label(`party.aiOrder.${key}`, this.PARTY_AI_ORDERS[key]);
+            },
+            _partyRoleLabel(role) {
+                const key = this.PARTY_ROLES[role] ? role : 'companion';
+                return this._label(`party.role.${key}`, this.PARTY_ROLES[key]);
+            },
             setPartyAIOrder(index, order) {
                 const unit = this.party[index];
                 if (!unit || unit === this.player || !this.PARTY_AI_ORDERS[order]) return;
                 unit.aiOrder = order;
-                this.log.push({ text: `${unit.name} will act ${this.PARTY_AI_ORDERS[order].toLowerCase()}.`, type: 'discovery' });
+                this.log.push({ text: `${unit.name} will act ${this._partyAIOrderLabel(order).toLowerCase()}.`, type: 'discovery' });
                 this.renderParty();
                 this.renderLog();
                 this.autoSave();
@@ -5879,7 +5887,7 @@
                 const unit = this.party[index];
                 if (!unit || unit === this.player || !this.PARTY_ROLES[role]) return;
                 unit.partyRole = role;
-                this.log.push({ text: `${unit.name} is assigned as ${this.PARTY_ROLES[role].toLowerCase()}.`, type: 'discovery' });
+                this.log.push({ text: `${unit.name} is assigned as ${this._partyRoleLabel(role).toLowerCase()}.`, type: 'discovery' });
                 this.renderParty();
                 this.renderLog();
                 this.autoSave();
@@ -8372,7 +8380,7 @@
                     }
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-                const partyRole = isParty && unit.name !== this.player?.name ? this.PARTY_ROLES[this._getPartyRole(unit)] : '';
+                const partyRole = isParty && unit.name !== this.player?.name ? this._partyRoleLabel(this._getPartyRole(unit)) : '';
                 const partyStatus = unit.name === this.player?.name ? this._label('party.you', 'You') : `${this._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
                 const status = isParty ? partyStatus : this._unitDispositionLabel(unit);
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${this._combatRowLabel(unit.combatRow)}` : '';
@@ -8401,7 +8409,7 @@
                 const isLeader = isParty && this._getPartyLeader() === unit;
                 const unitName = unit.name || 'party member';
                 const unitLabel = this._escapeHtml(unitName);
-                const roleLabel = isAlly ? this._escapeHtml(this.PARTY_ROLES[this._getPartyRole(unit)]) : '';
+                const roleLabel = isAlly ? this._escapeHtml(this._partyRoleLabel(this._getPartyRole(unit))) : '';
                 const canDragPartyMember = isAlly && !this.combatState.active;
                 const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
                 const cardClass = `unit-card ${isExpanded ? 'expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}`;
@@ -8443,12 +8451,12 @@
                     }
                     if (isAlly) {
                         const role = this._getPartyRole(unit);
-                        const roleOptions = Object.entries(this.PARTY_ROLES).map(([key, label]) => `<option value="${key}" ${role === key ? 'selected' : ''}>${label}</option>`).join('');
+                        const roleOptions = Object.keys(this.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${this._escapeHtml(this._partyRoleLabel(key))}</option>`).join('');
                         const roleTitle = this._escapeHtml(this._label('party.role', 'Role'));
                         const roleAria = this._escapeHtml(this._label('party.roleFor', 'Party role for {name}', { name: unitName }));
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${roleTitle}" aria-label="${roleAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select>`;
                         const order = this._getPartyAIOrder(unit);
-                        const options = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
+                        const options = Object.keys(this.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${this._escapeHtml(this._partyAIOrderLabel(key))}</option>`).join('');
                         const orderTitle = this._escapeHtml(this._label('party.aiOrder', 'AI Order'));
                         const orderAria = this._escapeHtml(this._label('party.aiOrderFor', 'AI order for {name}', { name: unitName }));
                         actionButtons += `<select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
@@ -9591,8 +9599,8 @@
                 const role = this._getPartyRole(unit);
                 const order = this._getPartyAIOrder(unit);
                 const actionButton = (label, action, extraClass = '') => `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${this._escapeHtml(label)}</button>`;
-                const roleOptions = Object.entries(this.PARTY_ROLES).map(([key, label]) => `<option value="${key}" ${role === key ? 'selected' : ''}>${label}</option>`).join('');
-                const orderOptions = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
+                const roleOptions = Object.keys(this.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${this._escapeHtml(this._partyRoleLabel(key))}</option>`).join('');
+                const orderOptions = Object.keys(this.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${this._escapeHtml(this._partyAIOrderLabel(key))}</option>`).join('');
                 const menuLabel = this._label('ui.partyActions', 'Party actions');
                 const roleLabel = this._label('party.role', 'Role');
                 const orderLabel = this._label('party.aiOrder', 'AI Order');
@@ -10683,6 +10691,16 @@ const CONTENT_SYSTEM = {
             'party.makeLeader': 'Make Leader',
             'party.role': 'Role',
             'party.aiOrder': 'AI Order',
+            'party.role.companion': 'Companion',
+            'party.role.scout': 'Scout',
+            'party.role.guard': 'Guard',
+            'party.role.support': 'Support',
+            'party.role.gatherer': 'Gatherer',
+            'party.aiOrder.aggressive': 'Aggressive',
+            'party.aiOrder.defensive': 'Defensive',
+            'party.aiOrder.healer': 'Healer',
+            'party.aiOrder.scavenger': 'Scavenger',
+            'party.aiOrder.passive': 'Passive',
             'party.dismiss': 'Dismiss',
             'party.statsFor': 'Show stats for {name}',
             'party.makeLeaderFor': 'Make {name} party leader',
@@ -10860,6 +10878,16 @@ const CONTENT_SYSTEM = {
             'party.makeLeader': 'Hacer lider',
             'party.role': 'Rol',
             'party.aiOrder': 'Orden IA',
+            'party.role.companion': 'Companero',
+            'party.role.scout': 'Explorador',
+            'party.role.guard': 'Guardia',
+            'party.role.support': 'Apoyo',
+            'party.role.gatherer': 'Recolector',
+            'party.aiOrder.aggressive': 'Agresivo',
+            'party.aiOrder.defensive': 'Defensivo',
+            'party.aiOrder.healer': 'Sanador',
+            'party.aiOrder.scavenger': 'Carronero',
+            'party.aiOrder.passive': 'Pasivo',
             'party.dismiss': 'Despedir',
             'party.statsFor': 'Mostrar estadisticas de {name}',
             'party.makeLeaderFor': 'Hacer lider a {name}',

@@ -7651,10 +7651,12 @@ const WorldGen = (() => {
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
-                    const handler = this.SUB_ACTIONS[key]
+                    const opensSubActionSheet = Boolean(this.SUB_ACTIONS[key]);
+                    const handler = opensSubActionSheet
                         ? `App.openExplorationTargetSubActionSheet('${key}','target-bar')`
                         : `App.resolveExplorationTargetAction('${key}',null,'target-bar')`;
-                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
+                    const dialogAttrs = opensSubActionSheet ? ' aria-haspopup="dialog" aria-controls="mobile-context-menu"' : '';
+                    return `<button class="action-btn" title="${title}" aria-label="${title}"${dialogAttrs} onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));

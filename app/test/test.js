@@ -2585,8 +2585,10 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'Actores: Actor', 'Context actions should show localized selected actor names');
   assertContains(actionsHtml, 'Objetivos: Ally Target, Creature Target', 'Context actions should show localized selected target names');
   assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos"', 'Selected-target action labels should use localized target counts');
+  assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="mobile-context-menu"', 'Selected-target sub-action buttons should advertise and target their dialog popup');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
+  assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
   assertContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','target-bar')", 'Context actions should route registered actions through the selected-target sub-action picker');

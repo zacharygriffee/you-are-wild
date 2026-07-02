@@ -2505,7 +2505,8 @@ test('One actor needs enough stats to handle multiple exploration targets', () =
   App.player = actor;
   App.party = [actor, targetA, targetB];
   App.updateLanguage('es');
-  App.outsideActionForPartyTargets('flirt', [1, 2]);
+  const resolved = App.outsideActionForPartyTargets('flirt', [1, 2]);
+  assertEqual(resolved, false, 'Direct multi-target helper should report stat-gated failure');
   assertEqual(targetA.CPle, 0, 'Low-stat actor should not affect first multi-target target');
   assertEqual(targetB.CPle, 0, 'Low-stat actor should not affect second multi-target target');
   assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con coquetear todavia.', 'Failed multi-target action should localize the stat gate');
@@ -2539,7 +2540,8 @@ test('Capable actor can resolve one action across multiple exploration targets',
   App.party = [actor];
   App.creatures = [targetA, targetB];
   App.updateLanguage('es');
-  App.outsideActionForCreatureTargets('flirt', ['target-a', 'target-b']);
+  const resolved = App.outsideActionForCreatureTargets('flirt', ['target-a', 'target-b']);
+  assertEqual(resolved, true, 'Direct multi-target helper should report successful resolution');
   assert(targetA.CPle > 0, 'Capable actor should affect first target');
   assert(targetB.CPle > 0, 'Capable actor should affect second target');
   assertContains(App.log[App.log.length - 1].text, 'Actor termina una accion multiobjetivo de coquetear sobre Target A, Target B.', 'Successful multi-target action summary should localize');

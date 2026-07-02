@@ -8119,13 +8119,13 @@ const WorldGen = (() => {
 
             outsideActionForPartyTargets(action, targetIndexes, actorId = null, options = {}) {
                 const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
-                this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
+                return this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
             },
 
             outsideActionForCreatureTargets(action, targetIds, actorId = null, options = {}) {
                 const ids = new Set((targetIds || []).map(id => String(id)));
                 const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
-                this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
+                return this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId), options);
             },
 
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {

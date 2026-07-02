@@ -1759,7 +1759,7 @@ test('Combat actions emit module hook payloads', () => {
 });
 
 test('Exploration context keeps creature interaction in panels', () => {
-  const { App, elements } = loadAppForCombat();
+  const { App, elements, body } = loadAppForCombat();
   const player = makeUnit('You');
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
   const neutral = makeUnit('Neutral', { id: 'neutral-1', disposition: App.DISPOSITION.NEUTRAL });
@@ -1775,8 +1775,12 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(actionsHtml, 'title="Items"', 'Inventory should remain in the main context');
   assertContains(actionsHtml, 'aria-label="Items"', 'Inventory icon should expose an aria label');
   assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
-  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should offer fight');
-  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fuck','neutral-1')", 'Neutral card should offer baseline interaction');
+  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1')", 'Friendly card should expose creature action menu');
+  assertNotContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should not spam primary actions by default');
+  App.showIntentMenu('creature', 'friendly-1');
+  assertContains(body.innerHTML, 'aria-label="Fight Friendly"', 'Creature action menu should expose fight');
+  assertContains(body.innerHTML, 'aria-label="Flirt Friendly"', 'Creature action menu should expose baseline interaction');
+  App.closeMobileContextMenu();
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
 
@@ -1825,7 +1829,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(actionsHtml, "selectTarget('fight')", 'Combat action bar should still expose enemy action targeting');
   assertContains(actionsHtml, 'App.executeFeedAction()', 'Combat action bar should still expose party feed action');
-  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','neutral-1')", 'Neutral creature card should keep baseline interaction actions');
+  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1')", 'Neutral creature card should keep baseline interaction actions in an action menu');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
 });
@@ -1842,6 +1846,24 @@ test('Selected party actor resolves exploration attacks against creatures', () =
   App.outsideActionForCreature('fight', 'enemy-explore');
   assert(enemy.CPun < 70, 'Selected ally stats should drive exploration attack damage');
   assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Exploration log should name selected actor');
+});
+
+test('Intent menu dispatch keeps existing outside-combat action flow', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', Figh: 1 });
+  const ally = makeUnit('Ally', { id: 'ally-1', Figh: 40 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-intent', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.selectExplorationActor(1);
+  App.selectIntent('creature', 'enemy-intent', 'fight');
+  assertEqual(App.lastIntentCommand.action, 'fight', 'Intent command should record selected action');
+  assertEqual(App.lastIntentCommand.targetId, 'enemy-intent', 'Intent command should record selected target');
+  assertEqual(App.lastIntentCommand.targetType, 'creature', 'Intent command should record target type');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-1', 'Intent command should preserve selected actor ids');
+  assert(enemy.CPun < 70, 'Intent dispatch should reuse existing outside-combat creature action flow');
+  assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Intent dispatch should preserve existing action log semantics');
 });
 
 test('Selected party actor can interact with party targets outside combat', () => {
@@ -2386,7 +2408,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
 });
 
 test('Desktop creature card action labels localize', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, body } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, Fuck: 30, cha: 20 });
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, MPle: 100, willing: true, quest: { id: 'quest-1', title: 'Help' } });
   const merchant = makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT });
@@ -2398,13 +2420,18 @@ test('Desktop creature card action labels localize', () => {
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Marcar Friendly como objetivo"', 'Creature target button should localize accessible label');
   assertContains(html, '>Objetivo<', 'Creature target visible label should localize');
-  assertContains(html, 'aria-label="Luchar Friendly"', 'Creature fight icon should localize accessible label');
-  assertContains(html, 'aria-label="Seducir Friendly"', 'Creature pleasure icon should localize accessible label');
+  assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
+  assertContains(html, "showIntentMenu('creature','friendly-1')", 'Creature card should expose compact action menu');
+  assertNotContains(html, "outsideActionForCreature('fight','friendly-1')", 'Creature card should not show primary action spam by default');
   assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
   assertContains(html, 'aria-label="Aceptar mision de Friendly"', 'Quest action should localize accessible label');
   assertContains(html, '>📜 Aceptar mision<', 'Quest visible label should localize');
   assertContains(html, 'aria-label="Comerciar con Merchant"', 'Merchant trade action should localize accessible label');
   assertContains(html, '>🪙 Comerciar<', 'Merchant trade visible label should localize');
+  App.showIntentMenu('creature', 'friendly-1');
+  assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
+  assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
+  App.closeMobileContextMenu();
 });
 
 test('Exploration target summary escapes actor and target names', () => {
@@ -3742,7 +3769,7 @@ test('Party panel exposes management controls and leader badge', () => {
 });
 
 test('Desktop party card management labels localize', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const allyA = makeUnit('Ally A', { id: 'ally-a' });
   const allyB = makeUnit('Ally B', { id: 'ally-b', aiOrder: 'defensive' });
@@ -3756,9 +3783,8 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, '>Actuar<', 'Actor selection visible label should localize');
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
   assertContains(html, '>Objetivo<', 'Target mark visible label should localize');
-  assertContains(html, 'aria-label="Luchar Ally B"', 'Fight icon should expose localized accessible label');
-  assertContains(html, 'aria-label="Seducir Ally B"', 'Pleasure icon should expose localized accessible label');
-  assertContains(html, 'aria-label="Inspeccionar Ally B"', 'Inspect icon should expose localized accessible label');
+  assertContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party action menu should expose localized accessible label');
+  assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
   assertContains(html, '>Estadisticas<', 'Stats visible label should localize');
   assertContains(html, 'aria-label="Hacer lider a Ally B"', 'Leader control should expose localized accessible label');
@@ -3775,6 +3801,12 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, '<option value="passive" >Pasivo</option>', 'AI order option text should localize');
   assertContains(html, 'aria-label="Despedir a Ally B"', 'Dismiss control should expose localized accessible label');
   assertContains(html, '>Despedir<', 'Dismiss visible label should localize');
+  App.selectExplorationActor(1);
+  App.showIntentMenu('party', 2);
+  assertContains(body.innerHTML, 'aria-label="Luchar Ally B"', 'Party action menu should localize fight accessible label');
+  assertContains(body.innerHTML, 'aria-label="Seducir Ally B"', 'Party action menu should localize pleasure accessible label');
+  assertContains(body.innerHTML, 'aria-label="Inspeccionar Ally B"', 'Party action menu should localize inspect accessible label');
+  App.closeMobileContextMenu();
 });
 
 test('Desktop creature card status and detail labels localize', () => {
@@ -4921,7 +4953,9 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
-  assertContains(creatureCard, "outsideActionForCreature('fight'", 'Existing creature actions should remain available from creature card');
+  assertContains(creatureCard, "outsideActionForCreature('inspect'", 'Creature inspect action should remain available from creature card');
+  assertContains(creatureCard, "showIntentMenu('creature','fox-1')", 'Existing creature actions should move behind the card action menu');
+  assertNotContains(creatureCard, "outsideActionForCreature('fight'", 'Default creature card should not show primary action spam');
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
@@ -5719,7 +5753,7 @@ test('Mobile party chips expose long-press management handlers', () => {
 });
 
 test('Mobile unit chip actions expose localized accessible labels', () => {
-  const { App } = loadAppForCombat();
+  const { App, body } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-1' });
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, willing: true, quest: { id: 'quest-1', title: 'Help' } });
@@ -5732,16 +5766,23 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(partyHtml, 'Aliado', 'Mobile party status should localize');
   assertContains(partyHtml, 'aria-label="Seleccionar Ally para actuar"', 'Mobile party actor button should localize accessible label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
+  assertContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party action menu button should localize accessible label');
+  assertContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile party stats button should localize accessible label');
   assertContains(partyHtml, '>Actuar<', 'Mobile party actor button text should localize');
   assertContains(partyHtml, '>Objetivo<', 'Mobile party target button text should localize');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');
   assertContains(creatureHtml, 'Amistoso', 'Mobile creature disposition should localize');
   assertContains(creatureHtml, 'aria-label="Castigo: 100%"', 'Mobile creature health bar should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Marcar Friendly como objetivo"', 'Mobile creature target button should localize accessible label');
-  assertContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile fight icon should expose localized accessible label');
-  assertContains(creatureHtml, 'aria-label="Seducir Friendly"', 'Mobile pleasure icon should expose localized accessible label');
+  assertContains(creatureHtml, 'aria-label="Inspeccionar Friendly"', 'Mobile inspect icon should expose localized accessible label');
+  assertContains(creatureHtml, 'aria-label="Acciones de criatura: Friendly"', 'Mobile creature action menu button should localize accessible label');
+  assertNotContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile creature chip should not show primary action spam by default');
   assertContains(creatureHtml, 'aria-label="Reclutar Friendly"', 'Mobile recruit icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Aceptar mision Friendly"', 'Mobile quest icon should expose localized accessible label');
+  App.showIntentMenu('creature', 'friendly-1');
+  assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Mobile intent menu should localize fight accessible label');
+  assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Mobile intent menu should localize pleasure accessible label');
+  App.closeMobileContextMenu();
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
   assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
   assertContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile trade icon should expose localized accessible label');

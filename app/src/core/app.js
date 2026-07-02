@@ -6080,7 +6080,7 @@
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = targetSelected ? ' primary' : '';
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}</div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`)}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
@@ -6090,7 +6090,9 @@
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabled.trim())}</div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`)}${chipButton('action-btn', '⚔️', `${this._uiLabel('fight')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')`)}${chipButton('action-btn', '😘', `${this._uiLabel('flirt')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')`)}${chipButton('action-btn', '🔥', `${this._uiLabel('fuck')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')`)}${chipButton('action-btn', '🍽️', `${this._uiLabel('feast')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')`)}${chipButton('action-btn', '🍲', `${this._uiLabel('feed')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')`)}`;
+                        const inspectLabel = this._uiLabel('inspect');
+                        const menuLabel = this._label('ui.creatureActions', 'Creature actions');
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`)}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`)}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, `event.stopPropagation();App.recruitCreatureById('${targetKey}')`);
                         }
@@ -6148,10 +6150,7 @@
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
                     const actionTitle = action => this._escapeHtml(`${this._uiLabel(action)} ${unitName}`);
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
-                    if (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(unit))) {
-                        actionButtons += `<button class="action-btn" title="${actionTitle('fight')}" aria-label="${actionTitle('fight')}" onclick="event.stopPropagation();App.outsideActionForParty('fight',${index})">⚔️</button><button class="action-btn" title="${actionTitle('flirt')}" aria-label="${actionTitle('flirt')}" onclick="event.stopPropagation();App.outsideActionForParty('flirt',${index})">😘</button><button class="action-btn" title="${actionTitle('fuck')}" aria-label="${actionTitle('fuck')}" onclick="event.stopPropagation();App.outsideActionForParty('fuck',${index})">🔥</button><button class="action-btn" title="${actionTitle('feast')}" aria-label="${actionTitle('feast')}" onclick="event.stopPropagation();App.outsideActionForParty('feast',${index})">🍽️</button><button class="action-btn" title="${actionTitle('feed')}" aria-label="${actionTitle('feed')}" onclick="event.stopPropagation();App.outsideActionForParty('feed',${index})">🍲</button>`;
-                    }
-                    actionButtons += `<button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForParty('inspect',${index})">👁️</button>`;
+                    actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" onclick="event.stopPropagation();App.showIntentMenu('party',${index})">⋯</button>`;
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
                     actionButtons += `<button class="action-btn" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
@@ -6213,7 +6212,8 @@
                         const actionTitle = action => this._escapeHtml(`${this._uiLabel(action)} ${targetName}`);
                         const markLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('fight')}" aria-label="${actionTitle('fight')}" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" title="${actionTitle('flirt')}" aria-label="${actionTitle('flirt')}" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" title="${actionTitle('fuck')}" aria-label="${actionTitle('fuck')}" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" title="${actionTitle('feast')}" aria-label="${actionTitle('feast')}" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" title="${actionTitle('feed')}" aria-label="${actionTitle('feed')}" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${targetName}`);
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
                             actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
@@ -7414,6 +7414,85 @@
             cancelMobilePartyPress() {
                 if (this._mobilePartyPressTimer) clearTimeout(this._mobilePartyPressTimer);
                 this._mobilePartyPressTimer = null;
+            },
+            _intentCommand(type, targetRef, action, subAction = null) {
+                const actorIds = this._getExplorationActors().map(actor => actor.id || actor.name);
+                const target = type === 'party'
+                    ? this.party[Number(targetRef)]
+                    : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
+                return {
+                    actorIds,
+                    action,
+                    subAction,
+                    targetId: target?.id || target?.name || String(targetRef),
+                    targetType: type,
+                    source: 'sheet'
+                };
+            },
+            showIntentMenu(type, targetRef) {
+                const isParty = type === 'party';
+                const target = isParty
+                    ? this.party[Number(targetRef)]
+                    : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
+                if (!target || this._isCorpse(target)) return;
+                this.closeMobileContextMenu();
+                const targetName = target.name || (isParty ? 'party member' : 'creature');
+                const menuLabel = this._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
+                const targetLabel = this._escapeHtml(targetName);
+                const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
+                const actionButton = (key, action = key, extraClass = '') => {
+                    const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
+                    const icon = this._actionIcon(key);
+                    const title = key === 'close' ? label : `${label} ${targetName}`;
+                    const handler = action === 'close'
+                        ? 'App.closeMobileContextMenu()'
+                        : `App.selectIntent('${type}',${targetArg},'${action}')`;
+                    return `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
+                };
+                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                const selectedActors = this._getExplorationActors();
+                const canUsePrimaryActions = !isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target)));
+                if (canUsePrimaryActions) {
+                    html += actionButton('fight');
+                    html += actionButton('flirt');
+                    html += actionButton('fuck');
+                    html += actionButton('feast');
+                    html += actionButton('feed');
+                }
+                html += actionButton('inspect');
+                if (!isParty && this._canRecruit(this._getExplorationActor(), target)) html += actionButton('recruit', 'recruit', ' primary');
+                if (!isParty && target.quest) {
+                    const key = target.questAccepted ? 'viewQuest' : 'acceptQuest';
+                    const label = this._uiLabel(key);
+                    const title = this._label(target.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', target.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName });
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest')">📜 ${this._escapeHtml(label)}</button>`;
+                }
+                if (!isParty && target.disposition === this.DISPOSITION.MERCHANT) {
+                    const label = this._uiLabel('trade');
+                    const title = this._label('action.tradeWith', 'Trade with {name}', { name: targetName });
+                    html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade')">🪙 ${this._escapeHtml(label)}</button>`;
+                }
+                html += actionButton('close', 'close');
+                html += '</div></div>';
+                document.body.insertAdjacentHTML('beforeend', html);
+                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+            },
+            selectIntent(type, targetRef, action) {
+                this._haptic(8);
+                const command = this._intentCommand(type, targetRef, action);
+                this.lastIntentCommand = command;
+                this.closeMobileContextMenu();
+                if (type === 'party') {
+                    const index = Number(targetRef);
+                    if (action === 'close') return;
+                    return this.outsideActionForParty(action, index);
+                }
+                const targetId = String(targetRef);
+                if (action === 'close') return;
+                if (action === 'recruit') return this.recruitCreatureById(targetId);
+                if (action === 'quest') return this.acceptQuestFromUnit(targetId);
+                if (action === 'trade') return this.showTrade(targetId);
+                return this.outsideActionForCreature(action, targetId);
             },
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');

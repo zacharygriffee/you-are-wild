@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 302/302 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 303/303 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -108,6 +108,7 @@
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose drag/drop reorder with arrow-button fallback, leader, role, AI order, detailed stats, and dismiss controls, the selected leader and assigned non-combat role are visible on party cards and mobile chips, desktop role/order selectors expose localized descriptive tooltips, mobile party chips expose reachable Act/Target controls plus a long-press management menu for stats/leader/role/order/dismiss actions, mobile role/order selector changes haptically refresh the open management menu with localized selected labels and helper descriptions, dismissed allies are removed from selection state and dropped into the current tile as neutral former party members, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, Scout/Gatherer/Guard/Support roles have small exploration mechanics for night visibility, search finds, ambush mitigation, and safe rest recovery, and save version 10 metadata persists the selected party leader plus party roles/AI orders
 - Creature and party card readability has a first pass: default desktop cards and mobile chips render compact tactical bars for health/punishment, pleasure/pressure, and hunger/need with localized accessible labels/tooltips and safe clamping, while exact numeric vitals/combat details remain available through Stats/detail surfaces and existing card actions are preserved
+- Card action density has a first-pass intent-menu seam: default party/creature cards keep required selectors (`Act`, `Target`, Stats/Inspect) visible, repeated primary interaction buttons move behind a localized action menu, contextual quest/trade/recruit actions stay visible only when relevant, menu selection records a normalized `lastIntentCommand` shape, and dispatch still routes through existing outside-combat action functions so multi-character selection behavior is preserved
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
 - Combat log view preferences now persist independently: selected filter and search text are saved to `yaw-log-view`, reloaded on app init, and invalid stored values fall back safely; legacy `fff-log-view` is still read for migration
 - Repository organization/rebrand first pass is complete: active source lives under `app/`, root scripts point at that layout, generated output is `dist/you-are-wild.html`, visible active UI branding says **You Are Wild**, package/build metadata uses the new slug, and `npm run audit:branding` verifies only approved legacy migration references remain
@@ -213,6 +214,11 @@
 #### 18a. Creature And Party Card Readability
 - First pass is complete: default cards and mobile chips use shared tactical-bar helpers for health/punishment, pleasure/pressure, and hunger/need; bars clamp safely, default missing hunger to 0, expose localized accessible labels/tooltips, and keep exact numbers in Stats/detail views.
 - Future polish should focus on real-device density and action grouping only if playtesting shows card actions still feel crowded. Do not remove existing card actions without replacing their workflow.
+
+#### 18b. Card Action Density And Intent Navigation
+- First pass is complete: primary action spam is no longer rendered directly on default party/creature cards. Cards preserve current `Act`, `Target`, and Stats/Inspect selectors, keep relevant special actions such as recruit/quest/trade visible, and use a shared bottom action menu for Fight/Flirt/Fuck/Feast/Feed/Inspect intent selection.
+- The action menu is a scaffold for later radial/gesture navigation, not the final radial wheel. Future work can add pointer/touch radial acceleration on top of the same `selectIntent()` dispatch path, but the menu must remain as the accessible fallback.
+- Preserve the current multi-character interaction model when iterating: selected actors, marked targets, party-to-party actions, creature actions, combat target selection, and contextual special actions should continue to route through the existing shared action functions or compatibility wrappers.
 
 #### 19. New Game And Save Slot UX
 - Further improve visual polish if playtesting shows the responsive slot cards/action grids are still too dense on small devices

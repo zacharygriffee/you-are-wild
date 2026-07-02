@@ -7313,6 +7313,11 @@
                 return objective.checkpoints.find(checkpoint => !checkpoint.complete) || null;
             },
 
+            _nextQuestObjectiveMarker(objective) {
+                if (!objective || objective.complete) return null;
+                return this._nextQuestCheckpoint(objective) || objective.location || null;
+            },
+
             _updateQuestProgress(type, payload = {}) {
                 let changed = false;
                 for (const quest of this.quests || []) {
@@ -7392,8 +7397,36 @@
                     const done = objective.complete ? '✓' : '•';
                     const checkpoint = this._nextQuestCheckpoint(objective);
                     const next = checkpoint ? ` → ${checkpoint.label} (${checkpoint.x}, ${checkpoint.y})` : '';
-                    return `${done} ${objective.label || this._questObjectiveLabel(objective)} (${objective.progress || 0}/${objective.required || 1})${next}`;
+                    return `${done} ${this._escapeHtml(objective.label || this._questObjectiveLabel(objective))} (${objective.progress || 0}/${objective.required || 1})${this._escapeHtml(next)}`;
                 }).join('<br>');
+            },
+
+            _questRoutePreviewText(objective) {
+                if (!Array.isArray(objective?.checkpoints) || objective.checkpoints.length === 0) return '';
+                return objective.checkpoints.map(checkpoint => {
+                    const marker = checkpoint.complete ? '✓' : '•';
+                    const label = checkpoint.label || 'Checkpoint';
+                    return `${marker} ${this._escapeHtml(label)} (${checkpoint.x}, ${checkpoint.y})`;
+                }).join('<br>');
+            },
+
+            focusQuestOnMap(questId, objectiveId) {
+                const quest = (this.quests || []).find(entry => String(entry.id) === String(questId));
+                const objective = (quest?.objectives || []).find(entry => String(entry.id) === String(objectiveId)) || (quest?.objectives || []).find(entry => !entry.complete);
+                const marker = this._nextQuestObjectiveMarker(objective);
+                if (!quest || !marker) {
+                    this.log.push({ text: 'No map marker is available for that quest objective.', type: 'discovery' });
+                    this.renderLog();
+                    return false;
+                }
+                this.largeMapOffset = {
+                    x: Number(marker.x) - Number(this.location.x || 0),
+                    y: Number(marker.y) - Number(this.location.y || 0)
+                };
+                this.renderLargeMap();
+                this.log.push({ text: `Map focused on ${quest.title}: ${marker.label || objective.label || this._questObjectiveLabel(objective)}.`, type: 'discovery' });
+                this.renderLog();
+                return true;
             },
 
             _filteredQuestEntries() {
@@ -7453,9 +7486,16 @@
                 visibleQuests.forEach(quest => {
                     const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
                     const status = needsTurnIn ? 'Turn In' : quest.status === 'completed' ? 'Completed' : 'Active';
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${quest.title} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
-                    if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${quest.description}</div>`;
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${this._escapeHtml(quest.title)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
+                    if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${this._escapeHtml(quest.description)}</div>`;
                     html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${this._questProgressText(quest)}</div>`;
+                    for (const objective of quest.objectives || []) {
+                        const routePreview = this._questRoutePreviewText(objective);
+                        const marker = this._nextQuestObjectiveMarker(objective);
+                        if (!routePreview && !marker) continue;
+                        html += `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
+                        if (marker && quest.status === 'active') html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show On Map</button>`;
+                    }
                     if (needsTurnIn) html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">Turn In</button>`;
                     html += `</div>`;
                 });
@@ -7939,9 +7979,7 @@
                 for (const quest of this.quests || []) {
                     if (quest.status !== 'active') continue;
                     for (const objective of quest.objectives || []) {
-                        if (objective.complete) continue;
-                        const checkpoint = this._nextQuestCheckpoint(objective);
-                        const marker = checkpoint || objective.location;
+                        const marker = this._nextQuestObjectiveMarker(objective);
                         if (!marker) continue;
                         if (Number(marker.x) === Number(x) && Number(marker.y) === Number(y)) {
                             return `${quest.title}: ${marker.label || objective.label || this._questObjectiveLabel(objective)}`;

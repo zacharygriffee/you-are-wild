@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 198/198 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 199/199 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -101,7 +101,7 @@
 - Landmark interiors have a first-pass persistent 5x5 room map stored on the overworld structure tile; entering switches movement/map rendering to the interior, interior movement persists room creatures, room features derive from the origin biome `structureTable`, cave-like structures use cave interiors while others use indoors, and exiting restores the overworld tile context
 - Party play-fighting now has a moddable resolver plus `settings.partyPlayFightMode`, keeping nonlethal as the default while allowing harsher outcomes; chewing-enabled group feast now splits a target into portions across selected actors instead of always routing through one primary swallow
 - Exploration now has stat-gated multi-target APIs (`outsideActionOnTargets`, party target indexes, creature target ids) so one capable actor can resolve one action across multiple party/creature targets while low-stat actors are blocked from overextending
-- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, authored quest templates can spawn quest givers from structure encounters, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, optional deferred reward turn-in, defeat/find/consume/seduce/travel objective progress uses a shared matcher, escort objectives support explicit ordered route/checkpoints, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
+- Quest system has a first-pass foundation: quest-giver creatures can carry `quest` objects, authored quest templates can spawn quest givers from structure encounters, quest cards expose accept/view actions, accepted quests render in a quest log with status filtering, turn-in filtering, title/status sorting, route/checkpoint previews, map-focus actions for next objective markers, optional deferred reward turn-in, defeat/find/consume/seduce/travel objective progress uses a shared matcher, escort objectives support explicit ordered route/checkpoints, rewards can grant XP/gold/items/recruits, and accepted quest state plus player gold persist in save version 10
 - Merchant/trade system has a first-pass foundation: merchant creatures can carry stock, creature cards expose trade actions, the trade screen supports buying and selling items with player gold, expensive/rare purchases require confirmation, merchant stock can refresh after three in-game days, authored stock tables can place merchants in safe/commercial structures, inventory/trade surfaces support item category filtering and value/name/type sorting, corpse loot can grant generated or authored gold rewards, and save version 10 persists quest state, player gold, day count, equipment metadata, perk state, and party leader
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, normalized creatures carry equipment slots plus inventory for future/modded use, inventory exposes equip/unequip actions, equipment stat baselines recalculate deterministically on equip/unequip/load, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata plus baseline stats
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
@@ -159,7 +159,7 @@
 - Expand the large-map low-LOD view with mobile-specific ergonomics once traversal controls settle
 
 #### 8. Advanced Quest Scripting
-- Expand route/checkpoint quest UX beyond first-pass ordered checkpoint progress, such as route preview, checkpoint guidance text, and quest-giver turn-in routing
+- Expand quest route polish beyond first-pass checkpoint previews and map-focus actions, such as richer checkpoint guidance text, route preview styling, and quest-giver turn-in routing
 
 #### 16. Advanced Equipment
 - Decide whether non-player creatures should expose player-like equipment UI or keep equipment slots creature-internal/mod-only for now

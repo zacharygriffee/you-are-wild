@@ -2574,6 +2574,44 @@ test('Quest log supports status filtering and title sorting', () => {
   assertContains(html, 'Sort', 'Quest log should expose sort control');
 });
 
+test('Quest log previews routes and can focus the large map on a checkpoint', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.largeMapOffset = { x: 0, y: 0 };
+  App.largeMapRadius = 4;
+  App.quests = [App._normalizeQuest({
+    id: 'escort_route',
+    title: 'Escort Route',
+    status: 'active',
+    objectives: [{
+      type: 'escort',
+      label: 'Guide traveler',
+      checkpoints: [
+        { label: 'Old Road', x: 4, y: 0 },
+        { label: 'Safe Camp', x: 6, y: 0 }
+      ]
+    }],
+    reward: {}
+  })];
+  App.showQuestLog();
+  let html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'Old Road (4, 0)', 'Quest log should preview the next route checkpoint');
+  assertContains(html, 'Safe Camp (6, 0)', 'Quest log should preview later route checkpoints');
+  assertContains(html, 'Show On Map', 'Quest log should expose a map focus action');
+  const focused = App.focusQuestOnMap('escort_route', App.quests[0].objectives[0].id);
+  assertEqual(focused, true, 'Focus action should succeed for route checkpoint');
+  assertEqual(App.largeMapOffset.x, 4, 'Large map should pan to checkpoint x offset');
+  assertEqual(App.largeMapOffset.y, 0, 'Large map should pan to checkpoint y offset');
+  assertContains(elements.get('large-map').innerHTML, 'Escort Route: Old Road', 'Focused large map should show quest marker label');
+  assertContains(elements.get('large-map-view').textContent, '4, 0', 'View label should reflect focused checkpoint center');
+  assertEqual(App.worldMap.has('4,0'), false, 'Focusing a quest marker should not materialize unknown tiles');
+});
+
 test('Quest state persists through binary saves', () => {
   const Binary = loadBinaryForTest();
   const { App } = loadAppForCombat();

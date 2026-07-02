@@ -514,6 +514,9 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, 'overflow: hidden', 'mobile shell should hide horizontal overflow');
   assertContains(template, '--mobile-actions-height: 112px', 'mobile toolbar height should be explicit');
   assertContains(template, 'height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom))', 'mobile app should reserve space above bottom toolbar');
+  assertContains(template, '.mobile-context-menu', 'mobile context menu styles should exist');
+  assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
+  assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
 });

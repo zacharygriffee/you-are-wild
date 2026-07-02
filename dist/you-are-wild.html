@@ -1390,6 +1390,10 @@
                 left: 12px;
                 right: 12px;
                 bottom: calc(var(--mobile-actions-height) + 12px);
+                max-height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom) - 24px);
+                overflow: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
                 background: var(--bg-secondary);
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-md);

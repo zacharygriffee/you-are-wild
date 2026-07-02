@@ -3309,7 +3309,10 @@
                     });
                     ally.hunger = Math.max(0, (ally.hunger || 0) - 30);
                     this.creatures = this.creatures.filter(c => c !== corpse);
-                    this.log.push({ text: `${ally.name} scavenges ${corpse.name}'s remains after the fight.`, type: 'discovery' });
+                    this.log.push({ text: this._label('combat.allyScavenges', "{ally} scavenges {target}'s remains after the fight.", {
+                        ally: ally.name,
+                        target: corpse.name
+                    }), type: 'discovery' });
                 }
                 this._syncCurrentTileCreatures();
                 this.renderParty();
@@ -3322,7 +3325,7 @@
                 if (this._attemptTimidAllyFlee(ally)) return;
                 const order = this._getPartyAIOrder(ally);
                 if (order === 'passive' && ally.CPun >= ally.MPun) {
-                    this.log.push({ text: `${ally.name} holds position.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.allyHolds', '{name} holds position.', { name: ally.name }), type: 'combat' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -3395,7 +3398,7 @@
                 // Default behavior: attack weakest
                 const reachableEnemies = enemies.filter(e => this._canReachCombatTarget(ally, e, 'fight'));
                 if (reachableEnemies.length === 0) {
-                    this.log.push({ text: `${ally.name} cannot reach any target.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.allyCannotReach', '{name} cannot reach any target.', { name: ally.name }), type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 const target = this._selectAllyAttackTarget(ally, reachableEnemies);
@@ -3474,7 +3477,10 @@
                 this._assignCombatRows([reinforcement]);
                 const insertAt = Math.min(this.combatState.turnQueue.length, this.combatState.currentTurn + 1);
                 this.combatState.turnQueue.splice(insertAt, 0, { unit: reinforcement, initiative: this._calcInitiative(reinforcement) });
-                this.log.push({ text: `${enemy.name} calls for help! ${reinforcement.name} joins the fight.`, type: 'combat' });
+                this.log.push({ text: this._label('combat.enemyReinforces', '{enemy} calls for help! {reinforcement} joins the fight.', {
+                    enemy: enemy.name,
+                    reinforcement: reinforcement.name
+                }), type: 'combat' });
                 this._syncCurrentTileCreatures();
                 this.renderCreatures();
                 return true;
@@ -3503,11 +3509,11 @@
                 }
                 // Rage at low HP
                 if (enemy.rage && enemy.CPun < enemy.MPun * 0.5) {
-                    this.log.push({ text: `${enemy.name} enters a rage!`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.enemyRage', '{name} enters a rage!', { name: enemy.name }), type: 'combat' });
                 }
                 this._enemyCallReinforcement(enemy);
                 if (this._enemyShouldFlee(enemy, targets)) {
-	                    this.log.push({ text: `${enemy.name} flees in terror!`, type: 'combat' });
+	                    this.log.push({ text: this._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
 	                    enemy.disposition = this.DISPOSITION.NEUTRAL;
 	                    enemy.CPun = 0;
 	                    this._emitCombatAction('enemy_flee', enemy, null, 'fled');
@@ -3542,17 +3548,23 @@
                 // Poisonous/venom applies DOT
                 if (enemy.poisonous || enemy.venom) {
                     target.status.poisoned = { dmg: 3, turns: 3 };
-                    this.log.push({ text: `${target.name} is poisoned!`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.status.poisoned', '{name} is poisoned!', { name: target.name }), type: 'combat' });
                 }
                 // Constrictor restrains small targets
                 if (enemy.constrictor && target.size <= 4 && !target.status.restrained) {
                     target.status.restrained = { turns: 2, by: enemy.name };
-                    this.log.push({ text: `${enemy.name} constricts ${target.name}! They are restrained.`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.status.constricted', '{actor} constricts {target}! They are restrained.', {
+                        actor: enemy.name,
+                        target: target.name
+                    }), type: 'combat' });
                 }
                 // Enveloped by slime/plant
                 if (enemy.enveloped && target.size <= enemy.size + 2) {
                     target.status.enveloped = { turns: 2, by: enemy.name };
-                    this.log.push({ text: `${enemy.name} envelops ${target.name}!`, type: 'combat' });
+                    this.log.push({ text: this._label('combat.status.enveloped', '{actor} envelops {target}!', {
+                        actor: enemy.name,
+                        target: target.name
+                    }), type: 'combat' });
                 }
                 let result = `${enemy.name} hits ${target.name} for ${dmg} punishment!`;
                 if (enemy.bloodsuck) result += ` ${enemy.name} heals!`;

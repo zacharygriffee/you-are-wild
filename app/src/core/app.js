@@ -4957,7 +4957,7 @@
                     return;
                 }
                 if (this.inventory.length >= this.MAX_INVENTORY) {
-                    this.log.push({ text: 'Inventory is full.', type: 'discovery' });
+                    this.log.push({ text: this._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
                     this.renderLog();
                     this.showTrade(targetId);
                     return;
@@ -5167,18 +5167,18 @@
             turnInQuest(questId) {
                 const quest = this._getQuestById(questId);
                 if (!quest || quest.status !== 'completed') {
-                    this.log.push({ text: 'That quest is not ready to turn in.', type: 'discovery' });
+                    this.log.push({ text: this._label('quest.notReadyTurnIn', 'That quest is not ready to turn in.'), type: 'discovery' });
                     this.renderLog();
                     return false;
                 }
                 if (quest.rewardClaimed) {
-                    this.log.push({ text: `${quest.title} has already been turned in.`, type: 'discovery' });
+                    this.log.push({ text: this._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: quest.title }), type: 'discovery' });
                     this.renderLog();
                     this.showQuestLog();
                     return false;
                 }
                 const granted = this._grantQuestReward(quest);
-                if (granted) this.log.push({ text: `Quest turned in: ${quest.title}.`, type: 'loot' });
+                if (granted) this.log.push({ text: this._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title }), type: 'loot' });
                 this.renderLog();
                 this.renderParty();
                 this.showQuestLog();
@@ -5275,7 +5275,7 @@
                 const objective = (quest?.objectives || []).find(entry => String(entry.id) === String(objectiveId)) || (quest?.objectives || []).find(entry => !entry.complete);
                 const marker = this._nextQuestObjectiveMarker(objective);
                 if (!quest || !marker) {
-                    this.log.push({ text: 'No map marker is available for that quest objective.', type: 'discovery' });
+                    this.log.push({ text: this._label('quest.noObjectiveMarker', 'No map marker is available for that quest objective.'), type: 'discovery' });
                     this.renderLog();
                     return false;
                 }
@@ -5284,7 +5284,7 @@
                     y: Number(marker.y) - Number(this.location.y || 0)
                 };
                 this.renderLargeMap();
-                this.log.push({ text: `Map focused on ${quest.title}: ${marker.label || objective.label || this._questObjectiveLabel(objective)}.`, type: 'discovery' });
+                this.log.push({ text: this._label('quest.mapFocusedObjective', 'Map focused on {title}: {label}.', { title: quest.title, label: marker.label || objective.label || this._questObjectiveLabel(objective) }), type: 'discovery' });
                 this.renderLog();
                 return true;
             },
@@ -5303,7 +5303,7 @@
                 const quest = (this.quests || []).find(entry => String(entry.id) === String(questId));
                 const marker = this._questTurnInMarker(quest);
                 if (!quest || !marker) {
-                    this.log.push({ text: 'No turn-in location is available for that quest.', type: 'discovery' });
+                    this.log.push({ text: this._label('quest.noTurnInLocation', 'No turn-in location is available for that quest.'), type: 'discovery' });
                     this.renderLog();
                     return false;
                 }
@@ -5312,7 +5312,7 @@
                     y: Number(marker.y) - Number(this.location.y || 0)
                 };
                 this.renderLargeMap();
-                this.log.push({ text: `Map focused on ${quest.title} turn-in: ${marker.label}.`, type: 'discovery' });
+                this.log.push({ text: this._label('quest.mapFocusedTurnIn', 'Map focused on {title} turn-in: {label}.', { title: quest.title, label: marker.label }), type: 'discovery' });
                 this.renderLog();
                 return true;
             },
@@ -5526,7 +5526,7 @@
             unequipItem(slot) {
                 if (!this.player?.equipment || !this.player.equipment[slot]) return;
                 if (this.inventory.length >= this.MAX_INVENTORY) {
-                    this.log.push({ text: 'Inventory is full.', type: 'discovery' });
+                    this.log.push({ text: this._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
                     this.renderLog();
                     return;
                 }

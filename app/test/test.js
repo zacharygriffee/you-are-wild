@@ -3962,6 +3962,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
   assertNotContains(App._attemptTimidAllyFlee.toString(), 'Math.random', 'Persistent combat timid ally flee should not use Math.random');
   assertNotContains(App._selectEnemyTarget.toString(), 'Math.random', 'Persistent combat target tie-breaks should not use Math.random');
+  assertNotContains(App.enemyTurn.toString(), 'enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random', 'Menacing fear status should not use raw Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -4919,6 +4920,30 @@ test('Enemy morale flee is deterministic by combat state', () => {
     return App._enemyShouldFlee(enemy, [player, ally]);
   };
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Enemy morale flee should not depend on ambient Math.random');
+});
+
+test('Menacing enemy fear is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'enemy-fear', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'player-1', CPun: 30, MPun: 100 });
+    const enemy = makeUnit('Enemy', { id: 'scary-enemy', disposition: App.DISPOSITION.ENEMY, menacing: true, Figh: 1 });
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: enemy, initiative: 10 }], syncActions: [] };
+    App._enemyShouldFlee = function() { return false; };
+    App._enemyCallReinforcement = function() { return false; };
+    App.nextTurn = function() { this._enemyTurnAdvanced = true; };
+    App.enemyTurn(enemy);
+    return { frightened: !!player.status.frightened, advanced: !!App._enemyTurnAdvanced };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Menacing fear status should not depend on ambient Math.random');
 });
 
 test('Pack enemies can call reinforcements when wounded', () => {

@@ -7234,7 +7234,8 @@ const WorldGen = (() => {
                 if (targets.length === 0) return;
                 const target = this._selectEnemyTarget(enemy, targets);
                 // Menacing enemies may scare weak targets
-                if (enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random() < 0.3) {
+                if (enemy.menacing && target.CPun / target.MPun < 0.4
+                    && this._combatStateRoll('combat-menacing-fear', enemy, this._unitSelectionId(target)) < 0.3) {
                     this.log.push({ text: `${enemy.name} is terrifying! ${target.name} cowers in fear.`, type: 'combat' });
                     target.status.frightened = true;
                     this.renderLog();

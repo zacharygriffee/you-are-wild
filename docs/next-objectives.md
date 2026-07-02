@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 342/342 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 343/343 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -108,6 +108,7 @@
 - Exploration threat reactions for attacked non-hostile creatures now use seeded world rolls keyed by tile, creature, threat, day, and hour, so flee-vs-hostile outcomes do not depend on ambient `Math.random()` while combat-only volatility remains separate
 - Timid ally combat flee checks now use seeded combat-state rolls keyed by world seed/version, tile, ally, round/turn, day, and hour instead of ambient `Math.random()`
 - Enemy tasty-target tie-breaks now use seeded combat-state rolls keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`
+- Menacing enemy fear application now uses seeded combat-state rolls keyed by world seed/version, tile, enemy, target, round/turn, day, and hour instead of ambient `Math.random()`
 - Enemy morale flee checks now use seeded combat-state rolls keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`
 - Pack enemy reinforcement creation now uses seeded combat-state rolls and stable reinforcement ids keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`/`Date.now()`
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, normalized creatures carry equipment slots plus inventory for future/modded use, inventory exposes player equip/unequip actions, non-player equipment renders as read-only card/stat metadata instead of player-like management UI, equipment stat baselines recalculate deterministically on equip/unequip/load, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata plus baseline stats

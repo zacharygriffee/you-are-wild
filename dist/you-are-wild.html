@@ -10258,9 +10258,9 @@
 	                    for (const p of this.party) {
 	                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
 	                        p.knockedOut = false;
-	                    }
+                    }
                     if (revived) {
-                        this.log.push({ text: 'You were revived from the brink of death! Welcome back, ' + this.player.name + '.', type: 'discovery' });
+                        this.log.push({ text: this._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: this.player.name }), type: 'discovery' });
                         this.renderLog();
                     }
                     return true;
@@ -11508,6 +11508,7 @@ const CONTENT_SYSTEM = {
             'save.error.noSave': 'No save in {slot}',
             'save.success.saved': 'Game saved to {slot}!',
             'save.success.deletedAll': 'All saves deleted.',
+            'save.recoveredOnLoad': 'You were revived from the brink of defeat. Welcome back, {name}.',
             'save.error.saveFailed': 'Save failed: {message}',
             'save.error.loadFailed': 'Load failed: {message}',
             'save.error.deleteFailed': 'Delete failed: {message}',
@@ -12042,6 +12043,7 @@ const CONTENT_SYSTEM = {
             'save.error.noSave': 'No hay partida en {slot}',
             'save.success.saved': 'Partida guardada en {slot}!',
             'save.success.deletedAll': 'Todas las partidas fueron borradas.',
+            'save.recoveredOnLoad': 'Te recuperaste al borde de la derrota. Bienvenido de vuelta, {name}.',
             'save.error.saveFailed': 'Error al guardar: {message}',
             'save.error.loadFailed': 'Error al cargar: {message}',
             'save.error.deleteFailed': 'Error al borrar: {message}',

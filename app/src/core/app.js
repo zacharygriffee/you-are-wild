@@ -7513,9 +7513,9 @@
 	                    for (const p of this.party) {
 	                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
 	                        p.knockedOut = false;
-	                    }
+                    }
                     if (revived) {
-                        this.log.push({ text: 'You were revived from the brink of death! Welcome back, ' + this.player.name + '.', type: 'discovery' });
+                        this.log.push({ text: this._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: this.player.name }), type: 'discovery' });
                         this.renderLog();
                     }
                     return true;

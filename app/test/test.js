@@ -4890,7 +4890,7 @@ test('Save slot destructive confirmations localize', async () => {
   newRun.storage.set('yaw-save-time-slot2', '1710000000000');
   newRun.App.updateLanguage('es');
   newRun.App.beginNewGameInSlot('slot2');
-  assertEqual(newRun.confirmations[0], 'Iniciar partida nueva en slot2? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'New-run overwrite warning should use active locale');
+  assertEqual(newRun.confirmations[0], 'Iniciar partida nueva en Slot 2? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'New-run overwrite warning should use active locale and display slot label');
 
   const manualSave = loadAppForCombat(() => 0.5, { confirm: false });
   manualSave.storage.set('yaw-save-time-slot3', '1710000000000');
@@ -4901,12 +4901,30 @@ test('Save slot destructive confirmations localize', async () => {
   manualSave.App.persistWorldStateToMapStore = async () => {};
   manualSave.App._dbPut = async () => {};
   await manualSave.App.saveToSlot('slot3');
-  assertEqual(manualSave.confirmations[0], 'Sobrescribir slot3 con la partida actual? Esta accion no se puede deshacer.', 'Manual overwrite warning should use active locale');
+  assertEqual(manualSave.confirmations[0], 'Sobrescribir Slot 3 con la partida actual? Esta accion no se puede deshacer.', 'Manual overwrite warning should use active locale and display slot label');
 
   const deleteSlot = loadAppForCombat(() => 0.5, { confirm: false });
   deleteSlot.App.updateLanguage('es');
   await deleteSlot.App.deleteSlot('slot4');
-  assertEqual(deleteSlot.confirmations[0], 'Borrar el slot slot4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale');
+  assertEqual(deleteSlot.confirmations[0], 'Borrar el slot Slot 4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale and display slot label');
+});
+
+test('Save slot status alerts use display slot labels', async () => {
+  const noSave = loadAppForCombat(() => 0.5);
+  noSave.App.updateLanguage('es');
+  noSave.App._dbGet = async () => null;
+  const loaded = await noSave.App.loadFromSlot('slot5');
+  assertEqual(loaded, false, 'Missing save should not load');
+  assertEqual(noSave.alerts[0], 'No hay partida en Slot 5', 'Missing-save alert should use localized display slot label');
+
+  const saved = loadAppForCombat(() => 0.5, { confirm: true });
+  saved.App.updateLanguage('es');
+  saved.App.player = makeUnit('You');
+  saved.App.party = [saved.App.player];
+  saved.App.persistWorldStateToMapStore = async () => {};
+  saved.App._dbPut = async () => {};
+  await saved.App.saveToSlot('slot2');
+  assertEqual(saved.alerts[0], 'Partida guardada en Slot 2!', 'Save success alert should use localized display slot label');
 });
 
 test('Settings destructive confirmations localize', () => {

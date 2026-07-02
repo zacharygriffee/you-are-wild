@@ -5081,7 +5081,7 @@
                 this.quests = this.quests || [];
                 const existing = this._getQuestById(normalized.id);
                 if (existing) {
-                    this.log.push({ text: `${existing.title} is already in your quest log.`, type: 'discovery' });
+                    this.log.push({ text: this._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existing.title }), type: 'discovery' });
                     this.showQuestLog();
                     this.renderLog();
                     return existing;
@@ -5092,7 +5092,7 @@
                     giver.questAccepted = true;
                     if (giver.quest) giver.quest.status = 'active';
                 }
-                this.log.push({ text: `Quest accepted: ${normalized.title}.`, type: 'discovery' });
+                this.log.push({ text: this._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
                 this.showQuestLog();
                 this.renderLog();
                 this.renderCreatures();
@@ -5140,10 +5140,10 @@
                     if ((quest.objectives || []).length > 0 && quest.objectives.every(o => o.complete) && quest.status !== 'completed') {
                         quest.status = 'completed';
                         if (quest.turnInRequired) {
-                            this.log.push({ text: `Quest completed: ${quest.title}. Return to ${quest.giverName || 'the quest giver'} for your reward.`, type: 'discovery' });
+                            this.log.push({ text: this._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: quest.title, giver: quest.giverName || this._label('quest.defaultGiver', 'the quest giver') }), type: 'discovery' });
                         } else {
                             this._grantQuestReward(quest);
-                            this.log.push({ text: `Quest completed: ${quest.title}.`, type: 'discovery' });
+                            this.log.push({ text: this._label('quest.completed', 'Quest completed: {title}.', { title: quest.title }), type: 'discovery' });
                         }
                     }
                 }
@@ -5384,13 +5384,13 @@
                 const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
                 const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
                 if (quests.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">No active quests.</p>${backButton}`;
+                    document.getElementById('scene-description').innerHTML = `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${this._escapeHtml(this._label('quest.noneActive', 'No active quests.'))}</p>${backButton}`;
                     return;
                 }
                 const visibleQuests = this._filteredQuestEntries();
                 let html = `<h3>${titleLabel}</h3>${this._questLogControls()}`;
                 if (visibleQuests.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">No quests match the current filter.</p>${backButton}`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('quest.noneMatchFilter', 'No quests match the current filter.'))}</p>${backButton}`;
                     document.getElementById('scene-description').innerHTML = html;
                     return;
                 }

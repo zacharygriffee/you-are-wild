@@ -7625,8 +7625,12 @@
                     const slotLabel = this._label('save.slotLabel', 'Slot {number}', { number: i });
                     const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : this._label('save.empty', 'Empty');
                     const slotStatus = hasData ? this._label('save.savedGame', 'Saved game') : this._label('save.openSlot', 'Open slot');
+                    const hintKey = isNewMode
+                        ? (hasData ? 'save.slotHint.occupiedNew' : 'save.slotHint.emptyNew')
+                        : (hasData ? 'save.slotHint.occupiedLoad' : 'save.slotHint.emptyLoad');
+                    const slotHint = this._label(hintKey, hasData ? 'Saved slot.' : 'Empty slot.');
                     html += '<div class="save-slot-card ' + (hasData ? 'occupied' : 'empty') + (isActive ? ' active' : '') + '">';
-                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + this._escapeHtml(slotLabel) + '<span class="save-slot-badge">' + this._escapeHtml(slotStatus) + '</span></div><div class="save-slot-time">' + this._escapeHtml(timeStr) + '</div></div>';
+                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + this._escapeHtml(slotLabel) + '<span class="save-slot-badge">' + this._escapeHtml(slotStatus) + '</span></div><div class="save-slot-time">' + this._escapeHtml(timeStr) + '</div><div class="save-slot-hint">' + this._escapeHtml(slotHint) + '</div></div>';
                     html += '<div class="save-slot-actions">';
                     if (isNewMode) html += saveButton('nav-btn primary', '🆕 ' + this._label(hasData ? 'save.overwriteSlot' : 'save.useEmpty', hasData ? 'Overwrite Slot' : 'Use Empty Slot'), this._label(hasData ? 'save.action.overwrite' : 'save.action.useEmpty', hasData ? 'Overwrite {slot} with a new game' : 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
                     if (!isNewMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');

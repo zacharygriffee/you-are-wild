@@ -133,7 +133,7 @@
                     heal: { label: 'Heal', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => t.CPun < t.MPun, execute: 'healAlly', setting: null },
                     breastfeed: { label: 'Breastfeed', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null },
                     sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (t.livestock || t.willingPrey) && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'sacrificeTo', setting: null },
-                    forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0, execute: 'forceFeed', setting: 'forcedFeeding' },
+                    forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0 && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'forceFeed', setting: 'forcedFeeding' },
                     slurp: { label: 'Slurp', sfwLabel: 'Draw', icon: '💧', validate: (a, t) => t.slurpable, execute: 'slurpPortion', setting: null },
                     fragment: { label: 'Break Off', sfwLabel: 'Chip', icon: '🍫', validate: (a, t) => t.breakable, execute: 'fragmentPortion', setting: null }
                 },
@@ -4319,6 +4319,16 @@
                 return !options.subAction || ['heal', 'breastfeed'].includes(options.subAction);
             },
 
+            _selectGroupFeedSubActionActor(subAction, target, actors = []) {
+                const def = this.SUB_ACTIONS.feed && this.SUB_ACTIONS.feed[subAction];
+                if (!def) return null;
+                const livingActors = (actors || []).filter(actor => actor && actor !== target && this._isLivingCreature(actor));
+                return livingActors.find(actor => {
+                    const holders = livingActors.filter(helper => helper !== actor && helper !== target);
+                    return this._isSubActionAvailable(def, actor, target, holders);
+                }) || livingActors[0] || null;
+            },
+
             outsideActionOnTargets(action, targets, actor = this._getExplorationActor(), options = {}) {
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
@@ -4537,6 +4547,17 @@
                         break;
                     }
                     case 'feed': {
+                        if (selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                            const primary = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors);
+                            if (!primary) {
+                                result = this._label('feed.noValidTarget', 'No valid target for this feed action.');
+                                break;
+                            }
+                            const { actorName: primaryName, actorVerb: primaryVerb } = this._actorNameAndVerb(primary);
+                            result = this._doSubAction('feed', selectedSubAction, primary, target, primaryName, primaryVerb);
+                            this._cleanupOutsideSubActionTarget('feed', selectedSubAction, primary, target);
+                            break;
+                        }
                         if (this.party.includes(target)) {
                             const candidates = livingActors.filter(actor => actor !== target);
                             const prey = candidates.filter(actor => actor !== this.player && !actor.mc);

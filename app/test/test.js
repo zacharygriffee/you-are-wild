@@ -2209,6 +2209,25 @@ test('Group feed respects explicit heal sub-action instead of consuming selected
   assertContains(App.log[App.log.length - 1].text, 'restoring 80 punishment', 'Explicit heal should log tending instead of containment');
 });
 
+test('Group feed forceFeed chooses eligible predator when helper is selected first', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const holder = makeUnit('Holder', { id: 'holder-1', size: 1, appetite: 1, Feed: 10 });
+  const predator = makeUnit('Predator', { id: 'predator-1', size: 8, appetite: 8, Feed: 30 });
+  const prey = makeUnit('Prey', { id: 'prey-force-group', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, size: 4 });
+  App.player = player;
+  App.party = [player, holder, predator];
+  App.creatures = [prey];
+  App.settings.forcedFeeding = true;
+  App.explorationActorIds = ['holder-1', 'predator-1'];
+  App.outsideActionForCreature('feed', 'prey-force-group', { subAction: 'forceFeed' });
+  assertEqual(holder.stomach.length, 0, 'Too-small first selected helper should not become forceFeed predator');
+  assertEqual(predator.stomach.length, 1, 'Eligible selected predator should receive the forced-fed target');
+  assertEqual(predator.stomach[0].name, 'Prey', 'Eligible selected predator should contain the target');
+  assertEqual(App.creatures.includes(prey), false, 'Resolved group forceFeed should remove the area target');
+  assertEqual(prey.forcedFed, true, 'Resolved group forceFeed should mark original target state');
+});
+
 test('Single feast removes consumed area creature from active tile', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', size: 6, appetite: 6, Feas: 40 });

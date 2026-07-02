@@ -2685,6 +2685,24 @@ test('Marked self-included group feed tends instead of consuming helpers', () =>
   assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Marked self-included feed should log tending semantics');
 });
 
+test('Marked explicit feed sacrifice does not skip full-health willing party targets', () => {
+  const { App, body } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', { id: 'predator-1', size: 6, appetite: 6, Feed: 30 });
+  const prey = makeUnit('Prey', { id: 'prey-1', CPun: 100, MPun: 100, size: 2, willingPrey: true });
+  App.player = predator;
+  App.party = [predator, prey];
+  App.explorationActorIds = ['predator-1'];
+  App.toggleExplorationTarget('party', 'prey-1');
+  App.openExplorationTargetSubActionSheet('feed', 'target-bar');
+  assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feed','sacrifice','target-bar')", 'Marked feed sheet should expose sacrifice for willing prey target');
+  assertNotContains(body.innerHTML, 'disabled onclick="App.resolveExplorationTargetAction(\'feed\',\'sacrifice\',\'target-bar\')"', 'Available sacrifice should not render disabled');
+  App.resolveExplorationTargetAction('feed', 'sacrifice', 'target-bar');
+  assertEqual(predator.stomach.length, 1, 'Explicit sacrifice should resolve against a full-health willing party target');
+  assertEqual(predator.stomach[0].name, 'Prey', 'Predator should receive the willing prey');
+  assertEqual(App.party.includes(prey), false, 'Sacrificed party target should leave active party');
+  assertEqual(App.lastIntentCommand.subAction, 'sacrifice', 'Marked feed command should record sacrifice sub-action');
+});
+
 test('Identical actor and target sets resolve as mutual group actions', () => {
   const fight = loadAppForCombat(() => 0);
   const fighterA = makeUnit('Fighter A', { id: 'fighter-a', CPun: 100, MPun: 100, Figh: 40, con: 1 });

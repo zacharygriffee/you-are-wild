@@ -132,7 +132,7 @@
                 feed: {
                     heal: { label: 'Heal', sfwLabel: 'Tend', icon: '💚', validate: (a, t) => t.CPun < t.MPun, execute: 'healAlly', setting: null },
                     breastfeed: { label: 'Breastfeed', sfwLabel: 'Nurse', icon: '🥛', validate: (a, t) => a.lactating && !a.lactationCooldown, execute: 'breastfeed', setting: null },
-                    sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (a.livestock || a.willingPrey) && t.size >= a.size - 2, execute: 'sacrificeTo', setting: null },
+                    sacrifice: { label: 'Sacrifice', sfwLabel: 'Offer', icon: '🐄', validate: (a, t) => (t.livestock || t.willingPrey) && a.size >= t.size - 2 && App._canFitPrey(a, t, 'stomach'), execute: 'sacrificeTo', setting: null },
                     forceFeed: { label: 'Force Feed', sfwLabel: 'Force Feed', icon: '🔗', validate: (a, t, h) => App.settings.forcedFeeding && h && h.length > 0, execute: 'forceFeed', setting: 'forcedFeeding' },
                     slurp: { label: 'Slurp', sfwLabel: 'Draw', icon: '💧', validate: (a, t) => t.slurpable, execute: 'slurpPortion', setting: null },
                     fragment: { label: 'Break Off', sfwLabel: 'Chip', icon: '🍫', validate: (a, t) => t.breakable, execute: 'fragmentPortion', setting: null }
@@ -4315,6 +4315,10 @@
                 return stat >= difficulty;
             },
 
+            _shouldSkipFullFeedTarget(options = {}) {
+                return !options.subAction || ['heal', 'breastfeed'].includes(options.subAction);
+            },
+
             outsideActionOnTargets(action, targets, actor = this._getExplorationActor(), options = {}) {
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
@@ -4334,7 +4338,7 @@
                 const skipped = [];
                 const skippedSet = new Set();
                 for (const target of targetList) {
-                    if (action === 'feed' && this.party.includes(target) && target.CPun >= target.MPun) {
+                    if (action === 'feed' && this._shouldSkipFullFeedTarget(options) && this.party.includes(target) && target.CPun >= target.MPun) {
                         skipped.push(target.name);
                         skippedSet.add(target);
                         continue;
@@ -4436,7 +4440,7 @@
                 for (let i = 0; i < livingActors.length; i++) {
                     const actor = livingActors[i];
                     const target = targetList[i];
-                    if (action === 'feed' && this.party.includes(target) && target.CPun >= target.MPun) {
+                    if (action === 'feed' && this._shouldSkipFullFeedTarget(options) && this.party.includes(target) && target.CPun >= target.MPun) {
                         skipped.push(target.name);
                         continue;
                     }

@@ -6377,6 +6377,10 @@
                 } else if (targets.length > 1 && actors.length > 1) {
                     this.log.push({ text: `Choose one actor for multi-target ${this._uiLabel(action).toLowerCase()} actions, or one target for group actions.`, type: 'discovery' });
                     this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    this.renderExplorationActions();
+                    return;
                 } else {
                     this.outsideActionOnTargets(action, targets, actors[0] || this.player);
                 }

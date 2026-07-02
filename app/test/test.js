@@ -1754,6 +1754,8 @@ test('Multiple actors against multiple marked targets are rejected clearly', () 
   App.resolveExplorationTargetAction('flirt');
   assertEqual(targetA.CPle, 0, 'Ambiguous many-to-many action should not affect first target');
   assertEqual(targetB.CPle, 0, 'Ambiguous many-to-many action should not affect second target');
+  assertEqual(App.explorationActorIds.join(','), 'actor-a,actor-b', 'Rejected many-to-many action should preserve selected actors for correction');
+  assertEqual(App.explorationTargetIds.join(','), 'party:target-a,party:target-b', 'Rejected many-to-many action should preserve selected targets for correction');
   assertContains(App.log[App.log.length - 1].text, 'Choose one actor', 'Many-to-many rejection should explain how to proceed');
 });
 

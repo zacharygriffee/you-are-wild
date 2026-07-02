@@ -168,14 +168,25 @@
 - Keep non-party persuasion deferred: exploration group actions remain player-controlled for party members only
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
-#### 2. Brand Transformation
+#### 2. Card Density and Intent Navigation
+- Keep default party/creature cards focused on creature identity and tactical state: portrait/icon, name, disposition/role/status summary, three tactical bars, a capped set of status/trait chips, and only the selectors needed for the current interaction flow.
+- Preserve visible `Act`, `Target`, and Stats/Inspect controls where they are needed; `Target` is part of the current multi-character selection workflow and should not be removed while target selection still depends on it.
+- Continue moving repeated primary action buttons off every default card. The current action-menu seam should remain the accessible fallback path, with future radial/intent navigation treated as an accelerator rather than the only way to act.
+- Preferred interaction direction: tap/click focuses a unit, Quick Action/Menu opens the accessible action sheet, long-press or right-click can open a radial/intent menu, radial selection chooses only primary intent, and sub-actions/confirmation/target prompts resolve through a bottom or compact action sheet.
+- Do not create a parallel action system for the radial menu. Normalize intent into command metadata where useful, then dispatch through existing outside-combat/combat action functions, existing sub-action definitions, existing content-tier label helpers, and existing target/actor selection state.
+- Preserve multi-character behavior while reducing density: party actor selection, target marking, party-vs-party actions, creature targeting, combat target selection, contextual quest/trade/recruit/loot/scavenge actions, and modded primary/sub-actions must keep working.
+- Default card content should not show full numeric stat blocks, full combat attributes, equipment/body/perk detail, or every possible primary/sub-action. Exact numbers and deep data remain in Stats/detail surfaces.
+- Keep radial/action-sheet UI accessible and reversible: semantic buttons, labels/titles, Escape/outside-tap closing, safe viewport positioning, reduced-motion/high-contrast compatibility, no color-only meaning, no hidden gesture as the sole path, and no accidental destructive/high-impact action bypasses.
+- Test card density changes against desktop and mobile: essential selectors remain reachable, action menus preserve existing dispatch, tactical bars remain accessible and clamped, mobile chips do not overflow, and selected actor/target state survives action-sheet/radial flows.
+
+#### 3. Brand Transformation
 - Check final commercial availability before release naming is locked; the quick search looked cleaner than `Wildbound`, but this is not a legal clearance substitute
 - Keep **You Are Wild** as the canonical project title unless availability clearance finds a blocker; acceptable shorthand/acronym options are **YAW** or **YW**, with "You're wild" reserved for tagline/UI copy rather than as a separate brand
 - Continue migration-safe cleanup of old storage names only where compatibility allows; active writes now use `yaw-*`, `YAW_Saves`, and `YAW_Modules`, while approved legacy aliases remain for existing saves/settings/modules
 - Decide whether to remove or further quarantine `legacy/` and `archive/` before release packaging
 - Keep `npm run audit:branding` passing whenever source, docs, or generated dist change
 
-#### 3. Repository Organization
+#### 4. Repository Organization
 - Keep active source under the cleaner `app/` layout; update root package scripts and docs whenever layout changes
 - Review `archive/` and `legacy/` retention policy so old reference material is quarantined without confusing active branding audits
 - Ensure repository metadata stays aligned with GitHub defaults: local branch `main`, remote `origin`, and README/build instructions aligned with the final layout

@@ -718,7 +718,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
           'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.',
           'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.confirmDeleteAll': 'Delete ALL save data? This cannot be undone!', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}!', 'save.success.deletedAll': 'All saves deleted.', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.error.deleteAllFailed': 'Delete saves failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
-          'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group actions.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.clearSelected': 'Clear selected targets'
+          'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group actions.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.clearSelected': 'Clear selected targets', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their stomach.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be split without helpers.', 'group.feast.split': '{actors} split {target} into chewable portions.', 'group.feast.selfBlocked': '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to consume.', 'group.feast.swallow': '{helpers} help {primary} swallow {target}.', 'group.social.share': '{actors} share {action} with {target}. Pleasure spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Pleasure rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
@@ -735,7 +735,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
           'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.',
           'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.confirmDeleteAll': 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}!', 'save.success.deletedAll': 'Todas las partidas fueron borradas.', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}', 'save.error.deleteAllFailed': 'Error al borrar partidas: {message}', 'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'save.recovery.deleted': 'Partida borrada.', 'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
-          'target.actors': 'Actores', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Objetivo', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.clearSelected': 'Limpiar objetivos'
+          'target.actors': 'Actores', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Objetivo', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.clearSelected': 'Limpiar objetivos', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su estomago.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede dividirse sin ayudantes.', 'group.feast.split': '{actors} dividen a {target} en porciones masticables.', 'group.feast.selfBlocked': '{target} no puede devorarse a si mismo. Selecciona otros miembros del grupo como actores para consumir este objetivo, o selecciona solo a {target} para devorar otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo consuman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a tragar a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El placer se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El placer sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
         }
       },
       setPreference(key, value) { this.preferences[key] = value; },
@@ -1975,6 +1975,66 @@ test('Chewing-enabled group feast splits target among selected actors', () => {
   assertEqual(eaterB.stomach.length, 1, 'Second group eater should receive a prey portion');
   assertEqual(App.party.includes(prey), false, 'Split party target should leave active party list');
   assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
+});
+
+test('Group exploration outcome summaries localize', () => {
+  const feed = loadAppForCombat(() => 0);
+  const feedPlayer = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 10, MPun: 200, Feed: 10, size: 6, appetite: 6 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', Feed: 20, size: 2 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', Feed: 30, size: 2 });
+  feed.App.player = feedPlayer;
+  feed.App.party = [feedPlayer, target, helperA, helperB];
+  feed.App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  feed.App.updateLanguage('es');
+  feed.App.outsideActionForParty('feed', 1);
+  assertContains(feed.App.log[feed.App.log.length - 1].text, 'atienden juntos a Target', 'Self-included group feed summary should localize');
+
+  const social = loadAppForCombat(() => 0);
+  const socialPlayer = makeUnit('You', { id: 'player-1' });
+  const socialTarget = makeUnit('Target', { id: 'target-1', CPle: 0, MPle: 100, Fuck: 20, cha: 20, wis: 1 });
+  const socialHelper = makeUnit('Helper', { id: 'helper-1', CPle: 0, MPle: 100, Fuck: 20, cha: 20 });
+  social.App.player = socialPlayer;
+  social.App.party = [socialPlayer, socialTarget, socialHelper];
+  social.App.explorationActorIds = ['target-1', 'helper-1'];
+  social.App.updateLanguage('es');
+  social.App.outsideActionForParty('fuck', 1);
+  assertContains(social.App.log[social.App.log.length - 1].text, 'comparten seducir con Target', 'Self-included group social summary should localize');
+
+  const fight = loadAppForCombat(() => 0);
+  const fightPlayer = makeUnit('You', { id: 'player-1' });
+  const fighterA = makeUnit('Fighter A', { id: 'fighter-a', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  const fighterB = makeUnit('Fighter B', { id: 'fighter-b', CPun: 100, MPun: 100, Figh: 40, con: 1 });
+  fight.App.player = fightPlayer;
+  fight.App.party = [fightPlayer, fighterA, fighterB];
+  fight.App.explorationActorIds = ['fighter-a', 'fighter-b'];
+  fight.App.updateLanguage('es');
+  fight.App.outsideActionForParty('fight', 1);
+  assertContains(fight.App.log[fight.App.log.length - 1].text, 'practican combate juntos', 'Self-included group fight summary should localize');
+
+  const feast = loadAppForCombat(() => 0);
+  const feastPlayer = makeUnit('You', { id: 'player-1' });
+  const eaterA2 = makeUnit('Eater A', { id: 'eater-a', size: 4, appetite: 4, Feas: 20 });
+  const eaterB2 = makeUnit('Eater B', { id: 'eater-b', size: 4, appetite: 4, Feas: 20 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
+  feast.App.player = feastPlayer;
+  feast.App.party = [feastPlayer, eaterA2, eaterB2, prey];
+  feast.App.settings.chewing = true;
+  feast.App.explorationActorIds = ['eater-a', 'eater-b'];
+  feast.App.updateLanguage('es');
+  feast.App.outsideActionForParty('feast', 3);
+  assertContains(feast.App.log[feast.App.log.length - 1].text, 'dividen a Prey en porciones masticables', 'Group chew feast summary should localize');
+
+  const transfer = loadAppForCombat(() => 0);
+  const transferPlayer = makeUnit('You', { id: 'player-1' });
+  const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
+  const transferPrey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  transfer.App.player = transferPlayer;
+  transfer.App.party = [transferPlayer, consumer, transferPrey];
+  transfer.App.explorationActorIds = ['prey-1'];
+  transfer.App.updateLanguage('es');
+  transfer.App.outsideActionForParty('feed', 1);
+  assertContains(transfer.App.log[transfer.App.log.length - 1].text, 'Prey es alimentado a Consumer', 'Party feed transfer summary should localize');
 });
 
 test('One actor needs enough stats to handle multiple exploration targets', () => {

@@ -4032,8 +4032,8 @@
             },
 
             _feedPartyMemberToConsumer(prey, consumer) {
-                if (!prey || !consumer || prey === consumer) return `${prey?.name || 'Someone'} cannot feed into themself yet.`;
-                if (prey === this.player || prey.mc) return `${prey.name} cannot be handed off as prey right now.`;
+                if (!prey || !consumer || prey === consumer) return this._label('group.feed.selfBlocked', '{name} cannot feed into themself yet.', { name: prey?.name || 'Someone' });
+                if (prey === this.player || prey.mc) return this._label('group.feed.playerBlocked', '{name} cannot be handed off as prey right now.', { name: prey.name });
                 if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
                 if (!consumer.stomach) consumer.stomach = [];
                 consumer.stomach.push(this._createStomachPrey(prey, { willingSacrifice: true }));
@@ -4041,7 +4041,7 @@
                 prey.CPle = 0;
                 consumer.hunger = Math.max(0, (consumer.hunger || 0) - 40);
                 this._removeContainedPartyMember(prey);
-                return `${prey.name} is fed to ${consumer.name} and settles in their stomach.`;
+                return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their stomach.', { prey: prey.name, consumer: consumer.name });
             },
 
             registerPlayFightResolver(resolver) {
@@ -4056,17 +4056,17 @@
                 if (target.CPun <= 0) {
                     if (this.settings.partyPlayFightMode === 'lethal') {
                         this._makeCorpse(target, 'fight');
-                        return `${target.name} collapses from the rough play.`;
+                        return this._label('group.fight.roughCollapse', '{name} collapses from the rough play.', { name: target.name });
                     }
                     target.CPun = 1;
-                    return 'They are pinned but not seriously hurt.';
+                    return this._label('group.fight.pinned', 'They are pinned but not seriously hurt.');
                 }
                 return '';
             },
 
             _groupChewFeast(actors, target) {
                 const portions = actors.filter(actor => actor && actor !== target);
-                if (portions.length === 0) return `${target.name} cannot be split without helpers.`;
+                if (portions.length === 0) return this._label('group.feast.noHelpers', '{target} cannot be split without helpers.', { target: target.name });
                 const portionSize = Math.max(1, Math.ceil((target.size || 1) / portions.length));
                 const blocked = portions.find(actor => this._containerUsed(actor, 'stomach') + portionSize > this._containerCapacity(actor, 'stomach'));
                 if (blocked) return this._capacityFailureMessage(blocked, target, 'stomach');
@@ -4088,7 +4088,10 @@
                 if (this.party.includes(target)) this._removeContainedPartyMember(target);
                 else this._makeCorpse(target, 'feast');
                 this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                return `${portions.map(actor => actor.name).join(', ')} split ${target.name} into chewable portions.`;
+                return this._label('group.feast.split', '{actors} split {target} into chewable portions.', {
+                    actors: portions.map(actor => actor.name).join(', '),
+                    target: target.name
+                });
             },
 
             _multiTargetStat(actor, action) {
@@ -4190,11 +4193,18 @@
                                 const outcome = this._resolvePartyPlayFight(livingActors, participant, sparDamage);
                                 if (outcome) outcomes.push(`${participant.name}: ${outcome}`);
                             }
-                            result = `${names} spar together, each taking ${sparDamage} punishment.`;
+                            result = this._label('group.fight.sparTogether', '{actors} spar together, each taking {amount} punishment.', {
+                                actors: names,
+                                amount: sparDamage
+                            });
                             if (outcomes.length > 0) result += ` ${outcomes.join(' ')}`;
                             break;
                         }
-                        result = `${names} play-fight ${target.name} for ${dmg} punishment.`;
+                        result = this._label('group.fight.playFight', '{actors} play-fight {target} for {amount} punishment.', {
+                            actors: names,
+                            target: target.name,
+                            amount: dmg
+                        });
                         if (this.party.includes(target)) {
                             const outcome = this._resolvePartyPlayFight(livingActors, target, dmg);
                             if (outcome) result += ` ${outcome}`;
@@ -4203,7 +4213,7 @@
                         }
                         if (!this.party.includes(target) && target.CPun <= 0) {
                             this._makeCorpse(target, 'fight');
-                            result += ` ${target.name} collapses.`;
+                            result += ` ${this._label('group.fight.collapses', '{target} collapses.', { target: target.name })}`;
                         }
                         break;
                     }
@@ -4216,27 +4226,36 @@
                                 const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                                 const healAmount = Math.floor(totalFeed * 2);
                                 target.CPun = Math.min(target.MPun, target.CPun + healAmount);
-                                result = `${names} tend ${target.name}${livingActors.includes(target) ? ' together' : ''}, restoring ${healAmount} punishment.`;
+                                result = livingActors.includes(target)
+                                    ? this._label('group.feed.tendTogether', '{actors} tend {target} together, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount })
+                                    : this._label('group.feed.tend', '{actors} tend {target}, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount });
                             } else {
                                 const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
                                 if (helpers.length > 0) {
                                     const helperNames = helpers.map(actor => actor.name).join(', ');
-                                    const helperVerb = helpers.length === 1 && helpers[0] !== this.player ? 'helps' : 'help';
-                                    texts.push(`${helperNames} ${helperVerb} feed ${prey.map(actor => actor.name).join(', ')} to ${target.name}.`);
+                                    texts.push(this._label('group.feed.helpers', '{helpers} help feed {prey} to {target}.', {
+                                        helpers: helperNames,
+                                        prey: prey.map(actor => actor.name).join(', '),
+                                        target: target.name
+                                    }));
                                 }
                                 result = texts.join(' ');
                             }
                         } else {
                             const totalFeed = livingActors.reduce((sum, actor) => sum + (actor.Feed || 10), 0);
                             target.CPun = Math.min(target.MPun, target.CPun + Math.floor(totalFeed * 2));
-                            result = `${names} feed ${target.name}, restoring ${Math.floor(totalFeed * 2)} punishment.`;
+                            result = this._label('group.feed.creature', '{actors} feed {target}, restoring {amount} punishment.', {
+                                actors: names,
+                                target: target.name,
+                                amount: Math.floor(totalFeed * 2)
+                            });
                         }
                         break;
                     }
                     case 'feast': {
                         const primary = livingActors[0];
                         if (this.party.includes(target) && livingActors.includes(target)) {
-                            result = `${target.name} cannot feast on themself. Select other party members as actors to consume this target, or select ${target.name} alone to feast on another target.`;
+                            result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
                             break;
                         }
                         if (this.settings.chewing && livingActors.length > 1) {
@@ -4246,7 +4265,7 @@
                         const helperBonus = livingActors.slice(1).reduce((sum, actor) => sum + Math.floor((actor.Feas || 10) * 0.5), 0);
                         const canEatOutside = this.cheats.canEatAnything || (primary.size >= target.size - 2 && primary.Feas + helperBonus + 5 > target.Flee);
                         if (!canEatOutside) {
-                            result = `${target.name} is too large or strong for ${names} to consume.`;
+                            result = this._label('group.feast.tooStrong', '{target} is too large or strong for {actors} to consume.', { target: target.name, actors: names });
                             break;
                         }
                         if (!this._canFitPrey(primary, target, 'stomach')) {
@@ -4258,7 +4277,11 @@
                         target.CPun = 0;
                         if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        result = `${livingActors.slice(1).map(actor => actor.name).join(', ') || primary.name} help${livingActors.length > 2 ? '' : 's'} ${primary.name} swallow ${target.name}.`;
+                        result = this._label('group.feast.swallow', '{helpers} help {primary} swallow {target}.', {
+                            helpers: livingActors.slice(1).map(actor => actor.name).join(', ') || primary.name,
+                            primary: primary.name,
+                            target: target.name
+                        });
                         break;
                     }
                     case 'flirt':
@@ -4274,9 +4297,20 @@
                                 livingActors.filter(actor => actor !== target).forEach(actor => {
                                     actor.CPle = Math.min(actor.MPle, (actor.CPle || 0) + sharedGain);
                                 });
-                                result = `${names} share ${this._uiLabel(action).toLowerCase()} with ${target.name}. Pleasure spreads through the group; ${target.name} rises to ${target.CPle}/${target.MPle}.`;
+                                result = this._label('group.social.share', '{actors} share {action} with {target}. Pleasure spreads through the group; {target} rises to {current}/{max}.', {
+                                    actors: names,
+                                    action: this._uiLabel(action).toLowerCase(),
+                                    target: target.name,
+                                    current: target.CPle,
+                                    max: target.MPle
+                                });
                             } else {
-                                result = `${names} focus on ${target.name}. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                                result = this._label('group.social.focus', '{actors} focus on {target}. Pleasure rises to {current}/{max}.', {
+                                    actors: names,
+                                    target: target.name,
+                                    current: target.CPle,
+                                    max: target.MPle
+                                });
                             }
                             if (target.CPle >= target.MPle * 0.8) {
                                 target.willing = true;
@@ -4285,7 +4319,7 @@
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             }
                         } else {
-                            result = `${target.name} resists the group's attention.`;
+                            result = this._label('group.social.resists', "{target} resists the group's attention.", { target: target.name });
                         }
                         break;
                     }

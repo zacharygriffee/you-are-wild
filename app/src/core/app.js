@@ -1712,6 +1712,8 @@
                 }
                 tile.creatures = this._tileCreatures(this.creatures);
                 this.persistTileDelta(tile.x, tile.y, tile);
+                this._updateQuestProgress('escort', { x: this.location.x, y: this.location.y });
+                this._updateQuestProgress('travel', { x: this.location.x, y: this.location.y });
                 if (!this.combatState.active) {
                     const restoredEnemies = this._livingEnemies(this.creatures);
                     if (restoredEnemies.length > 0) {
@@ -4733,23 +4735,45 @@
                     status: source.status || 'available',
                     turnInRequired: Boolean(source.turnInRequired || source.rewardOnTurnIn),
                     rewardClaimed: Boolean(source.rewardClaimed),
-                    objectives: (source.objectives || []).map((objective, index) => ({
-                        id: objective.id || `${id}_objective_${index}`,
-                        type: objective.type || 'find',
-                        label: objective.label || objective.description || this._questObjectiveLabel(objective),
-                        targetId: objective.targetId || null,
-                        species: objective.species || null,
-                        item: objective.item || null,
-                        required: objective.required || objective.count || 1,
-                        progress: objective.progress || 0,
-                        complete: Boolean(objective.complete)
-                    })),
+                    objectives: (source.objectives || []).map((objective, index) => this._normalizeQuestObjective(objective, id, index)),
                     reward: source.reward || source.rewards || {}
                 };
             },
 
+            _normalizeQuestObjective(objective = {}, questId = 'quest', index = 0) {
+                const checkpoints = (objective.checkpoints || objective.route || []).map((checkpoint, checkpointIndex) => ({
+                    id: checkpoint.id || `${questId}_objective_${index}_checkpoint_${checkpointIndex}`,
+                    label: checkpoint.label || checkpoint.name || `Checkpoint ${checkpointIndex + 1}`,
+                    x: Number(checkpoint.x ?? checkpoint.location?.x ?? checkpoint[0] ?? 0),
+                    y: Number(checkpoint.y ?? checkpoint.location?.y ?? checkpoint[1] ?? 0),
+                    complete: Boolean(checkpoint.complete)
+                }));
+                const location = objective.location || (Number.isFinite(objective.x) && Number.isFinite(objective.y) ? { x: objective.x, y: objective.y } : null);
+                const required = objective.required || objective.count || Math.max(1, checkpoints.length || 1);
+                const normalized = {
+                    id: objective.id || `${questId}_objective_${index}`,
+                    type: objective.type || 'find',
+                    label: objective.label || objective.description || this._questObjectiveLabel(objective),
+                    targetId: objective.targetId || null,
+                    species: objective.species || null,
+                    item: objective.item || null,
+                    location: location ? { x: Number(location.x), y: Number(location.y) } : null,
+                    checkpoints,
+                    required,
+                    progress: objective.progress || 0,
+                    complete: Boolean(objective.complete)
+                };
+                if (normalized.type === 'escort' && normalized.checkpoints.length) {
+                    normalized.progress = Math.min(normalized.progress, normalized.checkpoints.length);
+                    normalized.required = normalized.checkpoints.length;
+                    normalized.checkpoints.forEach((checkpoint, i) => { checkpoint.complete = checkpoint.complete || i < normalized.progress; });
+                    normalized.complete = normalized.complete || normalized.progress >= normalized.required;
+                }
+                return normalized;
+            },
+
             _questObjectiveLabel(objective) {
-                const target = objective.item || objective.species || objective.targetId || 'target';
+                const target = objective.item || objective.species || objective.targetId || objective.location?.label || 'target';
                 return `${objective.type || 'find'} ${target}`;
             },
 
@@ -4796,7 +4820,15 @@
                 if (objective.species && objective.species !== payload.species && objective.species !== payload.target?.species) return false;
                 if (objective.targetId && String(objective.targetId) !== String(payload.targetId || payload.target?.id || payload.target?.name)) return false;
                 if (objective.item && objective.item !== payload.item && objective.item !== payload.name) return false;
+                if ((objective.type === 'escort' || objective.type === 'travel') && objective.location) {
+                    if (Number(objective.location.x) !== Number(payload.x) || Number(objective.location.y) !== Number(payload.y)) return false;
+                }
                 return true;
+            },
+
+            _nextQuestCheckpoint(objective) {
+                if (!objective || objective.complete || !Array.isArray(objective.checkpoints) || objective.checkpoints.length === 0) return null;
+                return objective.checkpoints.find(checkpoint => !checkpoint.complete) || null;
             },
 
             _updateQuestProgress(type, payload = {}) {
@@ -4806,6 +4838,11 @@
                     quest.rewardClaimed = Boolean(quest.rewardClaimed);
                     for (const objective of quest.objectives || []) {
                         if (!this._questObjectiveMatches(type, payload, objective)) continue;
+                        if (objective.type === 'escort' && objective.checkpoints?.length) {
+                            const checkpoint = this._nextQuestCheckpoint(objective);
+                            if (!checkpoint || Number(checkpoint.x) !== Number(payload.x) || Number(checkpoint.y) !== Number(payload.y)) continue;
+                            checkpoint.complete = true;
+                        }
                         objective.progress = Math.min(objective.required, (objective.progress || 0) + (payload.count || 1));
                         objective.complete = objective.progress >= objective.required;
                         changed = true;
@@ -4871,7 +4908,9 @@
             _questProgressText(quest) {
                 return (quest.objectives || []).map(objective => {
                     const done = objective.complete ? '✓' : '•';
-                    return `${done} ${objective.label || this._questObjectiveLabel(objective)} (${objective.progress || 0}/${objective.required || 1})`;
+                    const checkpoint = this._nextQuestCheckpoint(objective);
+                    const next = checkpoint ? ` → ${checkpoint.label} (${checkpoint.x}, ${checkpoint.y})` : '';
+                    return `${done} ${objective.label || this._questObjectiveLabel(objective)} (${objective.progress || 0}/${objective.required || 1})${next}`;
                 }).join('<br>');
             },
 
@@ -5376,6 +5415,22 @@
                 return '';
             },
 
+            _largeMapQuestMarker(x, y) {
+                for (const quest of this.quests || []) {
+                    if (quest.status !== 'active') continue;
+                    for (const objective of quest.objectives || []) {
+                        if (objective.complete) continue;
+                        const checkpoint = this._nextQuestCheckpoint(objective);
+                        const marker = checkpoint || objective.location;
+                        if (!marker) continue;
+                        if (Number(marker.x) === Number(x) && Number(marker.y) === Number(y)) {
+                            return `${quest.title}: ${marker.label || objective.label || this._questObjectiveLabel(objective)}`;
+                        }
+                    }
+                }
+                return '';
+            },
+
             setLargeMapZoom(delta) {
                 const current = this.largeMapRadius || 8;
                 this.largeMapRadius = Math.max(4, Math.min(12, current + delta));
@@ -5425,14 +5480,18 @@
                         const tile = this._resolveLargeMapTile(x, y);
                         const biome = tile ? this.biomes[tile.biome] : null;
                         const poi = this._largeMapPoiLabel(tile);
+                        const questMarker = this._largeMapQuestMarker(x, y);
                         let classes = 'large-map-tile';
                         if (tile) classes += ' known';
                         if (isCurrent) classes += ' current';
                         if (poi) classes += ' poi';
+                        if (questMarker) classes += ' quest';
                         const label = tile && biome ? `${biome.name} (${x}, ${y})` : `Unknown (${x}, ${y})`;
-                        const content = isCurrent ? '●' : (biome ? biome.icon : '·');
-                        html += `<div class="${classes}" title="${this._escapeHtml(poi ? `${label}: ${poi}` : label)}" aria-label="${this._escapeHtml(label)}">${content}</div>`;
+                        const markerLabel = questMarker || poi;
+                        const content = isCurrent ? '●' : (questMarker ? '◆' : (biome ? biome.icon : '·'));
+                        html += `<div class="${classes}" title="${this._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${this._escapeHtml(label)}">${content}</div>`;
                         if (poi) points.push({ x, y, biome: biome?.name || 'Known area', poi });
+                        if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
                     }
                     html += '</div>';
                 }

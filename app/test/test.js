@@ -1926,6 +1926,32 @@ test('Large map controls zoom pan and recenter the discovered region', () => {
   assertContains(elements.get('large-map-view').textContent, '0, 0', 'View label should return to player center');
 });
 
+test('Large map renders next quest checkpoint markers', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.quests = [App._normalizeQuest({
+    id: 'route_marker',
+    title: 'Route Marker',
+    status: 'active',
+    objectives: [{
+      type: 'escort',
+      label: 'Guide traveler',
+      checkpoints: [{ label: 'Safe Camp', x: 2, y: 0 }]
+    }],
+    reward: {}
+  })];
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'Route Marker: Safe Camp', 'Large map should label next quest checkpoint');
+  assertContains(elements.get('large-map').innerHTML, 'large-map-tile quest', 'Large map should style quest checkpoint tile');
+  assertContains(elements.get('large-map-pois').innerHTML, 'Route Marker: Safe Camp', 'POI list should include quest checkpoint');
+  assertEqual(App.worldMap.has('2,0'), false, 'Quest marker should not materialize unknown generated tile');
+});
+
 test('Movement and search advance the in-game hour', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.player = makeUnit('You');
@@ -2488,6 +2514,37 @@ test('Quest find objectives advance from search discoveries', () => {
   App.search();
   assertEqual(App.quests[0].status, 'completed', 'Finding quest item should complete quest');
   assertEqual(App.player.gold, 3, 'Find quest should grant reward');
+});
+
+test('Escort quest checkpoints advance in route order', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { gold: 0 });
+  App.party = [App.player];
+  App.quests = [{
+    id: 'escort_route',
+    title: 'Escort Route',
+    status: 'active',
+    objectives: [{
+      type: 'escort',
+      label: 'Guide the traveler',
+      progress: 0,
+      required: 2,
+      checkpoints: [
+        { label: 'Old Road', x: 1, y: 0 },
+        { label: 'Safe Camp', x: 2, y: 0 }
+      ]
+    }],
+    reward: { gold: 4 }
+  }];
+  App.quests[0] = App._normalizeQuest(App.quests[0]);
+  App._updateQuestProgress('escort', { x: 2, y: 0 });
+  assertEqual(App.quests[0].objectives[0].progress, 0, 'Escort should not skip ahead to later checkpoints');
+  App._updateQuestProgress('escort', { x: 1, y: 0 });
+  assertEqual(App.quests[0].objectives[0].progress, 1, 'Escort should advance at the first checkpoint');
+  assertEqual(App.quests[0].status, 'active', 'Escort should remain active until all checkpoints are done');
+  App._updateQuestProgress('escort', { x: 2, y: 0 });
+  assertEqual(App.quests[0].status, 'completed', 'Escort should complete after final checkpoint');
+  assertEqual(App.player.gold, 4, 'Escort completion should grant reward');
 });
 
 test('Quest log supports status filtering and title sorting', () => {

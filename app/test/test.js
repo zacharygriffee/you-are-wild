@@ -2382,6 +2382,23 @@ test('Marked exploration targets resolve through multi-target action and clear s
   assertEqual(App.explorationTargetIds.length, 0, 'Target selection should clear after resolving action');
 });
 
+test('Direct multi-target actions normalize stale target selections', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', size: 8, appetite: 8, Feas: 50 });
+  const preyA = makeUnit('Prey A', { id: 'prey-a', disposition: App.DISPOSITION.FRIENDLY, size: 2, Flee: 1 });
+  const preyB = makeUnit('Prey B', { id: 'prey-b', disposition: App.DISPOSITION.FRIENDLY, size: 2, Flee: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [preyA, preyB];
+  App.toggleExplorationTarget('creature', 'prey-a');
+  App.toggleExplorationTarget('creature', 'prey-b');
+  App.outsideActionForCreatureTargets('feast', ['prey-a', 'prey-b']);
+  assertEqual(actor.stomach.length, 2, 'Direct multi-target feast should consume both area creatures');
+  assertEqual(App.creatures.length, 0, 'Consumed area creatures should leave the active creature list');
+  assertEqual(App.explorationTargetIds.length, 0, 'Direct multi-target action should clear stale selected creature ids');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'selected-target-summary', 'Context action UI should not show stale target summary after direct multi-target action');
+});
+
 test('Multi-target feed does not consume the acting party member', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('Feeder', { id: 'feeder-1', Feed: 20 });

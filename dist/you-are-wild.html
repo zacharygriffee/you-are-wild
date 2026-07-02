@@ -6963,9 +6963,11 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
+                this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
+                this.renderExplorationActions();
                 return true;
             },
 

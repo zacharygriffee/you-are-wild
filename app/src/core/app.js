@@ -2455,26 +2455,26 @@
                 }
                 // 6 Primary Actionables: Fight, Flirt, Feast, Fuck, Feed, Flee
                 if (enemies.length > 0) {
-                    html += `<button class="action-btn primary" onclick="App.selectTarget('fight')">⚔️ Fight</button>`;
-                    html += `<button class="action-btn" onclick="App.selectTarget('flirt')">😘 Flirt</button>`;
-                    html += `<button class="action-btn" onclick="App.selectTarget('feast')">🍽️ Feast</button>`;
-                    html += `<button class="action-btn" onclick="App.selectTarget('fuck')">🔥 Fuck</button>`;
+                    html += this._iconActionButton('fight', this._actionIcon('fight'), "App.selectTarget('fight')", 'primary');
+                    html += this._iconActionButton('flirt', this._actionIcon('flirt'), "App.selectTarget('flirt')");
+                    html += this._iconActionButton('feast', this._actionIcon('feast'), "App.selectTarget('feast')");
+                    html += this._iconActionButton('fuck', this._actionIcon('fuck'), "App.selectTarget('fuck')");
                 }
                 if (allies.length > 0) {
-                    html += `<button class="action-btn" onclick="App.executeFeedAction()">🍲 Feed</button>`;
+                    html += this._iconActionButton('feed', this._actionIcon('feed'), 'App.executeFeedAction()');
                 }
                 if (enemies.length > 0) {
-                    html += `<button class="action-btn" onclick="App.showSyncMenu()">👥 Sync</button>`;
+                    html += this._iconActionButton('sync', '👥', 'App.showSyncMenu()');
                     const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
                     html += `<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="App.moveCombatRow()">↕️ ${moveRowLabel}</button>`;
                 }
                 if (allies.length > 0 || friendlies.length > 0) {
-                    html += `<button class="action-btn" onclick="App.showInteractMenu()">💋 Interact</button>`;
+                    html += this._iconActionButton('interact', this._actionIcon('interact'), 'App.showInteractMenu()');
                 }
                 if (this.activeActor?.name === this.player?.name) {
-                    html += `<button class="action-btn" onclick="App.attemptFlee()">🏃 Flee</button>`;
+                    html += this._iconActionButton('flee', this._actionIcon('flee'), 'App.attemptFlee()');
                 } else {
-                    html += `<button class="action-btn" onclick="App.nextTurn()">Skip</button>`;
+                    html += this._iconActionButton('skip', '', 'App.nextTurn()');
                 }
                 document.getElementById('scene-actions').innerHTML = html;
             },

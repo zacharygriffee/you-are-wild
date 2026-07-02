@@ -684,7 +684,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       preferences: { maxTier: 3, voreEnabled: true, explicitDescriptions: true, language: 'en' },
       locales: {
         en: {
-          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.moveRow': 'Move Row', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
+          'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.flee': 'Flee', 'action.moveRow': 'Move Row', 'action.sync': 'Sync', 'action.skip': 'Skip', 'action.interact': 'Interact', 'action.stats': 'Stats', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}',
           'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}',
@@ -699,7 +699,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target'
         },
         es: {
-          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.moveRow': 'Mover fila', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
+          'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}',
           'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}',
@@ -2676,12 +2676,39 @@ test('Obedient ally turns use the same panel target selection', () => {
     syncActions: []
   };
   App.nextTurn = function() {};
+  App.updateLanguage('es');
   App.processTurn();
-  assertContains(elements.get('scene-actions').innerHTML, "selectTarget('fight')", 'Ally turn should expose manual actions');
+  const actionsHtml = elements.get('scene-actions').innerHTML;
+  assertContains(actionsHtml, "selectTarget('fight')", 'Ally turn should expose manual actions');
+  assertContains(actionsHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
+  assertContains(actionsHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
+  assertContains(actionsHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
+  assertContains(actionsHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
   App.executeActionOnTarget('fight', 'enemy-ally');
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
+});
+
+test('Player combat action bar localizes visible and accessible labels', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-actions' });
+  const ally = makeUnit('Ally', { id: 'ally-actions' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-actions', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.updateLanguage('es');
+  App.showActorActions(player);
+  const html = elements.get('scene-actions').innerHTML;
+  assertContains(html, 'aria-label="Luchar"', 'Fight action should localize accessible label');
+  assertContains(html, '>Coquetear<', 'Flirt action should localize visible label');
+  assertContains(html, 'aria-label="Devorar"', 'Feast action should localize accessible label');
+  assertContains(html, '>Seducir<', 'Adult action label should localize visible label');
+  assertContains(html, 'aria-label="Alimentar"', 'Feed action should localize accessible label');
+  assertContains(html, 'aria-label="Interactuar"', 'Interact action should localize accessible label');
+  assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
 });
 
 test('Party panel exposes per-ally AI order controls', () => {

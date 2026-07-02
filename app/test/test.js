@@ -1558,6 +1558,22 @@ test('Self-included group social action shares pleasure with multiple helpers', 
   assertContains(App.log[App.log.length - 1].text, 'Target, Helper A, Helper B share fuck with Target', 'Three-participant social action should log shared semantics');
 });
 
+test('Self-included group flirt shares pleasure with multiple helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPle: 0, MPle: 100, Flir: 30, cha: 20, wis: 1 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.outsideActionForParty('flirt', 1);
+  assert(target.CPle > 0, 'Self-included flirt target should gain pleasure');
+  assert(helperA.CPle > 0, 'First flirt helper should gain shared pleasure');
+  assert(helperB.CPle > 0, 'Second flirt helper should gain shared pleasure');
+  assertContains(App.log[App.log.length - 1].text, 'Target, Helper A, Helper B share flirt with Target', 'Three-participant flirt should log shared semantics');
+});
+
 test('Self-included group fight spars across participants instead of self-attacking target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -1768,6 +1784,43 @@ test('Multiple actors against multiple marked targets are rejected clearly', () 
   assertEqual(App.explorationActorIds.join(','), 'actor-a,actor-b', 'Rejected many-to-many action should preserve selected actors for correction');
   assertEqual(App.explorationTargetIds.join(','), 'party:target-a,party:target-b', 'Rejected many-to-many action should preserve selected targets for correction');
   assertContains(App.log[App.log.length - 1].text, 'Choose one actor', 'Many-to-many rejection should explain how to proceed');
+});
+
+test('Marked self-included group target resolves through shared group semantics', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPle: 0, MPle: 100, Flir: 30, cha: 20, wis: 1 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', CPle: 0, MPle: 100, Flir: 30, cha: 20 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.toggleExplorationTarget('party', 'target-1');
+  App.resolveExplorationTargetAction('flirt');
+  assert(target.CPle > 0, 'Marked self-included target should receive shared group action');
+  assert(helperA.CPle > 0, 'Marked self-included first helper should share the action result');
+  assert(helperB.CPle > 0, 'Marked self-included second helper should share the action result');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked self-included group action should clear targets');
+  assertContains(App.log[App.log.length - 1].text, 'share flirt with Target', 'Marked self-included action should route to group semantics');
+});
+
+test('Marked self-included group feed tends instead of consuming helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 10, MPun: 200, Feed: 10, size: 6, appetite: 6 });
+  const helperA = makeUnit('Helper A', { id: 'helper-a', Feed: 20, size: 2 });
+  const helperB = makeUnit('Helper B', { id: 'helper-b', Feed: 30, size: 2 });
+  App.player = player;
+  App.party = [player, target, helperA, helperB];
+  App.explorationActorIds = ['target-1', 'helper-a', 'helper-b'];
+  App.toggleExplorationTarget('party', 'target-1');
+  App.resolveExplorationTargetAction('feed');
+  assertEqual(target.CPun, 130, 'Marked self-included feed should combine target and helper feed stats');
+  assertEqual(target.stomach.length, 0, 'Marked self-included feed should not route helpers into target stomach');
+  assertEqual(App.party.includes(helperA), true, 'First helper should remain after marked self-included feed');
+  assertEqual(App.party.includes(helperB), true, 'Second helper should remain after marked self-included feed');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked self-included feed should clear targets');
+  assertContains(App.log[App.log.length - 1].text, 'tend Target together', 'Marked self-included feed should log tending semantics');
 });
 
 test('Exploration selection cleanup removes stale party and creature targets', () => {

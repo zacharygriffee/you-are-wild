@@ -1,6 +1,6 @@
 
 /**
- * Minimal Binary Serializer for FightFuckFeed.me
+ * Minimal Binary Serializer for You Are Wild
  * ~500 lines, zero dependencies
  * Preencode/encode/decode/state pattern (inspired by compact-encoding)
  */

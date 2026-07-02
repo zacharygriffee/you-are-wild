@@ -1,3 +1,2367 @@
+<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>You Are Wild</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+/* =============================================
+           CSS VARIABLES - Dark Mode Theme
+           ============================================= */
+        :root {
+            /* Core Colors */
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-elevated: #2d2d4a;
+
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6a6a7a;
+            --text-accent: #00d4aa;
+
+            /* Accent Colors */
+            --accent-primary: #00d4aa;
+            --accent-secondary: #ff6b9d;
+            --accent-warning: #ffd166;
+            --accent-danger: #ef476f;
+            --accent-info: #118ab2;
+
+            /* Borders */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.1);
+            --border-strong: rgba(255, 255, 255, 0.2);
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.3);
+
+            /* Typography */
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        /* =============================================
+           RESET & BASE
+           ============================================= */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: var(--base-font-size, 14px);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+
+        body.high-contrast {
+            --bg-primary: #000000;
+            --bg-secondary: #050505;
+            --bg-tertiary: #111111;
+            --bg-elevated: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #f5f5f5;
+            --text-muted: #d0d0d0;
+            --accent-primary: #00ffff;
+            --accent-secondary: #ffff00;
+            --accent-danger: #ff5f5f;
+            --accent-success: #39ff14;
+            --border-default: #ffffff;
+            --border-subtle: #909090;
+            --shadow-sm: none;
+            --shadow-md: none;
+            --shadow-lg: none;
+            --shadow-glow: 0 0 0 2px #00ffff;
+        }
+
+        body.reduced-motion *,
+        body.reduced-motion *::before,
+        body.reduced-motion *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
+        }
+
+        /* =============================================
+           APP SHELL
+           ============================================= */
+        #app {
+            display: grid;
+            grid-template-rows: 60px 1fr 140px;
+            grid-template-areas:
+                "header"
+                "stage"
+                "log";
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            max-width: 100vw;
+            overflow: hidden;
+        }
+
+        /* =============================================
+           HEADER
+           ============================================= */
+        .app-header {
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--space-lg);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-default);
+            z-index: 100;
+            min-width: 0;
+        }
+
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            min-width: 0;
+        }
+
+        .app-logo {
+            font-size: 24px;
+            filter: drop-shadow(0 0 8px var(--accent-primary));
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .app-nav {
+            display: flex;
+            gap: var(--space-sm);
+            min-width: 0;
+        }
+
+        .time-display {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 74px;
+            padding: var(--space-xs) var(--space-sm);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .nav-btn {
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        /* =============================================
+           STAGE AREA (Dynamic Content)
+           ============================================= */
+        .stage {
+            grid-area: stage;
+            display: grid;
+            grid-template-columns: 220px 1fr 280px 280px;
+            grid-template-areas: "map main party enemies";
+            gap: var(--space-md);
+            padding: var(--space-md);
+            overflow: hidden;
+        }
+
+        /* Panel Base */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: var(--space-md);
+        }
+
+        /* Map Panel */
+        .panel-map {
+            grid-area: map;
+        }
+
+        .mini-map {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+        }
+
+        .map-tile {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .map-tile:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+            transform: scale(1.1);
+        }
+
+        .map-tile.center {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .map-tile.moveable {
+            background: var(--bg-elevated);
+            border: 2px dashed var(--accent-primary);
+            color: var(--accent-primary);
+            font-size: 14px;
+        }
+
+        .map-tile.moveable:hover {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(0, 212, 170, 0.4);
+        }
+
+        .map-tile.explored {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+        }
+
+        .map-tile.far {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            opacity: 0.4;
+        }
+
+        .map-tile.has-enemy::after {
+            content: '⚔️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+        }
+
+        .map-tile.unexplored {
+            background: var(--bg-primary) !important;
+            border-color: var(--border-subtle) !important;
+            color: var(--text-muted);
+            font-size: 12px;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        .map-tile.unexplored:hover {
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+        }
+
+        .scene-display {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: var(--space-xl);
+        }
+
+        .scene-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            color: var(--text-accent);
+        }
+
+        .scene-description {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+
+        .scene-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+
+        .mobile-play-surface {
+            display: none;
+        }
+
+        /* Party/Enemy Panels */
+        .panel-party { grid-area: party; }
+        .panel-enemies { grid-area: enemies; }
+
+        /* Unit Card (Accordion) */
+        .unit-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-sm);
+            overflow: hidden;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .unit-card:hover {
+            border-color: var(--border-strong);
+        }
+
+        .unit-card.selected {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .unit-card.expanded {
+            border-color: var(--accent-secondary);
+        }
+        .unit-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px 12px;
+            border-top: 1px solid var(--border-default);
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .unit-actions .action-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .unit-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+        }
+
+        .unit-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-elevated);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .unit-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .unit-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unit-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .unit-health {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 11px;
+        }
+
+        .health-bar {
+            width: 60px;
+            height: 4px;
+            background: var(--bg-elevated);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            transition: width 0.3s ease;
+        }
+
+        .unit-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-xs);
+            padding: var(--space-sm);
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-default);
+        }
+
+        .stat {
+            text-align: center;
+            padding: var(--space-xs);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* =============================================
+           LOG PANEL
+           ============================================= */
+        .panel-log {
+            grid-area: log;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .log-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .log-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 6px var(--space-md);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .log-filter-btn {
+            padding: 3px 8px;
+            font-size: 10px;
+            min-height: 24px;
+        }
+
+        .log-filter-btn.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .log-search {
+            flex: 1;
+            min-width: 120px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-sm) var(--space-md);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            padding: var(--space-xs) 0;
+            border-left: 2px solid transparent;
+            padding-left: var(--space-sm);
+            margin-bottom: var(--space-xs);
+        }
+
+        .log-time {
+            display: block;
+            color: var(--text-muted);
+            font-size: 10px;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .log-category {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-right: 6px;
+            padding: 1px 5px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .log-entry.combat {
+            border-left-color: var(--accent-danger);
+            background: rgba(239, 71, 111, 0.05);
+        }
+
+        .log-entry.combat .log-category {
+            color: var(--accent-danger);
+        }
+
+        .log-entry.discovery {
+            border-left-color: var(--accent-warning);
+            background: rgba(255, 209, 102, 0.05);
+        }
+
+        .log-entry.discovery .log-category {
+            color: var(--accent-warning);
+        }
+
+        .log-entry.loot {
+            border-left-color: var(--accent-primary);
+        }
+
+        .log-entry.loot .log-category {
+            color: var(--accent-primary);
+        }
+
+        .log-entry.text-muted {
+            color: var(--text-muted);
+        }
+
+        .log-entry.heal {
+            border-left-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .log-entry.heal .log-category {
+            color: var(--accent-primary);
+        }
+
+        .log-entry.mod {
+            border-left-color: var(--accent-info);
+            font-style: italic;
+        }
+
+        .log-entry.mod .log-category {
+            color: var(--accent-info);
+        }
+
+        /* =============================================
+           ACTION BAR
+           ============================================= */
+        .action-bar {
+            display: flex;
+            gap: var(--space-md);
+            padding: 0 var(--space-md);
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+
+        .action-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .action-btn.primary:hover {
+            box-shadow: var(--shadow-glow);
+        }
+
+        .action-icon {
+            font-size: 20px;
+        }
+
+        .action-caption {
+            line-height: 1.1;
+        }
+
+        .action-legend {
+            flex: 1 0 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.3;
+            padding: 2px 4px 0;
+        }
+
+        /* =============================================
+           SCREENS
+           ============================================= */
+        .screen {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Overlay screens (settings, mods, market) */
+        .screen-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 200 !important;
+        }
+
+        #save-manager.screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 26, 0.95);
+            z-index: 1000;
+            overflow: auto;
+            display: none;
+        }
+
+        #save-manager.screen.active {
+            display: flex;
+        }
+
+        /* Character Creation Screen */
+        .screen-create {
+            background: var(--bg-primary);
+            align-items: center;
+            justify-content: flex-start;
+            padding: var(--space-xl);
+            overflow: auto;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        .create-container {
+            width: 100%;
+            max-width: 800px;
+            max-height: calc(100vh - (var(--space-xl) * 2));
+            max-height: calc(100dvh - (var(--space-xl) * 2));
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+
+        .create-title {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: var(--space-xs);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .create-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xl);
+        }
+
+        .create-section {
+            margin-bottom: var(--space-lg);
+        }
+
+        .create-submit {
+            width: 100%;
+            margin-top: var(--space-lg);
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            box-shadow: 0 -12px 24px var(--bg-secondary);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--space-sm);
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: var(--space-sm);
+        }
+
+        .option-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .option-grid::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+
+        .option-grid::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: var(--radius-sm);
+        }
+
+        .option-grid::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        .option-card {
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-default);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .option-card:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-elevated);
+        }
+
+        .option-card.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .option-icon {
+            font-size: 32px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .option-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .option-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: var(--space-xs);
+        }
+
+        /* =============================================
+           RESPONSIVE
+           ============================================= */
+        @media (max-width: 1400px) {
+            .stage {
+                grid-template-columns: 180px 1fr 240px 240px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .stage {
+                grid-template-columns: 160px 1fr 200px 200px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            :root {
+                --mobile-actions-height: 112px;
+            }
+
+            #app {
+                grid-template-rows: 52px minmax(0, 1fr);
+                grid-template-areas:
+                    "header"
+                    "stage";
+                height: calc(100vh - var(--mobile-actions-height));
+                height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom));
+                width: 100vw;
+                max-width: 100vw;
+                overflow: hidden;
+            }
+
+            .app-header {
+                padding: 0 10px;
+                gap: 8px;
+                overflow: hidden;
+            }
+
+            .app-logo {
+                font-size: 22px;
+            }
+
+            .app-title {
+                font-size: clamp(16px, 5vw, 22px);
+            }
+
+            .app-nav {
+                flex: 1;
+                justify-content: flex-end;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                scrollbar-width: none;
+                gap: 6px;
+            }
+
+            .app-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+            .app-nav .nav-btn {
+                flex: 0 0 auto;
+                min-width: 72px;
+                padding: 8px 10px;
+            }
+
+            .stage {
+                grid-template-columns: 1fr;
+                grid-template-areas: "main";
+                padding: 8px;
+                gap: 8px;
+                overflow: hidden;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100vw;
+            }
+
+            /* Mobile overlay panels */
+            .panel-map,
+            .panel-party,
+            .panel-enemies {
+                position: fixed;
+                top: 60px;
+                left: 8px;
+                right: 8px;
+                bottom: 92px;
+                width: auto;
+                max-width: calc(100vw - 16px);
+                z-index: 200;
+                transform: translateX(-110%);
+                transition: transform 0.22s ease;
+                border-radius: var(--radius-md);
+            }
+
+            .panel-party,
+            .panel-enemies {
+                transform: translateX(110%);
+            }
+
+            .panel-map.active,
+            .panel-party.active,
+            .panel-enemies.active {
+                transform: translateX(0);
+            }
+
+            .panel-map:not(.active),
+            .panel-party:not(.active),
+            .panel-enemies:not(.active) {
+                pointer-events: none;
+            }
+
+            .panel-map {
+                grid-area: auto;
+            }
+
+            .panel-party {
+                grid-area: auto;
+            }
+
+            .panel-enemies {
+                grid-area: auto;
+            }
+
+            .panel-main {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                min-height: 0;
+                border-radius: var(--radius-md);
+                overflow: hidden;
+            }
+
+            .panel-main .panel-content {
+                min-height: 0;
+                padding: 8px;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .scene-display {
+                display: none;
+            }
+
+            .mobile-play-surface {
+	                display: flex;
+	                flex-direction: column;
+	                gap: 10px;
+	                min-height: 100%;
+	                overflow: visible;
+	                padding-bottom: 10px;
+	            }
+
+            .mobile-map-card,
+            .mobile-scene-sheet,
+            .mobile-strip-card {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+            }
+
+            .mobile-map-card {
+                padding: 10px;
+                flex: 1 1 auto;
+                min-height: 230px;
+                overflow: auto;
+            }
+
+            .mobile-map-header,
+            .mobile-strip-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: var(--text-secondary);
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+
+            .mobile-map-card .mini-map {
+                min-height: 190px;
+            }
+
+            .mobile-map-card .map-tile {
+                width: clamp(42px, 13vw, 56px);
+                height: clamp(42px, 13vw, 56px);
+                font-size: 20px;
+            }
+
+            .mobile-unit-strips {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 8px;
+                flex: 0 0 auto;
+            }
+
+            .mobile-strip-card {
+                padding: 8px;
+            }
+
+            .mobile-unit-strip {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+
+            .mobile-unit-strip::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-unit-chip {
+                flex: 0 0 132px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                background: var(--bg-tertiary);
+                padding: 8px;
+                color: var(--text-primary);
+                cursor: pointer;
+            }
+
+            .mobile-unit-chip.targetable {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25);
+            }
+
+            .mobile-unit-chip .unit-actions {
+                margin-top: 6px !important;
+            }
+
+            .mobile-unit-chip .action-btn {
+                padding: 6px;
+                min-width: 34px;
+                font-size: 11px;
+            }
+
+            .mobile-chip-name {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                font-size: 12px;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .mobile-chip-meta {
+                margin-top: 4px;
+                color: var(--text-muted);
+                font-size: 11px;
+            }
+
+            .mobile-chip-bar {
+                height: 5px;
+                background: var(--bg-primary);
+                border-radius: 999px;
+                overflow: hidden;
+                margin-top: 6px;
+            }
+
+            .mobile-chip-fill {
+                height: 100%;
+                background: var(--accent-primary);
+            }
+
+            .mobile-context-menu {
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                bottom: calc(var(--mobile-actions-height) + 12px);
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-lg);
+                z-index: 220;
+                padding: 10px;
+                display: grid;
+                gap: 8px;
+            }
+
+            .mobile-context-menu-title {
+                color: var(--text-primary);
+                font-weight: 700;
+                font-size: 13px;
+            }
+
+            .mobile-context-menu-actions {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .mobile-context-menu-actions .action-btn {
+                flex: 1 1 70px;
+                min-width: 58px;
+            }
+
+            #mobile-mini-map {
+                transform-origin: center;
+                transition: transform 0.12s ease;
+            }
+
+            .mobile-scene-sheet {
+                flex: 0 0 auto;
+                padding: 10px 12px;
+                max-height: 28vh;
+                max-height: 28dvh;
+                overflow: auto;
+            }
+
+            .mobile-scene-title {
+                color: var(--text-accent);
+                font-weight: 700;
+                font-size: 15px;
+                margin-bottom: 6px;
+            }
+
+            .mobile-scene-description {
+                color: var(--text-secondary);
+                font-size: 13px;
+                line-height: 1.45;
+            }
+
+            .mobile-log-summary {
+                color: var(--text-muted);
+                font-size: 12px;
+                margin-top: 8px;
+                border-top: 1px solid var(--border-subtle);
+                padding-top: 8px;
+            }
+
+            .scene-actions {
+                display: none;
+            }
+
+            .panel-log {
+                display: none;
+            }
+
+	            .mobile-action-bar {
+	                display: block !important;
+	                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+	                border-top: 1px solid var(--border-default);
+	                padding: 8px;
+	                z-index: 100;
+	                min-height: var(--mobile-actions-height);
+	                padding-bottom: calc(8px + env(safe-area-inset-bottom));
+	            }
+
+            .mobile-action-bar .action-bar {
+                display: flex;
+                gap: 8px;
+            }
+
+            .mobile-action-bar .action-btn {
+                flex: 1;
+                padding: 12px 4px;
+                font-size: 11px;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .mobile-action-bar .action-icon {
+                font-size: 20px;
+                display: block;
+                margin-bottom: 2px;
+            }
+
+            /* Swipe hint indicators - subtle edge glows */
+            .swipe-hint-left,
+            .swipe-hint-right {
+                position: fixed;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 6px;
+                height: 80px;
+                background: var(--accent-primary);
+                opacity: 0.2;
+                border-radius: 3px;
+                z-index: 50;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+
+            .swipe-hint-left {
+                left: 2px;
+            }
+
+            .swipe-hint-right {
+                right: 2px;
+            }
+
+            .swipe-hint-left:hover,
+            .swipe-hint-right:hover {
+                opacity: 0.4;
+            }
+
+            /* Panel backdrop overlay when panel is open */
+            .panel-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 150;
+            }
+
+            .panel-backdrop.active {
+                display: block;
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .mobile-action-bar {
+                display: none !important;
+            }
+
+            .swipe-hint-left,
+            .swipe-hint-right {
+                display: none;
+            }
+
+            .panel-backdrop {
+                display: none !important;
+            }
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Mobile Action Bar */
+        .mobile-action-bar {
+            display: none;
+        }
+
+        .mobile-action-bar .action-bar {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+        }
+
+        .mobile-action-bar .action-btn {
+            flex: 1;
+            padding: 12px 8px;
+            font-size: 12px;
+        }
+
+        .mobile-action-bar .action-icon {
+            font-size: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .mobile-action-bar {
+                display: block !important;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 170, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 170, 0.5); }
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+            .accordion-section {
+            margin-bottom: 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: background 0.2s;
+        }
+        .accordion-header:hover {
+            background: var(--bg-elevated);
+        }
+        .accordion-arrow {
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+        .accordion-body {
+            padding: 12px;
+            background: var(--bg-secondary);
+            animation: accordionOpen 0.2s ease-out;
+        }
+        #species-grid {
+            max-height: min(300px, 38vh);
+            max-height: min(300px, 38dvh);
+            overflow-y: auto;
+        }
+        #body-parts-grid {
+            max-height: min(200px, 34vh);
+            max-height: min(200px, 34dvh);
+            overflow-y: auto;
+        }
+        @media (max-width: 640px) {
+            .screen-create {
+                align-items: stretch;
+                padding: 12px;
+            }
+            .create-container {
+                max-height: calc(100vh - 24px);
+                max-height: calc(100dvh - 24px);
+                padding: var(--space-md);
+                border-radius: var(--radius-md);
+            }
+            .create-title {
+                font-size: 24px;
+            }
+            .create-subtitle {
+                margin-bottom: var(--space-md);
+            }
+            .create-section {
+                margin-bottom: var(--space-md);
+            }
+            .option-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: var(--space-sm);
+                max-height: 36vh;
+                max-height: 36dvh;
+            }
+            .accordion-header {
+                padding: 10px 12px;
+            }
+            .accordion-body {
+                padding: 10px;
+            }
+        }
+        @keyframes accordionOpen {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .create-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-strong) var(--bg-tertiary);
+        }
+        .create-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .create-container::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+        .create-container::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: var(--radius-sm);
+        }
+    </style>
+</head>
+<body>
+<!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen screen-menu active">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
+            <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
+            <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">You Are Wild</h1>
+            <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Explore. Change. Survive.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
+                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
+                    ▶ Continue Last Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('create')">
+                    🆕 New Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showSaveManager()">
+                    📂 Load Game
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('settings'); App.showSettings();">
+                    ⚙️ Settings
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showModScreen()">
+                    📦 Mods
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showMarketScreen()">
+                    🏪 Market
+                </button>
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showTutorial()">
+                    📖 Tutorial
+                </button>
+            </div>
+
+            <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
+                <p>Dark mode tactical edition</p>
+                <p>All content is enabled by default</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARACTER CREATION SCREEN -->
+    <div id="screen-create" class="screen screen-create">
+        <div class="create-container">
+            <h1 class="create-title">Create Your Character</h1>
+            <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
+
+            <!-- Name Input -->
+            <div class="create-section">
+                <h3 class="section-title">Name</h3>
+                <input id="char-name" type="text" placeholder="Enter your name..." value="You"
+                       style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
+            </div>
+
+            <!-- Species Selection -->
+            <div class="accordion-section" data-accordion="species">
+                <div class="accordion-header" onclick="App.toggleAccordion('species')">
+                    <span>Choose Your Species</span>
+                    <span class="accordion-arrow" id="arrow-species">▼</span>
+                </div>
+                <div class="accordion-body" id="body-species" style="display:block;">
+                    <div id="species-info" style="margin-bottom:12px;padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-md);min-height:60px;">
+                        <p style="color:var(--text-muted);font-size:13px;">Select a species to see details.</p>
+                    </div>
+                    <div class="option-grid" id="species-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gender Selection -->
+            <div class="accordion-section" data-accordion="gender">
+                <div class="accordion-header" onclick="App.toggleAccordion('gender')">
+                    <span>Gender</span>
+                    <span class="accordion-arrow" id="arrow-gender">▶</span>
+                </div>
+                <div class="accordion-body" id="body-gender" style="display:none;">
+                    <div class="option-grid" id="gender-grid">
+                        <div class="option-card selected" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♀️</div>
+                            <div class="option-label">Female</div>
+                            <div class="option-desc">Play as female</div>
+                        </div>
+                        <div class="option-card" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♂️</div>
+                            <div class="option-label">Male</div>
+                            <div class="option-desc">Play as male</div>
+                        </div>
+                        <div class="option-card" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">⚧</div>
+                            <div class="option-label">Non-Binary</div>
+                            <div class="option-desc">Other gender identity</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anatomy Selection -->
+            <div class="accordion-section" data-accordion="anatomy">
+                <div class="accordion-header" onclick="App.toggleAccordion('anatomy')">
+                    <span>Anatomy</span>
+                    <span class="accordion-arrow" id="arrow-anatomy">▶</span>
+                </div>
+                <div class="accordion-body" id="body-anatomy" style="display:none;">
+                    <div class="option-grid" id="anatomy-grid">
+                        <div class="option-card selected" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
+                            <div class="option-icon">🔮</div>
+                            <div class="option-label">Pussy</div>
+                        </div>
+                        <div class="option-card" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();">
+                            <div class="option-icon">🍆</div>
+                            <div class="option-label">Cock</div>
+                        </div>
+                        <div class="option-card selected" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
+                            <div class="option-icon">🍈</div>
+                            <div class="option-label">Tits</div>
+                        </div>
+                        <div class="option-card" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();">
+                            <div class="option-icon">💪</div>
+                            <div class="option-label">Pecs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Body Parts Selection -->
+            <div class="accordion-section" data-accordion="bodyparts">
+                <div class="accordion-header" onclick="App.toggleAccordion('bodyparts')">
+                    <span>Body Parts</span>
+                    <span class="accordion-arrow" id="arrow-bodyparts">▶</span>
+                </div>
+                <div class="accordion-body" id="body-bodyparts" style="display:none;">
+                    <div id="body-parts-grid" class="option-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Preferences -->
+            <div class="accordion-section" data-accordion="preferences">
+                <div class="accordion-header" onclick="App.toggleAccordion('preferences')">
+                    <span>Preferred Encounters</span>
+                    <span class="accordion-arrow" id="arrow-preferences">▶</span>
+                </div>
+                <div class="accordion-body" id="body-preferences" style="display:none;">
+                    <div class="option-grid" id="preference-grid">
+                        <div class="option-card selected" data-value="female" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♀️</div>
+                            <div class="option-label">Females</div>
+                        </div>
+                        <div class="option-card" data-value="male" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">♂️</div>
+                            <div class="option-label">Males</div>
+                        </div>
+                        <div class="option-card" data-value="any" onclick="document.querySelectorAll('#preference-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                            <div class="option-icon">🎲</div>
+                            <div class="option-label">Any</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="action-btn primary create-submit" onclick="createCharacter()">
+                Begin Adventure →
+            </button>
+        </div>
+    </div>
+
+    <!-- TUTORIAL OVERLAY -->
+    <div id="tutorial-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 26, 0.95); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); text-align: center;">
+            <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
+            <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
+            <div style="display: flex; gap: 16px; justify-content: center;">
+                <button class="nav-btn" onclick="skipTutorial()">Skip Tutorial</button>
+                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" onclick="nextTutorial()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME SCREEN -->
+    <div id="screen-game" class="screen">
+        <div id="app">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="app-brand">
+                    <span class="app-logo">🐺</span>
+                    <span class="app-title">You Are Wild</span>
+                </div>
+                <div class="time-display" id="time-display">☀️ 08:00</div>
+                <nav class="app-nav">
+                    <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
+                    <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
+                    <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
+                    <button class="nav-btn" onclick="App.showCharacterStats()">📊 Stats</button>
+                    <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">💾 Save</button>
+                    <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
+                </nav>
+            </header>
+
+            <!-- Stage -->
+            <div class="stage">
+                <!-- Map Panel -->
+                <div class="panel panel-map" id="panel-map">
+                    <div class="panel-header">
+                        <span>🗺️ Map</span>
+                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="mini-map" id="mini-map">
+                        <!-- Populated by App.renderMap() -->
+                    </div>
+                    </div>
+                </div>
+
+	                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
+	                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
+	                    <div class="panel-content">
+	                        <div class="mobile-play-surface" id="mobile-play-surface">
+	                            <div class="mobile-map-card">
+	                                <div class="mobile-map-header">
+	                                    <span>Map</span>
+	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
+	                                </div>
+	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
+	                            </div>
+	                            <div class="mobile-unit-strips">
+	                                <div class="mobile-strip-card">
+	                                    <div class="mobile-strip-header">
+	                                        <span>Party</span>
+	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
+	                                    </div>
+	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
+	                                </div>
+	                                <div class="mobile-strip-card" id="mobile-creature-card">
+	                                    <div class="mobile-strip-header">
+	                                        <span id="mobile-creature-title">Creatures</span>
+	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
+	                                    </div>
+	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
+	                                </div>
+	                            </div>
+	                            <div class="mobile-scene-sheet">
+	                                <div class="mobile-scene-title" id="mobile-scene-title">The Wilderness</div>
+	                                <div class="mobile-scene-description" id="mobile-scene-description">
+	                                    You find yourself in an untamed land where predators roam and only the strong survive.
+	                                </div>
+	                                <div class="mobile-log-summary" id="mobile-log-summary">Welcome to You Are Wild</div>
+	                            </div>
+	                        </div>
+	                        <div class="scene-display" id="scene-display">
+                            <h2 class="scene-title" id="scene-title">The Wilderness</h2>
+                            <p class="scene-description" id="scene-description">
+                                You find yourself in an untamed land where predators roam and only the strong survive.
+                                The air is thick with the scent of pine and the distant calls of creatures unknown.
+                            </p>
+                            <div class="scene-actions" id="scene-actions">
+                                <button class="action-btn" onclick="App.search()">
+                                    <span class="action-icon">🔍</span>
+                                    Search
+                                </button>
+                                <button class="action-btn" onclick="rest()">
+                                    <span class="action-icon">🏕️</span>
+                                    Rest
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Party Panel -->
+                <div class="panel panel-party" id="panel-party">
+                    <div class="panel-header">
+                        <span>👥 Party</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('party')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="party-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Enemies Panel -->
+                <div class="panel panel-enemies" id="panel-enemies">
+                    <div class="panel-header">
+                        <span id="enemies-title">⚔️ Enemies</span>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('enemies')">Expand</button>
+                    </div>
+                    <div class="panel-content" id="enemies-content">
+                        <p style="color: var(--text-muted); text-align: center;">No enemies present</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Panel -->
+            <div class="panel-log">
+                <div class="log-header">
+                    <span class="log-title">📜 Combat Log</span>
+                    <div style="display:flex;gap:6px;">
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="App.exportLog()">Export</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                    </div>
+                </div>
+                <div class="log-controls" id="log-controls">
+                    <button class="nav-btn log-filter-btn active" data-log-filter="all" onclick="App.setLogFilter('all')">All</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="combat" onclick="App.setLogFilter('combat')">Combat</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="loot" onclick="App.setLogFilter('loot')">Loot</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
+                </div>
+                <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">
+                    <div class="log-entry" role="status">Welcome to You Are Wild</div>
+                    <div class="log-entry discovery" role="status">Created your character. The journey begins...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Action Bar - switches between combat and exploration modes -->
+        <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
+            <!-- Combat buttons -->
+            <div id="mobile-combat-actions" class="action-bar" style="display: none;">
+                <button class="action-btn primary" onclick="combatAction('fight')">
+                    <span class="action-icon">⚔️</span>
+                    Fight
+                </button>
+                <button class="action-btn" onclick="combatAction('flirt')">
+                    <span class="action-icon">😘</span>
+                    Flirt
+                </button>
+                <button class="action-btn" onclick="combatAction('feast')">
+                    <span class="action-icon">🍽️</span>
+                    Feast
+                </button>
+                <button class="action-btn" onclick="combatAction('fuck')">
+                    <span class="action-icon">💕</span>
+                    Fuck
+                </button>
+                <button class="action-btn" onclick="combatAction('feed')">
+                    <span class="action-icon">🍲</span>
+                    Feed
+                </button>
+                <button class="action-btn" onclick="combatAction('flee')">
+                    <span class="action-icon">🏃</span>
+                    Flee
+                </button>
+            </div>
+            <!-- Exploration buttons -->
+            <div id="mobile-explore-actions" class="action-bar">
+                <button class="action-btn" onclick="App.search()">
+                    <span class="action-icon">🔍</span>
+                    Search
+                </button>
+                <button class="action-btn" onclick="App.showInventory()">
+                    <span class="action-icon">🎒</span>
+                    Items
+                </button>
+                <button class="action-btn" onclick="togglePanel('map')">
+                    <span class="action-icon">🗺️</span>
+                    Map
+                </button>
+	                <button class="action-btn" onclick="togglePanel('party')">
+	                    <span class="action-icon">👥</span>
+	                    Party
+	                </button>
+	                <button class="action-btn" onclick="togglePanel('enemies')">
+	                    <span class="action-icon">⚔️</span>
+	                    Enemies
+	                </button>
+	            </div>
+        </div>
+
+        <!-- Backdrop for closing mobile panels by tapping outside -->
+        <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
+
+        <!-- Swipe hints for mobile -->
+        <div class="swipe-hint-left" title="Swipe right for map"></div>
+        <div class="swipe-hint-right" title="Swipe left for party"></div>
+    </div>
+
+
+    <!-- SETTINGS OVERLAY -->
+    <div id="screen-settings" class="screen screen-overlay">
+        <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ Settings</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">All content is enabled by default. Toggle off what you don't want.</p>
+
+            <!-- Language -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Language</h3>
+                <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                    <span>Interface Language</span>
+                    <select id="setting-language" class="nav-btn" aria-label="Interface language" onchange="App.updateLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="es">Espanol</option>
+                    </select>
+                </label>
+            </div>
+
+            <!-- Content Tiers -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Content Level</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="tier-safe" class="nav-btn" onclick="CONTENT.setMaxTier(1); App.updateTierButtons()">Safe</button>
+                    <button id="tier-mature" class="nav-btn" onclick="CONTENT.setMaxTier(2); App.updateTierButtons()">Mature</button>
+                    <button id="tier-adult" class="nav-btn" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
+                </div>
+            </div>
+
+            <!-- Vore & Feeding -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Vore &amp; Feeding</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Enable Vore</span>
+                        <input type="checkbox" id="toggle-vore" onchange="CONTENT.setPreference('voreEnabled', this.checked); App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Fatal Vore (prey dies)</span>
+                        <input type="checkbox" id="toggle-fatal" onchange="App.settings.fatalVore = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Endo Mode (prey survives)</span>
+                        <input type="checkbox" id="toggle-endo" onchange="App.settings.endoMode = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Slow Digestion</span>
+                        <input type="checkbox" id="toggle-slow" onchange="App.settings.slowDigestion = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Stat Absorption</span>
+                        <input type="checkbox" id="toggle-absorb" onchange="App.settings.statAbsorption = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Chewing Option</span>
+                        <input type="checkbox" id="toggle-chew" onchange="App.settings.chewing = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>All-the-Way-Through</span>
+                        <input type="checkbox" id="toggle-attw" onchange="App.settings.allTheWayThrough = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Sex & Interaction -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sex &amp; Interaction</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Explicit Descriptions</span>
+                        <input type="checkbox" id="toggle-explicit" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Power Dynamics (Dom/Sub)</span>
+                        <input type="checkbox" id="toggle-power" onchange="App.settings.powerDynamics = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Refractory Period</span>
+                        <input type="checkbox" id="toggle-refractory" onchange="App.settings.refractoryPeriod = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Same-Species Bonus</span>
+                        <input type="checkbox" id="toggle-same" onchange="App.settings.sameSpeciesBonus = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Fluids & Extremes -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fluids &amp; Extremes</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Fluid Production</span>
+                        <input type="checkbox" id="toggle-fluids" onchange="App.settings.fluidEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Scat Content</span>
+                        <input type="checkbox" id="toggle-scat" onchange="App.settings.scat = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Watersports</span>
+                        <input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Cock Vore</span>
+                        <input type="checkbox" id="toggle-cockVore" onchange="App.settings.cockVoreEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Unbirth</span>
+                        <input type="checkbox" id="toggle-unbirth" onchange="App.settings.unbirthEnabled = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Forced Feeding (CNC)</span>
+                        <input type="checkbox" id="toggle-forcedFeed" onchange="App.settings.forcedFeeding = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Bone Crushing</span>
+                        <input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Unwilling Prey Warnings</span>
+                        <input type="checkbox" id="toggle-warn" onchange="App.settings.unwillingWarnings = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Game Mode -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Game Mode</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Hardcore Mode (delete save on death)</span>
+                        <input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Accessibility</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>High Contrast</span>
+                        <input type="checkbox" id="setting-high-contrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span>Reduced Motion</span>
+                        <input type="checkbox" id="setting-reduced-motion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
+                    </label>
+                    <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                        <span style="display:flex;justify-content:space-between;gap:12px;"><span>Base Font Size</span><span id="setting-font-size-value">14px</span></span>
+                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Cheats -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Cheats</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                    <button id="cheat-godMode" class="nav-btn" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
+                    <button id="cheat-neverHungry" class="nav-btn" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
+                    <button id="cheat-canEatAnything" class="nav-btn" onclick="App.toggleCheat('canEatAnything')">🍴 Eat Anything</button>
+                    <button id="cheat-overpowered" class="nav-btn" onclick="App.toggleCheat('overpowered')">💪 Overpowered</button>
+                </div>
+                <div style="margin-top: 8px;">
+                    <button id="cheat-instantWin" class="nav-btn" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ Clear All Saves</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODS OVERLAY -->
+    <div id="screen-mods" class="screen screen-overlay">
+        <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">📦 Mod Manager</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Install, enable, and manage game modules.</p>
+
+            <!-- Install -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                <label class="nav-btn" style="cursor: pointer; display: inline-block;">
+                    📁 Import Mod
+                    <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
+                </label>
+                <button class="nav-btn" onclick="ModUI.createExampleMod()">✨ Create Example</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+
+            <!-- Mod List -->
+            <div id="mod-list" style="min-height: 100px;">
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;">Loading modules...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MARKETPLACE OVERLAY -->
+    <div id="screen-market" class="screen screen-overlay">
+        <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <h1 style="color: var(--accent-primary); margin-bottom: 8px;">🏪 Module Marketplace</h1>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Discover community-made biomes, species, and features.</p>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
+                <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
+                <button class="nav-btn" onclick="ModUI.showModScreen()">My Modules</button>
+                <button class="nav-btn" onclick="returnToGame()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVE MANAGER OVERLAY -->
+    <div id="save-manager" class="screen screen-overlay">
+        <div id="save-manager-content" style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <!-- Populated by renderSaveManager() -->
+        </div>
+    </div>
+
+
+<!-- GAME API BRIDGE & APP LOGIC -->
+
+<script>
+
+/**
+ * Minimal Binary Serializer for You Are Wild
+ * ~500 lines, zero dependencies
+ * Preencode/encode/decode/state pattern (inspired by compact-encoding)
+ */
+(function() {
+  'use strict';
+
+  const Binary = (function() {
+    const state = (start = 0, end = 0, buffer = null) => ({ start, end, buffer });
+
+    const uint8 = {
+      preencode(s, n) { s.end += 1; },
+      encode(s, n) { s.buffer[s.start++] = n & 0xff; },
+      decode(s) { return s.buffer[s.start++]; }
+    };
+
+    const uint16 = {
+      preencode(s, n) { s.end += 2; },
+      encode(s, n) { s.buffer[s.start++] = n & 0xff; s.buffer[s.start++] = (n >> 8) & 0xff; },
+      decode(s) { return s.buffer[s.start++] + (s.buffer[s.start++] << 8); }
+    };
+
+    const uint32 = {
+      preencode(s, n) { s.end += 4; },
+      encode(s, n) { s.buffer[s.start++] = n & 0xff; s.buffer[s.start++] = (n >> 8) & 0xff; s.buffer[s.start++] = (n >> 16) & 0xff; s.buffer[s.start++] = (n >> 24) & 0xff; },
+      decode(s) { return s.buffer[s.start++] + (s.buffer[s.start++] << 8) + (s.buffer[s.start++] << 16) + (s.buffer[s.start++] << 24); }
+    };
+
+    const int8 = {
+      preencode(s, n) { s.end += 1; },
+      encode(s, n) { s.buffer[s.start++] = (n < 0 ? 256 + n : n) & 0xff; },
+      decode(s) { const n = s.buffer[s.start++]; return n > 127 ? n - 256 : n; }
+    };
+
+    const int16 = {
+      preencode(s, n) { s.end += 2; },
+      encode(s, n) { uint16.encode(s, n < 0 ? n + 65536 : n); },
+      decode(s) { const n = uint16.decode(s); return n > 32767 ? n - 65536 : n; }
+    };
+
+    const int32 = {
+      preencode(s, n) { s.end += 4; },
+      encode(s, n) { uint32.encode(s, n < 0 ? n + 4294967296 : n); },
+      decode(s) { const n = uint32.decode(s); return n > 2147483647 ? n - 4294967296 : n; }
+    };
+
+    // Variable-length unsigned int
+    const vuint = {
+      preencode(s, n) { s.end += n <= 0xfc ? 1 : n <= 0xffff ? 3 : n <= 0xffffffff ? 5 : 9; },
+      encode(s, n) {
+        if (n <= 0xfc) uint8.encode(s, n);
+        else if (n <= 0xffff) { uint8.encode(s, 0xfd); uint16.encode(s, n); }
+        else if (n <= 0xffffffff) { uint8.encode(s, 0xfe); uint32.encode(s, n); }
+        else { uint8.encode(s, 0xff); uint32.encode(s, n); uint32.encode(s, 0); }
+      },
+      decode(s) {
+        const a = uint8.decode(s);
+        if (a <= 0xfc) return a;
+        if (a === 0xfd) return uint16.decode(s);
+        if (a === 0xfe) return uint32.decode(s);
+        return uint32.decode(s); // truncated 64-bit
+      }
+    };
+
+    const bool = {
+      preencode(s, n) { s.end += 1; },
+      encode(s, n) { s.buffer[s.start++] = n ? 1 : 0; },
+      decode(s) { return s.buffer[s.start++] === 1; }
+    };
+
+    const string = {
+      preencode(s, str) { const bytes = new TextEncoder().encode(str); vuint.preencode(s, bytes.length); s.end += bytes.length; },
+      encode(s, str) { const bytes = new TextEncoder().encode(str); vuint.encode(s, bytes.length); s.buffer.set(bytes, s.start); s.start += bytes.length; },
+      decode(s) { const len = vuint.decode(s); const bytes = s.buffer.subarray(s.start, s.start + len); s.start += len; return new TextDecoder().decode(bytes); }
+    };
+
+    const array = (enc) => ({
+      preencode(s, arr) { vuint.preencode(s, arr.length); for (const item of arr) enc.preencode(s, item); },
+      encode(s, arr) { vuint.encode(s, arr.length); for (const item of arr) enc.encode(s, item); },
+      decode(s) { const len = vuint.decode(s); const arr = []; for (let i = 0; i < len; i++) arr.push(enc.decode(s)); return arr; }
+    });
+
+    const optional = (enc) => ({
+      preencode(s, val) { if (val !== null && val !== undefined) { bool.preencode(s, true); enc.preencode(s, val); } else bool.preencode(s, false); },
+      encode(s, val) { if (val !== null && val !== undefined) { bool.encode(s, true); enc.encode(s, val); } else bool.encode(s, false); },
+      decode(s) { return bool.decode(s) ? enc.decode(s) : null; }
+    });
+
+    const json = {
+      preencode(s, val) { string.preencode(s, JSON.stringify(val)); },
+      encode(s, val) { string.encode(s, JSON.stringify(val)); },
+      decode(s) { return JSON.parse(string.decode(s)); }
+    };
+
+    const encode = (codec, val) => { const s = state(); codec.preencode(s, val); s.buffer = new Uint8Array(s.end); s.start = 0; codec.encode(s, val); return s.buffer; };
+    const decode = (codec, buffer) => codec.decode(state(0, buffer.length, buffer));
+
+    return { state, uint8, uint16, uint32, int8, int16, int32, vuint, bool, string, array, optional, json, encode, decode };
+  })();
+
+  // Save codecs
+  Binary.codecs = {
+    // Unit stats
+    stats: {
+      preencode(s, obj) {
+        Binary.vuint.preencode(s, obj.str); Binary.vuint.preencode(s, obj.con);
+        Binary.vuint.preencode(s, obj.spd); Binary.vuint.preencode(s, obj.int);
+        Binary.vuint.preencode(s, obj.wis); Binary.vuint.preencode(s, obj.cha);
+      },
+      encode(s, obj) {
+        Binary.vuint.encode(s, obj.str); Binary.vuint.encode(s, obj.con);
+        Binary.vuint.encode(s, obj.spd); Binary.vuint.encode(s, obj.int);
+        Binary.vuint.encode(s, obj.wis); Binary.vuint.encode(s, obj.cha);
+      },
+      decode(s) {
+        return { str: Binary.vuint.decode(s), con: Binary.vuint.decode(s), spd: Binary.vuint.decode(s), int: Binary.vuint.decode(s), wis: Binary.vuint.decode(s), cha: Binary.vuint.decode(s) };
+      }
+    },
+    // Unit (player/ally/enemy)
+    unit: {
+      preencode(s, obj) {
+        Binary.string.preencode(s, obj.name); Binary.string.preencode(s, obj.species);
+        Binary.string.preencode(s, obj.icon); Binary.string.preencode(s, obj.gender || 'female');
+        Binary.string.preencode(s, obj.disposition || 'party');
+        Binary.vuint.preencode(s, obj.level); Binary.vuint.preencode(s, obj.CPun || obj.hp || 100);
+        Binary.vuint.preencode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.preencode(s, obj.CPle || 0);
+        Binary.vuint.preencode(s, obj.MPle || 100); Binary.codecs.stats.preencode(s, obj.stats || obj);
+        Binary.array(Binary.string).preencode(s, obj.tags || []);
+        Binary.array(Binary.string).preencode(s, obj.bodyParts || []);
+        Binary.json.preencode(s, obj.stomach || []); Binary.json.preencode(s, obj.womb || []);
+        Binary.json.preencode(s, obj.balls || []); Binary.vuint.preencode(s, obj.cum || 0);
+      },
+      encode(s, obj) {
+        Binary.string.encode(s, obj.name); Binary.string.encode(s, obj.species);
+        Binary.string.encode(s, obj.icon); Binary.string.encode(s, obj.gender || 'female');
+        Binary.string.encode(s, obj.disposition || 'party');
+        Binary.vuint.encode(s, obj.level); Binary.vuint.encode(s, obj.CPun || obj.hp || 100);
+        Binary.vuint.encode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.encode(s, obj.CPle || 0);
+        Binary.vuint.encode(s, obj.MPle || 100); Binary.codecs.stats.encode(s, obj.stats || obj);
+        Binary.array(Binary.string).encode(s, obj.tags || []);
+        Binary.array(Binary.string).encode(s, obj.bodyParts || []);
+        Binary.json.encode(s, obj.stomach || []); Binary.json.encode(s, obj.womb || []);
+        Binary.json.encode(s, obj.balls || []); Binary.vuint.encode(s, obj.cum || 0);
+      },
+      decode(s) {
+        return { name: Binary.string.decode(s), species: Binary.string.decode(s), icon: Binary.string.decode(s), gender: Binary.string.decode(s), disposition: Binary.string.decode(s), level: Binary.vuint.decode(s), CPun: Binary.vuint.decode(s), MPun: Binary.vuint.decode(s), CPle: Binary.vuint.decode(s), MPle: Binary.vuint.decode(s), stats: Binary.codecs.stats.decode(s), tags: Binary.array(Binary.string).decode(s), bodyParts: Binary.array(Binary.string).decode(s), stomach: Binary.json.decode(s), womb: Binary.json.decode(s), balls: Binary.json.decode(s), cum: Binary.vuint.decode(s) };
+      }
+    },
+    // Full save
+    save: {
+      preencode(s, obj) {
+        Binary.vuint.preencode(s, obj.version); Binary.string.preencode(s, obj.playerName);
+        Binary.string.preencode(s, obj.playerSpecies); Binary.int32.preencode(s, obj.locationX);
+        Binary.int32.preencode(s, obj.locationY); Binary.vuint.preencode(s, obj.playerHp);
+        Binary.vuint.preencode(s, obj.playerMaxHp); Binary.codecs.stats.preencode(s, obj.playerStats);
+        Binary.vuint.preencode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).preencode(s, obj.party || []);
+        Binary.array(Binary.string).preencode(s, obj.log || []); Binary.string.preencode(s, obj.currentBiome || 'forest');
+        Binary.json.preencode(s, obj.worldMap || {}); Binary.json.preencode(s, obj.exploredTiles || []);
+        Binary.json.preencode(s, obj.inventory || []);
+        Binary.vuint.preencode(s, obj.timeHour || 0);
+        Binary.json.preencode(s, obj.questState || {});
+        Binary.json.preencode(s, obj.worldMeta || {});
+      },
+      encode(s, obj) {
+        Binary.vuint.encode(s, obj.version); Binary.string.encode(s, obj.playerName);
+        Binary.string.encode(s, obj.playerSpecies); Binary.int32.encode(s, obj.locationX);
+        Binary.int32.encode(s, obj.locationY); Binary.vuint.encode(s, obj.playerHp);
+        Binary.vuint.encode(s, obj.playerMaxHp); Binary.codecs.stats.encode(s, obj.playerStats);
+        Binary.vuint.encode(s, obj.playerLevel); Binary.array(Binary.codecs.unit).encode(s, obj.party || []);
+        Binary.array(Binary.string).encode(s, obj.log || []); Binary.string.encode(s, obj.currentBiome || 'forest');
+        Binary.json.encode(s, obj.worldMap || {}); Binary.json.encode(s, obj.exploredTiles || []);
+        Binary.json.encode(s, obj.inventory || []);
+        Binary.vuint.encode(s, obj.timeHour || 0);
+        Binary.json.encode(s, obj.questState || {});
+        Binary.json.encode(s, obj.worldMeta || {});
+      },
+      decode(s) {
+        const version = Binary.vuint.decode(s);
+        const result = {
+          version: version,
+          playerName: Binary.string.decode(s),
+          playerSpecies: Binary.string.decode(s),
+          locationX: Binary.int32.decode(s),
+          locationY: Binary.int32.decode(s),
+          playerHp: Binary.vuint.decode(s),
+          playerMaxHp: Binary.vuint.decode(s),
+          playerStats: Binary.codecs.stats.decode(s),
+          playerLevel: Binary.vuint.decode(s),
+          party: Binary.array(Binary.codecs.unit).decode(s),
+          log: Binary.array(Binary.string).decode(s),
+          currentBiome: Binary.string.decode(s),
+          worldMap: {},
+          exploredTiles: []
+        };
+        if (s.start < s.end) {
+          try { result.worldMap = Binary.json.decode(s); } catch(e) { result.worldMap = {}; }
+        }
+        if (s.start < s.end) {
+          try { result.exploredTiles = Binary.json.decode(s); } catch(e) { result.exploredTiles = []; }
+        }
+        if (version >= 3 && s.start < s.end) {
+          try { result.inventory = Binary.json.decode(s); } catch(e) { result.inventory = []; }
+        } else {
+          result.inventory = [];
+        }
+        if (version >= 5 && s.start < s.end) {
+          try { result.timeHour = Binary.vuint.decode(s); } catch(e) { result.timeHour = 8; }
+        } else {
+          result.timeHour = 8;
+        }
+        if (version >= 6 && s.start < s.end) {
+          try { result.questState = Binary.json.decode(s); } catch(e) { result.questState = {}; }
+        } else {
+          result.questState = {};
+        }
+        if (s.start < s.end) {
+          try { result.worldMeta = Binary.json.decode(s); } catch(e) { result.worldMeta = null; }
+        } else {
+          result.worldMeta = null;
+        }
+        return result;
+      }
+    }
+  };
+
+  // Save/load helpers
+  Binary.saveGame = (appState) => {
+    // Convert Map/Set to plain objects for serialization
+    const worldMapObj = {};
+    if (appState.worldMap) {
+        for (const [key, tile] of appState.worldMap.entries()) {
+            worldMapObj[key] = tile;
+        }
+    }
+    const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
+
+    const saveData = {
+      version: 10,
+      playerName: appState.player?.name || 'You',
+      playerSpecies: appState.player?.species || 'human',
+      locationX: appState.location?.x || 0,
+      locationY: appState.location?.y || 0,
+      playerHp: appState.player?.CPun || 100,
+      playerMaxHp: appState.player?.MPun || 100,
+      playerStats: appState.player?.stats || { str: 10, con: 10, spd: 10, int: 10, wis: 10, cha: 10 },
+      playerLevel: appState.player?.level || 1,
+      party: appState.party || [],
+      log: appState.log?.map(e => e.text) || [],
+      currentBiome: appState.currentBiome || 'forest',
+      worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 1, mapModsHash: 'core' },
+      worldMap: worldMapObj,
+      exploredTiles: exploredArray,
+      inventory: appState.inventory || [],
+      timeHour: appState.timeHour || 0,
+      questState: {
+        quests: appState.quests || [],
+        playerGold: appState.player?.gold || 0,
+        dayCount: appState.dayCount || 0,
+        playerEquipment: appState.player?.equipment || {},
+        playerPerks: appState.player?.perks || [],
+        pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
+        partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null
+      }
+    };
+    return Binary.encode(Binary.codecs.save, saveData);
+  };
+
+  Binary.loadGame = (buffer) => {
+    return Binary.decode(Binary.codecs.save, new Uint8Array(buffer));
+  };
+
+  window.Binary = Binary;
+})();
+
+</script>
+
+<script>
 
         // =============================================
         // FIGHT FUCK FEED - MECHANICS OVERHAUL
@@ -785,6 +3149,50 @@
             selectedEncounterPreference: 'any',
             selectedBodyParts: [],
             playerName: 'You',
+            storageKeys: {
+                hasPlayed: 'yaw-has-played',
+                tutorialComplete: 'yaw-tutorial-complete',
+                settings: 'yaw-settings',
+                contentPrefs: 'yaw-content-prefs',
+                logView: 'yaw-log-view',
+                lastSlot: 'yaw-last-slot',
+                lastSaveTime: 'yaw-last-save-time',
+                saveTimePrefix: 'yaw-save-time-'
+            },
+            legacyStorageKeys: {
+                hasPlayed: 'tactical-has-played',
+                tutorialComplete: 'tactical-tutorial-complete',
+                settings: 'fff-settings',
+                contentPrefs: 'fff-content-prefs',
+                logView: 'fff-log-view',
+                lastSlot: 'fff-last-slot',
+                lastSaveTime: 'fff-last-save-time',
+                saveTimePrefix: 'fff-save-time-'
+            },
+            SAVE_DB_NAME: 'YAW_Saves',
+            LEGACY_SAVE_DB_NAME: 'FFF_Saves',
+            _saveTimeKey(slotName) { return this.storageKeys.saveTimePrefix + slotName; },
+            _legacySaveTimeKey(slotName) { return this.legacyStorageKeys.saveTimePrefix + slotName; },
+            _getStoredValue(keyName) {
+                return localStorage.getItem(this.storageKeys[keyName]) ?? localStorage.getItem(this.legacyStorageKeys[keyName]);
+            },
+            _setStoredValue(keyName, value) {
+                localStorage.setItem(this.storageKeys[keyName], value);
+            },
+            _removeStoredValue(keyName) {
+                localStorage.removeItem(this.storageKeys[keyName]);
+                localStorage.removeItem(this.legacyStorageKeys[keyName]);
+            },
+            _getSaveTime(slotName) {
+                return localStorage.getItem(this._saveTimeKey(slotName)) || localStorage.getItem(this._legacySaveTimeKey(slotName)) || '0';
+            },
+            _setSaveTime(slotName, value) {
+                localStorage.setItem(this._saveTimeKey(slotName), value);
+            },
+            _removeSaveTime(slotName) {
+                localStorage.removeItem(this._saveTimeKey(slotName));
+                localStorage.removeItem(this._legacySaveTimeKey(slotName));
+            },
 
             init() {
                 console.log('App.init() - Mechanics Overhaul');
@@ -793,16 +3201,16 @@
                         document.getElementById('menu-continue').style.display = 'block';
                     }
                 }).catch(() => {});
-                const hasPlayed = localStorage.getItem('tactical-has-played');
+                const hasPlayed = this._getStoredValue('hasPlayed');
                 if (!hasPlayed) {
                     this.showTutorial();
-                    localStorage.setItem('tactical-has-played', 'true');
+                    this._setStoredValue('hasPlayed', 'true');
                 }
                 // Load saved settings
                 try {
-                    const savedSettings = JSON.parse(localStorage.getItem('fff-settings') || '{}');
+                    const savedSettings = JSON.parse(this._getStoredValue('settings') || '{}');
                     for (const k of Object.keys(savedSettings)) { this.settings[k] = savedSettings[k]; }
-                    const savedPrefs = JSON.parse(localStorage.getItem('fff-content-prefs') || '{}');
+                    const savedPrefs = JSON.parse(this._getStoredValue('contentPrefs') || '{}');
                     for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
                 } catch(e) { console.warn('Settings load failed', e); }
                 this.loadLogViewPreferences();
@@ -3255,10 +5663,10 @@
                         if (this.settings.hardcore) {
                             this.log.push({ text: 'HARDCORE MODE: Your save has been deleted.', type: 'combat' });
                             this.renderLog();
-                            localStorage.removeItem('fff-last-slot');
-                            localStorage.removeItem('fff-last-save-time');
+                            this._removeStoredValue('lastSlot');
+                            this._removeStoredValue('lastSaveTime');
                             for (let i = 1; i <= 5; i++) {
-                                localStorage.removeItem('fff-save-time-slot' + i);
+                                this._removeSaveTime('slot' + i);
                             }
                             this._dbDelete('saves', this.activeSlot).catch(() => {});
                             setTimeout(() => { App.showScreen('menu'); }, 2000);
@@ -5437,7 +7845,7 @@
             },
             loadLogViewPreferences() {
                 try {
-                    const prefs = JSON.parse(localStorage.getItem('fff-log-view') || '{}');
+                    const prefs = JSON.parse(this._getStoredValue('logView') || '{}');
                     const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
                     this.logFilter = allowed.includes(prefs.filter) ? prefs.filter : 'all';
                     this.logSearch = typeof prefs.search === 'string' ? prefs.search : '';
@@ -5447,7 +7855,7 @@
                 }
             },
             saveLogViewPreferences() {
-                localStorage.setItem('fff-log-view', JSON.stringify({
+                this._setStoredValue('logView', JSON.stringify({
                     filter: this.logFilter || 'all',
                     search: this.logSearch || ''
                 }));
@@ -5502,7 +7910,7 @@
 	                const mobileLog = document.getElementById('mobile-log-summary');
 	                if (mobileLog) {
 	                    const latest = this.log[this.log.length - 1];
-	                    mobileLog.textContent = latest ? latest.text : 'Welcome to FightFuckFeed.me Tactical Edition';
+	                    mobileLog.textContent = latest ? latest.text : 'Welcome to You Are Wild';
 	                }
 	            },
             clearLog() { this.log = []; this.renderLog(); },
@@ -5655,21 +8063,27 @@
                 // Delete all saves from IndexedDB
                 for (let i = 1; i <= 5; i++) {
                     this._dbDelete('saves', 'slot' + i).catch(() => {});
-                    localStorage.removeItem('fff-save-time-slot' + i);
+                    this._removeSaveTime('slot' + i);
                 }
-                localStorage.removeItem('fff-last-slot');
-                localStorage.removeItem('fff-last-save-time');
-                localStorage.removeItem('tactical-has-played');
-                localStorage.removeItem('tactical-tutorial-complete');
-                localStorage.removeItem('fff-content-prefs');
+                this._removeStoredValue('lastSlot');
+                this._removeStoredValue('lastSaveTime');
+                this._removeStoredValue('hasPlayed');
+                this._removeStoredValue('tutorialComplete');
+                this._removeStoredValue('settings');
+                this._removeStoredValue('contentPrefs');
+                this._removeStoredValue('logView');
                 // Delete module DB
-                const req = indexedDB.deleteDatabase('FFFme_Modules');
+                const req = indexedDB.deleteDatabase('YAW_Modules');
                 req.onsuccess = () => console.log('Module DB deleted');
                 req.onerror = () => console.error('Failed to delete module DB');
+                const legacyReq = indexedDB.deleteDatabase('FFFme_Modules');
+                legacyReq.onerror = () => console.error('Failed to delete legacy module DB');
                 // Delete saves DB
-                const req2 = indexedDB.deleteDatabase('FFF_Saves');
+                const req2 = indexedDB.deleteDatabase(this.SAVE_DB_NAME);
                 req2.onsuccess = () => console.log('Saves DB deleted');
                 req2.onerror = () => console.error('Failed to delete saves DB');
+                const legacyReq2 = indexedDB.deleteDatabase(this.LEGACY_SAVE_DB_NAME);
+                legacyReq2.onerror = () => console.error('Failed to delete legacy saves DB');
                 alert('All data cleared. Refresh the page to start fresh.');
                 location.reload();
             },
@@ -5678,11 +8092,11 @@
                 try {
                     for (let i = 1; i <= 5; i++) {
                         await this._dbDelete('saves', 'slot' + i);
-                        localStorage.removeItem('fff-save-time-slot' + i);
+                        this._removeSaveTime('slot' + i);
                     }
-                    localStorage.removeItem('fff-last-slot');
-                    localStorage.removeItem('fff-last-save-time');
-                    localStorage.removeItem('tactical-has-played');
+                    this._removeStoredValue('lastSlot');
+                    this._removeStoredValue('lastSaveTime');
+                    this._removeStoredValue('hasPlayed');
                     this.activeSlot = 'slot1';
                     alert('All saves deleted.');
 	                    if (document.getElementById('save-manager')?.classList.contains('active')) {
@@ -5711,7 +8125,7 @@
                 }
             },
             saveSettings() {
-                localStorage.setItem('fff-settings', JSON.stringify({
+                this._setStoredValue('settings', JSON.stringify({
                     endoMode: this.settings.endoMode,
                     fatalVore: this.settings.fatalVore,
                     slowDigestion: this.settings.slowDigestion,
@@ -5736,7 +8150,7 @@
                     fontSize: this.settings.fontSize,
                 }));
                 if (CONTENT?.preferences) {
-                    localStorage.setItem('fff-content-prefs', JSON.stringify(CONTENT.preferences));
+                    this._setStoredValue('contentPrefs', JSON.stringify(CONTENT.preferences));
                 }
                 this.updateTierButtons();
             },
@@ -5824,12 +8238,12 @@
             showSaveManager() { this.showScreen('save-manager'); this.renderSaveManager(); },
             renderSaveManager() {
                 const saves = {};
-                const lastSlot = localStorage.getItem('fff-last-slot') || 'slot1';
+                const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 let html = '<div style="max-width:600px;margin:0 auto;padding:32px;"><h1 style="color:var(--accent-primary);margin-bottom:8px;">Save Slots</h1><p style="color:var(--text-muted);margin-bottom:24px;">Auto-save is always on.</p>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
-                    const saveTime = localStorage.getItem('fff-save-time-' + slotName) || '0';
+                    const saveTime = this._getSaveTime(slotName);
                     const hasData = parseInt(saveTime) > 0;
                     const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : 'Empty';
                     html += '<div style="background:' + (isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)') + ';border:1px solid ' + (isActive ? 'var(--accent-primary)' : 'var(--border-default)') + ';border-radius:var(--radius-md);padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">';
@@ -6004,7 +8418,7 @@
 
             // ===== SAVE / LOAD =====
             async checkLastPlayed() {
-                const lastSlot = localStorage.getItem('fff-last-slot');
+                const lastSlot = this._getStoredValue('lastSlot');
                 if (!lastSlot) return false;
                 const saveData = await this._dbGet('saves', lastSlot);
                 return !!saveData;
@@ -6015,8 +8429,8 @@
                     this.persistAllTileDeltas();
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', this.activeSlot, saveData);
-                    localStorage.setItem('fff-last-slot', this.activeSlot);
-                    localStorage.setItem('fff-last-save-time', Date.now().toString());
+                    this._setStoredValue('lastSlot', this.activeSlot);
+                    this._setStoredValue('lastSaveTime', Date.now().toString());
                     console.log('Auto-saved to', this.activeSlot);
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
@@ -6027,9 +8441,9 @@
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', slotName, saveData);
                     this.activeSlot = slotName;
-                    localStorage.setItem('fff-last-slot', slotName);
-                    localStorage.setItem('fff-last-save-time', Date.now().toString());
-                    localStorage.setItem('fff-save-time-' + slotName, Date.now().toString());
+                    this._setStoredValue('lastSlot', slotName);
+                    this._setStoredValue('lastSaveTime', Date.now().toString());
+                    this._setSaveTime(slotName, Date.now().toString());
                     alert('Game saved to ' + slotName + '!');
                 } catch (e) { alert('Save failed: ' + e.message); }
             },
@@ -6051,14 +8465,14 @@
 Enter 1, 2, or 3:`);
                         if (choice === '1') {
                             await this._dbDelete('saves', slotName);
-                            localStorage.removeItem('fff-save-time-' + slotName);
+                            this._removeSaveTime(slotName);
                             alert('Save deleted.');
                         } else if (choice === '2') {
                             const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)));
                             const blob = new Blob([base64], { type: 'text/plain' });
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
-                            a.href = url; a.download = 'fff_save_' + slotName + '_backup.txt'; a.click();
+                            a.href = url; a.download = 'yaw_save_' + slotName + '_backup.txt'; a.click();
                             URL.revokeObjectURL(url);
                             alert('Backup downloaded. Save remains intact.');
                         }
@@ -6117,7 +8531,7 @@ Enter 1, 2, or 3:`);
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
                     this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
-                    localStorage.setItem('fff-last-slot', slotName);
+                    this._setStoredValue('lastSlot', slotName);
                     // Revive any dead party members on load (softcore)
                     let revived = false;
 	                    if (this.player && this.player.CPun <= 0) {
@@ -6163,7 +8577,7 @@ Enter 1, 2, or 3:`);
                 this.creatures = this._tileCreatures(currentTile.creatures || []);
             },
             async loadLastPlayed() {
-                const lastSlot = localStorage.getItem('fff-last-slot');
+                const lastSlot = this._getStoredValue('lastSlot');
                 if (!lastSlot) return false;
                 return await this.loadFromSlot(lastSlot);
             },
@@ -6171,52 +8585,56 @@ Enter 1, 2, or 3:`);
                 if (!confirm('Delete save slot ' + slotName + '?')) return;
                 try {
                     await this._dbDelete('saves', slotName);
-                    localStorage.removeItem('fff-save-time-' + slotName);
+                    this._removeSaveTime(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
                     this.showSaveManager();
                 } catch (e) { alert('Delete failed: ' + e.message); }
             },
+            async _dbOpen(dbName = this.SAVE_DB_NAME) {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(dbName, 1);
+                    req.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('saves')) db.createObjectStore('saves');
+                    };
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
             async _dbPut(store, key, value) {
                 return new Promise((resolve, reject) => {
-                    const req = indexedDB.open('FFF_Saves', 1);
-                    req.onupgradeneeded = e => { e.target.result.createObjectStore('saves'); };
-                    req.onsuccess = e => {
-                        const db = e.target.result;
+                    this._dbOpen(this.SAVE_DB_NAME).then(db => {
                         const tx = db.transaction('saves', 'readwrite');
                         tx.objectStore('saves').put(value, key);
                         tx.oncomplete = () => { db.close(); resolve(); };
                         tx.onerror = () => { db.close(); reject(tx.error); };
-                    };
-                    req.onerror = () => reject(req.error);
+                    }).catch(reject);
                 });
             },
             async _dbGet(store, key) {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open('FFF_Saves', 1);
-                    req.onupgradeneeded = e => { e.target.result.createObjectStore('saves'); };
-                    req.onsuccess = e => {
-                        const db = e.target.result;
+                const readFrom = dbName => new Promise((resolve, reject) => {
+                    this._dbOpen(dbName).then(db => {
                         const tx = db.transaction('saves', 'readonly');
                         const getReq = tx.objectStore('saves').get(key);
                         getReq.onsuccess = () => { db.close(); resolve(getReq.result); };
                         getReq.onerror = () => { db.close(); reject(getReq.error); };
-                    };
-                    req.onerror = () => reject(req.error);
+                    }).catch(reject);
                 });
+                const current = await readFrom(this.SAVE_DB_NAME);
+                if (current !== undefined) return current;
+                return await readFrom(this.LEGACY_SAVE_DB_NAME).catch(() => undefined);
             },
             async _dbDelete(store, key) {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open('FFF_Saves', 1);
-                    req.onupgradeneeded = e => { e.target.result.createObjectStore('saves'); };
-                    req.onsuccess = e => {
-                        const db = e.target.result;
+                const deleteFrom = dbName => new Promise((resolve, reject) => {
+                    this._dbOpen(dbName).then(db => {
                         const tx = db.transaction('saves', 'readwrite');
                         tx.objectStore('saves').delete(key);
                         tx.oncomplete = () => { db.close(); resolve(); };
                         tx.onerror = () => { db.close(); reject(tx.error); };
-                    };
-                    req.onerror = () => reject(req.error);
+                    }).catch(reject);
                 });
+                await deleteFrom(this.SAVE_DB_NAME);
+                await deleteFrom(this.LEGACY_SAVE_DB_NAME).catch(() => {});
             },
         };
 
@@ -6250,3 +8668,1458 @@ Enter 1, 2, or 3:`);
             }
         };
         document.addEventListener('DOMContentLoaded', () => App.init());
+
+</script>
+
+<script>
+
+// Add settings to nav
+document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.querySelector('.app-nav');
+    if (nav) {
+        const settingsBtn = document.createElement('button');
+        settingsBtn.className = 'nav-btn';
+        settingsBtn.textContent = '⚙️ Settings';
+        settingsBtn.onclick = () => {
+            App.showScreen('settings');
+            App.showSettings();
+        };
+        nav.insertBefore(settingsBtn, nav.lastChild);
+    }
+});
+
+</script>
+
+<script>
+
+/**
+ * YOU ARE WILD MODULE MANAGER
+ * IndexedDB-based module storage with hook system
+ */
+
+const MODULE_SYSTEM = {
+    DB_NAME: 'YAW_Modules',
+    LEGACY_DB_NAME: 'FFFme_Modules',
+    DB_VERSION: 1,
+    db: null,
+    
+    // Hooks registry
+    hooks: {
+        onMapGenerate: [],
+        onEncounterStart: [],
+        onCombatAction: [],
+        onPlayerMove: [],
+        onGameLoad: [],
+        onGameSave: [],
+        onTick: []
+    },
+    
+    // Active modules
+    activeModules: new Map(),
+    
+    // Initialize database
+    async init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                this.db = request.result;
+                console.log('Module DB initialized');
+                resolve();
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                
+                // Modules store
+                if (!db.objectStoreNames.contains('modules')) {
+                    const moduleStore = db.createObjectStore('modules', { keyPath: 'id' });
+                    moduleStore.createIndex('type', 'type', { unique: false });
+                    moduleStore.createIndex('enabled', 'enabled', { unique: false });
+                }
+                
+                // Assets store
+                if (!db.objectStoreNames.contains('assets')) {
+                    const assetStore = db.createObjectStore('assets', { keyPath: 'id' });
+                    assetStore.createIndex('moduleId', 'moduleId', { unique: false });
+                }
+                
+                // Settings store
+                if (!db.objectStoreNames.contains('settings')) {
+                    db.createObjectStore('settings', { keyPath: 'key' });
+                }
+            };
+        });
+    },
+    
+    // Register a hook
+    registerHook(event, callback, priority = 0) {
+        if (!this.hooks[event]) {
+            this.hooks[event] = [];
+        }
+        this.hooks[event].push({ callback, priority });
+        this.hooks[event].sort((a, b) => b.priority - a.priority);
+    },
+    
+    // Execute hooks
+    async executeHook(event, ...args) {
+        const hooks = this.hooks[event] || [];
+        for (const hook of hooks) {
+            try {
+                await hook.callback(...args);
+            } catch (e) {
+                console.error(`Hook error (${event}):`, e);
+            }
+        }
+    },
+    
+    // Install module from file
+    async installModule(moduleData) {
+        const module = {
+            id: moduleData.manifest.id,
+            manifest: moduleData.manifest,
+            code: moduleData.code,
+            assets: moduleData.assets || {},
+            enabled: false,
+            installedAt: Date.now()
+        };
+        
+        const tx = this.db.transaction(['modules'], 'readwrite');
+        const store = tx.objectStore('modules');
+        await store.put(module);
+        
+        console.log(`Module installed: ${module.manifest.name}`);
+        return module;
+    },
+    
+    // Enable/disable module
+    async setModuleEnabled(moduleId, enabled) {
+        const tx = this.db.transaction(['modules'], 'readwrite');
+        const store = tx.objectStore('modules');
+        
+        const module = await store.get(moduleId);
+        if (!module) throw new Error('Module not found');
+        
+        module.enabled = enabled;
+        await store.put(module);
+        
+        if (enabled) {
+            await this.loadModule(module);
+        } else {
+            this.unloadModule(moduleId);
+        }
+        
+        return module;
+    },
+    
+    // Load module into game
+    async loadModule(module) {
+        try {
+            // Create sandboxed context
+            const sandbox = {
+                MODS: this.createModAPI(module.id),
+                console: window.console,
+                setTimeout: window.setTimeout,
+                clearTimeout: window.clearTimeout,
+                setInterval: window.setInterval,
+                clearInterval: window.clearInterval,
+                JSON: window.JSON,
+                Math: window.Math,
+                Date: window.Date,
+                Object: window.Object,
+                Array: window.Array,
+                String: window.String,
+                Number: window.Number,
+                Boolean: window.Boolean
+            };
+            
+            // Execute module code in sandbox
+            const fn = new Function('sandbox', `
+                with(sandbox) {
+                    ${module.code}
+                }
+            `);
+            
+            fn(sandbox);
+            
+            this.activeModules.set(module.id, {
+                ...module,
+                sandbox
+            });
+            
+            console.log(`Module loaded: ${module.manifest.name}`);
+        } catch (e) {
+            console.error(`Failed to load module ${module.id}:`, e);
+            throw e;
+        }
+    },
+    
+    // Unload module
+    unloadModule(moduleId) {
+        // Remove hooks registered by this module
+        for (const event in this.hooks) {
+            this.hooks[event] = this.hooks[event].filter(
+                h => h.moduleId !== moduleId
+            );
+        }
+        
+        this.activeModules.delete(moduleId);
+        console.log(`Module unloaded: ${moduleId}`);
+    },
+    
+    // Create API for mods
+    createModAPI(moduleId) {
+        const self = this;
+        return {
+            id: moduleId,
+            
+            registerHook(event, callback, priority = 0) {
+                self.registerHook(event, callback, priority);
+            },
+            
+            executeHook(event, ...args) {
+                return self.executeHook(event, ...args);
+            },
+            
+            addBiome(biomeDef) {
+                App.biomes = App.biomes || {};
+                App.biomes[biomeDef.id] = biomeDef;
+            },
+            
+            addSpecies(speciesDef) {
+                App.species.push(speciesDef);
+            },
+            
+            addItem(itemDef) {
+                App.items = App.items || [];
+                App.items.push(itemDef);
+            },
+            
+            log(message) {
+                App.log.push({ text: `[${moduleId}] ${message}`, type: 'mod' });
+                App.renderLog();
+            },
+            
+            getSetting(key, defaultValue = null) {
+                return self.getModuleSetting(moduleId, key, defaultValue);
+            },
+            
+            setSetting(key, value) {
+                return self.setModuleSetting(moduleId, key, value);
+            }
+        };
+    },
+    
+    // Get all installed modules
+    async getAllModules() {
+        if (!this.db) {
+            console.warn('Module DB not initialized yet');
+            return [];
+        }
+        const tx = this.db.transaction(['modules'], 'readonly');
+        const store = tx.objectStore('modules');
+        return await store.getAll();
+    },
+    
+    // Get module settings
+    async getModuleSetting(moduleId, key, defaultValue = null) {
+        const tx = this.db.transaction(['settings'], 'readonly');
+        const store = tx.objectStore('settings');
+        const setting = await store.get(`${moduleId}:${key}`);
+        return setting ? setting.value : defaultValue;
+    },
+    
+    // Set module setting
+    async setModuleSetting(moduleId, key, value) {
+        const tx = this.db.transaction(['settings'], 'readwrite');
+        const store = tx.objectStore('settings');
+        await store.put({
+            key: `${moduleId}:${key}`,
+            value: value
+        });
+    },
+    
+    // Delete module
+    async deleteModule(moduleId) {
+        this.unloadModule(moduleId);
+        
+        const tx = this.db.transaction(['modules', 'assets', 'settings'], 'readwrite');
+        
+        await tx.objectStore('modules').delete(moduleId);
+        
+        // Delete associated assets
+        const assetStore = tx.objectStore('assets');
+        const assetIndex = assetStore.index('moduleId');
+        const assets = await assetIndex.getAll(moduleId);
+        for (const asset of assets) {
+            await assetStore.delete(asset.id);
+        }
+        
+        console.log(`Module deleted: ${moduleId}`);
+    }
+};
+
+// Initialize module system
+MODULE_SYSTEM.init().then(() => {
+    console.log('Module system ready');
+}).catch(err => {
+    console.error('Module system failed:', err);
+});
+
+</script>
+
+<script>
+
+/**
+ * Module Manager UI Controller
+ */
+const ModUI = {
+    async handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const content = await this.readFile(file);
+            
+            // Try to parse as module
+            let moduleData;
+            if (file.name.endsWith('.json')) {
+                moduleData = JSON.parse(content);
+            } else if (file.name.endsWith('.js')) {
+                // Wrap JS in module format
+                moduleData = {
+                    manifest: {
+                        id: 'mod_' + Date.now(),
+                        name: file.name.replace('.js', ''),
+                        version: '1.0.0',
+                        type: 'feature_pack'
+                    },
+                    code: content
+                };
+            }
+            
+            await MODULE_SYSTEM.installModule(moduleData);
+            App.log.push({ text: `Installed module: ${moduleData.manifest.name}`, type: 'discovery' });
+            App.renderLog();
+            this.refreshModList();
+            
+            alert(`Module "${moduleData.manifest.name}" installed successfully!`);
+        } catch (e) {
+            alert('Failed to install module: ' + e.message);
+            console.error(e);
+        }
+    },
+    
+    readFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    },
+    
+    async toggleModule(moduleId) {
+        const modules = await MODULE_SYSTEM.getAllModules();
+        const mod = modules.find(m => m.id === moduleId);
+        if (!mod) return;
+        
+        const newState = !mod.enabled;
+        await MODULE_SYSTEM.setModuleEnabled(moduleId, newState);
+        this.refreshModList();
+        
+        App.log.push({ 
+            text: `${newState ? 'Enabled' : 'Disabled'} module: ${mod.manifest.name}`, 
+            type: 'discovery' 
+        });
+        App.renderLog();
+    },
+    
+    async deleteModule(moduleId) {
+        if (!confirm('Delete this module? This cannot be undone.')) return;
+        
+        await MODULE_SYSTEM.deleteModule(moduleId);
+        this.refreshModList();
+    },
+    
+    async refreshModList() {
+        const container = document.getElementById('mod-list');
+        if (!container) return;
+        
+        let modules = [];
+        try {
+            modules = await MODULE_SYSTEM.getAllModules();
+        } catch (e) {
+            console.warn('Failed to load modules:', e);
+            container.innerHTML = `
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;">
+                    Module storage not ready. Try again in a moment.
+                </p>
+            `;
+            return;
+        }
+        
+        if (modules.length === 0) {
+            container.innerHTML = `
+                <p style="color: var(--text-muted); text-align: center; padding: 32px;">
+                    No modules installed. Install one above or create an example.
+                </p>
+            `;
+            return;
+        }
+        
+        container.innerHTML = modules.map(mod => `
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
+                        border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;
+                        display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 24px;">📦</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: var(--text-primary);">
+                        ${mod.manifest.name}
+                        <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">
+                            v${mod.manifest.version}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        ${mod.manifest.description || 'No description'}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        Type: ${mod.manifest.type} • Installed: ${new Date(mod.installedAt).toLocaleDateString()}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="nav-btn" style="padding: 6px 12px; font-size: 12px;"
+                            onclick="ModUI.toggleModule('${mod.id}')">
+                        ${mod.enabled ? '✓ Enabled' : '○ Disabled'}
+                    </button>
+                    <button class="nav-btn" style="padding: 6px 12px; font-size: 12px; color: var(--accent-danger);"
+                            onclick="ModUI.deleteModule('${mod.id}')">
+                        �️ Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+    
+    async createExampleMod() {
+        const exampleMod = {
+            manifest: {
+                id: 'mod_example_biome',
+                name: 'Crystal Caverns',
+                version: '1.0.0',
+                author: 'Example Author',
+                description: 'Adds shimmering crystal cave biomes with gem-themed creatures',
+                type: 'biome_pack',
+                dependencies: [],
+                minGameVersion: '0.10.0'
+            },
+            code: `
+                // Crystal Caverns Module
+                MODS.registerHook('onMapGenerate', (tile, x, y) => {
+                    // 5% chance for crystal biome
+                    if (Math.random() < 0.05) {
+                        tile.tag = 'CrystalCave';
+                        tile.name = 'Shimmering Cavern';
+                        tile.color = '#9b59b6';
+                    }
+                }, 10);
+                
+                MODS.addBiome({
+                    id: 'crystal_cave',
+                    name: 'Crystal Cavern',
+                    color: '#9b59b6',
+                    encounters: ['CrystalGolem', 'GemSerpent'],
+                    loot: ['crystal_shard', 'gemstone']
+                });
+                
+                MODS.addSpecies({
+                    id: 'crystal_golem',
+                    name: 'Crystal Golem',
+                    icon: '💎',
+                    desc: 'Animated mineral construct',
+                    stats: { str: 15, con: 18, spd: 5 }
+                });
+                
+                MODS.log('Crystal Caverns module loaded!');
+            `
+        };
+        
+        await MODULE_SYSTEM.installModule(exampleMod);
+        App.log.push({ text: 'Created example module: Crystal Caverns', type: 'discovery' });
+        App.renderLog();
+        this.refreshModList();
+    },
+    
+    showModScreen() {
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('active');
+            s.style.display = 'none';
+        });
+        document.getElementById('screen-mods').style.display = 'block';
+        document.getElementById('screen-mods').classList.add('active');
+        try { this.refreshModList(); } catch(e) { console.warn('ModUI error:', e); }
+    }
+};
+
+// Add module manager to navigation
+document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.querySelector('.app-nav');
+    if (nav) {
+        const modBtn = document.createElement('button');
+        modBtn.className = 'nav-btn';
+        modBtn.textContent = '📦 Mods';
+        modBtn.onclick = () => ModUI.showModScreen();
+        nav.appendChild(modBtn);
+    }
+});
+
+</script>
+
+<script>
+
+/**
+ * CONTENT TEMPLATE SYSTEM
+ * Preference-gated content with template literal rendering
+ */
+
+const CONTENT_SYSTEM = {
+    STORAGE_KEY: 'yaw-content-prefs',
+    LEGACY_STORAGE_KEY: 'fff-content-prefs',
+
+    // Content rating tiers
+    TIERS: {
+        SAFE: 0,      // Combat, exploration, no suggestive content
+        MATURE: 1,    // Violence, suggestive themes, implied content
+        ADULT: 2      // Explicit content (user must opt in)
+    },
+    
+    // Default preferences - ADULT by default
+    preferences: {
+        maxTier: 2,           // Default: ADULT (show all content)
+        voreEnabled: true,    // Vore enabled by default (core mechanic)
+        explicitDescriptions: true,  // Explicit by default
+        filterTags: [],       // User can block specific tags if desired
+        language: 'en'
+    },
+
+    locales: {
+        en: {
+            'settings.language': 'Language',
+            'settings.language.en': 'English',
+            'settings.language.es': 'Spanish',
+            'action.fight': 'Fight',
+            'action.flirt': 'Flirt',
+            'action.fuck': 'Fuck',
+            'action.fuck.sfw': 'Seduce',
+            'action.feast': 'Feast',
+            'action.feast.sfw': 'Consume',
+            'action.feed': 'Feed',
+            'action.flee': 'Flee',
+            'action.search': 'Search',
+            'action.rest': 'Rest',
+            'action.inventory': 'Items',
+            'action.quests': 'Quests',
+            'action.interact': 'Interact',
+            'action.enter': 'Enter',
+            'action.exit': 'Exit',
+            'action.map': 'Map',
+            'action.party': 'Party',
+            'action.enemies': 'Enemies',
+            'target.actors': 'Actors',
+            'target.targets': 'Targets',
+            'target.clear': 'Clear',
+            'target.count': '{count} target',
+            'target.count_plural': '{count} targets',
+            'target.clearSelected': 'Clear selected targets'
+        },
+        es: {
+            'settings.language': 'Idioma',
+            'settings.language.en': 'Ingles',
+            'settings.language.es': 'Espanol',
+            'action.fight': 'Luchar',
+            'action.flirt': 'Coquetear',
+            'action.fuck': 'Seducir',
+            'action.fuck.sfw': 'Seducir',
+            'action.feast': 'Devorar',
+            'action.feast.sfw': 'Consumir',
+            'action.feed': 'Alimentar',
+            'action.flee': 'Huir',
+            'action.search': 'Buscar',
+            'action.rest': 'Descansar',
+            'action.inventory': 'Objetos',
+            'action.quests': 'Misiones',
+            'action.interact': 'Interactuar',
+            'action.enter': 'Entrar',
+            'action.exit': 'Salir',
+            'action.map': 'Mapa',
+            'action.party': 'Grupo',
+            'action.enemies': 'Enemigos',
+            'target.actors': 'Actores',
+            'target.targets': 'Objetivos',
+            'target.clear': 'Limpiar',
+            'target.count': '{count} objetivo',
+            'target.count_plural': '{count} objetivos',
+            'target.clearSelected': 'Limpiar objetivos'
+        }
+    },
+    
+    // Template database (populated by modules)
+    templates: {
+        // Biome introductions
+        biome: {
+            forest: {
+                safe: (ctx) => `You enter a dense forest. Sunlight filters through the canopy.`,
+                mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
+                adult: (ctx) => `The forest presses close, humid and thick with the scent of lust and danger. You feel eyes upon you, hungry and wanting.`
+            },
+            swamp: {
+                safe: (ctx) => `A murky swamp stretches before you.`,
+                mature: (ctx) => `The swamp waters are dark and still. Mist rises between cypress trees.`,
+                adult: (ctx) => `The swamp is warm and wet. Something in the water brushes your leg...`
+            },
+            plains: {
+                safe: (ctx) => `Open grasslands stretch to the horizon.`,
+                mature: (ctx) => `Tall grasses sway in the breeze, hiding who knows what. The openness feels exposed.`,
+                adult: (ctx) => `The open plains offer no cover for the pleasures or predations that may find you here.`
+            },
+            cave: {
+                safe: (ctx) => `A dark cave entrance yawns before you.`,
+                mature: (ctx) => `The cave mouth beckons, cool air washing over you. Distant drips echo in the darkness.`,
+                adult: (ctx) => `The cave beckons, darkness promising privacy for whatever desires await within.`
+            },
+            jungle: {
+                safe: (ctx) => `Dense jungle vegetation blocks your path.`,
+                mature: (ctx) => `Vines hang like curtains in the humid air. The jungle is alive with unseen creatures.`,
+                adult: (ctx) => `The jungle presses against you with wet heat. Vines brush against your skin suggestively.`
+            },
+            dungeon: {
+                safe: (ctx) => `Stone corridors stretch into darkness.`,
+                mature: (ctx) => `Iron-barred cells line the walls. The dungeon is cold and oppressive.`,
+                adult: (ctx) => `Chains hang from the walls. The dungeon holds captives of many kinds...`
+            },
+            manor: {
+                safe: (ctx) => `A grand manor stands before you.`,
+                mature: (ctx) => `The manor's hallways echo with emptiness. Antique furniture gathers dust.`,
+                adult: (ctx) => `The manor's bedroom doors stand ajar. Silk sheets and velvet cushions await.`
+            },
+            beach: {
+                safe: (ctx) => `White sand stretches to the ocean.`,
+                mature: (ctx) => `Waves lap against the shore. Palm trees sway overhead.`,
+                adult: (ctx) => `The warm sand invites you to rest. The water is crystal clear and inviting.`
+            },
+            road: {
+                safe: (ctx) => `A dirt road winds through the landscape.`,
+                mature: (ctx) => `Wagon ruts mark the well-traveled path. A weathered signpost points onward.`,
+                adult: (ctx) => `The road is lonely. A traveler might stop to share warmth and companionship.`
+            },
+            cliff: {
+                safe: (ctx) => `Rocky outcrops tower above.`,
+                mature: (ctx) => `The wind howls at your back. A narrow ledge skirts a dangerous drop.`,
+                adult: (ctx) => `The dizzying height makes your heart race. Adrenaline courses through your veins.`
+            },
+            water: {
+                safe: (ctx) => `A river rushes past.`,
+                mature: (ctx) => `The water is cool and clear. Fish dart beneath the surface.`,
+                adult: (ctx) => `The current pulls at your clothes. The water is warm and inviting...`
+            },
+            bridge: {
+                safe: (ctx) => `A wooden bridge spans the gap.`,
+                mature: (ctx) => `The bridge creaks beneath your feet. Rope rails sway in the wind.`,
+                adult: (ctx) => `The bridge is precarious. You might need to hold someone close for safety...`
+            },
+            farm: {
+                safe: (ctx) => `Barns and fields stretch to the horizon.`,
+                mature: (ctx) => `A windmill turns lazily. Plowed earth shows recent work.`,
+                adult: (ctx) => `The hayloft is warm and soft. The stable is private and secluded.`
+            },
+            indoors: {
+                safe: (ctx) => `You enter a cozy building.`,
+                mature: (ctx) => `Walls enclose the space. A hearth glows with dying embers.`,
+                adult: (ctx) => `The room is warm and intimate. Furniture is arranged for closeness.`
+            },
+            entrance: {
+                safe: (ctx) => `A dark entrance beckons.`,
+                mature: (ctx) => `A cave mouth yawns in darkness. An ancient archway frames the way.`,
+                adult: (ctx) => `The entrance is tight and dark. You must squeeze through to explore deeper...`
+            }
+        },
+        
+        // Encounter introductions
+        encounter: {
+            generic: {
+                safe: (ctx) => `A ${ctx.species} stands before you.`,
+                mature: (ctx) => `A ${ctx.species} blocks your path, looking ${ctx.mood || 'curious'}.`,
+                adult: (ctx) => `A ${ctx.species} approaches, her intentions clear as she eyes you hungrily.`
+            },
+            predatory: {
+                safe: (ctx) => `You sense danger nearby.`,
+                mature: (ctx) => `${ctx.species} eyes you with hunger.`,
+                adult: (ctx) => `${ctx.species} licks her lips, sizing you up as potential prey.`
+            },
+            predatory: {
+                safe: (ctx) => `You sense danger nearby.`,
+                mature: (ctx) => `${ctx.species} eyes you with hunger.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.species} licks their lips, sizing you up.` : null
+            }
+        },
+        
+        // Combat actions
+        combat: {
+            attack: {
+                safe: (ctx) => `${ctx.attacker} strikes ${ctx.defender} for ${ctx.damage} damage!`,
+                mature: (ctx) => `${ctx.attacker} ${ctx.verb || 'slams into'} ${ctx.defender}, dealing ${ctx.damage} damage!`,
+                adult: (ctx) => ctx.explicit ? `${ctx.attacker} ${ctx.verb} ${ctx.defender} with brutal force!` : null
+            },
+            defeat: {
+                safe: (ctx) => `${ctx.defender} is defeated.`,
+                mature: (ctx) => `${ctx.defender} collapses, unable to continue fighting.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.defender} collapses, at your mercy.` : null
+            }
+        },
+        
+        // Action outcomes
+        action: {
+            flee: {
+                safe: (ctx) => `You escape successfully.`,
+                mature: (ctx) => `You manage to slip away into the ${ctx.terrain || 'wilderness'}.`,
+                adult: null
+            },
+            consume: {
+                safe: (ctx) => `You defeat ${ctx.target}.`,
+                mature: (ctx) => `${ctx.target} is consumed. You feel stronger.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down your throat, settling in your belly.` : null
+            },
+            seduce: {
+                safe: (ctx) => `${ctx.target} agrees to join you.`,
+                mature: (ctx) => `${ctx.target} is swayed by your charms and joins your party.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.target} submits to your advances.` : null
+            },
+            flirt: {
+                safe: (ctx) => `${ctx.actor} makes a friendly gesture toward ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} flirts with ${ctx.target}, lowering their guard.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} sends a sultry gaze and a teasing touch toward ${ctx.target}, making them weak in the knees.` : null
+            },
+            feed: {
+                safe: (ctx) => `${ctx.actor} tends to ${ctx.target}'s needs.`,
+                mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target} intimately, their bodies pressed close as vitality flows between them.` : null
+            },
+            swallow: {
+                safe: (ctx) => `${ctx.actor} consumes ${ctx.target}.`,
+                mature: (ctx) => `${ctx.target} is swallowed whole by ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides down ${ctx.actor}'s throat, settling in their stomach with wet gulps.` : null
+            },
+            chew: {
+                safe: (ctx) => `${ctx.target} is defeated by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.actor} tears into ${ctx.target} with savage bites.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} chews ${ctx.target} into pieces, blood and flesh dripping from their maw.` : null
+            },
+            cockVore: {
+                safe: (ctx) => `${ctx.target} is captured by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s shaft.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is stuffed into ${ctx.actor}'s swollen cock, sliding down into heavy balls.` : null
+            },
+            unbirth: {
+                safe: (ctx) => `${ctx.target} is enveloped by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is drawn into ${ctx.actor}'s womb.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} is pulled deep into ${ctx.actor}'s warm womb, walls closing around them.` : null
+            },
+            digest: {
+                safe: (ctx) => `${ctx.target} is fully absorbed by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is digested completely inside ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target}'s body is reduced to nutrients inside ${ctx.actor}'s stomach.` : null
+            },
+            release: {
+                safe: (ctx) => `${ctx.target} is freed by ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.actor} releases ${ctx.target} from their belly.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} heaves, pushing ${ctx.target} out of their stomach, covered in slime and weakened.` : null
+            },
+            heal: {
+                safe: (ctx) => `${ctx.actor} tends to ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} nourishes ${ctx.target}, restoring their strength.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} feeds ${ctx.target}, their warmth spreading as vitality returns.` : null
+            },
+            breastfeed: {
+                safe: (ctx) => `${ctx.actor} nurses ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} offers milk to ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} presses ${ctx.target} to their breast, warm milk flowing as pleasure surges through both.` : null
+            },
+            sacrifice: {
+                safe: (ctx) => `${ctx.target} offers themself to ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} willingly feeds themself to ${ctx.actor}.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} slides themself into ${ctx.actor}'s mouth, surrendering to the warm darkness of their belly.` : null
+            },
+            forceFeed: {
+                safe: (ctx) => `${ctx.target} is forced into ${ctx.actor}.`,
+                mature: (ctx) => `${ctx.target} is held down and forced into ${ctx.actor}'s stomach.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.target} struggles against restraints as they are shoved down ${ctx.actor}'s throat, forced into the belly.` : null
+            },
+            slurp: {
+                safe: (ctx) => `${ctx.actor} draws essence from ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} slurps a portion of ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} drinks deeply from ${ctx.target}'s yielding form, savoring their essence.` : null
+            },
+            fragment: {
+                safe: (ctx) => `${ctx.actor} breaks a piece from ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} tears off a chunk of ${ctx.target}.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} bites a piece from ${ctx.target}'s breakable body, consuming it as sweet nourishment.` : null
+            },
+            corpseLoot: {
+                safe: (ctx) => ctx.item ? `You search the remains of ${ctx.target} and recover ${ctx.item}.` : `You search the remains of ${ctx.target}, but find nothing useful.`,
+                mature: (ctx) => ctx.item ? `You pick over ${ctx.target}'s remains and recover ${ctx.item}.` : `You pick over ${ctx.target}'s remains, but there is nothing worth taking.`,
+                adult: (ctx) => ctx.item ? `You pick over the remains of ${ctx.target}, recovering ${ctx.item}.` : `You pick over the remains of ${ctx.target}, finding nothing but cooling flesh.`
+            },
+            corpseScavenge: {
+                safe: (ctx) => `You carefully scavenge the remains of ${ctx.target}.`,
+                mature: (ctx) => `You carve useful scraps from ${ctx.target}'s remains.`,
+                adult: (ctx) => ctx.voreEnabled ? `You feast from ${ctx.target}'s remains, taking what the battle left behind.` : null
+            }
+        }
+    },
+    
+    // Initialize from storage
+    async init() {
+        const saved = localStorage.getItem(this.STORAGE_KEY) || localStorage.getItem(this.LEGACY_STORAGE_KEY);
+        if (saved) {
+            try {
+                this.preferences = { ...this.preferences, ...JSON.parse(saved) };
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
+            } catch (e) {
+                console.error('Failed to load content preferences:', e);
+            }
+        }
+    },
+    
+    // Save preferences
+    savePreferences() {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
+    },
+    
+    // Set max content tier
+    setMaxTier(tier) {
+        this.preferences.maxTier = tier;
+        this.savePreferences();
+    },
+
+    setLanguage(language) {
+        this.preferences.language = this.locales[language] ? language : 'en';
+        this.savePreferences();
+        return this.preferences.language;
+    },
+
+    t(key, vars = {}) {
+        const language = this.preferences.language || 'en';
+        const table = this.locales[language] || this.locales.en;
+        let text = table[key] || this.locales.en[key] || key;
+        return text.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+    },
+
+    setPreference(setting, value) {
+        if (setting in this.preferences) {
+            this.preferences[setting] = value;
+            this.savePreferences();
+        }
+    },
+    
+    // Toggle specific content
+    toggleSetting(setting, value) {
+        if (setting in this.preferences) {
+            this.preferences[setting] = value !== undefined ? value : !this.preferences[setting];
+            this.savePreferences();
+        }
+    },
+    
+    // Get content at appropriate tier
+    getContent(templatePath, context = {}) {
+        const parts = templatePath.split('.');
+        const category = parts[0];
+        const type = parts[1];
+        const variant = parts[2] || 'default';
+        
+        // Try to get templates (with variant)
+        let templates = this.templates[category]?.[type]?.[variant];
+        
+        // If no variant found, check if the type itself IS a tier container
+        if (!templates && this.templates[category]?.[type]) {
+            const all = this.templates[category][type];
+            const hasTiers = 'safe' in all || 'mature' in all || 'adult' in all;
+            if (hasTiers) {
+                templates = all; // The type is a direct tier container (safe/mature/adult)
+            } else {
+                // It's a variant container, pick first available variant
+                const variants = Object.keys(all);
+                if (variants.length > 0) {
+                    templates = all[variants[0]];
+                }
+            }
+        }
+        
+        if (!templates) {
+            return `[Missing content: ${templatePath}]`;
+        }
+        
+        // Try tiers - adult first (default), then fallbacks
+        const tiers = ['adult', 'mature', 'safe'];
+        const maxTier = this.preferences.maxTier;
+        
+        // If user has explicit enabled and adult exists, prefer it
+        if (maxTier >= 2 && this.preferences.explicitDescriptions) {
+            const adultTemplate = templates.adult;
+            if (adultTemplate && typeof adultTemplate === 'function') {
+                return adultTemplate(context);
+            }
+        }
+        
+        for (const tierName of tiers) {
+            const tier = this.TIERS[tierName.toUpperCase()];
+            
+            // Skip if above max tier
+            if (tier > maxTier) continue;
+            
+            // Skip if gated content not enabled
+            if (tier === this.TIERS.ADULT) {
+                if (templates === null) continue;
+                if (context.voreEnabled && !this.preferences.voreEnabled) continue;
+                if (context.explicit && !this.preferences.explicitDescriptions) continue;
+            }
+            
+            // Get template function
+            const template = templates[tierName];
+            if (typeof template === 'function') {
+                try {
+                    return template(context);
+                } catch (e) {
+                    console.error(`Template error ${templatePath}:`, e);
+                    continue;
+                }
+            }
+        }
+        
+        // Fallback to safe
+        const safeTemplate = templates.safe;
+        if (typeof safeTemplate === 'function') {
+            return safeTemplate(context);
+        }
+        
+        return '[Content unavailable]';
+    },
+    
+    // Quick content helpers
+    biomeIntro(biome, context = {}) {
+        return this.getContent(`biome.${biome}`, context);
+    },
+    
+    encounter(species, context = {}) {
+        return this.getContent(`encounter.generic`, { 
+            species, 
+            mood: context.mood || 'curious',
+            ...context 
+        });
+    },
+    
+    combat(action, context = {}) {
+        return this.getContent(`combat.${action}`, context);
+    },
+    
+    actionResult(action, context = {}) {
+        return this.getContent(`action.${action}`, context);
+    },
+    
+    // Add custom templates from modules
+    registerTemplate(category, type, variant, templates) {
+        if (!this.templates[category]) {
+            this.templates[category] = {};
+        }
+        if (!this.templates[category][type]) {
+            this.templates[category][type] = {};
+        }
+        this.templates[category][type][variant] = templates;
+    }
+};
+
+// Initialize
+CONTENT_SYSTEM.init();
+
+// Make available globally
+window.CONTENT = CONTENT_SYSTEM;
+
+</script>
+
+<script>
+
+/**
+ * EXAMPLE CONTENT PACKS
+ * Demonstrating tiered content system
+ */
+
+// Base Game Content Pack (included by default)
+const BASE_CONTENT_PACK = {
+    manifest: {
+        id: 'content_base_game',
+        name: 'Core World',
+        version: '1.0.0',
+        author: 'You Are Wild Team',
+        description: 'Base biomes, encounters, and content',
+        type: 'content_pack',
+        contentRating: 'MATURE',
+        isCore: true
+    },
+    
+    install() {
+        // Biome introductions
+        CONTENT.registerTemplate('biome', 'jungle', 'default', {
+            safe: (ctx) => `Dense jungle surrounds you. Vines hang from towering trees.`,
+            mature: (ctx) => `The jungle presses close, humid and alive. Something moves in the canopy above.`,
+            adult: null
+        });
+        
+        CONTENT.registerTemplate('biome', 'swamp', 'default', {
+            safe: (ctx) => `Murky waters stretch through twisted trees.`,
+            mature: (ctx) => `The swamp exhales mist. Unseen creatures ripple the surface.`,
+            adult: null
+        });
+        
+        // Encounter types
+        CONTENT.registerTemplate('encounter', 'ambush', 'default', {
+            safe: (ctx) => `${ctx.species} attacks by surprise!`,
+            mature: (ctx) => `A ${ctx.species} lunges from ${ctx.hidingSpot || 'the shadows'}!`,
+            adult: (ctx) => ctx.explicit ? `${ctx.species} pounces, pinning you!` : null
+        });
+        
+        // Combat outcomes
+        CONTENT.registerTemplate('combat', 'grapple', 'default', {
+            safe: (ctx) => `${ctx.attacker} grabs ${ctx.defender}.`,
+            mature: (ctx) => `${ctx.attacker} wrestles with ${ctx.defender}, trying to overpower them.`,
+            adult: (ctx) => ctx.voreEnabled ? `${ctx.attacker} wraps around ${ctx.defender}, constricting tight.` : null
+        });
+        
+        console.log('Base content pack installed');
+    }
+};
+
+// Extended Adult Content Pack (optional)
+const ADULT_CONTENT_PACK = {
+    manifest: {
+        id: 'content_adult_extended',
+        name: 'Extended Descriptions',
+        version: '1.0.0',
+        author: 'Community',
+        description: 'Additional explicit content for adult players',
+        type: 'content_pack',
+        contentRating: 'ADULT',
+        requiresOptIn: ['explicitDescriptions', 'voreEnabled']
+    },
+    
+    install() {
+        // These only render if user opts in
+        
+        CONTENT.registerTemplate('action', 'consume', 'detailed', {
+            safe: null,  // Don\'t override
+            mature: null,
+            adult: (ctx) => ctx.voreEnabled ? 
+                `${ctx.target} slips past your jaws, sliding down your throat in one smooth motion. You feel them settle in your stomach, becoming part of you.` : null
+        });
+        
+        CONTENT.registerTemplate('action', 'seduce', 'detailed', {
+            safe: null,
+            mature: null,
+            adult: (ctx) => ctx.explicit ? 
+                `You draw ${ctx.target} close, your intentions clear. They melt into your embrace, submitting completely.` : null
+        });
+        
+        CONTENT.registerTemplate('encounter', 'intimate', 'default', {
+            safe: null,
+            mature: null,
+            adult: (ctx) => ctx.explicit ? 
+                `The ${ctx.species} approaches with obvious interest, their gaze lingering on your form.` : null
+        });
+        
+        console.log('Adult content pack installed');
+    }
+};
+
+// Species Flavor Pack
+const SPECIES_FLAVOR_PACK = {
+    manifest: {
+        id: 'content_species_flavor',
+        name: 'Species Flavor Text',
+        version: '1.0.0',
+        author: 'Community',
+        description: 'Unique descriptions for each species type',
+        type: 'content_pack',
+        contentRating: 'MATURE'
+    },
+    
+    install() {
+        // Naga-specific content
+        CONTENT.registerTemplate('species', 'naga', 'encounter', {
+            safe: (ctx) => `A naga slithers into view, serpentine lower body coiling.`,
+            mature: (ctx) => `The naga's tail circles lazily, upper body poised and predatory. She assesses you with calculating eyes.`,
+            adult: (ctx) => ctx.explicit ? `The naga's forked tongue flickers, tasting your scent on the air. Her coils tighten with interest.` : null
+        });
+        
+        // Dragon-specific content
+        CONTENT.registerTemplate('species', 'dragon', 'encounter', {
+            safe: (ctx) => `A dragon lands before you, wings folding.`,
+            mature: (ctx) => `Heat radiates from the dragon as she settles, ancient eyes weighing your worth.`,
+            adult: (ctx) => ctx.explicit ? `The dragon's muscular form looms, tail curling possessively around her territory.` : null
+        });
+        
+        // Slime-specific content
+        CONTENT.registerTemplate('species', 'slime', 'encounter', {
+            safe: (ctx) => `A slime creature bubbles into form.`,
+            mature: (ctx) => `The slime shifts, forming a curvaceous shape as it advances.`,
+            adult: (ctx) => ctx.explicit ? `The slime's translucent body molds into inviting shapes, ready to envelop.` : null
+        });
+        
+        console.log('Species flavor pack installed');
+    }
+};
+
+// Install base content automatically
+BASE_CONTENT_PACK.install();
+
+// Make packs available for manual install
+window.CONTENT_PACKS = {
+    base: BASE_CONTENT_PACK,
+    adult: ADULT_CONTENT_PACK,
+    species: SPECIES_FLAVOR_PACK
+};
+
+</script>
+
+<script>
+
+/**
+ * MODULE MARKETPLACE
+ * Browse, download, and share community content
+ */
+
+const MODULE_MARKETPLACE = {
+    // Simulated market data (in real app, fetch from server)
+    featuredModules: [
+        {
+            id: 'mod_desert_expansion',
+            name: 'Desert of Whispers',
+            author: 'SandyClaws',
+            version: '1.2.0',
+            description: 'Scorching sands, mirage oases, and sand-wyrm encounters',
+            downloads: 15420,
+            rating: 4.8,
+            size: '1.2 MB',
+            type: 'biome_pack',
+            tags: ['biome', 'desert', 'hard'],
+            preview: '🏜️'
+        },
+        {
+            id: 'mod_cyberpunk_city',
+            name: 'Neon District',
+            author: 'GlitchQueen',
+            version: '2.0.1',
+            description: 'Futuristic city biome with android predators',
+            downloads: 8932,
+            rating: 4.5,
+            size: '2.8 MB',
+            type: 'biome_pack',
+            tags: ['biome', 'cyberpunk', 'scifi'],
+            preview: '🌃'
+        },
+        {
+            id: 'mod_ancient_ruins',
+            name: 'Forgotten Temples',
+            author: 'RuinDelver',
+            version: '1.0.5',
+            description: 'Jungle ruins with trap mechanics and ancient guardians',
+            downloads: 5621,
+            rating: 4.9,
+            size: '890 KB',
+            type: 'feature_pack',
+            tags: ['dungeon', 'exploration', 'puzzle'],
+            preview: '🏛️'
+        },
+        {
+            id: 'mod_dragon_breeds',
+            name: 'Dragon Compendium',
+            author: 'ScaleScholar',
+            version: '1.5.0',
+            description: '15 new dragon species with unique abilities',
+            downloads: 22134,
+            rating: 4.7,
+            size: '1.5 MB',
+            type: 'species_pack',
+            tags: ['species', 'dragons', 'late-game'],
+            preview: '🐲'
+        },
+        {
+            id: 'mod_halloween_special',
+            name: 'Spooky Season',
+            author: 'PumpkinKing',
+            version: '1.0.0',
+            description: 'Limited time: Halloween-themed encounters and costumes',
+            downloads: 9876,
+            rating: 4.6,
+            size: '600 KB',
+            type: 'seasonal',
+            tags: ['seasonal', 'halloween', 'limited'],
+            preview: '🎃'
+        },
+        {
+            id: 'mod_deep_sea',
+            name: 'Abyssal Depths',
+            author: 'OceanExplorer',
+            version: '0.9.0',
+            description: 'Underwater biomes with pressure mechanics',
+            downloads: 3421,
+            rating: 4.3,
+            size: '1.8 MB',
+            type: 'biome_pack',
+            tags: ['biome', 'ocean', 'experimental'],
+            preview: '🌊'
+        }
+    ],
+    
+    // UI Controller
+    ui: {
+        showMarketplace() {
+            const html = `
+                <div style="max-width: 1000px; margin: 0 auto; padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <div>
+                            <h1 style="color: var(--accent-primary); margin: 0;">🏪 Module Marketplace</h1>
+                            <p style="color: var(--text-muted); margin: 8px 0 0 0;">
+                                Discover community-made biomes, species, and features
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
+                                📦 My Modules
+                            </button>
+                            <button class="nav-btn" onclick="MODULE_MARKETPLACE.ui.showCreate()">
+                                ✏️ Create
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search & Filter -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
+                                    border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px;">
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <input type="text" placeholder="🔍 Search modules..." 
+                                   style="flex: 1; min-width: 200px; background: var(--bg-tertiary); border: 1px solid var(--border-default); 
+                                          border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;"
+                                   oninput="MODULE_MARKETPLACE.ui.filter(this.value)">
+                            <select onchange="MODULE_MARKETPLACE.ui.filterByType(this.value)"
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
+                                           border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
+                                <option value="all">All Types</option>
+                                <option value="biome_pack">Biomes</option>
+                                <option value="species_pack">Species</option>
+                                <option value="feature_pack">Features</option>
+                                <option value="content_pack">Content</option>
+                            </select>
+                            <select onchange="MODULE_MARKETPLACE.ui.sort(this.value)"
+                                    style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
+                                           border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
+                                <option value="featured">Featured</option>
+                                <option value="downloads">Most Downloaded</option>
+                                <option value="rating">Highest Rated</option>
+                                <option value="newest">Newest</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Module Grid -->
+                    <div id="market-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+                        ${MODULE_MARKETPLACE.featuredModules.map(m => this.renderModuleCard(m)).join('')}
+                    </div>
+                    
+                    <!-- Featured Section -->
+                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default);">
+                        <h2 style="color: var(--text-secondary); font-size: 18px; margin-bottom: 16px;">
+                            ⭐ Staff Picks
+                        </h2>
+                        <div style="background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary)); 
+                                        border: 1px solid var(--border-default); border-radius: var(--radius-md); 
+                                        padding: 20px; display: flex; gap: 20px; align-items: center;">
+                            <div style="font-size: 64px;">🏜️</div>
+                            <div style="flex: 1;">
+                                <h3 style="color: var(--accent-primary); margin: 0 0 8px 0;">Desert of Whispers</h3>
+                                <p style="color: var(--text-secondary); margin: 0 0 12px 0;">
+                                    Our most popular biome expansion! Navigate scorching sands, discover hidden oases, 
+                                    and survive encounters with the legendary sand-wyrms.
+                                </p>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
+                                                 font-size: 12px; color: var(--text-muted);">15k+ downloads</span>
+                                    <span style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius-sm); 
+                                                 font-size: 12px; color: var(--text-muted);">⭐ 4.8 rating</span>
+                                </div>
+                            </div>
+                            <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);"
+                                    onclick="MODULE_MARKETPLACE.ui.install('mod_desert_expansion')">
+                                Install
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('market-content').innerHTML = html;
+        },
+        
+        renderModuleCard(mod) {
+            return `
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
+                                border-radius: var(--radius-md); overflow: hidden; transition: all 0.2s; cursor: pointer;"
+                     onmouseenter="this.style.borderColor='var(--accent-primary)'; this.style.transform='translateY(-4px)'"
+                     onmouseleave="this.style.borderColor='var(--border-default)'; this.style.transform='translateY(0)'">
+                    <div style="height: 100px; background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-elevated)); 
+                                    display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                        ${mod.preview}
+                    </div>
+                    <div style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);">${mod.name}</h3>
+                            <span style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: var(--radius-sm); 
+                                         font-size: 10px; color: var(--text-muted); text-transform: uppercase;">
+                                ${mod.type.replace('_', ' ')}
+                            </span>
+                        </div>
+                        <p style="margin: 0 0 12px 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+                            ${mod.description}
+                        </p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);">
+                                <span>⬇️ ${this.formatNumber(mod.downloads)}</span>
+                                <span>⭐ ${mod.rating}</span>
+                            </div>
+                            <button class="nav-btn" style="padding: 6px 12px; font-size: 12px;"
+                                    onclick="event.stopPropagation(); MODULE_MARKETPLACE.ui.install('${mod.id}')">
+                                Install
+                            </button>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                            by ${mod.author} • v${mod.version} • ${mod.size}
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
+        
+        formatNumber(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+            return n.toString();
+        },
+        
+        filter(query) {
+            // Filter implementation
+            console.log('Filter:', query);
+        },
+        
+        filterByType(type) {
+            console.log('Filter by type:', type);
+        },
+        
+        sort(method) {
+            console.log('Sort by:', method);
+        },
+        
+        async install(moduleId) {
+            const mod = this.featuredModules.find(m => m.id === moduleId);
+            if (!mod) return;
+            
+            // Simulate download
+            App.log.push({ text: `Downloading ${mod.name}...`, type: 'discovery' });
+            App.renderLog();
+            
+            await new Promise(r => setTimeout(r, 1500));
+            
+            // Create mock module
+            const mockModule = {
+                manifest: {
+                    id: mod.id,
+                    name: mod.name,
+                    version: mod.version,
+                    author: mod.author,
+                    description: mod.description,
+                    type: mod.type
+                },
+                code: `
+                    // ${mod.name} Module
+                    MODS.log('${mod.name} loaded!');
+                    // Module content would be here
+                `
+            };
+            
+            await MODULE_SYSTEM.installModule(mockModule);
+            await MODULE_SYSTEM.setModuleEnabled(mod.id, true);
+            
+            App.log.push({ text: `Installed and enabled ${mod.name}!`, type: 'discovery' });
+            App.renderLog();
+            
+            alert(`Successfully installed ${mod.name}!`);
+            
+            // Refresh UI
+            ModUI.refreshModList();
+        },
+        
+        showInstalled() {
+            ModUI.showModScreen();
+        },
+        
+        showCreate() {
+            alert('Module creation wizard would open here!\n\nThis would guide you through:\n- Creating a manifest\n- Writing content templates\n- Testing in sandbox\n- Packaging for upload');
+        }
+    }
+};
+
+// Make available
+window.MARKET = MODULE_MARKETPLACE;
+
+</script>
+
+<script>
+
+// Add marketplace to navigation
+document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.querySelector('.app-nav');
+    if (nav) {
+        const marketBtn = document.createElement('button');
+        marketBtn.className = 'nav-btn';
+        marketBtn.textContent = '🏪 Market';
+        marketBtn.onclick = () => {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.getElementById('screen-market').style.display = 'block';
+            MODULE_MARKETPLACE.ui.showMarketplace();
+        };
+        nav.insertBefore(marketBtn, nav.lastChild);
+    }
+});
+
+</script>
+
+<script>
+
+// Global navigation helpers
+window.returnToGame = function() {
+    document.getElementById('screen-settings').style.display = 'none';
+    document.getElementById('screen-mods').style.display = 'none';
+    document.getElementById('screen-market').style.display = 'none';
+    document.getElementById('save-manager').style.display = 'none';
+    if (App.player && App.player.CPun > 0) {
+        document.getElementById('screen-menu').style.display = 'none';
+        document.getElementById('screen-menu').classList.remove('active');
+        document.getElementById('app').style.display = 'grid';
+        document.getElementById('screen-game').style.display = 'flex';
+        document.getElementById('screen-game').classList.add('active');
+    } else {
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('screen-menu').style.display = 'flex';
+        document.getElementById('screen-menu').classList.add('active');
+    }
+};
+
+</script>
+</body>
+</html>

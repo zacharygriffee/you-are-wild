@@ -5,6 +5,9 @@
  */
 
 const CONTENT_SYSTEM = {
+    STORAGE_KEY: 'yaw-content-prefs',
+    LEGACY_STORAGE_KEY: 'fff-content-prefs',
+
     // Content rating tiers
     TIERS: {
         SAFE: 0,      // Combat, exploration, no suggestive content
@@ -298,10 +301,11 @@ const CONTENT_SYSTEM = {
     
     // Initialize from storage
     async init() {
-        const saved = localStorage.getItem('fff-content-prefs');
+        const saved = localStorage.getItem(this.STORAGE_KEY) || localStorage.getItem(this.LEGACY_STORAGE_KEY);
         if (saved) {
             try {
                 this.preferences = { ...this.preferences, ...JSON.parse(saved) };
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
             } catch (e) {
                 console.error('Failed to load content preferences:', e);
             }
@@ -310,7 +314,7 @@ const CONTENT_SYSTEM = {
     
     // Save preferences
     savePreferences() {
-        localStorage.setItem('fff-content-prefs', JSON.stringify(this.preferences));
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
     },
     
     // Set max content tier

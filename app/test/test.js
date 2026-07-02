@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Test runner for FightFuckFeed.tactical modules
+ * Test runner for You Are Wild modules
  * Validates syntax, checks for common issues, runs unit tests
  */
 
@@ -2820,7 +2820,7 @@ test('Combat log template exposes filters search and export controls', () => {
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');
   assertContains(template, 'App.exportLog()', 'Log should expose export action');
-  assertContains(appContent, 'fff-log-view', 'Log view preferences should persist separately');
+  assertContains(appContent, 'yaw-log-view', 'Log view preferences should persist separately');
   assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
   assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
   assertContains(template, '.log-category', 'Log category badge style should exist');
@@ -2847,7 +2847,7 @@ test('Combat log filter and search preferences persist', () => {
   const { App, storage } = loadAppForCombat();
   App.setLogFilter('loot');
   App.setLogSearch('coin');
-  const saved = JSON.parse(storage.get('fff-log-view'));
+  const saved = JSON.parse(storage.get('yaw-log-view'));
   assertEqual(saved.filter, 'loot', 'Log filter should persist');
   assertEqual(saved.search, 'coin', 'Log search should persist');
   App.logFilter = 'all';
@@ -2855,6 +2855,7 @@ test('Combat log filter and search preferences persist', () => {
   App.loadLogViewPreferences();
   assertEqual(App.logFilter, 'loot', 'Stored log filter should reload');
   assertEqual(App.logSearch, 'coin', 'Stored log search should reload');
+  storage.delete('yaw-log-view');
   storage.set('fff-log-view', JSON.stringify({ filter: 'invalid', search: 7 }));
   App.loadLogViewPreferences();
   assertEqual(App.logFilter, 'all', 'Invalid stored filter should fall back to all');
@@ -2917,7 +2918,7 @@ test('Accessibility settings apply, sync, and persist', () => {
   assertEqual(elements.get('setting-reduced-motion').checked, true, 'Reduced motion control should sync');
   assertEqual(elements.get('setting-font-size').value, '20', 'Font size control should sync');
   assertEqual(elements.get('setting-font-size-value').textContent, '20px', 'Font size label should sync');
-  const saved = JSON.parse(storage.get('fff-settings'));
+  const saved = JSON.parse(storage.get('yaw-settings'));
   assertEqual(saved.highContrast, true, 'High contrast setting should persist');
   assertEqual(saved.reducedMotion, true, 'Reduced motion setting should persist');
   assertEqual(saved.fontSize, 20, 'Font size setting should persist');
@@ -2930,7 +2931,7 @@ test('Newer interaction settings persist through saveSettings', () => {
   App.settings.forcedFeeding = true;
   App.settings.partyPlayFightMode = 'lethal';
   App.saveSettings();
-  const saved = JSON.parse(storage.get('fff-settings'));
+  const saved = JSON.parse(storage.get('yaw-settings'));
   assertEqual(saved.cockVoreEnabled, true, 'Cock vore setting should persist');
   assertEqual(saved.unbirthEnabled, true, 'Unbirth setting should persist');
   assertEqual(saved.forcedFeeding, true, 'Forced feeding setting should persist');
@@ -2941,7 +2942,7 @@ test('Language setting persists and updates localized labels', () => {
   const { App, elements, storage } = loadAppForCombat();
   App.updateLanguage('es');
   assertEqual(elements.get('setting-language').value, 'es', 'Language control should sync selected value');
-  const prefs = JSON.parse(storage.get('fff-content-prefs'));
+  const prefs = JSON.parse(storage.get('yaw-content-prefs'));
   assertEqual(prefs.language, 'es', 'Language preference should persist');
   assertEqual(App._uiLabel('fight'), 'Luchar', 'Action labels should use active locale');
 });

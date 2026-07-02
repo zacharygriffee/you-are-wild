@@ -1,11 +1,12 @@
 
 /**
- * FFFME MODULE MANAGER
+ * YOU ARE WILD MODULE MANAGER
  * IndexedDB-based module storage with hook system
  */
 
 const MODULE_SYSTEM = {
-    DB_NAME: 'FFFme_Modules',
+    DB_NAME: 'YAW_Modules',
+    LEGACY_DB_NAME: 'FFFme_Modules',
     DB_VERSION: 1,
     db: null,
     

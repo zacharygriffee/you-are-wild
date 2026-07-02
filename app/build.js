@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build script for FightFuckFeed.tactical
+ * Build script for You Are Wild
  * Assembles separate JS modules into a single HTML file for distribution
  */
 
@@ -11,9 +11,9 @@ const ROOT_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(__dirname, 'src');
 const TEMPLATE = path.join(__dirname, 'template.html');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
-const OUTPUT = path.join(DIST_DIR, 'FightFuckFeed.tactical.html');
+const OUTPUT = path.join(DIST_DIR, 'you-are-wild.html');
 const PLACEHOLDER = '<!-- SCRIPTS_PLACEHOLDER -->';
-const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit FightFuckFeed.tactical/src and run npm run build. -->';
+const GENERATED_BANNER = '<!-- GENERATED FILE. Do not edit directly. Edit app/src and run npm run build. -->';
 
 const SCRIPT_ORDER = [
   'src/core/serialization.js',
@@ -83,7 +83,7 @@ function lint() {
 }
 
 function renderHtml() {
-  console.log('Building FightFuckFeed.tactical.html...\n');
+  console.log('Building you-are-wild.html...\n');
 
   if (!lint()) {
     console.error('\nBuild aborted due to lint errors.');

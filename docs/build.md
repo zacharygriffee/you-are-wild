@@ -1,23 +1,23 @@
 # Build Process
 
-The tactical app is built from `FightFuckFeed.tactical/template.html` and the ordered JavaScript modules in `FightFuckFeed.tactical/src/`.
+The app is built from `app/template.html` and the ordered JavaScript modules in `app/src/`.
 
 ## Output
 
 The generated file is written to:
 
 ```text
-dist/FightFuckFeed.tactical.html
+dist/you-are-wild.html
 ```
 
 The generated output includes a banner warning that it should not be edited directly.
 
 ## Scripts
 
-Run from `FightFuckFeed.tactical/`:
+Run from `app/`:
 
 ```sh
-npm run build      # regenerate dist/FightFuckFeed.tactical.html
+npm run build      # regenerate dist/you-are-wild.html
 npm run check      # fail if the generated file is stale
 npm run lint       # syntax-check every source module in build order
 npm run full-build # clean, build, test, lint, and check

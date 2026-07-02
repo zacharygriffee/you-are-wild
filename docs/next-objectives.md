@@ -1,4 +1,4 @@
-# FightFuckFeed.tactical — Next Objectives
+# You Are Wild — Next Objectives
 
 > Handoff document for the next agent. This is a **porn game that can be turned into SFW, not the other way around**. Default settings are adult. All content is tiered (safe/mature/adult) with adult as the default.
 
@@ -7,7 +7,7 @@
 ## Current State
 
 - **Build:** 188/188 tests pass, 10/10 lint modules clean, dist fresh
-- **Architecture:** Single-file HTML distributable (`dist/FightFuckFeed.tactical.html`), modular JS source in `src/`, template shell in `template.html`
+- **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
 
@@ -107,7 +107,8 @@
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices
 - Party management UI has a first-pass foundation: party cards expose reorder, leader, detailed stats, and dismiss controls, the selected leader is visible on party cards, dismissed allies are removed from selection state, enemy target priority can bias toward an explicitly selected leader after prey/tasty rules, and save version 10 persists the selected party leader
 - Combat log filtering has a first-pass foundation: log panel exposes All/Combat/Discovery/Loot/Heal filters, search input, relative timestamps, explicit round/turn/actor metadata for high-traffic combat entries, screen-reader status roles, category color/icon badges, and an export action that emits the currently filtered log as text
-- Combat log view preferences now persist independently: selected filter and search text are saved to `fff-log-view`, reloaded on app init, and invalid stored values fall back safely
+- Combat log view preferences now persist independently: selected filter and search text are saved to `yaw-log-view`, reloaded on app init, and invalid stored values fall back safely; legacy `fff-log-view` is still read for migration
+- Repository organization/rebrand first pass is complete: active source lives under `app/`, root scripts point at that layout, generated output is `dist/you-are-wild.html`, visible active UI branding says **You Are Wild**, package/build metadata uses the new slug, and `npm run audit:branding` verifies only approved legacy migration references remain
 - Sparse map generation has a first-pass foundation: biome role metadata separates region/route/feature/interior concepts, super-patch generation selects only region biomes, seeded deterministic helpers drive region selection, world seed/version metadata persists through saves, and non-region entries such as bridge/road/indoors/entrance no longer become large super-patch biomes
 - Sparse map delta boundary exists: `getBaseTile()`, `getTileDelta()`, `applyTileDelta()`, and `persistTileDelta()` keep deterministic generated baseline data separate from explored/changed tile state while `worldMap` remains a compatibility cache for existing gameplay systems
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
@@ -137,22 +138,16 @@
 - Keep combat group actions separate from exploration group actions; combat already uses turn-order consequences and slowest-participant resolution
 
 #### 2. Brand Transformation
-- Use **You Are Wild** as the canonical project title unless a final availability check finds a blocker; acceptable shorthand/acronym options are **YAW** or **YW**, with "You're wild" reserved for tagline/UI copy rather than as a separate brand
 - Check final commercial availability before release naming is locked; the quick search looked cleaner than `Wildbound`, but this is not a legal clearance substitute
-- Replace visible original branding in the active app shell: document title, start screen heading, desktop/mobile header title, welcome/log text, and any generated dist output
-- Rename active package/build metadata: root package name, tactical package name/description, folder references where practical, build output filename, generated banner, README/build docs, and architecture references
-- Scrape active project paths for legacy naming, including file and directory names, not just source text; expected active surfaces include `package.json`, `package-lock.json`, `build.js`, `template.html`, `src/`, `test/`, `README.md`, `docs/`, and `dist/`
-- Replace internal `FFF`/`FFFme` identifiers for new durable state, but preserve backward-compatible reads/migrations for existing saves, settings, modules, content preferences, log view preferences, and world data
-- Keep legacy/archive references quarantined unless the project decides to remove archived source entirely; active source, docs, and distributable output should be free of original branding
-- Add a branding audit check using `rg` so future work can verify no original active-surface branding remains outside explicitly allowed archive/legacy paths
-- Verify the full build/test/lint pipeline passes after the rename and rebuild generated output so `dist/` matches the chosen branding
+- Keep **You Are Wild** as the canonical project title unless availability clearance finds a blocker; acceptable shorthand/acronym options are **YAW** or **YW**, with "You're wild" reserved for tagline/UI copy rather than as a separate brand
+- Continue migration-safe cleanup of old storage names only where compatibility allows; active writes now use `yaw-*`, `YAW_Saves`, and `YAW_Modules`, while approved legacy aliases remain for existing saves/settings/modules
+- Decide whether to remove or further quarantine `legacy/` and `archive/` before release packaging
+- Keep `npm run audit:branding` passing whenever source, docs, or generated dist change
 
 #### 3. Repository Organization
-- Reorganize the repo after the rebrand so active source, generated output, docs, tests, and archived legacy material are clearly separated
-- Decide whether `FightFuckFeed.tactical/` should be renamed to the new project slug or folded into a cleaner top-level app layout; update root package scripts and docs at the same time
-- Keep generated `dist/` output out of hand-edited source paths and make the build/update flow obvious for future agents
+- Keep active source under the cleaner `app/` layout; update root package scripts and docs whenever layout changes
 - Review `archive/` and `legacy/` retention policy so old reference material is quarantined without confusing active branding audits
-- Ensure repository metadata matches GitHub defaults: local branch `main`, remote `origin`, and README/build instructions aligned with the final layout
+- Ensure repository metadata stays aligned with GitHub defaults: local branch `main`, remote `origin`, and README/build instructions aligned with the final layout
 
 ### 🔵 Tier 4: Lower Priority
 
@@ -199,7 +194,7 @@
 
 ### File Layout
 ```
-FightFuckFeed.tactical/
+app/
   src/core/
     app.js           — Main game state, combat loop, encounter system, AI (~6173 lines)
     content-system.js — Template engine, content tiers, localization registry (~463 lines)
@@ -220,10 +215,10 @@ FightFuckFeed.tactical/
 
 ### Key Patterns
 - **No frameworks.** Vanilla JS. All state is in the `App` object.
-- **Single-file output.** `build.js` concatenates all `src/` JS into `template.html` → `dist/FightFuckFeed.tactical.html`
+- **Single-file output.** `build.js` concatenates all `src/` JS into `template.html` → `dist/you-are-wild.html`
 - **Build order:** `serialization.js` → `app.js` → `module-system.js` → `content-system.js` → `marketplace.js` → UI modules. Globals are initialized in that order.
 - **Content system:** All text is generated via `CONTENT.getContent(path, context)` which picks the appropriate tier based on `maxTier` preference. Adult tier is default.
-- **Tests:** Run `cd FightFuckFeed.tactical && node test/test.js`. All tests must pass. Add new tests for new features.
+- **Tests:** Run `cd app && node test/test.js`. All tests must pass. Add new tests for new features.
 - **Lint:** `node build.js --lint-only` validates all JS syntax. Must pass before commit.
 - **Full build:** `npm run full-build` from repo root = clean + build + test + lint + check.
 

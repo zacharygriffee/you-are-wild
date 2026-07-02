@@ -232,7 +232,7 @@ Add a map/world database separate from save slots.
 Recommended stores:
 
 ```text
-FFF_Worlds
+YAW_Worlds
   worlds
     worldId -> world metadata
 
@@ -367,7 +367,7 @@ Keep returning the existing tile shape.
 
 ### Phase 4: IndexedDB Map Store
 
-Move durable tile/world state out of save-slot payloads and into `FFF_Worlds`.
+Move durable tile/world state out of save-slot payloads and into `YAW_Worlds`.
 
 Save slots keep `worldId` and player state. Map deltas persist independently.
 
@@ -410,4 +410,4 @@ The next code slice should add the durable delta boundary while keeping the curr
 4. Add `persistTileDelta(tile)` to store only observed or changed state.
 5. Add tests proving unexplored generated tiles do not need durable entries, while explored/changed tiles preserve creatures, items, structures, and discovery state.
 
-The IndexedDB `FFF_Worlds` store can follow after this boundary is stable.
+The IndexedDB `YAW_Worlds` store can follow after this boundary is stable.

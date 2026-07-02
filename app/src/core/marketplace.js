@@ -10,7 +10,7 @@ const BASE_CONTENT_PACK = {
         id: 'content_base_game',
         name: 'Core World',
         version: '1.0.0',
-        author: 'FFFme Team',
+        author: 'You Are Wild Team',
         description: 'Base biomes, encounters, and content',
         type: 'content_pack',
         contentRating: 'MATURE',

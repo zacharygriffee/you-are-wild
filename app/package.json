@@ -1,8 +1,8 @@
 {
-  "name": "fightfuckfeed-tactical",
+  "name": "you-are-wild",
   "version": "0.10.0",
   "private": true,
-  "description": "Tactical dark-mode edition of FightFuckFeed.me - single-file HTML game with modular source",
+  "description": "Creature-focused exploration RPG built as a single-file HTML game with modular source",
   "scripts": {
     "build": "node build.js",
     "check": "node build.js --check",
@@ -12,7 +12,7 @@
     "lint": "node build.js --lint-only",
     "watch": "node build.js --watch",
     "dev": "node dev.js",
-    "clean": "rm -f ../dist/FightFuckFeed.tactical.html",
+    "clean": "rm -f ../dist/you-are-wild.html",
     "full-build": "npm run clean && npm run build && npm run test && npm run lint && npm run check"
   },
   "keywords": ["game", "tactical", "rpg", "browser"],

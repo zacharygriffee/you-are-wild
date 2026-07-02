@@ -1,15 +1,16 @@
 {
-  "name": "fff-repo",
+  "name": "you-are-wild-repo",
   "private": true,
   "scripts": {
-    "build": "npm --prefix FightFuckFeed.tactical run build",
-    "check": "npm --prefix FightFuckFeed.tactical run check",
-    "test": "npm --prefix FightFuckFeed.tactical test",
-    "test:core": "npm --prefix FightFuckFeed.tactical run test:core",
-    "test:ui": "npm --prefix FightFuckFeed.tactical run test:ui",
-    "lint": "npm --prefix FightFuckFeed.tactical run lint",
-    "dev": "npm --prefix FightFuckFeed.tactical run dev",
-    "clean": "npm --prefix FightFuckFeed.tactical run clean",
-    "full-build": "npm --prefix FightFuckFeed.tactical run full-build"
+    "build": "npm --prefix app run build",
+    "check": "npm --prefix app run check",
+    "test": "npm --prefix app test",
+    "test:core": "npm --prefix app run test:core",
+    "test:ui": "npm --prefix app run test:ui",
+    "lint": "npm --prefix app run lint",
+    "dev": "npm --prefix app run dev",
+    "clean": "npm --prefix app run clean",
+    "audit:branding": "node scripts/branding-audit.js",
+    "full-build": "npm --prefix app run full-build"
   }
 }

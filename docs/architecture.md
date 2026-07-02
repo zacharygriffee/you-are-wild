@@ -1,11 +1,11 @@
 # Architecture
 
-The maintained app is the tactical build under `FightFuckFeed.tactical/`.
+The maintained app is under `app/`.
 
 ## Source Package
 
 ```text
-FightFuckFeed.tactical/
+app/
   build.js
   dev.js
   package.json
@@ -18,7 +18,7 @@ FightFuckFeed.tactical/
 
 ## Runtime Shape
 
-The project still emits a single HTML file for distribution. Build order is explicit in `FightFuckFeed.tactical/build.js` so browser globals are initialized predictably.
+The project still emits a single HTML file for distribution. Build order is explicit in `app/build.js` so browser globals are initialized predictably.
 
 Core modules live in `src/core/`:
 
@@ -46,4 +46,4 @@ The current overworld uses lazy deterministic super-patch biome generation. The 
 - `archive/` contains historical experiments, patches, and old planning docs.
 - `dist/` contains generated release output.
 
-Agents should default to `FightFuckFeed.tactical/src/`, `FightFuckFeed.tactical/template.html`, tests, and docs unless a task explicitly targets legacy code.
+Agents should default to `app/src/`, `app/template.html`, tests, and docs unless a task explicitly targets legacy code.

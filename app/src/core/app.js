@@ -152,7 +152,7 @@
             },
             _actorNameAndVerb(actor) {
                 const isPlayer = actor && actor.name === this.player?.name;
-                return { actorName: isPlayer ? 'You' : actor?.name || 'Someone', actorVerb: isPlayer ? '' : 's' };
+                return { actorName: isPlayer ? this._label('party.you', 'You') : actor?.name || 'Someone', actorVerb: isPlayer ? '' : 's' };
             },
             _iconActionButton(key, icon, onclick, extraClass = '') {
                 const label = this._uiLabel(key);
@@ -4388,7 +4388,7 @@
 
             outsideActionOnTarget(action, target, actor = this.player, options = {}) {
                 actor = actor || this.player;
-                const { actorName, actorVerb } = this._actorNameAndVerb(actor);
+                const { actorName } = this._actorNameAndVerb(actor);
                 let result = '';
                 let startCombatAfter = false;
                 let combatTargets = [];
@@ -4405,8 +4405,11 @@
                         const def = target.con || 10;
                         const dmg = Math.max(1, Math.floor(ar - def * 0.3 + Math.random() * 6));
                         target.CPun -= dmg;
-                        result = `${actorName} hit${actorVerb} ${target.name} for ${dmg} punishment.`;
-                        if (target.CPun <= 0) { target.CPun = 1; result += ' They are subdued.'; }
+                        result = this._label('explore.fight.hit', '{actor} hits {target} for {amount} punishment.', { actor: actorName, target: target.name, amount: dmg });
+                        if (target.CPun <= 0) {
+                            target.CPun = 1;
+                            result += ` ${this._label('explore.fight.subdued', '{target} is subdued.', { target: target.name })}`;
+                        }
                         break;
                     }
                     case 'fuck': {
@@ -4418,22 +4421,27 @@
                         const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                            result = `${actorName} pleasure${actorVerb} ${target.name}. Their arousal rises to ${target.CPle}/${target.MPle}.`;
+                            result = this._label('explore.fuck.success', '{actor} pleasures {target}. Their arousal rises to {current}/{max}.', {
+                                actor: actorName,
+                                target: target.name,
+                                current: target.CPle,
+                                max: target.MPle
+                            });
                             if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
                                 target.willing = true;
                                 target.orgasmed = true;
-                                result += ' They orgasm and are completely devoted.';
+                                result += ` ${this._label('explore.fuck.devoted', '{target} orgasms and is completely devoted.', { target: target.name })}`;
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                                 if (this.settings.refractoryPeriod) {
                                     target.refractory = true;
-                                    result += ' They need a moment to recover...';
+                                    result += ` ${this._label('explore.fuck.recover', '{target} needs a moment to recover...', { target: target.name })}`;
                                 }
                             }
                             if (!this.party.includes(target) && this._canRecruit(actor, target)) {
-                                result += ` ${target.name} may be willing to join the party.`;
+                                result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = `${target.name} is not in the mood.`;
+                            result = this._label('explore.fuck.resists', '{target} is not in the mood.', { target: target.name });
                         }
                         break;
                     }
@@ -4453,9 +4461,14 @@
                                 this._removeCreatureFromArea(target);
                             }
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                            result = `${actorName} swallow${actorVerb} ${target.name} whole. They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;
+                            const owner = actor === this.player || actor.name === this.player?.name ? this._label('party.you', 'You') : actor.name;
+                            result = this._label('explore.feast.swallow', '{actor} swallows {target} whole. They settle in {owner} stomach.', {
+                                actor: actorName,
+                                target: target.name,
+                                owner
+                            });
                         } else {
-                            result = `${target.name} is too large or strong to eat.`;
+                            result = this._label('explore.feast.tooStrong', '{target} is too large or strong to eat.', { target: target.name });
                         }
                         break;
                     }
@@ -4469,17 +4482,22 @@
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                            result = `${actorName} flirt${actorVerb} with ${target.name}. Their guard lowers. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                            result = this._label('explore.flirt.success', '{actor} flirts with {target}. Their guard lowers. Pleasure rises to {current}/{max}.', {
+                                actor: actorName,
+                                target: target.name,
+                                current: target.CPle,
+                                max: target.MPle
+                            });
                             if (target.charmed >= 3) {
-                                result += ` ${target.name} is utterly charmed and becomes friendly!`;
+                                result += ` ${this._label('explore.flirt.charmed', '{target} is utterly charmed and becomes friendly!', { target: target.name })}`;
                                 target.disposition = this.DISPOSITION.FRIENDLY;
                                 target.willing = true;
                             }
                             if (!this.party.includes(target) && this._canRecruit(actor, target)) {
-                                result += ` ${target.name} may be willing to join the party.`;
+                                result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = `${target.name} rebuffs your flirtation!`;
+                            result = this._label('explore.flirt.rebuff', '{target} rebuffs the flirtation!', { target: target.name });
                         }
                         break;
                     }
@@ -4494,7 +4512,11 @@
                         if (target.CPle < target.MPle * 0.5) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(healAmount * 0.5));
                         }
-                        result = `${actorName} feed${actorVerb} ${target.name}, restoring ${healAmount} punishment and sating their hunger.`;
+                        result = this._label('explore.feed.success', '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', {
+                            actor: actorName,
+                            target: target.name,
+                            amount: healAmount
+                        });
                         break;
                     }
                     case 'inspect': {

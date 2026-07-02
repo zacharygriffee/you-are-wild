@@ -11672,11 +11672,11 @@ const WorldGen = (() => {
                 this.closeMobileContextMenu();
                 if (type === 'party') {
                     const index = Number(targetRef);
-                    if (action === 'close') return;
+                    if (action === 'close') return false;
                     return this.outsideActionForParty(action, index, null, { subAction });
                 }
                 const targetId = String(targetRef);
-                if (action === 'close') return;
+                if (action === 'close') return false;
                 if (action === 'recruit') return this.recruitCreatureById(targetId);
                 if (action === 'quest') return this.acceptQuestFromUnit(targetId);
                 if (action === 'trade') return this.showTrade(targetId);

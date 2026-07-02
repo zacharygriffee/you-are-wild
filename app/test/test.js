@@ -1897,7 +1897,8 @@ test('Intent menu dispatch keeps existing outside-combat action flow', () => {
   App.party = [player, ally];
   App.creatures = [enemy];
   App.selectExplorationActor(1);
-  App.selectIntent('creature', 'enemy-intent', 'fight');
+  const resolved = App.selectIntent('creature', 'enemy-intent', 'fight');
+  assertEqual(resolved, true, 'Intent dispatch should report successful primary action resolution');
   assertEqual(App.lastIntentCommand.action, 'fight', 'Intent command should record selected action');
   assertEqual(App.lastIntentCommand.targetId, 'enemy-intent', 'Intent command should record selected target');
   assertEqual(App.lastIntentCommand.targetType, 'creature', 'Intent command should record target type');
@@ -1905,6 +1906,20 @@ test('Intent menu dispatch keeps existing outside-combat action flow', () => {
   assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-1', 'Intent command should preserve selected actor ids');
   assert(enemy.CPun < 70, 'Intent dispatch should reuse existing outside-combat creature action flow');
   assertContains(App.log[App.log.length - 1].text, 'Ally hit', 'Intent dispatch should preserve existing action log semantics');
+});
+
+test('Intent dispatch reports canceled and missing-target outcomes', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const ally = makeUnit('Ally', { id: 'ally-1', CPle: 0, MPle: 100, wis: 1 });
+  App.player = actor;
+  App.party = [actor, ally];
+  assertEqual(App.selectIntent('party', 1, 'flirt'), true, 'Party intent should report successful resolution');
+  assert(ally.CPle > 0, 'Successful party intent should affect target');
+  assertEqual(App.selectIntent('party', 99, 'flirt'), false, 'Party intent should report missing target failure');
+  assertEqual(App.selectIntent('creature', 'missing-creature', 'flirt'), false, 'Creature intent should report missing target failure');
+  assertEqual(App.selectIntent('party', 1, 'close'), false, 'Close intent should report canceled resolution');
+  assertEqual(App.selectIntent('creature', 'missing-creature', 'close'), false, 'Creature close intent should report canceled resolution');
 });
 
 test('Intent sub-action sheet records selected sub-action while preserving dispatch', () => {

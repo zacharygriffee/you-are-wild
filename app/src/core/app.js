@@ -6065,6 +6065,47 @@
                 ].join('');
                 return `<div class="unit-bars${compact ? ' compact' : ''}" aria-label="${this._escapeHtml(this._label('ui.tacticalStatus', 'Tactical status'))}">${bars}</div>`;
             },
+            _unitVisibleTraits(unit, type, limit = 3) {
+                if (!unit) return [];
+                const stats = this._unitDisplayStats(unit || {});
+                const maxHunger = unit.maxHunger || 100;
+                const hunger = unit.hunger ?? 0;
+                const status = unit.status || {};
+                const chips = [];
+                const add = (key, label, tone = 'neutral') => {
+                    if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
+                };
+                if (status.sleep || unit.asleep) add('asleep', this._label('unit.trait.asleep', 'Asleep'), 'status');
+                if (status.poisoned) add('poisoned', this._label('unit.trait.poisoned', 'Poison'), 'danger');
+                if (status.burn) add('burning', this._label('unit.trait.burning', 'Burning'), 'danger');
+                if (status.bleed) add('bleeding', this._label('unit.trait.bleeding', 'Bleeding'), 'danger');
+                if (status.stun) add('stunned', this._label('unit.trait.stunned', 'Stunned'), 'status');
+                if (status.freeze) add('frozen', this._label('unit.trait.frozen', 'Frozen'), 'status');
+                if (status.fear) add('fear', this._label('unit.trait.fear', 'Fear'), 'status');
+                if (status.restrained || status.enveloped || status.stuck) add('restrained', this._label('unit.trait.restrained', 'Restrained'), 'status');
+                if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', this._label('unit.trait.wounded', 'Wounded'), 'danger');
+                if (maxHunger > 0 && hunger >= maxHunger * 0.7) add('hungry', this._label('unit.trait.hungry', 'Hungry'), 'need');
+                if (type === 'party') {
+                    const role = this._getPartyRole(unit);
+                    if (role && role !== 'companion') add(`role-${role}`, this._partyRoleLabel(role), 'role');
+                } else {
+                    if (unit.disposition === this.DISPOSITION.MERCHANT) add('merchant', this._label('disposition.merchant', 'Merchant'), 'special');
+                    else if (unit.quest) add('quest', this._label('disposition.quest', 'Quest'), 'special');
+                    else if (unit.disposition === this.DISPOSITION.FRIENDLY) add('friendly', this._label('disposition.friendly', 'Friendly'), 'relation');
+                    else if (unit.disposition === this.DISPOSITION.NEUTRAL) add('neutral', this._label('disposition.neutral', 'Neutral'), 'relation');
+                    else if (unit.disposition === this.DISPOSITION.ENEMY) add('hostile', this._label('disposition.hostile', 'Hostile'), 'danger');
+                }
+                if (unit.flying) add('flying', this._label('unit.trait.flying', 'Flying'), 'ability');
+                if (unit.darkvision) add('darkvision', this._label('unit.trait.darkvision', 'Darkvision'), 'ability');
+                return chips.slice(0, Math.max(0, limit));
+            },
+            _unitTraitChips(unit, type, limit = 3) {
+                const chips = this._unitVisibleTraits(unit, type, limit);
+                if (chips.length === 0) return '';
+                const label = this._escapeHtml(this._label('ui.unitTraits', 'Unit traits'));
+                const items = chips.map(chip => `<span class="unit-trait-chip ${this._escapeHtml(chip.tone)}" title="${this._escapeHtml(chip.label)}">${this._escapeHtml(chip.label)}</span>`).join('');
+                return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
+            },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
                 const isParty = type === 'party';
@@ -6121,6 +6162,7 @@
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
                     ${this._unitTacticalBars(unit, { compact: true })}
+                    ${this._unitTraitChips(unit, type)}
                     ${actionButtons}
                 </div>`;
             },
@@ -6265,6 +6307,7 @@
 	                            ${combatStatus}
 	                            <div class="unit-card-status">${compactStatus}</div>
 	                            ${this._unitTacticalBars(unit)}
+	                            ${this._unitTraitChips(unit, type)}
 		                        </div>
 		                    </div>
 	                    ${actionButtons}

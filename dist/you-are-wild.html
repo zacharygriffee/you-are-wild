@@ -706,8 +706,52 @@
             text-overflow: ellipsis;
         }
 
+        .unit-traits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+            min-width: 0;
+        }
+
+        .unit-trait-chip {
+            max-width: 100%;
+            padding: 2px 6px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            font-size: 10px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unit-trait-chip.danger {
+            color: var(--accent-danger);
+            border-color: rgba(255, 71, 87, 0.35);
+        }
+
+        .unit-trait-chip.need {
+            color: var(--accent-warning);
+            border-color: rgba(255, 184, 0, 0.35);
+        }
+
+        .unit-trait-chip.special,
+        .unit-trait-chip.role,
+        .unit-trait-chip.ability {
+            color: var(--accent-primary);
+            border-color: rgba(0, 212, 170, 0.35);
+        }
+
         body.high-contrast .unit-bar-track {
             border-color: var(--border-default);
+        }
+
+        body.high-contrast .unit-trait-chip {
+            border-color: var(--border-default);
+            color: var(--text-primary);
         }
 
         .stat {
@@ -1458,6 +1502,16 @@
 
             .mobile-unit-chip .unit-bar-track {
                 height: 4px;
+            }
+
+            .mobile-unit-chip .unit-traits {
+                gap: 3px;
+                margin-top: 5px;
+            }
+
+            .mobile-unit-chip .unit-trait-chip {
+                padding: 1px 5px;
+                font-size: 9px;
             }
 
             .mobile-context-menu {
@@ -9539,6 +9593,47 @@ const WorldGen = (() => {
                 ].join('');
                 return `<div class="unit-bars${compact ? ' compact' : ''}" aria-label="${this._escapeHtml(this._label('ui.tacticalStatus', 'Tactical status'))}">${bars}</div>`;
             },
+            _unitVisibleTraits(unit, type, limit = 3) {
+                if (!unit) return [];
+                const stats = this._unitDisplayStats(unit || {});
+                const maxHunger = unit.maxHunger || 100;
+                const hunger = unit.hunger ?? 0;
+                const status = unit.status || {};
+                const chips = [];
+                const add = (key, label, tone = 'neutral') => {
+                    if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
+                };
+                if (status.sleep || unit.asleep) add('asleep', this._label('unit.trait.asleep', 'Asleep'), 'status');
+                if (status.poisoned) add('poisoned', this._label('unit.trait.poisoned', 'Poison'), 'danger');
+                if (status.burn) add('burning', this._label('unit.trait.burning', 'Burning'), 'danger');
+                if (status.bleed) add('bleeding', this._label('unit.trait.bleeding', 'Bleeding'), 'danger');
+                if (status.stun) add('stunned', this._label('unit.trait.stunned', 'Stunned'), 'status');
+                if (status.freeze) add('frozen', this._label('unit.trait.frozen', 'Frozen'), 'status');
+                if (status.fear) add('fear', this._label('unit.trait.fear', 'Fear'), 'status');
+                if (status.restrained || status.enveloped || status.stuck) add('restrained', this._label('unit.trait.restrained', 'Restrained'), 'status');
+                if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', this._label('unit.trait.wounded', 'Wounded'), 'danger');
+                if (maxHunger > 0 && hunger >= maxHunger * 0.7) add('hungry', this._label('unit.trait.hungry', 'Hungry'), 'need');
+                if (type === 'party') {
+                    const role = this._getPartyRole(unit);
+                    if (role && role !== 'companion') add(`role-${role}`, this._partyRoleLabel(role), 'role');
+                } else {
+                    if (unit.disposition === this.DISPOSITION.MERCHANT) add('merchant', this._label('disposition.merchant', 'Merchant'), 'special');
+                    else if (unit.quest) add('quest', this._label('disposition.quest', 'Quest'), 'special');
+                    else if (unit.disposition === this.DISPOSITION.FRIENDLY) add('friendly', this._label('disposition.friendly', 'Friendly'), 'relation');
+                    else if (unit.disposition === this.DISPOSITION.NEUTRAL) add('neutral', this._label('disposition.neutral', 'Neutral'), 'relation');
+                    else if (unit.disposition === this.DISPOSITION.ENEMY) add('hostile', this._label('disposition.hostile', 'Hostile'), 'danger');
+                }
+                if (unit.flying) add('flying', this._label('unit.trait.flying', 'Flying'), 'ability');
+                if (unit.darkvision) add('darkvision', this._label('unit.trait.darkvision', 'Darkvision'), 'ability');
+                return chips.slice(0, Math.max(0, limit));
+            },
+            _unitTraitChips(unit, type, limit = 3) {
+                const chips = this._unitVisibleTraits(unit, type, limit);
+                if (chips.length === 0) return '';
+                const label = this._escapeHtml(this._label('ui.unitTraits', 'Unit traits'));
+                const items = chips.map(chip => `<span class="unit-trait-chip ${this._escapeHtml(chip.tone)}" title="${this._escapeHtml(chip.label)}">${this._escapeHtml(chip.label)}</span>`).join('');
+                return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
+            },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
                 const isParty = type === 'party';
@@ -9595,6 +9690,7 @@ const WorldGen = (() => {
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
                     ${this._unitTacticalBars(unit, { compact: true })}
+                    ${this._unitTraitChips(unit, type)}
                     ${actionButtons}
                 </div>`;
             },
@@ -9739,6 +9835,7 @@ const WorldGen = (() => {
 	                            ${combatStatus}
 	                            <div class="unit-card-status">${compactStatus}</div>
 	                            ${this._unitTacticalBars(unit)}
+	                            ${this._unitTraitChips(unit, type)}
 		                        </div>
 		                    </div>
 	                    ${actionButtons}
@@ -12216,6 +12313,7 @@ const CONTENT_SYSTEM = {
             'ui.creatureActions': 'Creature actions',
             'ui.partyActions': 'Party actions',
             'ui.tacticalStatus': 'Tactical status',
+            'ui.unitTraits': 'Unit traits',
             'ui.exploration': 'Exploration',
             'ui.chooseAction': 'Choose your next action.',
             'ui.actorActing': '{name} is acting...',
@@ -12368,6 +12466,18 @@ const CONTENT_SYSTEM = {
             'disposition.quest': 'Quest',
             'disposition.merchant': 'Merchant',
             'disposition.remains': 'Remains',
+            'unit.trait.asleep': 'Asleep',
+            'unit.trait.poisoned': 'Poison',
+            'unit.trait.burning': 'Burning',
+            'unit.trait.bleeding': 'Bleeding',
+            'unit.trait.stunned': 'Stunned',
+            'unit.trait.frozen': 'Frozen',
+            'unit.trait.fear': 'Fear',
+            'unit.trait.restrained': 'Restrained',
+            'unit.trait.wounded': 'Wounded',
+            'unit.trait.hungry': 'Hungry',
+            'unit.trait.flying': 'Flying',
+            'unit.trait.darkvision': 'Darkvision',
             'combat.row': 'Row',
             'combat.row.front': 'Front',
             'combat.row.back': 'Back',
@@ -12806,6 +12916,7 @@ const CONTENT_SYSTEM = {
             'ui.creatureActions': 'Acciones de criatura',
             'ui.partyActions': 'Acciones del grupo',
             'ui.tacticalStatus': 'Estado tactico',
+            'ui.unitTraits': 'Rasgos de unidad',
             'ui.exploration': 'Exploracion',
             'ui.chooseAction': 'Elige tu proxima accion.',
             'ui.actorActing': '{name} esta actuando...',
@@ -12958,6 +13069,18 @@ const CONTENT_SYSTEM = {
             'disposition.quest': 'Mision',
             'disposition.merchant': 'Mercader',
             'disposition.remains': 'Restos',
+            'unit.trait.asleep': 'Dormido',
+            'unit.trait.poisoned': 'Veneno',
+            'unit.trait.burning': 'Ardiendo',
+            'unit.trait.bleeding': 'Sangrando',
+            'unit.trait.stunned': 'Aturdido',
+            'unit.trait.frozen': 'Congelado',
+            'unit.trait.fear': 'Miedo',
+            'unit.trait.restrained': 'Inmovilizado',
+            'unit.trait.wounded': 'Herido',
+            'unit.trait.hungry': 'Hambriento',
+            'unit.trait.flying': 'Volador',
+            'unit.trait.darkvision': 'Vision nocturna',
             'combat.row': 'Fila',
             'combat.row.front': 'Frente',
             'combat.row.back': 'Retaguardia',

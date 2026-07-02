@@ -705,8 +705,52 @@
             text-overflow: ellipsis;
         }
 
+        .unit-traits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+            min-width: 0;
+        }
+
+        .unit-trait-chip {
+            max-width: 100%;
+            padding: 2px 6px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            font-size: 10px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unit-trait-chip.danger {
+            color: var(--accent-danger);
+            border-color: rgba(255, 71, 87, 0.35);
+        }
+
+        .unit-trait-chip.need {
+            color: var(--accent-warning);
+            border-color: rgba(255, 184, 0, 0.35);
+        }
+
+        .unit-trait-chip.special,
+        .unit-trait-chip.role,
+        .unit-trait-chip.ability {
+            color: var(--accent-primary);
+            border-color: rgba(0, 212, 170, 0.35);
+        }
+
         body.high-contrast .unit-bar-track {
             border-color: var(--border-default);
+        }
+
+        body.high-contrast .unit-trait-chip {
+            border-color: var(--border-default);
+            color: var(--text-primary);
         }
 
         .stat {
@@ -1457,6 +1501,16 @@
 
             .mobile-unit-chip .unit-bar-track {
                 height: 4px;
+            }
+
+            .mobile-unit-chip .unit-traits {
+                gap: 3px;
+                margin-top: 5px;
+            }
+
+            .mobile-unit-chip .unit-trait-chip {
+                padding: 1px 5px;
+                font-size: 9px;
             }
 
             .mobile-context-menu {

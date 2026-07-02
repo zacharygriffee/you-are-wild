@@ -3873,16 +3873,16 @@
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
                 const actors = this._getExplorationActors();
-                const label = this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length });
+                const label = this._escapeHtml(this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
                 const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
                 const targetNames = targets.map(target => target.name).join(', ');
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
-                    const title = `${this._uiLabel(key)} ${label}`;
+                    const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
                     return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.resolveExplorationTargetAction('${key}')"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
-                const clearLabel = this._t('target.clear');
-                const clearTitle = this._t('target.clearSelected');
+                const clearLabel = this._escapeHtml(this._t('target.clear'));
+                const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
                 return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
             },
 

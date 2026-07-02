@@ -5568,6 +5568,11 @@ const WorldGen = (() => {
                     : { id: entry.id, weight: entry.weight || 10 });
                 return WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, namespace, x, y, entries) || entries[0]?.id || 'bunny';
             },
+            _pickWorldList(items, namespace, x = 0, y = 0, ...parts) {
+                if (!Array.isArray(items) || items.length === 0) return null;
+                const index = Math.floor(this._worldRoll(namespace, x, y, ...parts) * items.length) % items.length;
+                return items[index];
+            },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
                 const deterministic = firstEntry && tile && Number.isFinite(tile.x) && Number.isFinite(tile.y);
@@ -8502,10 +8507,10 @@ const WorldGen = (() => {
                 return this.creatures.find(c => this._isCorpse(c) && String(c.id || c.name) === String(targetId));
             },
 
-            _lootItemNameFromTable(tableId) {
+            _lootItemNameFromTable(tableId, namespace = 'loot-table', x = 0, y = 0, ...parts) {
                 const table = this.EQUIPMENT_LOOT_TABLES[tableId];
                 if (!table || table.length === 0) return null;
-                return this._weightedPick(table);
+                return this._weightedPickWorld(table, namespace, x, y, tableId, ...parts);
             },
 
             lootCorpse(targetId) {
@@ -8514,18 +8519,21 @@ const WorldGen = (() => {
                 let item = null;
                 let gold = 0;
                 if (!corpse.looted) {
-                    const authoredLoot = corpse.lootTable ? this._lootItemNameFromTable(corpse.lootTable) : null;
+                    const corpseKey = String(corpse.id || corpse.name || targetId || 'corpse');
+                    const authoredLoot = corpse.lootTable ? this._lootItemNameFromTable(corpse.lootTable, 'corpse-authored-loot', 0, 0, corpseKey) : null;
                     if (authoredLoot && this.inventory.length < this.MAX_INVENTORY) {
-                        item = { id: 'loot_' + Date.now(), name: authoredLoot };
+                        item = { id: `loot_${corpseKey}`, name: authoredLoot };
                         this.inventory.push(item);
-                    } else if (this.inventory.length < this.MAX_INVENTORY && Math.random() < 0.5) {
+                    } else if (this.inventory.length < this.MAX_INVENTORY && this._worldChance('corpse-loot-item', 0, 0, 0.5, corpseKey)) {
                         const items = Object.keys(this.ITEMS);
-                        const name = items[Math.floor(Math.random() * items.length)];
-                        item = { id: 'loot_' + Date.now(), name };
+                        const name = this._pickWorldList(items, 'corpse-loot-item-name', 0, 0, corpseKey);
+                        item = { id: `loot_${corpseKey}`, name };
                         this.inventory.push(item);
                     }
                     const authoredGold = Number(corpse.goldLoot);
-                    gold = Number.isFinite(authoredGold) ? Math.max(0, Math.floor(authoredGold)) : Math.max(1, Math.floor((corpse.level || 1) * 2 + Math.random() * 6));
+                    gold = Number.isFinite(authoredGold)
+                        ? Math.max(0, Math.floor(authoredGold))
+                        : Math.max(1, Math.floor((corpse.level || 1) * 2 + this._worldRoll('corpse-loot-gold', 0, 0, corpseKey) * 6));
                     if (gold > 0 && this.player) this.player.gold = (this.player.gold || 0) + gold;
                 }
                 corpse.looted = true;
@@ -10964,16 +10972,20 @@ const WorldGen = (() => {
             search() {
                 this._advanceTime(1);
                 const tile = this._currentExplorationTile();
-                const roll = Math.random();
+                const tileX = Number(tile?.x ?? this.location?.x ?? 0);
+                const tileY = Number(tile?.y ?? this.location?.y ?? 0);
+                const searchDay = this.dayCount || 0;
+                const searchHour = this.timeHour || 0;
+                const roll = this._worldRoll('search-roll', tileX, tileY, searchDay, searchHour);
                 const findChance = Math.min(0.85, 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0) + this._partyRoleEffect('gatherer', 0.1, 0.25));
                 let result = '';
                 if (roll < findChance) {
                     const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;
-                    const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable) : null;
+                    const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
                     const items = Object.keys(this.ITEMS);
-                    const iname = authoredLoot || items[Math.floor(Math.random() * items.length)];
+                    const iname = authoredLoot || this._pickWorldList(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
                     if (authoredLoot) tile.structureLooted = true;
-                    const iid = 'item_' + Date.now();
+                    const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
                     this.inventory.push({ id: iid, name: iname });
                     this._updateQuestProgress('find', { item: iname, name: iname });
                     result = 'You found a ' + iname + '!';

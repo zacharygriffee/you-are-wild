@@ -1640,12 +1640,29 @@ test('Authored corpse loot can grant explicit gold without an item', () => {
   App.player = player;
   App.party = [player];
   App.creatures = [corpse];
-  App.inventory = [];
+  App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({ id: `full-${index}`, name: 'Old Coin' }));
   App.combatState.active = false;
   App.lootCorpse('rich-corpse');
-  assertEqual(App.inventory.length, 0, 'High random roll should skip item loot');
+  assertEqual(App.inventory.length, App.MAX_INVENTORY, 'Full inventory should prevent item loot while still allowing gold');
   assertEqual(App.player.gold, 13, 'Authored corpse gold should be granted');
   assertContains(App.log[App.log.length - 1].text, '12 gold', 'Loot log should mention authored gold');
+});
+
+test('Corpse loot rewards are deterministic by world seed and corpse identity', () => {
+  const lowRandom = loadAppForCombat(() => 0);
+  const highRandom = loadAppForCombat(() => 0.99);
+  lowRandom.App.worldMeta = { seed: 'corpse-loot-seed', generatorVersion: 2 };
+  highRandom.App.worldMeta = { seed: 'corpse-loot-seed', generatorVersion: 2 };
+  for (const ctx of [lowRandom, highRandom]) {
+    ctx.App.player = makeUnit('You', { gold: 0 });
+    ctx.App.party = [ctx.App.player];
+    ctx.App.inventory = [];
+    ctx.App.creatures = [makeUnit('Fallen', { id: 'shared-corpse', disposition: ctx.App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, level: 3 })];
+    ctx.App.lootCorpse('shared-corpse');
+  }
+  assertEqual(lowRandom.App.player.gold, highRandom.App.player.gold, 'Corpse gold should not depend on ambient Math.random');
+  assertEqual(lowRandom.App.inventory[0]?.name || '', highRandom.App.inventory[0]?.name || '', 'Corpse item should not depend on ambient Math.random');
+  assertNotContains(lowRandom.App.lootCorpse.toString(), 'Math.random', 'Corpse loot should not use raw Math.random');
 });
 
 test('Authored loot tables can place equipment on corpses and structures', () => {
@@ -3870,6 +3887,9 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._maybeSpawnStructureMerchant.toString(), 'Math.random', 'Structure merchant placement should not use Math.random');
   assertNotContains(App._maybeSpawnStructureQuestGiver.toString(), 'Math.random', 'Structure quest-giver placement should not use Math.random');
   assertNotContains(App._questTemplateForStructure.toString(), 'Math.random', 'Structure quest template selection should not use Math.random');
+  assertNotContains(App.lootCorpse.toString(), 'Math.random', 'Persistent corpse loot generation should not use Math.random');
+  assertNotContains(App.search.toString(), 'Math.random', 'Persistent search finds should not use Math.random');
+  assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');
 });
 
 test('Map tile inspector renders safe biome and terrain details', () => {
@@ -4959,10 +4979,12 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
 
 test('Quest find objectives advance from search discoveries', () => {
   const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'b', generatorVersion: 2 };
   App.player = makeUnit('You');
   App.party = [App.player];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { biome: 'forest', explored: true, description: 'quiet' }]]);
+  App.ITEMS = { 'Healing Herb': App.ITEMS['Healing Herb'] };
   App.inventory = [];
   App.quests = [{
     id: 'herb_fetch',

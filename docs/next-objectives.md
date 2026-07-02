@@ -171,6 +171,13 @@
 - Add dismissal consequences/dialogue if party relationship systems become meaningful
 - Decide whether mobile chips need the same full management surface or a long-press menu
 
+#### 19. New Game And Save Slot UX
+- Add an explicit `New Game` path from the main menu that can start fresh without relying on delete-all-saves or browser state resets
+- From the load/save manager, support choosing a slot for a new run so multiple playthroughs can coexist cleanly
+- Ensure each save slot exposes clear load, overwrite/new-run, and delete actions with irreversible warning copy before destructive changes
+- Keep delete-slot behavior scoped to the selected slot; reserve delete-all-saves for settings/maintenance and keep its stronger warning
+- Verify mobile dialogs/menus for save-slot management scroll correctly and do not clip confirmation actions
+
 #### 20. Advanced Mobile Gestures
 - Tune long-press duration and context-menu placement after device testing
 - Add richer haptic patterns per action outcome if the UX benefits from it

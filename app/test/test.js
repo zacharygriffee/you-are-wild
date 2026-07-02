@@ -440,10 +440,12 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(contentContent, "'save.useEmpty': 'Use Empty Slot'", 'New-game mode should label empty slot selection clearly');
   assertContains(contentContent, "'save.overwriteSlot': 'Overwrite Slot'", 'New-game mode should label occupied slot takeover clearly');
   assertContains(appContent, 'aria-label="${this._escapeHtml(title)}"', 'Generated save slot buttons should expose accessible names');
-  assertContains(appContent, 'Start a new game in ', 'New game overwrite warning should name the selected slot');
-  assertContains(appContent, 'This will overwrite that save slot. This cannot be undone.', 'New game overwrite warning should be irreversible');
-  assertContains(appContent, 'with the current game? This cannot be undone.', 'Manual save should warn before overwriting another occupied slot');
-  assertContains(appContent, 'permanently removes only this slot and cannot be undone', 'Delete slot should warn that it is scoped and irreversible');
+  assertContains(appContent, "this._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should come from localized copy');
+  assertContains(appContent, "this._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should come from localized copy');
+  assertContains(appContent, "this._label('save.confirm.deleteSlot'", 'Delete slot warning should come from localized copy');
+  assertContains(contentContent, "'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.'", 'New game overwrite warning should name the selected slot and be irreversible');
+  assertContains(contentContent, "'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.'", 'Manual save should warn before overwriting another occupied slot');
+  assertContains(contentContent, "'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.'", 'Delete slot should warn that it is scoped and irreversible');
 });
 
 test('Accessibility settings controls are available', () => {
@@ -602,6 +604,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     removeItem: key => storage.delete(key)
   };
   const alerts = [];
+  const confirmations = [];
   const hooks = [];
   const moduleSystem = {
     executeHook(event, payload) {
@@ -634,6 +637,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
+          'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}!', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}',
           'target.actors': 'Actors', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target'
         },
         es: {
@@ -647,6 +651,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
+          'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}!', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}',
           'target.actors': 'Actores', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Objetivo', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}'
         }
       },
@@ -665,7 +670,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
     { open() {}, deleteDatabase() { return {}; } },
-    () => Boolean(options.confirm),
+    message => { confirmations.push(message); return Boolean(options.confirm); },
     () => null,
     message => alerts.push(message),
     fn => fn(),
@@ -676,7 +681,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, body, document, listeners };
+  return { App, elements, hooks, storage, alerts, confirmations, body, document, listeners };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -3810,6 +3815,30 @@ test('New-game slot takeover warns before overwriting occupied slots', () => {
   assertEqual(approved.App.activeSlot, 'slot2', 'Approved occupied-slot takeover should select that slot for the new run');
   assertEqual(approved.storage.get('yaw-last-slot'), 'slot2', 'Approved occupied-slot takeover should persist the chosen slot');
   assertEqual(approved.document.getElementById('screen-create').style.display, 'flex', 'Approved occupied-slot takeover should open character creation');
+});
+
+test('Save slot destructive confirmations localize', async () => {
+  const newRun = loadAppForCombat(() => 0.5, { confirm: false });
+  newRun.storage.set('yaw-save-time-slot2', '1710000000000');
+  newRun.App.updateLanguage('es');
+  newRun.App.beginNewGameInSlot('slot2');
+  assertEqual(newRun.confirmations[0], 'Iniciar partida nueva en slot2? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'New-run overwrite warning should use active locale');
+
+  const manualSave = loadAppForCombat(() => 0.5, { confirm: false });
+  manualSave.storage.set('yaw-save-time-slot3', '1710000000000');
+  manualSave.App.updateLanguage('es');
+  manualSave.App.player = makeUnit('You');
+  manualSave.App.party = [manualSave.App.player];
+  manualSave.App.activeSlot = 'slot1';
+  manualSave.App.persistWorldStateToMapStore = async () => {};
+  manualSave.App._dbPut = async () => {};
+  await manualSave.App.saveToSlot('slot3');
+  assertEqual(manualSave.confirmations[0], 'Sobrescribir slot3 con la partida actual? Esta accion no se puede deshacer.', 'Manual overwrite warning should use active locale');
+
+  const deleteSlot = loadAppForCombat(() => 0.5, { confirm: false });
+  deleteSlot.App.updateLanguage('es');
+  await deleteSlot.App.deleteSlot('slot4');
+  assertEqual(deleteSlot.confirmations[0], 'Borrar el slot slot4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale');
 });
 
 test('Delete save slot is scoped to one selected slot', async () => {

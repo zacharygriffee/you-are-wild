@@ -6587,7 +6587,7 @@
             beginNewGameInSlot(slotName) {
                 const saveTime = this._getSaveTime(slotName);
                 const hasData = parseInt(saveTime) > 0;
-                if (hasData && !confirm('Start a new game in ' + slotName + '? This will overwrite that save slot. This cannot be undone.')) return;
+                if (hasData && !confirm(this._label('save.confirm.newGameOverwrite', 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', { slot: slotName }))) return;
                 this.activeSlot = slotName;
                 this._setStoredValue('lastSlot', slotName);
                 this.showScreen('create');
@@ -6873,9 +6873,9 @@
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
             async saveToSlot(slotName) {
-                if (!this.player) { alert('No game to save!'); return; }
+                if (!this.player) { alert(this._label('save.error.noGame', 'No game to save!')); return; }
                 const saveTime = this._getSaveTime(slotName);
-                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm('Overwrite ' + slotName + ' with the current game? This cannot be undone.')) return;
+                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm(this._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotName }))) return;
                 try {
                     this.persistAllTileDeltas();
                     let worldStoreSaved = false;
@@ -6891,13 +6891,13 @@
                     this._setStoredValue('lastSlot', slotName);
                     this._setStoredValue('lastSaveTime', Date.now().toString());
                     this._setSaveTime(slotName, Date.now().toString());
-                    alert('Game saved to ' + slotName + '!');
-                } catch (e) { alert('Save failed: ' + e.message); }
+                    alert(this._label('save.success.saved', 'Game saved to {slot}!', { slot: slotName }));
+                } catch (e) { alert(this._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
             },
             async loadFromSlot(slotName) {
                 try {
                     const saveData = await this._dbGet('saves', slotName);
-                    if (!saveData) { alert('No save in ' + slotName); return false; }
+                    if (!saveData) { alert(this._label('save.error.noSave', 'No save in {slot}', { slot: slotName })); return false; }
                     let loaded;
                     try {
                         loaded = Binary.loadGame(saveData);
@@ -7010,7 +7010,7 @@ Enter 1, 2, or 3:`);
                         this.renderLog();
                     }
                     return true;
-                } catch (e) { console.error('Load failed:', e); alert('Load failed: ' + e.message); return false; }
+                } catch (e) { console.error('Load failed:', e); alert(this._label('save.error.loadFailed', 'Load failed: {message}', { message: e.message })); return false; }
             },
             _restoreWorldState(loaded) {
                 this.worldMap = new Map();
@@ -7044,13 +7044,13 @@ Enter 1, 2, or 3:`);
                 return await this.loadFromSlot(lastSlot);
             },
             async deleteSlot(slotName) {
-                if (!confirm('Delete save slot ' + slotName + '? This permanently removes only this slot and cannot be undone.')) return;
+                if (!confirm(this._label('save.confirm.deleteSlot', 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', { slot: slotName }))) return;
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
                     this.showSaveManager();
-                } catch (e) { alert('Delete failed: ' + e.message); }
+                } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) {
                 return new Promise((resolve, reject) => {

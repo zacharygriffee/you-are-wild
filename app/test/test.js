@@ -4016,6 +4016,9 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
   assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
   assertNotContains(App._calcInitiative.toString(), 'Math.random', 'Persistent combat initiative should not use Math.random');
+  assertNotContains(App.allyTurn.toString(), 'ally.obedient && Math.random', 'Dumb AI obedience checks should not use raw Math.random');
+  assertNotContains(App.allyTurn.toString(), 'enemies[Math.floor(Math.random()', 'Dumb AI target picks should not use raw Math.random');
+  assertNotContains(App.allyTurn.toString(), 'ally.Fuck + ally.Flir + Math.random', 'Dumb AI charm rolls should not use raw Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');
@@ -4923,6 +4926,46 @@ test('Passive AI order holds position unless wounded', () => {
   assertEqual(enemy.CPun, 100, 'Unwounded passive ally should not attack');
   assertEqual(App._passiveAdvanced, true, 'Passive ally should still advance turn flow');
   assertContains(App.log[App.log.length - 1].text, 'Passive Ally mantiene la posicion.', 'Passive ally hold log should localize');
+});
+
+test('Dumb ally arousal action is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'dumb-ally', generatorVersion: 2 };
+    const player = makeUnit('You');
+    const ally = makeUnit('Dumb Ally', {
+      id: 'dumb-ally',
+      dumbAI: true,
+      obedient: true,
+      CPle: 80,
+      MPle: 100,
+      Fuck: 60,
+      Flir: 60
+    });
+    const enemies = [
+      makeUnit('Enemy A', { id: 'enemy-a', disposition: App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 }),
+      makeUnit('Enemy B', { id: 'enemy-b', disposition: App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 })
+    ];
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = enemies;
+    App.location = { x: 4, y: -3 };
+    App.dayCount = 1;
+    App.timeHour = 17;
+    App.combatState = { active: true, round: 2, currentTurn: 1, processing: false, xpEarned: 0, turnQueue: [{ unit: ally, initiative: 20 }], syncActions: [] };
+    App.nextTurn = function() { this._dumbAllyAdvanced = true; };
+    App.allyTurn(ally);
+    return {
+      enemyA: enemies[0].CPle,
+      enemyB: enemies[1].CPle,
+      advanced: !!App._dumbAllyAdvanced,
+      log: App.log.map(entry => entry.text).join('|')
+    };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Dumb ally arousal branch should not depend on ambient Math.random');
+  assert(lowRandom.enemyA > 0 || lowRandom.enemyB > 0, 'Dumb ally should apply pleasure to one enemy');
 });
 
 test('Scavenger AI order feasts on corpses after victory', () => {

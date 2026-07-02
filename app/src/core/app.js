@@ -3445,14 +3445,14 @@
                 if (ally.dumbAI) {
                     // High pleasure (>90% MPle): may disobey and auto-fuck
                     if (ally.CPle >= ally.MPle * 0.9) {
-                        if (ally.obedient && Math.random() < 0.7) {
+                        if (ally.obedient && this._combatStateRoll('combat-ally-dumb-ai', ally, 'pleasure-disobey') < 0.7) {
                             this.log.push({ text: this._label('combat.allyTooAroused', '{name} is too aroused to obey!', { name: ally.name }), type: 'combat' });
                             ally.obedient = false;
                         }
                     }
                     // High hunger (>90): auto-feast on weakest enemy
                     if (ally.hunger > 90) {
-                        if (ally.obedient && Math.random() < 0.3) {
+                        if (ally.obedient && this._combatStateRoll('combat-ally-dumb-ai', ally, 'hunger-plead') < 0.3) {
                             this.log.push({ text: `${ally.name} pleads to eat...`, type: 'combat' });
                         } else {
                             const weakest = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
@@ -3472,8 +3472,8 @@
                     }
                     // High arousal (>80% MPle): auto-fuck nearest enemy
                     if (ally.CPle >= ally.MPle * 0.8) {
-                        const target = enemies[Math.floor(Math.random() * enemies.length)];
-                        let charm = ally.Fuck + ally.Flir + Math.random() * 10;
+                        const target = enemies[Math.floor(this._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-target') * enemies.length) % enemies.length];
+                        let charm = ally.Fuck + ally.Flir + this._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-charm') * 10;
                         const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));

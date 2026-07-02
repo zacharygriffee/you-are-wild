@@ -3656,7 +3656,7 @@
                 const unit = this.party[index];
                 if (!unit) return;
                 this.partyLeaderId = this._unitSelectionId(unit);
-                this.log.push({ text: `${unit.name} is now party leader.`, type: 'discovery' });
+                this.log.push({ text: this._label('party.leaderSet', '{name} is now party leader.', { name: unit.name }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.autoSave();
@@ -3671,7 +3671,7 @@
                 if (index <= 0 || targetIndex <= 0 || targetIndex >= this.party.length || index === targetIndex) return false;
                 const [unit] = this.party.splice(index, 1);
                 this.party.splice(targetIndex, 0, unit);
-                this.log.push({ text: `${unit.name} changes party position.`, type: 'discovery' });
+                this.log.push({ text: this._label('party.positionChanged', '{name} changes party position.', { name: unit.name }), type: 'discovery' });
                 this.renderLog();
                 this.renderParty();
                 this.autoSave();
@@ -3859,7 +3859,7 @@
                 }).join('');
                 const clearLabel = this._t('target.clear');
                 const clearTitle = this._t('target.clearSelected');
-                return `<div class="action-legend selected-target-summary" aria-label="Selected exploration targets"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
+                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
             },
 
             resolveExplorationTargetAction(action) {
@@ -3869,7 +3869,9 @@
                 if (targets.length === 1 && actors.length > 1) {
                     this.outsideGroupActionOnTarget(action, targets[0], actors);
                 } else if (targets.length > 1 && actors.length > 1) {
-                    this.log.push({ text: `Choose one actor for multi-target ${this._uiLabel(action).toLowerCase()} actions, or one target for group actions.`, type: 'discovery' });
+                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group actions.', {
+                        action: this._uiLabel(action).toLowerCase()
+                    }), type: 'discovery' });
                     this.renderLog();
                     this.renderParty();
                     this.renderCreatures();
@@ -4047,7 +4049,11 @@
                 if (targetList.length === 0) return;
                 actor = actor || this.player;
                 if (!this._canHandleMultipleTargets(actor, action, targetList)) {
-                    this.log.push({ text: `${actor.name} cannot handle ${targetList.length} targets with ${this._uiLabel(action).toLowerCase()} yet.`, type: 'discovery' });
+                    this.log.push({ text: this._label('target.cannotHandleMultiple', '{name} cannot handle {count} targets with {action} yet.', {
+                        name: actor.name,
+                        count: targetList.length,
+                        action: this._uiLabel(action).toLowerCase()
+                    }), type: 'discovery' });
                     this.renderLog();
                     this.renderParty();
                     this.renderCreatures();
@@ -4065,9 +4071,16 @@
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
                 let summary = affected.length > 0
-                    ? `${actor.name} finishes a multi-target ${this._uiLabel(action).toLowerCase()} action on ${affected.join(', ')}.`
-                    : `${actor.name} finds no valid targets for multi-target ${this._uiLabel(action).toLowerCase()}.`;
-                if (skipped.length > 0) summary += ` Skipped full targets: ${skipped.join(', ')}.`;
+                    ? this._label('target.multiActionDone', '{name} finishes a multi-target {action} action on {targets}.', {
+                        name: actor.name,
+                        action: this._uiLabel(action).toLowerCase(),
+                        targets: affected.join(', ')
+                    })
+                    : this._label('target.multiActionNone', '{name} finds no valid targets for multi-target {action}.', {
+                        name: actor.name,
+                        action: this._uiLabel(action).toLowerCase()
+                    });
+                if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
                 this.renderLog();
                 this.renderParty();

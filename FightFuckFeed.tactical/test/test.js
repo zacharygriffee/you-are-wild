@@ -1735,6 +1735,60 @@ test('Super-patch generation uses seeded region biomes only', () => {
   assert(App._regionBiomeKeys().includes(otherSeed), 'Different seed should still produce a valid region biome');
 });
 
+test('Sparse map helpers separate generated base tiles from durable deltas', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-delta', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.superPatchMap = new Map();
+  const base = App.getBaseTile(12, -4);
+  assertEqual(App.worldMap.has('12,-4'), false, 'Base tile generation should not materialize compatibility worldMap entries');
+  assertEqual(base.explored, false, 'Base tiles should be unexplored');
+  const tile = App.getTile(12, -4);
+  tile.explored = true;
+  tile.description = 'A changed clearing.';
+  tile.creatures = [makeUnit('Mouse', { id: 'mouse-1', disposition: App.DISPOSITION.FRIENDLY })];
+  App.persistTileDelta(12, -4, tile);
+  const delta = App.getTileDelta(12, -4);
+  assert(delta, 'Changed effective tile should create a durable delta');
+  assertEqual(delta.explored, true, 'Delta should preserve explored state');
+  assertEqual(delta.description, 'A changed clearing.', 'Delta should preserve changed description');
+  assertEqual(delta.creatures.length, 1, 'Delta should preserve tile entities');
+  const effective = App.applyTileDelta(base, delta);
+  assertEqual(effective.biome, base.biome, 'Effective tile should inherit generated biome when biome is unchanged');
+  assertEqual(effective.creatures[0].name, 'Mouse', 'Effective tile should restore delta entities');
+});
+
+test('Loaded world state rebuilds tile deltas over deterministic base tiles', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-load-delta', seed: 'load-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.location = { x: 4, y: 5 };
+  App.player = makeUnit('You');
+  App._restoreWorldState({
+    worldMeta: App.worldMeta,
+    exploredTiles: ['4,5'],
+    worldMap: {
+      '4,5': {
+        x: 4,
+        y: 5,
+        biome: 'forest',
+        explored: true,
+        description: 'Saved clearing.',
+        hasLandmark: true,
+        landmarkName: 'Old Tree',
+        structure: 'camp',
+        structureSpawned: true,
+        creatures: [makeUnit('Fox', { id: 'fox-1', disposition: App.DISPOSITION.NEUTRAL })]
+      }
+    }
+  });
+  const delta = App.getTileDelta(4, 5);
+  assert(delta, 'Restore should rebuild sparse tile delta data from legacy full tiles');
+  assertEqual(delta.description, 'Saved clearing.', 'Rebuilt delta should preserve saved description');
+  assertEqual(delta.structure, 'camp', 'Rebuilt delta should preserve saved structure');
+  assertEqual(App.getTile(4, 5).baseBiome, App.getBaseTile(4, 5).biome, 'Restored tile should retain generated base biome metadata');
+});
+
 test('Movement and search advance the in-game hour', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.player = makeUnit('You');

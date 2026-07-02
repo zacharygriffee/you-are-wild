@@ -2899,6 +2899,7 @@
             tradeSort: 'name',
             mobileMapZoom: 1,
             worldMap: new Map(),
+            tileDeltas: new Map(),
             exploredTiles: new Set(),
             superPatchMap: new Map(),
             worldMeta: { worldId: 'world_default', seed: 'default', generatorVersion: 1, mapModsHash: 'core' },
@@ -3446,6 +3447,7 @@
                     height: 5,
                     tiles
                 };
+                this.persistTileDelta(tile.x, tile.y, tile);
                 return tile.interior;
             },
             _canRestHere() {
@@ -3494,7 +3496,10 @@
                     return;
                 }
                 const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
-                if (tile) tile.creatures = this._tileCreatures(this.creatures);
+                if (tile) {
+                    tile.creatures = this._tileCreatures(this.creatures);
+                    this.persistTileDelta(tile.x, tile.y, tile);
+                }
             },
             _dropPartyCorpse(unit, cause = 'fight') {
                 if (!unit || unit === this.player || unit.name === this.player?.name) return false;
@@ -3731,6 +3736,16 @@
             _patchNoise(spx, spy) {
                 return this._seededNoise('biome', 'region', spx, spy);
             },
+            _tileKey(x, y) {
+                return `${x},${y}`;
+            },
+            _cloneTileValue(value) {
+                if (value == null) return value;
+                if (Array.isArray(value) || typeof value === 'object') {
+                    try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
+                }
+                return value;
+            },
             _regionBiomeKeys() {
                 return Object.entries(this.biomes)
                     .filter(([, biome]) => (biome.role || 'region') === 'region')
@@ -3754,6 +3769,7 @@
             _rebuildSuperPatchMap() {
                 this.superPatchMap = new Map();
                 for (const [key, tile] of this.worldMap) {
+                    if (tile.baseBiome || tile.biomeDelta) continue;
                     const spx = Math.floor(Math.floor(tile.x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
                     const spy = Math.floor(Math.floor(tile.y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
                     const skey = `${spx},${spy}`;
@@ -3762,20 +3778,68 @@
                     }
                 }
             },
-            getTile(x, y) {
-                const key = `${x},${y}`;
-                if (this.worldMap.has(key)) return this.worldMap.get(key);
+            getBaseTile(x, y) {
                 const spx = Math.floor(Math.floor(x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
                 const spy = Math.floor(Math.floor(y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
                 const biomeId = this._getSuperPatchBiome(spx, spy);
-                const biome = this.biomes[biomeId];
-                const tile = { x, y, biome: biomeId, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], structure: null, structureSpawned: false };
+                return { x, y, biome: biomeId, baseBiome: biomeId, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
+            },
+            getTileDelta(x, y) {
+                return this.tileDeltas?.get(this._tileKey(x, y)) || null;
+            },
+            applyTileDelta(base, delta = null) {
+                const tile = { ...base };
+                if (delta) {
+                    for (const [field, value] of Object.entries(delta)) {
+                        if (field === 'x' || field === 'y') continue;
+                        tile[field] = this._cloneTileValue(value);
+                    }
+                }
+                tile.x = base.x;
+                tile.y = base.y;
+                tile.baseBiome = base.baseBiome || base.biome;
+                if (!Array.isArray(tile.creatures)) tile.creatures = [];
+                if (!Array.isArray(tile.items)) tile.items = [];
+                return tile;
+            },
+            _tileDeltaFromEffectiveTile(tile) {
+                if (!tile) return null;
+                const base = this.getBaseTile(tile.x, tile.y);
+                const delta = {};
+                const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'interior'];
+                for (const field of fields) {
+                    const value = tile[field];
+                    const baseValue = base[field];
+                    const changed = JSON.stringify(value ?? null) !== JSON.stringify(baseValue ?? null);
+                    if (changed) delta[field] = this._cloneTileValue(value);
+                }
+                return Object.keys(delta).length ? delta : null;
+            },
+            persistTileDelta(x, y, tile = null) {
+                const key = this._tileKey(x, y);
+                const effective = tile || this.worldMap.get(key);
+                const delta = this._tileDeltaFromEffectiveTile(effective);
+                if (delta) this.tileDeltas.set(key, delta);
+                else this.tileDeltas.delete(key);
+                return delta;
+            },
+            persistAllTileDeltas() {
+                if (!this.tileDeltas) this.tileDeltas = new Map();
+                for (const tile of this.worldMap.values()) {
+                    this.persistTileDelta(tile.x, tile.y, tile);
+                }
+                return this.tileDeltas;
+            },
+            getTile(x, y) {
+                const key = this._tileKey(x, y);
+                if (this.worldMap.has(key)) return this.worldMap.get(key);
+                const tile = this.applyTileDelta(this.getBaseTile(x, y), this.getTileDelta(x, y));
                 this.worldMap.set(key, tile);
                 return tile;
             },
-            isExplored(x, y) { return this.exploredTiles.has(`${x},${y}`); },
+            isExplored(x, y) { return this.exploredTiles.has(this._tileKey(x, y)); },
             exploreTile(x, y) {
-                const key = `${x},${y}`;
+                const key = this._tileKey(x, y);
                 const tile = this.getTile(x, y);
                 if (!tile.explored) {
                     tile.explored = true;
@@ -3793,6 +3857,7 @@
                         tile.structure = table[Math.abs(x * 13 + y * 19) % Math.max(1, table.length)] || null;
                     }
                     this.currentBiome = tile.biome;
+                    this.persistTileDelta(x, y, tile);
                 }
                 return tile;
             },
@@ -3808,6 +3873,7 @@
                 tile.creatures = this._tileCreatures(this.creatures);
                 tile.items = this.inventory.slice();
                 this.activeInterior = this._ensureStructureInterior(tile);
+                this.persistTileDelta(tile.x, tile.y, tile);
                 this.inInterior = true;
                 this.interiorLocation = { x: 0, y: 0 };
                 const room = this._currentInteriorTile();
@@ -3835,6 +3901,7 @@
                 this.interiorLocation = { x: 0, y: 0 };
                 this.creatures = this._tileCreatures(tile.creatures || []);
                 this.currentBiome = tile.biome;
+                this.persistTileDelta(tile.x, tile.y, tile);
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
                 this.log.push({ text: `Exited ${this.STRUCTURES[tile.structure]?.name || 'the structure'}.`, type: 'move' });
                 this.showExplorationActions();
@@ -3894,6 +3961,7 @@
                 if (oldTile) {
                     oldTile.creatures = this._tileCreatures(this.creatures);
                     oldTile.items = this.inventory.slice();
+                    this.persistTileDelta(oldTile.x, oldTile.y, oldTile);
                 }
                 this.location.x += dx; this.location.y += dy;
                 this._advanceTime(1);
@@ -3931,6 +3999,7 @@
                     }
                 }
                 tile.creatures = this._tileCreatures(this.creatures);
+                this.persistTileDelta(tile.x, tile.y, tile);
                 if (!this.combatState.active) {
                     const restoredEnemies = this._livingEnemies(this.creatures);
                     if (restoredEnemies.length > 0) {
@@ -4003,6 +4072,7 @@
                 }
                 this.creatures = this._tileCreatures([...(this.creatures || []), ...creatures]);
                 tile.creatures = this._tileCreatures(this.creatures);
+                this.persistTileDelta(tile.x, tile.y, tile);
                 const enemies = this._livingEnemies(creatures);
                 const friendlies = creatures.filter(c => c.disposition === this.DISPOSITION.FRIENDLY && this._isLivingCreature(c));
                 const neutrals = creatures.filter(c => c.disposition === this.DISPOSITION.NEUTRAL && this._isLivingCreature(c));
@@ -4036,6 +4106,7 @@
                 tile.structureSpawned = true;
                 const merchant = this._maybeSpawnStructureMerchant(tile);
                 const questGiver = this._maybeSpawnStructureQuestGiver(tile);
+                this.persistTileDelta(tile.x, tile.y, tile);
                 // Structure always has an encounter inside
                 if (Math.random() < struct.encounterChance) {
                     // Pick from structure-appropriate pool or biome pool
@@ -8305,6 +8376,7 @@
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
                 try {
+                    this.persistAllTileDeltas();
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', this.activeSlot, saveData);
                     localStorage.setItem('fff-last-slot', this.activeSlot);
@@ -8315,6 +8387,7 @@
             async saveToSlot(slotName) {
                 if (!this.player) { alert('No game to save!'); return; }
                 try {
+                    this.persistAllTileDeltas();
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', slotName, saveData);
                     this.activeSlot = slotName;
@@ -8429,16 +8502,23 @@ Enter 1, 2, or 3:`);
             },
             _restoreWorldState(loaded) {
                 this.worldMap = new Map();
+                this.tileDeltas = new Map();
                 this.exploredTiles = new Set(loaded.exploredTiles || []);
                 this.worldMeta = loaded.worldMeta || this.worldMeta || { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
                 this.superPatchMap = new Map();
                 if (loaded.worldMap) {
                     for (const [key, tile] of Object.entries(loaded.worldMap)) {
+                        const [kx, ky] = key.split(',').map(Number);
+                        if (typeof tile.x !== 'number') tile.x = Number.isFinite(kx) ? kx : 0;
+                        if (typeof tile.y !== 'number') tile.y = Number.isFinite(ky) ? ky : 0;
                         if (Array.isArray(tile.creatures)) {
                             tile.creatures = tile.creatures.map(unit => this._normalizeUnit(unit, {}));
                         }
-                        this.worldMap.set(key, tile);
-                        if (tile.explored) this.exploredTiles.add(key);
+                        const effective = this.applyTileDelta(this.getBaseTile(tile.x, tile.y), tile);
+                        const effectiveKey = this._tileKey(effective.x, effective.y);
+                        this.worldMap.set(effectiveKey, effective);
+                        this.persistTileDelta(effective.x, effective.y, effective);
+                        if (effective.explored) this.exploredTiles.add(effectiveKey);
                     }
                 }
                 this._rebuildSuperPatchMap();

@@ -147,6 +147,13 @@
 - Add a branding audit check using `rg` so future work can verify no original active-surface branding remains outside explicitly allowed archive/legacy paths
 - Verify the full build/test/lint pipeline passes after the rename and rebuild generated output so `dist/` matches the chosen branding
 
+#### 3. Repository Organization
+- Reorganize the repo after the rebrand so active source, generated output, docs, tests, and archived legacy material are clearly separated
+- Decide whether `FightFuckFeed.tactical/` should be renamed to the new project slug or folded into a cleaner top-level app layout; update root package scripts and docs at the same time
+- Keep generated `dist/` output out of hand-edited source paths and make the build/update flow obvious for future agents
+- Review `archive/` and `legacy/` retention policy so old reference material is quarantined without confusing active branding audits
+- Ensure repository metadata matches GitHub defaults: local branch `main`, remote `origin`, and README/build instructions aligned with the final layout
+
 ### 🔵 Tier 4: Lower Priority
 
 #### 7. Sparse Map Generation Foundation

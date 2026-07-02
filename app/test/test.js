@@ -6193,6 +6193,23 @@ test('Mobile creature long-press menu uses localized action labels', () => {
   assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
+test('Mobile creature long-press menu preserves contextual quest and trade intents', () => {
+  const { App, body } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [
+    makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY, quest: { id: 'q1', title: 'Find path' } }),
+    makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT, stock: [{ id: 'ration', price: 2 }] })
+  ];
+  App.showMobileCreatureContext('guide-1');
+  assertContains(body.innerHTML, 'Accept Quest', 'Long-press menu should expose quest intent when relevant');
+  assertContains(body.innerHTML, "App.selectIntent('creature','guide-1','quest','longpress')", 'Quest long-press action should use shared intent dispatch');
+  App.closeMobileContextMenu();
+  App.showMobileCreatureContext('merchant-1');
+  assertContains(body.innerHTML, 'Trade', 'Long-press menu should expose trade intent when relevant');
+  assertContains(body.innerHTML, "App.selectIntent('creature','merchant-1','trade','longpress')", 'Trade long-press action should use shared intent dispatch');
+});
+
 test('Mobile map pinch changes zoom and applies transform', () => {
   const { App, elements } = loadAppForCombat();
   elements.set('mobile-mini-map', makeElement());

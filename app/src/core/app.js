@@ -7921,6 +7921,8 @@
                 html += actionButton('feed');
                 html += actionButton('inspect');
                 if (canRecruit) html += actionButton('recruit', 'recruit', ' primary');
+                if (target.quest) html += actionButton(target.questAccepted ? 'viewQuest' : 'acceptQuest', 'quest', ' primary');
+                if (target.disposition === this.DISPOSITION.MERCHANT) html += actionButton('trade', 'trade', ' primary');
                 html += actionButton('close', 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);

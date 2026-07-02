@@ -1828,7 +1828,7 @@ test('Attacking a non-timid creature can turn same-species group hostile', () =>
 test('Timid ally flees instead of attacking when badly outnumbered', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You');
-  const ally = makeUnit('Timid Ally', { species: 'bunny', Flee: 20 });
+  const ally = makeUnit('Timid Ally', { id: 'timid-ally', species: 'bunny', Flee: 20 });
   const enemies = [
     makeUnit('Enemy 1', { disposition: App.DISPOSITION.ENEMY }),
     makeUnit('Enemy 2', { disposition: App.DISPOSITION.ENEMY }),
@@ -1837,6 +1837,10 @@ test('Timid ally flees instead of attacking when badly outnumbered', () => {
   App.player = player;
   App.party = [player, ally];
   App.creatures = enemies;
+  App.worldMeta = { seed: 'timid-ally', generatorVersion: 2 };
+  App.location = { x: 0, y: 0 };
+  App.dayCount = 0;
+  App.timeHour = 0;
   App.combatState = {
     active: true,
     round: 1,
@@ -1850,6 +1854,46 @@ test('Timid ally flees instead of attacking when badly outnumbered', () => {
   assertEqual(ally.fledCombat, true, 'Timid ally should mark itself fled from combat');
   assert(!App.combatState.turnQueue.some(entry => entry.unit === ally), 'Fled ally should be removed from combat queue');
   assertEqual(enemies[0].CPun, 100, 'Fled ally should not attack');
+});
+
+test('Timid ally combat flee is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    const player = makeUnit('You');
+    const ally = makeUnit('Timid Ally', { id: 'timid-ally', species: 'bunny', Flee: 5 });
+    const enemies = [
+      makeUnit('Enemy 1', { disposition: App.DISPOSITION.ENEMY }),
+      makeUnit('Enemy 2', { disposition: App.DISPOSITION.ENEMY }),
+      makeUnit('Enemy 3', { disposition: App.DISPOSITION.ENEMY })
+    ];
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = enemies;
+    App.worldMeta = { seed: 'timid-ally', generatorVersion: 2 };
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = {
+      active: true,
+      round: 1,
+      currentTurn: 0,
+      processing: false,
+      xpEarned: 0,
+      turnQueue: [{ unit: ally, initiative: 20 }, ...enemies.map(unit => ({ unit, initiative: 10 }))],
+      syncActions: []
+    };
+    App.nextTurn = function() { this._allyFleeAdvanced = true; };
+    const handled = App._attemptTimidAllyFlee(ally);
+    return {
+      handled,
+      fled: !!ally.fledCombat,
+      queueHasAlly: App.combatState.turnQueue.some(entry => entry.unit === ally),
+      advanced: !!App._allyFleeAdvanced
+    };
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Timid ally flee outcome should not depend on ambient Math.random');
 });
 
 test('Combat actions emit module hook payloads', () => {
@@ -3916,6 +3960,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');
   assertNotContains(App._attemptTimidCreatureFlee.toString(), 'Math.random', 'Exploration timid threat reactions should not use Math.random');
   assertNotContains(App._reactCreatureToThreat.toString(), 'Math.random', 'Exploration threat reactions should not use Math.random');
+  assertNotContains(App._attemptTimidAllyFlee.toString(), 'Math.random', 'Persistent combat timid ally flee should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 348/348 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
+- **Build:** 349/349 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -116,6 +116,7 @@
 - Enemy morale flee checks now use seeded combat-state rolls keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`
 - Pack enemy reinforcement creation now uses seeded combat-state rolls and stable reinforcement ids keyed by world seed/version, tile, enemy, round/turn, day, and hour instead of ambient `Math.random()`/`Date.now()`
 - Burn spread status propagation now uses seeded combat-state rolls keyed by world seed/version, tile, burning unit, target, round/turn, day, and hour instead of ambient `Math.random()`
+- Coordinate-backed wild encounter generation now uses seeded world rolls and stable encounter ids keyed by world seed/version and tile coordinates even outside first-entry calls, instead of falling back to ambient `Math.random()`/`Date.now()`
 - Equipment system has a first-pass foundation: `ITEMS` entries can declare equipment slots, numeric `equipBonus` fields, and non-numeric accessory `equipEffect` hooks, player equipment supports head/body/hands/feet/accessory slots, normalized creatures carry equipment slots plus inventory for future/modded use, inventory exposes player equip/unequip actions, non-player equipment renders as read-only card/stat metadata instead of player-like management UI, equipment stat baselines recalculate deterministically on equip/unequip/load, authored equipment tables feed merchant stock plus corpse/structure loot placement, equipped items render in inventory and character stats, and save version 10 persists equipped slot metadata plus baseline stats
 - Player stat surfaces share the same party-player reference: party rendering, character stats, autosave, and manual save converge `App.player` onto the canonical party member if a stale duplicate reference appears, preventing the desktop Stats view and party card from showing conflicting vitals/combat stats
 - Skill/perk tree has a first-pass foundation: level-up now queues player perk choices instead of random grants, the player can choose from predator/seducer/survivor archetype trees plus matching species-specific trees, the perk selection modal filters by tree, perks can require prior tree/perk investment, selected perks apply numeric stat bonuses and non-numeric `perkEffect` hooks, pending choices render from character stats, character stats expose respec/debug perk controls for balancing, and save version 10 persists selected perks plus pending choices

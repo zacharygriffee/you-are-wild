@@ -4000,6 +4000,43 @@ test('Landmarks and structures are deterministic by seed and coordinate', () => 
   assertEqual(structureB.structure, structureA.structure, 'Same seed and coordinate should reproduce structure kind');
 });
 
+test('Wild encounter generation is deterministic by seed and coordinate outside first entry', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { worldId: 'world-wild-a', seed: 'wild-seed', generatorVersion: 2, mapModsHash: 'core' };
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    App.location = { x: 11, y: -7 };
+    App.currentBiome = 'forest';
+    App.player = makeUnit('Tester', { id: 'tester', species: 'human', level: 4, mc: true, hero: true });
+    App.party = [App.player];
+    App.player.level = 4;
+    const tile = { x: 11, y: -7, biome: 'forest', creatures: [] };
+    App.creatures = [];
+    App.spawnWildEncounter(tile, false, false);
+    return (tile.creatures || []).map(creature => ({
+      id: creature.id,
+      name: creature.name,
+      species: creature.species,
+      level: creature.level,
+      MPun: creature.MPun,
+      CPun: creature.CPun,
+      Figh: creature.Figh,
+      Feas: creature.Feas,
+      Flir: creature.Flir,
+      Feed: creature.Feed,
+      hunger: creature.hunger,
+      disposition: creature.disposition,
+      willing: creature.willing
+    }));
+  };
+
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assert(lowRandom.length > 0, 'Wild encounter test should generate at least one creature');
+  assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Wild encounter generation should not depend on ambient Math.random');
+});
+
 test('Sparse map helpers separate generated base tiles from durable deltas', () => {
   const { App } = loadAppForCombat(() => 1);
   App.worldMeta = { worldId: 'world-delta', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };
@@ -4035,6 +4072,8 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._maybeSpawnStructureMerchant.toString(), 'Math.random', 'Structure merchant placement should not use Math.random');
   assertNotContains(App._maybeSpawnStructureQuestGiver.toString(), 'Math.random', 'Structure quest-giver placement should not use Math.random');
   assertNotContains(App._questTemplateForStructure.toString(), 'Math.random', 'Structure quest template selection should not use Math.random');
+  assertNotContains(App.spawnWildEncounter.toString(), 'Math.random', 'Persistent wild encounter generation should not use Math.random');
+  assertNotContains(App.spawnWildEncounter.toString(), 'Date.now', 'Persistent wild encounter ids should not use Date.now');
   assertNotContains(App.lootCorpse.toString(), 'Math.random', 'Persistent corpse loot generation should not use Math.random');
   assertNotContains(App.search.toString(), 'Math.random', 'Persistent search finds should not use Math.random');
   assertNotContains(App._lootItemNameFromTable.toString(), 'Math.random', 'Authored loot table selection should not use Math.random');

@@ -1971,9 +1971,11 @@
             },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];
-                const deterministic = firstEntry && tile && Number.isFinite(tile.x) && Number.isFinite(tile.y);
-                const roll = (purpose, index = 0, salt = '') => deterministic ? this._worldRoll(`wild-${purpose}`, tile.x, tile.y, index, salt) : Math.random();
-                const pick = (table, purpose, index = 0, salt = '') => deterministic ? this._weightedPickWorld(table, `wild-${purpose}`, tile.x, tile.y, index, salt) : this._weightedPick(table);
+                const tileX = Number.isFinite(tile?.x) ? tile.x : 0;
+                const tileY = Number.isFinite(tile?.y) ? tile.y : 0;
+                const tileKey = Number.isFinite(tile?.x) && Number.isFinite(tile?.y) ? `${tile.x}_${tile.y}` : 'unknown';
+                const roll = (purpose, index = 0, salt = '') => this._worldRoll(`wild-${purpose}`, tileX, tileY, index, salt);
+                const pick = (table, purpose, index = 0, salt = '') => this._weightedPickWorld(table, `wild-${purpose}`, tileX, tileY, index, salt);
                 const count = isBoss ? 1 : Math.max(1, Math.floor(roll('count') * Math.min(3, Math.max(1, this.player.level - 1))) + 1);
                 const creatures = [];
                 for (let i = 0; i < count; i++) {
@@ -1995,7 +1997,7 @@
                     const statMult = isBoss ? 1.0 : (0.6 + roll('stat', i) * 0.3);
                     const hpMult = isBoss ? 1.2 : (0.5 + roll('hp', i) * 0.3);
                     const creature = {
-                        id: deterministic ? `enc_${tile.x}_${tile.y}_${i}` : 'enc_' + Date.now() + '_' + i, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
+                        id: isBoss ? `enc_${tileKey}_boss_${i}` : `enc_${tileKey}_${i}`, name: sp.name + (count > 1 ? ' ' + (i + 1) : ''),
                         species: sid, icon: sp.icon, gender: roll('gender', i) < 0.5 ? 'female' : 'male',
                         identity: roll('identity', i) < 0.5 ? 'female' : 'male', parts: roll('parts', i) < 0.3 ? 'cock' : 'clit', chest: roll('chest', i) < 0.5 ? 'tits' : 'pecs',
                         bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [], size: this.SPECIES_SIZE[sid] || 4, appetite: Math.floor(roll('appetite', i) * 4) + 2,

@@ -2483,8 +2483,9 @@
             selectTarget(action) {
                 const actor = this.activeActor || this.player;
                 this.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
-                const label = action === 'fight' ? 'Fight' : action === 'flirt' ? 'Flirt' : action === 'fuck' ? 'Fuck' : 'Feast';
-                document.getElementById('scene-description').innerHTML = `<p>Select a target from the creature panel.</p><button class="nav-btn" style="margin-top:12px" onclick="App.cancelTargetSelection()">Cancel ${label}</button>`;
+                const label = this._uiLabel(action);
+                const cancelLabel = this._escapeHtml(this._label('target.cancelAction', 'Cancel {action}', { action: label }));
+                document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('target.chooseFromPanel', 'Select a target from the creature panel.'))}</p><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
                 this.renderCreatures();
             },
 
@@ -2517,7 +2518,10 @@
                 }
                 const actor = this.activeActor || this.player;
                 if (!this._canReachCombatTarget(actor, target, action)) {
-                    this._pushLog(`${actor.name} cannot reach ${target.name} from here.`, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'targeting' });
+                    this._pushLog(this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', {
+                        actor: actor.name,
+                        target: target.name
+                    }), 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'targeting' });
                     this.targetSelection = null;
                     this.renderLog();
                     this.renderCreatures();

@@ -10,6 +10,7 @@
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
+- **Automation:** Repo-owned auto-agent lanes live in `.auto-agent/lanes.json`, with human guidance in `docs/AUTO-AGENT-LANES.md`; validate from the auto-agent repo with `node src/cli.js process validate-lane-map --target /home/zevilz/work/porn`
 
 ---
 

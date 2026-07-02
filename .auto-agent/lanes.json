@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "mapId": "you-are-wild-local-work",
+  "targetAdapterHint": "node-js",
+  "profile": {
+    "safeCommands": [
+      "npm run build",
+      "npm run test",
+      "npm run audit:branding"
+    ],
+    "isolateTargetRepo": true,
+    "providerAllowed": true,
+    "allowedActions": [
+      "local-file-write",
+      "local-command",
+      "local-test",
+      "docs-generation",
+      "provider-call"
+    ],
+    "operatorMediatedActions": [
+      "push",
+      "publish",
+      "public-network",
+      "package-install",
+      "proof-promotion",
+      "repo-complete-acceptance",
+      "product-direction",
+      "explicit-content-expansion"
+    ],
+    "forbiddenActions": [
+      "credential-use",
+      "raw-secrets",
+      "destructive-host-command"
+    ]
+  },
+  "operatorBoundaries": [
+    {
+      "id": "controls-final-direction",
+      "title": "Final control doctrine decisions",
+      "boundary": "product-direction",
+      "reason": "Agents may propose and document controls, but final traversal, selection, and intent-control decisions belong to the operator."
+    },
+    {
+      "id": "adult-content-expansion",
+      "title": "Adult content expansion",
+      "boundary": "explicit-content-expansion",
+      "reason": "This lane map is for controls, UI, map metadata, and architecture. Agents must not expand explicit content."
+    },
+    {
+      "id": "canonical-release-action",
+      "title": "Canonical release action",
+      "boundary": "release",
+      "reason": "Pushing, publishing, release packaging, and final branding/legal decisions remain operator-mediated."
+    }
+  ],
+  "lanes": [
+    {
+      "laneId": "controls-doctrine",
+      "priority": 10,
+      "title": "Controls Doctrine",
+      "objective": "Create a UI-safe control model for traversal, actor selection, target selection, intent selection, and inspection surfaces before more autonomous UI changes.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Traversal mode",
+              "Selection mode",
+              "Intent mode",
+              "Inspection mode"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "control model"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Control model document defines traversal selection intent and inspection modes.",
+          "Next objectives reference the control model.",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Control model document defines traversal selection intent and inspection modes.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Traversal mode",
+              "Selection mode",
+              "Intent mode",
+              "Inspection mode"
+            ]
+          },
+          {
+            "criterion": "Next objectives reference the control model.",
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "control model"
+            ]
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "dist/you-are-wild.html",
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not implement the controls.",
+          "Does not make final product-direction decisions.",
+          "Does not expand or review explicit content."
+        ]
+      }
+    },
+    {
+      "laneId": "desktop-intent-menu",
+      "priority": 20,
+      "title": "Desktop Intent Menu Layout",
+      "objective": "Give desktop creature/person actions a bounded desktop-specific intent surface while preserving mobile long-press and bottom-sheet behavior.",
+      "dependencies": [
+        "controls-doctrine"
+      ],
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "app/template.html",
+            "containsAll": [
+              "desktop-intent-menu"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAll": [
+              "Desktop intent menu"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/template.html",
+          "app/src/core/app.js",
+          "app/test/test.js",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "app/template.html",
+          "app/src/core/app.js",
+          "app/test/test.js",
+          "dist/you-are-wild.html",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run build",
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Desktop intent actions render through a desktop-specific bounded surface.",
+          "Desktop intent menu behavior is covered by tests.",
+          "npm run build exits 0",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Desktop intent actions render through a desktop-specific bounded surface.",
+            "checkType": "content",
+            "file": "app/template.html",
+            "containsAll": [
+              "desktop-intent-menu"
+            ]
+          },
+          {
+            "criterion": "Desktop intent menu behavior is covered by tests.",
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAll": [
+              "Desktop intent menu"
+            ]
+          },
+          {
+            "criterion": "npm run build exits 0",
+            "checkType": "command-exit",
+            "command": "npm run build"
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "app/src/core/world-generation.js",
+          "app/src/core/content-system.js",
+          "app/src/core/serialization.js",
+          "app/package.json",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not redesign the mobile traversal model.",
+          "Does not rewrite combat or target selection.",
+          "Does not expand explicit content."
+        ]
+      }
+    },
+    {
+      "laneId": "quest-preview",
+      "priority": 50,
+      "title": "Quest Preview Before Accept",
+      "objective": "Add a localized, non-explicit preview/inspect path so players can understand a quest before accepting it.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "app/src/core/app.js",
+            "containsAll": [
+              "renderQuestPreview"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAll": [
+              "Quest preview"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/app.js",
+          "app/src/core/content-system.js",
+          "app/test/test.js",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "app/src/core/app.js",
+          "app/src/core/content-system.js",
+          "app/test/test.js",
+          "dist/you-are-wild.html",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run build",
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Quest givers expose a preview or inspect path before acceptance.",
+          "Quest preview labels and summaries are localized and non-explicit.",
+          "Quest preview behavior is covered by tests.",
+          "npm run build exits 0",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Quest givers expose a preview or inspect path before acceptance.",
+            "checkType": "content",
+            "file": "app/src/core/app.js",
+            "containsAll": [
+              "renderQuestPreview"
+            ]
+          },
+          {
+            "criterion": "Quest preview labels and summaries are localized and non-explicit.",
+            "checkType": "content",
+            "file": "app/src/core/content-system.js",
+            "containsAll": [
+              "quest.preview"
+            ]
+          },
+          {
+            "criterion": "Quest preview behavior is covered by tests.",
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAll": [
+              "Quest preview"
+            ]
+          },
+          {
+            "criterion": "npm run build exits 0",
+            "checkType": "command-exit",
+            "command": "npm run build"
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "app/src/core/world-generation.js",
+          "app/src/core/serialization.js",
+          "app/package.json",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not add new quest content branches.",
+          "Does not reveal undiscovered generated secrets by default.",
+          "Does not expand explicit content."
+        ]
+      }
+    },
+    {
+      "laneId": "asset-tileset-manifest",
+      "priority": 60,
+      "title": "Asset and Tileset Manifest Seam",
+      "objective": "Add a flexible metadata seam for first-party and modded image assets, including AI-generated provenance and icon fallback behavior.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "app/src/core/assets.js",
+            "containsAll": [
+              "ASSET_MANIFEST",
+              "ai_generated",
+              "fallback"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "app/build.js",
+            "containsAll": [
+              "assets.js"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/assets.js",
+          "app/build.js",
+          "app/test/test.js",
+          "docs/map-tileset-evaluation.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "app/src/core/assets.js",
+          "app/build.js",
+          "app/test/test.js",
+          "dist/you-are-wild.html",
+          "docs/map-tileset-evaluation.md",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run build",
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Asset manifest supports AI-generated provenance metadata and relative asset paths.",
+          "Asset manifest preserves icon fallback behavior for missing tileset art.",
+          "Asset manifest module is included in the build order.",
+          "Asset manifest behavior is covered by tests.",
+          "npm run build exits 0",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Asset manifest supports AI-generated provenance metadata and relative asset paths.",
+            "checkType": "content",
+            "file": "app/src/core/assets.js",
+            "containsAll": [
+              "ai_generated",
+              "relativePath"
+            ]
+          },
+          {
+            "criterion": "Asset manifest preserves icon fallback behavior for missing tileset art.",
+            "checkType": "content",
+            "file": "app/src/core/assets.js",
+            "containsAll": [
+              "fallback"
+            ]
+          },
+          {
+            "criterion": "Asset manifest module is included in the build order.",
+            "checkType": "content",
+            "file": "app/build.js",
+            "containsAll": [
+              "assets.js"
+            ]
+          },
+          {
+            "criterion": "Asset manifest behavior is covered by tests.",
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAll": [
+              "Asset manifest"
+            ]
+          },
+          {
+            "criterion": "npm run build exits 0",
+            "checkType": "command-exit",
+            "command": "npm run build"
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "app/src/core/app.js",
+          "app/src/core/world-generation.js",
+          "app/src/core/serialization.js",
+          "app/package.json",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not import the painted tilesheet asset yet.",
+          "Does not replace all emoji or icon fallback rendering.",
+          "Does not change gameplay mechanics."
+        ]
+      }
+    }
+  ]
+}

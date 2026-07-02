@@ -3505,13 +3505,13 @@
                     if (target.name === this.player.name) {
                         if (this.cheats.godMode) {
                             target.CPun = Math.max(1, target.CPun);
-                            this.log.push({ text: 'God Mode saved you from death!', type: 'combat' });
+                            this.log.push({ text: this._label('combat.godModeSaved', 'God Mode saved you from death!'), type: 'combat' });
                             this.renderLog(); this.nextTurn(); return;
                         }
-                        this.log.push({ text: 'You have fallen! Game Over!', type: 'combat' });
+                        this.log.push({ text: this._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
                         this.renderLog();
                         if (this.settings.hardcore) {
-                            this.log.push({ text: 'HARDCORE MODE: Your save has been deleted.', type: 'combat' });
+                            this.log.push({ text: this._label('combat.hardcoreSaveDeleted', 'HARDCORE MODE: Your save has been deleted.'), type: 'combat' });
                             this.renderLog();
                             this._removeStoredValue('lastSlot');
                             this._removeStoredValue('lastSaveTime');
@@ -3525,19 +3525,19 @@
                             target.CPun = 0;
                             target.CPle = 0;
                             target.knockedOut = true;
-                            this.log.push({ text: 'You have been knocked out! Your party must finish the fight...', type: 'combat' });
+                            this.log.push({ text: this._label('combat.playerKnockedOut', 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
                             this.renderLog(); this.renderParty();
                             // If no other living party members, defeat
                             const livingAllies = this.party.filter(p => p.CPun > 0 && !p.knockedOut && p.name !== this.player.name);
                             if (livingAllies.length === 0) {
-                                this.log.push({ text: 'Your party has been wiped out!', type: 'combat' });
+                                this.log.push({ text: this._label('combat.partyWipedOut', 'Your party has been wiped out!'), type: 'combat' });
                                 this.renderLog();
                                 setTimeout(() => { App.showScreen('menu'); }, 2000);
                                 this.endCombat('defeat');
                                 return;
                             }
                             // Otherwise continue combat with player as KO'd
-                            this.log.push({ text: 'Your allies continue the fight...', type: 'combat' });
+                            this.log.push({ text: this._label('combat.alliesContinue', 'Your allies continue the fight...'), type: 'combat' });
                             this.renderLog();
                             this.nextTurn(); return;
                         }
@@ -3577,10 +3577,10 @@
                 if (this.player?.knockedOut) {
                     this.player.knockedOut = false;
                     this.player.CPun = Math.max(1, this.player.CPun || 0);
-                    this.log.push({ text: `${this.player.name} comes to after the fight.`, type: 'discovery' });
+                    this.log.push({ text: this._label('combat.playerComesTo', '{name} comes to after the fight.', { name: this.player.name }), type: 'discovery' });
                 }
                 if (outcome === 'victory') {
-                    this.log.push({ text: 'Victory! Enemies defeated or subdued.', type: 'discovery' });
+                    this.log.push({ text: this._label('combat.victory', 'Victory! Enemies defeated or subdued.'), type: 'discovery' });
                     const texts = ['The battlefield falls silent.','Your enemies lie defeated.','Another victory, another feast.','You emerge from the chaos unscathed.'];
                     this.updateScene('Victory', texts[Math.floor(Math.random() * texts.length)], false);
                     this.gainXP(this.combatState.xpEarned || this.XP_REWARDS.defeatEnemy);
@@ -3592,12 +3592,12 @@
                     }
                     this._runPostCombatScavengers();
                 } else if (outcome === 'flee') {
-                    this.log.push({ text: 'You escaped the encounter.', type: 'move' });
+                    this.log.push({ text: this._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
                     this.updateScene('Escaped', 'You put distance between yourself and danger.', false);
                 } else {
-                    this.log.push({ text: 'Defeat...', type: 'combat' });
+                    this.log.push({ text: this._label('combat.defeat', 'Defeat...'), type: 'combat' });
                     this.updateScene('Defeat', 'Darkness claims you...', false);
-                    setTimeout(() => { if (confirm('Defeat! Return to menu?')) { App.showScreen('menu'); } }, 1500);
+                    setTimeout(() => { if (confirm(this._label('combat.confirmReturnToMenu', 'Defeat! Return to menu?'))) { App.showScreen('menu'); } }, 1500);
                 }
                 this.renderLog();
                 this.showExplorationActions();
@@ -6837,11 +6837,11 @@
             skipTutorial() { this.closeTutorial(); },
             continueLastGame() { this.loadLastPlayed(); },
             combatAction(action) {
-                if (!this.combatState.active) { this.log.push({ text: 'Not in combat!', type: 'combat' }); this.renderLog(); return; }
-                if (this.combatState.processing) { this.log.push({ text: 'Wait for your turn!', type: 'combat' }); this.renderLog(); return; }
+                if (!this.combatState.active) { this.log.push({ text: this._label('combat.notInCombat', 'Not in combat!'), type: 'combat' }); this.renderLog(); return; }
+                if (this.combatState.processing) { this.log.push({ text: this._label('combat.waitForTurn', 'Wait for your turn!'), type: 'combat' }); this.renderLog(); return; }
                 const currentEntry = this.combatState.turnQueue[this.combatState.currentTurn];
                 const current = currentEntry ? (currentEntry.unit || currentEntry) : null;
-                if (!current || current.name !== this.player.name) { this.log.push({ text: 'Not your turn!', type: 'combat' }); this.renderLog(); return; }
+                if (!current || current.name !== this.player.name) { this.log.push({ text: this._label('combat.notYourTurn', 'Not your turn!'), type: 'combat' }); this.renderLog(); return; }
                 if (action === 'fight') this.selectTarget('fight');
                 else if (action === 'flirt') this.selectTarget('flirt');
                 else if (action === 'fuck') this.selectTarget('fuck');

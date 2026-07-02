@@ -170,7 +170,7 @@
 7. **Strengthen biome/map mechanics and traversal.** Make deterministic worldgen mechanically playable, not just organic: formalize start-area safety, traversal metadata, beach derivation, roads/bridges as overlays, POI budgets, route seams, encounter pressure hooks, and safe map UI summaries while preserving sparse-grid architecture and save compatibility.
 8. **Evolve card action density into intent navigation.** Preserve the current multi-character interaction flow while making cards more creature-focused: keep `Act`, `Target`, and Stats/Inspect reachable, keep contextual actions only when relevant, and use the existing action-menu seam as the accessible fallback for a future radial/intent picker plus bottom action sheet.
 9. **Fix desktop intent/action menu layout.** Mobile long-press/action sheets are usable, but desktop creature/person action menus currently reuse the mobile context-menu surface and can appear as an awkward left-edge vertical stack; split desktop behavior into a bounded popover/action sheet near the relevant card or selected creature context while keeping the mobile bottom-sheet/radial-ready behavior intact.
-10. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
+10. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, quest preview polish, and creature equipment management should wait until the current mechanics/UI loop is stable.
 
 ### 🟡 Tier 2: High Impact
 
@@ -236,6 +236,7 @@
 
 #### 8. Advanced Quest Scripting
 - Expand quest scripting beyond the first-pass checkpoint/turn-in routing foundation, such as richer branching quest steps, multiple valid turn-in NPCs, and smarter route planning that can choose roads/terrain-aware paths instead of only summarizing known direct-path terrain
+- Add a low-priority quest preview/inspect path before acceptance. Quest-giver cards currently expose accept/view actions, but players should be able to see a safe summary of the quest premise, objective type, destination/known route hint, likely reward class, and risk/difficulty before committing. Keep this UI-localized and non-explicit, avoid revealing hidden generated details unless discovered/appropriate, and preserve the existing accept flow.
 
 #### 16. Advanced Equipment
 - Keep non-player equipment read-only for now; revisit full creature equipment management only if party/inventory systems need player-controlled ally loadouts

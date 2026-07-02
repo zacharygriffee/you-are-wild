@@ -4446,6 +4446,7 @@
                     this.outsideActionOnTarget(action, target, livingActors[0] || this.player, options);
                     return true;
                 }
+                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 const names = livingActors.map(actor => actor.name).join(', ');
                 let result = '';
                 let startCombatAfter = false;
@@ -4532,7 +4533,8 @@
                             result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
                             break;
                         }
-                        if (this.settings.chewing && livingActors.length > 1) {
+                        const shouldChew = selectedSubAction === 'chew' || (!selectedSubAction && this.settings.chewing);
+                        if (shouldChew && livingActors.length > 1) {
                             result = this._groupChewFeast(livingActors, target);
                             break;
                         }

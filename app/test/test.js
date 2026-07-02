@@ -2209,6 +2209,24 @@ test('Chewing-enabled group feast splits target among selected actors', () => {
   assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
 });
 
+test('Group feast respects explicit swallow sub-action when chewing is enabled', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const helper = makeUnit('Helper', { id: 'helper-1', size: 1, appetite: 0, Feas: 50 });
+  const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
+  App.player = player;
+  App.party = [player, helper, primary, prey];
+  App.settings.chewing = true;
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  App.outsideActionForParty('feast', 3, null, { subAction: 'swallow' });
+  assertEqual(primary.stomach.length, 1, 'Explicit swallow should choose a primary consumer instead of splitting portions');
+  assertEqual(helper.stomach.length, 0, 'Explicit swallow should keep helper out of stomach portion handling');
+  assertEqual(App.party.includes(prey), false, 'Swallowed party target should leave active party list');
+  assertContains(App.log[App.log.length - 1].text, 'help Primary swallow Prey', 'Explicit swallow should log helper-assisted primary consumption');
+});
+
 test('Group feast chooses a selected primary consumer that can fit the target', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

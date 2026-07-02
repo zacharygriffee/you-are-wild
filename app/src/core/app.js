@@ -807,6 +807,8 @@
             },
             SAVE_DB_NAME: 'YAW_Saves',
             LEGACY_SAVE_DB_NAME: 'FFF_Saves',
+            WORLD_DB_NAME: 'YAW_Worlds',
+            WORLD_DB_VERSION: 1,
             _saveTimeKey(slotName) { return this.storageKeys.saveTimePrefix + slotName; },
             _legacySaveTimeKey(slotName) { return this.legacyStorageKeys.saveTimePrefix + slotName; },
             _getStoredValue(keyName) {
@@ -1419,6 +1421,9 @@
             _tileKey(x, y) {
                 return `${x},${y}`;
             },
+            _tileDeltaStoreKey(worldId, x, y) {
+                return `${worldId || this.worldMeta?.worldId || 'world_default'}:${x}:${y}`;
+            },
             _cloneTileValue(value) {
                 if (value == null) return value;
                 if (Array.isArray(value) || typeof value === 'object') {
@@ -1509,6 +1514,29 @@
                     this.persistTileDelta(tile.x, tile.y, tile);
                 }
                 return this.tileDeltas;
+            },
+            _tileDeltaRecordFromEntry(key, delta) {
+                const [x, y] = key.split(',').map(Number);
+                const worldId = this.worldMeta?.worldId || 'world_default';
+                return {
+                    key: this._tileDeltaStoreKey(worldId, x, y),
+                    worldId,
+                    x,
+                    y,
+                    delta: this._cloneTileValue(delta),
+                    updatedAt: Date.now()
+                };
+            },
+            _applyTileDeltaRecords(records = []) {
+                if (!this.tileDeltas) this.tileDeltas = new Map();
+                for (const record of records) {
+                    if (!record || record.worldId !== this.worldMeta?.worldId) continue;
+                    const key = this._tileKey(record.x, record.y);
+                    this.tileDeltas.set(key, this._cloneTileValue(record.delta || {}));
+                    const effective = this.applyTileDelta(this.getBaseTile(record.x, record.y), record.delta || {});
+                    this.worldMap.set(key, effective);
+                    if (effective.explored) this.exploredTiles.add(key);
+                }
             },
             getTile(x, y) {
                 const key = this._tileKey(x, y);
@@ -5720,6 +5748,9 @@
                 req2.onerror = () => console.error('Failed to delete saves DB');
                 const legacyReq2 = indexedDB.deleteDatabase(this.LEGACY_SAVE_DB_NAME);
                 legacyReq2.onerror = () => console.error('Failed to delete legacy saves DB');
+                const worldReq = indexedDB.deleteDatabase(this.WORLD_DB_NAME);
+                worldReq.onsuccess = () => console.log('World DB deleted');
+                worldReq.onerror = () => console.error('Failed to delete world DB');
                 alert('All data cleared. Refresh the page to start fresh.');
                 location.reload();
             },
@@ -6063,6 +6094,7 @@
                 if (!this.player || this.screen !== 'game') return;
                 try {
                     this.persistAllTileDeltas();
+                    await this.persistWorldStateToMapStore().catch(e => console.warn('World map persistence failed', e));
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', this.activeSlot, saveData);
                     this._setStoredValue('lastSlot', this.activeSlot);
@@ -6074,6 +6106,7 @@
                 if (!this.player) { alert('No game to save!'); return; }
                 try {
                     this.persistAllTileDeltas();
+                    await this.persistWorldStateToMapStore().catch(e => console.warn('World map persistence failed', e));
                     const saveData = Binary.saveGame(this);
                     await this._dbPut('saves', slotName, saveData);
                     this.activeSlot = slotName;
@@ -6163,6 +6196,7 @@ Enter 1, 2, or 3:`);
                     this.interiorLocation = { x: 0, y: 0 };
                     this.activeSlot = slotName;
                     this._restoreWorldState(loaded);
+                    await this.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
                     this._normalizeExplorationSelections({ resetTargets: true });
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
@@ -6271,6 +6305,83 @@ Enter 1, 2, or 3:`);
                 });
                 await deleteFrom(this.SAVE_DB_NAME);
                 await deleteFrom(this.LEGACY_SAVE_DB_NAME).catch(() => {});
+            },
+            async _worldDbOpen() {
+                return new Promise((resolve, reject) => {
+                    if (!indexedDB || typeof indexedDB.open !== 'function') {
+                        reject(new Error('IndexedDB unavailable'));
+                        return;
+                    }
+                    const req = indexedDB.open(this.WORLD_DB_NAME, this.WORLD_DB_VERSION);
+                    req.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('worlds')) db.createObjectStore('worlds', { keyPath: 'worldId' });
+                        if (!db.objectStoreNames.contains('tileDeltas')) db.createObjectStore('tileDeltas', { keyPath: 'key' });
+                        if (!db.objectStoreNames.contains('chunkDeltas')) db.createObjectStore('chunkDeltas', { keyPath: 'key' });
+                        if (!db.objectStoreNames.contains('entityIndex')) db.createObjectStore('entityIndex', { keyPath: 'key' });
+                    };
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async persistWorldStateToMapStore() {
+                this.persistAllTileDeltas();
+                const worldId = this.worldMeta?.worldId || 'world_default';
+                const db = await this._worldDbOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
+                    const worlds = tx.objectStore('worlds');
+                    const tileDeltas = tx.objectStore('tileDeltas');
+                    const records = Array.from(this.tileDeltas.entries()).map(([key, delta]) => this._tileDeltaRecordFromEntry(key, delta));
+                    worlds.put({ ...(this.worldMeta || {}), worldId, updatedAt: Date.now() });
+                    const cursorReq = tileDeltas.openCursor();
+                    cursorReq.onsuccess = e => {
+                        const cursor = e.target.result;
+                        if (!cursor) {
+                            for (const record of records) tileDeltas.put(record);
+                            return;
+                        }
+                        if (cursor.value?.worldId === worldId) cursor.delete();
+                        cursor.continue();
+                    };
+                    cursorReq.onerror = () => reject(cursorReq.error);
+                    tx.oncomplete = () => { db.close(); resolve(records.length); };
+                    tx.onerror = () => { db.close(); reject(tx.error); };
+                });
+            },
+            async loadWorldStateFromMapStore() {
+                const worldId = this.worldMeta?.worldId;
+                if (!worldId) return 0;
+                const db = await this._worldDbOpen();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(['worlds', 'tileDeltas'], 'readonly');
+                    const worlds = tx.objectStore('worlds');
+                    const tileDeltas = tx.objectStore('tileDeltas');
+                    const records = [];
+                    const worldReq = worlds.get(worldId);
+                    worldReq.onsuccess = () => {
+                        if (worldReq.result) {
+                            this.worldMeta = { ...this.worldMeta, ...worldReq.result };
+                        }
+                    };
+                    const cursorReq = tileDeltas.openCursor();
+                    cursorReq.onsuccess = e => {
+                        const cursor = e.target.result;
+                        if (!cursor) return;
+                        if (cursor.value?.worldId === worldId) records.push(cursor.value);
+                        cursor.continue();
+                    };
+                    cursorReq.onerror = () => reject(cursorReq.error);
+                    tx.oncomplete = () => {
+                        db.close();
+                        this._applyTileDeltaRecords(records);
+                        const currentTile = this.getTile(this.location.x, this.location.y);
+                        this.currentBiome = currentTile.biome;
+                        this.creatures = this._tileCreatures(currentTile.creatures || []);
+                        resolve(records.length);
+                    };
+                    tx.onerror = () => { db.close(); reject(tx.error); };
+                });
             },
         };
 

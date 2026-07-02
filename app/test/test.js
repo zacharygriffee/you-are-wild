@@ -1789,6 +1789,43 @@ test('Loaded world state rebuilds tile deltas over deterministic base tiles', ()
   assertEqual(App.getTile(4, 5).baseBiome, App.getBaseTile(4, 5).biome, 'Restored tile should retain generated base biome metadata');
 });
 
+test('Sparse map IndexedDB store contract is present', () => {
+  assertContains(appContent, "WORLD_DB_NAME: 'YAW_Worlds'", 'World map DB name should be declared');
+  assertContains(appContent, "createObjectStore('worlds'", 'World metadata store should be created');
+  assertContains(appContent, "createObjectStore('tileDeltas'", 'Tile delta store should be created');
+  assertContains(appContent, "createObjectStore('chunkDeltas'", 'Chunk delta store should be reserved');
+  assertContains(appContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
+  assertContains(appContent, 'persistWorldStateToMapStore()', 'World map persistence helper should exist');
+  assertContains(appContent, 'loadWorldStateFromMapStore()', 'World map load helper should exist');
+});
+
+test('Sparse map tile delta records round-trip through store shape', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-store', seed: 'store-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  const tile = App.getTile(-2, 7);
+  tile.explored = true;
+  tile.description = 'Stored delta tile.';
+  tile.items = [{ id: 'item-1', name: 'Coin' }];
+  const delta = App.persistTileDelta(-2, 7, tile);
+  const record = App._tileDeltaRecordFromEntry('-2,7', delta);
+  assertEqual(record.key, 'world-store:-2:7', 'Tile delta store key should include world and coordinates');
+  assertEqual(record.worldId, 'world-store', 'Tile delta record should carry world id');
+  assertEqual(record.x, -2, 'Tile delta record should preserve x coordinate');
+  assertEqual(record.y, 7, 'Tile delta record should preserve y coordinate');
+  assertEqual(record.delta.description, 'Stored delta tile.', 'Tile delta record should preserve changed state');
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App._applyTileDeltaRecords([record]);
+  const restored = App.getTile(-2, 7);
+  assertEqual(restored.description, 'Stored delta tile.', 'Stored delta record should restore effective tile description');
+  assertEqual(restored.items[0].name, 'Coin', 'Stored delta record should restore tile items');
+  assertEqual(App.exploredTiles.has('-2,7'), true, 'Stored explored delta should repopulate explored set');
+});
+
 test('Movement and search advance the in-game hour', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.player = makeUnit('You');

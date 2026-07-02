@@ -365,11 +365,11 @@ persistTileDelta(tile)
 
 Keep returning the existing tile shape.
 
-### Phase 4: IndexedDB Map Store
+### Phase 4: IndexedDB Map Store - First Pass Complete
 
-Move durable tile/world state out of save-slot payloads and into `YAW_Worlds`.
+Persist durable tile/world state into `YAW_Worlds`.
 
-Save slots keep `worldId` and player state. Map deltas persist independently.
+The current implementation creates `worlds`, `tileDeltas`, `chunkDeltas`, and `entityIndex` stores. Save/load opportunistically writes and reads world metadata plus tile deltas, while save slots still carry the version-10 `worldMap` payload as a compatibility fallback until the slot migration is complete.
 
 ### Phase 5: Large Map LOD
 
@@ -400,9 +400,9 @@ The first code slice is complete:
 
 That keeps the current game working while establishing the boundary for the sparse layered map system.
 
-## Next Implementation Target
+## Completed Implementation Target
 
-The next code slice should add the durable delta boundary while keeping the current gameplay-facing tile shape:
+The durable delta boundary now keeps the current gameplay-facing tile shape:
 
 1. Add `getBaseTile(x, y)` for generated seed-only tile data.
 2. Add `getTileDelta(x, y)` for discovered/changed state, initially backed by existing `worldMap` entries.
@@ -410,4 +410,13 @@ The next code slice should add the durable delta boundary while keeping the curr
 4. Add `persistTileDelta(tile)` to store only observed or changed state.
 5. Add tests proving unexplored generated tiles do not need durable entries, while explored/changed tiles preserve creatures, items, structures, and discovery state.
 
-The IndexedDB `YAW_Worlds` store can follow after this boundary is stable.
+The IndexedDB `YAW_Worlds` first pass also exists: world metadata and tile deltas are written separately from save-slot data, with object stores reserved for future chunk/entity indexing.
+
+## Next Implementation Target
+
+The next code slice should add a large-map low-LOD discovery view:
+
+1. Resolve low-detail biome data from generated base chunks/tiles without materializing every tile.
+2. Overlay explored/known tiles from `YAW_Worlds` tile deltas and the in-memory explored set.
+3. Surface landmarks, structures, quest vectors, and other points of interest as discovery markers.
+4. Keep mobile and desktop controls separate enough that the minimap remains fast for traversal.

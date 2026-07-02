@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 188/188 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 190/190 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -111,6 +111,7 @@
 - Repository organization/rebrand first pass is complete: active source lives under `app/`, root scripts point at that layout, generated output is `dist/you-are-wild.html`, visible active UI branding says **You Are Wild**, package/build metadata uses the new slug, and `npm run audit:branding` verifies only approved legacy migration references remain
 - Sparse map generation has a first-pass foundation: biome role metadata separates region/route/feature/interior concepts, super-patch generation selects only region biomes, seeded deterministic helpers drive region selection, world seed/version metadata persists through saves, and non-region entries such as bridge/road/indoors/entrance no longer become large super-patch biomes
 - Sparse map delta boundary exists: `getBaseTile()`, `getTileDelta()`, `applyTileDelta()`, and `persistTileDelta()` keep deterministic generated baseline data separate from explored/changed tile state while `worldMap` remains a compatibility cache for existing gameplay systems
+- Sparse map store foundation exists: `YAW_Worlds` creates `worlds`, `tileDeltas`, `chunkDeltas`, and `entityIndex` object stores; save/load opportunistically persists and reloads world metadata plus tile deltas while version-10 save-slot world payloads remain the compatibility fallback
 - Mobile gesture improvements have a first-pass foundation: creature chips support long-press context menus for Fight/Flirt/Feed/Inspect/Recruit, the mobile minimap supports pinch zoom with preserved scale after map refresh, swipe panel navigation keeps haptic feedback, and long-press/context actions use vibration when supported
 - Accessibility has a first-pass foundation: settings now persist high-contrast mode, reduced motion, and 12px-20px base font scaling; the log region announces updates politely; log entries use status roles; high-traffic party/creature action buttons expose `title`/`aria-label`; and newer interaction settings persist through the same settings save path
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
@@ -152,8 +153,8 @@
 ### 🔵 Tier 4: Lower Priority
 
 #### 7. Sparse Map Generation Foundation
-- Add the planned IndexedDB map/world store (`worlds`, `tileDeltas`, later `chunkDeltas`/`entityIndex`) once save-slot migration is ready; current saves rebuild `tileDeltas` from the version-10 `worldMap` payload for backward compatibility
-- Add large-map low-LOD discovery view after the delta boundary exists
+- Complete save-slot migration so slots primarily reference `worldId` while `YAW_Worlds` owns durable map state; current version-10 save payloads still carry `worldMap` as a compatibility fallback
+- Add large-map low-LOD discovery view backed by generated base data plus `YAW_Worlds` discovery/tile deltas
 
 #### 8. Advanced Quest Scripting
 - Add explicit escort routing/checkpoints instead of only API-level objective matching

@@ -2523,7 +2523,8 @@ test('Marked multi-target stat gate preserves selections for correction', () => 
   App.updateLanguage('es');
   App.toggleExplorationTarget('party', 'target-a');
   App.toggleExplorationTarget('party', 'target-b');
-  App.resolveExplorationTargetAction('flirt');
+  const resolved = App.resolveExplorationTargetAction('flirt');
+  assertEqual(resolved, false, 'Marked multi-target action should report stat-gated failure');
   assertEqual(targetA.CPle, 0, 'Blocked marked multi-target action should not affect first target');
   assertEqual(targetB.CPle, 0, 'Blocked marked multi-target action should not affect second target');
   assertEqual(App.explorationActorIds.join(','), 'actor-1', 'Blocked marked multi-target action should preserve selected actor');
@@ -2545,6 +2546,23 @@ test('Capable actor can resolve one action across multiple exploration targets',
   assert(targetA.CPle > 0, 'Capable actor should affect first target');
   assert(targetB.CPle > 0, 'Capable actor should affect second target');
   assertContains(App.log[App.log.length - 1].text, 'Actor termina una accion multiobjetivo de coquetear sobre Target A, Target B.', 'Successful multi-target action summary should localize');
+});
+
+test('Single-target exploration wrappers return resolver outcomes', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });
+  const partyTarget = makeUnit('Party Target', { id: 'party-target', CPle: 0, MPle: 100, wis: 1 });
+  const creatureTarget = makeUnit('Creature Target', { id: 'creature-target', disposition: App.DISPOSITION.FRIENDLY, CPle: 0, MPle: 100, wis: 1 });
+  App.player = actor;
+  App.party = [actor, partyTarget];
+  App.creatures = [creatureTarget];
+  assertEqual(App.outsideActionForParty('flirt', 1), true, 'Party wrapper should report successful single-target resolution');
+  assert(partyTarget.CPle > 0, 'Successful party wrapper action should affect target');
+  assertEqual(App.outsideActionForCreature('flirt', 'creature-target'), true, 'Creature wrapper should report successful single-target resolution');
+  assert(creatureTarget.CPle > 0, 'Successful creature wrapper action should affect target');
+  assertEqual(App.outsideActionForParty('flirt', 99), false, 'Party wrapper should report missing target failure');
+  assertEqual(App.outsideActionForCreature('flirt', 'missing-creature'), false, 'Creature wrapper should report missing target failure');
+  assertEqual(App.outsideActionForCreatureAs('missing-actor', 'flirt', 'missing-creature'), false, 'Actor-specific creature wrapper should report missing target failure');
 });
 
 test('Exploration cards expose multi-target selection and context actions', () => {
@@ -2652,7 +2670,8 @@ test('Marked exploration targets resolve through multi-target action and clear s
   App.creatures = [targetB];
   App.toggleExplorationTarget('party', 'target-a');
   App.toggleExplorationTarget('creature', 'target-b');
-  App.resolveExplorationTargetAction('flirt');
+  const resolved = App.resolveExplorationTargetAction('flirt');
+  assertEqual(resolved, true, 'Marked multi-target action should report successful resolution');
   assert(targetA.CPle > 0, 'Marked party target should receive multi-target action');
   assert(targetB.CPle > 0, 'Marked creature target should receive multi-target action');
   assertEqual(App.explorationTargetIds.length, 0, 'Target selection should clear after resolving action');
@@ -2773,7 +2792,8 @@ test('Unequal actors against marked targets are rejected clearly', () => {
   App.toggleExplorationTarget('party', 'target-a');
   App.toggleExplorationTarget('party', 'target-b');
   App.toggleExplorationTarget('party', 'target-c');
-  App.resolveExplorationTargetAction('flirt');
+  const resolved = App.resolveExplorationTargetAction('flirt');
+  assertEqual(resolved, false, 'Ambiguous unequal many-to-many action should report failure');
   assertEqual(targetA.CPle, 0, 'Ambiguous unequal many-to-many action should not affect first target');
   assertEqual(targetB.CPle, 0, 'Ambiguous unequal many-to-many action should not affect second target');
   assertEqual(targetC.CPle, 0, 'Ambiguous unequal many-to-many action should not affect third target');

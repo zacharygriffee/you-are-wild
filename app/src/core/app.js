@@ -4081,7 +4081,7 @@
 
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
                 const targets = this._getExplorationTargets();
-                if (targets.length === 0) return;
+                if (targets.length === 0) return false;
                 const actors = this._getExplorationActors();
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
                 this.lastIntentCommand = {
@@ -4116,12 +4116,13 @@
                         this.renderParty();
                         this.renderCreatures();
                         this.renderExplorationActions();
-                        return;
+                        return false;
                     }
                 } else {
                     resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
                 }
                 if (resolved !== false) this.clearExplorationTargets();
+                return resolved !== false;
             },
 
             _getRecruitScore(actor, target) {
@@ -4202,20 +4203,20 @@
 
             outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
                 const target = this.party[targetIndex];
-                if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
+                if (!target) return false;
+                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
             },
 
             outsideActionForCreature(action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(), options);
+                if (!target) return false;
+                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(), options);
             },
 
             outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
+                if (!target) return false;
+                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
             },
 
             _removeContainedPartyMember(unit) {

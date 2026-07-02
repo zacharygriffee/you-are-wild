@@ -6576,7 +6576,7 @@
                 this.endCombat(true);
             },
             clearAllData() {
-                if (!confirm('WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?')) return;
+                if (!confirm(this._label('settings.confirmClearAllData', 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?'))) return;
                 // Delete all saves from IndexedDB
                 for (let i = 1; i <= 5; i++) {
                     this._dbDelete('saves', 'slot' + i).catch(() => {});
@@ -6604,11 +6604,11 @@
                 const worldReq = indexedDB.deleteDatabase(this.WORLD_DB_NAME);
                 worldReq.onsuccess = () => console.log('World DB deleted');
                 worldReq.onerror = () => console.error('Failed to delete world DB');
-                alert('All data cleared. Refresh the page to start fresh.');
+                alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
                 location.reload();
             },
             async deleteAllSaves() {
-                if (!confirm('Delete ALL save data? This cannot be undone!')) return;
+                if (!confirm(this._label('save.confirmDeleteAll', 'Delete ALL save data? This cannot be undone!'))) return;
                 try {
                     for (let i = 1; i <= 5; i++) {
                         await this._dbDelete('saves', 'slot' + i);
@@ -6618,13 +6618,13 @@
                     this._removeStoredValue('lastSaveTime');
                     this._removeStoredValue('hasPlayed');
                     this.activeSlot = 'slot1';
-                    alert('All saves deleted.');
+                    alert(this._label('save.success.deletedAll', 'All saves deleted.'));
 	                    if (document.getElementById('save-manager')?.classList.contains('active')) {
 	                        this.renderSaveManager();
 	                    }
 	                    location.reload();
 	                } catch (e) {
-	                    alert('Delete saves failed: ' + e.message);
+	                    alert(this._label('save.error.deleteAllFailed', 'Delete saves failed: {message}', { message: e.message }));
 	                }
             },
             selectEncounterPreference(val) { this.selectedEncounterPreference = val; },

@@ -321,6 +321,23 @@
             opacity: 0.4;
         }
 
+        .map-visual {
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        .map-visual-road,
+        .map-visual-bridge {
+            border-color: rgba(255, 184, 0, 0.45);
+        }
+
+        .map-visual-poi,
+        .map-visual-structure,
+        .map-visual-landmark {
+            box-shadow: inset 0 0 0 1px rgba(255, 184, 0, 0.25);
+        }
+
         .map-tile.has-enemy::after {
             content: '⚔️';
             position: absolute;
@@ -429,6 +446,11 @@
             border-color: var(--accent-warning);
             color: var(--accent-warning);
             box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.25);
+        }
+
+        .large-map-tile.map-visual-road,
+        .large-map-tile.map-visual-bridge {
+            border-color: rgba(255, 184, 0, 0.5);
         }
 
         .large-map-pois {
@@ -3560,6 +3582,57 @@ const WorldGen = (() => {
                 loot: { label: 'Loot', icon: '🎒' },
                 heal: { label: 'Heal', icon: '💚' },
                 mod: { label: 'Mod', icon: '🧩' }
+            },
+            MAP_TILESET_KEYS: {
+                biomes: {
+                    grove: 'terrain-grove',
+                    forest: 'terrain-forest',
+                    plains: 'terrain-plains',
+                    swamp: 'terrain-swamp',
+                    jungle: 'terrain-jungle',
+                    cliff: 'terrain-cliff',
+                    water: 'terrain-water',
+                    beach: 'terrain-beach',
+                    cave: 'terrain-cave',
+                    dungeon: 'terrain-dungeon',
+                    manor: 'terrain-manor',
+                    farm: 'terrain-farm',
+                    indoors: 'terrain-indoors',
+                    entrance: 'terrain-entrance'
+                },
+                roads: {
+                    'east-west': 'route-road-horizontal',
+                    'north-south': 'route-road-vertical',
+                    corner: 'route-road-corner',
+                    intersection: 'route-road-intersection'
+                },
+                bridges: {
+                    'east-west': 'route-bridge-horizontal',
+                    'north-south': 'route-bridge-vertical'
+                },
+                poi: {
+                    settlement: 'poi-settlement',
+                    restSite: 'poi-rest-site',
+                    resourceSite: 'poi-resource-site',
+                    dangerSite: 'poi-danger-site',
+                    landmark: 'poi-landmark',
+                    structure: 'poi-structure'
+                },
+                structures: {
+                    camp: 'structure-camp',
+                    spring: 'structure-spring',
+                    cabin: 'structure-cabin',
+                    hut: 'structure-hut',
+                    farm: 'structure-farm',
+                    cave: 'structure-cave-mouth',
+                    ruins: 'structure-ruins',
+                    shrine: 'structure-shrine',
+                    pond: 'structure-pond',
+                    tree: 'structure-great-tree',
+                    burrow: 'structure-burrow',
+                    nest: 'structure-nest',
+                    web: 'structure-web'
+                }
             },
             SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
             NOCTURNAL_SPECIES: ['bat', 'rat'],
@@ -9960,6 +10033,83 @@ const WorldGen = (() => {
                 }
                 return '';
             },
+            _mapTileVisual(tile, options = {}) {
+                const known = Boolean(tile);
+                if (!known) {
+                    return {
+                        icon: '·',
+                        tilesetKey: 'unknown',
+                        baseTilesetKey: 'unknown',
+                        kind: 'unknown',
+                        classes: 'map-visual-unknown',
+                        label: options.label || 'Unknown',
+                        marker: null,
+                        hasPaintedAsset: false
+                    };
+                }
+                const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
+                const baseBiomeId = tile.derivedBiome || tile.baseBiome || tile.biome || biomeId;
+                const biome = this.biomes[biomeId] || this.biomes[baseBiomeId] || {};
+                const baseTilesetKey = this.MAP_TILESET_KEYS.biomes[baseBiomeId] || `terrain-${baseBiomeId}`;
+                let icon = biome.icon || '□';
+                let tilesetKey = baseTilesetKey;
+                let kind = 'biome';
+                const classes = ['map-visual', `map-visual-${baseBiomeId}`];
+                if (tile.overlays?.bridge) {
+                    const direction = tile.overlays.bridge.direction || tile.overlays.road?.direction || 'east-west';
+                    tilesetKey = this.MAP_TILESET_KEYS.bridges[direction] || 'route-bridge-horizontal';
+                    icon = '🌉';
+                    kind = 'bridge';
+                    classes.push('map-visual-bridge');
+                } else if (tile.overlays?.road) {
+                    const direction = tile.overlays.road.direction || 'east-west';
+                    tilesetKey = this.MAP_TILESET_KEYS.roads[direction] || 'route-road-horizontal';
+                    icon = '🛤️';
+                    kind = 'road';
+                    classes.push('map-visual-road');
+                } else if (tile.overlays?.poi) {
+                    const category = tile.overlays.poi.category || 'landmark';
+                    tilesetKey = this.MAP_TILESET_KEYS.poi[category] || 'poi-landmark';
+                    icon = '◆';
+                    kind = 'poi';
+                    classes.push('map-visual-poi');
+                }
+                if (tile.structure) {
+                    tilesetKey = this.MAP_TILESET_KEYS.structures[tile.structure] || tilesetKey;
+                    const structure = this.STRUCTURES[tile.structure];
+                    icon = structure?.icon || icon;
+                    kind = 'structure';
+                    classes.push('map-visual-structure');
+                } else if (tile.hasLandmark) {
+                    tilesetKey = 'poi-landmark';
+                    kind = 'landmark';
+                    classes.push('map-visual-landmark');
+                }
+                if (options.questMarker) {
+                    icon = '◆';
+                    classes.push('map-visual-quest');
+                }
+                if (options.isCurrent) {
+                    icon = '●';
+                    classes.push('map-visual-current');
+                }
+                return {
+                    icon,
+                    tilesetKey,
+                    baseTilesetKey,
+                    kind,
+                    classes: classes.join(' '),
+                    label: biome.name || biomeId,
+                    marker: options.questMarker || options.poi || null,
+                    hasPaintedAsset: false
+                };
+            },
+            _mapTileAttrs(visual) {
+                const key = this._escapeHtml(visual?.tilesetKey || 'unknown');
+                const base = this._escapeHtml(visual?.baseTilesetKey || key);
+                const kind = this._escapeHtml(visual?.kind || 'unknown');
+                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"`;
+            },
 
             setLargeMapZoom(delta) {
                 const current = this.largeMapRadius || 8;
@@ -10008,19 +10158,19 @@ const WorldGen = (() => {
                         const y = cy + dy;
                         const isCurrent = x === this.location.x && y === this.location.y;
                         const tile = this._resolveLargeMapTile(x, y);
-                        const biome = tile ? this.biomes[tile.displayBiome || tile.biome] || this.biomes[tile.biome] : null;
                         const poi = this._largeMapPoiLabel(tile);
                         const questMarker = this._largeMapQuestMarker(x, y);
+                        const visual = this._mapTileVisual(tile, { isCurrent, questMarker, poi });
                         let classes = 'large-map-tile';
                         if (tile) classes += ' known';
                         if (isCurrent) classes += ' current';
                         if (poi) classes += ' poi';
                         if (questMarker) classes += ' quest';
-                        const label = tile && biome ? `${biome.name} (${x}, ${y})` : `Unknown (${x}, ${y})`;
+                        if (visual.classes) classes += ` ${visual.classes}`;
+                        const label = tile ? `${visual.label} (${x}, ${y})` : `Unknown (${x}, ${y})`;
                         const markerLabel = questMarker || poi;
-                        const content = isCurrent ? '●' : (questMarker ? '◆' : (tile?.overlays?.bridge ? '🌉' : (tile?.overlays?.road ? '🛤️' : (tile?.overlays?.poi ? '◆' : (biome ? biome.icon : '·')))));
-                        html += `<div class="${classes}" title="${this._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${this._escapeHtml(label)}">${content}</div>`;
-                        if (poi) points.push({ x, y, biome: biome?.name || 'Known area', poi });
+                        html += `<div class="${classes}" ${this._mapTileAttrs(visual)} title="${this._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${this._escapeHtml(label)}">${this._escapeHtml(visual.icon)}</div>`;
+                        if (poi) points.push({ x, y, biome: visual.label || 'Known area', poi });
                         if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
                     }
                     html += '</div>';
@@ -10138,19 +10288,19 @@ const WorldGen = (() => {
                         const isAdjacent = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
                         const isVisible = Math.abs(dx) <= visibilityRadius && Math.abs(dy) <= visibilityRadius;
                         const tile = (isVisible && (isExplored || isAdjacent)) ? this.getTile(tx, ty) : null;
-                        const biome = tile ? this.biomes[tile.displayBiome || tile.biome] || this.biomes[tile.biome] : null;
+                        const visual = this._mapTileVisual(tile, { isCurrent: false });
                         const hasCreatures = tile && tile.creatures && tile.creatures.length > 0;
-                        let content = tile ? (tile.overlays?.bridge ? '🌉' : (tile.overlays?.road ? '🛤️' : (tile.overlays?.poi ? '◆' : (biome ? biome.icon : '?')))) : '·';
                         let classes = 'map-tile';
                         if (isCenter) classes += ' center';
                         else if (!isVisible) classes += ' far';
                         else if (isExplored) classes += ' explored';
                         else if (isAdjacent) classes += ' moveable';
                         else classes += ' far';
+                        if (visual.classes) classes += ` ${visual.classes}`;
                         if (hasCreatures) classes += ' has-enemy';
                         const onclick = isCenter ? '' : (isAdjacent ? `onclick="App.move(${dx},${dy})"` : '');
-                        const title = biome ? `${biome.name} (${tx}, ${ty})` : `${tx}, ${ty}`;
-                        html += `<div class="${classes}" title="${title}" aria-label="${title}" ${onclick}>${content}</div>`;
+                        const title = tile ? `${visual.label} (${tx}, ${ty})` : `${tx}, ${ty}`;
+                        html += `<div class="${classes}" ${this._mapTileAttrs(visual)} title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" ${onclick}>${this._escapeHtml(visual.icon)}</div>`;
 	                    }
 	                    html += '</div>';
 	                }

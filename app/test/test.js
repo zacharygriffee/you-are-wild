@@ -2857,6 +2857,75 @@ test('Minimap resolves adjacent tile biomes without exploring them', () => {
   assertContains(elements.get('mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
 });
 
+test('Map tile visuals expose tileset keys while preserving base biome identity', () => {
+  const { App, elements } = loadAppForCombat();
+  const forestRoad = {
+    x: 0,
+    y: 0,
+    biome: 'forest',
+    baseBiome: 'forest',
+    derivedBiome: 'forest',
+    displayBiome: 'road',
+    explored: true,
+    creatures: [],
+    overlays: { road: { id: 'road-test', direction: 'north-south' } }
+  };
+  const waterBridge = {
+    x: 1,
+    y: 0,
+    biome: 'water',
+    baseBiome: 'water',
+    derivedBiome: 'water',
+    displayBiome: 'bridge',
+    water: true,
+    explored: true,
+    creatures: [],
+    overlays: {
+      road: { id: 'road-test', direction: 'east-west' },
+      bridge: { id: 'bridge-test', direction: 'east-west', roadId: 'road-test' }
+    }
+  };
+  const campTile = {
+    x: 0,
+    y: 1,
+    biome: 'grove',
+    baseBiome: 'grove',
+    derivedBiome: 'grove',
+    displayBiome: 'grove',
+    explored: true,
+    creatures: [],
+    structure: 'camp',
+    overlays: {}
+  };
+
+  const roadVisual = App._mapTileVisual(forestRoad);
+  const bridgeVisual = App._mapTileVisual(waterBridge);
+  const campVisual = App._mapTileVisual(campTile);
+  assertEqual(roadVisual.tilesetKey, 'route-road-vertical', 'Road visual should expose a direction-specific tileset key');
+  assertEqual(roadVisual.baseTilesetKey, 'terrain-forest', 'Road visual should preserve forest base terrain key');
+  assertEqual(forestRoad.biome, 'forest', 'Visual mapping should not replace the base biome with road');
+  assertEqual(bridgeVisual.tilesetKey, 'route-bridge-horizontal', 'Bridge visual should expose a direction-specific tileset key');
+  assertEqual(bridgeVisual.baseTilesetKey, 'terrain-water', 'Bridge visual should preserve water base terrain key');
+  assertEqual(campVisual.tilesetKey, 'structure-camp', 'Known structures should expose structure tileset keys');
+  assertEqual(App._mapTileVisual(null).tilesetKey, 'unknown', 'Unknown tiles should expose a stable unknown key');
+
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', forestRoad],
+    ['1,0', waterBridge],
+    ['0,1', campTile]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0', '0,1']);
+  App.renderMap();
+  App.renderLargeMap();
+  assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-vertical"', 'Minimap should render route tileset keys');
+  assertContains(elements.get('mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Minimap should render base terrain tileset keys');
+  assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
+  assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
+});
+
 test('Super-patch generation uses seeded region biomes only', () => {
   const { App } = loadAppForCombat();
   App.worldMeta = { worldId: 'world-a', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };

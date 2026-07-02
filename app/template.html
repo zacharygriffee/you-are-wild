@@ -320,6 +320,23 @@
             opacity: 0.4;
         }
 
+        .map-visual {
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        .map-visual-road,
+        .map-visual-bridge {
+            border-color: rgba(255, 184, 0, 0.45);
+        }
+
+        .map-visual-poi,
+        .map-visual-structure,
+        .map-visual-landmark {
+            box-shadow: inset 0 0 0 1px rgba(255, 184, 0, 0.25);
+        }
+
         .map-tile.has-enemy::after {
             content: '⚔️';
             position: absolute;
@@ -428,6 +445,11 @@
             border-color: var(--accent-warning);
             color: var(--accent-warning);
             box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.25);
+        }
+
+        .large-map-tile.map-visual-road,
+        .large-map-tile.map-visual-bridge {
+            border-color: rgba(255, 184, 0, 0.5);
         }
 
         .large-map-pois {

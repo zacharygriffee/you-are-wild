@@ -2500,7 +2500,9 @@
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.activeActor?.name);
                 let html = '';
                 if (this.cheats.overpowered && this.activeActor?.name === this.player?.name) {
-                    html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" onclick="App.instantWin()">⚡ Instant Win</button>`;
+                    const instantWinLabel = this._escapeHtml(this._label('combat.instantWin', 'Instant Win'));
+                    const instantWinTitle = this._escapeHtml(this._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
+                    html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="App.instantWin()">⚡ ${instantWinLabel}</button>`;
                 }
                 // 6 Primary Actionables: Fight, Flirt, Feast, Fuck, Feed, Flee
                 if (enemies.length > 0) {
@@ -6778,7 +6780,10 @@
             toggleCheat(cheat) {
                 this.cheats[cheat] = !this.cheats[cheat];
                 const isOn = this.cheats[cheat];
-                this.log.push({ text: `Cheat ${cheat}: ${isOn ? 'ON' : 'OFF'}`, type: 'discovery' });
+                this.log.push({ text: this._label('cheat.toggled', 'Cheat {name}: {state}', {
+                    name: cheat,
+                    state: this._label(isOn ? 'cheat.state.on' : 'cheat.state.off', isOn ? 'ON' : 'OFF')
+                }), type: 'discovery' });
                 if (cheat === 'overpowered' && isOn && this.player) {
                     this.player.Figh = 99; this.player.Feas = 99; this.player.Flir = 99;
                     this.player.Fuck = 99; this.player.Flee = 99; this.player.Feed = 99;
@@ -6786,7 +6791,7 @@
                     this.player.int = 99; this.player.wis = 99; this.player.cha = 99;
                     this.player.MPun = 999; this.player.CPun = 999;
                     this.player.MPle = 999; this.player.CPle = 999;
-                    this.log.push({ text: 'Overpowered! All stats maxed.', type: 'discovery' });
+                    this.log.push({ text: this._label('cheat.overpoweredMaxed', 'Overpowered! All stats maxed.'), type: 'discovery' });
                     this.renderParty();
                 }
                 this.renderLog();
@@ -6812,16 +6817,16 @@
             },
             instantWin() {
                 if (!this.combatState.active) {
-                    this.log.push({ text: 'Not in combat! Instant Win only works during combat.', type: 'combat' });
+                    this.log.push({ text: this._label('combat.instantWinNotInCombat', 'Not in combat! Instant Win only works during combat.'), type: 'combat' });
                     this.renderLog();
                     return;
                 }
                 if (!this.cheats.overpowered) {
-                    this.log.push({ text: 'Instant Win requires Overpowered mode.', type: 'combat' });
+                    this.log.push({ text: this._label('combat.instantWinRequiresOverpowered', 'Instant Win requires Overpowered mode.'), type: 'combat' });
                     this.renderLog();
                     return;
                 }
-                this.log.push({ text: '⚡ INSTANT WIN! All enemies are defeated.', type: 'combat' });
+                this.log.push({ text: `⚡ ${this._label('combat.instantWinSuccess', 'Instant Win! All enemies are defeated.')}`, type: 'combat' });
                 this.renderLog();
                 this.creatures.forEach(c => { if (c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c)) this._makeCorpse(c, 'fight'); });
                 this._emitCombatAction('instant_win', this.player, null, 'success');

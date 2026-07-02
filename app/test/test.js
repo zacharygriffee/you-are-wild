@@ -377,6 +377,8 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'action.inspect': 'Inspeccionar'", 'Spanish inspect label missing');
   assertContains(contentContent, "'ui.creatureActions': 'Creature actions'", 'English creature action label missing');
   assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
+  assertContains(contentContent, "'ui.partyActions': 'Party actions'", 'English party action label missing');
+  assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
 });
 
 // === TEMPLATE TESTS ===
@@ -3328,6 +3330,46 @@ test('Mobile creature chips expose long-press context handlers', () => {
   const html = App.renderMobileUnitChip(creature, 0, 'creature');
   assertContains(html, "startMobileCreaturePress(event,'friendly-1')", 'Mobile creature chip should start long-press detection');
   assertContains(html, 'cancelMobileCreaturePress()', 'Mobile creature chip should cancel long-press on movement/end');
+});
+
+test('Mobile party chips expose long-press management handlers', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You');
+  const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'guard' });
+  App.player = player;
+  App.party = [player, ally];
+  const html = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(html, 'startMobilePartyPress(event,1)', 'Mobile party chip should start long-press management');
+  assertContains(html, 'cancelMobilePartyPress()', 'Mobile party chip should cancel long-press on movement/end');
+  assertContains(html, 'Ally - Guard', 'Mobile party chip should summarize assigned role');
+});
+
+test('Mobile party long-press menu exposes management actions', () => {
+  const { App, body, document } = loadAppForCombat(() => 0, { confirm: true });
+  const opener = makeElement();
+  document.activeElement = opener;
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'support', aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, ally];
+  App.partyLeaderId = 'player-1';
+  App.showMobilePartyContext(1);
+  assertContains(body.innerHTML, 'role="dialog"', 'Party long-press menu should expose dialog semantics');
+  assertContains(body.innerHTML, 'aria-modal="true"', 'Party long-press menu should behave as a modal action menu');
+  assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
+  assertContains(body.innerHTML, 'Stats', 'Party menu should expose stats');
+  assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
+  assertContains(body.innerHTML, 'Party role for Ally', 'Party menu should expose role selector');
+  assertContains(body.innerHTML, 'AI order for Ally', 'Party menu should expose AI selector');
+  assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
+  App.mobilePartyContextAction('lead', 1);
+  assertEqual(App._getPartyLeader(), ally, 'Party menu leader action should update leader');
+  App.showMobilePartyContext(1);
+  App.mobilePartyContextAction('stats', 1);
+  assertContains(document.getElementById('scene-description').innerHTML, 'Ally', 'Party menu stats action should open ally stats');
+  App.showMobilePartyContext(1);
+  App.mobilePartyContextAction('close', 1);
+  assertEqual(opener.focused, true, 'Closing party long-press menu should restore focus to opener');
 });
 
 test('Mobile creature long-press menu exposes core actions', () => {

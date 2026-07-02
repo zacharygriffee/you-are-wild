@@ -1372,6 +1372,25 @@
                 min-width: 58px;
             }
 
+            .mobile-context-menu-actions .action-btn.danger {
+                color: var(--accent-danger);
+            }
+
+            .mobile-context-field {
+                flex: 1 1 100%;
+                display: grid;
+                grid-template-columns: 72px minmax(0, 1fr);
+                gap: 8px;
+                align-items: center;
+                color: var(--text-muted);
+                font-size: 12px;
+            }
+
+            .mobile-context-field .nav-btn {
+                width: 100%;
+                min-width: 0;
+            }
+
             #mobile-mini-map {
                 transform-origin: center;
                 transition: transform 0.12s ease;

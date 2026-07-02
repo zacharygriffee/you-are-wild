@@ -1373,6 +1373,25 @@
                 min-width: 58px;
             }
 
+            .mobile-context-menu-actions .action-btn.danger {
+                color: var(--accent-danger);
+            }
+
+            .mobile-context-field {
+                flex: 1 1 100%;
+                display: grid;
+                grid-template-columns: 72px minmax(0, 1fr);
+                gap: 8px;
+                align-items: center;
+                color: var(--text-muted);
+                font-size: 12px;
+            }
+
+            .mobile-context-field .nav-btn {
+                width: 100%;
+                min-width: 0;
+            }
+
             #mobile-mini-map {
                 transform-origin: center;
                 transition: transform 0.12s ease;
@@ -7988,7 +8007,9 @@
                 const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
-                const pressHandlers = !isParty ? ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"` : '';
+                const pressHandlers = isParty
+                    ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
+                    : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
                     <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span>${turnBadge}</div>
                     ${combatStatus}
@@ -9080,10 +9101,57 @@
                 if (this._mobilePressTimer) clearTimeout(this._mobilePressTimer);
                 this._mobilePressTimer = null;
             },
+            startMobilePartyPress(e, index) {
+                this.cancelMobilePartyPress();
+                this._mobilePartyPressIndex = index;
+                this._mobilePartyPressTimer = setTimeout(() => {
+                    this._haptic([12, 20, 12]);
+                    this.showMobilePartyContext(index);
+                }, 500);
+            },
+            cancelMobilePartyPress() {
+                if (this._mobilePartyPressTimer) clearTimeout(this._mobilePartyPressTimer);
+                this._mobilePartyPressTimer = null;
+            },
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');
                 if (menu) menu.remove();
                 this._restoreFocusTrap();
+            },
+            showMobilePartyContext(index) {
+                const unit = this.party[index];
+                if (!unit) return;
+                this.closeMobileContextMenu();
+                const unitLabel = this._escapeHtml(unit.name || 'party member');
+                const role = this._getPartyRole(unit);
+                const order = this._getPartyAIOrder(unit);
+                const actionButton = (label, action, extraClass = '') => `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${this._escapeHtml(label)}</button>`;
+                const roleOptions = Object.entries(this.PARTY_ROLES).map(([key, label]) => `<option value="${key}" ${role === key ? 'selected' : ''}>${label}</option>`).join('');
+                const orderOptions = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
+                const menuLabel = this._label('ui.partyActions', 'Party actions');
+                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                html += actionButton('Stats', 'stats');
+                if (unit !== this.player && !unit.mc) {
+                    if (this._getPartyLeader() !== unit) html += actionButton('Make Leader', 'lead');
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>Role</span><select class="nav-btn" aria-label="Party role for ${unitLabel}" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>AI Order</span><select class="nav-btn" aria-label="AI order for ${unitLabel}" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${orderOptions}</select></label>`;
+                    html += actionButton('Dismiss', 'dismiss', ' danger');
+                }
+                html += actionButton(this._label('ui.close', 'Close'), 'close');
+                html += '</div></div>';
+                document.body.insertAdjacentHTML('beforeend', html);
+                this._activateFocusTrap(document.getElementById('mobile-context-menu'), { close: () => this.closeMobileContextMenu() });
+            },
+            mobilePartyContextAction(action, index) {
+                this._haptic(8);
+                if (action === 'close') {
+                    this.closeMobileContextMenu();
+                    return;
+                }
+                this.closeMobileContextMenu();
+                if (action === 'stats') return this.showPartyMemberStats(index);
+                if (action === 'lead') return this.setPartyLeader(index);
+                if (action === 'dismiss') return this.dismissPartyMember(index);
             },
             showMobileCreatureContext(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
@@ -10053,6 +10121,7 @@ const CONTENT_SYSTEM = {
             'action.enemies': 'Enemies',
             'ui.close': 'Close',
             'ui.creatureActions': 'Creature actions',
+            'ui.partyActions': 'Party actions',
             'target.actors': 'Actors',
             'target.targets': 'Targets',
             'target.clear': 'Clear',
@@ -10086,6 +10155,7 @@ const CONTENT_SYSTEM = {
             'action.enemies': 'Enemigos',
             'ui.close': 'Cerrar',
             'ui.creatureActions': 'Acciones de criatura',
+            'ui.partyActions': 'Acciones del grupo',
             'target.actors': 'Actores',
             'target.targets': 'Objetivos',
             'target.clear': 'Limpiar',

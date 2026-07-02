@@ -4032,6 +4032,24 @@ test('Player card and character stats use the same live display stats', () => {
   assertContains(statsHtml, 'STR: 14', 'Character stats should ignore stale nested stats when live attributes exist');
 });
 
+test('Player stats view converges on party player when references drift', () => {
+  const { App, elements } = loadAppForCombat();
+  const stalePlayer = makeUnit('You', { id: 'player-1', CPun: 5, MPun: 100, Figh: 5, str: 5 });
+  const livePartyPlayer = makeUnit('You', { id: 'player-1', CPun: 80, MPun: 120, Figh: 30, str: 16, expanded: true });
+  App.player = stalePlayer;
+  App.party = [livePartyPlayer];
+  App.renderParty();
+  App.showCharacterStats();
+  const cardHtml = elements.get('party-content').innerHTML;
+  const statsHtml = elements.get('scene-description').innerHTML;
+  assertEqual(App.player, livePartyPlayer, 'Player reference should converge on the canonical party member');
+  assertContains(cardHtml, 'Pun:80/120', 'Party card should render the live party player stats');
+  assertContains(statsHtml, '80/120', 'Character stats should render the same live punishment value');
+  assertContains(statsHtml, 'Figh: 30', 'Character stats should render the same live combat value');
+  assertContains(statsHtml, 'STR: 16', 'Character stats should render the same live attribute value');
+  assertNotContains(statsHtml, '5/100', 'Character stats should not render stale duplicate player vitals');
+});
+
 test('Inventory action labels localize with accessible names', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You', {

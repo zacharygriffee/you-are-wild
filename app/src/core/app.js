@@ -3611,6 +3611,33 @@
             _unitSelectionId(unit) {
                 return String(unit?.id || unit?.name || '');
             },
+            _syncPlayerPartyReference() {
+                if (!this.player) return null;
+                if (!Array.isArray(this.party)) this.party = [];
+                const playerId = this._unitSelectionId(this.player);
+                let partyPlayer = this.party.find(unit => unit === this.player);
+                if (!partyPlayer && playerId) partyPlayer = this.party.find(unit => this._unitSelectionId(unit) === playerId);
+                if (!partyPlayer) partyPlayer = this.party.find(unit => unit?.mc || unit?.hero);
+                if (!partyPlayer) {
+                    partyPlayer = this.player;
+                    this.party.unshift(partyPlayer);
+                }
+                if (partyPlayer !== this.player) this.player = partyPlayer;
+                const index = this.party.indexOf(partyPlayer);
+                if (index > 0) {
+                    this.party.splice(index, 1);
+                    this.party.unshift(partyPlayer);
+                }
+                partyPlayer.hero = true;
+                partyPlayer.mc = true;
+                partyPlayer.ally = false;
+                if (!this.partyLeaderId) this.partyLeaderId = this._unitSelectionId(partyPlayer);
+                if (!this.explorationActorIds || this.explorationActorIds.length === 0) {
+                    this.explorationActorIds = [this._unitSelectionId(partyPlayer)];
+                    this.explorationActorId = this.explorationActorIds[0];
+                }
+                return partyPlayer;
+            },
             _getExplorationActors(actorId = null) {
                 if (actorId) {
                     const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
@@ -5668,6 +5695,7 @@
 
             // ===== RENDERING =====
             renderParty() {
+                this._syncPlayerPartyReference();
                 const container = document.getElementById('party-content');
                 if (container) container.innerHTML = this.party.map((unit, i) => this.renderUnitCard(unit, i, 'party')).join('');
                 this.renderMobilePartyStrip();
@@ -6526,7 +6554,7 @@
             },
             showCharacterStats() {
                 if (!this.player) return;
-                const p = this.player;
+                const p = this._syncPlayerPartyReference() || this.player;
                 const stats = this._unitDisplayStats(p);
                 const pendingCount = p.pendingPerkChoices || 0;
                 const choosePerkLabel = this._escapeHtml(this._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
@@ -7077,6 +7105,7 @@
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
                 try {
+                    this._syncPlayerPartyReference();
                     this.persistAllTileDeltas();
                     let worldStoreSaved = false;
                     try {
@@ -7098,6 +7127,7 @@
                 const saveTime = this._getSaveTime(slotName);
                 if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm(this._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotName }))) return;
                 try {
+                    this._syncPlayerPartyReference();
                     this.persistAllTileDeltas();
                     let worldStoreSaved = false;
                     try {

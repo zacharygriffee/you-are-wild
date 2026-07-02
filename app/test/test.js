@@ -2636,8 +2636,12 @@ test('Quest log previews routes and can focus the large map on a checkpoint', ()
   })];
   App.showQuestLog();
   let html = elements.get('scene-description').innerHTML;
-  assertContains(html, 'Old Road (4, 0)', 'Quest log should preview the next route checkpoint');
-  assertContains(html, 'Safe Camp (6, 0)', 'Quest log should preview later route checkpoints');
+  assertContains(html, 'quest-route-preview', 'Quest log should render route preview container');
+  assertContains(html, 'quest-route-step current', 'Quest log should mark the next checkpoint as current');
+  assertContains(html, 'quest-route-step pending', 'Quest log should mark later checkpoints as pending');
+  assertContains(html, 'Current checkpoint 1: Old Road at 4, 0', 'Route preview should describe the current checkpoint for assistive tech');
+  assertContains(html, 'Old Road</span><span style="margin-left:auto;color:var(--text-muted);">(4, 0)', 'Quest log should preview the next route checkpoint');
+  assertContains(html, 'Safe Camp</span><span style="margin-left:auto;color:var(--text-muted);">(6, 0)', 'Quest log should preview later route checkpoints');
   assertContains(html, 'Show On Map', 'Quest log should expose a map focus action');
   const focused = App.focusQuestOnMap('escort_route', App.quests[0].objectives[0].id);
   assertEqual(focused, true, 'Focus action should succeed for route checkpoint');
@@ -2646,6 +2650,12 @@ test('Quest log previews routes and can focus the large map on a checkpoint', ()
   assertContains(elements.get('large-map').innerHTML, 'Escort Route: Old Road', 'Focused large map should show quest marker label');
   assertContains(elements.get('large-map-view').textContent, '4, 0', 'View label should reflect focused checkpoint center');
   assertEqual(App.worldMap.has('4,0'), false, 'Focusing a quest marker should not materialize unknown tiles');
+  App.quests[0].objectives[0].checkpoints[0].complete = true;
+  App.quests[0].objectives[0].progress = 1;
+  App.showQuestLog();
+  html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'quest-route-step complete', 'Quest log should mark finished checkpoints as complete');
+  assertContains(html, 'Current checkpoint 2: Safe Camp at 6, 0', 'Quest log should advance current route guidance');
 });
 
 test('Quest state persists through binary saves', () => {

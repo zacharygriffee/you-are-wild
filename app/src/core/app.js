@@ -4954,11 +4954,17 @@
 
             _questRoutePreviewText(objective) {
                 if (!Array.isArray(objective?.checkpoints) || objective.checkpoints.length === 0) return '';
-                return objective.checkpoints.map(checkpoint => {
-                    const marker = checkpoint.complete ? '✓' : '•';
+                const next = this._nextQuestCheckpoint(objective);
+                return objective.checkpoints.map((checkpoint, index) => {
+                    const state = checkpoint.complete ? 'complete' : (next === checkpoint ? 'current' : 'pending');
+                    const marker = state === 'complete' ? '✓' : (state === 'current' ? '→' : '•');
                     const label = checkpoint.label || 'Checkpoint';
-                    return `${marker} ${this._escapeHtml(label)} (${checkpoint.x}, ${checkpoint.y})`;
-                }).join('<br>');
+                    const stateLabel = state === 'complete' ? 'Complete' : (state === 'current' ? 'Current' : 'Pending');
+                    const bg = state === 'current' ? 'var(--bg-elevated)' : 'transparent';
+                    const border = state === 'current' ? 'var(--accent-primary)' : (state === 'complete' ? 'var(--accent-success)' : 'var(--border-subtle)');
+                    const color = state === 'complete' ? 'var(--accent-success)' : (state === 'current' ? 'var(--text-primary)' : 'var(--text-muted)');
+                    return `<div class="quest-route-step ${state}" aria-label="${stateLabel} checkpoint ${index + 1}: ${this._escapeHtml(label)} at ${checkpoint.x}, ${checkpoint.y}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span><span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
+                }).join('');
             },
 
             focusQuestOnMap(questId, objectiveId) {
@@ -5044,7 +5050,7 @@
                         const routePreview = this._questRoutePreviewText(objective);
                         const marker = this._nextQuestObjectiveMarker(objective);
                         if (!routePreview && !marker) continue;
-                        html += `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
+                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
                         if (marker && quest.status === 'active') html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">Show On Map</button>`;
                     }
                     if (needsTurnIn) html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">Turn In</button>`;

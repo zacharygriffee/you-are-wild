@@ -9895,9 +9895,11 @@ const WorldGen = (() => {
                 const card = document.getElementById('mobile-creature-card');
                 if (!strip) return;
                 const living = this.creatures.filter(c => c.CPun > 0 && !this._isCorpse(c));
-                if (card) card.style.display = living.length > 0 || this.combatState.active ? 'block' : 'none';
-                strip.innerHTML = living.length > 0
-                    ? living.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
+                const corpses = this.creatures.filter(c => this._isCorpse(c));
+                const visible = [...living, ...corpses];
+                if (card) card.style.display = visible.length > 0 || this.combatState.active ? 'block' : 'none';
+                strip.innerHTML = visible.length > 0
+                    ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
                     : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
             },
             _unitBarPercent(current, max) {
@@ -10000,6 +10002,7 @@ const WorldGen = (() => {
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
                 const isParty = type === 'party';
+                const isCorpse = !isParty && this._isCorpse(unit);
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
                 const rawTargetId = this._unitSelectionId(unit);
                 const targetSelected = this._isExplorationTarget(type, rawTargetId);
@@ -10013,6 +10016,10 @@ const WorldGen = (() => {
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = targetSelected ? ' primary' : '';
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+                }
+                if (isCorpse) {
+                    const menuLabel = this._label('ui.creatureActions', 'Creature actions');
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', this._uiLabel('loot'), `${this._uiLabel('loot')} ${unitName}`, `event.stopPropagation();App.lootCorpse('${targetKey}')`)}${chipButton('action-btn', this._uiLabel('scavenge'), `${this._uiLabel('scavenge')} ${unitName}`, `event.stopPropagation();App.scavengeCorpse('${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}</div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
@@ -10041,7 +10048,7 @@ const WorldGen = (() => {
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
                 const canOpenIntentMenu = isParty
                     ? !this.combatState.active
-                    : unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
+                    : isCorpse || (unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY));
                 const contextMenuAttr = canOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
                     : '';
@@ -10057,7 +10064,7 @@ const WorldGen = (() => {
                 const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${this._unitSelectionClass(unit, type)}`;
                 const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
                 return `<div class="${chipClass}" role="button" tabindex="0" onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
-                    <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
+                    <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
                     ${this._unitTacticalBars(unit, { compact: true })}
@@ -11760,7 +11767,7 @@ const WorldGen = (() => {
             },
             showMobileCreatureContext(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target || this._isCorpse(target)) return;
+                if (!target) return;
                 return this.showRadialIntentMenu('creature', targetId, 'longpress');
             },
             mobileCreatureContextAction(action, targetId) {

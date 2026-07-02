@@ -1573,6 +1573,28 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
 });
 
+test('Mobile creature strip keeps corpse interactions reachable', () => {
+  const { App, elements, body } = loadAppForCombat();
+  const corpse = makeUnit('Fallen', { id: 'fallen-mobile', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [corpse];
+  App.renderMobileCreatureStrip();
+  const card = elements.get('mobile-creature-card');
+  const html = elements.get('mobile-creature-strip').innerHTML;
+  assertEqual(card.style.display, 'block', 'Corpse-only mobile creature panel should remain visible');
+  assertContains(html, "lootCorpse('fallen-mobile')", 'Mobile corpse chip should expose loot');
+  assertContains(html, "scavengeCorpse('fallen-mobile')", 'Mobile corpse chip should expose scavenge');
+  assertContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should expose shared intent menu');
+  assertContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should expose secondary-click radial menu');
+  App.showMobileCreatureContext('fallen-mobile');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should open the radial intent presentation');
+  assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','loot','longpress')", 'Mobile corpse long-press should dispatch loot through shared intent selection');
+  assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','longpress')", 'Mobile corpse long-press should dispatch scavenge through shared intent selection');
+  assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','fallen-mobile','fight'", 'Mobile corpse long-press should not expose living primary action spam');
+  App.closeMobileContextMenu();
+});
+
 test('Corpse card loot actions expose localized accessible labels', () => {
   const { App, elements } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-1', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });

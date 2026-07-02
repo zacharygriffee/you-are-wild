@@ -5398,6 +5398,31 @@ test('Merchant stock refreshes every three in-game days', () => {
   assertEqual(merchant.stockLastRefreshDay, 3, 'Refresh day should update');
 });
 
+test('Default merchant restock quantities are deterministic by world seed and merchant identity', () => {
+  const lowRandom = loadAppForCombat(() => 0);
+  const highRandom = loadAppForCombat(() => 0.99);
+  lowRandom.App.worldMeta = { seed: 'merchant-seed', generatorVersion: 7 };
+  highRandom.App.worldMeta = { seed: 'merchant-seed', generatorVersion: 7 };
+  lowRandom.App.dayCount = 6;
+  highRandom.App.dayCount = 6;
+  const lowMerchant = makeUnit('Road Trader', {
+    id: 'road-trader-1',
+    disposition: lowRandom.App.DISPOSITION.MERCHANT,
+    stock: [],
+    stockLastRefreshDay: 0
+  });
+  const highMerchant = makeUnit('Road Trader', {
+    id: 'road-trader-1',
+    disposition: highRandom.App.DISPOSITION.MERCHANT,
+    stock: [],
+    stockLastRefreshDay: 0
+  });
+  lowRandom.App._refreshMerchantStock(lowMerchant, true);
+  highRandom.App._refreshMerchantStock(highMerchant, true);
+  assertEqual(JSON.stringify(lowMerchant.stock), JSON.stringify(highMerchant.stock), 'Default restock should not depend on ambient Math.random');
+  assertNotContains(lowRandom.App._defaultMerchantStock.toString(), 'Math.random', 'Default merchant stock should not use raw Math.random');
+});
+
 test('Authored merchant stock tables create normalized stock and refresh by table', () => {
   const { App } = loadAppForCombat(() => 0);
   const stock = App._merchantStockFromTable('outfitter');

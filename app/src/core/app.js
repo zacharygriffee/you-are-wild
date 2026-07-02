@@ -5445,10 +5445,26 @@
                 });
             },
 
-            _defaultMerchantStock() {
+            _merchantStockQuantity(merchant, itemName, index, day) {
+                const merchantId = String(merchant?.id || merchant?.name || merchant?.stockTable || 'default');
+                const stockDay = Number.isFinite(Number(day)) ? Number(day) : 0;
+                if (typeof WorldGen !== 'undefined') {
+                    const roll = WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'merchant-default-stock-qty', merchantId, itemName, index, stockDay);
+                    return 1 + Math.floor(roll * 2);
+                }
+                const key = `${this.worldMeta?.seed || 'yaw'}|${this.worldMeta?.generatorVersion || 1}|${merchantId}|${itemName}|${index}|${stockDay}`;
+                let hash = 2166136261;
+                for (let i = 0; i < key.length; i++) {
+                    hash ^= key.charCodeAt(i);
+                    hash = Math.imul(hash, 16777619);
+                }
+                return 1 + ((hash >>> 0) % 2);
+            },
+
+            _defaultMerchantStock(merchant = null, day = this.dayCount || 0) {
                 return ['Healing Herb', 'Old Coin', 'Monster Fang'].map((name, index) => {
                     const def = this.ITEMS[name] || {};
-                    return { id: `default_stock_${index}`, name, price: def.value || 10, qty: 1 + Math.floor(Math.random() * 2) };
+                    return { id: `default_stock_${index}`, name, price: def.value || 10, qty: this._merchantStockQuantity(merchant, name, index, day) };
                 });
             },
 
@@ -5458,7 +5474,7 @@
                 const needsStock = !merchant.stock || merchant.stock.length === 0;
                 const stale = currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= 3;
                 if (force || needsStock || stale) {
-                    merchant.stock = merchant.stockTable ? this._merchantStockFromTable(merchant.stockTable) : this._defaultMerchantStock();
+                    merchant.stock = merchant.stockTable ? this._merchantStockFromTable(merchant.stockTable) : this._defaultMerchantStock(merchant, currentDay);
                     merchant.stockLastRefreshDay = currentDay;
                 } else {
                     merchant.stock = this._normalizeMerchantStock(merchant.stock);

@@ -2705,6 +2705,39 @@ test('Multi-target feed reports when all party targets are already full', () => 
   assertContains(App.log[App.log.length - 1].text, 'Objetivos llenos omitidos: Full A, Full B', 'All skipped full targets should be named with localized label');
 });
 
+test('Direct multi-target party feed preserves explicit sub-action options', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', { id: 'predator-1', size: 6, appetite: 6, Feed: 30 });
+  const preyA = makeUnit('Prey A', { id: 'prey-a', CPun: 100, MPun: 100, size: 2, willingPrey: true });
+  const preyB = makeUnit('Prey B', { id: 'prey-b', CPun: 100, MPun: 100, size: 2, willingPrey: true });
+  App.player = predator;
+  App.party = [predator, preyA, preyB];
+  App.outsideActionForPartyTargets('feed', [1, 2], null, { subAction: 'sacrifice' });
+  assertEqual(predator.stomach.length, 2, 'Direct multi-target party feed should preserve explicit sacrifice sub-action');
+  assertEqual(predator.stomach[0].name, 'Prey A', 'First direct multi-target sacrifice should use the selected prey');
+  assertEqual(predator.stomach[1].name, 'Prey B', 'Second direct multi-target sacrifice should use the selected prey');
+  assertEqual(App.party.includes(preyA), false, 'First sacrificed target should leave the active party');
+  assertEqual(App.party.includes(preyB), false, 'Second sacrificed target should leave the active party');
+  assertContains(App.log[App.log.length - 1].text, 'Prey A, Prey B', 'Direct explicit sub-action summary should name affected targets');
+});
+
+test('Direct multi-target creature feast preserves explicit sub-action options', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', size: 8, appetite: 8, Feas: 50 });
+  const preyA = makeUnit('Prey A', { id: 'prey-a', disposition: App.DISPOSITION.FRIENDLY, CPun: 10, MPun: 100, size: 2, Flee: 1 });
+  const preyB = makeUnit('Prey B', { id: 'prey-b', disposition: App.DISPOSITION.FRIENDLY, CPun: 10, MPun: 100, size: 2, Flee: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [preyA, preyB];
+  App.settings.chewing = true;
+  App.outsideActionForCreatureTargets('feast', ['prey-a', 'prey-b'], null, { subAction: 'chew' });
+  assertEqual(actor.stomach.length, 0, 'Explicit direct chew should not fall back to swallow containment');
+  assertEqual(preyA.alive, false, 'First direct multi-target chew should apply the chew sub-action');
+  assertEqual(preyB.alive, false, 'Second direct multi-target chew should apply the chew sub-action');
+  assertEqual(App.creatures.length, 0, 'Chewed area creatures should leave the active creature list');
+  assertContains(App.log[App.log.length - 1].text, 'Prey A, Prey B', 'Direct explicit feast sub-action summary should name affected targets');
+});
+
 test('Equal actors and marked targets resolve as ordered paired actions', () => {
   const { App } = loadAppForCombat(() => 0);
   const actorA = makeUnit('Actor A', { id: 'actor-a', Flir: 30, cha: 20 });

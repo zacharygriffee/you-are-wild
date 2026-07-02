@@ -5430,30 +5430,50 @@
                 return objective.checkpoints.map((checkpoint, index) => {
                     const state = checkpoint.complete ? 'complete' : (next === checkpoint ? 'current' : 'pending');
                     const marker = state === 'complete' ? '✓' : (state === 'current' ? '→' : '•');
-                    const label = checkpoint.label || 'Checkpoint';
-                    const stateLabel = state === 'complete' ? 'Complete' : (state === 'current' ? 'Current' : 'Pending');
+                    const label = checkpoint.label || this._label('quest.checkpoint', 'Checkpoint');
+                    const stateLabel = this._questCheckpointStateLabel(state);
                     const bg = state === 'current' ? 'var(--bg-elevated)' : 'transparent';
                     const border = state === 'current' ? 'var(--accent-primary)' : (state === 'complete' ? 'var(--accent-success)' : 'var(--border-subtle)');
                     const color = state === 'complete' ? 'var(--accent-success)' : (state === 'current' ? 'var(--text-primary)' : 'var(--text-muted)');
                     const guidance = state === 'current' ? this._questCheckpointGuidance(checkpoint) : '';
                     const guidanceHtml = guidance ? `<span style="color:var(--accent-primary);font-size:10px;">${this._escapeHtml(guidance)}</span>` : '';
                     const ariaGuidance = guidance ? `, ${guidance}` : '';
-                    return `<div class="quest-route-step ${state}" aria-label="${stateLabel} checkpoint ${index + 1}: ${this._escapeHtml(label)} at ${checkpoint.x}, ${checkpoint.y}${this._escapeHtml(ariaGuidance)}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span>${guidanceHtml}<span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
+                    const ariaLabel = this._label('quest.checkpointAria', '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', {
+                        state: stateLabel,
+                        index: index + 1,
+                        label,
+                        x: checkpoint.x,
+                        y: checkpoint.y,
+                        guidance: ariaGuidance
+                    });
+                    return `<div class="quest-route-step ${state}" aria-label="${this._escapeHtml(ariaLabel)}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span>${guidanceHtml}<span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
                 }).join('');
+            },
+
+            _questCheckpointStateLabel(state) {
+                if (state === 'complete') return this._label('quest.checkpoint.complete', 'Complete');
+                if (state === 'current') return this._label('quest.checkpoint.current', 'Current');
+                return this._label('quest.checkpoint.pending', 'Pending');
             },
 
             _questCheckpointGuidance(checkpoint) {
                 const dx = Number(checkpoint?.x ?? 0) - Number(this.location?.x ?? 0);
                 const dy = Number(checkpoint?.y ?? 0) - Number(this.location?.y ?? 0);
                 const distance = Math.abs(dx) + Math.abs(dy);
-                if (distance === 0) return 'You are here';
+                if (distance === 0) return this._label('quest.youAreHere', 'You are here');
                 const directions = [];
-                if (dy < 0) directions.push(`${Math.abs(dy)} north`);
-                if (dy > 0) directions.push(`${Math.abs(dy)} south`);
-                if (dx > 0) directions.push(`${Math.abs(dx)} east`);
-                if (dx < 0) directions.push(`${Math.abs(dx)} west`);
+                if (dy < 0) directions.push(this._label('quest.direction.north', '{count} north', { count: Math.abs(dy) }));
+                if (dy > 0) directions.push(this._label('quest.direction.south', '{count} south', { count: Math.abs(dy) }));
+                if (dx > 0) directions.push(this._label('quest.direction.east', '{count} east', { count: Math.abs(dx) }));
+                if (dx < 0) directions.push(this._label('quest.direction.west', '{count} west', { count: Math.abs(dx) }));
                 const terrain = this._questRouteTerrainHint(checkpoint);
-                return `${distance} step${distance === 1 ? '' : 's'} ${directions.join(', ')}${terrain ? `; ${terrain}` : ''}`;
+                const stepLabel = this._label(distance === 1 ? 'quest.step.singular' : 'quest.step.plural', distance === 1 ? 'step' : 'steps');
+                const guidance = this._label('quest.guidance', '{distance} {stepLabel} {directions}', {
+                    distance,
+                    stepLabel,
+                    directions: directions.join(', ')
+                });
+                return `${guidance}${terrain ? `; ${terrain}` : ''}`;
             },
 
             _questRouteKnownTiles(checkpoint) {
@@ -5491,11 +5511,11 @@
                 const notes = [];
                 if (counts.road || counts.bridge) {
                     const routeParts = [];
-                    if (counts.road) routeParts.push(`${counts.road} road`);
-                    if (counts.bridge) routeParts.push(`${counts.bridge} bridge`);
-                    notes.push(`known route crosses ${routeParts.join(', ')}`);
+                    if (counts.road) routeParts.push(this._label('quest.terrainRoad', '{count} road', { count: counts.road }));
+                    if (counts.bridge) routeParts.push(this._label('quest.terrainBridge', '{count} bridge', { count: counts.bridge }));
+                    notes.push(this._label('quest.terrainKnownRoute', 'known route crosses {parts}', { parts: routeParts.join(', ') }));
                 }
-                if (counts.rough) notes.push(`${counts.rough} rough terrain`);
+                if (counts.rough) notes.push(this._label('quest.terrainRough', '{count} rough terrain', { count: counts.rough }));
                 return notes.join('; ');
             },
 
@@ -5588,6 +5608,22 @@
                 </div>`;
             },
 
+            _questStatusLabel(quest) {
+                const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
+                if (needsTurnIn) return this._label('quest.status.turnIn', 'Turn In');
+                if (quest.status === 'completed') return this._label('quest.status.completed', 'Completed');
+                return this._label('quest.status.active', 'Active');
+            },
+
+            _questMarkerPreview(marker, objective) {
+                const label = marker.label || objective.label || this._questObjectiveLabel(objective);
+                return this._label('quest.markerPreview', 'Marker: {label} ({x}, {y})', { label, x: marker.x, y: marker.y });
+            },
+
+            _questTurnInPreview(marker) {
+                return this._label('quest.turnInPreview', 'Turn in with {label} ({x}, {y})', { label: marker.label, x: marker.x, y: marker.y });
+            },
+
             setQuestFilter(filter) {
                 this.questFilter = ['all', 'active', 'turn-in', 'completed'].includes(filter) ? filter : 'all';
                 this.showQuestLog();
@@ -5617,7 +5653,7 @@
                 html += `<div style="display:grid;gap:12px;margin-top:12px;">`;
                 visibleQuests.forEach(quest => {
                     const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
-                    const status = needsTurnIn ? 'Turn In' : quest.status === 'completed' ? 'Completed' : 'Active';
+                    const status = this._escapeHtml(this._questStatusLabel(quest));
                     html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${this._escapeHtml(quest.title)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
                     if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${this._escapeHtml(quest.description)}</div>`;
                     html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${this._questProgressText(quest)}</div>`;
@@ -5625,7 +5661,7 @@
                         const routePreview = this._questRoutePreviewText(objective);
                         const marker = this._nextQuestObjectiveMarker(objective);
                         if (!routePreview && !marker) continue;
-                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || `Marker: ${this._escapeHtml(marker.label || objective.label || this._questObjectiveLabel(objective))} (${marker.x}, ${marker.y})`}</div>`;
+                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || this._escapeHtml(this._questMarkerPreview(marker, objective))}</div>`;
                         if (marker && quest.status === 'active') {
                             const showMapLabel = this._escapeHtml(this._label('quest.showOnMap', 'Show On Map'));
                             const showMapTitle = this._escapeHtml(this._label('quest.showOnMapFor', 'Show {name} on map', { name: quest.title }));
@@ -5636,7 +5672,7 @@
                         const turnInMarker = this._questTurnInMarker(quest);
                         if (turnInMarker) {
                             const guidance = this._questCheckpointGuidance(turnInMarker);
-                            html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">Turn in with ${this._escapeHtml(turnInMarker.label)} (${turnInMarker.x}, ${turnInMarker.y})${guidance ? ` · ${this._escapeHtml(guidance)}` : ''}</div>`;
+                            html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${this._escapeHtml(this._questTurnInPreview(turnInMarker))}${guidance ? ` · ${this._escapeHtml(guidance)}` : ''}</div>`;
                             const showTurnInLabel = this._escapeHtml(this._label('quest.showTurnIn', 'Show Turn-In'));
                             const showTurnInTitle = this._escapeHtml(this._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: quest.title }));
                             html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;

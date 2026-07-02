@@ -4756,6 +4756,9 @@
                 const merchant = this._findMerchantById(targetId);
                 if (!merchant) return;
                 const gold = this.player.gold || 0;
+                const buyLabel = this._escapeHtml(this._label('trade.buy', 'Buy'));
+                const sellLabel = this._escapeHtml(this._label('trade.sell', 'Sell'));
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
                 let html = `<h3>${merchant.name} Trade</h3><p style="color:var(--text-muted);margin:4px 0 12px;">Gold: ${gold}</p>`;
                 html += this._itemListOptions('Trade', this._unitKey(merchant));
                 html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">Buy</h4><div style="display:grid;gap:8px;">`;
@@ -4766,7 +4769,8 @@
                 stockEntries.forEach(({ item, index }) => {
                     const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
                     const disabled = gold < item.price || item.qty <= 0 || this.inventory.length >= this.MAX_INVENTORY ? ' disabled' : '';
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">Buy</button></div>`;
+                    const buyTitle = this._escapeHtml(this._label('trade.buyItem', 'Buy {name}', { name: item.name }));
+                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${buyTitle}" aria-label="${buyTitle}" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">${buyLabel}</button></div>`;
                 });
                 html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">Sell</h4><div style="display:grid;gap:8px;">`;
                 const sellEntries = this._filterAndSortItemEntries((this.inventory || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
@@ -4778,10 +4782,11 @@
                     sellEntries.forEach(({ item }) => {
                         const def = this.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
                         const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">Sell</button></div>`;
+                        const sellTitle = this._escapeHtml(this._label('trade.sellItem', 'Sell {name}', { name: item.name }));
+                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button></div>`;
                     });
                 }
-                html += `</div><button class="nav-btn" style="margin-top:12px" onclick="App.showExplorationActions()">Back</button>`;
+                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 

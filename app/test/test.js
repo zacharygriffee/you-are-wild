@@ -626,6 +626,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.fuck': 'Fuck', 'action.feast': 'Feast', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit', 'action.acceptQuest': 'Accept Quest', 'action.viewQuest': 'View Quest', 'action.trade': 'Trade', 'action.acceptQuestFrom': 'Accept quest from {name}', 'action.viewQuestFrom': 'View quest from {name}', 'action.tradeWith': 'Trade with {name}', 'action.loot': 'Loot', 'action.scavenge': 'Scavenge',
           'inventory.use': 'Use', 'inventory.equip': 'Equip', 'inventory.drop': 'Drop', 'inventory.unequip': 'Unequip', 'inventory.back': 'Back', 'inventory.useItem': 'Use {name}', 'inventory.equipItem': 'Equip {name}', 'inventory.dropItem': 'Drop {name}', 'inventory.unequipSlot': 'Unequip {slot}',
+          'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}',
           'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
           'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
@@ -636,6 +637,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
           'inventory.use': 'Usar', 'inventory.equip': 'Equipar', 'inventory.drop': 'Soltar', 'inventory.unequip': 'Desequipar', 'inventory.back': 'Volver', 'inventory.useItem': 'Usar {name}', 'inventory.equipItem': 'Equipar {name}', 'inventory.dropItem': 'Soltar {name}', 'inventory.unequipSlot': 'Desequipar {slot}',
+          'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}',
           'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
           'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
@@ -3088,6 +3090,27 @@ test('Merchant trade supports item categories and sorted stock without index dri
   assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
   App.buyFromMerchant('trader-1', 2);
   assert(App.inventory.some(item => item.name === 'Hide Armor'), 'Buying after sorted render should still use original stock index');
+});
+
+test('Merchant trade action labels localize with accessible names', () => {
+  const { App, elements } = loadAppForCombat(() => 0.5);
+  App.player = makeUnit('You', { gold: 100 });
+  App.party = [App.player];
+  App.inventory = [{ id: 'gem-1', name: 'Old Coin' }];
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
+  });
+  App.creatures = [merchant];
+  App.updateLanguage('es');
+  App.showTrade('trader-1');
+  const html = elements.get('scene-description').innerHTML;
+  assertContains(html, 'aria-label="Comprar Healing Herb"', 'Buy control should expose localized accessible label');
+  assertContains(html, '>Comprar<', 'Buy visible label should localize');
+  assertContains(html, 'aria-label="Vender Old Coin"', 'Sell control should expose localized accessible label');
+  assertContains(html, '>Vender<', 'Sell visible label should localize');
+  assertContains(html, 'aria-label="Volver"', 'Trade back control should expose localized accessible label');
 });
 
 test('Expensive merchant purchases require confirmation', () => {

@@ -6866,7 +6866,7 @@
                     if (isNewMode) html += saveButton('nav-btn primary', '🆕 ' + this._label(hasData ? 'save.overwriteSlot' : 'save.useEmpty', hasData ? 'Overwrite Slot' : 'Use Empty Slot'), this._label(hasData ? 'save.action.overwrite' : 'save.action.useEmpty', hasData ? 'Overwrite {slot} with a new game' : 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
                     if (!isNewMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + this._label('save.toolbarNew', 'New Game'), this._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
                     if (!isNewMode && hasData) html += saveButton('nav-btn', '🆕 ' + this._label('save.newRun', 'New Run'), this._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
-                    if (hasData) html += saveButton('nav-btn', '📂 ' + this._label('save.load', 'Load'), this._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })');
+                    if (hasData) html += saveButton('nav-btn', '📂 ' + this._label('save.load', 'Load'), this._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })');
                     if (!isNewMode) html += saveButton('nav-btn', '💾 ' + this._label('save.save', 'Save'), this._label('save.action.save', 'Save current game to {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
                     if (hasData) html += saveButton('nav-btn', '🗑️ ' + this._label('save.delete', 'Delete'), this._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
                     html += '</div></div>';
@@ -7301,7 +7301,7 @@
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
-                    this.showSaveManager();
+                    this.showSaveManager(this.saveManagerMode || 'load');
                 } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) {

@@ -492,6 +492,8 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(appContent, "this._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should come from localized copy');
   assertContains(appContent, "this._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should come from localized copy');
   assertContains(appContent, "this._label('save.confirm.deleteSlot'", 'Delete slot warning should come from localized copy');
+  assertContains(appContent, 'then(ok => { if (ok) App.showScreen', 'Load action should enter game only after a successful slot load');
+  assertNotContains(appContent, "then(() => { App.showScreen", 'Load action should not enter game after a failed slot load');
   assertContains(contentContent, "'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.'", 'New game overwrite warning should name the selected slot and be irreversible');
   assertContains(contentContent, "'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.'", 'Manual save should warn before overwriting another occupied slot');
   assertContains(contentContent, "'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.'", 'Delete slot should warn that it is scoped and irreversible');
@@ -4686,6 +4688,21 @@ test('Delete save slot is scoped to one selected slot', async () => {
   assertEqual(App.activeSlot, 'slot1', 'Deleting the active slot should return activeSlot to the default slot');
   assertContains(elements.get('save-manager').innerHTML, 'Slot 2', 'Delete slot should refresh the slot manager UI');
   assertContains(elements.get('save-manager').innerHTML, 'Open slot', 'Deleted slot should render as open after refresh');
+});
+
+test('Deleting from new-game slot mode keeps the new-run flow active', async () => {
+  const { App, elements, storage } = loadAppForCombat(() => 0.5, { confirm: true });
+  const deleted = [];
+  App._dbDelete = async (_store, key) => { deleted.push(key); };
+  storage.set('yaw-save-time-slot2', '1710000000000');
+  App.showNewGameManager();
+  await App.deleteSlot('slot2');
+  const html = elements.get('save-manager').innerHTML;
+  assertEqual(App.saveManagerMode, 'new', 'Delete refresh should preserve new-game slot mode');
+  assertEqual(deleted.join(','), 'slot2', 'New-mode delete should still delete only the chosen slot');
+  assertContains(html, 'Choose New Game Slot', 'Delete refresh should keep the new-game manager title');
+  assertContains(html, 'Use Empty Slot', 'Deleted slot should become an empty new-run target');
+  assertNotContains(html, 'Save current game to Slot 2', 'New-game slot mode should not switch back to in-game save actions after delete');
 });
 
 test('Combat log export returns filtered text', () => {

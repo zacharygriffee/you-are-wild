@@ -660,6 +660,22 @@ test('Settings expose language selector', () => {
   assertContains(template, '<option value="es">Espanol</option>', 'Spanish language option missing');
 });
 
+test('Settings default safe and reveal controls by content maturity', () => {
+  assertContains(contentContent, 'maxTier: 0', 'content preferences should default to safe');
+  assertContains(contentContent, 'voreEnabled: false', 'safe defaults should not enable mature mechanics');
+  assertContains(contentContent, 'explicitDescriptions: false', 'safe defaults should not enable adult descriptions');
+  assertContains(template, 'data-setting-tier="mature"', 'mature-only settings should be tagged');
+  assertContains(template, 'data-setting-tier="adult"', 'adult-only settings should be tagged');
+  assertContains(template, "App.setContentTier('safe')", 'safe content button should use App content-tier helper');
+  assertContains(template, "App.setContentTier('mature')", 'mature content button should use App content-tier helper');
+  assertContains(template, "App.setContentTier('adult')", 'adult content button should use App content-tier helper');
+  assertContains(appContent, 'syncSettingVisibility()', 'settings tier visibility helper missing');
+  assertContains(appContent, 'enforceContentTierSettings()', 'settings should enforce hidden-tier toggles when content level changes');
+  assertContains(appContent, "CONTENT.setPreference('explicitDescriptions', false)", 'lowering tier should disable explicit descriptions');
+  assertContains(appContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering to safe should disable mature mechanics');
+  assertContains(contentContent, "'ui.menu.contentDefault': 'Safe content is enabled by default'", 'menu should describe safe default');
+});
+
 test('Persistent shell controls opt into localization', () => {
   assertContains(appContent, 'applyStaticLocalization(root = document)', 'Static shell localization helper missing');
   assertContains(appContent, 'data-i18n-placeholder', 'Static localization should support placeholders');
@@ -718,6 +734,15 @@ test('Create screen requires explicit gender and anatomy choices', () => {
   assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
   assertContains(contentContent, "'create.random': 'Random Character'", 'English random character label missing');
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
+});
+
+test('Create screen links content level to highlighted settings control', () => {
+  assertContains(template, 'id="create-content-level-label"', 'create screen should show the active content level');
+  assertContains(template, 'App.openContentSettingsFromCreate()', 'create screen content control should open settings');
+  assertContains(appContent, "settingsReturnScreen = 'create'", 'settings opened from create should return to create');
+  assertContains(appContent, "target.classList.add('settings-focus')", 'content settings target should be highlighted');
+  assertContains(template, 'id="settings-content-level"', 'settings content level section should be directly targetable');
+  assertContains(template, '.settings-focus', 'settings highlight style should exist');
 });
 
 test('Create screen encounter preferences use dynamic identity percentages', () => {

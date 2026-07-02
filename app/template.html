@@ -247,6 +247,11 @@
             box-shadow: var(--shadow-glow);
         }
 
+        .settings-focus {
+            border-radius: var(--radius-md);
+            box-shadow: 0 0 0 2px var(--accent-primary), var(--shadow-glow);
+        }
+
         .panel-header {
             display: flex;
             align-items: center;
@@ -2100,7 +2105,7 @@
 
             <div style="margin-top: 32px; color: var(--text-muted); font-size: 12px; text-align: center;">
                 <p data-i18n="ui.menu.edition">Dark mode tactical edition</p>
-                <p data-i18n="ui.menu.contentDefault">All content is enabled by default</p>
+                <p data-i18n="ui.menu.contentDefault">Safe content is enabled by default</p>
             </div>
         </div>
     </div>
@@ -2116,6 +2121,14 @@
                 <h3 class="section-title">Name</h3>
                 <input id="char-name" type="text" placeholder="Enter your name..." value="You" data-i18n-placeholder="create.namePlaceholder"
                        style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
+            </div>
+
+            <div class="create-section">
+                <h3 class="section-title" data-i18n="settings.contentLevel">Content Level</h3>
+                <button class="action-btn" type="button" title="Open content level settings" aria-label="Open content level settings" data-i18n-title="create.contentLevelTitle" data-i18n-aria-label="create.contentLevelTitle" onclick="App.openContentSettingsFromCreate()">
+                    <span id="create-content-level-label">Safe</span>
+                    <span style="color:var(--text-muted);font-size:12px;" data-i18n="create.contentLevelChange">Change in Settings</span>
+                </button>
             </div>
 
             <!-- Species Selection -->
@@ -2500,7 +2513,7 @@
     <div id="screen-settings" class="screen screen-overlay">
         <div style="max-width: 600px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <h1 style="color: var(--accent-primary); margin-bottom: 8px;">⚙️ <span data-i18n="settings.title">Settings</span></h1>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">All content is enabled by default. Toggle off what you don't want.</p>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="settings.description">Safe content is the default. Select a higher content level to reveal additional settings.</p>
 
             <!-- Language -->
             <div style="margin-bottom: 24px;">
@@ -2515,17 +2528,17 @@
             </div>
 
             <!-- Content Tiers -->
-            <div style="margin-bottom: 24px;">
+            <div id="settings-content-level" style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.contentLevel">Content Level</h3>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button id="tier-safe" class="nav-btn" data-i18n="settings.safe" onclick="CONTENT.setMaxTier(1); App.updateTierButtons()">Safe</button>
-                    <button id="tier-mature" class="nav-btn" data-i18n="settings.mature" onclick="CONTENT.setMaxTier(2); App.updateTierButtons()">Mature</button>
-                    <button id="tier-adult" class="nav-btn" data-i18n="settings.adult" onclick="CONTENT.setMaxTier(3); App.updateTierButtons()">Adult</button>
+                    <button id="tier-safe" class="nav-btn" data-i18n="settings.safe" onclick="App.setContentTier('safe')">Safe</button>
+                    <button id="tier-mature" class="nav-btn" data-i18n="settings.mature" onclick="App.setContentTier('mature')">Mature</button>
+                    <button id="tier-adult" class="nav-btn" data-i18n="settings.adult" onclick="App.setContentTier('adult')">Adult</button>
                 </div>
             </div>
 
             <!-- Vore & Feeding -->
-            <div style="margin-bottom: 24px;">
+            <div data-setting-tier="mature" style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Vore &amp; Feeding</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
@@ -2560,10 +2573,10 @@
             </div>
 
             <!-- Sex & Interaction -->
-            <div style="margin-bottom: 24px;">
+            <div data-setting-tier="mature" style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Sex &amp; Interaction</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
+                    <label data-setting-tier="adult" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Explicit Descriptions</span>
                         <input type="checkbox" id="toggle-explicit" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
                     </label>
@@ -2583,7 +2596,7 @@
             </div>
 
             <!-- Fluids & Extremes -->
-            <div style="margin-bottom: 24px;">
+            <div data-setting-tier="adult" style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Fluids &amp; Extremes</h3>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">

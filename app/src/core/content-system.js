@@ -15,11 +15,11 @@ const CONTENT_SYSTEM = {
         ADULT: 2      // Explicit content (user must opt in)
     },
     
-    // Default preferences - ADULT by default
+    // Default preferences - SAFE by default
     preferences: {
-        maxTier: 2,           // Default: ADULT (show all content)
-        voreEnabled: true,    // Vore enabled by default (core mechanic)
-        explicitDescriptions: true,  // Explicit by default
+        maxTier: 0,           // Default: SAFE (user must opt into mature/adult content)
+        voreEnabled: false,
+        explicitDescriptions: false,
         filterTags: [],       // User can block specific tags if desired
         language: 'en'
     },
@@ -209,7 +209,7 @@ const CONTENT_SYSTEM = {
             'ui.tutorial.ready.title': 'Ready',
             'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.',
             'ui.menu.edition': 'Dark mode tactical edition',
-            'ui.menu.contentDefault': 'All content is enabled by default',
+            'ui.menu.contentDefault': 'Safe content is enabled by default',
             'ui.nav.mapTitle': 'Toggle map panel',
             'ui.nav.partyTitle': 'Toggle party panel',
             'ui.nav.creaturesTitle': 'Toggle creatures panel',
@@ -273,13 +273,15 @@ const CONTENT_SYSTEM = {
             'ui.log.heal': 'Heal',
             'ui.log.search': 'Search log',
             'settings.title': 'Settings',
-            'settings.description': "All content is enabled by default. Toggle off what you don't want.",
+            'settings.description': 'Safe content is the default. Select a higher content level to reveal additional settings.',
             'settings.languageSection': 'Language',
             'settings.interfaceLanguage': 'Interface Language',
             'settings.contentLevel': 'Content Level',
             'settings.safe': 'Safe',
             'settings.mature': 'Mature',
             'settings.adult': 'Adult',
+            'create.contentLevelTitle': 'Open content level settings',
+            'create.contentLevelChange': 'Change in Settings',
             'settings.accessibility': 'Accessibility',
             'settings.highContrast': 'High Contrast',
             'settings.reducedMotion': 'Reduced Motion',
@@ -839,7 +841,7 @@ const CONTENT_SYSTEM = {
             'ui.tutorial.ready.title': 'Listo',
             'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.',
             'ui.menu.edition': 'Edicion tactica oscura',
-            'ui.menu.contentDefault': 'Todo el contenido esta activado por defecto',
+            'ui.menu.contentDefault': 'El contenido seguro esta activado por defecto',
             'ui.nav.mapTitle': 'Alternar panel de mapa',
             'ui.nav.partyTitle': 'Alternar panel de grupo',
             'ui.nav.creaturesTitle': 'Alternar panel de criaturas',
@@ -903,13 +905,15 @@ const CONTENT_SYSTEM = {
             'ui.log.heal': 'Curacion',
             'ui.log.search': 'Buscar registro',
             'settings.title': 'Ajustes',
-            'settings.description': 'Todo el contenido esta activado por defecto. Desactiva lo que no quieras.',
+            'settings.description': 'El contenido seguro es el predeterminado. Selecciona un nivel superior para mostrar ajustes adicionales.',
             'settings.languageSection': 'Idioma',
             'settings.interfaceLanguage': 'Idioma de interfaz',
             'settings.contentLevel': 'Nivel de contenido',
             'settings.safe': 'Seguro',
             'settings.mature': 'Maduro',
             'settings.adult': 'Adulto',
+            'create.contentLevelTitle': 'Abrir ajustes de nivel de contenido',
+            'create.contentLevelChange': 'Cambiar en Ajustes',
             'settings.accessibility': 'Accesibilidad',
             'settings.highContrast': 'Alto contraste',
             'settings.reducedMotion': 'Movimiento reducido',
@@ -1507,6 +1511,7 @@ const CONTENT_SYSTEM = {
         if (saved) {
             try {
                 this.preferences = { ...this.preferences, ...JSON.parse(saved) };
+                this.preferences.maxTier = Math.max(this.TIERS.SAFE, Math.min(this.TIERS.ADULT, Number(this.preferences.maxTier) || this.TIERS.SAFE));
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
             } catch (e) {
                 console.error('Failed to load content preferences:', e);
@@ -1521,7 +1526,7 @@ const CONTENT_SYSTEM = {
     
     // Set max content tier
     setMaxTier(tier) {
-        this.preferences.maxTier = tier;
+        this.preferences.maxTier = Math.max(this.TIERS.SAFE, Math.min(this.TIERS.ADULT, Number(tier) || this.TIERS.SAFE));
         this.savePreferences();
     },
 

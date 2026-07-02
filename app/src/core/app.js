@@ -666,11 +666,11 @@
             activeSlot: 'slot1',
             settings: {
                 powerDynamics: false, endoMode: false, slowDigestion: false,
-                fatalVore: true, chewing: false, allTheWayThrough: false,
+                fatalVore: false, chewing: false, allTheWayThrough: false,
                 hardcore: false, scat: false, watersports: false,
                 boneCrushing: false, unwillingWarnings: false,
                 statAbsorption: true, refractoryPeriod: false,
-                sameSpeciesBonus: true, fluidEnabled: true,
+                sameSpeciesBonus: false, fluidEnabled: false,
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
                 partyPlayFightMode: 'nonlethal',
                 highContrast: false, reducedMotion: false, fontSize: 14
@@ -972,10 +972,13 @@
                     for (const k of Object.keys(savedSettings)) { this.settings[k] = savedSettings[k]; }
                     const savedPrefs = JSON.parse(this._getStoredValue('contentPrefs') || '{}');
                     for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
+                    CONTENT.preferences.maxTier = this._tierValue(CONTENT.preferences.maxTier);
+                    this.enforceContentTierSettings();
                 } catch(e) { console.warn('Settings load failed', e); }
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
+                this.updateTierButtons();
                 const grid = document.getElementById('species-grid');
                 if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
                 this.selectedSpecies = 'human';
@@ -7730,10 +7733,21 @@
             },
             returnToGame() {
                 this._restoreFocusTrap();
+                const returnScreen = this.settingsReturnScreen;
+                this.settingsReturnScreen = null;
                 ['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
                 });
+                if (returnScreen === 'create' && !this.player) {
+                    document.getElementById('app').style.display = 'none';
+                    document.getElementById('screen-menu').style.display = 'none';
+                    document.getElementById('screen-create').style.display = 'flex';
+                    document.getElementById('screen-create').classList.add('active');
+                    this.screen = 'create';
+                    this.syncCreateContentLevel();
+                    return;
+                }
                 if (this.player && this.player.CPun > 0) {
                     document.getElementById('screen-menu').style.display = 'none';
                     document.getElementById('app').style.display = 'grid';
@@ -7891,19 +7905,88 @@
             selectEncounterPreference(val) { this.setEncounterPreferencePreset(val); },
             updateTierButtons() {
                 const btns = { safe: 'tier-safe', mature: 'tier-mature', adult: 'tier-adult' };
+                const tiers = { safe: 0, mature: 1, adult: 2 };
                 for (const [tier, id] of Object.entries(btns)) {
                     const el = document.getElementById(id);
                     if (el) {
-                        el.style.background = (tier === 'safe' && CONTENT.preferences.maxTier === 1) ||
-                                            (tier === 'mature' && CONTENT.preferences.maxTier === 2) ||
-                                            (tier === 'adult' && CONTENT.preferences.maxTier === 3)
-                                            ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
-                        el.style.color = (tier === 'safe' && CONTENT.preferences.maxTier === 1) ||
-                                         (tier === 'mature' && CONTENT.preferences.maxTier === 2) ||
-                                         (tier === 'adult' && CONTENT.preferences.maxTier === 3)
-                                         ? 'var(--bg-primary)' : 'var(--text-secondary)';
+                        const selected = CONTENT.preferences.maxTier === tiers[tier];
+                        el.style.background = selected ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
+                        el.style.color = selected ? 'var(--bg-primary)' : 'var(--text-secondary)';
                     }
                 }
+                this.syncCreateContentLevel();
+                this.syncSettingVisibility();
+            },
+            _tierValue(tier) {
+                if (typeof tier === 'number') return Math.max(0, Math.min(2, tier));
+                return ({ safe: 0, mature: 1, adult: 2 })[tier] ?? 0;
+            },
+            _tierName(value = CONTENT.preferences.maxTier) {
+                const tier = this._tierValue(value);
+                if (tier >= 2) return 'adult';
+                if (tier >= 1) return 'mature';
+                return 'safe';
+            },
+            setContentTier(tier) {
+                const nextTier = this._tierValue(tier);
+                CONTENT.setMaxTier(nextTier);
+                this.enforceContentTierSettings();
+                this.syncSettingVisibility();
+                this.syncCreateContentLevel();
+                this.saveSettings();
+            },
+            enforceContentTierSettings() {
+                const tier = this._tierValue(CONTENT?.preferences?.maxTier);
+                const matureSettings = ['endoMode', 'fatalVore', 'slowDigestion', 'statAbsorption', 'chewing', 'allTheWayThrough', 'powerDynamics', 'refractoryPeriod', 'sameSpeciesBonus'];
+                const adultSettings = ['fluidEnabled', 'scat', 'watersports', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding', 'boneCrushing', 'unwillingWarnings'];
+                if (tier < 2) {
+                    CONTENT.setPreference('explicitDescriptions', false);
+                    adultSettings.forEach(key => { this.settings[key] = false; });
+                }
+                if (tier < 1) {
+                    CONTENT.setPreference('voreEnabled', false);
+                    matureSettings.forEach(key => { this.settings[key] = false; });
+                }
+            },
+            syncSettingVisibility() {
+                const current = this._tierValue(CONTENT?.preferences?.maxTier);
+                document.querySelectorAll('[data-setting-tier]').forEach(el => {
+                    const required = this._tierValue(el.dataset.settingTier);
+                    const visible = required <= current;
+                    el.style.display = visible ? '' : 'none';
+                    if (!visible) {
+                        el.querySelectorAll('input, select, button, textarea').forEach(control => {
+                            control.disabled = true;
+                        });
+                    } else {
+                        el.querySelectorAll('input, select, button, textarea').forEach(control => {
+                            control.disabled = false;
+                        });
+                    }
+                });
+            },
+            syncCreateContentLevel() {
+                const label = document.getElementById('create-content-level-label');
+                if (!label) return;
+                const tierName = this._tierName();
+                const labelKey = `settings.${tierName}`;
+                const fallback = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+                label.textContent = this._label(labelKey, fallback);
+            },
+            openContentSettingsFromCreate() {
+                this.settingsReturnScreen = 'create';
+                this.showScreen('settings');
+                this.showSettings();
+                const target = document.getElementById('settings-content-level');
+                if (!target) return;
+                target.classList.add('settings-focus');
+                try {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } catch (e) {
+                    target.scrollIntoView();
+                }
+                clearTimeout(this._settingsFocusTimer);
+                this._settingsFocusTimer = setTimeout(() => target.classList.remove('settings-focus'), 1600);
             },
             saveSettings() {
                 this._setStoredValue('settings', JSON.stringify({

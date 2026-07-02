@@ -9962,7 +9962,7 @@ const WorldGen = (() => {
                     ? !this.combatState.active
                     : unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
                 const contextMenuAttr = canOpenIntentMenu
-                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
+                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
                     : '';
                 const partyRole = isParty && unit.name !== this.player?.name ? this._partyRoleLabel(this._getPartyRole(unit)) : '';
                 const partyStatus = unit.name === this.player?.name ? this._label('party.you', 'You') : `${this._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
@@ -10116,7 +10116,7 @@ const WorldGen = (() => {
                     ? !this.combatState.active
                     : unit.CPun > 0 && !isCorpse && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY);
                 const cardContextMenuAttr = cardCanOpenIntentMenu
-                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
+                    ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
                     : '';
                 return `<div class="${cardClass}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">

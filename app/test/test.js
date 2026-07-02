@@ -2583,7 +2583,7 @@ test('Desktop creature card action labels localize', () => {
   assertContains(html, '>Objetivo<', 'Creature target visible label should localize');
   assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
   assertContains(html, "showIntentMenu('creature','friendly-1')", 'Creature card should expose compact action menu');
-  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showIntentMenu('creature','friendly-1','secondary-click')", 'Creature card should support desktop secondary-click intent menu');
+  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Creature card should support desktop secondary-click radial intent menu');
   assertNotContains(html, "outsideActionForCreature('fight','friendly-1')", 'Creature card should not show primary action spam by default');
   assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
   assertContains(html, 'aria-label="Aceptar mision de Friendly"', 'Quest action should localize accessible label');
@@ -2594,8 +2594,9 @@ test('Desktop creature card action labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
   App.closeMobileContextMenu();
-  App.showIntentMenu('creature', 'friendly-1', 'secondary-click');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','secondary-click')", 'Secondary-click intent sheet should preserve command source into sub-action picker');
+  App.showRadialIntentMenu('creature', 'friendly-1', 'secondary-click');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Secondary-click intent menu should use radial presentation scaffold');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','secondary-click')", 'Secondary-click radial intent menu should preserve command source into sub-action picker');
   App.openIntentSubActionSheet('creature', 'friendly-1', 'flirt', 'secondary-click');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-1','flirt','secondary-click','tease')", 'Sub-action sheet should dispatch the default sub-action with preserved source');
   App.closeMobileContextMenu();
@@ -4237,7 +4238,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
   assertContains(html, '>Objetivo<', 'Target mark visible label should localize');
   assertContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party action menu should expose localized accessible label');
-  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showIntentMenu('party',2,'secondary-click')", 'Party card should support desktop secondary-click intent menu');
+  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',2,'secondary-click')", 'Party card should support desktop secondary-click radial intent menu');
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
   assertContains(html, '>Estadisticas<', 'Stats visible label should localize');
@@ -5419,8 +5420,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
-  assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click intent fallback');
-  assertContains(mobileCreatureChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should keep secondary-click intent fallback');
+  assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');
+  assertContains(mobileCreatureChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should keep secondary-click radial intent fallback');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
 });
 

@@ -4171,6 +4171,23 @@
                 };
             },
 
+            _unitDispositionLabel(unit) {
+                if (!unit) return '';
+                if (this._isCorpse(unit)) return this._label('disposition.remains', 'Remains');
+                if (unit.disposition === this.DISPOSITION.ENEMY) return this._label('disposition.hostile', 'Hostile');
+                if (unit.disposition === this.DISPOSITION.FRIENDLY) return this._label('disposition.friendly', 'Friendly');
+                if (unit.disposition === this.DISPOSITION.QUEST_GIVER) return this._label('disposition.quest', 'Quest');
+                if (unit.disposition === this.DISPOSITION.MERCHANT) return this._label('disposition.merchant', 'Merchant');
+                if (unit.disposition === this.DISPOSITION.NEUTRAL) return this._label('disposition.neutral', 'Neutral');
+                return '';
+            },
+
+            _combatRowLabel(row) {
+                if (row === 'back') return this._label('combat.row.back', 'Back');
+                if (row === 'front') return this._label('combat.row.front', 'Front');
+                return '';
+            },
+
             _emitCombatAction(action, actor, target, result) {
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
                     MODULE_SYSTEM.executeHook('onCombatAction', { action, actor, target, result, app: this }).catch(() => {});
@@ -8275,26 +8292,26 @@
                 const container = document.getElementById('enemies-content');
                 const title = document.getElementById('enemies-title');
                 const mobileTitle = document.getElementById('mobile-creature-title');
-                let titleText = 'Area';
+                let titleText = this._label('ui.area', 'Area');
                 const living = this.creatures.filter(c => !this._isCorpse(c));
                 const corpses = this.creatures.filter(c => this._isCorpse(c));
                 if (title) {
                     const enemies = living.filter(c => c.disposition === this.DISPOSITION.ENEMY);
                     const friendlies = living.filter(c => c.disposition !== this.DISPOSITION.ENEMY);
-                    if (enemies.length > 0) titleText = 'Enemies';
-                    else if (friendlies.length > 0) titleText = 'Creatures';
-                    else if (corpses.length > 0) titleText = 'Remains';
+                    if (enemies.length > 0) titleText = this._label('ui.enemies', 'Enemies');
+                    else if (friendlies.length > 0) titleText = this._label('ui.creatures', 'Creatures');
+                    else if (corpses.length > 0) titleText = this._label('disposition.remains', 'Remains');
                     title.textContent = titleText;
                 }
                 if (mobileTitle) mobileTitle.textContent = titleText;
                 if (container) {
                     let html = living.map((unit, i) => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                     if (corpses.length > 0) {
-                        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="color:var(--text-muted);font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;">Remains</div>`;
+                        html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="color:var(--text-muted);font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;">${this._escapeHtml(this._label('disposition.remains', 'Remains'))}</div>`;
                         html += corpses.map(unit => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                         html += '</div>';
                     }
-                    container.innerHTML = html || '<p style="color: var(--text-muted); text-align: center;">No creatures present</p>';
+                    container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;
                 }
                 this.renderMobileCreatureStrip();
             },
@@ -8311,7 +8328,7 @@
                 if (card) card.style.display = living.length > 0 || this.combatState.active ? 'block' : 'none';
                 strip.innerHTML = living.length > 0
                     ? living.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
-                    : '<div style="color:var(--text-muted);font-size:12px;padding:6px;">No creatures here</div>';
+                    : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
             },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
@@ -8356,8 +8373,9 @@
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
                 const partyRole = isParty && unit.name !== this.player?.name ? this.PARTY_ROLES[this._getPartyRole(unit)] : '';
-                const status = isParty ? (unit.name === this.player?.name ? 'You' : `Ally${partyRole ? ' - ' + partyRole : ''}`) : (unit.disposition === this.DISPOSITION.MERCHANT ? 'Merchant' : unit.disposition === this.DISPOSITION.QUEST_GIVER ? 'Quest' : unit.disposition === this.DISPOSITION.ENEMY ? 'Hostile' : unit.disposition === this.DISPOSITION.FRIENDLY ? 'Friendly' : 'Neutral');
-                const rowText = this.combatState.active && unit.combatRow ? ` | ${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
+                const partyStatus = unit.name === this.player?.name ? this._label('party.you', 'You') : `${this._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
+                const status = isParty ? partyStatus : this._unitDispositionLabel(unit);
+                const rowText = this.combatState.active && unit.combatRow ? ` | ${this._combatRowLabel(unit.combatRow)}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
                 const pressHandlers = isParty
@@ -8484,26 +8502,29 @@
                 }
                 let dispLabel = '';
                 if (!isParty) {
-                    if (isCorpse) dispLabel = 'Remains';
-                    else if (unit.disposition === this.DISPOSITION.ENEMY) dispLabel = 'Hostile';
-                    else if (unit.disposition === this.DISPOSITION.FRIENDLY) dispLabel = 'Friendly';
-                    else if (unit.disposition === this.DISPOSITION.QUEST_GIVER) dispLabel = 'Quest';
-                    else if (unit.disposition === this.DISPOSITION.MERCHANT) dispLabel = 'Merchant';
-                    else if (unit.disposition === this.DISPOSITION.NEUTRAL) dispLabel = 'Neutral';
+                    dispLabel = this._unitDispositionLabel(unit);
                 }
                 const stomachUsed = this._containerUsed(unit, 'stomach');
                 const wombUsed = this._containerUsed(unit, 'womb');
                 const ballsUsed = this._containerUsed(unit, 'balls');
                 const hasContained = stomachUsed > 0 || wombUsed > 0 || ballsUsed > 0;
                 const capacitySummary = [
-                    `Stomach: ${this._containerSummary(unit, 'stomach')}`,
-                    `Womb: ${this._containerSummary(unit, 'womb')}`,
-                    `Balls: ${this._containerSummary(unit, 'balls')}`
+                    `${this._label('capacity.stomach', 'Stomach')}: ${this._containerSummary(unit, 'stomach')}`,
+                    `${this._label('capacity.womb', 'Womb')}: ${this._containerSummary(unit, 'womb')}`,
+                    `${this._label('capacity.balls', 'Balls')}: ${this._containerSummary(unit, 'balls')}`
                 ].join(' | ');
                 const equipmentSummary = this._equipmentCompactSummary(unit);
-                const rowLabel = this.combatState.active && unit.combatRow ? ` Row:${unit.combatRow === 'back' ? 'Back' : 'Front'}` : '';
+                const rowLabel = this.combatState.active && unit.combatRow ? ` ${this._label('combat.row', 'Row')}:${this._combatRowLabel(unit.combatRow)}` : '';
                 const turnBadge = this._turnOrderBadge(unit);
                 const combatStatus = this._srOnly(this._combatStatusText(unit), 'role="status" aria-live="polite"');
+                const statLabels = {
+                    size: this._escapeHtml(this._label('character.size', 'Size')),
+                    appetite: this._escapeHtml(this._label('character.appetite', 'Appetite')),
+                    parts: this._escapeHtml(this._label('character.parts', 'Parts')),
+                    chest: this._escapeHtml(this._label('character.chest', 'Chest')),
+                    equipment: this._escapeHtml(this._label('party.equipment', 'Equipment'))
+                };
+                const noneLabel = this._escapeHtml(this._label('party.none', 'None'));
                 return `<div class="${cardClass}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
@@ -8520,10 +8541,10 @@
 	                            <div><span style="color:var(--text-muted)">Figh:</span> ${stats.Figh}</div><div><span style="color:var(--text-muted)">Feas:</span> ${stats.Feas}</div>
                             <div><span style="color:var(--text-muted)">Flir:</span> ${stats.Flir}</div><div><span style="color:var(--text-muted)">Fuck:</span> ${stats.Fuck}</div>
                             <div><span style="color:var(--text-muted)">Flee:</span> ${stats.Flee}</div><div><span style="color:var(--text-muted)">Feed:</span> ${stats.Feed}</div>
-	                            <div><span style="color:var(--text-muted)">Size:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">App:</span> ${unit.appetite}</div>
-	                            <div><span style="color:var(--text-muted)">Parts:</span> ${unit.parts || 'none'}</div><div><span style="color:var(--text-muted)">Chest:</span> ${unit.chest || 'none'}</div>
+	                            <div><span style="color:var(--text-muted)">${statLabels.size}:</span> ${unit.size}</div><div><span style="color:var(--text-muted)">${statLabels.appetite}:</span> ${unit.appetite}</div>
+	                            <div><span style="color:var(--text-muted)">${statLabels.parts}:</span> ${unit.parts || noneLabel}</div><div><span style="color:var(--text-muted)">${statLabels.chest}:</span> ${unit.chest || noneLabel}</div>
 		                            <div style="grid-column:1/-1;color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
-                                    <div style="grid-column:1/-1;color:var(--text-muted)"><span style="color:var(--text-primary)">Equipment:</span><br>${equipmentSummary}</div>
+                                    <div style="grid-column:1/-1;color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
 	                        </div>
 	                    </div>` : ''}
 	                </div>`;
@@ -10619,6 +10640,23 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Party actions',
             'ui.exploration': 'Exploration',
             'ui.chooseAction': 'Choose your next action.',
+            'ui.area': 'Area',
+            'ui.enemies': 'Enemies',
+            'ui.creatures': 'Creatures',
+            'ui.noCreaturesPresent': 'No creatures present',
+            'ui.noCreaturesHere': 'No creatures here',
+            'disposition.hostile': 'Hostile',
+            'disposition.friendly': 'Friendly',
+            'disposition.neutral': 'Neutral',
+            'disposition.quest': 'Quest',
+            'disposition.merchant': 'Merchant',
+            'disposition.remains': 'Remains',
+            'combat.row': 'Row',
+            'combat.row.front': 'Front',
+            'combat.row.back': 'Back',
+            'capacity.stomach': 'Stomach',
+            'capacity.womb': 'Womb',
+            'capacity.balls': 'Balls',
             'party.stats': 'Stats',
             'party.you': 'You',
             'party.ally': 'Ally',
@@ -10779,6 +10817,23 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Acciones del grupo',
             'ui.exploration': 'Exploracion',
             'ui.chooseAction': 'Elige tu proxima accion.',
+            'ui.area': 'Area',
+            'ui.enemies': 'Enemigos',
+            'ui.creatures': 'Criaturas',
+            'ui.noCreaturesPresent': 'No hay criaturas presentes',
+            'ui.noCreaturesHere': 'No hay criaturas aqui',
+            'disposition.hostile': 'Hostil',
+            'disposition.friendly': 'Amistoso',
+            'disposition.neutral': 'Neutral',
+            'disposition.quest': 'Mision',
+            'disposition.merchant': 'Mercader',
+            'disposition.remains': 'Restos',
+            'combat.row': 'Fila',
+            'combat.row.front': 'Frente',
+            'combat.row.back': 'Retaguardia',
+            'capacity.stomach': 'Estomago',
+            'capacity.womb': 'Vientre',
+            'capacity.balls': 'Bolas',
             'party.stats': 'Estadisticas',
             'party.you': 'Tu',
             'party.ally': 'Aliado',

@@ -689,7 +689,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close',
-          'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.',
+          'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here',
+          'disposition.hostile': 'Hostile', 'disposition.friendly': 'Friendly', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Quest', 'disposition.merchant': 'Merchant', 'disposition.remains': 'Remains', 'combat.row': 'Row', 'combat.row.front': 'Front', 'combat.row.back': 'Back', 'capacity.stomach': 'Stomach', 'capacity.womb': 'Womb', 'capacity.balls': 'Balls',
           'party.stats': 'Stats', 'party.you': 'You', 'party.ally': 'Ally', 'party.leader': 'Leader', 'party.levelSpecies': 'Level {level} {species}', 'party.punishment': 'Punishment', 'party.pleasure': 'Pleasure', 'party.combat': 'Combat', 'party.attributes': 'Attributes', 'party.capacity': 'Capacity', 'party.equipment': 'Equipment', 'party.perks': 'Perks', 'party.none': 'None', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Combat Stats', 'character.body': 'Body', 'character.size': 'Size', 'character.appetite': 'Appetite', 'character.parts': 'Parts', 'character.chest': 'Chest', 'character.bodyParts': 'Body', 'character.perkTools': 'Perk Tools', 'character.perkToolsHelp': 'Balance/debug controls.', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
@@ -703,7 +704,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar',
-          'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.',
+          'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui',
+          'disposition.hostile': 'Hostil', 'disposition.friendly': 'Amistoso', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Mision', 'disposition.merchant': 'Mercader', 'disposition.remains': 'Restos', 'combat.row': 'Fila', 'combat.row.front': 'Frente', 'combat.row.back': 'Retaguardia', 'capacity.stomach': 'Estomago', 'capacity.womb': 'Vientre', 'capacity.balls': 'Bolas',
           'party.stats': 'Estadisticas', 'party.you': 'Tu', 'party.ally': 'Aliado', 'party.leader': 'Lider', 'party.levelSpecies': 'Nivel {level} {species}', 'party.punishment': 'Castigo', 'party.pleasure': 'Placer', 'party.combat': 'Combate', 'party.attributes': 'Atributos', 'party.capacity': 'Capacidad', 'party.equipment': 'Equipo', 'party.perks': 'Mejoras', 'party.none': 'Ninguno', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Estadisticas de combate', 'character.body': 'Cuerpo', 'character.size': 'Tamano', 'character.appetite': 'Apetito', 'character.parts': 'Partes', 'character.chest': 'Pecho', 'character.bodyParts': 'Cuerpo', 'character.perkTools': 'Herramientas de mejoras', 'character.perkToolsHelp': 'Controles de balance/debug.', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
@@ -2694,6 +2696,37 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, '>Despedir<', 'Dismiss visible label should localize');
 });
 
+test('Desktop creature card status and detail labels localize', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const enemy = makeUnit('Murcielago', {
+    id: 'bat-1',
+    disposition: App.DISPOSITION.ENEMY,
+    combatRow: 'back',
+    expanded: true,
+    stomach: [makeUnit('Stored', { size: 2, alive: true, inStomach: true })]
+  });
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [enemy];
+  App.combatState.active = true;
+  App.updateLanguage('es');
+  App.renderCreatures();
+  const panelHtml = elements.get('enemies-content').innerHTML;
+  assertEqual(elements.get('enemies-title').textContent, 'Enemigos', 'Enemy panel title should localize');
+  assertContains(panelHtml, '[Hostil]', 'Creature disposition badge should localize');
+  assertContains(panelHtml, 'Fila:Retaguardia', 'Combat row label should localize');
+  assertContains(panelHtml, 'Tamano:', 'Expanded size label should localize');
+  assertContains(panelHtml, 'Apetito:', 'Expanded appetite label should localize');
+  assertContains(panelHtml, 'Estomago: 2/8', 'Capacity summary should localize container labels');
+  assertContains(panelHtml, 'Equipo:', 'Expanded equipment label should localize');
+
+  App.creatures = [];
+  App.combatState.active = false;
+  App.renderCreatures();
+  assertContains(elements.get('enemies-content').innerHTML, 'No hay criaturas presentes', 'Empty creature panel should localize');
+  assertContains(elements.get('mobile-creature-strip').innerHTML, 'No hay criaturas aqui', 'Empty mobile creature strip should localize');
+});
+
 test('Party management can reorder set leader and dismiss allies', () => {
   const { App } = loadAppForCombat(() => 0, { confirm: true });
   const player = makeUnit('You', { id: 'player-1' });
@@ -4128,17 +4161,20 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   App.creatures = [friendly, merchant];
   App.updateLanguage('es');
   const partyHtml = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(partyHtml, 'Aliado', 'Mobile party status should localize');
   assertContains(partyHtml, 'aria-label="Seleccionar Ally para actuar"', 'Mobile party actor button should localize accessible label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
   assertContains(partyHtml, '>Actuar<', 'Mobile party actor button text should localize');
   assertContains(partyHtml, '>Objetivo<', 'Mobile party target button text should localize');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');
+  assertContains(creatureHtml, 'Amistoso | 100/100', 'Mobile creature disposition should localize');
   assertContains(creatureHtml, 'aria-label="Marcar Friendly como objetivo"', 'Mobile creature target button should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile fight icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Seducir Friendly"', 'Mobile pleasure icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Reclutar Friendly"', 'Mobile recruit icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Aceptar mision Friendly"', 'Mobile quest icon should expose localized accessible label');
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
+  assertContains(merchantHtml, 'Mercader | 100/100', 'Mobile merchant disposition should localize');
   assertContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile trade icon should expose localized accessible label');
 });
 

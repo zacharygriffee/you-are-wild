@@ -5502,31 +5502,34 @@
                 const rawTargetId = this._unitSelectionId(unit);
                 const targetSelected = this._isExplorationTarget(type, rawTargetId);
                 const isTargetable = !isParty && this.targetSelection && this.canSelectCreatureTarget(unit);
+                const unitName = unit.name || (isParty ? 'party member' : 'creature');
+                const unitLabel = this._escapeHtml(unitName);
+                const chipButton = (classes, label, title, onclick, attrs = '') => `<button class="${classes}" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}"${attrs ? ' ' + attrs : ''} onclick="${onclick}">${this._escapeHtml(label)}</button>`;
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = targetSelected ? ' primary' : '';
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${selectedClass}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">Act</button><button class="action-btn${targetClass}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">Target</button></div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}</div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
                         const disabled = isTargetable ? '' : ' disabled';
-                        const targetLabel = this._escapeHtml(unit.name || 'creature');
-                        const actionLabel = this._escapeHtml(this.targetSelection.action || 'action');
-                        const targetHint = `${isTargetable ? 'Select' : 'Cannot select'} ${targetLabel} as ${actionLabel} target`;
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">Target</button></div>`;
+                        const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
+                        const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabled.trim())}</div>`;
                     } else if (!this.combatState.active) {
                         const targetClass = targetSelected ? ' primary' : '';
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn${targetClass}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">Target</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')">⚔️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')">😘</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')">🔥</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')">🍽️</button><button class="action-btn" onclick="event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')">🍲</button>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`)}${chipButton('action-btn', '⚔️', `${this._uiLabel('fight')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fight','${targetKey}')`)}${chipButton('action-btn', '😘', `${this._uiLabel('flirt')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('flirt','${targetKey}')`)}${chipButton('action-btn', '🔥', `${this._uiLabel('fuck')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('fuck','${targetKey}')`)}${chipButton('action-btn', '🍽️', `${this._uiLabel('feast')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feast','${targetKey}')`)}${chipButton('action-btn', '🍲', `${this._uiLabel('feed')} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('feed','${targetKey}')`)}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
+                            actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, `event.stopPropagation();App.recruitCreatureById('${targetKey}')`);
                         }
                         if (unit.quest) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜</button>`;
+                            const questLabel = this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest');
+                            actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, `event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')`);
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
-                            actionButtons += `<button class="action-btn primary" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙</button>`;
+                            actionButtons += chipButton('action-btn primary', '🪙', `${this._uiLabel('trade')} ${unitName}`, `event.stopPropagation();App.showTrade('${targetKey}')`);
                         }
                         actionButtons += '</div>';
                     }
@@ -5541,7 +5544,7 @@
                     ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
                     : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
                 return `<div class="mobile-unit-chip ${isTargetable ? 'targetable' : ''}" onclick="${click}"${pressHandlers}>
-                    <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unit.name}</span>${turnBadge}</div>
+                    <div class="mobile-chip-name"><span>${unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${status} | ${unit.CPun}/${unit.MPun}${rowText}</div>
                     <div class="mobile-chip-bar"><div class="mobile-chip-fill" style="width:${hpPercent}%"></div></div>

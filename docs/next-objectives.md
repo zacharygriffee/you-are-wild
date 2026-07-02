@@ -127,7 +127,7 @@
 ## Next Execution Goals
 
 1. **Harden self-included multi-creature interactions.** Add coverage for remaining `c1 + c2 + c3 -> c1` combinations and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.
-2. **Keep the save-slot/new-game flow tight.** Validate that the load menu exposes a clear New Game path, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
+2. **Keep the save-slot/new-game flow tight.** Validate that the load menu exposes a clear New Game path, slot cards can start a new run or take over an existing slot, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
 3. **Device-test mobile save and party surfaces.** Confirm viewport-bounded modals, slot cards, long-press party management, and target buttons remain reachable with real mobile browser chrome and safe-area variants.
 4. **Continue accessibility/localization pass on high-traffic controls.** Prefer labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
 5. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
@@ -182,7 +182,7 @@
 
 #### 19. New Game And Save Slot UX
 - Further improve visual polish if playtesting shows the responsive slot cards/action grids are still too dense on small devices
-- Keep the load-menu slot takeover flow explicit after device testing: empty slots should stay obvious new-game starting points, occupied slots must warn about irreversible overwrite, delete remains scoped to one selected slot, and localized accessible button labels should remain clear in compact layouts
+- Keep the load-menu slot takeover flow explicit after device testing: the load menu should support New Game, per-slot new-run takeover, and per-slot delete without forcing users through settings; empty slots should stay obvious new-game starting points, occupied slots must warn about irreversible overwrite, delete remains scoped to one selected slot, and localized accessible button labels should remain clear in compact layouts
 - Consider separating in-game save mode from main-menu load/new-run mode if the combined slot manager becomes visually crowded
 - Device-test mobile save-slot management to confirm the responsive shell scrolls correctly across real browser chrome and safe-area variants
 

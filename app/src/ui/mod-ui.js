@@ -197,6 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const modBtn = document.createElement('button');
         modBtn.className = 'nav-btn';
         modBtn.textContent = '📦 Mods';
+        modBtn.title = 'Open mods';
+        modBtn.setAttribute('aria-label', 'Open mods');
         modBtn.onclick = () => ModUI.showModScreen();
         nav.appendChild(modBtn);
     }

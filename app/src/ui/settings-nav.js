@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const settingsBtn = document.createElement('button');
         settingsBtn.className = 'nav-btn';
         settingsBtn.textContent = '⚙️ Settings';
+        settingsBtn.title = 'Open settings';
+        settingsBtn.setAttribute('aria-label', 'Open settings');
         settingsBtn.onclick = () => {
             App.showScreen('settings');
             App.showSettings();

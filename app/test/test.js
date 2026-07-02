@@ -99,6 +99,9 @@ section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
+const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
+const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
+const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
@@ -464,6 +467,12 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle party panel"', 'Party nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
+  assertContains(settingsNavContent, "setAttribute('aria-label', 'Open settings')", 'Injected settings nav button should expose accessible label');
+  assertContains(settingsNavContent, "title = 'Open settings'", 'Injected settings nav button should expose title');
+  assertContains(marketNavContent, "setAttribute('aria-label', 'Open market')", 'Injected market nav button should expose accessible label');
+  assertContains(marketNavContent, "title = 'Open market'", 'Injected market nav button should expose title');
+  assertContains(modUiContent, "setAttribute('aria-label', 'Open mods')", 'Injected mods nav button should expose accessible label');
+  assertContains(modUiContent, "title = 'Open mods'", 'Injected mods nav button should expose title');
   assertContains(template, 'aria-label="Expand or collapse party cards"', 'Party panel expand control should expose accessible label');
   assertContains(template, 'aria-label="Expand or collapse creature cards"', 'Creature panel expand control should expose accessible label');
   assertContains(template, 'aria-label="Export visible log entries"', 'Log export control should expose accessible label');

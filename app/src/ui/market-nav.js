@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const marketBtn = document.createElement('button');
         marketBtn.className = 'nav-btn';
         marketBtn.textContent = '🏪 Market';
+        marketBtn.title = 'Open market';
+        marketBtn.setAttribute('aria-label', 'Open market');
         marketBtn.onclick = () => {
             document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
             document.getElementById('screen-market').style.display = 'block';

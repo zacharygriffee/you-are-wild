@@ -5921,7 +5921,9 @@ const WorldGen = (() => {
 
             _terrainCausesMiss(actor, target, action = 'fight') {
                 if (!this._isPhysicalCombatAction(action)) return false;
-                if (this._currentBiomeId() === 'cave' && !actor?.darkvision && Math.random() < 0.5) {
+                if (this._currentBiomeId() === 'cave'
+                    && !actor?.darkvision
+                    && this._combatStateRoll('combat-terrain-miss', actor, `${this._unitSelectionId(target)}:${action}`) < 0.5) {
                     this.log.push({ text: `${actor.name} loses the target in the cave darkness!`, type: 'combat' });
                     return true;
                 }

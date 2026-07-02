@@ -4085,6 +4085,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
   assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
   assertNotContains(App._processStatusEffects.toString(), 'spreadTarget && Math.random', 'Persistent combat status spread should not use raw Math.random');
+  assertNotContains(App._terrainCausesMiss.toString(), 'Math.random', 'Persistent combat terrain miss should not use Math.random');
   assertNotContains(App._calcInitiative.toString(), 'Math.random', 'Persistent combat initiative should not use Math.random');
   assertNotContains(App.allyTurn.toString(), 'ally.obedient && Math.random', 'Dumb AI obedience checks should not use raw Math.random');
   assertNotContains(App.allyTurn.toString(), 'enemies[Math.floor(Math.random()', 'Dumb AI target picks should not use raw Math.random');
@@ -4589,19 +4590,40 @@ test('Dense forest terrain grants cover and slows movement', () => {
 });
 
 test('Cave terrain can cause non-darkvision physical attacks to miss', () => {
-  const { App } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { Figh: 50 });
-  const enemy = makeUnit('Cave Enemy', { disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  const { App } = loadAppForCombat(() => 0.99);
+  App.worldMeta = { seed: 'cave-miss-1', generatorVersion: 2 };
+  const player = makeUnit('You', { id: 'cave-attacker', Figh: 50 });
+  const enemy = makeUnit('Cave Enemy', { id: 'cave-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
   App.player = player;
   App.party = [player];
   App.creatures = [enemy];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'cave', explored: true, creatures: [enemy] }]]);
-  App.combatState.active = true;
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
   App.nextTurn = function() {};
   App.executeActionAgainstTarget('fight', player, enemy);
   assertEqual(enemy.CPun, 100, 'Cave darkness miss should prevent damage');
   assertContains(App.log[App.log.length - 1].text, 'miss', 'Cave miss should be logged as the action result');
+});
+
+test('Cave terrain miss outcome is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'cave-miss-1', generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'cave-attacker', Figh: 50 });
+    const enemy = makeUnit('Cave Enemy', { id: 'cave-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+    App.player = player;
+    App.party = [player];
+    App.creatures = [enemy];
+    App.location = { x: 0, y: 0 };
+    App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'cave', explored: true, creatures: [enemy] }]]);
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+    App.nextTurn = function() {};
+    App.executeActionAgainstTarget('fight', player, enemy);
+    return { enemyPun: enemy.CPun, lastLog: App.log[App.log.length - 1]?.text || '' };
+  };
+
+  assertEqual(JSON.stringify(buildCase(() => 0)), JSON.stringify(buildCase(() => 0.99)), 'Cave terrain miss should not depend on ambient Math.random');
 });
 
 test('Swamp terrain can stick grounded combatants for their turn', () => {

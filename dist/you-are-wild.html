@@ -1731,25 +1731,25 @@
             <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;">Explore. Change. Survive.</p>
 
             <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
-                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" onclick="App.continueLastGame()">
+                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" onclick="App.continueLastGame()">
                     ▶ Continue Last Game
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showNewGameManager()">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Start a new game" aria-label="Start a new game" onclick="App.showNewGameManager()">
                     🆕 New Game
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showSaveManager()">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Load game" aria-label="Load game" onclick="App.showSaveManager()">
                     📂 Load Game
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showScreen('settings'); App.showSettings();">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open settings" aria-label="Open settings" onclick="App.showScreen('settings'); App.showSettings();">
                     ⚙️ Settings
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showModScreen()">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open mods" aria-label="Open mods" onclick="App.showModScreen()">
                     📦 Mods
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showMarketScreen()">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open market" aria-label="Open market" onclick="App.showMarketScreen()">
                     🏪 Market
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" onclick="App.showTutorial()">
+                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open tutorial" aria-label="Open tutorial" onclick="App.showTutorial()">
                     📖 Tutorial
                 </button>
             </div>
@@ -1911,13 +1911,13 @@
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>
                 <nav class="app-nav">
-                    <button class="nav-btn" onclick="togglePanel('map')">🗺️ Map</button>
-                    <button class="nav-btn" onclick="togglePanel('party')">👥 Party</button>
-                    <button class="nav-btn" onclick="togglePanel('enemies')">⚔️ Enemies</button>
-                    <button class="nav-btn" onclick="App.showCharacterStats()">📊 Stats</button>
-                    <button class="nav-btn" onclick="showTutorial()">📖 Help</button>
-                    <button class="nav-btn" onclick="App.showSaveManager()">💾 Save</button>
-                    <button class="nav-btn" onclick="App.showSaveManager()">📂 Load</button>
+                    <button class="nav-btn" title="Toggle map panel" aria-label="Toggle map panel" onclick="togglePanel('map')">🗺️ Map</button>
+                    <button class="nav-btn" title="Toggle party panel" aria-label="Toggle party panel" onclick="togglePanel('party')">👥 Party</button>
+                    <button class="nav-btn" title="Toggle creatures panel" aria-label="Toggle creatures panel" onclick="togglePanel('enemies')">⚔️ Enemies</button>
+                    <button class="nav-btn" title="Open character stats" aria-label="Open character stats" onclick="App.showCharacterStats()">📊 Stats</button>
+                    <button class="nav-btn" title="Open help tutorial" aria-label="Open help tutorial" onclick="showTutorial()">📖 Help</button>
+                    <button class="nav-btn" title="Open save slots" aria-label="Open save slots" onclick="App.showSaveManager()">💾 Save</button>
+                    <button class="nav-btn" title="Open load slots" aria-label="Open load slots" onclick="App.showSaveManager()">📂 Load</button>
                 </nav>
             </header>
 
@@ -2011,7 +2011,7 @@
                 <div class="panel panel-party" id="panel-party">
                     <div class="panel-header">
                         <span>👥 Party</span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('party')">Expand</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" onclick="expandAll('party')">Expand</button>
                     </div>
                     <div class="panel-content" id="party-content">
                         <!-- Populated by JS -->
@@ -2022,7 +2022,7 @@
                 <div class="panel panel-enemies" id="panel-enemies">
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ Enemies</span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="expandAll('enemies')">Expand</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" onclick="expandAll('enemies')">Expand</button>
                     </div>
                     <div class="panel-content" id="enemies-content">
                         <p style="color: var(--text-muted); text-align: center;">No enemies present</p>
@@ -2035,16 +2035,16 @@
                 <div class="log-header">
                     <span class="log-title">📜 Combat Log</span>
                     <div style="display:flex;gap:6px;">
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="App.exportLog()">Export</button>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="clearLog()">Clear</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" onclick="App.exportLog()">Export</button>
+                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Clear log entries" aria-label="Clear log entries" onclick="clearLog()">Clear</button>
                     </div>
                 </div>
                 <div class="log-controls" id="log-controls">
-                    <button class="nav-btn log-filter-btn active" data-log-filter="all" onclick="App.setLogFilter('all')">All</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="combat" onclick="App.setLogFilter('combat')">Combat</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" onclick="App.setLogFilter('discovery')">Discovery</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="loot" onclick="App.setLogFilter('loot')">Loot</button>
-                    <button class="nav-btn log-filter-btn" data-log-filter="heal" onclick="App.setLogFilter('heal')">Heal</button>
+                    <button class="nav-btn log-filter-btn active" data-log-filter="all" title="Show all log entries" aria-label="Show all log entries" onclick="App.setLogFilter('all')">All</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="combat" title="Show combat log entries" aria-label="Show combat log entries" onclick="App.setLogFilter('combat')">Combat</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="discovery" title="Show discovery log entries" aria-label="Show discovery log entries" onclick="App.setLogFilter('discovery')">Discovery</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="loot" title="Show loot log entries" aria-label="Show loot log entries" onclick="App.setLogFilter('loot')">Loot</button>
+                    <button class="nav-btn log-filter-btn" data-log-filter="heal" title="Show healing log entries" aria-label="Show healing log entries" onclick="App.setLogFilter('heal')">Heal</button>
                     <input class="log-search" id="log-search" type="search" placeholder="Search log" aria-label="Search log" oninput="App.setLogSearch(this.value)">
                 </div>
                 <div class="log-content" id="log-content" aria-live="polite" aria-relevant="additions text">

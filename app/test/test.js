@@ -453,6 +453,19 @@ test('Accessibility settings controls are available', () => {
   assertContains(template, 'aria-live="polite"', 'Log region should announce updates politely');
 });
 
+test('Persistent navigation controls expose accessible labels', () => {
+  assertContains(template, 'aria-label="Continue last game"', 'Continue menu action should expose accessible label');
+  assertContains(template, 'aria-label="Start a new game"', 'New game menu action should expose accessible label');
+  assertContains(template, 'aria-label="Open settings"', 'Settings menu action should expose accessible label');
+  assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
+  assertContains(template, 'aria-label="Toggle party panel"', 'Party nav button should expose accessible label');
+  assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
+  assertContains(template, 'aria-label="Expand or collapse party cards"', 'Party panel expand control should expose accessible label');
+  assertContains(template, 'aria-label="Expand or collapse creature cards"', 'Creature panel expand control should expose accessible label');
+  assertContains(template, 'aria-label="Export visible log entries"', 'Log export control should expose accessible label');
+  assertContains(template, 'aria-label="Show combat log entries"', 'Combat log filter should expose accessible label');
+});
+
 test('Settings expose language selector', () => {
   assertContains(template, 'id="setting-language"', 'Language selector missing');
   assertContains(template, 'App.updateLanguage(this.value)', 'Language selector should update App language');

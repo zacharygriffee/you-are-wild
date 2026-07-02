@@ -1459,6 +1459,26 @@ test('Fear can skip or force low-health combatants to flee', () => {
   assertEqual(App._fearSkipped, true, 'Fear flee should consume turn');
 });
 
+test('Fear freeze skip is deterministic by combat state', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: 'fear-freeze-0', generatorVersion: 2 };
+    const scared = makeUnit('Scared', { id: 'scared-unit', CPun: 80, MPun: 100, status: { fear: { turns: 2, by: 'Enemy' } } });
+    App.player = scared;
+    App.party = [scared];
+    App.creatures = [makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY })];
+    App.location = { x: 0, y: 0 };
+    App.dayCount = 0;
+    App.timeHour = 0;
+    App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: scared, initiative: 10 }], syncActions: [] };
+    return App._skipTurnFromStatus(scared);
+  };
+  const lowRandom = buildCase(() => 0);
+  const highRandom = buildCase(() => 0.99);
+  assertEqual(lowRandom, highRandom, 'Fear freeze skip should not depend on ambient Math.random');
+  assertContains(lowRandom, 'freezes in fear', 'Seed should exercise the fear freeze branch');
+});
+
 test('Loaded-style units are normalized for combat assumptions', () => {
   const { App } = loadAppForCombat();
   const unit = App._normalizeUnit({ name: 'Bat', species: 'bat', CPun: 10, MPun: 20 });
@@ -3994,6 +4014,7 @@ test('Deterministic world generation paths do not use Math.random', () => {
   assertNotContains(App._selectEnemyTarget.toString(), 'Math.random', 'Persistent combat target tie-breaks should not use Math.random');
   assertNotContains(App.enemyTurn.toString(), 'enemy.menacing && target.CPun / target.MPun < 0.4 && Math.random', 'Menacing fear status should not use raw Math.random');
   assertNotContains(App.attemptFlee.toString(), 'Math.random', 'Persistent combat flee outcome should not use Math.random');
+  assertNotContains(App._skipTurnFromStatus.toString(), 'Math.random', 'Persistent combat status skip outcomes should not use Math.random');
   assertNotContains(App._enemyShouldFlee.toString(), 'Math.random', 'Persistent combat morale flee should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Math.random', 'Persistent combat reinforcement creation should not use Math.random');
   assertNotContains(App._enemyCallReinforcement.toString(), 'Date.now', 'Persistent combat reinforcement ids should not use Date.now');

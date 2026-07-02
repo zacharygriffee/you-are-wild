@@ -2365,7 +2365,9 @@
                         unit.fledCombat = true;
                         return this._label('combat.status.fearFlee', '{name} panics and flees from fear!', { name: unit.name });
                     }
-                    if (Math.random() < 0.5) return this._label('combat.status.fearFrozen', '{name} freezes in fear and loses their turn!', { name: unit.name });
+                    if (this._combatStateRoll('combat-fear-freeze', unit, 'skip') < 0.5) {
+                        return this._label('combat.status.fearFrozen', '{name} freezes in fear and loses their turn!', { name: unit.name });
+                    }
                 }
                 return null;
             },

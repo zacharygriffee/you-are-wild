@@ -610,11 +610,15 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       locales: {
         en: {
           'action.fight': 'Fight', 'action.flirt': 'Flirt', 'action.feed': 'Feed', 'action.inspect': 'Inspect', 'action.recruit': 'Recruit',
-          'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'target.actors': 'Actors', 'target.targets': 'Targets'
+          'ui.close': 'Close', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions',
+          'party.stats': 'Stats', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.dismiss': 'Dismiss', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
+          'target.actors': 'Actors', 'target.targets': 'Targets'
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.feed': 'Alimentar', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar',
-          'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'target.actors': 'Actores', 'target.targets': 'Objetivos'
+          'ui.close': 'Cerrar', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo',
+          'party.stats': 'Estadisticas', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.dismiss': 'Despedir', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
+          'target.actors': 'Actores', 'target.targets': 'Objetivos'
         }
       },
       setPreference(key, value) { this.preferences[key] = value; },
@@ -3554,6 +3558,26 @@ test('Mobile party long-press menu exposes management actions', () => {
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('close', 1);
   assertEqual(opener.focused, true, 'Closing party long-press menu should restore focus to opener');
+});
+
+test('Mobile party long-press menu uses localized management labels', () => {
+  const { App, body } = loadAppForCombat(() => 0, { confirm: true });
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-es', partyRole: 'guard', aiOrder: 'defensive' });
+  App.player = player;
+  App.party = [player, ally];
+  App.partyLeaderId = 'player-1';
+  App.updateLanguage('es');
+  App.showMobilePartyContext(1);
+  assertContains(body.innerHTML, 'aria-label="Acciones del grupo"', 'Party menu label should localize');
+  assertContains(body.innerHTML, 'Estadisticas', 'Stats menu item should localize');
+  assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
+  assertContains(body.innerHTML, '>Rol<', 'Role field label should localize');
+  assertContains(body.innerHTML, 'aria-label="Rol de grupo para Ally"', 'Role select accessible label should localize');
+  assertContains(body.innerHTML, 'Orden IA', 'AI order field label should localize');
+  assertContains(body.innerHTML, 'aria-label="Orden IA para Ally"', 'AI order select accessible label should localize');
+  assertContains(body.innerHTML, 'Despedir', 'Dismiss menu item should localize');
+  assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
 });
 
 test('Mobile creature long-press menu exposes core actions', () => {

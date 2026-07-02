@@ -9275,13 +9275,17 @@
                 const roleOptions = Object.entries(this.PARTY_ROLES).map(([key, label]) => `<option value="${key}" ${role === key ? 'selected' : ''}>${label}</option>`).join('');
                 const orderOptions = Object.entries(this.PARTY_AI_ORDERS).map(([key, label]) => `<option value="${key}" ${order === key ? 'selected' : ''}>${label}</option>`).join('');
                 const menuLabel = this._label('ui.partyActions', 'Party actions');
+                const roleLabel = this._label('party.role', 'Role');
+                const orderLabel = this._label('party.aiOrder', 'AI Order');
+                const roleAria = this._label('party.roleFor', 'Party role for {name}', { name: unit.name || 'party member' });
+                const orderAria = this._label('party.aiOrderFor', 'AI order for {name}', { name: unit.name || 'party member' });
                 let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
-                html += actionButton('Stats', 'stats');
+                html += actionButton(this._label('party.stats', 'Stats'), 'stats');
                 if (unit !== this.player && !unit.mc) {
-                    if (this._getPartyLeader() !== unit) html += actionButton('Make Leader', 'lead');
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>Role</span><select class="nav-btn" aria-label="Party role for ${unitLabel}" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select></label>`;
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>AI Order</span><select class="nav-btn" aria-label="AI order for ${unitLabel}" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${orderOptions}</select></label>`;
-                    html += actionButton('Dismiss', 'dismiss', ' danger');
+                    if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select></label>`;
+                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${orderOptions}</select></label>`;
+                    html += actionButton(this._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
                 }
                 html += actionButton(this._label('ui.close', 'Close'), 'close');
                 html += '</div></div>';
@@ -10270,6 +10274,13 @@ const CONTENT_SYSTEM = {
             'ui.close': 'Close',
             'ui.creatureActions': 'Creature actions',
             'ui.partyActions': 'Party actions',
+            'party.stats': 'Stats',
+            'party.makeLeader': 'Make Leader',
+            'party.role': 'Role',
+            'party.aiOrder': 'AI Order',
+            'party.dismiss': 'Dismiss',
+            'party.roleFor': 'Party role for {name}',
+            'party.aiOrderFor': 'AI order for {name}',
             'target.actors': 'Actors',
             'target.targets': 'Targets',
             'target.clear': 'Clear',
@@ -10304,6 +10315,13 @@ const CONTENT_SYSTEM = {
             'ui.close': 'Cerrar',
             'ui.creatureActions': 'Acciones de criatura',
             'ui.partyActions': 'Acciones del grupo',
+            'party.stats': 'Estadisticas',
+            'party.makeLeader': 'Hacer lider',
+            'party.role': 'Rol',
+            'party.aiOrder': 'Orden IA',
+            'party.dismiss': 'Despedir',
+            'party.roleFor': 'Rol de grupo para {name}',
+            'party.aiOrderFor': 'Orden IA para {name}',
             'target.actors': 'Actores',
             'target.targets': 'Objetivos',
             'target.clear': 'Limpiar',

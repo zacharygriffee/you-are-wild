@@ -6313,23 +6313,25 @@
                 this.showScreen('create');
             },
             renderSaveManager(mode = this.saveManagerMode || 'load') {
-                const saves = {};
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
                 const isNewMode = mode === 'new';
-                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:24px;">' + (isNewMode ? 'Pick a slot for the new run. Occupied slots require irreversible overwrite confirmation.' : 'Auto-save is always on. You can load, start a new run in, save over, or delete an individual slot.') + '</p>';
+                let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + (isNewMode ? 'Choose New Game Slot' : 'Save Slots') + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + (isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.') + '</p>';
+                if (!isNewMode) html += '<div class="save-manager-toolbar"><button class="nav-btn primary" onclick="App.showNewGameManager()">🆕 New Game</button><span>Choose a slot next; occupied slots warn before overwrite.</span></div>';
                 for (let i = 1; i <= 5; i++) {
                     const slotName = 'slot' + i;
                     const isActive = slotName === lastSlot;
                     const saveTime = this._getSaveTime(slotName);
                     const hasData = parseInt(saveTime) > 0;
                     const timeStr = hasData ? new Date(parseInt(saveTime)).toLocaleString() : 'Empty';
-                    html += '<div class="save-slot-card' + (isActive ? ' active' : '') + '">';
-                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '</div><div class="save-slot-time">' + timeStr + '</div></div>';
+                    const slotStatus = hasData ? 'Saved game' : 'Open slot';
+                    html += '<div class="save-slot-card ' + (hasData ? 'occupied' : 'empty') + (isActive ? ' active' : '') + '">';
+                    html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + 'Slot ' + i + '<span class="save-slot-badge">' + slotStatus + '</span></div><div class="save-slot-time">' + timeStr + '</div></div>';
                     html += '<div class="save-slot-actions">';
-                    if (isNewMode) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 Use Slot</button>';
-                    if (!isNewMode) html += '<button class="nav-btn" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Run</button>';
+                    if (isNewMode) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">' + (hasData ? '🆕 Overwrite Slot' : '🆕 Use Empty Slot') + '</button>';
+                    if (!isNewMode && !hasData) html += '<button class="nav-btn primary" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Game</button>';
+                    if (!isNewMode && hasData) html += '<button class="nav-btn" onclick="App.beginNewGameInSlot(\'' + slotName + '\')">🆕 New Run</button>';
                     if (hasData) html += '<button class="nav-btn" onclick="App.loadFromSlot(\'' + slotName + '\').then(() => { App.showScreen(\'game\'); })">📂 Load</button>';
-                    html += '<button class="nav-btn" onclick="App.saveToSlot(\'' + slotName + '\')">💾 Save</button>';
+                    if (!isNewMode) html += '<button class="nav-btn" onclick="App.saveToSlot(\'' + slotName + '\')">💾 Save</button>';
                     if (hasData) html += '<button class="nav-btn" style="color:var(--accent-danger);" onclick="App.deleteSlot(\'' + slotName + '\')">🗑️ Delete</button>';
                     html += '</div></div>';
                 }

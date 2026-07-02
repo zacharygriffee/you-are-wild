@@ -1307,6 +1307,18 @@
             margin-top: var(--space-xs);
         }
 
+        .create-validation {
+            display: none;
+            margin: 0 0 var(--space-md);
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--accent-danger);
+            border-radius: var(--radius-md);
+            background: rgba(255, 107, 107, 0.12);
+            color: var(--accent-danger);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         /* =============================================
            RESPONSIVE
            ============================================= */
@@ -2097,7 +2109,7 @@
                 </div>
                 <div class="accordion-body" id="body-gender" style="display:none;">
                     <div class="option-grid" id="gender-grid">
-                        <div class="option-card selected" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
                             <div class="option-icon">♀️</div>
                             <div class="option-label">Female</div>
                             <div class="option-desc">Play as female</div>
@@ -2124,7 +2136,7 @@
                 </div>
                 <div class="accordion-body" id="body-anatomy" style="display:none;">
                     <div class="option-grid" id="anatomy-grid">
-                        <div class="option-card selected" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
+                        <div class="option-card" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
                             <div class="option-icon">🔮</div>
                             <div class="option-label">Pussy</div>
                         </div>
@@ -2132,7 +2144,7 @@
                             <div class="option-icon">🍆</div>
                             <div class="option-label">Cock</div>
                         </div>
-                        <div class="option-card selected" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
+                        <div class="option-card" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
                             <div class="option-icon">🍈</div>
                             <div class="option-label">Tits</div>
                         </div>
@@ -2181,9 +2193,13 @@
                 </div>
             </div>
 
-            <button class="action-btn primary create-submit" onclick="createCharacter()">
-                Begin Adventure →
-            </button>
+            <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>
+            <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+                <button class="action-btn" type="button" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
+                <button class="action-btn primary create-submit" onclick="createCharacter()">
+                    Begin Adventure →
+                </button>
+            </div>
         </div>
     </div>
 
@@ -4529,8 +4545,8 @@ const WorldGen = (() => {
 
             // ===== CHARACTER CREATION =====
             selectedSpecies: 'human',
-            selectedGender: 'female',
-            selectedParts: ['clit'], // 'cock', 'clit', 'tits', 'pecs', 'none'
+            selectedGender: null,
+            selectedParts: [], // 'cock', 'clit', 'tits', 'pecs', 'none'
             selectedEncounterPreference: 'any',
             selectedBodyParts: [],
             playerName: 'You',
@@ -4624,10 +4640,25 @@ const WorldGen = (() => {
                 });
             },
 
-            selectGender(g) { this.selectedGender = g; },
+            _setCreateValidation(message = '') {
+                const el = document.getElementById('create-validation');
+                if (!el) return;
+                el.textContent = message;
+                el.style.display = message ? 'block' : 'none';
+            },
+            _setCreateOptionSelection(selector, value, datasetKey = 'value') {
+                document.querySelectorAll(selector).forEach(c => {
+                    c.classList.toggle('selected', c.dataset[datasetKey] === value);
+                });
+            },
+            selectGender(g) {
+                this.selectedGender = g;
+                this._setCreateValidation('');
+            },
             selectPart(p) {
                 if (this.selectedParts.includes(p)) this.selectedParts = this.selectedParts.filter(x => x !== p);
                 else this.selectedParts.push(p);
+                this._setCreateValidation('');
             },
             toggleBodyPart(id) {
                 if (this.selectedBodyParts.includes(id)) this.selectedBodyParts = this.selectedBodyParts.filter(x => x !== id);
@@ -4638,6 +4669,44 @@ const WorldGen = (() => {
                     const part = c.dataset.part;
                     c.classList.toggle('selected', this.selectedParts.includes(part));
                 });
+            },
+            validateCharacterCreation() {
+                const hasGender = Boolean(this.selectedGender);
+                const hasPrimaryAnatomy = this.selectedParts.includes('clit') || this.selectedParts.includes('cock');
+                const hasChestAnatomy = this.selectedParts.includes('tits') || this.selectedParts.includes('pecs');
+                if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
+                    this._setCreateValidation('');
+                    return true;
+                }
+                const missing = [];
+                if (!hasGender) missing.push(this._label('create.validation.gender', 'choose a gender'));
+                if (!hasPrimaryAnatomy) missing.push(this._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
+                if (!hasChestAnatomy) missing.push(this._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
+                const message = this._label('create.validation.required', 'Before beginning, please {items}.', { items: missing.join(', ') });
+                this._setCreateValidation(message);
+                this.toggleAccordion(!hasGender ? 'gender' : 'anatomy');
+                return false;
+            },
+            randomizeCharacter() {
+                const genders = ['female', 'male', 'nonbinary'];
+                const anatomyPresets = [
+                    ['clit', 'tits'],
+                    ['cock', 'pecs'],
+                    ['cock', 'tits'],
+                    ['clit', 'pecs'],
+                    ['cock', 'clit', 'pecs'],
+                    ['cock', 'clit', 'tits']
+                ];
+                const species = this.species[Math.floor(Math.random() * this.species.length)]?.id || 'human';
+                const gender = genders[Math.floor(Math.random() * genders.length)];
+                const parts = anatomyPresets[Math.floor(Math.random() * anatomyPresets.length)];
+                this.selectSpecies(species);
+                this.selectedGender = gender;
+                this.selectedParts = [...parts];
+                this._setCreateOptionSelection('#gender-grid .option-card', gender);
+                this.updateAnatomyUI();
+                this._setCreateValidation('');
+                this.toggleAccordion('species');
             },
             toggleAccordion(id) {
                 document.querySelectorAll('.accordion-section').forEach(section => {
@@ -4662,6 +4731,7 @@ const WorldGen = (() => {
             },
 
             createCharacter() {
+                if (!this.validateCharacterCreation()) return;
                 const name = document.getElementById('char-name')?.value?.trim() || 'You';
                 this.playerName = name;
                 const species = this.species.find(s => s.id === this.selectedSpecies);
@@ -13121,6 +13191,11 @@ const CONTENT_SYSTEM = {
             'settings.cheats': 'Cheats',
             'settings.clearAllSaves': 'Clear All Saves',
             'create.namePlaceholder': 'Enter your name...',
+            'create.random': 'Random Character',
+            'create.validation.required': 'Before beginning, please {items}.',
+            'create.validation.gender': 'choose a gender',
+            'create.validation.primaryAnatomy': 'choose a primary anatomy option',
+            'create.validation.chestAnatomy': 'choose a chest anatomy option',
             'ui.expandCards': 'Expand',
             'ui.expandPartyCardsTitle': 'Expand or collapse party cards',
             'ui.expandCreatureCardsTitle': 'Expand or collapse creature cards',
@@ -13746,6 +13821,11 @@ const CONTENT_SYSTEM = {
             'settings.cheats': 'Trucos',
             'settings.clearAllSaves': 'Borrar todas las partidas',
             'create.namePlaceholder': 'Ingresa tu nombre...',
+            'create.random': 'Personaje aleatorio',
+            'create.validation.required': 'Antes de comenzar, por favor {items}.',
+            'create.validation.gender': 'elige un genero',
+            'create.validation.primaryAnatomy': 'elige una opcion de anatomia primaria',
+            'create.validation.chestAnatomy': 'elige una opcion de pecho',
             'ui.expandCards': 'Expandir',
             'ui.expandPartyCardsTitle': 'Expandir o contraer cartas del grupo',
             'ui.expandCreatureCardsTitle': 'Expandir o contraer cartas de criaturas',

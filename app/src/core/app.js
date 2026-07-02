@@ -901,8 +901,8 @@
 
             // ===== CHARACTER CREATION =====
             selectedSpecies: 'human',
-            selectedGender: 'female',
-            selectedParts: ['clit'], // 'cock', 'clit', 'tits', 'pecs', 'none'
+            selectedGender: null,
+            selectedParts: [], // 'cock', 'clit', 'tits', 'pecs', 'none'
             selectedEncounterPreference: 'any',
             selectedBodyParts: [],
             playerName: 'You',
@@ -996,10 +996,25 @@
                 });
             },
 
-            selectGender(g) { this.selectedGender = g; },
+            _setCreateValidation(message = '') {
+                const el = document.getElementById('create-validation');
+                if (!el) return;
+                el.textContent = message;
+                el.style.display = message ? 'block' : 'none';
+            },
+            _setCreateOptionSelection(selector, value, datasetKey = 'value') {
+                document.querySelectorAll(selector).forEach(c => {
+                    c.classList.toggle('selected', c.dataset[datasetKey] === value);
+                });
+            },
+            selectGender(g) {
+                this.selectedGender = g;
+                this._setCreateValidation('');
+            },
             selectPart(p) {
                 if (this.selectedParts.includes(p)) this.selectedParts = this.selectedParts.filter(x => x !== p);
                 else this.selectedParts.push(p);
+                this._setCreateValidation('');
             },
             toggleBodyPart(id) {
                 if (this.selectedBodyParts.includes(id)) this.selectedBodyParts = this.selectedBodyParts.filter(x => x !== id);
@@ -1010,6 +1025,44 @@
                     const part = c.dataset.part;
                     c.classList.toggle('selected', this.selectedParts.includes(part));
                 });
+            },
+            validateCharacterCreation() {
+                const hasGender = Boolean(this.selectedGender);
+                const hasPrimaryAnatomy = this.selectedParts.includes('clit') || this.selectedParts.includes('cock');
+                const hasChestAnatomy = this.selectedParts.includes('tits') || this.selectedParts.includes('pecs');
+                if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
+                    this._setCreateValidation('');
+                    return true;
+                }
+                const missing = [];
+                if (!hasGender) missing.push(this._label('create.validation.gender', 'choose a gender'));
+                if (!hasPrimaryAnatomy) missing.push(this._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
+                if (!hasChestAnatomy) missing.push(this._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
+                const message = this._label('create.validation.required', 'Before beginning, please {items}.', { items: missing.join(', ') });
+                this._setCreateValidation(message);
+                this.toggleAccordion(!hasGender ? 'gender' : 'anatomy');
+                return false;
+            },
+            randomizeCharacter() {
+                const genders = ['female', 'male', 'nonbinary'];
+                const anatomyPresets = [
+                    ['clit', 'tits'],
+                    ['cock', 'pecs'],
+                    ['cock', 'tits'],
+                    ['clit', 'pecs'],
+                    ['cock', 'clit', 'pecs'],
+                    ['cock', 'clit', 'tits']
+                ];
+                const species = this.species[Math.floor(Math.random() * this.species.length)]?.id || 'human';
+                const gender = genders[Math.floor(Math.random() * genders.length)];
+                const parts = anatomyPresets[Math.floor(Math.random() * anatomyPresets.length)];
+                this.selectSpecies(species);
+                this.selectedGender = gender;
+                this.selectedParts = [...parts];
+                this._setCreateOptionSelection('#gender-grid .option-card', gender);
+                this.updateAnatomyUI();
+                this._setCreateValidation('');
+                this.toggleAccordion('species');
             },
             toggleAccordion(id) {
                 document.querySelectorAll('.accordion-section').forEach(section => {
@@ -1034,6 +1087,7 @@
             },
 
             createCharacter() {
+                if (!this.validateCharacterCreation()) return;
                 const name = document.getElementById('char-name')?.value?.trim() || 'You';
                 this.playerName = name;
                 const species = this.species.find(s => s.id === this.selectedSpecies);

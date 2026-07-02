@@ -704,6 +704,22 @@ test('Create screen is constrained for mobile scrolling', () => {
   assertNotContains(template, 'class="create-container" style=', 'create container should not rely on inline scroll sizing');
 });
 
+test('Create screen requires explicit gender and anatomy choices', () => {
+  assertContains(appContent, 'selectedGender: null', 'gender should not be selected by default');
+  assertContains(appContent, 'selectedParts: []', 'anatomy should not be selected by default');
+  assertContains(template, '<div class="option-card" data-value="female"', 'female option should not be auto-selected in the template');
+  assertContains(template, '<div class="option-card" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
+  assertContains(template, '<div class="option-card" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
+  assertContains(template, 'id="create-validation" class="create-validation" role="alert" aria-live="polite"', 'create validation message should be visible to assistive tech');
+  assertContains(template, 'data-i18n="create.random"', 'random character button should be explicit and localizable');
+  assertContains(appContent, 'validateCharacterCreation()', 'create flow should validate required character choices');
+  assertContains(appContent, 'if (!this.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
+  assertContains(appContent, 'randomizeCharacter()', 'zero-config character creation should be explicit');
+  assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
+  assertContains(contentContent, "'create.random': 'Random Character'", 'English random character label missing');
+  assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
+});
+
 test('Species accordion is the default expanded section', () => {
   assertContains(template, 'id="body-species" style="display:block;"', 'species body should be open by default');
   assertContains(template, 'id="arrow-species">▼</span>', 'species arrow should be open by default');

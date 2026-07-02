@@ -226,10 +226,10 @@
   };
 
   // Save/load helpers
-  Binary.saveGame = (appState) => {
+  Binary.saveGame = (appState, options = {}) => {
     // Convert Map/Set to plain objects for serialization
     const worldMapObj = {};
-    if (appState.worldMap) {
+    if (!options.omitWorldMap && appState.worldMap) {
         for (const [key, tile] of appState.worldMap.entries()) {
             worldMapObj[key] = tile;
         }

@@ -273,6 +273,32 @@ test('Binary save/load preserves full world tile state', () => {
   assertEqual(loaded.timeHour, 21, 'World save should preserve current hour');
 });
 
+test('Binary save can omit full worldMap for world-store-backed slots', () => {
+  const Binary = loadBinaryForTest();
+  const save = Binary.saveGame({
+    player: makeSerializableUnit('You'),
+    party: [makeSerializableUnit('You')],
+    location: { x: 1, y: 2 },
+    currentBiome: 'forest',
+    exploredTiles: new Set(['1,2']),
+    worldMeta: { worldId: 'world-compact', seed: 'compact-seed', generatorVersion: 1, mapModsHash: 'core' },
+    worldMap: new Map([['1,2', {
+      x: 1,
+      y: 2,
+      biome: 'forest',
+      explored: true,
+      hasLandmark: true,
+      landmarkName: 'Old Tree',
+      creatures: [makeSerializableUnit('Friendly', { disposition: 'friendly' })]
+    }]])
+  }, { omitWorldMap: true });
+  const loaded = Binary.loadGame(save);
+  assertEqual(Object.keys(loaded.worldMap).length, 0, 'Compact slot save should omit durable tile payloads');
+  assertEqual(loaded.exploredTiles[0], '1,2', 'Compact slot save should keep explored keys for fast UI restoration');
+  assertEqual(loaded.worldMeta.worldId, 'world-compact', 'Compact slot save should keep world id reference');
+  assertEqual(loaded.worldMeta.seed, 'compact-seed', 'Compact slot save should keep deterministic seed');
+});
+
 test('Binary load tolerates old saves without world data', () => {
   const Binary = loadBinaryForTest();
   const oldCodec = {
@@ -1815,6 +1841,7 @@ test('Sparse map IndexedDB store contract is present', () => {
   assertContains(appContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
   assertContains(appContent, 'persistWorldStateToMapStore()', 'World map persistence helper should exist');
   assertContains(appContent, 'loadWorldStateFromMapStore()', 'World map load helper should exist');
+  assertContains(appContent, 'omitWorldMap: worldStoreSaved', 'Slot saves should omit full worldMap only after world-store persistence succeeds');
 });
 
 test('Sparse map tile delta records round-trip through store shape', () => {

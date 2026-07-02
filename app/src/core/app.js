@@ -6183,8 +6183,14 @@
                 if (!this.player || this.screen !== 'game') return;
                 try {
                     this.persistAllTileDeltas();
-                    await this.persistWorldStateToMapStore().catch(e => console.warn('World map persistence failed', e));
-                    const saveData = Binary.saveGame(this);
+                    let worldStoreSaved = false;
+                    try {
+                        await this.persistWorldStateToMapStore();
+                        worldStoreSaved = true;
+                    } catch (e) {
+                        console.warn('World map persistence failed', e);
+                    }
+                    const saveData = Binary.saveGame(this, { omitWorldMap: worldStoreSaved });
                     await this._dbPut('saves', this.activeSlot, saveData);
                     this._setStoredValue('lastSlot', this.activeSlot);
                     this._setStoredValue('lastSaveTime', Date.now().toString());
@@ -6198,8 +6204,14 @@
                 if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm('Overwrite ' + slotName + ' with the current game? This cannot be undone.')) return;
                 try {
                     this.persistAllTileDeltas();
-                    await this.persistWorldStateToMapStore().catch(e => console.warn('World map persistence failed', e));
-                    const saveData = Binary.saveGame(this);
+                    let worldStoreSaved = false;
+                    try {
+                        await this.persistWorldStateToMapStore();
+                        worldStoreSaved = true;
+                    } catch (e) {
+                        console.warn('World map persistence failed', e);
+                    }
+                    const saveData = Binary.saveGame(this, { omitWorldMap: worldStoreSaved });
                     await this._dbPut('saves', slotName, saveData);
                     this.activeSlot = slotName;
                     this._setStoredValue('lastSlot', slotName);

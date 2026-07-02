@@ -369,7 +369,7 @@ Keep returning the existing tile shape.
 
 Persist durable tile/world state into `YAW_Worlds`.
 
-The current implementation creates `worlds`, `tileDeltas`, `chunkDeltas`, and `entityIndex` stores. Save/load opportunistically writes and reads world metadata plus tile deltas, while save slots still carry the version-10 `worldMap` payload as a compatibility fallback until the slot migration is complete.
+The current implementation creates `worlds`, `tileDeltas`, `chunkDeltas`, and `entityIndex` stores. Save/load writes and reads world metadata plus tile deltas. New slot saves first persist `YAW_Worlds`; when that succeeds, the slot payload keeps `worldMeta.worldId`, explored keys, and player/session state without duplicating full tile payloads. If the world-store write fails, the slot payload keeps the older full `worldMap` fallback for compatibility.
 
 ### Phase 5: Large Map LOD
 
@@ -410,7 +410,7 @@ The durable delta boundary now keeps the current gameplay-facing tile shape:
 4. Add `persistTileDelta(tile)` to store only observed or changed state.
 5. Add tests proving unexplored generated tiles do not need durable entries, while explored/changed tiles preserve creatures, items, structures, and discovery state.
 
-The IndexedDB `YAW_Worlds` first pass also exists: world metadata and tile deltas are written separately from save-slot data, with object stores reserved for future chunk/entity indexing.
+The IndexedDB `YAW_Worlds` first pass also exists: world metadata and tile deltas are written separately from compact save-slot data, with object stores reserved for future chunk/entity indexing.
 
 ## Current Large-Map Slice
 
@@ -421,4 +421,4 @@ The map panel now includes a first-pass discovered-region view:
 3. It surfaces landmarks, structures, creatures, and items as nearby discovery markers.
 4. It avoids calling `getTile()` for unknown locations, so broad map viewing does not fill the compatibility `worldMap` cache.
 
-The next code slice should focus on save-slot `worldId` migration or large-map controls such as zoom/pan, quest-vector markers, and mobile-specific ergonomics.
+The next code slice should focus on large-map controls such as zoom/pan, quest-vector markers, and mobile-specific ergonomics, or on chunk/entity indexing once gameplay systems need it.

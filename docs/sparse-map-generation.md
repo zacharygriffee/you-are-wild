@@ -412,11 +412,13 @@ The durable delta boundary now keeps the current gameplay-facing tile shape:
 
 The IndexedDB `YAW_Worlds` first pass also exists: world metadata and tile deltas are written separately from save-slot data, with object stores reserved for future chunk/entity indexing.
 
-## Next Implementation Target
+## Current Large-Map Slice
 
-The next code slice should add a large-map low-LOD discovery view:
+The map panel now includes a first-pass discovered-region view:
 
-1. Resolve low-detail biome data from generated base chunks/tiles without materializing every tile.
-2. Overlay explored/known tiles from `YAW_Worlds` tile deltas and the in-memory explored set.
-3. Surface landmarks, structures, quest vectors, and other points of interest as discovery markers.
-4. Keep mobile and desktop controls separate enough that the minimap remains fast for traversal.
+1. It resolves low-detail biome data from generated base tiles only for known locations.
+2. It overlays explored/known tiles from tile deltas and the in-memory explored set.
+3. It surfaces landmarks, structures, creatures, and items as nearby discovery markers.
+4. It avoids calling `getTile()` for unknown locations, so broad map viewing does not fill the compatibility `worldMap` cache.
+
+The next code slice should focus on save-slot `worldId` migration or large-map controls such as zoom/pan, quest-vector markers, and mobile-specific ergonomics.

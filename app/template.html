@@ -338,6 +338,87 @@
             cursor: pointer;
         }
 
+        .large-map-wrap {
+            margin-top: var(--space-md);
+            border-top: 1px solid var(--border-default);
+            padding-top: var(--space-md);
+        }
+
+        .large-map-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .large-map {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            overflow: auto;
+            max-width: 100%;
+            padding: 6px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }
+
+        .large-map-row {
+            display: flex;
+            gap: 2px;
+        }
+
+        .large-map-tile {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .large-map-tile.known {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            opacity: 0.9;
+        }
+
+        .large-map-tile.current {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+            font-weight: 700;
+        }
+
+        .large-map-tile.poi::after {
+            content: '';
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            width: 4px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--accent-warning);
+        }
+
+        .large-map-pois {
+            margin-top: var(--space-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
         .map-tile.unexplored:hover {
             border-color: var(--accent-primary) !important;
             box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
@@ -1690,6 +1771,14 @@
                     <div class="panel-content">
                         <div class="mini-map" id="mini-map">
                         <!-- Populated by App.renderMap() -->
+                    </div>
+                    <div class="large-map-wrap">
+                        <div class="large-map-toolbar">
+                            <span>Discovered Region</span>
+                            <button class="nav-btn" style="padding:4px 8px;font-size:11px;" onclick="App.renderLargeMap()">Refresh</button>
+                        </div>
+                        <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>
+                        <div class="large-map-pois" id="large-map-pois"></div>
                     </div>
                     </div>
                 </div>

@@ -5344,6 +5344,78 @@
             },
 
             // ===== MAP RENDERING =====
+            _isLargeMapKnown(x, y) {
+                const key = this._tileKey(x, y);
+                if (x === this.location.x && y === this.location.y) return true;
+                if (this.exploredTiles?.has(key)) return true;
+                const cached = this.worldMap?.get(key);
+                if (cached && (cached.explored || cached.hasLandmark || cached.structure || (cached.creatures || []).length || (cached.items || []).length)) return true;
+                const delta = this.getTileDelta(x, y);
+                return Boolean(delta && (delta.explored || delta.hasLandmark || delta.structure || (delta.creatures || []).length || (delta.items || []).length));
+            },
+
+            _resolveLargeMapTile(x, y) {
+                if (!this._isLargeMapKnown(x, y)) return null;
+                const key = this._tileKey(x, y);
+                const cached = this.worldMap?.get(key);
+                if (cached) return cached;
+                return this.applyTileDelta(this.getBaseTile(x, y), this.getTileDelta(x, y));
+            },
+
+            _largeMapPoiLabel(tile) {
+                if (!tile) return '';
+                if (tile.hasLandmark && tile.landmarkName) return tile.landmarkName;
+                if (tile.structure) return this.STRUCTURES[tile.structure]?.name || tile.structure;
+                const living = (tile.creatures || []).filter(creature => this._isLivingCreature(creature));
+                if (living.length > 0) return `${living.length} creature${living.length === 1 ? '' : 's'}`;
+                if ((tile.items || []).length > 0) return `${tile.items.length} item${tile.items.length === 1 ? '' : 's'}`;
+                return '';
+            },
+
+            renderLargeMap() {
+                const container = document.getElementById('large-map');
+                const poiContainer = document.getElementById('large-map-pois');
+                if (!container) return '';
+                if (this.inInterior && this.activeInterior) {
+                    const message = 'Discovered region is available outside.';
+                    container.innerHTML = `<div class="large-map-tile known" style="width:auto;min-width:180px;padding:8px;">${this._escapeHtml(message)}</div>`;
+                    if (poiContainer) poiContainer.innerHTML = '';
+                    return container.innerHTML;
+                }
+                const cx = this.location.x;
+                const cy = this.location.y;
+                const radius = 8;
+                const points = [];
+                let html = '';
+                for (let dy = -radius; dy <= radius; dy++) {
+                    html += '<div class="large-map-row">';
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const x = cx + dx;
+                        const y = cy + dy;
+                        const isCurrent = dx === 0 && dy === 0;
+                        const tile = this._resolveLargeMapTile(x, y);
+                        const biome = tile ? this.biomes[tile.biome] : null;
+                        const poi = this._largeMapPoiLabel(tile);
+                        let classes = 'large-map-tile';
+                        if (tile) classes += ' known';
+                        if (isCurrent) classes += ' current';
+                        if (poi) classes += ' poi';
+                        const label = tile && biome ? `${biome.name} (${x}, ${y})` : `Unknown (${x}, ${y})`;
+                        const content = isCurrent ? '●' : (biome ? biome.icon : '·');
+                        html += `<div class="${classes}" title="${this._escapeHtml(poi ? `${label}: ${poi}` : label)}" aria-label="${this._escapeHtml(label)}">${content}</div>`;
+                        if (poi) points.push({ x, y, biome: biome?.name || 'Known area', poi });
+                    }
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                if (poiContainer) {
+                    poiContainer.innerHTML = points.length
+                        ? points.slice(0, 6).map(point => `<div>${this._escapeHtml(point.poi)} <span style="color:var(--text-muted);">(${point.x}, ${point.y})</span></div>`).join('')
+                        : '<div>No discovered points of interest nearby.</div>';
+                }
+                return html;
+            },
+
             renderMap() {
                 if (this.inInterior && this.activeInterior) {
                     const cx = this.interiorLocation.x, cy = this.interiorLocation.y;
@@ -5374,6 +5446,7 @@
                     if (coords) coords.textContent = `Inside ${this.activeInterior.structureName}`;
                     const mobileCoords = document.getElementById('mobile-coords');
                     if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
+                    this.renderLargeMap();
                     this._renderTime();
                     return;
                 }
@@ -5407,8 +5480,9 @@
 	                }
 	                const containers = [document.getElementById('mini-map'), document.getElementById('mobile-mini-map')].filter(Boolean);
 	                containers.forEach(container => { container.innerHTML = html; });
-	                const mobileCoords = document.getElementById('mobile-coords');
-	                if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
+                    const mobileCoords = document.getElementById('mobile-coords');
+                    if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
+                    this.renderLargeMap();
                     this.applyMobileMapZoom();
 	                this._renderTime();
 	            },

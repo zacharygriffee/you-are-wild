@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 191/191 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 193/193 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -117,6 +117,7 @@
 - Multi-target exploration has a first-pass UI foundation: party and creature cards can mark targets, selected targets surface stat-gated context actions with escaped actor/target summaries, one actor can resolve actions across marked party/creature targets, group actors still resolve against a single marked target, selecting an ally first replaces the default player selection instead of silently creating an unintended player+ally group, self-included group fight resolves as shared sparring, self-included group feed tends the target instead of consuming helpers, self-included group feast rejects with clear selection guidance instead of routing self-consumption, self-included social actions share pleasure with selected participants, multi-target feed no longer consumes the acting party member, many-actor/many-target selections now reject with a clear log instead of silently dropping helpers, and actor/target selections are normalized after dismissal, containment, corpse conversion, and load/reset
 - Localization has a first-pass foundation: `CONTENT.locales` exposes English/Spanish keys, `CONTENT.t()` supports variable interpolation, `CONTENT.setLanguage()` persists language preferences, settings exposes an interface language selector, and high-traffic action/target labels now route through locale keys
 - New-game/save-slot UX has a first pass: main-menu New Game opens slot selection, occupied slots require irreversible overwrite confirmation, autosaves update per-slot timestamps, manual saves warn before overwriting another occupied slot, and delete-slot warnings are scoped to the selected slot
+- Large-map low-LOD discovery has a first pass: the map panel renders a discovered-region grid around the player, overlays landmarks/structures/entity/item points of interest from known tile deltas, and avoids materializing unknown generated tiles into the compatibility `worldMap`
 
 ---
 
@@ -155,7 +156,7 @@
 
 #### 7. Sparse Map Generation Foundation
 - Complete save-slot migration so slots primarily reference `worldId` while `YAW_Worlds` owns durable map state; current version-10 save payloads still carry `worldMap` as a compatibility fallback
-- Add large-map low-LOD discovery view backed by generated base data plus `YAW_Worlds` discovery/tile deltas
+- Expand the large-map low-LOD view with zoom/pan controls, quest-vector markers, and mobile-specific ergonomics once traversal controls settle
 
 #### 8. Advanced Quest Scripting
 - Add explicit escort routing/checkpoints instead of only API-level objective matching

@@ -451,6 +451,13 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, "document.getElementById('mobile-mini-map')", 'renderMap should target mobile map');
 });
 
+test('Large map discovery surface exists', () => {
+  assertContains(template, 'id="large-map"', 'Large map container missing');
+  assertContains(template, 'id="large-map-pois"', 'Large map point-of-interest container missing');
+  assertContains(template, '.large-map-tile', 'Large map tile styles missing');
+  assertContains(appContent, 'renderLargeMap()', 'Large map renderer missing');
+});
+
 test('Action icon labels and legend styles exist', () => {
   assertContains(appContent, 'UI_LABELS:', 'UI label registry missing');
   assertContains(appContent, '_iconActionButton', 'Icon action button helper missing');
@@ -1835,6 +1842,33 @@ test('Sparse map tile delta records round-trip through store shape', () => {
   assertEqual(restored.description, 'Stored delta tile.', 'Stored delta record should restore effective tile description');
   assertEqual(restored.items[0].name, 'Coin', 'Stored delta record should restore tile items');
   assertEqual(App.exploredTiles.has('-2,7'), true, 'Stored explored delta should repopulate explored set');
+});
+
+test('Large map renders discovered tiles without materializing unknown tiles', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-large-map', seed: 'large-map-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '2,0']);
+  const current = App.getTile(0, 0);
+  current.explored = true;
+  App.persistTileDelta(0, 0, current);
+  const known = App.applyTileDelta(App.getBaseTile(2, 0), {
+    explored: true,
+    description: 'Known grove.',
+    hasLandmark: true,
+    landmarkName: 'Old Tree',
+    structure: 'camp'
+  });
+  App.persistTileDelta(2, 0, known);
+  App.worldMap.delete('2,0');
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'Old Tree', 'Known point of interest should be labeled');
+  assertContains(elements.get('large-map-pois').innerHTML, 'Old Tree', 'Point of interest list should include known landmark');
+  assertEqual(App.worldMap.has('6,6'), false, 'Unknown large-map tiles should not materialize into worldMap');
 });
 
 test('Movement and search advance the in-game hour', () => {

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 201/201 tests pass, 10/10 lint modules clean, dist fresh
+- **Build:** 215/215 tests pass, 10/10 lint modules clean, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 2` (adult) and `voreEnabled: true` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -123,6 +123,14 @@
 ---
 
 ## Open Objectives (Priority Order)
+
+## Next Execution Goals
+
+1. **Harden self-included multi-creature interactions.** Add coverage for remaining `c1 + c2 + c3 -> c1` combinations and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.
+2. **Keep the save-slot/new-game flow tight.** Validate that the load menu exposes a clear New Game path, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
+3. **Device-test mobile save and party surfaces.** Confirm viewport-bounded modals, slot cards, long-press party management, and target buttons remain reachable with real mobile browser chrome and safe-area variants.
+4. **Continue accessibility/localization pass on high-traffic controls.** Prefer labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
+5. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, and creature equipment management should wait until the current mechanics/UI loop is stable.
 
 ### 🟡 Tier 2: High Impact
 

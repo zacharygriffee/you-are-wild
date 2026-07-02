@@ -2245,7 +2245,10 @@
                 const actor = this.activeActor || this.player;
                 if (!this.combatState.active || !actor || actor.CPun <= 0) return;
                 actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
-                this._pushLog(`${actor.name} moves to the ${actor.combatRow} row.`, 'combat', { actor, phase: 'position' });
+                this._pushLog(this._label('combat.moveRowLog', '{name} moves to the {row} row.', {
+                    name: actor.name,
+                    row: this._combatRowLabel(actor.combatRow)
+                }), 'combat', { actor, phase: 'position' });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -2462,7 +2465,8 @@
                 }
                 if (enemies.length > 0) {
                     html += `<button class="action-btn" onclick="App.showSyncMenu()">👥 Sync</button>`;
-                    html += `<button class="action-btn" onclick="App.moveCombatRow()">↕️ Move</button>`;
+                    const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
+                    html += `<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="App.moveCombatRow()">↕️ ${moveRowLabel}</button>`;
                 }
                 if (allies.length > 0 || friendlies.length > 0) {
                     html += `<button class="action-btn" onclick="App.showInteractMenu()">💋 Interact</button>`;

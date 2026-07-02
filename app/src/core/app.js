@@ -100,9 +100,17 @@
                 const holder = this.party.filter(p => p !== actor && p !== target && p.CPun > 0);
                 return Object.entries(subDefs).map(([id, def]) => ({
                     id, label: this._getActionLabel(action, id),
-                    icon: def.icon, available: def.validate(actor, target, holder),
+                    icon: def.icon, available: this._isSubActionAvailable(def, actor, target, holder),
                     setting: def.setting
                 }));
+            },
+            _isSubActionAvailable(def, actor, target, holder = []) {
+                if (!def || typeof def.validate !== 'function') return false;
+                try {
+                    return !!def.validate(actor, target, holder);
+                } catch (error) {
+                    return false;
+                }
             },
             _getActionLabel(action, subAction) {
                 const isSFW = CONTENT.preferences.maxTier < 2;
@@ -4393,12 +4401,12 @@
 
             recruitCreature(target, actor = this.player, options = {}) {
                 if (this.party.length >= this.MAX_PARTY_SIZE) {
-                    this.log.push({ text: 'Party is full! Cannot recruit ' + target.name, type: 'combat' });
+                    this.log.push({ text: this._label('recruit.partyFull', 'Party is full! Cannot recruit {name}', { name: target.name }), type: 'combat' });
                     this.renderLog();
                     return;
                 }
                 if (!options.force && !this._canRecruit(actor, target)) {
-                    this.log.push({ text: `${target.name} is not ready to join the party.`, type: 'discovery' });
+                    this.log.push({ text: this._label('recruit.notReady', '{name} is not ready to join the party.', { name: target.name }), type: 'discovery' });
                     this.renderLog();
                     this.renderCreatures();
                     return;
@@ -4410,7 +4418,7 @@
 	                this._normalizeUnit(target, { disposition: this.DISPOSITION.PARTY, ally: true, obedient: true });
 	                this.party.push(target);
                 this.creatures = this.creatures.filter(c => c !== target);
-                this.log.push({ text: target.name + ' joins your party!', type: 'discovery' });
+                this.log.push({ text: this._label('recruit.joined', '{name} joins your party!', { name: target.name }), type: 'discovery' });
                 this.gainXP(30);
                 this.renderParty();
                 this.renderCreatures();
@@ -4449,7 +4457,7 @@
                 const available = this._getAvailableSubActions('feed', actor, null);
                 const validSubs = available.filter(s => s.available);
                 if (validSubs.length === 0) {
-                    this.log.push({ text: 'No feed options available right now.', type: 'combat' });
+                    this.log.push({ text: this._label('feed.noOptions', 'No feed options available right now.'), type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
                 if (validSubs.length === 1) {
@@ -4457,11 +4465,13 @@
                     return;
                 }
                 // Show sub-action picker for feed
-                let html = '<h3>Feed Options</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">';
+                let html = `<h3>${this._escapeHtml(this._label('feed.optionsTitle', 'Feed Options'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
                 for (const sub of validSubs) {
-                    html += `<button class="action-btn" onclick="App._executeFeedSubAction('${sub.id}', App.activeActor || App.player)">${sub.icon} ${sub.label}</button>`;
+                    const subLabel = this._escapeHtml(sub.label);
+                    html += `<button class="action-btn" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${sub.id}', App.activeActor || App.player)">${sub.icon} ${subLabel}</button>`;
                 }
-                html += '</div><button class="nav-btn" style="margin-top:12px" onclick="App.cancelTargetSelection()">Cancel</button>';
+                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                html += `</div><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
             _executeFeedSubAction(subId, actor) {
@@ -4474,14 +4484,14 @@
                 if (subId === 'heal' || subId === 'breastfeed') {
                     const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name && p.CPun < p.MPun);
                     if (allies.length === 0) {
-                        this.log.push({ text: 'No wounded allies to feed.', type: 'combat' });
+                        this.log.push({ text: this._label('feed.noWoundedAllies', 'No wounded allies to feed.'), type: 'combat' });
                         this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
                     }
                     target = allies.reduce((w, a) => (a.CPun / a.MPun < w.CPun / w.MPun) ? a : w, allies[0]);
                 } else if (subId === 'sacrifice') {
                     const prey = this.party.filter(p => p.CPun > 0 && p.name !== actor.name && (p.livestock || p.willingPrey));
                     if (prey.length === 0) {
-                        this.log.push({ text: 'No willing livestock to sacrifice.', type: 'combat' });
+                        this.log.push({ text: this._label('feed.noWillingLivestock', 'No willing livestock to sacrifice.'), type: 'combat' });
                         this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
                     }
                     target = prey[0];
@@ -4489,7 +4499,7 @@
                     // Need to select target enemy and holder - simplified: pick random enemy and first available holder
                     const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
                     if (enemies.length === 0) {
-                        this.log.push({ text: 'No enemies to force-feed.', type: 'combat' });
+                        this.log.push({ text: this._label('feed.noForceFeedEnemies', 'No enemies to force-feed.'), type: 'combat' });
                         this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
                     }
                     target = enemies[0]; // actor is the predator, target is the prey to be forced into actor
@@ -4497,7 +4507,7 @@
                     // But we need a holder too. Let's just use the first available holder.
                 }
                 if (!target) {
-                    this.log.push({ text: 'No valid target for this feed action.', type: 'combat' });
+                    this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'combat' });
                     this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
                 }
                 const result = this._doSubAction('feed', subId, actor, target, actorName, actorVerb);

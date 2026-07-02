@@ -4061,7 +4061,9 @@
                         resolved = this.outsidePairedActionsOnTargets(action, actors, targets);
                     } else {
                         this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
-                            action: this._uiLabel(action).toLowerCase()
+                            action: this._uiLabel(action).toLowerCase(),
+                            actorCount: actors.length,
+                            targetCount: targets.length
                         }), type: 'discovery' });
                         this.renderLog();
                         this.renderParty();

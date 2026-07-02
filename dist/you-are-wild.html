@@ -7671,7 +7671,7 @@ const WorldGen = (() => {
                 const title = `${this._uiLabel(action)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}"><div class="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -11585,7 +11585,7 @@ const WorldGen = (() => {
                         : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
                     return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
-                let html = `<div class="mobile-context-menu intent-menu intent-menu-${menuPresentation}" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" data-intent-presentation="${menuPresentation}"><div class="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="mobile-context-menu intent-menu intent-menu-${menuPresentation}" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-intent-presentation="${menuPresentation}"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 const selectedActors = this._getExplorationActors();
                 const canUsePrimaryActions = !isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target)));
                 if (canUsePrimaryActions) {
@@ -11632,7 +11632,7 @@ const WorldGen = (() => {
                 const title = `${this._uiLabel(action)} ${target.name || ''}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}"><div class="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -11690,7 +11690,7 @@ const WorldGen = (() => {
                 const orderAria = this._label('party.aiOrderFor', 'AI order for {name}', { name: unit.name || 'party member' });
                 const roleDescription = this._partyRoleDescription(role);
                 const orderDescription = this._partyAIOrderDescription(order);
-                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}"><div class="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += actionButton(this._label('party.stats', 'Stats'), 'stats');
                 html += actionButton(menuLabel, 'actions', ' primary');
                 if (unit !== this.player && !unit.mc) {

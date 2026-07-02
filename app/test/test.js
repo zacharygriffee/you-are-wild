@@ -6057,13 +6057,15 @@ test('Overlays trap focus and restore the opener on close', () => {
 });
 
 test('Mobile context menus dismiss on outside pointer only', () => {
-  const { App, elements, document } = loadAppForCombat();
+  const { App, body, elements, document } = loadAppForCombat();
   const opener = makeElement();
   document.activeElement = opener;
   App.player = makeUnit('You');
   App.party = [App.player];
   App.creatures = [makeUnit('Friendly', { id: 'friendly-outside', disposition: App.DISPOSITION.FRIENDLY })];
   App.showIntentMenu('creature', 'friendly-outside');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Mobile context dialog should reference its visible title');
+  assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Mobile context dialog title should be addressable');
   const menu = elements.get('mobile-context-menu');
   menu.removed = undefined;
   const inside = makeElement();
@@ -6390,6 +6392,8 @@ test('Mobile party long-press menu exposes management actions', () => {
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'role="dialog"', 'Party long-press menu should expose dialog semantics');
   assertContains(body.innerHTML, 'aria-modal="true"', 'Party long-press menu should behave as a modal action menu');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party long-press menu should use its visible title as dialog label');
+  assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
   assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
   assertContains(body.innerHTML, 'Stats', 'Party menu should expose stats');
   assertContains(body.innerHTML, 'aria-label="Party actions"', 'Party menu should expose an intent-sheet entry');
@@ -6399,8 +6403,10 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
   App.mobilePartyContextAction('actions', 1);
   assertContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party long-press actions entry should open the shared intent sheet');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party intent sheet should use its visible title as dialog label');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',1,'fight','sheet')", 'Party intent sheet should route primary actions through the sub-action picker');
   App.openIntentSubActionSheet('party', 1, 'fight', 'sheet');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party sub-action sheet should use its visible title as dialog label');
   assertContains(body.innerHTML, "App.selectIntent('party',1,'fight','sheet','attack')", 'Party sub-action sheet should dispatch through shared intent selection');
   App.closeMobileContextMenu();
   App.showMobilePartyContext(1);
@@ -6473,6 +6479,8 @@ test('Mobile creature long-press menu exposes core actions', () => {
   App.showMobileCreatureContext('willing-1');
   assertContains(body.innerHTML, 'role="dialog"', 'Long-press menu should expose dialog semantics');
   assertContains(body.innerHTML, 'aria-modal="true"', 'Long-press menu should behave as a modal action menu');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Long-press menu should use its visible title as dialog label');
+  assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Long-press menu title should be addressable');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Long-press menu should use the radial intent presentation scaffold');
   assertContains(body.innerHTML, 'data-intent-presentation="radial"', 'Long-press menu should mark radial presentation for styling and later gesture handling');
   assertContains(body.innerHTML, 'role="menu"', 'Long-press menu should expose menu semantics for actions');
@@ -6485,6 +6493,7 @@ test('Mobile creature long-press menu exposes core actions', () => {
   assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','willing-1','fight','longpress')", 'Long-press menu should route registered primary actions through the sub-action picker');
   App.openIntentSubActionSheet('creature', 'willing-1', 'flirt', 'longpress');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Long-press sub-action sheet should use its visible title as dialog label');
   assertContains(body.innerHTML, "App.selectIntent('creature','willing-1','flirt','longpress','tease')", 'Long-press sub-action sheet should preserve command source');
   App.selectIntent('creature', 'willing-1', 'flirt', 'longpress', 'tease');
   assertEqual(App.lastIntentCommand.source, 'longpress', 'Long-press selection should record its command source');
@@ -6503,6 +6512,7 @@ test('Radial intent menu remains an accelerator over shared dispatch', () => {
   App.creatures = [enemy];
   App.showRadialIntentMenu('creature', 'enemy-radial');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
+  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Radial helper should use its visible title as dialog label');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','enemy-radial','fight','radial')", 'Radial primary actions should still route through the shared sub-action sheet');
   App.selectIntent('creature', 'enemy-radial', 'fight', 'radial', 'attack');
   assertEqual(App.lastIntentCommand.source, 'radial', 'Radial accelerator should record its command source');

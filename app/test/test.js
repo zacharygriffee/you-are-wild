@@ -765,6 +765,13 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
 });
 
+test('Desktop panel navigation focuses existing panels instead of no-oping', () => {
+  assertContains(appContent, 'focusDesktopPanel(p)', 'desktop panel navigation should call a focus helper');
+  assertContains(appContent, 'scrollIntoView({', 'desktop panel navigation should scroll the panel into view');
+  assertContains(appContent, "classList.remove('nav-focus')", 'desktop panel navigation should clear stale focus highlights');
+  assertContains(template, '.panel.nav-focus', 'desktop panel navigation should expose a visual focus state');
+});
+
 test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-play-surface"', 'mobile play surface missing');
   assertContains(template, 'id="mobile-mini-map"', 'mobile map surface missing');

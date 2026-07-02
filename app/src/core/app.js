@@ -8137,11 +8137,37 @@
                 const panel = document.getElementById('panel-' + p);
                 if (!panel) return;
                 const isMobile = window.innerWidth <= 1024;
-                if (!isMobile) return;
+                if (!isMobile) {
+                    this.focusDesktopPanel(p);
+                    return;
+                }
                 const wasActive = panel.classList.contains('active');
                 document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(p => p.classList.remove('active'));
                 if (!wasActive) panel.classList.add('active');
                 this.syncPanelBackdrop();
+            },
+            focusDesktopPanel(p) {
+                const panel = document.getElementById('panel-' + p);
+                if (!panel) return;
+                this.closeAllPanels();
+                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panel => panel.classList.remove('nav-focus'));
+                panel.classList.add('nav-focus');
+                if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+                const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                try {
+                    panel.scrollIntoView({
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+                        block: 'nearest',
+                        inline: 'nearest'
+                    });
+                } catch (e) {
+                    panel.scrollIntoView();
+                }
+                try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
+                clearTimeout(this._panelFocusTimer);
+                this._panelFocusTimer = setTimeout(() => {
+                    panel.classList.remove('nav-focus');
+                }, 1200);
             },
             closeAllPanels() {
                 document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(p => p.classList.remove('active'));

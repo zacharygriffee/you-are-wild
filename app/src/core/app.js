@@ -6305,10 +6305,10 @@
                 const viewLabel = document.getElementById('large-map-view');
                 if (!container) return '';
                 if (this.inInterior && this.activeInterior) {
-                    const message = 'Discovered region is available outside.';
+                    const message = this._label('ui.largeMap.outsideOnly', 'Discovered region is available outside.');
                     container.innerHTML = `<div class="large-map-tile known" style="width:auto;min-width:180px;padding:8px;">${this._escapeHtml(message)}</div>`;
                     if (poiContainer) poiContainer.innerHTML = '';
-                    if (viewLabel) viewLabel.textContent = 'Interior';
+                    if (viewLabel) viewLabel.textContent = this._label('ui.largeMap.interior', 'Interior');
                     return container.innerHTML;
                 }
                 const offset = this.largeMapOffset || { x: 0, y: 0 };

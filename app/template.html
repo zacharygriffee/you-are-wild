@@ -2025,15 +2025,15 @@
                     </div>
                     <div class="large-map-wrap">
                         <div class="large-map-toolbar">
-                            <span>Discovered Region <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
-                            <div class="large-map-controls" aria-label="Large map controls">
-                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" onclick="App.setLargeMapZoom(-1)">＋</button>
-                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" onclick="App.setLargeMapZoom(1)">－</button>
-                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" onclick="App.panLargeMap(0,-1)">↑</button>
-                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" onclick="App.panLargeMap(-1,0)">←</button>
-                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" onclick="App.recenterLargeMap()">⌾</button>
-                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" onclick="App.panLargeMap(1,0)">→</button>
-                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" onclick="App.panLargeMap(0,1)">↓</button>
+                            <span><span data-i18n="ui.largeMap.discoveredRegion">Discovered Region</span> <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
+                            <div class="large-map-controls" aria-label="Large map controls" data-i18n-aria-label="ui.largeMap.controls">
+                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" data-i18n-title="ui.largeMap.zoomIn" data-i18n-aria-label="ui.largeMap.zoomIn" onclick="App.setLargeMapZoom(-1)">＋</button>
+                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" data-i18n-title="ui.largeMap.zoomOut" data-i18n-aria-label="ui.largeMap.zoomOut" onclick="App.setLargeMapZoom(1)">－</button>
+                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" data-i18n-title="ui.largeMap.panUp" data-i18n-aria-label="ui.largeMap.panUp" onclick="App.panLargeMap(0,-1)">↑</button>
+                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" data-i18n-title="ui.largeMap.panLeft" data-i18n-aria-label="ui.largeMap.panLeft" onclick="App.panLargeMap(-1,0)">←</button>
+                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" data-i18n-title="ui.largeMap.recenter" data-i18n-aria-label="ui.largeMap.recenter" onclick="App.recenterLargeMap()">⌾</button>
+                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" data-i18n-title="ui.largeMap.panRight" data-i18n-aria-label="ui.largeMap.panRight" onclick="App.panLargeMap(1,0)">→</button>
+                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" data-i18n-title="ui.largeMap.panDown" data-i18n-aria-label="ui.largeMap.panDown" onclick="App.panLargeMap(0,1)">↓</button>
                             </div>
                         </div>
                         <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>

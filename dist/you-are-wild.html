@@ -2026,15 +2026,15 @@
                     </div>
                     <div class="large-map-wrap">
                         <div class="large-map-toolbar">
-                            <span>Discovered Region <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
-                            <div class="large-map-controls" aria-label="Large map controls">
-                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" onclick="App.setLargeMapZoom(-1)">＋</button>
-                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" onclick="App.setLargeMapZoom(1)">－</button>
-                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" onclick="App.panLargeMap(0,-1)">↑</button>
-                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" onclick="App.panLargeMap(-1,0)">←</button>
-                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" onclick="App.recenterLargeMap()">⌾</button>
-                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" onclick="App.panLargeMap(1,0)">→</button>
-                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" onclick="App.panLargeMap(0,1)">↓</button>
+                            <span><span data-i18n="ui.largeMap.discoveredRegion">Discovered Region</span> <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
+                            <div class="large-map-controls" aria-label="Large map controls" data-i18n-aria-label="ui.largeMap.controls">
+                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" data-i18n-title="ui.largeMap.zoomIn" data-i18n-aria-label="ui.largeMap.zoomIn" onclick="App.setLargeMapZoom(-1)">＋</button>
+                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" data-i18n-title="ui.largeMap.zoomOut" data-i18n-aria-label="ui.largeMap.zoomOut" onclick="App.setLargeMapZoom(1)">－</button>
+                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" data-i18n-title="ui.largeMap.panUp" data-i18n-aria-label="ui.largeMap.panUp" onclick="App.panLargeMap(0,-1)">↑</button>
+                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" data-i18n-title="ui.largeMap.panLeft" data-i18n-aria-label="ui.largeMap.panLeft" onclick="App.panLargeMap(-1,0)">←</button>
+                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" data-i18n-title="ui.largeMap.recenter" data-i18n-aria-label="ui.largeMap.recenter" onclick="App.recenterLargeMap()">⌾</button>
+                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" data-i18n-title="ui.largeMap.panRight" data-i18n-aria-label="ui.largeMap.panRight" onclick="App.panLargeMap(1,0)">→</button>
+                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" data-i18n-title="ui.largeMap.panDown" data-i18n-aria-label="ui.largeMap.panDown" onclick="App.panLargeMap(0,1)">↓</button>
                             </div>
                         </div>
                         <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>
@@ -9050,10 +9050,10 @@
                 const viewLabel = document.getElementById('large-map-view');
                 if (!container) return '';
                 if (this.inInterior && this.activeInterior) {
-                    const message = 'Discovered region is available outside.';
+                    const message = this._label('ui.largeMap.outsideOnly', 'Discovered region is available outside.');
                     container.innerHTML = `<div class="large-map-tile known" style="width:auto;min-width:180px;padding:8px;">${this._escapeHtml(message)}</div>`;
                     if (poiContainer) poiContainer.innerHTML = '';
-                    if (viewLabel) viewLabel.textContent = 'Interior';
+                    if (viewLabel) viewLabel.textContent = this._label('ui.largeMap.interior', 'Interior');
                     return container.innerHTML;
                 }
                 const offset = this.largeMapOffset || { x: 0, y: 0 };
@@ -11244,6 +11244,17 @@ const CONTENT_SYSTEM = {
             'ui.party': 'Party',
             'ui.stats': 'Stats',
             'ui.help': 'Help',
+            'ui.largeMap.discoveredRegion': 'Discovered Region',
+            'ui.largeMap.controls': 'Large map controls',
+            'ui.largeMap.zoomIn': 'Zoom large map in',
+            'ui.largeMap.zoomOut': 'Zoom large map out',
+            'ui.largeMap.panUp': 'Pan large map up',
+            'ui.largeMap.panLeft': 'Pan large map left',
+            'ui.largeMap.recenter': 'Recenter large map',
+            'ui.largeMap.panRight': 'Pan large map right',
+            'ui.largeMap.panDown': 'Pan large map down',
+            'ui.largeMap.interior': 'Interior',
+            'ui.largeMap.outsideOnly': 'Discovered region is available outside.',
             'ui.combatLog': 'Combat Log',
             'ui.log.export': 'Export',
             'ui.log.clear': 'Clear',
@@ -11799,6 +11810,17 @@ const CONTENT_SYSTEM = {
             'ui.party': 'Grupo',
             'ui.stats': 'Estadisticas',
             'ui.help': 'Ayuda',
+            'ui.largeMap.discoveredRegion': 'Region descubierta',
+            'ui.largeMap.controls': 'Controles del mapa grande',
+            'ui.largeMap.zoomIn': 'Acercar mapa grande',
+            'ui.largeMap.zoomOut': 'Alejar mapa grande',
+            'ui.largeMap.panUp': 'Mover mapa grande arriba',
+            'ui.largeMap.panLeft': 'Mover mapa grande a la izquierda',
+            'ui.largeMap.recenter': 'Recentrar mapa grande',
+            'ui.largeMap.panRight': 'Mover mapa grande a la derecha',
+            'ui.largeMap.panDown': 'Mover mapa grande abajo',
+            'ui.largeMap.interior': 'Interior',
+            'ui.largeMap.outsideOnly': 'La region descubierta esta disponible afuera.',
             'ui.combatLog': 'Registro de combate',
             'ui.log.export': 'Exportar',
             'ui.log.clear': 'Limpiar',

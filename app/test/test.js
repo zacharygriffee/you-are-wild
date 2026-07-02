@@ -2658,6 +2658,19 @@ test('Single-target exploration wrappers return resolver outcomes', () => {
   assertEqual(App.outsideActionForCreatureAs('missing-actor', 'flirt', 'missing-creature'), false, 'Actor-specific creature wrapper should report missing target failure');
 });
 
+test('Single-actor group wrapper preserves rejected action outcomes', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-1', size: 6, appetite: 6, Feas: 30 });
+  App.player = actor;
+  App.party = [actor];
+  assertEqual(App.outsideActionForParty('feast', 0), false, 'Self-feast through party wrapper should report rejected resolution');
+  assertEqual(actor.stomach.length, 0, 'Rejected self-feast should not contain the acting party member');
+  assertContains(App.log[App.log.length - 1].text, 'cannot feast on themself', 'Rejected self-feast should keep correction guidance');
+  assertEqual(App.selectIntent('party', 0, 'feast'), false, 'Intent dispatch should preserve rejected single-actor group result');
+  assertEqual(App.lastIntentCommand.action, 'feast', 'Rejected intent should still record the selected action');
+  assertEqual(actor.stomach.length, 0, 'Rejected intent self-feast should not mutate containment');
+});
+
 test('Exploration cards expose multi-target selection and context actions', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });

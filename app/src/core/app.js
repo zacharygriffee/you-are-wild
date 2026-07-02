@@ -4521,8 +4521,8 @@
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 if (livingActors.length <= 1) {
-                    this.outsideActionOnTarget(action, target, livingActors[0] || this.player, options);
-                    return true;
+                    const resolved = this.outsideActionOnTarget(action, target, livingActors[0] || this.player, options);
+                    return resolved !== false;
                 }
                 const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 const names = livingActors.map(actor => actor.name).join(', ');

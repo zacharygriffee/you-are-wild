@@ -11,14 +11,14 @@ The sheet appears usable for a first pass over the current wilderness map:
 - Structures/features: camp, spring/pond, cabin/hut, farm/garden, settlement, cave mouth, ruins/stonework, web, fog/unknown.
 - Markers: generic focus/POI, alert/danger, gold/market, camp/rest, tower/landmark.
 
-The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata on minimap and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state. Route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible neighboring route tiles.
+The implementation now exposes `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata on minimap, interior minimap, and large-map cells so extracted tile assets can be attached later without changing map generation or gameplay state. Route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible neighboring route tiles. Interior visuals expose room, cave-room, exit, wall, and structure-feature keys.
 
 ## Missing Or Deferred Tiles
 
 Before using the sheet as the main map art, we likely need additional or clarified tiles for:
 
 - Manor and other built-region biomes.
-- Interior rooms, entrances, exits, walls, and doors.
+- Door/opening variants beyond the first interior room, cave-room, exit, wall, and structure-feature metadata keys.
 - Road-water and road-coast transitions beyond simple bridge spans.
 - River bends, shore curves, marsh edges, and rocky/coastal cliff edges.
 - Direction-specific bridge span variants beyond the current horizontal/vertical bridge keys.
@@ -32,7 +32,7 @@ Use the sheet as an optional first art layer after licensing is confirmed:
 
 1. Extract individual tiles into a generated/owned asset bundle.
 2. Map each asset to the existing tileset keys in `App.MAP_TILESET_KEYS`.
-3. Include route variants for straight roads, corners, T-junctions, intersections, dead ends, and bridge directions.
+3. Include route variants for straight roads, corners, T-junctions, intersections, dead ends, bridge directions, and interior room/exit/wall variants.
 4. Keep emoji/text fallback for accessibility, missing assets, and low-bandwidth builds.
 5. Keep roads, bridges, structures, and POIs as overlays. Do not replace `baseBiome` or deterministic terrain identity with art choices.
 6. Add visual tests after the actual image assets are present.

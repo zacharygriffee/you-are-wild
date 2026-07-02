@@ -3036,6 +3036,42 @@ test('Map route visuals infer corners and intersections from known neighbors', (
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-road-corner-ne"', 'Rendered large map should expose inferred corner tileset key from known tiles');
 });
 
+test('Interior map visuals expose tileset metadata for rooms exits and features', () => {
+  const { App, elements } = loadAppForCombat();
+  const indoor = { x: 1, y: 0, biome: 'indoors', explored: true, structure: 'camp', exit: false };
+  const cave = { x: 0, y: 1, biome: 'cave', explored: true, structure: null, exit: false };
+  const exit = { x: 0, y: 0, biome: 'indoors', explored: true, structure: null, exit: true };
+  const wallVisual = App._interiorTileVisual(null);
+  const indoorVisual = App._interiorTileVisual(indoor);
+  const caveVisual = App._interiorTileVisual(cave);
+  const exitVisual = App._interiorTileVisual(exit);
+  assertEqual(wallVisual.tilesetKey, 'interior-wall', 'Missing interior rooms should expose a wall tileset key');
+  assertEqual(indoorVisual.tilesetKey, 'structure-camp', 'Interior feature rooms should reuse known structure tileset keys');
+  assertEqual(indoorVisual.baseTilesetKey, 'terrain-indoors', 'Interior feature rooms should preserve indoor base terrain key');
+  assertEqual(caveVisual.tilesetKey, 'interior-cave-room', 'Cave interiors should expose a cave-room tileset key');
+  assertEqual(caveVisual.baseTilesetKey, 'terrain-cave', 'Cave interiors should preserve cave base terrain key');
+  assertEqual(exitVisual.tilesetKey, 'interior-exit', 'Interior exits should expose an exit tileset key');
+  assertEqual(exitVisual.kind, 'interior-exit', 'Interior exits should expose a specific map kind');
+
+  App.inInterior = true;
+  App.activeInterior = {
+    structureName: 'Cabin',
+    tiles: {
+      '0,0': exit,
+      '1,0': indoor,
+      '0,1': cave
+    }
+  };
+  App.interiorLocation = { x: 0, y: 0 };
+  App.renderMap();
+  const html = elements.get('mini-map').innerHTML;
+  assertContains(html, 'data-tileset-key="interior-exit"', 'Rendered interior minimap should expose exit tileset key');
+  assertContains(html, 'data-tileset-key="structure-camp"', 'Rendered interior minimap should expose feature tileset key');
+  assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior minimap should expose cave room tileset key');
+  assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior minimap should expose wall tileset key for missing rooms');
+  assertContains(html, 'data-map-kind="interior-exit"', 'Rendered interior minimap should expose interior map kind');
+});
+
 test('Super-patch generation uses seeded region biomes only', () => {
   const { App } = loadAppForCombat();
   App.worldMeta = { worldId: 'world-a', seed: 'shared-seed', generatorVersion: 1, mapModsHash: 'core' };

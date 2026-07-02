@@ -3641,6 +3641,14 @@ const WorldGen = (() => {
                     burrow: 'structure-burrow',
                     nest: 'structure-nest',
                     web: 'structure-web'
+                },
+                interior: {
+                    room: 'interior-room',
+                    cave: 'interior-cave-room',
+                    exit: 'interior-exit',
+                    wall: 'interior-wall',
+                    door: 'interior-door',
+                    entrance: 'interior-entrance'
                 }
             },
             SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
@@ -10220,6 +10228,49 @@ const WorldGen = (() => {
                 const shape = visual?.routeShape ? ` data-route-shape="${this._escapeHtml(visual.routeShape)}"` : '';
                 return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}`;
             },
+            _interiorTileVisual(room = null, options = {}) {
+                if (!room) {
+                    return {
+                        icon: '■',
+                        tilesetKey: this.MAP_TILESET_KEYS.interior.wall,
+                        baseTilesetKey: this.MAP_TILESET_KEYS.interior.wall,
+                        kind: 'interior-wall',
+                        classes: 'map-visual map-visual-interior map-visual-interior-wall',
+                        label: options.label || 'Wall',
+                        marker: null,
+                        hasPaintedAsset: false
+                    };
+                }
+                const biomeId = room.biome || 'indoors';
+                const baseTilesetKey = this.MAP_TILESET_KEYS.biomes[biomeId] || (biomeId === 'cave' ? this.MAP_TILESET_KEYS.interior.cave : this.MAP_TILESET_KEYS.interior.room);
+                let tilesetKey = biomeId === 'cave' ? this.MAP_TILESET_KEYS.interior.cave : this.MAP_TILESET_KEYS.interior.room;
+                let icon = room.explored ? '□' : '·';
+                let kind = 'interior-room';
+                const classes = ['map-visual', 'map-visual-interior', `map-visual-${biomeId}`];
+                if (room.exit) {
+                    tilesetKey = this.MAP_TILESET_KEYS.interior.exit;
+                    icon = '🚪';
+                    kind = 'interior-exit';
+                    classes.push('map-visual-interior-exit');
+                } else if (room.structure) {
+                    tilesetKey = this.MAP_TILESET_KEYS.structures[room.structure] || this.MAP_TILESET_KEYS.interior.door;
+                    icon = this.STRUCTURES[room.structure]?.icon || '▣';
+                    kind = 'interior-feature';
+                    classes.push('map-visual-interior-feature');
+                }
+                const biome = this.biomes[biomeId] || this.biomes.indoors || {};
+                return {
+                    icon,
+                    tilesetKey,
+                    baseTilesetKey,
+                    kind,
+                    routeShape: null,
+                    classes: classes.join(' '),
+                    label: room.exit ? 'Exit' : (this.STRUCTURES[room.structure]?.name || biome.name || 'Room'),
+                    marker: null,
+                    hasPaintedAsset: false
+                };
+            },
 
             setLargeMapZoom(delta) {
                 const current = this.largeMapRadius || 8;
@@ -10367,16 +10418,17 @@ const WorldGen = (() => {
                             const room = this.activeInterior.tiles[`${tx},${ty}`];
                             const isCenter = tx === cx && ty === cy;
                             const isAdjacent = Math.abs(tx - cx) <= 1 && Math.abs(ty - cy) <= 1;
-                            const struct = room?.structure ? this.STRUCTURES[room.structure] : null;
-                            const content = room?.exit ? '🚪' : (struct?.icon || (room?.explored ? '□' : '·'));
+                            const visual = this._interiorTileVisual(room);
+                            const content = visual.icon;
                             let classes = 'map-tile';
                             if (isCenter) classes += ' center';
                             else if (room?.explored) classes += ' explored';
                             else if (isAdjacent) classes += ' moveable';
                             else classes += ' far';
+                            if (visual.classes) classes += ` ${visual.classes}`;
                             const onclick = isCenter ? '' : (isAdjacent ? `onclick="App.move(${tx - cx},${ty - cy})"` : '');
-                            const title = room?.exit ? `Exit (${tx}, ${ty})` : `${struct?.name || 'Room'} (${tx}, ${ty})`;
-                            html += `<div class="${classes}" title="${title}" aria-label="${title}" ${onclick}>${content}</div>`;
+                            const title = `${visual.label} (${tx}, ${ty})`;
+                            html += `<div class="${classes}" ${this._mapTileAttrs(visual)} title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" ${onclick}>${this._escapeHtml(content)}</div>`;
                         }
                         html += '</div>';
                     }

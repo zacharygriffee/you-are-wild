@@ -5653,30 +5653,38 @@
             showSyncMenu() {
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
                 if (allies.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<p>No allies available for sync.</p><button class="nav-btn" onclick="App.processTurn()">Cancel</button>`;
+                    document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('combat.sync.noAllies', 'No allies available for sync.'))}</p><button class="nav-btn" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.processTurn()">${cancelLabel}</button>`;
                     return;
                 }
-                let html = `<h3>Choose Sync Action</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
-                html += `<button class="action-btn" onclick="App.selectSyncParticipants('sync_fuck')">🔥 Gang Fuck (seduce target as group)</button>`;
-                html += `<button class="action-btn" onclick="App.selectSyncParticipants('sync_flirt')">😘 Charm Attack (group flirt to soften target)</button>`;
-                html += `<button class="action-btn" onclick="App.selectSyncParticipants('sync_fight')">⚔️ Gang Fight (overwhelm target together)</button>`;
-                html += `<button class="action-btn" onclick="App.selectSyncParticipants('sync_feed')">🍽️ Group Feed (force prey to target)</button>`;
-                html += `<button class="nav-btn" style="margin-top:8px" onclick="App.processTurn()">Cancel</button>`;
+                let html = `<h3>${this._escapeHtml(this._label('combat.sync.chooseAction', 'Choose Sync Action'))}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
+                const syncButton = (type, icon, key, fallback) => {
+                    const label = this._escapeHtml(this._label(key, fallback));
+                    return `<button class="action-btn" title="${label}" aria-label="${label}" onclick="App.selectSyncParticipants('${type}')">${icon} ${label}</button>`;
+                };
+                html += syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Seduce');
+                html += syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Flirt');
+                html += syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight');
+                html += syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed');
+                html += `<button class="nav-btn" style="margin-top:8px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.processTurn()">${cancelLabel}</button>`;
                 html += `</div>`;
                 document.getElementById('scene-description').innerHTML = html;
             },
 
             selectSyncParticipants(syncType) {
                 const allies = this.party.filter(p => p.CPun > 0);
-                let html = `<h3>Select participants for sync</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
+                let html = `<h3>${this._escapeHtml(this._label('combat.sync.selectParticipants', 'Select participants for sync'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
                 allies.forEach((a, i) => {
-                    html += `<button class="option-card" id="sync-part-${i}" onclick="App.toggleSyncParticipant(${i})">`;
+                    const label = this._escapeHtml(this._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: a.name }));
+                    html += `<button class="option-card" id="sync-part-${i}" title="${label}" aria-label="${label}" onclick="App.toggleSyncParticipant(${i})">`;
                     html += `<div style="font-size:28px">${a.icon}</div><div>${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.CPun}/${a.MPun}</div>`;
                     html += `</button>`;
                 });
-                html += `</div><div style="margin-top:12px"><button class="action-btn primary" onclick="App.confirmSyncParticipants('${syncType}')">Confirm Participants</button></div>`;
-                html += `<button class="nav-btn" onclick="App.showSyncMenu()">Back</button>`;
+                const confirmLabel = this._escapeHtml(this._label('combat.sync.confirmParticipants', 'Confirm Participants'));
+                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                html += `</div><div style="margin-top:12px"><button class="action-btn primary" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button></div>`;
+                html += `<button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.showSyncMenu()">${backLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
                 this._syncSelected = [];
             },
@@ -5694,18 +5702,21 @@
             confirmSyncParticipants(syncType) {
                 const participants = this._syncSelected.map(i => this.party[i]).filter(Boolean);
                 if (participants.length < 2) {
-                    document.getElementById('scene-description').innerHTML = `<p>Need at least 2 participants for a sync action.</p><button class="nav-btn" onclick="App.selectSyncParticipants('${syncType}')">Back</button>`;
+                    const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
+                    document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'))}</p><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.selectSyncParticipants('${syncType}')">${backLabel}</button>`;
                     return;
                 }
                 // Select target
                 const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                let html = `<h3>Select sync target</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
+                let html = `<h3>${this._escapeHtml(this._label('combat.sync.selectTarget', 'Select sync target'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
                 enemies.forEach((e, i) => {
-                    html += `<button class="option-card" onclick="App.queueSyncAction('${syncType}', ${i})">`;
-                    html += `<div style="font-size:32px">${e.icon}</div><div style="color:var(--text-primary);font-weight:600">${e.name}</div><div style="color:var(--text-muted);font-size:12px">HP: ${e.CPun}/${e.MPun}</div>`;
+                    const targetLabel = this._escapeHtml(this._label('combat.sync.selectTargetFor', 'Select {name} as sync target', { name: e.name }));
+                    html += `<button class="option-card" title="${targetLabel}" aria-label="${targetLabel}" onclick="App.queueSyncAction('${syncType}', ${i})">`;
+                    html += `<div style="font-size:32px">${e.icon}</div><div style="color:var(--text-primary);font-weight:600">${e.name}</div><div style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('party.punishment', 'Punishment'))}: ${e.CPun}/${e.MPun}</div>`;
                     html += `</button>`;
                 });
-                html += `</div><button class="nav-btn" onclick="App.showSyncMenu()">Cancel</button>`;
+                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                html += `</div><button class="nav-btn" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.showSyncMenu()">${cancelLabel}</button>`;
                 document.getElementById('scene-description').innerHTML = html;
                 this._syncParticipants = participants;
                 this._syncType = syncType;
@@ -10669,6 +10680,7 @@ const CONTENT_SYSTEM = {
             'perk.debugGrant': 'Debug +1 Perk Choice',
             'perk.closeStats': 'Close',
             'ui.close': 'Close',
+            'ui.cancel': 'Cancel',
             'ui.creatureActions': 'Creature actions',
             'ui.partyActions': 'Party actions',
             'ui.exploration': 'Exploration',
@@ -10693,6 +10705,18 @@ const CONTENT_SYSTEM = {
             'combat.row.front': 'Front',
             'combat.row.back': 'Back',
             'combat.moveRowLog': '{name} moves to the {row} row.',
+            'combat.sync.chooseAction': 'Choose Sync Action',
+            'combat.sync.noAllies': 'No allies available for sync.',
+            'combat.sync.action.fuck': 'Group Seduce',
+            'combat.sync.action.flirt': 'Group Flirt',
+            'combat.sync.action.fight': 'Group Fight',
+            'combat.sync.action.feed': 'Group Feed',
+            'combat.sync.selectParticipants': 'Select participants for sync',
+            'combat.sync.selectParticipantFor': 'Select {name} for sync',
+            'combat.sync.confirmParticipants': 'Confirm Participants',
+            'combat.sync.needParticipants': 'Need at least 2 participants for a sync action.',
+            'combat.sync.selectTarget': 'Select sync target',
+            'combat.sync.selectTargetFor': 'Select {name} as sync target',
             'capacity.stomach': 'Stomach',
             'capacity.womb': 'Womb',
             'capacity.balls': 'Balls',
@@ -10868,6 +10892,7 @@ const CONTENT_SYSTEM = {
             'perk.debugGrant': 'Debug +1 opcion de mejora',
             'perk.closeStats': 'Cerrar',
             'ui.close': 'Cerrar',
+            'ui.cancel': 'Cancelar',
             'ui.creatureActions': 'Acciones de criatura',
             'ui.partyActions': 'Acciones del grupo',
             'ui.exploration': 'Exploracion',
@@ -10892,6 +10917,18 @@ const CONTENT_SYSTEM = {
             'combat.row.front': 'Frente',
             'combat.row.back': 'Retaguardia',
             'combat.moveRowLog': '{name} se mueve a la fila {row}.',
+            'combat.sync.chooseAction': 'Elegir accion sincronizada',
+            'combat.sync.noAllies': 'No hay aliados disponibles para sincronizar.',
+            'combat.sync.action.fuck': 'Seduccion grupal',
+            'combat.sync.action.flirt': 'Coqueteo grupal',
+            'combat.sync.action.fight': 'Ataque grupal',
+            'combat.sync.action.feed': 'Alimentacion grupal',
+            'combat.sync.selectParticipants': 'Seleccionar participantes para sincronizar',
+            'combat.sync.selectParticipantFor': 'Seleccionar {name} para sincronizar',
+            'combat.sync.confirmParticipants': 'Confirmar participantes',
+            'combat.sync.needParticipants': 'Necesitas al menos 2 participantes para una accion sincronizada.',
+            'combat.sync.selectTarget': 'Seleccionar objetivo sincronizado',
+            'combat.sync.selectTargetFor': 'Seleccionar {name} como objetivo sincronizado',
             'capacity.stomach': 'Estomago',
             'capacity.womb': 'Vientre',
             'capacity.balls': 'Bolas',

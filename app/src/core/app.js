@@ -1760,7 +1760,14 @@
                 const wasExplored = this.isExplored(this.location.x, this.location.y);
                 const tile = this.exploreTile(this.location.x, this.location.y);
                 const biome = this.biomes[tile.biome];
-                this.log.push({ text: `Moved to ${this.location.x}, ${this.location.y} (${biome.name})`, type: 'move' });
+                this.log.push({
+                    text: this._label('log.movedTo', 'Moved to {x}, {y} ({biome})', {
+                        x: this.location.x,
+                        y: this.location.y,
+                        biome: biome.name
+                    }),
+                    type: 'move'
+                });
                 if (tile.hasLandmark) {
                     this.log.push({ text: `Discovered ${tile.landmarkName}!`, type: 'discovery' });
                 }

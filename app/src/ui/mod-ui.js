@@ -196,10 +196,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const modBtn = document.createElement('button');
         modBtn.className = 'nav-btn';
-        modBtn.textContent = '📦 Mods';
+        modBtn.innerHTML = '📦 <span data-i18n="ui.menu.mods">Mods</span>';
         modBtn.title = 'Open mods';
+        modBtn.setAttribute('data-i18n-title', 'ui.menu.modsTitle');
         modBtn.setAttribute('aria-label', 'Open mods');
+        modBtn.setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle');
         modBtn.onclick = () => ModUI.showModScreen();
         nav.appendChild(modBtn);
+        App.applyStaticLocalization?.(nav);
     }
 });

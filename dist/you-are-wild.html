@@ -10298,14 +10298,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const settingsBtn = document.createElement('button');
         settingsBtn.className = 'nav-btn';
-        settingsBtn.textContent = '⚙️ Settings';
+        settingsBtn.innerHTML = '⚙️ <span data-i18n="ui.menu.settings">Settings</span>';
         settingsBtn.title = 'Open settings';
+        settingsBtn.setAttribute('data-i18n-title', 'ui.menu.settingsTitle');
         settingsBtn.setAttribute('aria-label', 'Open settings');
+        settingsBtn.setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle');
         settingsBtn.onclick = () => {
             App.showScreen('settings');
             App.showSettings();
         };
         nav.insertBefore(settingsBtn, nav.lastChild);
+        App.applyStaticLocalization?.(nav);
     }
 });
 
@@ -10789,11 +10792,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const modBtn = document.createElement('button');
         modBtn.className = 'nav-btn';
-        modBtn.textContent = '📦 Mods';
+        modBtn.innerHTML = '📦 <span data-i18n="ui.menu.mods">Mods</span>';
         modBtn.title = 'Open mods';
+        modBtn.setAttribute('data-i18n-title', 'ui.menu.modsTitle');
         modBtn.setAttribute('aria-label', 'Open mods');
+        modBtn.setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle');
         modBtn.onclick = () => ModUI.showModScreen();
         nav.appendChild(modBtn);
+        App.applyStaticLocalization?.(nav);
     }
 });
 
@@ -12444,15 +12450,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nav) {
         const marketBtn = document.createElement('button');
         marketBtn.className = 'nav-btn';
-        marketBtn.textContent = '🏪 Market';
+        marketBtn.innerHTML = '🏪 <span data-i18n="ui.menu.market">Market</span>';
         marketBtn.title = 'Open market';
+        marketBtn.setAttribute('data-i18n-title', 'ui.menu.marketTitle');
         marketBtn.setAttribute('aria-label', 'Open market');
+        marketBtn.setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle');
         marketBtn.onclick = () => {
             document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
             document.getElementById('screen-market').style.display = 'block';
             MODULE_MARKETPLACE.ui.showMarketplace();
         };
         nav.insertBefore(marketBtn, nav.lastChild);
+        App.applyStaticLocalization?.(nav);
     }
 });
 

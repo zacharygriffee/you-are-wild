@@ -516,12 +516,12 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle party panel"', 'Party nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
-  assertContains(settingsNavContent, "setAttribute('aria-label', 'Open settings')", 'Injected settings nav button should expose accessible label');
-  assertContains(settingsNavContent, "title = 'Open settings'", 'Injected settings nav button should expose title');
-  assertContains(marketNavContent, "setAttribute('aria-label', 'Open market')", 'Injected market nav button should expose accessible label');
-  assertContains(marketNavContent, "title = 'Open market'", 'Injected market nav button should expose title');
-  assertContains(modUiContent, "setAttribute('aria-label', 'Open mods')", 'Injected mods nav button should expose accessible label');
-  assertContains(modUiContent, "title = 'Open mods'", 'Injected mods nav button should expose title');
+  assertContains(settingsNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize accessible label');
+  assertContains(settingsNavContent, "setAttribute('data-i18n-title', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize title');
+  assertContains(marketNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle')", 'Injected market nav button should localize accessible label');
+  assertContains(marketNavContent, "setAttribute('data-i18n-title', 'ui.menu.marketTitle')", 'Injected market nav button should localize title');
+  assertContains(modUiContent, "setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle')", 'Injected mods nav button should localize accessible label');
+  assertContains(modUiContent, "setAttribute('data-i18n-title', 'ui.menu.modsTitle')", 'Injected mods nav button should localize title');
   assertContains(template, 'aria-label="Expand or collapse party cards"', 'Party panel expand control should expose accessible label');
   assertContains(template, 'aria-label="Expand or collapse creature cards"', 'Creature panel expand control should expose accessible label');
   assertContains(template, 'aria-label="Export visible log entries"', 'Log export control should expose accessible label');
@@ -542,6 +542,9 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-title="ui.menu.newGameTitle"', 'Main menu new-game title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.nav.mapTitle"', 'Map nav accessible label should opt into localization');
   assertContains(template, 'data-i18n-placeholder="ui.log.search"', 'Log search placeholder should opt into localization');
+  assertContains(settingsNavContent, 'App.applyStaticLocalization?.(nav)', 'Injected settings nav should refresh static localization after insertion');
+  assertContains(marketNavContent, 'App.applyStaticLocalization?.(nav)', 'Injected market nav should refresh static localization after insertion');
+  assertContains(modUiContent, 'App.applyStaticLocalization?.(nav)', 'Injected mods nav should refresh static localization after insertion');
   assertContains(contentContent, "'ui.menu.newGame': 'New Game'", 'English shell new-game label missing');
   assertContains(contentContent, "'ui.menu.newGame': 'Nueva partida'", 'Spanish shell new-game label missing');
   assertContains(contentContent, "'settings.interfaceLanguage': 'Idioma de interfaz'", 'Spanish settings shell label missing');

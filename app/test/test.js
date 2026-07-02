@@ -1884,6 +1884,22 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   assert(friendly.CPle > 0, 'Sub-action selection should preserve existing outside-combat action execution');
 });
 
+test('Intent feast sub-action affects outside-combat resolution and cleanup', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const predator = makeUnit('Predator', { id: 'predator-1', Feas: 80, Flee: 40, size: 8, appetite: 8 });
+  const prey = makeUnit('Prey', { id: 'prey-sub', disposition: App.DISPOSITION.FRIENDLY, CPun: 10, MPun: 100, Flee: 1, size: 2 });
+  App.player = predator;
+  App.party = [predator];
+  App.creatures = [prey];
+  App.settings.chewing = true;
+  App.selectIntent('creature', 'prey-sub', 'feast', 'sheet', 'chew');
+  assertEqual(App.lastIntentCommand.subAction, 'chew', 'Feast intent should record selected feast sub-action');
+  assertEqual(App.defaultSubActions.feast, 'chew', 'Selected feast sub-action should become default');
+  assertEqual(prey.alive, false, 'Selected chew sub-action should use the sub-action engine');
+  assertEqual(App.creatures.includes(prey), false, 'Consumed area creature should be removed after outside-combat sub-action resolution');
+  assertContains(App.log[App.log.length - 1].text, 'chewing', 'Sub-action result should be logged');
+});
+
 test('Selected party actor can interact with party targets outside combat', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

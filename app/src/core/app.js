@@ -4153,22 +4153,22 @@
                 this.outsideGroupActionOnTarget(action, target, this._getExplorationActors());
             },
 
-            outsideActionForParty(action, targetIndex, actorId = null) {
+            outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
                 const target = this.party[targetIndex];
                 if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId));
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
             },
 
-            outsideActionForCreature(action, targetId) {
+            outsideActionForCreature(action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors());
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(), options);
             },
 
-            outsideActionForCreatureAs(actorId, action, targetId) {
+            outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId));
+                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
             },
 
             _removeContainedPartyMember(unit) {
@@ -4440,10 +4440,10 @@
                 this.outsideActionOnTargets(action, targets, this._getExplorationActor(actorId));
             },
 
-            outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors()) {
+            outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {
                 const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
                 if (livingActors.length <= 1) {
-                    this.outsideActionOnTarget(action, target, livingActors[0] || this.player);
+                    this.outsideActionOnTarget(action, target, livingActors[0] || this.player, options);
                     return true;
                 }
                 const names = livingActors.map(actor => actor.name).join(', ');
@@ -4619,6 +4619,7 @@
             outsideActionOnTarget(action, target, actor = this.player, options = {}) {
                 actor = actor || this.player;
                 const { actorName } = this._actorNameAndVerb(actor);
+                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 let result = '';
                 let startCombatAfter = false;
                 let combatTargets = [];
@@ -4676,6 +4677,11 @@
                         break;
                     }
                     case 'feast': {
+                        if (selectedSubAction) {
+                            result = this._doSubAction('feast', selectedSubAction, actor, target, actorName, actor.name === this.player?.name ? '' : 's');
+                            this._cleanupOutsideSubActionTarget(action, selectedSubAction, actor, target);
+                            break;
+                        }
                         if (actor === target) {
                             result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
                             break;
@@ -4736,6 +4742,11 @@
                         break;
                     }
                     case 'feed': {
+                        if (selectedSubAction && selectedSubAction !== 'forceFeed') {
+                            result = this._doSubAction('feed', selectedSubAction, actor, target, actorName, actor.name === this.player?.name ? '' : 's');
+                            this._cleanupOutsideSubActionTarget(action, selectedSubAction, actor, target);
+                            break;
+                        }
                         if (options.allowPartySacrifice !== false && this.party.includes(actor) && this.party.includes(target) && actor !== target && target.CPun >= target.MPun) {
                             result = this._feedPartyMemberToConsumer(actor, target);
                             break;
@@ -4768,6 +4779,15 @@
                 }
                 if (!this.combatState.active) this.renderExplorationActions();
                 return !(action === 'feast' && actor === target);
+            },
+
+            _cleanupOutsideSubActionTarget(action, subAction, actor, target) {
+                const containedTarget = target && target !== actor && (target.CPun <= 0 || target.alive === false);
+                if (!containedTarget) return;
+                const removesTarget = action === 'feast' || (action === 'feed' && ['sacrifice', 'forceFeed'].includes(subAction));
+                if (!removesTarget) return;
+                if (this.party.includes(target)) this._removeContainedPartyMember(target);
+                else if (this.creatures.includes(target)) this._removeCreatureFromArea(target);
             },
 
             _findCorpseById(targetId) {
@@ -7885,14 +7905,14 @@
                 if (type === 'party') {
                     const index = Number(targetRef);
                     if (action === 'close') return;
-                    return this.outsideActionForParty(action, index);
+                    return this.outsideActionForParty(action, index, null, { subAction });
                 }
                 const targetId = String(targetRef);
                 if (action === 'close') return;
                 if (action === 'recruit') return this.recruitCreatureById(targetId);
                 if (action === 'quest') return this.acceptQuestFromUnit(targetId);
                 if (action === 'trade') return this.showTrade(targetId);
-                return this.outsideActionForCreature(action, targetId);
+                return this.outsideActionForCreature(action, targetId, { subAction });
             },
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');

@@ -4387,6 +4387,8 @@
                 const actors = this._getExplorationActors();
                 const label = this._escapeHtml(this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
                 const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
+                const primaryActor = actors[0] || this.player;
+                const helperNames = actors.slice(1).map(actor => actor.name).join(', ');
                 const targetNames = targets.map(target => target.name).join(', ');
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
@@ -4401,7 +4403,9 @@
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
-                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+                const primaryLine = primaryActor ? `<span class="selected-target-primary">${this._escapeHtml(this._label('target.primaryActor', 'Primary'))}: ${this._escapeHtml(primaryActor.name || 'You')}</span>` : '';
+                const helperLine = helperNames ? `<span class="selected-target-helpers">${this._escapeHtml(this._label('target.helpers', 'Helpers'))}: ${this._escapeHtml(helperNames)}</span>` : '';
+                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
             },
 
             openExplorationTargetSubActionSheet(action, source = 'target-bar') {

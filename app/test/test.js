@@ -1282,7 +1282,7 @@ test('Cheat toggle feedback localizes', () => {
 });
 
 test('Flee ends combat without granting victory XP', () => {
-  const { App } = loadAppForCombat(() => 0);
+  const { App, elements } = loadAppForCombat(() => 0);
   App.worldMeta = { seed: 'flee-success', generatorVersion: 2 };
   const player = makeUnit('You', { id: 'player-1', Flee: 50, xp: 0, xpToNext: 100 });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, spd: 1 });
@@ -1292,12 +1292,18 @@ test('Flee ends combat without granting victory XP', () => {
   App.location = { x: 0, y: 0 };
   App.dayCount = 0;
   App.timeHour = 0;
-  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [] };
+  App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.activeActor = player;
   App.updateLanguage('es');
+  App.renderParty();
+  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Combat party card should expose combat actions before fleeing');
   App.attemptFlee();
   assertEqual(App.combatState.active, false, 'Flee should end combat');
   assertEqual(player.xp, 0, 'Flee should not grant victory XP');
   assertContains(App.log[0].text, 'Huyes con exito!', 'Successful flee log should localize');
+  assertNotContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from party card');
+  assertContains(elements.get('party-content').innerHTML, 'Seleccionar You para actuar', 'Flee should restore exploration party actions');
+  assertNotContains(elements.get('party-content').innerHTML, 'Now #', 'Flee should remove stale turn-order badges');
 });
 
 test('Flee failure and no-enemy feedback localize', () => {

@@ -4281,6 +4281,8 @@
                 this.combatState.turnQueue = [];
                 this.combatState.currentTurn = 0;
                 this.combatState.syncActions = [];
+                this.activeActor = null;
+                this._clearTransientInteractionState();
                 this.party.forEach(p => { p.fledCombat = false; });
                 if (this.player?.knockedOut) {
                     this.player.knockedOut = false;
@@ -4311,6 +4313,8 @@
                     setTimeout(() => { this._confirmDefeatReturnToMenu(); }, 1500);
                 }
                 this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
                 this.showExplorationActions();
                 this.renderMobileCombatToolbelt();
                 this.autoSave();

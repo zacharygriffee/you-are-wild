@@ -869,6 +869,34 @@
         .unit-card.expanded {
             border-color: var(--accent-secondary);
         }
+        .unit-combat-actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            align-items: center;
+        }
+        .unit-combat-actions .action-btn {
+            min-width: 56px;
+            flex: 1 1 56px;
+        }
+        .unit-combat-actions.compact .action-btn {
+            min-width: 34px;
+            flex: 1 1 34px;
+            padding: 6px;
+            font-size: 11px;
+        }
+        .panel-first-combat-prompt {
+            max-width: min(520px, 100%);
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.52);
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+        }
         .unit-card.party-draggable {
             cursor: grab;
         }

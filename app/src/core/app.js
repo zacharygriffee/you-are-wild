@@ -356,6 +356,65 @@
                 const targetActions = this._renderExplorationTargetActions(includePanels ? 'sheet' : 'desktop');
                 return targetActions + allKeys.map(key => this._contextActionButton(key)).join('');
             },
+            _isCurrentCombatActor(unit) {
+                if (!unit || !this.combatState?.active) return false;
+                const actor = this.activeActor || this._currentCombatActor();
+                if (!actor) return false;
+                return actor === unit || this._unitSelectionId(actor) === this._unitSelectionId(unit);
+            },
+            _renderCombatPanelPrompt(actor = this.activeActor || this._currentCombatActor()) {
+                if (!this.combatState?.active) return '';
+                const label = this._escapeHtml(this._label('combat.panelFirstStatus', 'Combat controls'));
+                let text = '';
+                if (this.targetSelection?.source === 'combat') {
+                    text = this._label('combat.panelFirstTargeting', 'Targeting: {action}. Pick a valid target in the enemy panel.', {
+                        action: this._uiLabel(this.targetSelection.action || 'action')
+                    });
+                } else if (actor && (actor === this.player || this.party.includes(actor))) {
+                    text = this._label('combat.panelFirstPrompt', 'Use the active actor card for combat intent, then pick a target in the enemy panel.');
+                } else if (actor) {
+                    text = this._label('combat.panelFirstEnemyTurn', '{name} is acting. Combat controls stay in the party and creature panels.', { name: actor.name });
+                } else {
+                    text = this._label('combat.panelFirstPrompt', 'Use the active actor card for combat intent, then pick a target in the enemy panel.');
+                }
+                return `<div class="panel-first-combat-prompt" role="status" aria-label="${label}">${this._escapeHtml(text)}</div>`;
+            },
+            _combatActionButtons(actor, options = {}) {
+                if (!this.combatState?.active || !actor || !(actor === this.player || this.party.includes(actor))) return '';
+                if (!this._isCurrentCombatActor(actor)) return '';
+                const compact = Boolean(options.compact);
+                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+                const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name);
+                const buttons = [];
+                if (this.cheats.overpowered && actor?.name === this.player?.name) {
+                    const instantWinLabel = this._escapeHtml(this._label('combat.instantWin', 'Instant Win'));
+                    const instantWinTitle = this._escapeHtml(this._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
+                    buttons.push(`<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
+                }
+                if (enemies.length > 0) {
+                    buttons.push(this._iconActionButton('fight', this._actionIcon('fight'), "event.stopPropagation();App.selectTarget('fight')", 'primary'));
+                    buttons.push(this._iconActionButton('flirt', this._actionIcon('flirt'), "event.stopPropagation();App.selectTarget('flirt')"));
+                    buttons.push(this._iconActionButton('feast', this._actionIcon('feast'), "event.stopPropagation();App.selectTarget('feast')"));
+                    buttons.push(this._iconActionButton('fuck', this._actionIcon('fuck'), "event.stopPropagation();App.selectTarget('fuck')"));
+                }
+                if (allies.length > 0) {
+                    buttons.push(this._iconActionButton('feed', this._actionIcon('feed'), 'event.stopPropagation();App.executeFeedAction()'));
+                }
+                if (enemies.length > 0) {
+                    buttons.push(this._iconActionButton('sync', '👥', 'event.stopPropagation();App.showSyncMenu()'));
+                    const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
+                    buttons.push(`<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.moveCombatRow()">↕️ ${moveRowLabel}</button>`);
+                }
+                if (actor?.name === this.player?.name) {
+                    buttons.push(this._iconActionButton('flee', this._actionIcon('flee'), 'event.stopPropagation();App.attemptFlee()'));
+                } else {
+                    buttons.push(this._iconActionButton('skip', '', 'event.stopPropagation();App.nextTurn()'));
+                }
+                if (buttons.length === 0) return '';
+                const label = this._escapeHtml(this._label('combat.panelActions', 'Combat actions'));
+                const compactClass = compact ? ' compact' : '';
+                return `<div class="unit-actions unit-combat-actions${compactClass}" aria-label="${label}">${buttons.join('')}</div>`;
+            },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
                 wings: { id: 'wings', label: 'Wings', desc: 'Flying. +3 SPD priority. 50% dodge vs non-reach. Enables flight.', priority: 3 },
@@ -2968,36 +3027,10 @@
             showActorActions(actor) {
                 this.targetSelection = null;
                 this.activeActor = actor || this.player;
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
-                const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.activeActor?.name);
-                let html = '';
-                if (this.cheats.overpowered && this.activeActor?.name === this.player?.name) {
-                    const instantWinLabel = this._escapeHtml(this._label('combat.instantWin', 'Instant Win'));
-                    const instantWinTitle = this._escapeHtml(this._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
-                    html += `<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="App.instantWin()">⚡ ${instantWinLabel}</button>`;
-                }
-                // 6 Primary Actionables: Fight, Flirt, Feast, Fuck, Feed, Flee
-                if (enemies.length > 0) {
-                    html += this._iconActionButton('fight', this._actionIcon('fight'), "App.selectTarget('fight')", 'primary');
-                    html += this._iconActionButton('flirt', this._actionIcon('flirt'), "App.selectTarget('flirt')");
-                    html += this._iconActionButton('feast', this._actionIcon('feast'), "App.selectTarget('feast')");
-                    html += this._iconActionButton('fuck', this._actionIcon('fuck'), "App.selectTarget('fuck')");
-                }
-                if (allies.length > 0) {
-                    html += this._iconActionButton('feed', this._actionIcon('feed'), 'App.executeFeedAction()');
-                }
-                if (enemies.length > 0) {
-                    html += this._iconActionButton('sync', '👥', 'App.showSyncMenu()');
-                    const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
-                    html += `<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="App.moveCombatRow()">↕️ ${moveRowLabel}</button>`;
-                }
-                if (this.activeActor?.name === this.player?.name) {
-                    html += this._iconActionButton('flee', this._actionIcon('flee'), 'App.attemptFlee()');
-                } else {
-                    html += this._iconActionButton('skip', '', 'App.nextTurn()');
-                }
-                document.getElementById('scene-actions').innerHTML = html;
+                const actions = document.getElementById('scene-actions');
+                if (actions) actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor);
+                this.renderParty();
+                this.renderCreatures();
                 this.renderMobileCombatToolbelt();
             },
 
@@ -3008,7 +3041,10 @@
                 const label = this._uiLabel(action);
                 const cancelLabel = this._escapeHtml(this._label('target.cancelAction', 'Cancel {action}', { action: label }));
                 document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('target.chooseFromPanel', 'Select a target from the creature panel.'))}</p><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
+                const actions = document.getElementById('scene-actions');
+                if (actions) actions.innerHTML = this._renderCombatPanelPrompt(actor);
                 this.renderCreatures();
+                this.renderParty();
                 this.renderMobileCombatToolbelt();
             },
 
@@ -6995,8 +7031,13 @@
                 return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
             },
             _unitSelectionRoles(unit, type) {
-                if (!unit || this.combatState?.active) return [];
+                if (!unit) return [];
                 const roles = [];
+                if (this.combatState?.active) {
+                    if (type === 'party' && this._isCurrentCombatActor(unit)) roles.push('actor');
+                    if (type === 'creature' && this.targetSelection?.source === 'combat' && this.canSelectCreatureTarget(unit)) roles.push('target');
+                    return roles;
+                }
                 if (type === 'party' && this._getExplorationActors().includes(unit)) {
                     roles.push('actor');
                 }
@@ -7040,6 +7081,8 @@
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = targetSelected ? ' primary' : '';
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+                } else if (isParty && this.combatState.active) {
+                    actionButtons = this._combatActionButtons(unit, { compact: true });
                 }
                 if (isCorpse) {
                     const menuLabel = this._label('ui.creatureActions', 'Creature actions');
@@ -7162,6 +7205,8 @@
                     if (partyManagementControls) {
                         partyManagementControls = `<div class="unit-actions unit-management-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${partyManagementControls}</div>`;
                     }
+                } else if (isParty && this.combatState.active) {
+                    actionButtons = this._combatActionButtons(unit);
                 }
                 if (!isParty && isCorpse) {
                     const targetKey = this._unitKey(unit);
@@ -7904,8 +7949,7 @@
 	                const mobileExplore = document.getElementById('mobile-explore-actions');
 	                if (inCombat) {
 	                    if (actions) {
-	                        const keys = ['fight', 'flirt', 'feast', 'fuck', 'feed', 'flee'];
-	                        actions.innerHTML = keys.map(key => this._iconActionButton(key, this._actionIcon(key), `combatAction('${key}')`, key === 'fight' ? 'primary' : '')).join('');
+	                        actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor || this._currentCombatActor());
 	                    }
                     if (mobileActions) mobileActions.style.display = 'block';
                     if (mobileCombat) mobileCombat.style.display = 'flex';

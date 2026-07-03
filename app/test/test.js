@@ -845,6 +845,9 @@ test('Default species canon is sapient and person-like', () => {
   assertContains(appContent, 'DEFAULT_SPECIES_CANON:', 'Default species canon missing');
   assertContains(appContent, 'SPECIES_CANON:', 'Species canon registry missing');
   assertContains(appContent, "_applySpeciesCanon(unit)", 'Species canon should normalize units');
+  assertContains(appContent, 'interactionEligibility:', 'Species canon should include interaction eligibility metadata');
+  assertContains(appContent, '_hasBaselineInteractionEligibility', 'Baseline interaction should be gated by species canon');
+  assertContains(appContent, "baselineInteraction === 'sapient'", 'Baseline interaction eligibility should require sapient canon metadata');
   assertContains(appContent, "name: 'Wolfkin'", 'Wolf default display should read as folk/kin');
   assertContains(appContent, "name: 'Bunnyfolk'", 'Bunny default display should read as folk/kin');
   assertContains(appContent, "name: 'Mousefolk'", 'Mouse default display should read as folk/kin');
@@ -2118,6 +2121,34 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','sheet')", 'Creature action menu should open sub-action sheet for registered primary actions');
   App.closeMobileContextMenu();
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
+});
+
+test('Species canon gates baseline social and recruit eligibility', () => {
+  const { App, body } = loadAppForCombat();
+  const player = makeUnit('You');
+  const folk = App._normalizeUnit(makeUnit('Wolfkin', { id: 'folk-1', species: 'wolf', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, willing: true }));
+  const animal = App._normalizeUnit(makeUnit('Wolf', {
+    id: 'animal-1',
+    species: 'wolf',
+    disposition: App.DISPOSITION.FRIENDLY,
+    CPle: 95,
+    willing: true,
+    sapience: 'animal',
+    bodyPlan: 'animal',
+    baselineInteraction: 'animal',
+    interactionEligibility: { sensitiveSocial: false, recruit: false }
+  }));
+  App.player = player;
+  App.party = [player];
+  App.creatures = [folk, animal];
+  assertEqual(App._hasBaselineInteractionEligibility(folk, 'sensitiveSocial'), true, 'Default species canon should preserve sapient social eligibility');
+  assertEqual(App._hasBaselineInteractionEligibility(animal, 'sensitiveSocial'), false, 'Animal metadata should block baseline social eligibility');
+  assertEqual(App._canRecruit(player, folk), true, 'Sapient folk canon should allow high-score recruitment');
+  assertEqual(App._canRecruit(player, animal), false, 'Animal metadata should block recruitment even with high score');
+  App.showIntentMenu('creature', 'animal-1');
+  assertContains(body.innerHTML, 'aria-label="Fight Wolf"', 'Animal metadata should not block general creature actions');
+  assertNotContains(body.innerHTML, 'aria-label="Flirt Wolf"', 'Animal metadata should hide baseline social actions');
+  assertNotContains(body.innerHTML, 'aria-label="Recruit Wolf"', 'Animal metadata should hide recruitment');
 });
 
 test('Desktop action bars do not duplicate large buttons with tiny legends', () => {

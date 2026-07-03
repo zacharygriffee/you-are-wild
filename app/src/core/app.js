@@ -469,6 +469,17 @@
                 sapience: 'person',
                 bodyPlan: 'beastfolk',
                 baselineInteraction: 'sapient',
+                interactionEligibility: {
+                    social: true,
+                    party: true,
+                    quest: true,
+                    merchant: true,
+                    recruit: true,
+                    sensitiveSocial: true,
+                    combat: true,
+                    feed: true,
+                    feast: true
+                },
                 defaultGame: true,
                 modOnlyAnimal: false
             },
@@ -518,6 +529,10 @@
                 return {
                     ...this.DEFAULT_SPECIES_CANON,
                     ...override,
+                    interactionEligibility: {
+                        ...(this.DEFAULT_SPECIES_CANON.interactionEligibility || {}),
+                        ...(override.interactionEligibility || {})
+                    },
                     traits: [...new Set([...(this.DEFAULT_SPECIES_CANON.traits || []), ...(override.traits || [])])]
                 };
             },
@@ -527,9 +542,28 @@
                 unit.sapience = unit.sapience || canon.sapience;
                 unit.bodyPlan = unit.bodyPlan || canon.bodyPlan;
                 unit.baselineInteraction = unit.baselineInteraction || canon.baselineInteraction;
+                unit.interactionEligibility = {
+                    ...(canon.interactionEligibility || {}),
+                    ...(unit.interactionEligibility || {})
+                };
                 unit.modOnlyAnimal = unit.modOnlyAnimal ?? canon.modOnlyAnimal;
                 unit.speciesTraits = [...new Set([...(unit.speciesTraits || []), ...(canon.traits || [])])];
                 return unit;
+            },
+            _hasBaselineInteractionEligibility(unit, interaction = 'social') {
+                if (!unit || this._isCorpse(unit)) return false;
+                const canon = this._speciesCanon(unit.species || 'human');
+                const eligibility = {
+                    ...(canon.interactionEligibility || {}),
+                    ...(unit.interactionEligibility || {})
+                };
+                const sapience = unit.sapience || canon.sapience;
+                const bodyPlan = unit.bodyPlan || canon.bodyPlan;
+                const baselineInteraction = unit.baselineInteraction || canon.baselineInteraction;
+                const speciesTraits = [...new Set([...(canon.traits || []), ...(unit.speciesTraits || [])])];
+                if (eligibility[interaction] === false) return false;
+                if (unit.modOnlyAnimal || sapience === 'animal' || bodyPlan === 'animal') return false;
+                return baselineInteraction === 'sapient' || sapience === 'person' || sapience === 'spirit' || speciesTraits.includes('person');
             },
             PREDATOR_PREY_RELATION: {
                 wolf: { prey: ['bunny', 'deer', 'sheep', 'goat', 'pig', 'cow', 'mouse', 'rat'] },
@@ -4424,6 +4458,7 @@
 
             _canRecruit(actor, target) {
                 if (!target || target.disposition !== this.DISPOSITION.FRIENDLY || this.party.includes(target)) return false;
+                if (!this._hasBaselineInteractionEligibility(target, 'recruit')) return false;
                 return this._getRecruitScore(actor, target) >= 85;
             },
 
@@ -4460,8 +4495,10 @@
                 };
                 let html = `<h3>${targetName}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
                 html += actionButton('fight');
-                html += actionButton('flirt');
-                html += actionButton('fuck');
+                if (type === 'party' || this._hasBaselineInteractionEligibility(target, 'sensitiveSocial')) {
+                    html += actionButton('flirt');
+                    html += actionButton('fuck');
+                }
                 html += actionButton('feast');
                 html += actionButton('feed');
                 if (type === 'creature' && target.disposition === this.DISPOSITION.FRIENDLY) {
@@ -8553,10 +8590,13 @@
                 let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
                 const selectedActors = this._getExplorationActors();
                 const canUsePrimaryActions = !isCorpse && (!isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target))));
+                const canUseBaselineSocial = isParty || this._hasBaselineInteractionEligibility(target, 'sensitiveSocial');
                 if (canUsePrimaryActions) {
                     html += actionButton('fight');
-                    html += actionButton('flirt');
-                    html += actionButton('fuck');
+                    if (canUseBaselineSocial) {
+                        html += actionButton('flirt');
+                        html += actionButton('fuck');
+                    }
                     html += actionButton('feast');
                     html += actionButton('feed');
                 }

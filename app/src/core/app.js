@@ -3295,86 +3295,82 @@
                 return result;
             },
             _createStomachPrey(target, extra = {}) {
-                return { ...target, alive: true, inStomach: !extra.inWomb && !extra.inCock, inWomb: extra.inWomb || false, inCock: extra.inCock || false, digestionProgress: 0, digestionState: 'contained', statDrain: { str: 0, con: 0, Figh: 0, Feas: 0, Flir: 0, Fuck: 0, Flee: 0, Feed: 0 }, willingSacrifice: extra.willingSacrifice || false, forcedFed: extra.forcedFed || false, by: extra.by || null };
+                return { ...target, alive: true, inStomach: !extra.inWomb && !extra.inCock, inWomb: extra.inWomb || false, inCock: extra.inCock || false, digestionProgress: 0, digestionState: 'contained', statDrain: this._emptyStatDrain(), willingSacrifice: extra.willingSacrifice || false, forcedFed: extra.forcedFed || false, by: extra.by || null };
+            },
+            _emptyStatDrain() {
+                return { str: 0, con: 0, spd: 0, int: 0, wis: 0, cha: 0, Figh: 0, Feas: 0, Flir: 0, Fuck: 0, Flee: 0, Feed: 0 };
+            },
+            _ensureStatDrain(prey) {
+                prey.statDrain = { ...this._emptyStatDrain(), ...(prey.statDrain || {}) };
+                return prey.statDrain;
+            },
+            _digestionContainerConfigs() {
+                return [
+                    {
+                        key: 'stomach',
+                        flag: 'inStomach',
+                        fastRate: 5,
+                        slowRate: 2,
+                        stats: ['str', 'con', 'Figh'],
+                        advanceContained: true,
+                        fatalLog: (prey, unit) => `${prey.name} is fully digested inside ${unit.name}.`,
+                        softLog: (prey, unit) => `${prey.name} is fully softened inside ${unit.name}, ready to be released or kept as endo.`
+                    },
+                    {
+                        key: 'womb',
+                        flag: 'inWomb',
+                        fastRate: 3,
+                        slowRate: 1,
+                        stats: ['cha', 'Flir', 'Fuck'],
+                        fatalLog: (prey, unit) => `${prey.name} perishes in ${unit.name}'s womb.`,
+                        softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s womb.`
+                    },
+                    {
+                        key: 'balls',
+                        flag: 'inCock',
+                        fastRate: 3,
+                        slowRate: 1,
+                        stats: ['Feas', 'Fuck'],
+                        fatalLog: (prey, unit) => `${prey.name} dissolves in ${unit.name}'s balls.`,
+                        softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s balls.`
+                    }
+                ];
+            },
+            _processDigestionContainer(unit, config) {
+                for (const prey of (unit[config.key] || [])) {
+                    if (!prey.alive || prey[config.flag] === false) continue;
+                    prey.digestionProgress = prey.digestionProgress || 0;
+                    prey.digestionState = prey.digestionState || 'contained';
+                    this._ensureStatDrain(prey);
+                    if (config.advanceContained && prey.digestionState === 'contained') prey.digestionState = 'digesting';
+                    const rate = this.settings.slowDigestion ? config.slowRate : config.fastRate;
+                    prey.digestionProgress = Math.min(100, prey.digestionProgress + rate);
+                    const drain = Math.max(1, Math.floor(rate * 0.3));
+                    for (const stat of config.stats) {
+                        prey.statDrain[stat] += drain;
+                        prey[stat] = Math.max(1, (prey[stat] || 10) - drain);
+                    }
+                    prey.CPun = Math.max(1, Math.floor(prey.MPun * (1 - prey.digestionProgress / 100)));
+                    if (this.settings.statAbsorption) {
+                        this._absorbStats(unit, rate, config.stats);
+                    }
+                    if (prey.digestionProgress >= 100) {
+                        if (this.settings.fatalVore && !this.settings.endoMode) {
+                            prey.alive = false;
+                            this.log.push({ text: config.fatalLog(prey, unit), type: 'combat' });
+                        } else {
+                            prey.digestionState = 'digested';
+                            this.log.push({ text: config.softLog(prey, unit), type: 'combat' });
+                        }
+                    }
+                }
             },
             _processStomachState(unit) {
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
                     MODULE_SYSTEM.executeHook('onDigestionTick', { unit, app: this }).catch(() => {});
                 }
-                for (const prey of (unit.stomach || [])) {
-                    if (!prey.alive || prey.inStomach === false) continue;
-                    prey.digestionProgress = prey.digestionProgress || 0;
-                    prey.digestionState = prey.digestionState || 'contained';
-                    prey.statDrain = prey.statDrain || { str: 0, con: 0, Figh: 0, Feas: 0, Flir: 0, Fuck: 0, Flee: 0, Feed: 0 };
-                    if (prey.digestionState === 'contained') prey.digestionState = 'digesting';
-                    const rate = this.settings.slowDigestion ? 2 : 5;
-                    prey.digestionProgress = Math.min(100, prey.digestionProgress + rate);
-                    const drain = Math.max(1, Math.floor(rate * 0.3));
-                    prey.statDrain.str += drain; prey.str = Math.max(1, (prey.str || 10) - drain);
-                    prey.statDrain.con += drain; prey.con = Math.max(1, (prey.con || 10) - drain);
-                    prey.statDrain.Figh += drain; prey.Figh = Math.max(1, (prey.Figh || 10) - drain);
-                    prey.CPun = Math.max(1, Math.floor(prey.MPun * (1 - prey.digestionProgress / 100)));
-                    if (this.settings.statAbsorption) {
-                        this._absorbStats(unit, rate, ['str', 'con', 'Figh']);
-                    }
-                    if (prey.digestionProgress >= 100) {
-                        if (this.settings.fatalVore && !this.settings.endoMode) {
-                            prey.alive = false;
-                            this.log.push({ text: `${prey.name} is fully digested inside ${unit.name}.`, type: 'combat' });
-                        } else {
-                            prey.digestionState = 'digested';
-                            this.log.push({ text: `${prey.name} is fully softened inside ${unit.name}, ready to be released or kept as endo.`, type: 'combat' });
-                        }
-                    }
-                }
-                for (const prey of (unit.womb || [])) {
-                    if (!prey.alive || prey.inWomb === false) continue;
-                    prey.digestionProgress = prey.digestionProgress || 0;
-                    prey.digestionState = prey.digestionState || 'contained';
-                    prey.statDrain = prey.statDrain || { str: 0, con: 0, Figh: 0, Feas: 0, Flir: 0, Fuck: 0, Flee: 0, Feed: 0 };
-                    const rate = this.settings.slowDigestion ? 1 : 3;
-                    prey.digestionProgress = Math.min(100, prey.digestionProgress + rate);
-                    const drain = Math.max(1, Math.floor(rate * 0.3));
-                    prey.statDrain.cha += drain; prey.cha = Math.max(1, (prey.cha || 10) - drain);
-                    prey.statDrain.Flir += drain; prey.Flir = Math.max(1, (prey.Flir || 10) - drain);
-                    prey.statDrain.Fuck += drain; prey.Fuck = Math.max(1, (prey.Fuck || 10) - drain);
-                    prey.CPun = Math.max(1, Math.floor(prey.MPun * (1 - prey.digestionProgress / 100)));
-                    if (this.settings.statAbsorption) {
-                        this._absorbStats(unit, rate, ['cha', 'Flir', 'Fuck']);
-                    }
-                    if (prey.digestionProgress >= 100) {
-                        if (this.settings.fatalVore && !this.settings.endoMode) {
-                            prey.alive = false;
-                            this.log.push({ text: `${prey.name} perishes in ${unit.name}'s womb.`, type: 'combat' });
-                        } else {
-                            prey.digestionState = 'digested';
-                            this.log.push({ text: `${prey.name} is fully softened in ${unit.name}'s womb.`, type: 'combat' });
-                        }
-                    }
-                }
-                for (const prey of (unit.balls || [])) {
-                    if (!prey.alive || prey.inCock === false) continue;
-                    prey.digestionProgress = prey.digestionProgress || 0;
-                    prey.digestionState = prey.digestionState || 'contained';
-                    prey.statDrain = prey.statDrain || { str: 0, con: 0, Figh: 0, Feas: 0, Flir: 0, Fuck: 0, Flee: 0, Feed: 0 };
-                    const rate = this.settings.slowDigestion ? 1 : 3;
-                    prey.digestionProgress = Math.min(100, prey.digestionProgress + rate);
-                    const drain = Math.max(1, Math.floor(rate * 0.3));
-                    prey.statDrain.Feas += drain; prey.Feas = Math.max(1, (prey.Feas || 10) - drain);
-                    prey.statDrain.Fuck += drain; prey.Fuck = Math.max(1, (prey.Fuck || 10) - drain);
-                    prey.CPun = Math.max(1, Math.floor(prey.MPun * (1 - prey.digestionProgress / 100)));
-                    if (this.settings.statAbsorption) {
-                        this._absorbStats(unit, rate, ['Feas', 'Fuck']);
-                    }
-                    if (prey.digestionProgress >= 100) {
-                        if (this.settings.fatalVore && !this.settings.endoMode) {
-                            prey.alive = false;
-                            this.log.push({ text: `${prey.name} dissolves in ${unit.name}'s balls.`, type: 'combat' });
-                        } else {
-                            prey.digestionState = 'digested';
-                            this.log.push({ text: `${prey.name} is fully softened in ${unit.name}'s balls.`, type: 'combat' });
-                        }
-                    }
+                for (const config of this._digestionContainerConfigs()) {
+                    this._processDigestionContainer(unit, config);
                 }
             },
 

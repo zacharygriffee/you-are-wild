@@ -1257,6 +1257,9 @@ test('Sub-action helpers exist', () => {
 test('Feast lifecycle state machine exists', () => {
   assertContains(appContent, '_createStomachPrey', '_createStomachPrey missing');
   assertContains(appContent, '_processStomachState', '_processStomachState missing');
+  assertContains(appContent, '_digestionContainerConfigs', '_digestionContainerConfigs missing');
+  assertContains(appContent, '_processDigestionContainer', '_processDigestionContainer missing');
+  assertContains(appContent, '_emptyStatDrain', '_emptyStatDrain missing');
   assertContains(appContent, "digestionState:", 'digestionState field missing');
   assertContains(appContent, "digestionProgress:", 'digestionProgress field missing');
   assertContains(appContent, "statDrain:", 'statDrain field missing');
@@ -1468,6 +1471,38 @@ test('Stat absorption accumulates fractional digestion progress', () => {
   App._processDigestion();
   assertEqual(predator.str, 11, 'Absorption should grant stats after accumulated digestion');
   assertEqual(predator.Figh, 11, 'Absorption should grant combat stat after accumulated digestion');
+});
+
+test('Digestion container configs preserve per-container drain behavior', () => {
+  const { App } = loadAppForCombat();
+  const predator = makeUnit('Predator', {
+    stomach: [makeUnit('Stomach Prey', { CPun: 100, MPun: 100, alive: true, inStomach: true, statDrain: null })],
+    womb: [makeUnit('Womb Prey', { CPun: 100, MPun: 100, alive: true, inWomb: true, statDrain: null })],
+    balls: [makeUnit('Balls Prey', { CPun: 100, MPun: 100, alive: true, inCock: true, statDrain: null })]
+  });
+  App.party = [predator];
+  App.creatures = [];
+  App.settings.statAbsorption = false;
+  App.settings.slowDigestion = false;
+
+  App._processDigestion();
+
+  const stomachPrey = predator.stomach[0];
+  const wombPrey = predator.womb[0];
+  const ballsPrey = predator.balls[0];
+  assertEqual(stomachPrey.digestionState, 'digesting', 'Stomach prey should advance from contained to digesting');
+  assertEqual(stomachPrey.digestionProgress, 5, 'Stomach prey should use the preserved fast stomach rate');
+  assertEqual(stomachPrey.statDrain.str, 1, 'Stomach drain should affect strength');
+  assertEqual(stomachPrey.statDrain.con, 1, 'Stomach drain should affect constitution');
+  assertEqual(stomachPrey.statDrain.Figh, 1, 'Stomach drain should affect fight');
+  assertEqual(wombPrey.digestionProgress, 3, 'Womb prey should use the preserved fast womb rate');
+  assertEqual(wombPrey.statDrain.cha, 1, 'Womb drain should track charisma without NaN');
+  assertEqual(wombPrey.statDrain.Flir, 1, 'Womb drain should affect flirt');
+  assertEqual(wombPrey.statDrain.Fuck, 1, 'Womb drain should affect fuck');
+  assertEqual(Number.isNaN(wombPrey.statDrain.cha), false, 'Womb charisma drain should remain numeric');
+  assertEqual(ballsPrey.digestionProgress, 3, 'Balls prey should use the preserved fast balls rate');
+  assertEqual(ballsPrey.statDrain.Feas, 1, 'Balls drain should affect feast');
+  assertEqual(ballsPrey.statDrain.Fuck, 1, 'Balls drain should affect fuck');
 });
 
 test('Status effects apply damage and expire during processing', () => {

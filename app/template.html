@@ -1457,6 +1457,13 @@
             box-shadow: 0 0 0 1px rgba(255, 64, 129, 0.28);
         }
 
+        .action-btn.disabled,
+        .action-btn[aria-disabled="true"] {
+            opacity: 0.68;
+            border-style: dashed;
+            box-shadow: none;
+        }
+
         .action-icon {
             font-size: 20px;
         }

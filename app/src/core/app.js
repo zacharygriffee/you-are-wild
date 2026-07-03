@@ -7214,10 +7214,11 @@
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
-                        const disabled = isTargetable ? '' : ' disabled';
+                        const disabledClass = isTargetable ? '' : ' disabled';
+                        const disabledAttr = isTargetable ? '' : 'aria-disabled="true"';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabled.trim())}</div>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabledAttr)}</div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const isTargetable = this.canSelectCreatureTarget(unit);
                         const disabled = isTargetable ? '' : ' disabled';
@@ -7353,12 +7354,13 @@
                     const targetKey = this._unitKey(unit);
                     if (this.targetSelection) {
                         const canTarget = this.canSelectCreatureTarget(unit);
-                        const disabled = canTarget ? '' : ' disabled';
+                        const disabledClass = canTarget ? '' : ' disabled';
+                        const disabledAttr = canTarget ? '' : 'aria-disabled="true"';
                         const targetName = unit.name || 'creature';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
                         const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabled = canTarget ? '' : ' disabled';

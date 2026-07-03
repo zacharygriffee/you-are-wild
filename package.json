@@ -8,6 +8,7 @@
     "test:core": "npm --prefix app run test:core",
     "test:ui": "npm --prefix app run test:ui",
     "test:viewport": "npm --prefix app run test:viewport",
+    "test:interactions": "npm --prefix app run test:interactions",
     "lint": "npm --prefix app run lint",
     "dev": "npm --prefix app run dev",
     "clean": "npm --prefix app run clean",

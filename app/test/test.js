@@ -2102,6 +2102,58 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
   assertNotContains(elements.get('scene-title').textContent, 'Loaded', 'Loaded combat should not remain on the generic loaded scene');
 });
 
+test('Combat refresh snapshot restores current turn when IndexedDB save is stale', async () => {
+  const Binary = loadBinaryForTest();
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, storage } = first;
+  const player = makeUnit('You', { id: 'player-refresh-combat', Figh: 20 });
+  const enemy = makeUnit('Harpy', {
+    id: 'enemy-refresh-combat',
+    species: 'harpy',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 40,
+    MPun: 43,
+    Flee: 1
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 4, y: -2 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'combat-refresh-world', seed: 'combat-refresh-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['4,-2', { ...App.getBaseTile(4, -2), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['4,-2']);
+  App.activeSlot = 'slot1';
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 7,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App._prepareSaveSnapshot();
+  const staleSave = Binary.saveGame(App, { omitWorldMap: false });
+  enemy.CPun = 12;
+  App.combatState.round = 4;
+  App._writeCombatRefreshSnapshot();
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  for (const [key, value] of storage.entries()) loadedApp.storage.set(key, value);
+  loadedApp.App._dbGet = async () => staleSave;
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Slot load should succeed using the refresh snapshot');
+  assertEqual(loadedApp.App.combatState.active, true, 'Refresh snapshot should keep combat active');
+  assertEqual(loadedApp.App.combatState.round, 4, 'Refresh snapshot should restore the newer combat round');
+  assertEqual(loadedApp.App.combatState.currentTurn, 0, 'Refresh snapshot should restore whose turn it is');
+  assertEqual(loadedApp.App.creatures[0].CPun, 12, 'Refresh snapshot should restore newer enemy damage instead of stale IndexedDB state');
+  assertContains(loadedApp.elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Restored refresh combat should render usable panel actions');
+});
+
 test('Queued sync combat actions survive save load and resolve with restored units', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
@@ -3642,6 +3694,47 @@ test('Single-target exploration wrappers return resolver outcomes', () => {
   const creaturePleAfterValidActor = creatureTarget.CPle;
   assertEqual(App.outsideActionForCreatureAs('missing-actor', 'flirt', 'creature-target'), false, 'Actor-specific creature wrapper should report stale actor failure');
   assertEqual(creatureTarget.CPle, creaturePleAfterValidActor, 'Stale actor wrapper should not mutate the target through player fallback');
+});
+
+test('Panel tray and intent menu use one adventure interaction dispatcher', () => {
+  const setup = () => {
+    const { App } = loadAppForCombat(() => 0);
+    const player = makeUnit('You', { id: 'player-1', CPle: 0, MPle: 100, wis: 1 });
+    const actor = makeUnit('Goatfolk', { id: 'goat-1', Fuck: 80, Flir: 60, cha: 20 });
+    App.player = player;
+    App.party = [player, actor];
+    App.explorationActorIds = ['goat-1'];
+    return { App, player, actor };
+  };
+  const tray = setup();
+  tray.App.toggleExplorationTarget('party', 'player-1');
+  assertEqual(tray.App.resolveExplorationTargetAction('fuck', 'seduce', 'panel-tray'), true, 'Tray route should resolve the selected actor against the selected target');
+  assert(tray.player.CPle > 0, 'Tray route should affect the selected party target');
+  assertEqual(tray.App.lastIntentCommand.actorIds.join(','), 'goat-1', 'Tray route should record the selected actor');
+  assertEqual(tray.App.lastIntentCommand.targetIds.join(','), 'player-1', 'Tray route should record the selected target');
+
+  const menu = setup();
+  assertEqual(menu.App.selectIntent('party', 0, 'fuck', 'sheet', 'seduce'), true, 'Intent menu route should resolve through the same dispatcher');
+  assert(menu.player.CPle > 0, 'Intent menu route should affect the same party target');
+  assertEqual(menu.App.lastIntentCommand.actorIds.join(','), 'goat-1', 'Intent menu route should record the selected actor');
+  assertEqual(menu.App.lastIntentCommand.targetIds.join(','), 'player-1', 'Intent menu route should record the selected target');
+  assertContains(menu.App.log[menu.App.log.length - 1].text, 'Goatfolk', 'Intent menu route should log the selected actor, not fall back to player');
+});
+
+test('Resisted single-target panel interaction does not emit bogus multi-target completion', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1', CPle: 0, MPle: 100, wis: 80 });
+  const actor = makeUnit('Goatfolk', { id: 'goat-1', Fuck: 1, Flir: 1, cha: 1 });
+  App.player = player;
+  App.party = [player, actor];
+  App.explorationActorIds = ['goat-1'];
+  App.toggleExplorationTarget('party', 'player-1');
+  const result = App.resolveExplorationTargetAction('fuck', 'seduce', 'panel-tray');
+  assertEqual(result, false, 'Resisted single-target action should report no effect');
+  assertEqual(player.CPle, 0, 'Resisted single-target action should not mutate the target');
+  assertContains(App.log[App.log.length - 1].text, 'You is not in the mood.', 'Resisted action should keep the specific resistance feedback');
+  assertNotContains(App.log[App.log.length - 1].text, 'finishes a multi-target', 'Single-target resistance should not claim multi-target completion');
+  assertEqual(App.explorationTargetIds.join(','), 'party:player-1', 'Failed single-target action should preserve target selection for correction');
 });
 
 test('Explicit actor multi-target wrappers reject stale actor ids', () => {

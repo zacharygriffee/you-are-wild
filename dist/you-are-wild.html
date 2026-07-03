@@ -4963,17 +4963,19 @@ const WorldGen = (() => {
                     ? [context.target].filter(Boolean)
                     : this._getExplorationTargets());
                 const targetTypes = new Set(targets.map(target => this.party.includes(target) ? 'party' : (target.disposition === this.DISPOSITION.ENEMY ? 'enemy' : 'creature')));
+                const inferredTargetType = targetTypes.size > 1 ? 'mixed' : ([...targetTypes][0] || null);
                 return {
                     mode,
                     actorIds: actors.map(actor => actor?.id || actor?.name).filter(Boolean),
                     targetIds: targets.map(target => target?.id || target?.name).filter(Boolean),
-                    targetType: targetTypes.size > 1 ? 'mixed' : ([...targetTypes][0] || context.targetType || null),
+                    targetType: context.targetType || inferredTargetType,
                     action: context.action || null,
                     subAction: context.subAction || null,
                     source: context.source || 'panel-card',
                     timing: context.timing || 'immediate',
                     resolveAt: context.resolveAt || null,
                     constraints: context.constraints || {},
+                    clearTargets: Boolean(context.clearTargets),
                     actors,
                     targets
                 };
@@ -5014,7 +5016,55 @@ const WorldGen = (() => {
                     if (command.targets?.length) return this.executeActionAgainstTarget(command.action, command.actors[0], command.targets[0]);
                     return this.executeCombatIntent(command.action, command.actors[0]);
                 }
-                return this.resolveExplorationTargetAction(command.action, command.subAction, command.source);
+                return this._dispatchAdventureInteractionCommand(command);
+            },
+            _dispatchAdventureInteractionCommand(command) {
+                if (!command || command.mode === 'combat') return false;
+                const actors = (command.actors || []).filter(actor => actor && this._isLivingCreature(actor));
+                const targets = (command.targets || []).filter(target => target && this._isLivingCreature(target));
+                if (!command.action || actors.length === 0 || targets.length === 0) return false;
+                this.lastIntentCommand = {
+                    actorIds: actors.map(actor => actor.id || actor.name),
+                    action: command.action,
+                    subAction: command.subAction,
+                    targetId: targets[0]?.id || targets[0]?.name,
+                    targetIds: targets.map(target => target.id || target.name),
+                    targetType: command.targetType || 'marked',
+                    source: command.source || 'panel-card',
+                    mode: 'adventure',
+                    timing: command.timing || 'immediate'
+                };
+                this.closeMobileContextMenu?.();
+                const options = { subAction: command.subAction };
+                let resolved = true;
+                if (targets.length === 1 && actors.length === 1) {
+                    resolved = this.outsideActionOnTarget(command.action, targets[0], actors[0], options);
+                } else if (targets.length === 1 && actors.length > 1) {
+                    resolved = this.outsideGroupActionOnTarget(command.action, targets[0], actors, options);
+                } else if (targets.length > 1 && actors.length === 1) {
+                    resolved = this.outsideActionOnTargets(command.action, targets, actors[0], options);
+                } else if (this._sameUnitSet(actors, targets)) {
+                    resolved = this.outsideMutualGroupAction(command.action, actors, options);
+                } else if (this._isUnitSubset(targets, actors)) {
+                    resolved = this.outsideMutualGroupAction(command.action, actors, options);
+                } else if (this._isUnitSubset(actors, targets)) {
+                    resolved = this.outsideMutualGroupAction(command.action, [...actors, ...targets], options);
+                } else if (actors.length === targets.length) {
+                    resolved = this.outsidePairedActionsOnTargets(command.action, actors, targets, options);
+                } else {
+                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
+                        action: this._uiLabel(command.action).toLowerCase(),
+                        actorCount: actors.length,
+                        targetCount: targets.length
+                    }), type: 'discovery' });
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    this.renderExplorationActions();
+                    return false;
+                }
+                if (resolved !== false && command.clearTargets) this.clearExplorationTargets();
+                return resolved !== false;
             },
             _clearTransientInteractionState() {
                 this.targetSelection = null;
@@ -5816,6 +5866,7 @@ const WorldGen = (() => {
                 logView: 'yaw-log-view',
                 lastSlot: 'yaw-last-slot',
                 lastSaveTime: 'yaw-last-save-time',
+                combatRefreshPrefix: 'yaw-combat-refresh-',
                 saveTimePrefix: 'yaw-save-time-'
             },
             legacyStorageKeys: {
@@ -7622,6 +7673,7 @@ const WorldGen = (() => {
                 this.renderParty();
                 this.renderCreatures();
                 this.renderMobileCombatToolbelt();
+                this._writeCombatRefreshSnapshot();
                 const isParty = this.party.includes(currentUnit);
                 if (isParty && (currentUnit.name === this.player.name || currentUnit.obedient !== false)) {
                     this.showActorActions(currentUnit);
@@ -8874,6 +8926,7 @@ const WorldGen = (() => {
                 this.combatState.syncActions = [];
                 this.activeActor = null;
                 this._clearTransientInteractionState();
+                this._clearCombatRefreshSnapshot(this.activeSlot);
                 this.party.forEach(p => { p.fledCombat = false; });
                 if (this.player?.knockedOut) {
                     this.player.knockedOut = false;
@@ -8968,6 +9021,11 @@ const WorldGen = (() => {
             },
             _getExplorationActor(actorId = null) {
                 return this._getExplorationActors(actorId)[0] || this.player;
+            },
+            _explorationActorsForOptionalId(actorId = null) {
+                if (!actorId) return this._getExplorationActors();
+                const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
+                return actor ? [actor] : [];
             },
 
             _normalizeExplorationSelections({ resetTargets = false } = {}) {
@@ -9259,45 +9317,17 @@ const WorldGen = (() => {
                 if (targets.length === 0) return false;
                 const actors = this._getExplorationActors();
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
-                this.lastIntentCommand = {
-                    actorIds: actors.map(actor => actor.id || actor.name),
+                const command = this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors,
+                    targets,
                     action,
                     subAction,
-                    targetIds: targets.map(target => target.id || target.name),
+                    source,
                     targetType: 'marked',
-                    source
-                };
-                this.closeMobileContextMenu();
-                let resolved = true;
-                const options = { subAction };
-                if (targets.length === 1 && actors.length > 1) {
-                    resolved = this.outsideGroupActionOnTarget(action, targets[0], actors, options);
-                } else if (targets.length > 1 && actors.length > 1) {
-                    if (this._sameUnitSet(actors, targets)) {
-                        resolved = this.outsideMutualGroupAction(action, actors, options);
-                    } else if (this._isUnitSubset(targets, actors)) {
-                        resolved = this.outsideMutualGroupAction(action, actors, options);
-                    } else if (this._isUnitSubset(actors, targets)) {
-                        resolved = this.outsideMutualGroupAction(action, [...actors, ...targets], options);
-                    } else if (actors.length === targets.length) {
-                        resolved = this.outsidePairedActionsOnTargets(action, actors, targets, options);
-                    } else {
-                        this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
-                            action: this._uiLabel(action).toLowerCase(),
-                            actorCount: actors.length,
-                            targetCount: targets.length
-                        }), type: 'discovery' });
-                        this.renderLog();
-                        this.renderParty();
-                        this.renderCreatures();
-                        this.renderExplorationActions();
-                        return false;
-                    }
-                } else {
-                    resolved = this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
-                }
-                if (resolved !== false) this.clearExplorationTargets();
-                return resolved !== false;
+                    clearTargets: true
+                });
+                return this._dispatchAdventureInteractionCommand(command);
             },
 
             _getRecruitScore(actor, target) {
@@ -9339,28 +9369,59 @@ const WorldGen = (() => {
 
             outsideAction(action, type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
-                if (!target) return;
-                this.outsideGroupActionOnTarget(action, target, this._getExplorationActors());
+                if (!target) return false;
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    action,
+                    targets: [target],
+                    source: 'legacy-wrapper',
+                    targetType: type
+                }));
             },
 
             outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
                 const target = this.party[targetIndex];
                 if (!target) return false;
-                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(actorId), options);
+                const actors = this._explorationActorsForOptionalId(actorId);
+                if (actorId && actors.length === 0) return false;
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors,
+                    targets: [target],
+                    action,
+                    subAction: options.subAction || null,
+                    source: 'party-wrapper',
+                    targetType: 'party'
+                }));
             },
 
             outsideActionForCreature(action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return false;
-                return this.outsideGroupActionOnTarget(action, target, this._getExplorationActors(), options);
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    targets: [target],
+                    action,
+                    subAction: options.subAction || null,
+                    source: 'creature-wrapper',
+                    targetType: 'creature'
+                }));
             },
 
             outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return false;
-                const actors = this._getExplorationActors(actorId);
-                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
-                return this.outsideGroupActionOnTarget(action, target, actors, options);
+                const actors = this._explorationActorsForOptionalId(actorId);
+                if (actorId && actors.length === 0) return false;
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors,
+                    targets: [target],
+                    action,
+                    subAction: options.subAction || null,
+                    source: 'creature-wrapper',
+                    targetType: 'creature'
+                }));
             },
 
             _removeContainedPartyMember(unit) {
@@ -9565,7 +9626,7 @@ const WorldGen = (() => {
                         continue;
                     }
                     const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false });
-                    if (resolved === false) skippedSet.add(target);
+                    if (resolved === false || this.lastActionResolution?.affected === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
                 let summary = affected.length > 0
@@ -9715,17 +9776,33 @@ const WorldGen = (() => {
 
             outsideActionForPartyTargets(action, targetIndexes, actorId = null, options = {}) {
                 const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
-                const actors = this._getExplorationActors(actorId);
-                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
-                return this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
+                const actors = this._explorationActorsForOptionalId(actorId);
+                if (actorId && actors.length === 0) return false;
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors,
+                    targets,
+                    action,
+                    subAction: options.subAction || null,
+                    source: 'party-target-wrapper',
+                    targetType: 'party'
+                }));
             },
 
             outsideActionForCreatureTargets(action, targetIds, actorId = null, options = {}) {
                 const ids = new Set((targetIds || []).map(id => String(id)));
                 const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
-                const actors = this._getExplorationActors(actorId);
-                if (actorId && !actors.some(actor => this._unitSelectionId(actor) === String(actorId))) return false;
-                return this.outsideActionOnTargets(action, targets, actors[0] || this.player, options);
+                const actors = this._explorationActorsForOptionalId(actorId);
+                if (actorId && actors.length === 0) return false;
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors,
+                    targets,
+                    action,
+                    subAction: options.subAction || null,
+                    source: 'creature-target-wrapper',
+                    targetType: 'creature'
+                }));
             },
 
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {
@@ -9925,6 +10002,7 @@ const WorldGen = (() => {
                 const { actorName } = this._actorNameAndVerb(actor);
                 const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
                 let result = '';
+                let affected = true;
                 let startCombatAfter = false;
                 let combatTargets = [];
                 switch (action) {
@@ -9977,6 +10055,7 @@ const WorldGen = (() => {
                             }
                         } else {
                             result = this._label('explore.fuck.resists', '{target} is not in the mood.', { target: target.name });
+                            affected = false;
                         }
                         break;
                     }
@@ -9988,6 +10067,7 @@ const WorldGen = (() => {
                         }
                         if (actor === target) {
                             result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
+                            affected = false;
                             break;
                         }
                         const canEatOutside = this.cheats.canEatAnything || (actor.size >= target.size - 2 && actor.Feas + 5 > target.Flee);
@@ -10006,6 +10086,7 @@ const WorldGen = (() => {
                             });
                         } else {
                             result = this._label('explore.feast.tooStrong', '{target} is too large or strong to eat.', { target: target.name });
+                            affected = false;
                         }
                         break;
                     }
@@ -10035,6 +10116,7 @@ const WorldGen = (() => {
                             }
                         } else {
                             result = this._label('explore.flirt.rebuff', '{target} rebuffs the flirtation!', { target: target.name });
+                            affected = false;
                         }
                         break;
                     }
@@ -10067,6 +10149,7 @@ const WorldGen = (() => {
                     }
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                this.lastActionResolution = { action, actor, target, ok: affected, affected, message: result };
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -10075,7 +10158,7 @@ const WorldGen = (() => {
                     return true;
                 }
                 if (!this.combatState.active) this.renderExplorationActions();
-                return !(action === 'feast' && actor === target);
+                return affected;
             },
 
             _cleanupOutsideSubActionTarget(action, subAction, actor, target) {
@@ -13825,6 +13908,7 @@ const WorldGen = (() => {
                     action,
                     subAction,
                     targetId: target?.id || target?.name || String(targetRef),
+                    targetIds: [target?.id || target?.name || String(targetRef)],
                     targetType: type,
                     source
                 };
@@ -13947,21 +14031,41 @@ const WorldGen = (() => {
                 this._haptic(8);
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
                 const command = this._intentCommand(type, targetRef, action, subAction, source);
-                this.lastIntentCommand = command;
                 this.closeMobileContextMenu();
+                if (action === 'close') return false;
+                const target = this._intentTarget(type, targetRef);
+                if (!target) return false;
+                this.lastIntentCommand = {
+                    ...command,
+                    mode: 'adventure',
+                    timing: 'immediate'
+                };
                 if (type === 'party') {
-                    const index = Number(targetRef);
-                    if (action === 'close') return false;
-                    return this.outsideActionForParty(action, index, null, { subAction });
+                    return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                        mode: 'adventure',
+                        actors: this._getExplorationActors(),
+                        targets: [target],
+                        action,
+                        subAction,
+                        source,
+                        targetType: 'party'
+                    }));
                 }
                 const targetId = String(targetRef);
-                if (action === 'close') return false;
                 if (action === 'loot') return Boolean(this.lootCorpse(targetId));
                 if (action === 'scavenge') return Boolean(this.scavengeCorpse(targetId));
                 if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
                 if (action === 'quest') return Boolean(this.previewQuestFromUnit(targetId));
                 if (action === 'trade') return Boolean(this.showTrade(targetId));
-                return this.outsideActionForCreature(action, targetId, { subAction });
+                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    mode: 'adventure',
+                    actors: this._getExplorationActors(),
+                    targets: [target],
+                    action,
+                    subAction,
+                    source,
+                    targetType: 'creature'
+                }));
             },
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');
@@ -14219,6 +14323,49 @@ const WorldGen = (() => {
             async checkLastPlayed() {
                 return !!(await this._syncLastSaveSlot());
             },
+            _combatRefreshKey(slotName = this.activeSlot) {
+                return `${this.storageKeys.combatRefreshPrefix}${slotName || 'slot1'}`;
+            },
+            _writeCombatRefreshSnapshot() {
+                if (!this.combatState?.active || !this.player || typeof localStorage === 'undefined' || typeof Binary === 'undefined') return false;
+                try {
+                    this._prepareSaveSnapshot();
+                    const saveData = Binary.saveGame(this, { omitWorldMap: false });
+                    localStorage.setItem(this._combatRefreshKey(this.activeSlot), JSON.stringify({
+                        slot: this.activeSlot,
+                        savedAt: Date.now(),
+                        data: Array.from(saveData)
+                    }));
+                    return true;
+                } catch (e) {
+                    console.warn('Combat refresh snapshot failed', e);
+                    return false;
+                }
+            },
+            _readCombatRefreshSnapshot(slotName = this.activeSlot) {
+                if (typeof localStorage === 'undefined') return null;
+                try {
+                    const raw = localStorage.getItem(this._combatRefreshKey(slotName));
+                    if (!raw) return null;
+                    const parsed = JSON.parse(raw);
+                    if (!parsed || parsed.slot !== slotName || !Array.isArray(parsed.data)) return null;
+                    const bytes = new Uint8Array(parsed.data);
+                    const loaded = Binary.loadGame(bytes);
+                    if (!loaded?.questState?.combatState?.active) {
+                        this._clearCombatRefreshSnapshot(slotName);
+                        return null;
+                    }
+                    return { saveData: bytes, savedAt: parsed.savedAt || 0 };
+                } catch (e) {
+                    console.warn('Combat refresh snapshot load failed', e);
+                    this._clearCombatRefreshSnapshot(slotName);
+                    return null;
+                }
+            },
+            _clearCombatRefreshSnapshot(slotName = this.activeSlot) {
+                if (typeof localStorage === 'undefined') return;
+                try { localStorage.removeItem(this._combatRefreshKey(slotName)); } catch (e) {}
+            },
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
                 try {
@@ -14235,6 +14382,8 @@ const WorldGen = (() => {
                     this._setStoredValue('lastSlot', this.activeSlot);
                     this._setStoredValue('lastSaveTime', Date.now().toString());
                     this._setSaveTime(this.activeSlot, Date.now().toString());
+                    if (this.combatState?.active) this._writeCombatRefreshSnapshot();
+                    else this._clearCombatRefreshSnapshot(this.activeSlot);
                     console.log('Auto-saved to', this.activeSlot);
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
@@ -14279,7 +14428,9 @@ const WorldGen = (() => {
             async loadFromSlot(slotName) {
                 try {
                     const slotLabel = this._slotDisplayLabel(slotName);
-                    const saveData = await this._dbGet('saves', slotName);
+                    let saveData = await this._dbGet('saves', slotName);
+                    const combatSnapshot = this._readCombatRefreshSnapshot(slotName);
+                    if (combatSnapshot?.saveData) saveData = combatSnapshot.saveData;
                     if (!saveData) { alert(this._label('save.error.noSave', 'No save in {slot}', { slot: slotLabel })); return false; }
                     let loaded;
                     try {
@@ -14503,6 +14654,7 @@ const WorldGen = (() => {
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
+                    this._clearCombatRefreshSnapshot(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
                     await this.refreshContinueButton();
                     this.showSaveManager(this.saveManagerMode || 'load');

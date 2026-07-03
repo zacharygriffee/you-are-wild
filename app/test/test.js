@@ -1753,6 +1753,57 @@ test('Victory XP uses tracked combat outcome rewards', () => {
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Victoria! Los enemigos fueron derrotados o sometidos.', 'Victory feedback should localize');
 });
 
+test('Core gameplay loop can move fight loot save and reload state', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-e2e', Figh: 80, spd: 100, xp: 0, xpToNext: 1000, gold: 0 });
+  const enemy = makeUnit('Hostile Guide', {
+    id: 'hostile-guide-e2e',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 1,
+    MPun: 20,
+    con: 1,
+    spd: 1,
+    goldLoot: 3
+  });
+  App.worldMeta = { worldId: 'e2e-world', seed: 'e2e-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.inventory = [];
+  App.log = [];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.timeHour = 8;
+  App.dayCount = 0;
+  App.quests = [];
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.worldMap.set('0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', description: 'Origin', creatures: [], items: [] });
+  App.worldMap.set('1,0', { ...App.getBaseTile(1, 0), explored: true, biome: 'grove', description: 'Encounter tile', creatures: [enemy], items: [] });
+
+  App.move(1, 0);
+  assertEqual(App.combatState.active, true, 'Moving into an explored hostile tile should start combat');
+  assertEqual(App.location.x, 1, 'Movement should update x coordinate');
+  assertEqual(App.location.y, 0, 'Movement should update y coordinate');
+  assertEqual(App.creatures[0].id, 'hostile-guide-e2e', 'Encounter creature should be restored from the destination tile');
+
+  App.executeAction('fight', 0);
+  assertEqual(App.combatState.active, false, 'One-hit victory should end combat');
+  assertEqual(App.creatures[0].disposition, App.DISPOSITION.CORPSE, 'Defeated creature should become a corpse');
+  assertEqual(App.lootCorpse('hostile-guide-e2e'), true, 'Corpse should be lootable after combat');
+  assertEqual(App.player.gold, 3, 'Authored corpse gold should be awarded during loot');
+
+  const saved = Binary.saveGame(App);
+  const loaded = Binary.loadGame(saved);
+  assertEqual(loaded.locationX, 1, 'Saved state should preserve current x coordinate');
+  assertEqual(loaded.locationY, 0, 'Saved state should preserve current y coordinate');
+  assertEqual(loaded.questState.playerGold, 3, 'Saved state should preserve looted gold');
+  assertEqual(loaded.worldMap['1,0'].creatures[0].disposition, App.DISPOSITION.CORPSE, 'Saved world tile should preserve corpse disposition');
+  assertEqual(loaded.worldMap['1,0'].creatures[0].looted, true, 'Saved world tile should preserve corpse loot state');
+});
+
 test('Combat action guardrails and flee outcome feedback localize', () => {
   const { App } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');

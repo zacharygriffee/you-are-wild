@@ -3878,6 +3878,80 @@ test('Single-actor group wrapper preserves rejected action outcomes', () => {
   assertEqual(actor.stomach.length, 0, 'Rejected intent self-feast should not mutate containment');
 });
 
+test('Panel wrappers use one command dispatcher for adventure interactions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('Actor', { id: 'actor-panel-dispatch', Flir: 30, cha: 20 });
+  const partyTarget = makeUnit('Party Target', { id: 'party-panel-dispatch' });
+  const creatureTarget = makeUnit('Creature Target', { id: 'creature-panel-dispatch', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = actor;
+  App.party = [actor, partyTarget];
+  App.creatures = [creatureTarget];
+  App.explorationActorIds = ['actor-panel-dispatch'];
+  const seen = [];
+  const originalDispatch = App._dispatchInteractionCommand.bind(App);
+  App._dispatchInteractionCommand = command => {
+    seen.push({
+      mode: command.mode,
+      action: command.action,
+      source: command.source,
+      actorIds: command.actorIds,
+      targetIds: command.targetIds,
+      targetType: command.targetType
+    });
+    return originalDispatch(command);
+  };
+  assertEqual(App.outsideActionForParty('flirt', 1), true, 'Party wrapper should resolve through shared panel dispatch');
+  assertEqual(App.outsideActionForCreature('flirt', 'creature-panel-dispatch'), true, 'Creature wrapper should resolve through shared panel dispatch');
+  App.toggleExplorationTarget('party', 'party-panel-dispatch');
+  assertEqual(App.resolveExplorationTargetAction('feed', 'heal', 'panel-tray'), true, 'Marked-target tray should resolve through shared panel dispatch');
+  assertEqual(seen.length, 3, 'Each panel interaction route should hit the same dispatcher once');
+  assertEqual(seen[0].source, 'party-wrapper', 'Party wrapper should keep source metadata');
+  assertEqual(seen[0].targetType, 'party', 'Party wrapper should preserve target type');
+  assertEqual(seen[1].source, 'creature-wrapper', 'Creature wrapper should keep source metadata');
+  assertEqual(seen[1].targetIds[0], 'creature-panel-dispatch', 'Creature wrapper should resolve target id through command metadata');
+  assertEqual(seen[2].source, 'panel-tray', 'Marked target tray should keep source metadata');
+  assertEqual(seen[2].targetType, 'marked', 'Marked target tray should preserve marked target type');
+});
+
+test('Panel wrappers use one command dispatcher for combat target clicks', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-combat-panel-dispatch', Figh: 60 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-combat-panel-dispatch', disposition: App.DISPOSITION.ENEMY, CPun: 80, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.nextTurn = function() {};
+  const seen = [];
+  const originalDispatch = App._dispatchInteractionCommand.bind(App);
+  App._dispatchInteractionCommand = command => {
+    seen.push({
+      mode: command.mode,
+      action: command.action,
+      source: command.source,
+      actorIds: command.actorIds,
+      targetIds: command.targetIds
+    });
+    return originalDispatch(command);
+  };
+  App.selectTarget('fight');
+  assertEqual(App.executeActionOnTarget('fight', 'enemy-combat-panel-dispatch'), true, 'Combat target card should resolve through shared panel dispatch');
+  assertEqual(seen.length, 1, 'Combat target click should hit the same dispatcher once');
+  assertEqual(seen[0].mode, 'combat', 'Combat target click should build a combat command');
+  assertEqual(seen[0].source, 'panel-card', 'Combat target click should keep panel-card source metadata');
+  assertEqual(seen[0].actorIds[0], 'player-combat-panel-dispatch', 'Combat command should record active actor id');
+  assertEqual(seen[0].targetIds[0], 'enemy-combat-panel-dispatch', 'Combat command should record clicked target id');
+});
+
 test('Exploration cards expose multi-target selection and context actions', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });

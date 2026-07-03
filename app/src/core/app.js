@@ -389,6 +389,41 @@
                     targets
                 };
             },
+            _resolvePanelUnit(type, ref) {
+                if (!ref && ref !== 0) return null;
+                if (typeof ref === 'object') return ref;
+                const key = String(ref);
+                const byKey = unit => this._unitSelectionId(unit) === key || String(unit?.id || unit?.name) === key;
+                if (type === 'party') return this.party.find(byKey) || this.party[Number(ref)] || null;
+                if (type === 'creature' || type === 'enemy') return this.creatures.find(byKey) || this.creatures[Number(ref)] || null;
+                return this.party.find(byKey) || this.creatures.find(byKey) || null;
+            },
+            _resolvePanelUnits(type, refs = []) {
+                return (Array.isArray(refs) ? refs : [refs])
+                    .map(ref => this._resolvePanelUnit(type, ref))
+                    .filter(Boolean);
+            },
+            _buildPanelInteractionCommand(context = {}) {
+                const mode = context.mode || (this.combatState?.active ? 'combat' : 'adventure');
+                const actors = context.actors
+                    || (context.actorRefs ? this._resolvePanelUnits(context.actorType || 'party', context.actorRefs) : null)
+                    || (context.actorRef !== undefined ? this._resolvePanelUnits(context.actorType || 'party', [context.actorRef]) : null)
+                    || (mode === 'combat' ? [this.activeActor || this._currentCombatActor()].filter(Boolean) : this._getExplorationActors());
+                const targets = context.targets
+                    || (context.targetRefs ? this._resolvePanelUnits(context.targetType || 'mixed', context.targetRefs) : null)
+                    || (context.targetRef !== undefined ? this._resolvePanelUnits(context.targetType || 'mixed', [context.targetRef]) : null)
+                    || [];
+                return this._buildInteractionCommand({
+                    ...context,
+                    mode,
+                    actors,
+                    targets,
+                    targetType: context.commandTargetType || context.targetType
+                });
+            },
+            _dispatchPanelInteraction(context = {}) {
+                return this._dispatchInteractionCommand(this._buildPanelInteractionCommand(context));
+            },
             _validateInteractionCommand(command) {
                 if (!command || !command.action) return { ok: false, reason: 'missing-action' };
                 if (!command.actors?.length) return { ok: false, reason: 'missing-actor' };
@@ -408,6 +443,9 @@
                 return { ok: true };
             },
             _dispatchInteractionCommand(command) {
+                if (command?.mode === 'combat') {
+                    return this._dispatchCombatInteractionCommand(command);
+                }
                 const valid = this._validateInteractionCommand(command);
                 if (!valid.ok) return false;
                 this.lastIntentCommand = {
@@ -420,9 +458,6 @@
                     mode: command.mode,
                     timing: command.timing
                 };
-                if (command.mode === 'combat') {
-                    return this._dispatchCombatInteractionCommand(command);
-                }
                 return this._dispatchAdventureInteractionCommand(command);
             },
             _dispatchCombatInteractionCommand(command) {
@@ -3355,7 +3390,7 @@
                     return this.queueSyncAction(this.syncSelection.type, target);
                 }
                 const actor = this.activeActor || this.player;
-                const command = this._buildInteractionCommand({
+                const command = this._buildPanelInteractionCommand({
                     mode: 'combat',
                     actors: [actor],
                     targets: [target],
@@ -3363,20 +3398,20 @@
                     source: 'panel-card',
                     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
                 });
-                return this._dispatchCombatInteractionCommand(command);
+                return this._dispatchInteractionCommand(command);
             },
 
             executeAction(action, creatureIndex) {
                 const target = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[creatureIndex];
                 const actor = this.activeActor || this.player;
-                return this._dispatchCombatInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'combat',
                     actors: [actor],
                     targets: [target].filter(Boolean),
                     action,
                     source: 'legacy-wrapper',
                     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
-                }));
+                });
             },
 
             _resolveCombatAction(command) {
@@ -4835,7 +4870,7 @@
                 if (targets.length === 0) return false;
                 const actors = this._getExplorationActors();
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
-                const command = this._buildInteractionCommand({
+                const command = this._buildPanelInteractionCommand({
                     mode: 'adventure',
                     actors,
                     targets,
@@ -4845,7 +4880,7 @@
                     targetType: 'marked',
                     clearTargets: true
                 });
-                return this._dispatchAdventureInteractionCommand(command);
+                return this._dispatchInteractionCommand(command);
             },
 
             _getRecruitScore(actor, target) {
@@ -4888,13 +4923,13 @@
             outsideAction(action, type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     action,
                     targets: [target],
                     source: 'legacy-wrapper',
                     targetType: type
-                }));
+                });
             },
 
             outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
@@ -4902,7 +4937,7 @@
                 if (!target) return false;
                 const actors = this._explorationActorsForOptionalId(actorId);
                 if (actorId && actors.length === 0) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     actors,
                     targets: [target],
@@ -4910,20 +4945,18 @@
                     subAction: options.subAction || null,
                     source: 'party-wrapper',
                     targetType: 'party'
-                }));
+                });
             },
 
             outsideActionForCreature(action, targetId, options = {}) {
-                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
-                    targets: [target],
+                    targetType: 'creature',
+                    targetRef: targetId,
                     action,
                     subAction: options.subAction || null,
-                    source: 'creature-wrapper',
-                    targetType: 'creature'
-                }));
+                    source: 'creature-wrapper'
+                });
             },
 
             outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
@@ -4931,7 +4964,7 @@
                 if (!target) return false;
                 const actors = this._explorationActorsForOptionalId(actorId);
                 if (actorId && actors.length === 0) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     actors,
                     targets: [target],
@@ -4939,7 +4972,7 @@
                     subAction: options.subAction || null,
                     source: 'creature-wrapper',
                     targetType: 'creature'
-                }));
+                });
             },
 
             _removeContainedPartyMember(unit) {
@@ -5296,7 +5329,7 @@
                 const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
                 const actors = this._explorationActorsForOptionalId(actorId);
                 if (actorId && actors.length === 0) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     actors,
                     targets,
@@ -5304,7 +5337,7 @@
                     subAction: options.subAction || null,
                     source: 'party-target-wrapper',
                     targetType: 'party'
-                }));
+                });
             },
 
             outsideActionForCreatureTargets(action, targetIds, actorId = null, options = {}) {
@@ -5312,7 +5345,7 @@
                 const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
                 const actors = this._explorationActorsForOptionalId(actorId);
                 if (actorId && actors.length === 0) return false;
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     actors,
                     targets,
@@ -5320,7 +5353,7 @@
                     subAction: options.subAction || null,
                     source: 'creature-target-wrapper',
                     targetType: 'creature'
-                }));
+                });
             },
 
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {
@@ -9246,14 +9279,14 @@
                     return true;
                 }
                 if (action === 'feed') {
-                    return this._dispatchCombatInteractionCommand(this._buildInteractionCommand({
+                    return this._dispatchPanelInteraction({
                         mode: 'combat',
                         actors: [current],
                         targets: [],
                         action: 'feed',
                         source: 'panel-card',
                         targetType: 'party'
-                    }));
+                    });
                 }
                 if (action === 'sync') {
                     this.showSyncMenu();
@@ -9518,7 +9551,7 @@
                     timing: 'immediate'
                 };
                 if (type === 'party') {
-                    return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                    return this._dispatchPanelInteraction({
                         mode: 'adventure',
                         actors: this._getExplorationActors(),
                         targets: [target],
@@ -9526,7 +9559,7 @@
                         subAction,
                         source,
                         targetType: 'party'
-                    }));
+                    });
                 }
                 const targetId = String(targetRef);
                 if (action === 'loot') return Boolean(this.lootCorpse(targetId));
@@ -9534,7 +9567,7 @@
                 if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
                 if (action === 'quest') return Boolean(this.previewQuestFromUnit(targetId));
                 if (action === 'trade') return Boolean(this.showTrade(targetId));
-                return this._dispatchAdventureInteractionCommand(this._buildInteractionCommand({
+                return this._dispatchPanelInteraction({
                     mode: 'adventure',
                     actors: this._getExplorationActors(),
                     targets: [target],
@@ -9542,7 +9575,7 @@
                     subAction,
                     source,
                     targetType: 'creature'
-                }));
+                });
             },
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');

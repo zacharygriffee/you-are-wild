@@ -26,6 +26,8 @@ Traversal mode owns movement through the world and structure interiors.
 
 ### Battle mode
 
+Combat toolbelt doctrine defines how battle controls sit around the Play surface before any battle UI implementation changes.
+
 Battle mode owns combat selection, intent, and event focus. It is related to Traversal mode because battles happen on the play surface, but it is distinct from Traversal mode because routine movement is no longer the primary loop.
 
 - Battle mode should reduce, hide, or demote routine movement affordances while combat is active. Directional movement returns only for explicit escape flow, forced repositioning, or future battle mechanics that deliberately spend a combat command.

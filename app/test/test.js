@@ -556,6 +556,8 @@ test('Scene description supports rich bounded content', () => {
   assertContains(template, '.party-stats-footer', 'Party stats view should have a sticky footer action area');
   assertContains(template, '.mobile-scene-sheet.rich-content', 'Mobile scene sheet should have an expanded rich-content mode');
   assertContains(template, '.mobile-scene-description .party-stats-view', 'Mobile rich stats should fit inside the visible scene sheet');
+  assertContains(template, '.app-confirm-backdrop', 'Reusable confirmation dialog backdrop should be styled');
+  assertContains(template, '.app-confirm-card', 'Reusable confirmation dialog card should be styled');
   assertContains(template, 'overscroll-behavior: contain', 'Bounded stats and modal surfaces should contain scroll gestures');
   assertNotContains(template, '<p class="scene-description" id="scene-description">', 'Scene description should not be a paragraph when injected content contains divs');
 });
@@ -3698,6 +3700,7 @@ test('Exploration selection cleanup removes stale party and creature targets', (
   App.toggleExplorationTarget('party', 'ally-1');
   App.toggleExplorationTarget('creature', 'creature-1');
   App.dismissPartyMember(1);
+  App.resolveConfirmDialog(true);
   assertEqual(App.explorationActorIds.includes('ally-1'), false, 'Dismiss should clear selected actor id');
   assertEqual(App.explorationTargetIds.includes('party:ally-1'), false, 'Dismiss should clear selected party target id');
   App._makeCorpse(creature, 'fight');
@@ -5378,6 +5381,8 @@ test('Party management can reorder set leader and dismiss allies', () => {
   App.setPartyLeader(1);
   assertEqual(App._getPartyLeader(), allyB, 'Set leader should update leader lookup');
   App.dismissPartyMember(1);
+  assert(App.pendingConfirm, 'Dismiss should open an in-app confirmation dialog before removing an ally');
+  App.resolveConfirmDialog(true);
   assertEqual(App.party.includes(allyB), false, 'Dismiss should remove ally from party');
   assertEqual(App.partyLeaderId, 'player-1', 'Dismissing leader should fall back to player');
   assertEqual(App.explorationActorIds.includes('ally-b'), false, 'Dismiss should clear selected actor id');
@@ -5397,7 +5402,12 @@ test('Party dismissal confirmation and log localize', () => {
   cancelled.App.party = [player, ally];
   cancelled.App.updateLanguage('es');
   cancelled.App.dismissPartyMember(1);
-  assertEqual(cancelled.confirmations[0], 'Despedir a Ally del grupo?', 'Dismiss confirmation should localize');
+  assertEqual(cancelled.confirmations.length, 0, 'Dismiss should not call the browser-native confirm dialog');
+  assert(cancelled.App.pendingConfirm, 'Dismiss should open an in-app confirmation dialog');
+  assertEqual(cancelled.App.pendingConfirm.message, 'Despedir a Ally del grupo?', 'Dismiss confirmation should localize');
+  assertContains(cancelled.body.innerHTML, 'role="dialog"', 'Dismiss confirmation should render an in-app modal dialog');
+  cancelled.App.resolveConfirmDialog(false);
+  assertEqual(cancelled.App.pendingConfirm, null, 'Cancelling dismissal should clear pending confirmation state');
   assertEqual(cancelled.App.party.includes(ally), true, 'Cancelled localized dismissal should keep ally in party');
 
   const approved = loadAppForCombat(() => 0, { confirm: true });
@@ -5410,7 +5420,10 @@ test('Party dismissal confirmation and log localize', () => {
   approved.App.creatures = [];
   approved.App.updateLanguage('es');
   approved.App.dismissPartyMember(1);
-  assertEqual(approved.confirmations[0], 'Despedir a Ally del grupo?', 'Approved dismissal confirmation should localize');
+  assertEqual(approved.confirmations.length, 0, 'Approved dismissal should not call the browser-native confirm dialog');
+  assertEqual(approved.App.pendingConfirm.message, 'Despedir a Ally del grupo?', 'Approved dismissal confirmation should localize');
+  approved.App.resolveConfirmDialog(true);
+  assertEqual(approved.App.pendingConfirm, null, 'Approved dismissal should clear pending confirmation state');
   assertContains(approved.App.log[approved.App.log.length - 1].text, 'deja el grupo y permanece cerca', 'Dismiss nearby log should localize');
 });
 

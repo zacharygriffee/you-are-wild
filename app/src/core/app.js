@@ -4265,7 +4265,19 @@
                 const unit = this.party[index];
                 if (!unit || unit === this.player || unit.mc) return;
                 const confirmMessage = this._label('party.confirmDismiss', 'Dismiss {name} from the party?', { name: unit.name });
-                if (typeof confirm === 'function' && !confirm(confirmMessage)) return;
+                return this.showConfirmDialog({
+                    title: this._label('party.dismiss', 'Dismiss'),
+                    message: confirmMessage,
+                    confirmLabel: this._label('party.dismiss', 'Dismiss'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    danger: true,
+                    onConfirm: () => this._dismissPartyMemberConfirmed(index)
+                });
+            },
+
+            _dismissPartyMemberConfirmed(index) {
+                const unit = this.party[index];
+                if (!unit || unit === this.player || unit.mc) return false;
                 this.party.splice(index, 1);
                 const dropped = this._dropDismissedPartyMember(unit);
                 this._normalizeExplorationSelections();
@@ -4282,6 +4294,7 @@
                 this.renderParty();
                 this.renderCreatures();
                 this.autoSave();
+                return true;
             },
 
             showPartyMemberStats(index) {
@@ -8970,6 +8983,46 @@
                 const desktopMenu = document.getElementById('desktop-intent-menu');
                 if (desktopMenu) desktopMenu.remove();
                 this._restoreFocusTrap();
+            },
+            showConfirmDialog(options = {}) {
+                const message = String(options.message || '');
+                if (!message) return false;
+                if (typeof document === 'undefined' || !document.body) {
+                    if (typeof confirm === 'function' && !confirm(message)) return false;
+                    return typeof options.onConfirm === 'function' ? options.onConfirm() : true;
+                }
+                this.closeConfirmDialog({ restoreFocus: false });
+                const id = `confirm-${Date.now ? Date.now() : 'dialog'}`;
+                const title = options.title || this._label('ui.confirm', 'Confirm');
+                const confirmLabel = options.confirmLabel || this._label('ui.confirm', 'Confirm');
+                const cancelLabel = options.cancelLabel || this._label('ui.cancel', 'Cancel');
+                this.pendingConfirm = {
+                    id,
+                    title,
+                    message,
+                    confirmLabel,
+                    cancelLabel,
+                    danger: Boolean(options.danger),
+                    onConfirm: options.onConfirm || null
+                };
+                const dangerClass = options.danger ? ' danger' : '';
+                const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message"><div class="app-confirm-card"><h3 id="app-confirm-title">${this._escapeHtml(title)}</h3><p id="app-confirm-message">${this._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveConfirmDialog(false)">${this._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" onclick="App.resolveConfirmDialog(true)">${this._escapeHtml(confirmLabel)}</button></div></div></div>`;
+                document.body.insertAdjacentHTML('beforeend', html);
+                const dialog = document.getElementById('app-confirm-dialog');
+                this._activateFocusTrap(dialog, { close: () => this.resolveConfirmDialog(false) });
+                return false;
+            },
+            resolveConfirmDialog(confirmed) {
+                const pending = this.pendingConfirm;
+                this.closeConfirmDialog();
+                if (!pending || !confirmed) return false;
+                return typeof pending.onConfirm === 'function' ? pending.onConfirm() : true;
+            },
+            closeConfirmDialog(options = {}) {
+                const dialog = document.getElementById('app-confirm-dialog');
+                if (dialog) dialog.remove();
+                this.pendingConfirm = null;
+                this._restoreFocusTrap(options);
             },
             showMobilePartyContext(index) {
                 const unit = this.party[index];

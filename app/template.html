@@ -1417,6 +1417,57 @@
             justify-content: center;
         }
 
+        .app-confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+            background: rgba(8, 8, 16, 0.72);
+            box-sizing: border-box;
+        }
+
+        .app-confirm-card {
+            width: min(100%, 420px);
+            max-height: 100%;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            padding: 18px;
+            color: var(--text-primary);
+        }
+
+        .app-confirm-card h3 {
+            margin: 0 0 10px;
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .app-confirm-card p {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .app-confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .app-confirm-actions .danger {
+            color: var(--accent-danger);
+            border-color: var(--accent-danger);
+        }
+
         .save-manager-shell {
             width: min(100%, 680px);
             margin: 0 auto;

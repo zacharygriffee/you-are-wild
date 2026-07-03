@@ -2036,6 +2036,73 @@ test('Active tile creature damage and combat state survive save and load', async
   assertEqual(loadedApp.App.combatState.turnQueue[1].unit.id, 'enemy-save-combat', 'Loaded combat queue should point at restored enemy object');
 });
 
+test('Queued sync combat actions survive save load and resolve with restored units', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-sync-save', Figh: 40 });
+  const ally = makeUnit('Ally', { id: 'ally-sync-save', Figh: 30 });
+  const enemy = makeUnit('Ratfolk', {
+    id: 'enemy-sync-save',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 90,
+    MPun: 90,
+    con: 1
+  });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'sync-save-world', seed: 'sync-save-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 7,
+    turnQueue: [
+      { unit: player, initiative: 25, actedThisRound: true },
+      { unit: ally, initiative: 10, actedThisRound: true },
+      { unit: enemy, initiative: 5 }
+    ],
+    syncActions: [{
+      type: 'sync_fight',
+      participants: [player, ally],
+      target: enemy,
+      resolveAtIndex: 1,
+      resolved: false,
+      round: 3
+    }]
+  };
+  App.activeActor = ally;
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual save should complete with queued sync action');
+  const loaded = Binary.loadGame(savedBuffers[0]);
+  assertEqual(loaded.questState.combatState.syncActions[0].participantIds.join(','), 'player-sync-save,ally-sync-save', 'Saved sync action should preserve participant IDs');
+  assertEqual(loaded.questState.combatState.syncActions[0].targetId, 'enemy-sync-save', 'Saved sync action should preserve target ID');
+  assertEqual(loaded.questState.combatState.syncActions[0].resolveAtIndex, 1, 'Saved sync action should preserve delayed resolution turn');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  loadedApp.App._dbGet = async () => savedBuffers[0];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Saved sync combat slot should load');
+  const sync = loadedApp.App.combatState.syncActions[0];
+  assertEqual(sync.participants[0], loadedApp.App.party[0], 'Loaded sync participant should reference restored player object');
+  assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
+  assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
+  loadedApp.App.processTurn();
+  assertEqual(sync.resolved, true, 'Loaded sync action should resolve at the restored slowest participant turn');
+  assert(loadedApp.App.creatures[0].CPun < 90 || loadedApp.App.creatures[0].disposition === loadedApp.App.DISPOSITION.CORPSE, 'Resolved sync fight should affect the restored enemy');
+});
+
 test('Combat action guardrails and flee outcome feedback localize', () => {
   const { App } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');

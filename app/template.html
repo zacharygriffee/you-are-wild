@@ -506,11 +506,11 @@
         }
 
         .desktop-play-surface {
-            width: min(100%, 920px);
+            width: min(100%, 980px);
             min-height: min(100%, 560px);
             display: grid;
-            grid-template-columns: minmax(72px, 112px) minmax(260px, 1fr) minmax(72px, 112px);
-            grid-template-rows: minmax(64px, 96px) minmax(260px, 1fr) minmax(64px, 96px);
+            grid-template-columns: minmax(80px, 0.58fr) minmax(280px, 2.5fr) minmax(80px, 0.58fr);
+            grid-template-rows: minmax(78px, 0.58fr) minmax(300px, 2.8fr) minmax(78px, 0.58fr);
             gap: 8px;
             align-items: stretch;
         }
@@ -547,6 +547,9 @@
             border-color: var(--accent-primary);
             padding: clamp(16px, 3vw, 32px);
             overflow: auto;
+            align-items: stretch;
+            justify-content: stretch;
+            scroll-padding-block: clamp(16px, 3vw, 32px);
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
         }
@@ -562,17 +565,18 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: safe center;
+            justify-content: flex-start;
             gap: var(--space-md);
             min-height: 100%;
             min-width: 0;
             box-sizing: border-box;
         }
 
-        @supports not (justify-content: safe center) {
-            .desktop-play-cell-content {
-                justify-content: flex-start;
-            }
+        .desktop-play-cell-content::before,
+        .desktop-play-cell-content::after {
+            content: "";
+            flex: 1 1 0;
+            min-height: 0;
         }
 
         .desktop-play-cell-icon {
@@ -608,6 +612,8 @@
             color: var(--text-secondary);
             width: 100%;
             max-width: 720px;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .tile-event-feed {

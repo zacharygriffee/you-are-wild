@@ -6733,7 +6733,7 @@
                     const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
-                    actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index})">⋯</button>`;
+                    actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index},'desktop')">⋯</button>`;
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
                     actionButtons += `<button class="action-btn" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
@@ -6780,7 +6780,7 @@
                     const lootLabel = this._escapeHtml(this._uiLabel('loot'));
                     const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
                     const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${unit.name || 'remains'}`);
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button></div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);
@@ -6800,7 +6800,7 @@
                         const markLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                         const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${targetName}`);
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
                             actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
@@ -7265,6 +7265,72 @@
                     if (el) el.innerHTML = html;
                 });
             },
+            _desktopPlayCellHtml(visual, label) {
+                const escapedLabel = this._escapeHtml(label);
+                return `<span class="desktop-play-cell-icon" aria-hidden="true">${this._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
+            },
+            _updateDesktopPlayCell(el, visual, label, dx, dy, moveable = true) {
+                if (!el) return;
+                const classes = `desktop-play-cell${moveable ? ' moveable' : ''} ${visual.classes || ''}`;
+                const escapedLabel = this._escapeHtml(label);
+                el.className = classes;
+                el.innerHTML = this._desktopPlayCellHtml(visual, label);
+                if (typeof el.setAttribute === 'function') {
+                    el.setAttribute('title', escapedLabel);
+                    el.setAttribute('aria-label', escapedLabel);
+                    el.setAttribute('role', 'button');
+                    el.setAttribute('tabindex', moveable ? '0' : '-1');
+                    el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-map-kind', visual?.kind || 'unknown');
+                    if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
+                    if (moveable) el.setAttribute('onclick', `App.move(${dx},${dy})`);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('onclick');
+                }
+                el.onclick = moveable ? () => this.move(dx, dy) : null;
+            },
+            renderDesktopPlaySurface() {
+                const cells = [
+                    { id: 'desktop-play-cell-nw', dx: -1, dy: -1 },
+                    { id: 'desktop-play-cell-n', dx: 0, dy: -1 },
+                    { id: 'desktop-play-cell-ne', dx: 1, dy: -1 },
+                    { id: 'desktop-play-cell-w', dx: -1, dy: 0 },
+                    { id: 'desktop-play-cell-e', dx: 1, dy: 0 },
+                    { id: 'desktop-play-cell-sw', dx: -1, dy: 1 },
+                    { id: 'desktop-play-cell-s', dx: 0, dy: 1 },
+                    { id: 'desktop-play-cell-se', dx: 1, dy: 1 }
+                ];
+                if (this.inInterior && this.activeInterior) {
+                    const cx = this.interiorLocation.x;
+                    const cy = this.interiorLocation.y;
+                    cells.forEach(cell => {
+                        const el = document.getElementById(cell.id);
+                        if (!el) return;
+                        const tx = cx + cell.dx;
+                        const ty = cy + cell.dy;
+                        const room = this.activeInterior.tiles[`${tx},${ty}`];
+                        const visual = this._interiorTileVisual(room);
+                        const label = `${visual.label} (${tx}, ${ty})`;
+                        this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, Boolean(room));
+                    });
+                    return;
+                }
+                const cx = this.location.x;
+                const cy = this.location.y;
+                cells.forEach(cell => {
+                    const el = document.getElementById(cell.id);
+                    if (!el) return;
+                    const tx = cx + cell.dx;
+                    const ty = cy + cell.dy;
+                    const tile = this.getTile(tx, ty);
+                    const visual = this._mapTileVisual(tile, {
+                        neighborResolver: (nx, ny) => this.getTile(nx, ny)
+                    });
+                    const label = `${visual.label} (${tx}, ${ty})`;
+                    this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, true);
+                });
+            },
 
             renderMap() {
                 if (this.inInterior && this.activeInterior) {
@@ -7299,6 +7365,7 @@
                     if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
                     this.renderTileInfo();
                     this.renderLargeMap();
+                    this.renderDesktopPlaySurface();
                     this._renderTime();
                     return;
                 }
@@ -7345,6 +7412,7 @@
                     if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
                     this.renderTileInfo(this.getTile(cx, cy));
                     this.renderLargeMap();
+                    this.renderDesktopPlaySurface();
                     this.applyMobileMapZoom();
 	                this._renderTime();
 	            },
@@ -8334,6 +8402,19 @@
                     ? this.party[Number(targetRef)]
                     : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
             },
+            _intentMenuSurface(source = 'sheet', presentation = 'sheet') {
+                const normalizedSource = String(source || 'sheet');
+                const isDesktop = normalizedSource === 'desktop' || presentation === 'desktop';
+                const presentationName = isDesktop ? 'desktop' : (presentation === 'radial' ? 'radial' : 'sheet');
+                return {
+                    id: isDesktop ? 'desktop-intent-menu' : 'mobile-context-menu',
+                    rootClass: `${isDesktop ? 'desktop-intent-menu' : 'mobile-context-menu'} intent-menu intent-menu-${presentationName}`,
+                    titleClass: isDesktop ? 'desktop-intent-menu-title' : 'mobile-context-menu-title',
+                    actionsClass: isDesktop ? 'desktop-intent-menu-actions' : 'mobile-context-menu-actions',
+                    titleId: isDesktop ? 'desktop-intent-menu-title' : 'mobile-context-menu-title',
+                    presentation: presentationName
+                };
+            },
             showIntentMenu(type, targetRef, source = 'sheet', presentation = 'sheet') {
                 const isParty = type === 'party';
                 const target = this._intentTarget(type, targetRef);
@@ -8345,7 +8426,7 @@
                 const targetLabel = this._escapeHtml(targetName);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
                 const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
-                const menuPresentation = presentation === 'radial' ? 'radial' : 'sheet';
+                const surface = this._intentMenuSurface(source, presentation);
                 const actionButton = (key, action = key, extraClass = '') => {
                     const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
                     const icon = this._actionIcon(key);
@@ -8357,7 +8438,7 @@
                         : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
                     return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
-                let html = `<div class="mobile-context-menu intent-menu intent-menu-${menuPresentation}" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-intent-presentation="${menuPresentation}"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
                 const selectedActors = this._getExplorationActors();
                 const canUsePrimaryActions = !isCorpse && (!isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target))));
                 if (canUsePrimaryActions) {
@@ -8387,7 +8468,7 @@
                 html += actionButton('close', 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
+                const menu = document.getElementById(surface.id);
                 this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
@@ -8405,10 +8486,11 @@
                 const subActions = this._getAvailableSubActions(action, actor, target);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
                 const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
+                const surface = this._intentMenuSurface(source);
                 const title = `${this._uiLabel(action)} ${target.name || ''}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -8422,7 +8504,7 @@
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
+                const menu = document.getElementById(surface.id);
                 this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
@@ -8449,6 +8531,8 @@
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');
                 if (menu) menu.remove();
+                const desktopMenu = document.getElementById('desktop-intent-menu');
+                if (desktopMenu) desktopMenu.remove();
                 this._restoreFocusTrap();
             },
             showMobilePartyContext(index) {

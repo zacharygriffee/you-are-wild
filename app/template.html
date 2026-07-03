@@ -497,6 +497,82 @@
             padding: var(--space-xl);
         }
 
+        .desktop-play-surface {
+            width: min(100%, 920px);
+            min-height: min(100%, 560px);
+            display: grid;
+            grid-template-columns: minmax(72px, 112px) minmax(260px, 1fr) minmax(72px, 112px);
+            grid-template-rows: minmax(64px, 96px) minmax(260px, 1fr) minmax(64px, 96px);
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .desktop-play-cell {
+            min-width: 0;
+            min-height: 0;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .desktop-play-cell.moveable {
+            cursor: pointer;
+            border: 2px dashed var(--accent-primary);
+            color: var(--accent-primary);
+            background: var(--bg-elevated);
+        }
+
+        .desktop-play-cell.moveable:hover {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(0, 212, 170, 0.3);
+        }
+
+        .desktop-play-cell.center {
+            background: var(--bg-secondary);
+            border-color: var(--accent-primary);
+            padding: clamp(16px, 3vw, 32px);
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .desktop-play-cell-content {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            min-height: 100%;
+        }
+
+        .desktop-play-cell-icon {
+            font-size: 24px;
+            line-height: 1;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+        }
+
+        .desktop-play-cell-label {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            bottom: 5px;
+            font-size: 10px;
+            line-height: 1.15;
+            color: inherit;
+            opacity: 0.85;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .scene-title {
             font-size: 24px;
             font-weight: 700;
@@ -632,6 +708,46 @@
             min-width: 60px;
             padding: 6px 10px;
             font-size: 11px;
+        }
+
+        .desktop-intent-menu {
+            position: fixed;
+            top: 84px;
+            right: 18px;
+            width: min(320px, calc(100vw - 36px));
+            max-height: calc(100vh - 112px);
+            max-height: calc(100dvh - 112px);
+            overflow: auto;
+            overscroll-behavior: contain;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            z-index: 210;
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .desktop-intent-menu-title {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 13px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .desktop-intent-menu-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .desktop-intent-menu-actions .action-btn {
+            min-width: 0;
+            min-height: 42px;
+            padding: 8px;
+            line-height: 1.15;
         }
 
         .unit-header {
@@ -2380,20 +2496,34 @@
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
-                            <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
-                            <div class="scene-description" id="scene-description">
-                                <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
-                                <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
-                            </div>
-                            <div class="scene-actions" id="scene-actions">
-                                <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
-                                    <span class="action-icon" aria-hidden="true">🔍</span>
-                                    <span class="action-caption" data-i18n="action.search">Search</span>
-                                </button>
-                                <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
-                                    <span class="action-icon" aria-hidden="true">🏕️</span>
-                                    <span class="action-caption" data-i18n="action.rest">Rest</span>
-                                </button>
+                            <div class="desktop-play-surface" id="desktop-play-surface" aria-label="Current play surface">
+                                <div class="desktop-play-cell" id="desktop-play-cell-nw"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-n"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-ne"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-w"></div>
+                                <div class="desktop-play-cell center" id="desktop-play-cell-center">
+                                    <div class="desktop-play-cell-content">
+                                        <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
+                                        <div class="scene-description" id="scene-description">
+                                            <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
+                                            <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
+                                        </div>
+                                        <div class="scene-actions" id="scene-actions">
+                                            <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
+                                                <span class="action-icon" aria-hidden="true">🔍</span>
+                                                <span class="action-caption" data-i18n="action.search">Search</span>
+                                            </button>
+                                            <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
+                                                <span class="action-icon" aria-hidden="true">🏕️</span>
+                                                <span class="action-caption" data-i18n="action.rest">Rest</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-e"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-sw"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
                         </div>
                     </div>

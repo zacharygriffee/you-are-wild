@@ -498,6 +498,82 @@
             padding: var(--space-xl);
         }
 
+        .desktop-play-surface {
+            width: min(100%, 920px);
+            min-height: min(100%, 560px);
+            display: grid;
+            grid-template-columns: minmax(72px, 112px) minmax(260px, 1fr) minmax(72px, 112px);
+            grid-template-rows: minmax(64px, 96px) minmax(260px, 1fr) minmax(64px, 96px);
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .desktop-play-cell {
+            min-width: 0;
+            min-height: 0;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .desktop-play-cell.moveable {
+            cursor: pointer;
+            border: 2px dashed var(--accent-primary);
+            color: var(--accent-primary);
+            background: var(--bg-elevated);
+        }
+
+        .desktop-play-cell.moveable:hover {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(0, 212, 170, 0.3);
+        }
+
+        .desktop-play-cell.center {
+            background: var(--bg-secondary);
+            border-color: var(--accent-primary);
+            padding: clamp(16px, 3vw, 32px);
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .desktop-play-cell-content {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            min-height: 100%;
+        }
+
+        .desktop-play-cell-icon {
+            font-size: 24px;
+            line-height: 1;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+        }
+
+        .desktop-play-cell-label {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            bottom: 5px;
+            font-size: 10px;
+            line-height: 1.15;
+            color: inherit;
+            opacity: 0.85;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .scene-title {
             font-size: 24px;
             font-weight: 700;
@@ -633,6 +709,46 @@
             min-width: 60px;
             padding: 6px 10px;
             font-size: 11px;
+        }
+
+        .desktop-intent-menu {
+            position: fixed;
+            top: 84px;
+            right: 18px;
+            width: min(320px, calc(100vw - 36px));
+            max-height: calc(100vh - 112px);
+            max-height: calc(100dvh - 112px);
+            overflow: auto;
+            overscroll-behavior: contain;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            z-index: 210;
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .desktop-intent-menu-title {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 13px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .desktop-intent-menu-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .desktop-intent-menu-actions .action-btn {
+            min-width: 0;
+            min-height: 42px;
+            padding: 8px;
+            line-height: 1.15;
         }
 
         .unit-header {
@@ -2381,20 +2497,34 @@
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
-                            <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
-                            <div class="scene-description" id="scene-description">
-                                <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
-                                <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
-                            </div>
-                            <div class="scene-actions" id="scene-actions">
-                                <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
-                                    <span class="action-icon" aria-hidden="true">🔍</span>
-                                    <span class="action-caption" data-i18n="action.search">Search</span>
-                                </button>
-                                <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
-                                    <span class="action-icon" aria-hidden="true">🏕️</span>
-                                    <span class="action-caption" data-i18n="action.rest">Rest</span>
-                                </button>
+                            <div class="desktop-play-surface" id="desktop-play-surface" aria-label="Current play surface">
+                                <div class="desktop-play-cell" id="desktop-play-cell-nw"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-n"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-ne"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-w"></div>
+                                <div class="desktop-play-cell center" id="desktop-play-cell-center">
+                                    <div class="desktop-play-cell-content">
+                                        <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
+                                        <div class="scene-description" id="scene-description">
+                                            <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
+                                            <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
+                                        </div>
+                                        <div class="scene-actions" id="scene-actions">
+                                            <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
+                                                <span class="action-icon" aria-hidden="true">🔍</span>
+                                                <span class="action-caption" data-i18n="action.search">Search</span>
+                                            </button>
+                                            <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
+                                                <span class="action-icon" aria-hidden="true">🏕️</span>
+                                                <span class="action-caption" data-i18n="action.rest">Rest</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-e"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-sw"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
+                                <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
                         </div>
                     </div>
@@ -10450,7 +10580,7 @@ const WorldGen = (() => {
                     const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
-                    actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index})">⋯</button>`;
+                    actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index},'desktop')">⋯</button>`;
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
                     actionButtons += `<button class="action-btn" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
@@ -10497,7 +10627,7 @@ const WorldGen = (() => {
                     const lootLabel = this._escapeHtml(this._uiLabel('loot'));
                     const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
                     const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${unit.name || 'remains'}`);
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button></div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);
@@ -10517,7 +10647,7 @@ const WorldGen = (() => {
                         const markLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                         const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${targetName}`);
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}')">⋯</button>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
                             actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
@@ -10982,6 +11112,72 @@ const WorldGen = (() => {
                     if (el) el.innerHTML = html;
                 });
             },
+            _desktopPlayCellHtml(visual, label) {
+                const escapedLabel = this._escapeHtml(label);
+                return `<span class="desktop-play-cell-icon" aria-hidden="true">${this._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
+            },
+            _updateDesktopPlayCell(el, visual, label, dx, dy, moveable = true) {
+                if (!el) return;
+                const classes = `desktop-play-cell${moveable ? ' moveable' : ''} ${visual.classes || ''}`;
+                const escapedLabel = this._escapeHtml(label);
+                el.className = classes;
+                el.innerHTML = this._desktopPlayCellHtml(visual, label);
+                if (typeof el.setAttribute === 'function') {
+                    el.setAttribute('title', escapedLabel);
+                    el.setAttribute('aria-label', escapedLabel);
+                    el.setAttribute('role', 'button');
+                    el.setAttribute('tabindex', moveable ? '0' : '-1');
+                    el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-map-kind', visual?.kind || 'unknown');
+                    if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
+                    if (moveable) el.setAttribute('onclick', `App.move(${dx},${dy})`);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('onclick');
+                }
+                el.onclick = moveable ? () => this.move(dx, dy) : null;
+            },
+            renderDesktopPlaySurface() {
+                const cells = [
+                    { id: 'desktop-play-cell-nw', dx: -1, dy: -1 },
+                    { id: 'desktop-play-cell-n', dx: 0, dy: -1 },
+                    { id: 'desktop-play-cell-ne', dx: 1, dy: -1 },
+                    { id: 'desktop-play-cell-w', dx: -1, dy: 0 },
+                    { id: 'desktop-play-cell-e', dx: 1, dy: 0 },
+                    { id: 'desktop-play-cell-sw', dx: -1, dy: 1 },
+                    { id: 'desktop-play-cell-s', dx: 0, dy: 1 },
+                    { id: 'desktop-play-cell-se', dx: 1, dy: 1 }
+                ];
+                if (this.inInterior && this.activeInterior) {
+                    const cx = this.interiorLocation.x;
+                    const cy = this.interiorLocation.y;
+                    cells.forEach(cell => {
+                        const el = document.getElementById(cell.id);
+                        if (!el) return;
+                        const tx = cx + cell.dx;
+                        const ty = cy + cell.dy;
+                        const room = this.activeInterior.tiles[`${tx},${ty}`];
+                        const visual = this._interiorTileVisual(room);
+                        const label = `${visual.label} (${tx}, ${ty})`;
+                        this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, Boolean(room));
+                    });
+                    return;
+                }
+                const cx = this.location.x;
+                const cy = this.location.y;
+                cells.forEach(cell => {
+                    const el = document.getElementById(cell.id);
+                    if (!el) return;
+                    const tx = cx + cell.dx;
+                    const ty = cy + cell.dy;
+                    const tile = this.getTile(tx, ty);
+                    const visual = this._mapTileVisual(tile, {
+                        neighborResolver: (nx, ny) => this.getTile(nx, ny)
+                    });
+                    const label = `${visual.label} (${tx}, ${ty})`;
+                    this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, true);
+                });
+            },
 
             renderMap() {
                 if (this.inInterior && this.activeInterior) {
@@ -11016,6 +11212,7 @@ const WorldGen = (() => {
                     if (mobileCoords) mobileCoords.textContent = `Inside ${cx}, ${cy}`;
                     this.renderTileInfo();
                     this.renderLargeMap();
+                    this.renderDesktopPlaySurface();
                     this._renderTime();
                     return;
                 }
@@ -11062,6 +11259,7 @@ const WorldGen = (() => {
                     if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
                     this.renderTileInfo(this.getTile(cx, cy));
                     this.renderLargeMap();
+                    this.renderDesktopPlaySurface();
                     this.applyMobileMapZoom();
 	                this._renderTime();
 	            },
@@ -12051,6 +12249,19 @@ const WorldGen = (() => {
                     ? this.party[Number(targetRef)]
                     : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
             },
+            _intentMenuSurface(source = 'sheet', presentation = 'sheet') {
+                const normalizedSource = String(source || 'sheet');
+                const isDesktop = normalizedSource === 'desktop' || presentation === 'desktop';
+                const presentationName = isDesktop ? 'desktop' : (presentation === 'radial' ? 'radial' : 'sheet');
+                return {
+                    id: isDesktop ? 'desktop-intent-menu' : 'mobile-context-menu',
+                    rootClass: `${isDesktop ? 'desktop-intent-menu' : 'mobile-context-menu'} intent-menu intent-menu-${presentationName}`,
+                    titleClass: isDesktop ? 'desktop-intent-menu-title' : 'mobile-context-menu-title',
+                    actionsClass: isDesktop ? 'desktop-intent-menu-actions' : 'mobile-context-menu-actions',
+                    titleId: isDesktop ? 'desktop-intent-menu-title' : 'mobile-context-menu-title',
+                    presentation: presentationName
+                };
+            },
             showIntentMenu(type, targetRef, source = 'sheet', presentation = 'sheet') {
                 const isParty = type === 'party';
                 const target = this._intentTarget(type, targetRef);
@@ -12062,7 +12273,7 @@ const WorldGen = (() => {
                 const targetLabel = this._escapeHtml(targetName);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
                 const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
-                const menuPresentation = presentation === 'radial' ? 'radial' : 'sheet';
+                const surface = this._intentMenuSurface(source, presentation);
                 const actionButton = (key, action = key, extraClass = '') => {
                     const label = key === 'close' ? this._label('ui.close', 'Close') : this._uiLabel(key);
                     const icon = this._actionIcon(key);
@@ -12074,7 +12285,7 @@ const WorldGen = (() => {
                         : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
                     return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${this._escapeHtml(label)}</button>`;
                 };
-                let html = `<div class="mobile-context-menu intent-menu intent-menu-${menuPresentation}" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title" data-intent-presentation="${menuPresentation}"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${target.icon || ''} ${targetLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
                 const selectedActors = this._getExplorationActors();
                 const canUsePrimaryActions = !isCorpse && (!isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target))));
                 if (canUsePrimaryActions) {
@@ -12104,7 +12315,7 @@ const WorldGen = (() => {
                 html += actionButton('close', 'close');
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
+                const menu = document.getElementById(surface.id);
                 this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
@@ -12122,10 +12333,11 @@ const WorldGen = (() => {
                 const subActions = this._getAvailableSubActions(action, actor, target);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
                 const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
+                const surface = this._intentMenuSurface(source);
                 const title = `${this._uiLabel(action)} ${target.name || ''}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -12139,7 +12351,7 @@ const WorldGen = (() => {
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
+                const menu = document.getElementById(surface.id);
                 this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
@@ -12166,6 +12378,8 @@ const WorldGen = (() => {
             closeMobileContextMenu() {
                 const menu = document.getElementById('mobile-context-menu');
                 if (menu) menu.remove();
+                const desktopMenu = document.getElementById('desktop-intent-menu');
+                if (desktopMenu) desktopMenu.remove();
                 this._restoreFocusTrap();
             },
             showMobilePartyContext(index) {

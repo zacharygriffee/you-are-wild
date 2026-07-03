@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
-  "mapId": "you-are-wild-local-work",
+  "mapId": "you-are-wild-implementation-lanes",
   "targetAdapterHint": "node-js",
   "profile": {
     "safeCommands": [
-      "npm run build",
+      "npm run check",
       "npm run test",
+      "npm run lint",
       "npm run audit:branding"
     ],
     "isolateTargetRepo": true,
@@ -25,843 +26,699 @@
       "proof-promotion",
       "repo-complete-acceptance",
       "product-direction",
-      "explicit-content-expansion"
+      "explicit-content-expansion",
+      "legal-claim"
     ],
     "forbiddenActions": [
       "credential-use",
       "raw-secrets",
-      "destructive-host-command"
+      "destructive-host-command",
+      "adult-content-expansion",
+      "dist-hand-edit"
     ]
   },
   "operatorBoundaries": [
     {
-      "id": "controls-final-direction",
-      "title": "Final control doctrine decisions",
-      "boundary": "product-direction",
-      "reason": "Agents may propose and document controls, but final traversal, selection, and intent-control decisions belong to the operator."
-    },
-    {
-      "id": "adult-content-expansion",
-      "title": "Adult content expansion",
+      "id": "explicit-content-boundary",
+      "title": "No explicit content expansion",
       "boundary": "explicit-content-expansion",
-      "reason": "This lane map is for controls, UI, map metadata, and architecture. Agents must not expand explicit content."
+      "reason": "Lane work is limited to mechanics, UI, map metadata, safe labels, and architecture. Agents must not expand, rewrite, or generate explicit content."
     },
     {
-      "id": "canonical-release-action",
-      "title": "Canonical release action",
+      "id": "legal-and-branding-claims",
+      "title": "No legal claims",
+      "boundary": "legal-claim",
+      "reason": "Agents may implement metadata and naming cleanup, but must not claim legal safety or licensing conclusions."
+    },
+    {
+      "id": "release-and-publish",
+      "title": "Release actions stay manual",
       "boundary": "release",
-      "reason": "Pushing, publishing, release packaging, and final branding/legal decisions remain operator-mediated."
+      "reason": "Pushing, publishing, public network actions, proof promotion, and final repo acceptance remain operator-mediated."
     }
   ],
   "lanes": [
     {
-      "laneId": "humanoid-creature-canon-doctrine",
-      "priority": 5,
-      "title": "Humanoid Creature Canon Doctrine",
-      "objective": "Document the default creature canon so baseline interactable species are sapient/person-like rather than ordinary animals, while leaving ordinary animal classifications to explicitly gated mods.",
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/creature-canon.md",
-            "containsAll": [
-              "human-level sentience",
-              "sapience",
-              "bodyPlan",
-              "mod opt-in"
-            ]
-          },
-          {
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Humanoid/Sapient Creature Canon"
-            ]
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "docs/creature-canon.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "docs/creature-canon.md",
-          "docs/next-objectives.md"
-        ],
-        "requiredCommands": [
-          "npm run test",
-          "npm run audit:branding"
-        ],
-        "acceptanceCriteria": [
-          "Creature canon document defines human-level sentience as the default baseline for interactable species.",
-          "Creature canon document defines metadata direction for sapience, body plan, and interaction eligibility.",
-          "Creature canon document states ordinary animal classifications are mod opt-ins with stronger gating.",
-          "Next objectives reference the humanoid/sapient creature canon.",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Creature canon document defines human-level sentience as the default baseline for interactable species.",
-            "checkType": "content",
-            "file": "docs/creature-canon.md",
-            "containsAll": [
-              "human-level sentience",
-              "default baseline"
-            ]
-          },
-          {
-            "criterion": "Creature canon document defines metadata direction for sapience, body plan, and interaction eligibility.",
-            "checkType": "content",
-            "file": "docs/creature-canon.md",
-            "containsAll": [
-              "sapience",
-              "bodyPlan",
-              "interaction eligibility"
-            ]
-          },
-          {
-            "criterion": "Creature canon document states ordinary animal classifications are mod opt-ins with stronger gating.",
-            "checkType": "content",
-            "file": "docs/creature-canon.md",
-            "containsAll": [
-              "ordinary animal",
-              "mod opt-in",
-              "gating"
-            ]
-          },
-          {
-            "criterion": "Next objectives reference the humanoid/sapient creature canon.",
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Humanoid/Sapient Creature Canon"
-            ]
-          },
-          {
-            "criterion": "npm run test exits 0",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "npm run audit:branding exits 0",
-            "checkType": "command-exit",
-            "command": "npm run audit:branding"
-          }
-        ],
-        "forbiddenPaths": [
-          "dist/you-are-wild.html",
-          "app/src/core/app.js",
-          "app/src/core/content-system.js",
-          "app/template.html",
-          "app/test/test.js",
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not rewrite species data.",
-          "Does not expand or review explicit content.",
-          "Does not make legal claims."
-        ]
-      }
-    },
-    {
-      "laneId": "controls-doctrine",
+      "laneId": "interaction-eligibility-enforcement",
       "priority": 10,
-      "title": "Controls Doctrine",
-      "objective": "Create a UI-safe control model for traversal, actor selection, target selection, intent selection, and inspection surfaces before more autonomous UI changes.",
+      "title": "Interaction Eligibility Enforcement",
+      "objective": "Enforce the sapient/person-like default creature canon in baseline interaction eligibility without expanding explicit content or breaking stable species IDs.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
           {
             "checkType": "content",
-            "file": "docs/control-model.md",
+            "file": "app/src/core/app.js",
             "containsAll": [
-              "Traversal mode",
-              "Selection mode",
-              "Intent mode",
-              "Inspection mode"
+              "DEFAULT_SPECIES_CANON",
+              "sapience",
+              "bodyPlan",
+              "baselineInteraction"
             ]
           },
           {
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "control model"
-            ]
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ]
       },
       "workOrder": {
         "likelyFiles": [
-          "docs/control-model.md",
+          "app/src/core/app.js",
+          "app/src/core/content-system.js",
+          "app/test/test.js",
+          "docs/creature-canon.md",
           "docs/next-objectives.md"
         ],
         "expectedChangedFiles": [
-          "docs/control-model.md",
-          "docs/next-objectives.md"
+          "app/src/core/app.js",
+          "app/test/test.js",
+          "dist/you-are-wild.html"
         ],
         "requiredCommands": [
+          "npm run build",
           "npm run test",
-          "npm run audit:branding"
+          "npm run lint",
+          "npm run check"
         ],
         "acceptanceCriteria": [
-          "Control model document defines traversal selection intent and inspection modes.",
-          "Next objectives reference the control model.",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
+          "Canon metadata exists for default species.",
+          "Interaction eligibility tests or helpers use canon metadata.",
+          "Build command passes.",
+          "Test command passes.",
+          "Lint command passes.",
+          "Check command passes."
         ],
         "criteriaChecks": [
           {
-            "criterion": "Control model document defines traversal selection intent and inspection modes.",
+            "criterion": "Canon metadata exists for default species.",
             "checkType": "content",
-            "file": "docs/control-model.md",
+            "file": "app/src/core/app.js",
             "containsAll": [
-              "Traversal mode",
-              "Selection mode",
-              "Intent mode",
-              "Inspection mode"
+              "DEFAULT_SPECIES_CANON",
+              "speciesTraits",
+              "baselineInteraction"
             ]
           },
           {
-            "criterion": "Next objectives reference the control model.",
+            "criterion": "Interaction eligibility tests or helpers use canon metadata.",
             "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "control model"
+            "file": "app/test/test.js",
+            "containsAny": [
+              "baselineInteraction",
+              "species canon",
+              "sapience"
             ]
           },
           {
-            "criterion": "npm run test exits 0",
+            "criterion": "Build command passes.",
+            "checkType": "command-exit",
+            "command": "npm run build"
+          },
+          {
+            "criterion": "Test command passes.",
             "checkType": "command-exit",
             "command": "npm run test"
           },
           {
-            "criterion": "npm run audit:branding exits 0",
+            "criterion": "Lint command passes.",
             "checkType": "command-exit",
-            "command": "npm run audit:branding"
+            "command": "npm run lint"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ],
         "forbiddenPaths": [
-          "dist/you-are-wild.html",
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
           "package-lock.json"
         ],
         "nonClaims": [
-          "Does not implement the controls.",
-          "Does not make final product-direction decisions.",
-          "Does not expand or review explicit content."
+          "Does not provide legal advice.",
+          "Does not expand explicit content.",
+          "Does not rename stable species IDs unless tests and compatibility are updated."
         ]
       }
     },
     {
-      "laneId": "center-tile-traversal-doctrine",
-      "priority": 15,
-      "title": "Center Tile Traversal Doctrine",
-      "objective": "Define the unified 3x3 play-surface navigation and semantic context model before implementation, including tile-scoped event display, directional tile affordances, display-map separation, and desktop hotkey direction.",
-      "dependencies": [
-        "controls-doctrine"
-      ],
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Play surface",
-              "Display map",
-              "3x3",
-              "tile-scoped event feed",
-              "Expanded map mode"
-            ]
-          },
-          {
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Unified Center-Tile Traversal Surface"
-            ]
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "requiredCommands": [
-          "npm run test",
-          "npm run audit:branding"
-        ],
-        "acceptanceCriteria": [
-          "Control model defines the play surface as the primary 3x3 traversal and semantic context surface.",
-          "Control model separates the display map from routine traversal.",
-          "Control model defines surrounding 3x3 direction tiles as normal movement affordances.",
-          "Control model keeps expanded/large map mode separate from routine traversal.",
-          "Control model states that tile-scoped events clear on movement while the existing combat/debug log remains durable history.",
-          "Control model keeps dumb-state-machine event generation viable and treats LLM-assisted semantics as optional future presentation.",
-          "Next objectives reference the unified center-tile traversal surface.",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Control model defines the play surface as the primary 3x3 traversal and semantic context surface.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Play surface",
-              "3x3",
-              "semantic context"
-            ]
-          },
-          {
-            "criterion": "Control model separates the display map from routine traversal.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Display map",
-              "routine traversal"
-            ]
-          },
-          {
-            "criterion": "Control model defines surrounding 3x3 direction tiles as normal movement affordances.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "3x3",
-              "movement affordances"
-            ]
-          },
-          {
-            "criterion": "Control model keeps expanded/large map mode separate from routine traversal.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Expanded map mode",
-              "routine traversal"
-            ]
-          },
-          {
-            "criterion": "Control model states that tile-scoped events clear on movement while the existing combat/debug log remains durable history.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "tile-scoped event feed",
-              "clear on movement",
-              "combat/debug log",
-              "durable history"
-            ]
-          },
-          {
-            "criterion": "Control model keeps dumb-state-machine event generation viable and treats LLM-assisted semantics as optional future presentation.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "dumb-state-machine",
-              "LLM-assisted",
-              "optional"
-            ]
-          },
-          {
-            "criterion": "Next objectives reference the unified center-tile traversal surface.",
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Unified Center-Tile Traversal Surface"
-            ]
-          },
-          {
-            "criterion": "npm run test exits 0",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "npm run audit:branding exits 0",
-            "checkType": "command-exit",
-            "command": "npm run audit:branding"
-          }
-        ],
-        "forbiddenPaths": [
-          "dist/you-are-wild.html",
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not implement the 3x3 surface.",
-          "Does not redesign party area enemy panels.",
-          "Does not expand or review explicit content."
-        ]
-      }
-    },
-    {
-      "laneId": "combat-toolbelt-doctrine",
-      "priority": 18,
-      "title": "Combat Toolbelt Doctrine",
-      "objective": "Document the mobile and desktop battle layout doctrine for party/enemy strips, intent popup placement, center-stage focus, and party-member flee semantics before implementation.",
-      "dependencies": [
-        "controls-doctrine",
-        "center-tile-traversal-doctrine"
-      ],
-      "statusBasis": {
-        "mode": "terminal-checks",
-        "terminalChecks": [
-          {
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Combat toolbelt",
-              "party strip",
-              "enemy strip",
-              "flee"
-            ]
-          },
-          {
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Combat Toolbelt"
-            ]
-          }
-        ]
-      },
-      "workOrder": {
-        "likelyFiles": [
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "expectedChangedFiles": [
-          "docs/control-model.md",
-          "docs/next-objectives.md"
-        ],
-        "requiredCommands": [
-          "npm run test",
-          "npm run audit:branding"
-        ],
-        "acceptanceCriteria": [
-          "Control model defines battle mode as distinct from traversal mode.",
-          "Control model places party access near the lower reach area and enemies above it for mobile.",
-          "Control model defines the intent popup/action sheet between party and enemy selections.",
-          "Control model keeps the center stage as the primary combat event focus while movement affordances are reduced.",
-          "Control model defines flee as party-member dependent, with full-party flee returning to directional escape selection.",
-          "Next objectives reference the combat toolbelt doctrine.",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
-        ],
-        "criteriaChecks": [
-          {
-            "criterion": "Control model defines battle mode as distinct from traversal mode.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "Battle mode",
-              "Traversal mode"
-            ]
-          },
-          {
-            "criterion": "Control model places party access near the lower reach area and enemies above it for mobile.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "party strip",
-              "enemy strip",
-              "mobile"
-            ]
-          },
-          {
-            "criterion": "Control model defines the intent popup/action sheet between party and enemy selections.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "intent popup",
-              "action sheet"
-            ]
-          },
-          {
-            "criterion": "Control model keeps the center stage as the primary combat event focus while movement affordances are reduced.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "center stage",
-              "movement affordances"
-            ]
-          },
-          {
-            "criterion": "Control model defines flee as party-member dependent, with full-party flee returning to directional escape selection.",
-            "checkType": "content",
-            "file": "docs/control-model.md",
-            "containsAll": [
-              "party-member dependent",
-              "full-party flee",
-              "directional escape"
-            ]
-          },
-          {
-            "criterion": "Next objectives reference the combat toolbelt doctrine.",
-            "checkType": "content",
-            "file": "docs/next-objectives.md",
-            "containsAll": [
-              "Combat Toolbelt"
-            ]
-          },
-          {
-            "criterion": "npm run test exits 0",
-            "checkType": "command-exit",
-            "command": "npm run test"
-          },
-          {
-            "criterion": "npm run audit:branding exits 0",
-            "checkType": "command-exit",
-            "command": "npm run audit:branding"
-          }
-        ],
-        "forbiddenPaths": [
-          "dist/you-are-wild.html",
-          "app/src/core/app.js",
-          "app/template.html",
-          "app/test/test.js",
-          "package-lock.json"
-        ],
-        "nonClaims": [
-          "Does not implement the combat toolbelt.",
-          "Does not rewrite combat mechanics.",
-          "Does not expand or review explicit content."
-        ]
-      }
-    },
-    {
-      "laneId": "desktop-intent-menu",
+      "laneId": "center-tile-event-feed",
       "priority": 20,
-      "title": "Desktop Intent Menu Layout",
-      "objective": "Give desktop creature/person actions a bounded desktop-specific intent surface while preserving mobile long-press and bottom-sheet behavior.",
-      "dependencies": [
-        "controls-doctrine",
-        "combat-toolbelt-doctrine"
-      ],
+      "title": "Center Tile Event Feed",
+      "objective": "Add a tile-scoped event feed in the play-surface center so immediate local events can be shown as presentation data while the existing combat log remains durable/debuggable.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
           {
             "checkType": "content",
-            "file": "app/template.html",
-            "containsAll": [
-              "desktop-intent-menu"
+            "file": "app/src/core/app.js",
+            "containsAny": [
+              "tileEvents",
+              "tileEventFeed",
+              "centerTileEvents"
             ]
           },
           {
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAll": [
-              "Desktop intent menu"
-            ]
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ]
       },
       "workOrder": {
         "likelyFiles": [
-          "app/template.html",
           "app/src/core/app.js",
+          "app/template.html",
           "app/test/test.js",
+          "docs/control-model.md",
           "docs/next-objectives.md"
         ],
         "expectedChangedFiles": [
-          "app/template.html",
           "app/src/core/app.js",
+          "app/template.html",
           "app/test/test.js",
-          "dist/you-are-wild.html",
-          "docs/next-objectives.md"
+          "dist/you-are-wild.html"
         ],
         "requiredCommands": [
           "npm run build",
           "npm run test",
-          "npm run audit:branding"
+          "npm run lint",
+          "npm run check"
         ],
         "acceptanceCriteria": [
-          "Desktop intent actions render through a desktop-specific bounded surface.",
-          "Desktop intent menu behavior is covered by tests.",
-          "npm run build exits 0",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
+          "A center tile event feed implementation is present.",
+          "Tests cover tile event feed behavior.",
+          "Build command passes.",
+          "Test command passes.",
+          "Lint command passes.",
+          "Check command passes."
         ],
         "criteriaChecks": [
           {
-            "criterion": "Desktop intent actions render through a desktop-specific bounded surface.",
+            "criterion": "A center tile event feed implementation is present.",
             "checkType": "content",
-            "file": "app/template.html",
-            "containsAll": [
-              "desktop-intent-menu"
+            "file": "app/src/core/app.js",
+            "containsAny": [
+              "tileEvents",
+              "tileEventFeed",
+              "centerTileEvents"
             ]
           },
           {
-            "criterion": "Desktop intent menu behavior is covered by tests.",
+            "criterion": "Tests cover tile event feed behavior.",
             "checkType": "content",
             "file": "app/test/test.js",
-            "containsAll": [
-              "Desktop intent menu"
+            "containsAny": [
+              "tile event",
+              "tileEvents",
+              "center tile event"
             ]
           },
           {
-            "criterion": "npm run build exits 0",
+            "criterion": "Build command passes.",
             "checkType": "command-exit",
             "command": "npm run build"
           },
           {
-            "criterion": "npm run test exits 0",
+            "criterion": "Test command passes.",
             "checkType": "command-exit",
             "command": "npm run test"
           },
           {
-            "criterion": "npm run audit:branding exits 0",
+            "criterion": "Lint command passes.",
             "checkType": "command-exit",
-            "command": "npm run audit:branding"
+            "command": "npm run lint"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ],
         "forbiddenPaths": [
-          "app/src/core/world-generation.js",
-          "app/src/core/content-system.js",
-          "app/src/core/serialization.js",
-          "app/package.json",
           "package-lock.json"
         ],
         "nonClaims": [
-          "Does not redesign the mobile traversal model.",
-          "Does not rewrite combat or target selection.",
+          "Does not add LLM integration.",
+          "Does not replace the combat log.",
           "Does not expand explicit content."
         ]
       }
     },
     {
-      "laneId": "quest-preview",
-      "priority": 50,
-      "title": "Quest Preview Before Accept",
-      "objective": "Add a localized, non-explicit preview/inspect path so players can understand a quest before accepting it.",
+      "laneId": "combat-toolbelt-prototype",
+      "priority": 30,
+      "title": "Combat Toolbelt Prototype",
+      "objective": "Prototype a combat-mode play surface/toolbelt that keeps party, enemies, current actor, target, and intent controls visible without constant panel switching, especially on mobile.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
           {
             "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAll": [
-              "renderQuestPreview"
+            "file": "app/template.html",
+            "containsAny": [
+              "combat-toolbelt",
+              "battle-toolbelt",
+              "combat-surface"
             ]
           },
           {
-            "checkType": "content",
-            "file": "app/test/test.js",
-            "containsAll": [
-              "Quest preview"
-            ]
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ]
       },
       "workOrder": {
         "likelyFiles": [
           "app/src/core/app.js",
-          "app/src/core/content-system.js",
+          "app/template.html",
           "app/test/test.js",
+          "docs/control-model.md",
           "docs/next-objectives.md"
         ],
         "expectedChangedFiles": [
           "app/src/core/app.js",
-          "app/src/core/content-system.js",
+          "app/template.html",
           "app/test/test.js",
-          "dist/you-are-wild.html",
-          "docs/next-objectives.md"
+          "dist/you-are-wild.html"
         ],
         "requiredCommands": [
           "npm run build",
           "npm run test",
-          "npm run audit:branding"
+          "npm run lint",
+          "npm run check"
         ],
         "acceptanceCriteria": [
-          "Quest givers expose a preview or inspect path before acceptance.",
-          "Quest preview labels and summaries are localized and non-explicit.",
-          "Quest preview behavior is covered by tests.",
-          "npm run build exits 0",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
+          "Combat toolbelt or battle surface hook exists.",
+          "Combat toolbelt tests or assertions exist.",
+          "Build command passes.",
+          "Test command passes.",
+          "Lint command passes.",
+          "Check command passes."
         ],
         "criteriaChecks": [
           {
-            "criterion": "Quest givers expose a preview or inspect path before acceptance.",
+            "criterion": "Combat toolbelt or battle surface hook exists.",
             "checkType": "content",
-            "file": "app/src/core/app.js",
-            "containsAll": [
-              "renderQuestPreview"
+            "file": "app/template.html",
+            "containsAny": [
+              "combat-toolbelt",
+              "battle-toolbelt",
+              "combat-surface"
             ]
           },
           {
-            "criterion": "Quest preview labels and summaries are localized and non-explicit.",
-            "checkType": "content",
-            "file": "app/src/core/content-system.js",
-            "containsAll": [
-              "quest.preview"
-            ]
-          },
-          {
-            "criterion": "Quest preview behavior is covered by tests.",
+            "criterion": "Combat toolbelt tests or assertions exist.",
             "checkType": "content",
             "file": "app/test/test.js",
-            "containsAll": [
-              "Quest preview"
+            "containsAny": [
+              "combat toolbelt",
+              "battle surface",
+              "combat-surface"
             ]
           },
           {
-            "criterion": "npm run build exits 0",
+            "criterion": "Build command passes.",
             "checkType": "command-exit",
             "command": "npm run build"
           },
           {
-            "criterion": "npm run test exits 0",
+            "criterion": "Test command passes.",
             "checkType": "command-exit",
             "command": "npm run test"
           },
           {
-            "criterion": "npm run audit:branding exits 0",
+            "criterion": "Lint command passes.",
             "checkType": "command-exit",
-            "command": "npm run audit:branding"
+            "command": "npm run lint"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ],
         "forbiddenPaths": [
-          "app/src/core/world-generation.js",
-          "app/src/core/serialization.js",
-          "app/package.json",
           "package-lock.json"
         ],
         "nonClaims": [
-          "Does not add new quest content branches.",
-          "Does not reveal undiscovered generated secrets by default.",
+          "Does not redesign all combat.",
+          "Does not remove existing panels.",
           "Does not expand explicit content."
+        ]
+      }
+    },
+    {
+      "laneId": "play-surface-unification",
+      "priority": 40,
+      "title": "Play Surface Unification",
+      "objective": "Continue unifying routine traversal around the 3x3 play surface on desktop and mobile while keeping the display map as an expanded review/planning surface.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "play surface",
+              "display map"
+            ]
+          },
+          {
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "dist/you-are-wild.html"
+        ],
+        "requiredCommands": [
+          "npm run build",
+          "npm run test",
+          "npm run lint",
+          "npm run check"
+        ],
+        "acceptanceCriteria": [
+          "Play surface and display map terminology is present.",
+          "Play surface tests or assertions exist.",
+          "Build command passes.",
+          "Test command passes.",
+          "Lint command passes.",
+          "Check command passes."
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Play surface and display map terminology is present.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "play surface",
+              "display map"
+            ]
+          },
+          {
+            "criterion": "Play surface tests or assertions exist.",
+            "checkType": "content",
+            "file": "app/test/test.js",
+            "containsAny": [
+              "play surface",
+              "display map",
+              "3x3"
+            ]
+          },
+          {
+            "criterion": "Build command passes.",
+            "checkType": "command-exit",
+            "command": "npm run build"
+          },
+          {
+            "criterion": "Test command passes.",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "Lint command passes.",
+            "checkType": "command-exit",
+            "command": "npm run lint"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ],
+        "forbiddenPaths": [
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not implement fast travel.",
+          "Does not remove the display map.",
+          "Does not expand explicit content."
+        ]
+      }
+    },
+    {
+      "laneId": "docs-objectives-trim",
+      "priority": 90,
+      "title": "Objectives Trim And Changelog Split",
+      "objective": "Reduce stale planning surface area by turning docs/next-objectives.md back into a short active-objectives handoff and moving completed/history material into changelog-style documentation.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Active Objectives",
+              "Mechanics/Core",
+              "UI",
+              "Features"
+            ]
+          },
+          {
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "docs/next-objectives.md",
+          "docs/changelog.md",
+          "docs/work-history.md"
+        ],
+        "expectedChangedFiles": [
+          "docs/next-objectives.md",
+          "docs/changelog.md"
+        ],
+        "requiredCommands": [
+          "npm run check"
+        ],
+        "acceptanceCriteria": [
+          "Active objective headings are present.",
+          "A history or changelog document exists.",
+          "Check command passes."
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Active objective headings are present.",
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Active Objectives",
+              "Mechanics/Core",
+              "UI",
+              "Features"
+            ]
+          },
+          {
+            "criterion": "A history or changelog document exists.",
+            "checkType": "artifact-exists",
+            "file": "docs/changelog.md"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ],
+        "forbiddenPaths": [
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not implement gameplay changes.",
+          "Does not delete unresolved active goals."
         ]
       }
     },
     {
       "laneId": "asset-tileset-manifest",
-      "priority": 60,
-      "title": "Asset and Tileset Manifest Seam",
-      "objective": "Add a flexible metadata seam for first-party and modded image assets, including AI-generated provenance and icon fallback behavior.",
+      "priority": 100,
+      "title": "Asset Tileset Manifest",
+      "objective": "Prepare flexible tileset/asset metadata for future relative image assets, including provenance such as AI-made assets, while keeping icon fallbacks and not replacing map art in this pass.",
       "statusBasis": {
         "mode": "terminal-checks",
         "terminalChecks": [
           {
             "checkType": "content",
-            "file": "app/src/core/assets.js",
+            "file": "docs/asset-manifest.md",
             "containsAll": [
-              "ASSET_MANIFEST",
-              "ai_generated",
-              "fallback"
+              "provenance",
+              "fallback",
+              "relative"
             ]
           },
           {
-            "checkType": "content",
-            "file": "app/build.js",
-            "containsAll": [
-              "assets.js"
-            ]
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ]
       },
       "workOrder": {
         "likelyFiles": [
-          "app/src/core/assets.js",
-          "app/build.js",
-          "app/test/test.js",
-          "docs/map-tileset-evaluation.md",
-          "docs/next-objectives.md"
+          "docs/asset-manifest.md",
+          "docs/next-objectives.md",
+          "app/src/core/app.js",
+          "app/test/test.js"
         ],
         "expectedChangedFiles": [
-          "app/src/core/assets.js",
-          "app/build.js",
-          "app/test/test.js",
-          "dist/you-are-wild.html",
-          "docs/map-tileset-evaluation.md",
+          "docs/asset-manifest.md",
           "docs/next-objectives.md"
         ],
         "requiredCommands": [
-          "npm run build",
-          "npm run test",
-          "npm run audit:branding"
+          "npm run check"
         ],
         "acceptanceCriteria": [
-          "Asset manifest supports AI-generated provenance metadata and relative asset paths.",
-          "Asset manifest preserves icon fallback behavior for missing tileset art.",
-          "Asset manifest module is included in the build order.",
-          "Asset manifest behavior is covered by tests.",
-          "npm run build exits 0",
-          "npm run test exits 0",
-          "npm run audit:branding exits 0"
+          "Tileset metadata language exists.",
+          "Next objectives mention tileset fallback.",
+          "Check command passes."
         ],
         "criteriaChecks": [
           {
-            "criterion": "Asset manifest supports AI-generated provenance metadata and relative asset paths.",
+            "criterion": "Tileset metadata language exists.",
             "checkType": "content",
-            "file": "app/src/core/assets.js",
+            "file": "docs/asset-manifest.md",
             "containsAll": [
-              "ai_generated",
-              "relativePath"
+              "provenance",
+              "fallback",
+              "relative"
             ]
           },
           {
-            "criterion": "Asset manifest preserves icon fallback behavior for missing tileset art.",
+            "criterion": "Next objectives mention tileset fallback.",
             "checkType": "content",
-            "file": "app/src/core/assets.js",
+            "file": "docs/next-objectives.md",
             "containsAll": [
+              "tileset",
               "fallback"
             ]
           },
           {
-            "criterion": "Asset manifest module is included in the build order.",
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ],
+        "forbiddenPaths": [
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not claim license safety.",
+          "Does not require assets to replace existing emoji/icon fallbacks."
+        ]
+      }
+    },
+    {
+      "laneId": "quest-preview-before-accept",
+      "priority": 110,
+      "title": "Quest Preview Before Accept",
+      "objective": "Expose a safe quest preview before accepting a quest so the player can understand the offer before committing.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
             "checkType": "content",
-            "file": "app/build.js",
-            "containsAll": [
-              "assets.js"
+            "file": "app/src/core/app.js",
+            "containsAny": [
+              "Quest Preview",
+              "quest preview",
+              "previewQuest"
             ]
           },
           {
-            "criterion": "Asset manifest behavior is covered by tests.",
+            "checkType": "command-exit",
+            "command": "npm run check"
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "app/src/core/app.js",
+          "app/test/test.js",
+          "dist/you-are-wild.html"
+        ],
+        "requiredCommands": [
+          "npm run build",
+          "npm run test",
+          "npm run lint",
+          "npm run check"
+        ],
+        "acceptanceCriteria": [
+          "Quest preview path exists.",
+          "Quest preview tests or assertions exist.",
+          "Build command passes.",
+          "Test command passes.",
+          "Lint command passes.",
+          "Check command passes."
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Quest preview path exists.",
+            "checkType": "content",
+            "file": "app/src/core/app.js",
+            "containsAny": [
+              "previewQuest",
+              "quest preview",
+              "Quest Preview"
+            ]
+          },
+          {
+            "criterion": "Quest preview tests or assertions exist.",
             "checkType": "content",
             "file": "app/test/test.js",
-            "containsAll": [
-              "Asset manifest"
+            "containsAny": [
+              "previewQuest",
+              "quest preview",
+              "Quest Preview"
             ]
           },
           {
-            "criterion": "npm run build exits 0",
+            "criterion": "Build command passes.",
             "checkType": "command-exit",
             "command": "npm run build"
           },
           {
-            "criterion": "npm run test exits 0",
+            "criterion": "Test command passes.",
             "checkType": "command-exit",
             "command": "npm run test"
           },
           {
-            "criterion": "npm run audit:branding exits 0",
+            "criterion": "Lint command passes.",
             "checkType": "command-exit",
-            "command": "npm run audit:branding"
+            "command": "npm run lint"
+          },
+          {
+            "criterion": "Check command passes.",
+            "checkType": "command-exit",
+            "command": "npm run check"
           }
         ],
         "forbiddenPaths": [
-          "app/src/core/app.js",
-          "app/src/core/world-generation.js",
-          "app/src/core/serialization.js",
-          "app/package.json",
           "package-lock.json"
         ],
         "nonClaims": [
-          "Does not import the painted tilesheet asset yet.",
-          "Does not replace all emoji or icon fallback rendering.",
-          "Does not change gameplay mechanics."
+          "Does not redesign the whole quest system.",
+          "Does not expand explicit content."
         ]
       }
     }

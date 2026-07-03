@@ -191,6 +191,15 @@ test('Combat queue system present', () => {
   assertContains(appContent, '_calcInitiative(', 'initiative calculation missing');
 });
 
+test('Progression balance constants are named', () => {
+  assertContains(appContent, 'BALANCE:', 'Balance constants missing');
+  assertContains(appContent, 'xpCurveMultiplier', 'XP curve multiplier should be named');
+  assertContains(appContent, 'levelPunishmentGain', 'Level punishment gain should be named');
+  assertContains(appContent, 'levelPleasureGain', 'Level pleasure gain should be named');
+  assertContains(appContent, 'levelStatGain', 'Level stat gain should be named');
+  assertContains(appContent, 'recruitXP', 'Recruit XP should be named');
+});
+
 test('No syntax errors in key patterns', () => {
   assertNotContains(appContent, 'Hunter\\\'\'s', 'Double-escaped apostrophe in Hunter\'s');
   assertNotContains(appContent, 'Witch\\\'\'s', 'Double-escaped apostrophe in Witch\'s');
@@ -3673,7 +3682,7 @@ test('Moving tiles clears current tile event feed but keeps durable log', () => 
 
 test('Recruitment is gated by pleasure and willingness score', () => {
   const { App, elements } = loadAppForCombat(() => 0);
-  const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10 });
+  const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10, xp: 0, xpToNext: 1000 });
   const reluctant = makeUnit('Reluctant', { id: 'reluctant-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 10, MPle: 100 });
   const willing = makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true });
   App.player = player;
@@ -3689,6 +3698,7 @@ test('Recruitment is gated by pleasure and willingness score', () => {
   assertContains(App.log[App.log.length - 1].text, 'Reluctant aun no esta listo para unirse al grupo.', 'Failed recruitment log should localize');
   App.recruitCreatureById('willing-1');
   assert(App.party.includes(willing), 'High-score willing friendly should join');
+  assertEqual(player.xp, App.BALANCE.recruitXP, 'Successful recruitment should use configured recruit XP reward');
   assertContains(App.log[App.log.length - 1].text, 'Willing se une a tu grupo!', 'Successful recruitment log should localize');
 });
 
@@ -6846,6 +6856,10 @@ test('Perk tree queues player choices on level up instead of random perks', () =
   App.updateLanguage('es');
   App.gainXP(20);
   assertEqual(App.player.level, 2, 'XP should level the player');
+  assertEqual(App.player.xpToNext, 150, 'Level XP threshold should use the configured curve multiplier');
+  assertEqual(App.player.MPun, 110, 'Level-up punishment gain should use balance config');
+  assertEqual(App.player.MPle, 105, 'Level-up pleasure gain should use balance config');
+  assertEqual(App.player.Figh, 11, 'Level-up stat gain should use balance config');
   assertEqual(App.player.pendingPerkChoices, 1, 'Level up should queue a perk choice');
   assertEqual(App.player.perks.length, 0, 'Level up should not randomly assign a perk');
   assertContains(elements.get('scene-description').innerHTML, 'Elegir mejora', 'Level up should show localized perk selection UI');

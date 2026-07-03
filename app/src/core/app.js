@@ -728,6 +728,13 @@
                 }
             },
             XP_REWARDS: { defeatEnemy: 50, consumeEnemy: 75, seduceEnemy: 60, flirtEnemy: 35, feedAlly: 20, feedEnemy: 25, discoverLandmark: 25, consumeAlly: 40 },
+            BALANCE: {
+                xpCurveMultiplier: 1.5,
+                levelPunishmentGain: 10,
+                levelPleasureGain: 5,
+                levelStatGain: 1,
+                recruitXP: 30
+            },
 
             // === STATE ===
             mode: 'normal',
@@ -5339,7 +5346,7 @@
 	                this.party.push(target);
                 this.creatures = this.creatures.filter(c => c !== target);
                 this.log.push({ text: this._label('recruit.joined', '{name} joins your party!', { name: target.name }), type: 'discovery' });
-                this.gainXP(30);
+                this.gainXP(this.BALANCE.recruitXP);
                 this.renderParty();
                 this.renderCreatures();
                 this.renderLog();
@@ -5453,15 +5460,18 @@
             // ===== XP/LEVELING =====
             gainXP(amount) {
                 if (!this.player) return;
+                this.player.xp = Number.isFinite(this.player.xp) ? this.player.xp : 0;
+                this.player.xpToNext = Number.isFinite(this.player.xpToNext) && this.player.xpToNext > 0 ? this.player.xpToNext : 100;
                 this.player.xp += amount;
                 while (this.player.xp >= this.player.xpToNext) {
                     this.player.xp -= this.player.xpToNext;
                     this.player.level++;
-                    this.player.xpToNext = Math.floor(this.player.xpToNext * 1.5);
-                    this.player.MPun += 10; this.player.CPun = this.player.MPun;
-                    this.player.MPle += 5;
-                    this.player.Figh += 1; this.player.Feas += 1; this.player.Flir += 1; this.player.Fuck += 1; this.player.Flee += 1; this.player.Feed += 1;
-                    this.player.str += 1; this.player.con += 1; this.player.spd += 1; this.player.int += 1; this.player.wis += 1; this.player.cha += 1;
+                    this.player.xpToNext = Math.floor(this.player.xpToNext * this.BALANCE.xpCurveMultiplier);
+                    this.player.MPun += this.BALANCE.levelPunishmentGain; this.player.CPun = this.player.MPun;
+                    this.player.MPle += this.BALANCE.levelPleasureGain;
+                    for (const stat of ['Figh', 'Feas', 'Flir', 'Fuck', 'Flee', 'Feed', 'str', 'con', 'spd', 'int', 'wis', 'cha']) {
+                        this.player[stat] += this.BALANCE.levelStatGain;
+                    }
                     this.log.push({ text: this._label('perk.levelUp', 'Level up! You are now level {level}. All stats increased!', { level: this.player.level }), type: 'discovery' });
                     this._queuePerkChoice();
                 }

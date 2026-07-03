@@ -639,6 +639,9 @@
             font-size: 12px;
             line-height: 1.35;
             color: var(--text-secondary);
+            padding: 5px 6px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.025);
         }
 
         .tile-event-icon {
@@ -647,8 +650,29 @@
             line-height: 1.35;
         }
 
+        .tile-event-body {
+            min-width: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 4px 6px;
+        }
+
+        .tile-event-actor {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .tile-event-intent {
+            color: var(--accent-primary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
         .tile-event-text {
             min-width: 0;
+            flex: 1 1 100%;
             overflow-wrap: anywhere;
         }
 

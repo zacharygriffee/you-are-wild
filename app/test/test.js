@@ -9,6 +9,7 @@ const path = require('path');
 
 const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
+const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -948,6 +949,17 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');
   assertContains(appContent, 'renderMobileCombatToolbelt()', 'mobile combat toolbelt renderer missing');
   assertContains(appContent, "document.getElementById('mobile-mini-map')", 'renderMap should target mobile map');
+});
+
+test('Battle mode contract keeps combat panel-first', () => {
+  const contract = fs.readFileSync(BATTLE_MODE_CONTRACT, 'utf8');
+  assertContains(contract, 'Battle mode is not a separate action model', 'Battle mode should be documented as an extension of actor target intent flow');
+  assertContains(contract, 'Party cards/chips own actor intent', 'Battle mode contract should keep actor intent in panels');
+  assertContains(contract, 'Creature and enemy cards/chips own target selection', 'Battle mode contract should keep target selection in panels');
+  assertContains(contract, 'Initiative queue decides whose actor card is active', 'Battle mode contract should define initiative as a combat constraint');
+  assertContains(appContent, 'executeCombatIntent(action', 'Combat intent should route through a shared dispatcher');
+  assertContains(appContent, 'combatAction(action) {\n                return this.executeCombatIntent', 'Legacy combatAction wrapper should delegate to the shared dispatcher');
+  assertContains(appContent, "App.executeCombatIntent('fight')", 'Panel combat buttons should dispatch through the shared combat intent path');
 });
 
 test('Desktop play surface uses a 3x3 center-tile layout', () => {
@@ -2047,6 +2059,30 @@ test('Combat action guardrails and flee outcome feedback localize', () => {
   assertContains(App.log[App.log.length - 1].text, 'Escapaste del encuentro.', 'Flee outcome feedback should localize');
 });
 
+test('Combat intent dispatcher preserves feed as party support', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-feed-intent', Feed: 20 });
+  const ally = makeUnit('Ally', { id: 'ally-feed-intent', CPun: 10, MPun: 100 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-feed-intent', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  const result = App.executeCombatIntent('feed');
+  assertEqual(result, true, 'Feed intent should dispatch as a valid combat intent');
+  assert(ally.CPun > 10, 'Feed intent should heal a wounded ally instead of selecting an enemy feast target');
+  assertEqual(App.targetSelection, null, 'Feed intent should not enter enemy target-pick mode');
+});
+
 test('Combat swallow removes contained creature from area panel', () => {
   const { App } = loadAppForCombat(() => 0.5);
   const player = makeUnit('You', { id: 'player-swallow', Feas: 80, size: 8, appetite: 8 });
@@ -2600,9 +2636,9 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   const actionsHtml = elements.get('scene-actions').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should point to panel-first controls');
-  assertNotContains(actionsHtml, "selectTarget('fight')", 'Combat center should not expose enemy action targeting');
-  assertContains(elements.get('party-content').innerHTML, "selectTarget('fight')", 'Active party card should expose enemy action targeting');
-  assertContains(elements.get('party-content').innerHTML, 'App.executeFeedAction()', 'Active party card should still expose party feed action');
+  assertNotContains(actionsHtml, "executeCombatIntent('fight')", 'Combat center should not expose enemy action targeting');
+  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should expose enemy action targeting');
+  assertContains(elements.get('party-content').innerHTML, "App.executeCombatIntent('feed')", 'Active party card should still expose party feed action');
   assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should keep baseline interaction actions in an action menu');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
@@ -5442,12 +5478,12 @@ test('Obedient ally turns use the same panel target selection', () => {
   const actionsHtml = elements.get('scene-actions').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
   assertContains(actionsHtml, 'panel-first-combat-prompt', 'Ally turn should keep center as panel-first guidance');
-  assertContains(partyHtml, "selectTarget('fight')", 'Ally turn should expose manual actions on the active actor card');
+  assertContains(partyHtml, "executeCombatIntent('fight')", 'Ally turn should expose manual actions on the active actor card');
   assertContains(partyHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
   assertContains(partyHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
   assertContains(partyHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
   assertContains(partyHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
-  App.selectTarget('fight');
+  App.executeCombatIntent('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
   App.executeActionOnTarget('fight', 'enemy-ally');
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
@@ -7182,7 +7218,7 @@ test('Closing stats during combat restores the active party turn', () => {
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(elements.get('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should restore the combat turn title');
   assertContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should restore panel-first combat guidance');
-  assertContains(elements.get('party-content').innerHTML, "selectTarget('fight')", 'Closing combat stats should restore player combat actions on the active actor card');
+  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions on the active actor card');
   assertEqual(elements.get('scene-actions').style.display, '', 'Closing combat stats should restore action bar display');
 });
 

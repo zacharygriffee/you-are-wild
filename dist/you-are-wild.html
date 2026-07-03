@@ -4929,23 +4929,23 @@ const WorldGen = (() => {
                     buttons.push(`<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
                 }
                 if (enemies.length > 0) {
-                    buttons.push(this._iconActionButton('fight', this._actionIcon('fight'), "event.stopPropagation();App.selectTarget('fight')", 'primary'));
-                    buttons.push(this._iconActionButton('flirt', this._actionIcon('flirt'), "event.stopPropagation();App.selectTarget('flirt')"));
-                    buttons.push(this._iconActionButton('feast', this._actionIcon('feast'), "event.stopPropagation();App.selectTarget('feast')"));
-                    buttons.push(this._iconActionButton('fuck', this._actionIcon('fuck'), "event.stopPropagation();App.selectTarget('fuck')"));
+                    buttons.push(this._iconActionButton('fight', this._actionIcon('fight'), "event.stopPropagation();App.executeCombatIntent('fight')", 'primary'));
+                    buttons.push(this._iconActionButton('flirt', this._actionIcon('flirt'), "event.stopPropagation();App.executeCombatIntent('flirt')"));
+                    buttons.push(this._iconActionButton('feast', this._actionIcon('feast'), "event.stopPropagation();App.executeCombatIntent('feast')"));
+                    buttons.push(this._iconActionButton('fuck', this._actionIcon('fuck'), "event.stopPropagation();App.executeCombatIntent('fuck')"));
                 }
                 if (allies.length > 0) {
-                    buttons.push(this._iconActionButton('feed', this._actionIcon('feed'), 'event.stopPropagation();App.executeFeedAction()'));
+                    buttons.push(this._iconActionButton('feed', this._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')"));
                 }
                 if (enemies.length > 0) {
-                    buttons.push(this._iconActionButton('sync', '👥', 'event.stopPropagation();App.showSyncMenu()'));
+                    buttons.push(this._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')"));
                     const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
-                    buttons.push(`<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.moveCombatRow()">↕️ ${moveRowLabel}</button>`);
+                    buttons.push(`<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
                 }
                 if (actor?.name === this.player?.name) {
-                    buttons.push(this._iconActionButton('flee', this._actionIcon('flee'), 'event.stopPropagation();App.attemptFlee()'));
+                    buttons.push(this._iconActionButton('flee', this._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')"));
                 } else {
-                    buttons.push(this._iconActionButton('skip', '', 'event.stopPropagation();App.nextTurn()'));
+                    buttons.push(this._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')"));
                 }
                 if (buttons.length === 0) return '';
                 const label = this._escapeHtml(this._label('combat.panelActions', 'Combat actions'));
@@ -10073,6 +10073,16 @@ const WorldGen = (() => {
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name);
                 const available = this._getAvailableSubActions('feed', actor, null);
                 const validSubs = available.filter(s => s.available);
+                if (allies.some(ally => ally.CPun < ally.MPun) && !validSubs.some(sub => sub.id === 'heal')) {
+                    const healDef = this.SUB_ACTIONS.feed && this.SUB_ACTIONS.feed.heal;
+                    validSubs.unshift({
+                        id: 'heal',
+                        label: this._getActionLabel('feed', 'heal'),
+                        icon: healDef?.icon || '',
+                        available: true,
+                        setting: healDef?.setting || null
+                    });
+                }
                 if (validSubs.length === 0) {
                     this.log.push({ text: this._label('feed.noOptions', 'No feed options available right now.'), type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
@@ -13460,17 +13470,55 @@ const WorldGen = (() => {
             },
             skipTutorial() { this.closeTutorial(); },
             continueLastGame() { this.loadLastPlayed(); },
-            combatAction(action) {
-                if (!this.combatState.active) { this.log.push({ text: this._label('combat.notInCombat', 'Not in combat!'), type: 'combat' }); this.renderLog(); return; }
-                if (this.combatState.processing) { this.log.push({ text: this._label('combat.waitForTurn', 'Wait for your turn!'), type: 'combat' }); this.renderLog(); return; }
+            executeCombatIntent(action, actor = this.activeActor || this._currentCombatActor()) {
+                if (!this.combatState.active) {
+                    this.log.push({ text: this._label('combat.notInCombat', 'Not in combat!'), type: 'combat' });
+                    this.renderLog();
+                    return false;
+                }
+                if (this.combatState.processing) {
+                    this.log.push({ text: this._label('combat.waitForTurn', 'Wait for your turn!'), type: 'combat' });
+                    this.renderLog();
+                    return false;
+                }
                 const currentEntry = this.combatState.turnQueue[this.combatState.currentTurn];
                 const current = currentEntry ? (currentEntry.unit || currentEntry) : null;
-                if (!current || current.name !== this.player.name) { this.log.push({ text: this._label('combat.notYourTurn', 'Not your turn!'), type: 'combat' }); this.renderLog(); return; }
-                if (action === 'fight') this.selectTarget('fight');
-                else if (action === 'flirt') this.selectTarget('flirt');
-                else if (action === 'fuck') this.selectTarget('fuck');
-                else if (action === 'feed' || action === 'feast') this.selectTarget('feast');
-                else if (action === 'flee') this.attemptFlee();
+                const isCurrentActor = current && actor && this._unitSelectionId(current) === this._unitSelectionId(actor);
+                const isControllable = current && this.party.includes(current) && (current.name === this.player?.name || current.obedient !== false);
+                if (!isCurrentActor || !isControllable) {
+                    this.log.push({ text: this._label('combat.notYourTurn', 'Not your turn!'), type: 'combat' });
+                    this.renderLog();
+                    return false;
+                }
+                this.activeActor = current;
+                if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast') {
+                    this.selectTarget(action);
+                    return true;
+                }
+                if (action === 'feed') {
+                    this.executeFeedAction();
+                    return true;
+                }
+                if (action === 'sync') {
+                    this.showSyncMenu();
+                    return true;
+                }
+                if (action === 'moveRow') {
+                    this.moveCombatRow();
+                    return true;
+                }
+                if (action === 'flee' && current.name === this.player?.name) {
+                    this.attemptFlee();
+                    return true;
+                }
+                if (action === 'skip') {
+                    this.nextTurn();
+                    return true;
+                }
+                return false;
+            },
+            combatAction(action) {
+                return this.executeCombatIntent(action, this.activeActor || this.player);
             },
             togglePanel(p) {
                 const panel = document.getElementById('panel-' + p);

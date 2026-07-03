@@ -1499,7 +1499,42 @@ test('Sync failure and submissive recruit prompts localize', () => {
   recruitCase.App.nextTurn = function() {};
   recruitCase.App.updateLanguage('es');
   recruitCase.App.executeActionAgainstTarget('fuck', seducer, target);
-  assertContains(recruitCase.confirmations[0], 'Mouse esta sumiso. Reclutarlo para tu grupo?', 'Submissive recruitment confirmation should localize');
+  assertEqual(recruitCase.confirmations.length, 0, 'Submissive recruitment should not call the browser-native confirm dialog');
+  assert(recruitCase.App.pendingConfirm, 'Submissive recruitment should open an in-app confirmation dialog');
+  assertEqual(recruitCase.App.pendingConfirm.message, 'Mouse esta sumiso. Reclutarlo para tu grupo?', 'Submissive recruitment confirmation should localize');
+  assertContains(recruitCase.body.innerHTML, 'role="dialog"', 'Submissive recruitment confirmation should render an in-app modal dialog');
+  recruitCase.App.resolveConfirmDialog(false);
+  assertEqual(recruitCase.App.pendingConfirm, null, 'Cancelling submissive recruitment should clear pending confirmation state');
+  assertEqual(recruitCase.App.party.length, 1, 'Cancelled submissive recruitment should not add target to party');
+
+  const approveRecruitCase = loadAppForCombat(() => 0, { confirm: true });
+  const approveSeducer = makeUnit('You', { Fuck: 80, Flir: 80 });
+  const approveTarget = makeUnit('Mouse', { disposition: approveRecruitCase.App.DISPOSITION.ENEMY, CPle: 79, MPle: 100, wis: 1 });
+  approveRecruitCase.App.player = approveSeducer;
+  approveRecruitCase.App.party = [approveSeducer];
+  approveRecruitCase.App.creatures = [approveTarget];
+  approveRecruitCase.App.combatState.active = true;
+  approveRecruitCase.App.nextTurn = function() {};
+  approveRecruitCase.App.executeActionAgainstTarget('fuck', approveSeducer, approveTarget);
+  assertEqual(approveRecruitCase.confirmations.length, 0, 'Approved submissive recruitment should not call the browser-native confirm dialog');
+  assert(approveRecruitCase.App.pendingConfirm, 'Approved submissive recruitment should open an in-app confirmation dialog');
+  approveRecruitCase.App.resolveConfirmDialog(true);
+  assertEqual(approveRecruitCase.App.pendingConfirm, null, 'Approved submissive recruitment should clear pending confirmation state');
+  assert(approveRecruitCase.App.party.some(unit => unit.name === 'Mouse'), 'Approved submissive recruitment should add target to party');
+
+  const syncRecruitCase = loadAppForCombat(() => 0, { confirm: false });
+  const syncSeducer = makeUnit('You', { Fuck: 100, Flir: 100 });
+  const syncTarget = makeUnit('Mouse', { disposition: syncRecruitCase.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+  syncRecruitCase.App.player = syncSeducer;
+  syncRecruitCase.App.party = [syncSeducer];
+  syncRecruitCase.App.creatures = [syncTarget];
+  syncRecruitCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [], syncActions: [] };
+  syncRecruitCase.App.nextTurn = function() {};
+  syncRecruitCase.App.updateLanguage('es');
+  syncRecruitCase.App._resolveSyncAction({ type: 'sync_fuck', participants: [syncSeducer], target: syncTarget, resolved: false, round: 1 });
+  assertEqual(syncRecruitCase.confirmations.length, 0, 'Sync submissive recruitment should not call the browser-native confirm dialog');
+  assert(syncRecruitCase.App.pendingConfirm, 'Sync submissive recruitment should open an in-app confirmation dialog');
+  assertEqual(syncRecruitCase.App.pendingConfirm.message, 'Mouse esta sumiso. Reclutarlo para tu grupo?', 'Sync submissive recruitment confirmation should localize');
 });
 
 test('Sync action menus localize visible and accessible labels', () => {

@@ -3105,9 +3105,7 @@
                                 // Offer recruitment if not in auto-AI mode
                                 if (actor.name === this.player?.name) {
                                     setTimeout(() => {
-                                        if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }))) {
-                                            this.recruitCreature(target);
-                                        }
+                                        this._confirmRecruitCreature(target);
                                     }, 100);
                                 }
                             }
@@ -3560,9 +3558,7 @@
                             }
                             // Offer recruitment
                             setTimeout(() => {
-                                if (confirm(this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: sync.target.name }))) {
-                                    this.recruitCreature(sync.target);
-                                }
+                                this._confirmRecruitCreature(sync.target);
                             }, 100);
                         } else if (totalCharm > resist) {
                             sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
@@ -5350,6 +5346,17 @@
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target || target.disposition !== this.DISPOSITION.FRIENDLY) return false;
                 return this.recruitCreature(target, this._getExplorationActor());
+            },
+
+            _confirmRecruitCreature(target) {
+                if (!target) return false;
+                return this.showConfirmDialog({
+                    title: this._label('action.recruit', 'Recruit'),
+                    message: this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }),
+                    confirmLabel: this._label('action.recruit', 'Recruit'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    onConfirm: () => this.recruitCreature(target)
+                });
             },
 
             recruitCreature(target, actor = this.player, options = {}) {

@@ -8701,10 +8701,23 @@
                 const saveTime = this._getSaveTime(slotName);
                 const hasData = parseInt(saveTime) > 0;
                 const slotLabel = this._slotDisplayLabel(slotName);
-                if (hasData && !confirm(this._label('save.confirm.newGameOverwrite', 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', { slot: slotLabel }))) return;
+                if (hasData) {
+                    return this.showConfirmDialog({
+                        title: this._label('save.newTitle', 'Choose New Game Slot'),
+                        message: this._label('save.confirm.newGameOverwrite', 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', { slot: slotLabel }),
+                        confirmLabel: this._label('save.overwriteSlot', 'Overwrite Slot'),
+                        cancelLabel: this._label('ui.cancel', 'Cancel'),
+                        danger: true,
+                        onConfirm: () => this._startNewGameInSlot(slotName)
+                    });
+                }
+                return this._startNewGameInSlot(slotName);
+            },
+            _startNewGameInSlot(slotName) {
                 this.activeSlot = slotName;
                 this._setStoredValue('lastSlot', slotName);
                 this.showScreen('create');
+                return true;
             },
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 const lastSlot = this._getStoredValue('lastSlot') || 'slot1';

@@ -7582,6 +7582,9 @@ test('New-game slot takeover warns before overwriting occupied slots', () => {
   cancelled.storage.set('yaw-save-time-slot2', '1710000000000');
   cancelled.App.activeSlot = 'slot1';
   cancelled.App.beginNewGameInSlot('slot2');
+  assertEqual(cancelled.confirmations.length, 0, 'Occupied-slot new game should use the in-app modal instead of native confirm');
+  assertEqual(cancelled.App.pendingConfirm.message, 'Start a new game in Slot 2? This will overwrite that save slot. This cannot be undone.', 'Occupied-slot new game warning should name the selected slot');
+  cancelled.App.resolveConfirmDialog(false);
   assertEqual(cancelled.App.activeSlot, 'slot1', 'Cancelled occupied-slot takeover should keep the current active slot');
   assertEqual(cancelled.storage.get('yaw-last-slot'), undefined, 'Cancelled occupied-slot takeover should not update lastSlot');
   assertNotContains(cancelled.document.getElementById('screen-create').style.display || '', 'flex', 'Cancelled occupied-slot takeover should not open character creation');
@@ -7590,6 +7593,7 @@ test('New-game slot takeover warns before overwriting occupied slots', () => {
   approved.storage.set('yaw-save-time-slot2', '1710000000000');
   approved.App.activeSlot = 'slot1';
   approved.App.beginNewGameInSlot('slot2');
+  approved.App.resolveConfirmDialog(true);
   assertEqual(approved.App.activeSlot, 'slot2', 'Approved occupied-slot takeover should select that slot for the new run');
   assertEqual(approved.storage.get('yaw-last-slot'), 'slot2', 'Approved occupied-slot takeover should persist the chosen slot');
   assertEqual(approved.document.getElementById('screen-create').style.display, 'flex', 'Approved occupied-slot takeover should open character creation');
@@ -7600,7 +7604,8 @@ test('Save slot destructive confirmations localize', async () => {
   newRun.storage.set('yaw-save-time-slot2', '1710000000000');
   newRun.App.updateLanguage('es');
   newRun.App.beginNewGameInSlot('slot2');
-  assertEqual(newRun.confirmations[0], 'Iniciar partida nueva en Slot 2? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'New-run overwrite warning should use active locale and display slot label');
+  assertEqual(newRun.confirmations.length, 0, 'New-run overwrite warning should use the in-app modal instead of native confirm');
+  assertEqual(newRun.App.pendingConfirm.message, 'Iniciar partida nueva en Slot 2? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'New-run overwrite warning should use active locale and display slot label');
 
   const manualSave = loadAppForCombat(() => 0.5, { confirm: false });
   manualSave.storage.set('yaw-save-time-slot3', '1710000000000');

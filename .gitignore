@@ -5,6 +5,7 @@ npm-debug.log*
 *.temp
 .cache/
 .serve/
+dist/
 
 # Local debug exports
 combat-log-*.txt

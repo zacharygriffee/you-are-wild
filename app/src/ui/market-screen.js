@@ -124,6 +124,8 @@ const MODULE_MARKETPLACE = {
             const sortLabel = this.escapeHtml(this.label('market.sort', 'Sort modules'));
             const staffPicks = this.escapeHtml(this.label('market.staffPicks', 'Staff Picks'));
             const installLabel = this.escapeHtml(this.label('market.install', 'Install'));
+            const closeLabel = this.escapeHtml(this.label('ui.close', 'Close'));
+            const closeTitle = this.escapeHtml(this.label('market.closeTitle', 'Close marketplace'));
             const staffTitle = this.escapeHtml(featured.name || 'Desert of Whispers');
             const staffDesc = this.escapeHtml(this.label('market.staffPickDescription', 'Our most popular biome expansion. Navigate scorching sands, discover hidden oases, and survive encounters with legendary sand-wyrms.'));
             const downloadsText = this.escapeHtml(this.label('market.downloadsCount', '{count} downloads', { count: '15k+' }));
@@ -144,6 +146,9 @@ const MODULE_MARKETPLACE = {
                             </button>
                             <button class="nav-btn" title="${create}" aria-label="${create}" onclick="MODULE_MARKETPLACE.ui.showCreate()">
                                 ✏️ ${create}
+                            </button>
+                            <button class="nav-btn" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
+                                ${closeLabel}
                             </button>
                         </div>
                     </div>

@@ -541,6 +541,8 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
   assertContains(marketScreenContent, "this.label('market.title'", 'Marketplace title should localize');
   assertContains(marketScreenContent, "this.label('market.search'", 'Marketplace search placeholder should localize');
   assertContains(marketScreenContent, "this.label('market.installModule'", 'Marketplace install button title should localize');
+  assertContains(marketScreenContent, "this.label('market.closeTitle'", 'Marketplace dynamic close title should localize');
+  assertContains(marketScreenContent, 'onclick="returnToGame()"', 'Marketplace dynamic view should keep a close button after rerender');
   assertContains(marketScreenContent, "this.label('market.downloading'", 'Marketplace download log should localize');
   assertContains(marketScreenContent, "this.label('market.createWizardPlaceholder'", 'Marketplace create placeholder should localize');
   assertContains(marketScreenContent, 'const featured = MODULE_MARKETPLACE.featuredModules[0] || {}', 'Marketplace staff pick should read root featured module data');
@@ -644,10 +646,12 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle party panel"', 'Party nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
+  assertContains(appContent, "showMarketScreen() { this.showScreen('market'); }", 'Market helper should open the overlay screen, not only render hidden content');
   assertContains(settingsNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize accessible label');
   assertContains(settingsNavContent, "setAttribute('data-i18n-title', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize title');
   assertContains(marketNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle')", 'Injected market nav button should localize accessible label');
   assertContains(marketNavContent, "setAttribute('data-i18n-title', 'ui.menu.marketTitle')", 'Injected market nav button should localize title');
+  assertContains(marketNavContent, "marketBtn.onclick = () => App.showScreen('market')", 'Injected market nav should use the shared overlay route');
   assertContains(modUiContent, "setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle')", 'Injected mods nav button should localize accessible label');
   assertContains(modUiContent, "setAttribute('data-i18n-title', 'ui.menu.modsTitle')", 'Injected mods nav button should localize title');
   assertContains(template, 'aria-label="Expand or collapse party cards"', 'Party panel expand control should expose accessible label');

@@ -8514,7 +8514,7 @@
                 }
             },
             showModScreen() { ModUI.showModScreen(); },
-            showMarketScreen() { MODULE_MARKETPLACE.ui.showMarketplace(); },
+            showMarketScreen() { this.showScreen('market'); },
             showTutorial() {
                 this.tutorialStep = 0;
                 const overlay = document.getElementById('tutorial-overlay');

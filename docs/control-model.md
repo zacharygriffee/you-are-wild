@@ -15,11 +15,13 @@ This document defines the UI-safe control model for traversal, actor selection, 
 
 Traversal mode owns movement through the world and structure interiors.
 
-- The primary traversal surface is the 3x3 play surface.
-- The center tile is the current location and owns immediate semantic context: biome, terrain, structure, tile event feed, items, POIs, present creatures, party-relevant state, and available local affordances.
-- The eight surrounding cells preview adjacent reachable directions and act as movement targets.
-- The display map is a deliberate review and planning surface, not the routine movement control. It can show discovered territory, route hints, quest focus, roads, bridges, and POIs without becoming the default movement loop.
+- The primary traversal surface is the 3x3 Play surface.
+- The Play surface is also the primary semantic context surface: the center tile is the current location and owns biome, terrain, structure, tile-scoped event feed, items, POIs, present creatures, party-relevant state, and available local affordances.
+- The eight surrounding 3x3 cells preview adjacent reachable directions and act as normal movement affordances, including corners when diagonal traversal is valid for the current world/interior rules.
+- The Display map is a deliberate review and planning surface, not the routine traversal control. It can show discovered territory, route hints, quest focus, roads, bridges, and POIs without becoming the default movement loop.
+- Expanded map mode remains separate from routine traversal. It may open through an explicit expand control, long press, pinch zoom, or later hotkey, but returning to ordinary movement should bring the player back to the 3x3 Play surface.
 - Desktop and mobile use the same concept. Wider desktop layouts may show more state, but the command model stays aligned with touch-first traversal.
+- Desktop hotkeys are additive direction shortcuts: WASD, arrow keys, or numpad-style movement may trigger the same direction choices exposed by the surrounding 3x3 tiles, without creating a separate desktop-only traversal model.
 - Combat can temporarily reduce traversal affordances. If the whole party flees, combat returns to directional escape selection on the play surface.
 
 ### Selection mode
@@ -59,8 +61,9 @@ Inspection mode owns detail views and review surfaces.
 ### Play surface
 
 - Owns traversal and the current tile's immediate playable context.
-- Shows the tile-scoped event feed for recent local events while the durable log remains available separately.
+- Shows the tile-scoped event feed for recent local events. The tile-scoped event feed should clear on movement to a different tile, while the existing combat/debug log remains durable history available separately.
 - Hosts movement affordances, local item/POI affordances, and immediate creature context.
+- Supports dumb-state-machine event generation as the default viable implementation path. LLM-assisted semantics, summaries, or narration are optional future presentation layers and must not be required for core gameplay.
 
 ### Cards and chips
 

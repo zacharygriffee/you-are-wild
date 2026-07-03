@@ -5932,7 +5932,14 @@
                 return Boolean(def.rare || item?.rare || (item?.price || 0) >= 50);
             },
 
-            buyFromMerchant(targetId, stockIndex) {
+            _cancelMerchantPurchase(targetId, itemName) {
+                this.log.push({ text: this._label('trade.purchaseCancelled', 'Purchase cancelled: {name}.', { name: itemName }), type: 'discovery' });
+                this.renderLog();
+                this.showTrade(targetId);
+                return false;
+            },
+
+            _completeMerchantPurchase(targetId, stockIndex) {
                 const merchant = this._findMerchantById(targetId);
                 const item = merchant?.stock?.[stockIndex];
                 if (!merchant || !item || item.qty <= 0) return;
@@ -5948,12 +5955,6 @@
                     this.showTrade(targetId);
                     return;
                 }
-                if (this._requiresPurchaseConfirmation(item) && !confirm(this._label('trade.confirmBuy', 'Buy {name} for {price} gold?', { name: item.name, price: item.price }))) {
-                    this.log.push({ text: this._label('trade.purchaseCancelled', 'Purchase cancelled: {name}.', { name: item.name }), type: 'discovery' });
-                    this.renderLog();
-                    this.showTrade(targetId);
-                    return;
-                }
                 this.player.gold -= item.price;
                 item.qty -= 1;
                 this.inventory.push({ id: `buy_${this._stableIdPart(targetId, 'merchant')}_${this._stableIdPart(item.name)}_${this.inventory.length}`, name: item.name });
@@ -5962,6 +5963,24 @@
                 this.renderParty();
                 this.showTrade(targetId);
                 this.autoSave();
+            },
+
+            buyFromMerchant(targetId, stockIndex) {
+                const merchant = this._findMerchantById(targetId);
+                const item = merchant?.stock?.[stockIndex];
+                if (!merchant || !item || item.qty <= 0) return;
+                if (this._requiresPurchaseConfirmation(item)) {
+                    const itemName = item.name;
+                    return this.showConfirmDialog({
+                        title: this._label('trade.buy', 'Buy'),
+                        message: this._label('trade.confirmBuy', 'Buy {name} for {price} gold?', { name: item.name, price: item.price }),
+                        confirmLabel: this._label('trade.buy', 'Buy'),
+                        cancelLabel: this._label('ui.cancel', 'Cancel'),
+                        onCancel: () => this._cancelMerchantPurchase(targetId, itemName),
+                        onConfirm: () => this._completeMerchantPurchase(targetId, stockIndex)
+                    });
+                }
+                return this._completeMerchantPurchase(targetId, stockIndex);
             },
 
             sellToMerchant(targetId, itemId) {
@@ -8988,7 +9007,9 @@
                 const message = String(options.message || '');
                 if (!message) return false;
                 if (typeof document === 'undefined' || !document.body) {
-                    if (typeof confirm === 'function' && !confirm(message)) return false;
+                    if (typeof confirm === 'function' && !confirm(message)) {
+                        return typeof options.onCancel === 'function' ? options.onCancel() : false;
+                    }
                     return typeof options.onConfirm === 'function' ? options.onConfirm() : true;
                 }
                 this.closeConfirmDialog({ restoreFocus: false });
@@ -9003,7 +9024,8 @@
                     confirmLabel,
                     cancelLabel,
                     danger: Boolean(options.danger),
-                    onConfirm: options.onConfirm || null
+                    onConfirm: options.onConfirm || null,
+                    onCancel: options.onCancel || null
                 };
                 const dangerClass = options.danger ? ' danger' : '';
                 const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message"><div class="app-confirm-card"><h3 id="app-confirm-title">${this._escapeHtml(title)}</h3><p id="app-confirm-message">${this._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveConfirmDialog(false)">${this._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" onclick="App.resolveConfirmDialog(true)">${this._escapeHtml(confirmLabel)}</button></div></div></div>`;
@@ -9015,7 +9037,8 @@
             resolveConfirmDialog(confirmed) {
                 const pending = this.pendingConfirm;
                 this.closeConfirmDialog();
-                if (!pending || !confirmed) return false;
+                if (!pending) return false;
+                if (!confirmed) return typeof pending.onCancel === 'function' ? pending.onCancel() : false;
                 return typeof pending.onConfirm === 'function' ? pending.onConfirm() : true;
             },
             closeConfirmDialog(options = {}) {

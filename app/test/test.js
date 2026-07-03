@@ -6328,6 +6328,8 @@ test('Merchant trade supports item categories and sorted stock without index dri
   html = elements.get('scene-description').innerHTML;
   assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
   App.buyFromMerchant('trader-1', 2);
+  assert(App.pendingConfirm, 'Buying expensive sorted stock should open confirmation before purchase');
+  App.resolveConfirmDialog(true);
   assert(App.inventory.some(item => item.name === 'Hide Armor'), 'Buying after sorted render should still use original stock index');
 });
 
@@ -6389,7 +6391,12 @@ test('Expensive merchant purchases require confirmation', () => {
   cancelled.App.creatures = [merchant];
   cancelled.App.updateLanguage('es');
   cancelled.App.buyFromMerchant('trader-1', 0);
-  assertEqual(cancelled.confirmations[0], 'Comprar Hide Armor por 60 de oro?', 'Expensive purchase confirmation should localize');
+  assertEqual(cancelled.confirmations.length, 0, 'Expensive purchase should not call the browser-native confirm dialog');
+  assert(cancelled.App.pendingConfirm, 'Expensive purchase should open an in-app confirmation dialog');
+  assertEqual(cancelled.App.pendingConfirm.message, 'Comprar Hide Armor por 60 de oro?', 'Expensive purchase confirmation should localize');
+  assertContains(cancelled.body.innerHTML, 'role="dialog"', 'Expensive purchase confirmation should render an in-app modal dialog');
+  cancelled.App.resolveConfirmDialog(false);
+  assertEqual(cancelled.App.pendingConfirm, null, 'Cancelling expensive purchase should clear pending confirmation state');
   assertEqual(cancelled.App.player.gold, 100, 'Cancelled expensive purchase should not spend gold');
   assertEqual(merchant.stock[0].qty, 1, 'Cancelled expensive purchase should not reduce stock');
   assert(!cancelled.App.inventory.some(item => item.name === 'Hide Armor'), 'Cancelled expensive purchase should not add item');
@@ -6405,6 +6412,10 @@ test('Expensive merchant purchases require confirmation', () => {
   });
   approved.App.creatures = [approvedMerchant];
   approved.App.buyFromMerchant('trader-1', 0);
+  assertEqual(approved.confirmations.length, 0, 'Approved expensive purchase should not call the browser-native confirm dialog');
+  assert(approved.App.pendingConfirm, 'Approved expensive purchase should open an in-app confirmation dialog');
+  approved.App.resolveConfirmDialog(true);
+  assertEqual(approved.App.pendingConfirm, null, 'Approved expensive purchase should clear pending confirmation state');
   assertEqual(approved.App.player.gold, 40, 'Confirmed expensive purchase should spend gold');
   assertEqual(approvedMerchant.stock[0].qty, 0, 'Confirmed expensive purchase should reduce stock');
   assert(approved.App.inventory.some(item => item.name === 'Hide Armor'), 'Confirmed expensive purchase should add item');

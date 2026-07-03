@@ -7659,14 +7659,22 @@ test('Save slot status alerts use display slot labels', async () => {
 
 test('Settings destructive confirmations localize', () => {
   const clearAll = loadAppForCombat(() => 0.5, { confirm: false });
+  clearAll.storage.set('yaw-last-slot', 'slot3');
   clearAll.App.updateLanguage('es');
   clearAll.App.clearAllData();
-  assertEqual(clearAll.confirmations[0], 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'Clear-all data warning should use active locale');
+  assertEqual(clearAll.confirmations.length, 0, 'Clear-all data should use the in-app modal instead of native confirm');
+  assertEqual(clearAll.App.pendingConfirm.message, 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'Clear-all data warning should use active locale');
+  clearAll.App.resolveConfirmDialog(false);
+  assertEqual(clearAll.storage.get('yaw-last-slot'), 'slot3', 'Cancelled clear-all data should not remove saved state');
 
   const deleteAll = loadAppForCombat(() => 0.5, { confirm: false });
+  deleteAll.storage.set('yaw-last-slot', 'slot2');
   deleteAll.App.updateLanguage('es');
   deleteAll.App.deleteAllSaves();
-  assertEqual(deleteAll.confirmations[0], 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'Delete-all saves warning should use active locale');
+  assertEqual(deleteAll.confirmations.length, 0, 'Delete-all saves should use the in-app modal instead of native confirm');
+  assertEqual(deleteAll.App.pendingConfirm.message, 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'Delete-all saves warning should use active locale');
+  deleteAll.App.resolveConfirmDialog(false);
+  assertEqual(deleteAll.storage.get('yaw-last-slot'), 'slot2', 'Cancelled delete-all saves should not remove saved state');
 });
 
 test('Incompatible save recovery prompt localizes and scopes actions', async () => {

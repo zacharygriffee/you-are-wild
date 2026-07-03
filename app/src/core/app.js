@@ -8419,7 +8419,16 @@
                 this.endCombat(true);
             },
             clearAllData() {
-                if (!confirm(this._label('settings.confirmClearAllData', 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?'))) return;
+                return this.showConfirmDialog({
+                    title: this._label('settings.title', 'Settings'),
+                    message: this._label('settings.confirmClearAllData', 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?'),
+                    confirmLabel: this._label('settings.clearAllSaves', 'Clear All Saves'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    danger: true,
+                    onConfirm: () => this._clearAllDataConfirmed()
+                });
+            },
+            _clearAllDataConfirmed() {
                 // Delete all saves from IndexedDB
                 for (let i = 1; i <= 5; i++) {
                     this._dbDelete('saves', 'slot' + i).catch(() => {});
@@ -8451,7 +8460,16 @@
                 location.reload();
             },
             async deleteAllSaves() {
-                if (!confirm(this._label('save.confirmDeleteAll', 'Delete ALL save data? This cannot be undone!'))) return;
+                return this.showConfirmDialog({
+                    title: this._label('settings.clearAllSaves', 'Clear All Saves'),
+                    message: this._label('save.confirmDeleteAll', 'Delete ALL save data? This cannot be undone!'),
+                    confirmLabel: this._label('settings.clearAllSaves', 'Clear All Saves'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    danger: true,
+                    onConfirm: () => this._deleteAllSavesConfirmed()
+                });
+            },
+            async _deleteAllSavesConfirmed() {
                 try {
                     for (let i = 1; i <= 5; i++) {
                         await this._dbDelete('saves', 'slot' + i);

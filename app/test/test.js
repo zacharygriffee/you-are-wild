@@ -2944,6 +2944,31 @@ test('Single selected party member can be fed to another full-health party membe
   assertEqual(App.party.includes(prey), false, 'Fed party member should be contained rather than remain in party');
 });
 
+test('Group action role summary identifies consumer prey and helpers', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const consumer = makeUnit('Consumer', { id: 'consumer-1', CPun: 100, MPun: 100, size: 6, appetite: 6 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 2 });
+  App.player = player;
+  App.party = [player, consumer, prey];
+  const feedSummary = App._groupActionRoleSummary('feed', consumer, [player, prey]);
+  assertEqual(feedSummary.consumer.name, 'Consumer', 'Group feed summary should identify the recipient/consumer');
+  assertEqual(feedSummary.preyNames.join(','), 'Prey', 'Group feed summary should identify selected party prey');
+  assertEqual(feedSummary.helperNames.join(','), 'You', 'Group feed summary should identify player assistance');
+  App.explorationActorIds = ['player-1', 'prey-1'];
+  App.outsideActionForParty('feed', 1);
+  assertContains(App.log[App.log.length - 1].text, 'Consumer: Consumer', 'Group feed log should name the consumer role');
+  assertContains(App.log[App.log.length - 1].text, 'Prey: Prey', 'Group feed log should name the prey role');
+  assertContains(App.log[App.log.length - 1].text, 'Helpers: You', 'Group feed log should name helper roles');
+
+  const smallHelper = makeUnit('Small Helper', { id: 'small-helper', size: 1, appetite: 0, Feas: 50 });
+  const primary = makeUnit('Primary', { id: 'primary-1', size: 6, appetite: 6, Feas: 30 });
+  const feastTarget = makeUnit('Feast Target', { id: 'feast-target', size: 4, Flee: 1 });
+  const feastSummary = App._groupActionRoleSummary('feast', feastTarget, [smallHelper, primary], { subAction: 'swallow' });
+  assertEqual(feastSummary.consumer.name, 'Primary', 'Group feast summary should identify the selected primary consumer that can fit the target');
+  assertEqual(feastSummary.helperNames.join(','), 'Small Helper', 'Group feast summary should identify assisting actors');
+});
+
 test('Group feed respects explicit heal sub-action instead of consuming selected party members', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
@@ -7614,14 +7639,36 @@ test('Save slot destructive confirmations localize', async () => {
   manualSave.App.party = [manualSave.App.player];
   manualSave.App.activeSlot = 'slot1';
   manualSave.App.persistWorldStateToMapStore = async () => {};
-  manualSave.App._dbPut = async () => {};
+  const manualPuts = [];
+  manualSave.App._dbPut = async (_store, key) => { manualPuts.push(key); };
   await manualSave.App.saveToSlot('slot3');
-  assertEqual(manualSave.confirmations[0], 'Sobrescribir Slot 3 con la partida actual? Esta accion no se puede deshacer.', 'Manual overwrite warning should use active locale and display slot label');
+  assertEqual(manualSave.confirmations.length, 0, 'Manual overwrite warning should use the in-app modal instead of native confirm');
+  assertEqual(manualSave.App.pendingConfirm.message, 'Sobrescribir Slot 3 con la partida actual? Esta accion no se puede deshacer.', 'Manual overwrite warning should use active locale and display slot label');
+  manualSave.App.resolveConfirmDialog(false);
+  assertEqual(manualPuts.length, 0, 'Cancelled manual overwrite should not write the occupied slot');
+
+  const approvedSave = loadAppForCombat(() => 0.5, { confirm: false });
+  approvedSave.storage.set('yaw-save-time-slot3', '1710000000000');
+  approvedSave.App.player = makeUnit('You');
+  approvedSave.App.party = [approvedSave.App.player];
+  approvedSave.App.activeSlot = 'slot1';
+  approvedSave.App.persistWorldStateToMapStore = async () => {};
+  const approvedPuts = [];
+  approvedSave.App._dbPut = async (_store, key) => { approvedPuts.push(key); };
+  await approvedSave.App.saveToSlot('slot3');
+  await approvedSave.App.resolveConfirmDialog(true);
+  assertEqual(approvedPuts.join(','), 'slot3', 'Approved manual overwrite should write the selected occupied slot');
+  assertEqual(approvedSave.App.activeSlot, 'slot3', 'Approved manual overwrite should make the target slot active');
 
   const deleteSlot = loadAppForCombat(() => 0.5, { confirm: false });
   deleteSlot.App.updateLanguage('es');
+  const deleteAttempts = [];
+  deleteSlot.App._dbDelete = async (_store, key) => { deleteAttempts.push(key); };
   await deleteSlot.App.deleteSlot('slot4');
-  assertEqual(deleteSlot.confirmations[0], 'Borrar el slot Slot 4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale and display slot label');
+  assertEqual(deleteSlot.confirmations.length, 0, 'Delete warning should use the in-app modal instead of native confirm');
+  assertEqual(deleteSlot.App.pendingConfirm.message, 'Borrar el slot Slot 4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale and display slot label');
+  deleteSlot.App.resolveConfirmDialog(false);
+  assertEqual(deleteAttempts.length, 0, 'Cancelled slot delete should not remove the selected slot');
 });
 
 test('Save slot status alerts use display slot labels', async () => {
@@ -7695,7 +7742,9 @@ test('Incompatible save recovery prompt localizes and scopes actions', async () 
   deleteRecovery.storage.set('yaw-save-time-slot3', '1710000000000');
   const deleteResult = await deleteRecovery.App.loadFromSlot('slot3');
   assertEqual(deleteResult, false, 'Corrupted save recovery should not continue loading');
-  assertEqual(deleteRecovery.prompts[0], 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'Recovery prompt should use active locale');
+  assertEqual(deleteRecovery.prompts.length, 0, 'Recovery should use the in-app modal instead of native prompt');
+  assertEqual(deleteRecovery.App.pendingSaveRecovery.message, 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'Recovery prompt copy should use active locale');
+  await deleteRecovery.App.resolveSaveRecoveryDialog('delete');
   assertEqual(deleted.join(','), 'slot3', 'Delete recovery should remove only the selected corrupted slot');
   assertEqual(deleteRecovery.storage.has('yaw-save-time-slot3'), false, 'Delete recovery should remove selected slot timestamp');
   assertEqual(deleteRecovery.alerts[0], 'Partida borrada.', 'Delete recovery alert should localize');
@@ -7711,9 +7760,23 @@ test('Incompatible save recovery prompt localizes and scopes actions', async () 
   backupRecovery.storage.set('yaw-save-time-slot4', '1710000000000');
   const backupResult = await backupRecovery.App.loadFromSlot('slot4');
   assertEqual(backupResult, false, 'Backup recovery should not continue loading');
+  await backupRecovery.App.resolveSaveRecoveryDialog('backup');
   assertEqual(backupDeletes.length, 0, 'Backup recovery should preserve the corrupted save slot');
   assertEqual(backupRecovery.storage.get('yaw-save-time-slot4'), '1710000000000', 'Backup recovery should keep selected slot timestamp');
   assertEqual(backupRecovery.alerts[0], 'Respaldo descargado. La partida queda intacta.', 'Backup recovery alert should localize');
+
+  const cancelRecovery = loadAppForCombat(() => 0.5, {
+    binary: { saveGame: () => new Uint8Array(), loadGame: () => { throw new Error('bad save'); } }
+  });
+  const cancelDeletes = [];
+  cancelRecovery.App._dbGet = async () => corruptedSave;
+  cancelRecovery.App._dbDelete = async (_store, key) => { cancelDeletes.push(key); };
+  cancelRecovery.storage.set('yaw-save-time-slot5', '1710000000000');
+  const cancelResult = await cancelRecovery.App.loadFromSlot('slot5');
+  assertEqual(cancelResult, false, 'Cancel recovery should not continue loading');
+  await cancelRecovery.App.resolveSaveRecoveryDialog('cancel');
+  assertEqual(cancelDeletes.length, 0, 'Cancel recovery should not delete the corrupted slot');
+  assertEqual(cancelRecovery.storage.get('yaw-save-time-slot5'), '1710000000000', 'Cancel recovery should keep the selected slot timestamp');
 });
 
 test('Delete save slot is scoped to one selected slot', async () => {
@@ -7724,6 +7787,7 @@ test('Delete save slot is scoped to one selected slot', async () => {
   storage.set('yaw-save-time-slot3', '1720000000000');
   App.activeSlot = 'slot2';
   await App.deleteSlot('slot2');
+  await App.resolveConfirmDialog(true);
   assertEqual(deleted.join(','), 'slot2', 'Delete slot should remove only the selected slot from IndexedDB');
   assertEqual(storage.has('yaw-save-time-slot2'), false, 'Delete slot should remove only the selected slot timestamp');
   assertEqual(storage.get('yaw-save-time-slot3'), '1720000000000', 'Delete slot should leave other slot timestamps intact');
@@ -7739,6 +7803,7 @@ test('Deleting from new-game slot mode keeps the new-run flow active', async () 
   storage.set('yaw-save-time-slot2', '1710000000000');
   App.showNewGameManager();
   await App.deleteSlot('slot2');
+  await App.resolveConfirmDialog(true);
   const html = elements.get('save-manager').innerHTML;
   assertEqual(App.saveManagerMode, 'new', 'Delete refresh should preserve new-game slot mode');
   assertEqual(deleted.join(','), 'slot2', 'New-mode delete should still delete only the chosen slot');

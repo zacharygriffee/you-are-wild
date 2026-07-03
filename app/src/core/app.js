@@ -4407,9 +4407,8 @@
                 const actors = this._getExplorationActors();
                 const label = this._escapeHtml(this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
                 const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
-                const primaryActor = actors[0] || this.player;
-                const helperNames = actors.slice(1).map(actor => actor.name).join(', ');
                 const targetNames = targets.map(target => target.name).join(', ');
+                const summary = { primaryActor: actors[0] || this.player, helperNames: actors.slice(1).map(actor => actor.name) };
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
@@ -4423,8 +4422,8 @@
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
-                const primaryLine = primaryActor ? `<span class="selected-target-primary">${this._escapeHtml(this._label('target.primaryActor', 'Primary'))}: ${this._escapeHtml(primaryActor.name || 'You')}</span>` : '';
-                const helperLine = helperNames ? `<span class="selected-target-helpers">${this._escapeHtml(this._label('target.helpers', 'Helpers'))}: ${this._escapeHtml(helperNames)}</span>` : '';
+                const primaryLine = summary.primaryActor ? `<span class="selected-target-primary">${this._escapeHtml(this._label('target.primaryActor', 'Primary'))}: ${this._escapeHtml(summary.primaryActor.name || 'You')}</span>` : '';
+                const helperLine = summary.helperNames?.length ? `<span class="selected-target-helpers">${this._escapeHtml(this._label('target.helpers', 'Helpers'))}: ${this._escapeHtml(summary.helperNames.join(', '))}</span>` : '';
                 return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
             },
 
@@ -4720,6 +4719,68 @@
                 }) || livingActors[0] || null;
             },
 
+            _groupActionRoleSummary(action, target, actors = [], options = {}) {
+                const livingActors = (actors || []).filter(actor => actor && this._isLivingCreature(actor));
+                const selectedSubAction = options.subAction && this.SUB_ACTIONS[action]?.[options.subAction] ? options.subAction : null;
+                let primaryActor = livingActors[0] || this.player || null;
+                let helpers = livingActors.filter(actor => actor && actor !== primaryActor);
+                let recipient = null;
+                let consumer = null;
+                let prey = [];
+                if (action === 'feast' && target) {
+                    const shouldChew = selectedSubAction === 'chew' || (!selectedSubAction && this.settings.chewing);
+                    if (!shouldChew) {
+                        const selection = this._selectGroupFeastPrimary(livingActors, target);
+                        primaryActor = selection.primary || primaryActor;
+                        helpers = livingActors.filter(actor => actor && actor !== primaryActor);
+                        consumer = primaryActor;
+                    }
+                    prey = [target].filter(Boolean);
+                } else if (action === 'feed' && target) {
+                    if (selectedSubAction && !['heal', 'breastfeed'].includes(selectedSubAction)) {
+                        primaryActor = this._selectGroupFeedSubActionActor(selectedSubAction, target, livingActors) || primaryActor;
+                        helpers = livingActors.filter(actor => actor && actor !== primaryActor);
+                        recipient = target;
+                    } else if (this.party.includes(target)) {
+                        recipient = target;
+                        consumer = target;
+                        const candidates = livingActors.filter(actor => actor !== target);
+                        prey = candidates.filter(actor => actor !== this.player && !actor.mc);
+                        helpers = candidates.filter(actor => !prey.includes(actor));
+                        primaryActor = prey[0] || target;
+                    } else {
+                        recipient = target;
+                    }
+                } else {
+                    recipient = target || null;
+                }
+                const names = units => (units || []).filter(Boolean).map(unit => unit.name || 'Unknown');
+                return {
+                    action,
+                    subAction: selectedSubAction,
+                    primaryActor,
+                    helpers,
+                    targets: [target].filter(Boolean),
+                    recipient,
+                    consumer,
+                    prey,
+                    actorNames: names(livingActors),
+                    helperNames: names(helpers),
+                    targetNames: names([target].filter(Boolean)),
+                    preyNames: names(prey)
+                };
+            },
+
+            _groupRoleLine(summary = {}) {
+                const parts = [];
+                if (summary.primaryActor) parts.push(`${this._label('target.primaryActor', 'Primary')}: ${summary.primaryActor.name || 'Unknown'}`);
+                if (summary.consumer) parts.push(`${this._label('target.consumer', 'Consumer')}: ${summary.consumer.name || 'Unknown'}`);
+                if (summary.recipient && summary.recipient !== summary.consumer) parts.push(`${this._label('target.recipient', 'Recipient')}: ${summary.recipient.name || 'Unknown'}`);
+                if (summary.preyNames?.length) parts.push(`${this._label('target.prey', 'Prey')}: ${summary.preyNames.join(', ')}`);
+                if (summary.helperNames?.length) parts.push(`${this._label('target.helpers', 'Helpers')}: ${summary.helperNames.join(', ')}`);
+                return parts.join(' | ');
+            },
+
             outsideActionOnTargets(action, targets, actor = this._getExplorationActor(), options = {}) {
                 const targetList = (targets || []).filter(target => target && this._isLivingCreature(target));
                 if (targetList.length === 0) return false;
@@ -4990,6 +5051,7 @@
                                     ? this._label('group.feed.tendTogether', '{actors} tend {target} together, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount })
                                     : this._label('group.feed.tend', '{actors} tend {target}, restoring {amount} punishment.', { actors: names, target: target.name, amount: healAmount });
                             } else {
+                                const roleLine = this._groupRoleLine(this._groupActionRoleSummary('feed', target, livingActors, options));
                                 const texts = prey.map(actor => this._feedPartyMemberToConsumer(actor, target));
                                 if (helpers.length > 0) {
                                     const helperNames = helpers.map(actor => actor.name).join(', ');
@@ -4999,6 +5061,7 @@
                                         target: target.name
                                     }));
                                 }
+                                if (roleLine) texts.push(roleLine);
                                 result = texts.join(' ');
                             }
                         } else {
@@ -9113,6 +9176,64 @@
                 this.pendingConfirm = null;
                 this._restoreFocusTrap(options);
             },
+            showSaveRecoveryDialog(slotName, saveData) {
+                const message = this._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:');
+                if (typeof document === 'undefined' || !document.body) {
+                    const choice = typeof prompt === 'function' ? prompt(message) : null;
+                    if (choice === '1') return this.resolveSaveRecoveryDialog('delete', slotName, saveData);
+                    if (choice === '2') return this.resolveSaveRecoveryDialog('backup', slotName, saveData);
+                    return false;
+                }
+                this.closeConfirmDialog({ restoreFocus: false });
+                this.closeSaveRecoveryDialog({ restoreFocus: false });
+                const title = this._label('save.recovery.title', 'Recover Save');
+                const deleteLabel = this._label('save.recovery.delete', 'Delete Save');
+                const backupLabel = this._label('save.recovery.backup', 'Download Backup');
+                const cancelLabel = this._label('ui.cancel', 'Cancel');
+                this.pendingSaveRecovery = { slotName, saveData, message };
+                const html = `<div class="app-confirm-backdrop" id="save-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="save-recovery-title" aria-describedby="save-recovery-message"><div class="app-confirm-card"><h3 id="save-recovery-title">${this._escapeHtml(title)}</h3><p id="save-recovery-message">${this._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('cancel')">${this._escapeHtml(cancelLabel)}</button><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('backup')">${this._escapeHtml(backupLabel)}</button><button class="nav-btn primary danger" onclick="App.resolveSaveRecoveryDialog('delete')">${this._escapeHtml(deleteLabel)}</button></div></div></div>`;
+                document.body.insertAdjacentHTML('beforeend', html);
+                const dialog = document.getElementById('save-recovery-dialog');
+                this._activateFocusTrap(dialog, { close: () => this.resolveSaveRecoveryDialog('cancel') });
+                return false;
+            },
+            async resolveSaveRecoveryDialog(action, fallbackSlotName = null, fallbackSaveData = null) {
+                const pending = this.pendingSaveRecovery || {};
+                const slotName = fallbackSlotName || pending.slotName;
+                const saveData = fallbackSaveData || pending.saveData;
+                this.closeSaveRecoveryDialog();
+                if (action === 'delete' && slotName) {
+                    await this._dbDelete('saves', slotName);
+                    this._removeSaveTime(slotName);
+                    alert(this._label('save.recovery.deleted', 'Save deleted.'));
+                    return false;
+                }
+                if (action === 'backup' && slotName && saveData) {
+                    this._downloadSaveBackup(slotName, saveData);
+                    alert(this._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
+                    return false;
+                }
+                return false;
+            },
+            closeSaveRecoveryDialog(options = {}) {
+                const dialog = typeof document !== 'undefined' ? document.getElementById('save-recovery-dialog') : null;
+                if (dialog) dialog.remove();
+                this.pendingSaveRecovery = null;
+                this._restoreFocusTrap(options);
+            },
+            _downloadSaveBackup(slotName, saveData) {
+                const bytes = new Uint8Array(saveData);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                const base64 = btoa(binary);
+                const blob = new Blob([base64], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'yaw_save_' + slotName + '_backup.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            },
             showMobilePartyContext(index) {
                 const unit = this.party[index];
                 if (!unit) return;
@@ -9247,7 +9368,20 @@
                 if (!this.player) { alert(this._label('save.error.noGame', 'No game to save!')); return; }
                 const saveTime = this._getSaveTime(slotName);
                 const slotLabel = this._slotDisplayLabel(slotName);
-                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot && !confirm(this._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotLabel }))) return;
+                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot) {
+                    return this.showConfirmDialog({
+                        title: this._label('save.saveTitle', 'Save Game'),
+                        message: this._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotLabel }),
+                        confirmLabel: this._label('save.save', 'Save'),
+                        cancelLabel: this._label('ui.cancel', 'Cancel'),
+                        danger: true,
+                        onConfirm: () => this._saveToSlotConfirmed(slotName)
+                    });
+                }
+                return this._saveToSlotConfirmed(slotName);
+            },
+            async _saveToSlotConfirmed(slotName) {
+                const slotLabel = this._slotDisplayLabel(slotName);
                 try {
                     this._syncPlayerPartyReference();
                     this.persistAllTileDeltas();
@@ -9265,7 +9399,9 @@
                     this._setStoredValue('lastSaveTime', Date.now().toString());
                     this._setSaveTime(slotName, Date.now().toString());
                     alert(this._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
+                    return true;
                 } catch (e) { alert(this._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
+                return false;
             },
             async loadFromSlot(slotName) {
                 try {
@@ -9277,20 +9413,7 @@
                         loaded = Binary.loadGame(saveData);
                     } catch (e) {
                         console.error('Incompatible save:', e);
-                        const choice = prompt(this._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:'));
-                        if (choice === '1') {
-                            await this._dbDelete('saves', slotName);
-                            this._removeSaveTime(slotName);
-                            alert(this._label('save.recovery.deleted', 'Save deleted.'));
-                        } else if (choice === '2') {
-                            const base64 = btoa(String.fromCharCode(...new Uint8Array(saveData)));
-                            const blob = new Blob([base64], { type: 'text/plain' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url; a.download = 'yaw_save_' + slotName + '_backup.txt'; a.click();
-                            URL.revokeObjectURL(url);
-                            alert(this._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
-                        }
+                        this.showSaveRecoveryDialog(slotName, saveData);
                         return false;
                     }
                     this.encounterPreference = loaded.encounterPreference || 'any';
@@ -9416,13 +9539,24 @@
             },
             async deleteSlot(slotName) {
                 const slotLabel = this._slotDisplayLabel(slotName);
-                if (!confirm(this._label('save.confirm.deleteSlot', 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', { slot: slotLabel }))) return;
+                return this.showConfirmDialog({
+                    title: this._label('save.delete', 'Delete'),
+                    message: this._label('save.confirm.deleteSlot', 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', { slot: slotLabel }),
+                    confirmLabel: this._label('save.delete', 'Delete'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    danger: true,
+                    onConfirm: () => this._deleteSlotConfirmed(slotName)
+                });
+            },
+            async _deleteSlotConfirmed(slotName) {
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
                     this.showSaveManager(this.saveManagerMode || 'load');
+                    return true;
                 } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
+                return false;
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) {
                 return new Promise((resolve, reject) => {

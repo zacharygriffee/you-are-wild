@@ -4107,12 +4107,23 @@
                 } else {
                     this.log.push({ text: this._label('combat.defeat', 'Defeat...'), type: 'combat' });
                     this.updateScene('Defeat', 'Darkness claims you...', false);
-                    setTimeout(() => { if (confirm(this._label('combat.confirmReturnToMenu', 'Defeat! Return to menu?'))) { App.showScreen('menu'); } }, 1500);
+                    setTimeout(() => { this._confirmDefeatReturnToMenu(); }, 1500);
                 }
                 this.renderLog();
                 this.showExplorationActions();
                 this.renderMobileCombatToolbelt();
                 this.autoSave();
+            },
+
+            _confirmDefeatReturnToMenu() {
+                return this.showConfirmDialog({
+                    title: this._label('combat.defeat', 'Defeat...'),
+                    message: this._label('combat.confirmReturnToMenu', 'Defeat! Return to menu?'),
+                    confirmLabel: this._label('ui.returnToMenu', 'Return to Menu'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    danger: true,
+                    onConfirm: () => this.showScreen('menu')
+                });
             },
 
             // ===== OUTSIDE COMBAT INTERACTION =====

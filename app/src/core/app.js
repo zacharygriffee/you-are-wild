@@ -234,6 +234,14 @@
                 const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
                 return `<button class="${className}" title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
             },
+            _combatIntentButton(key, actor, extraClass = '') {
+                const actorId = actor ? this._unitSelectionId(actor) : '';
+                const isSelected = this.targetSelection?.source === 'combat'
+                    && this.targetSelection.action === key
+                    && (!this.targetSelection.actorId || this.targetSelection.actorId === actorId || this.targetSelection.actorId === actor?.id || this.targetSelection.actorId === actor?.name);
+                const classes = [extraClass, isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+                return this._iconActionButton(key, this._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes);
+            },
             _actionLegend(keys) {
                 if (keys.length <= 1) return '';
                 return `<div class="action-legend" aria-label="${this._escapeHtml(this._label('ui.actionLegend', 'Action legend'))}">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
@@ -392,10 +400,10 @@
                     buttons.push(`<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
                 }
                 if (enemies.length > 0) {
-                    buttons.push(this._iconActionButton('fight', this._actionIcon('fight'), "event.stopPropagation();App.executeCombatIntent('fight')", 'primary'));
-                    buttons.push(this._iconActionButton('flirt', this._actionIcon('flirt'), "event.stopPropagation();App.executeCombatIntent('flirt')"));
-                    buttons.push(this._iconActionButton('feast', this._actionIcon('feast'), "event.stopPropagation();App.executeCombatIntent('feast')"));
-                    buttons.push(this._iconActionButton('fuck', this._actionIcon('fuck'), "event.stopPropagation();App.executeCombatIntent('fuck')"));
+                    buttons.push(this._combatIntentButton('fight', actor, 'primary'));
+                    buttons.push(this._combatIntentButton('flirt', actor));
+                    buttons.push(this._combatIntentButton('feast', actor));
+                    buttons.push(this._combatIntentButton('fuck', actor));
                 }
                 if (allies.length > 0) {
                     buttons.push(this._iconActionButton('feed', this._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')"));
@@ -3038,9 +3046,6 @@
             selectTarget(action) {
                 const actor = this.activeActor || this.player;
                 this.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
-                const label = this._uiLabel(action);
-                const cancelLabel = this._escapeHtml(this._label('target.cancelAction', 'Cancel {action}', { action: label }));
-                document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('target.chooseFromPanel', 'Select a target from the creature panel.'))}</p><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
                 const actions = document.getElementById('scene-actions');
                 if (actions) actions.innerHTML = this._renderCombatPanelPrompt(actor);
                 this.renderCreatures();
@@ -8965,6 +8970,13 @@
                 }
                 this.activeActor = current;
                 if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast') {
+                    const currentActorId = this._unitSelectionId(current);
+                    if (this.targetSelection?.source === 'combat'
+                        && this.targetSelection.action === action
+                        && (!this.targetSelection.actorId || this.targetSelection.actorId === currentActorId || this.targetSelection.actorId === current.id || this.targetSelection.actorId === current.name)) {
+                        this.cancelTargetSelection();
+                        return true;
+                    }
                     this.selectTarget(action);
                     return true;
                 }

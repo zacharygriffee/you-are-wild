@@ -959,7 +959,7 @@ test('Battle mode contract keeps combat panel-first', () => {
   assertContains(contract, 'Initiative queue decides whose actor card is active', 'Battle mode contract should define initiative as a combat constraint');
   assertContains(appContent, 'executeCombatIntent(action', 'Combat intent should route through a shared dispatcher');
   assertContains(appContent, 'combatAction(action) {\n                return this.executeCombatIntent', 'Legacy combatAction wrapper should delegate to the shared dispatcher');
-  assertContains(appContent, "App.executeCombatIntent('fight')", 'Panel combat buttons should dispatch through the shared combat intent path');
+  assertContains(appContent, "_combatIntentButton('fight'", 'Panel combat buttons should dispatch through the shared combat intent path');
 });
 
 test('Desktop play surface uses a 3x3 center-tile layout', () => {
@@ -2793,6 +2793,9 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should keep baseline interaction actions in an action menu');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
+  const sceneHtml = elements.get('scene-description')?.innerHTML || '';
+  assertNotContains(sceneHtml, 'Cancel', 'Combat targeting should not inject a cancel control into the center scene');
+  assertNotContains(sceneHtml, 'Select a target from the creature panel.', 'Combat targeting guidance should stay out of the center scene description');
 });
 
 test('Selected party actor resolves exploration attacks against creatures', () => {
@@ -5263,7 +5266,7 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.selectTarget('fight');
-  assertContains(elements.get('scene-description').innerHTML, 'creature panel', 'Target picker should not replace center with target cards');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'creature panel', 'Target picker should not replace center with target guidance');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should execute selected action');
   assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as Fight target"', 'Target button should describe selected combat action');
   assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
@@ -5314,8 +5317,10 @@ test('Combat creature target button localizes visible and accessible labels', ()
   App.nextTurn = function() {};
   App.updateLanguage('es');
   App.selectTarget('fight');
-  assertContains(elements.get('scene-description').innerHTML, 'Selecciona un objetivo desde el panel de criaturas.', 'Target selection prompt should localize');
-  assertContains(elements.get('scene-description').innerHTML, 'aria-label="Cancelar Luchar"', 'Target cancellation should expose localized accessible label');
+  const sceneHtml = elements.get('scene-description')?.innerHTML || '';
+  assertNotContains(sceneHtml, 'Selecciona un objetivo desde el panel de criaturas.', 'Target selection prompt should not overwrite the center scene');
+  assertNotContains(sceneHtml, 'aria-label="Cancelar Luchar"', 'Target cancellation should not render in the center scene');
+  assertContains(elements.get('scene-actions').innerHTML, 'Objetivo de Luchar. Elige un objetivo valido en el panel enemigo.', 'Panel-first targeting prompt should localize in the bounded action area');
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
   assertContains(html, '>Objetivo<', 'Combat target button visible label should localize');
@@ -5635,6 +5640,10 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertContains(partyHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
   App.executeCombatIntent('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
+  assertContains(elements.get('party-content').innerHTML, 'action-btn primary selected', 'Repeating the selected combat intent should expose a toggled action state');
+  App.executeCombatIntent('fight');
+  assertEqual(App.targetSelection, null, 'Repeating the same combat intent should cancel target selection');
+  App.executeCombatIntent('fight');
   App.executeActionOnTarget('fight', 'enemy-ally');
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
 });

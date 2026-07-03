@@ -5622,6 +5622,9 @@ test('Player combat action controls localize on active actor card', () => {
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
   assertContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat actions out of the context area');
+  App.updateScene('Combat', 'Panel first', true);
+  assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
+  assertEqual(elements.get('mobile-combat-actions').style.display, 'none', 'Mobile combat action bar should stay hidden while toolbelt and panels handle combat');
 });
 
 test('Party panel exposes per-ally AI order controls', () => {

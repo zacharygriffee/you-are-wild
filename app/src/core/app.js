@@ -7961,8 +7961,11 @@
 	                    if (actions) {
 	                        actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor || this._currentCombatActor());
 	                    }
+                    if (mobileCombat) {
+                        mobileCombat.innerHTML = '';
+                        mobileCombat.style.display = 'none';
+                    }
                     if (mobileActions) mobileActions.style.display = 'block';
-                    if (mobileCombat) mobileCombat.style.display = 'flex';
                     if (mobileExplore) mobileExplore.style.display = 'none';
 		                } else {
 		                    if (actions) {

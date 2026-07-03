@@ -746,6 +746,7 @@
             timeHour: 8,
             dayCount: 0,
             log: [],
+            tileEvents: [],
             logFilter: 'all',
             logSearch: '',
             inventoryFilter: 'all',
@@ -1230,6 +1231,7 @@
                 this.timeHour = 8;
                 this.dayCount = 0;
                 this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
+                this.tileEvents = [];
                 this.worldMap = new Map();
                 this.exploredTiles = new Set();
                 this.worldMeta = {
@@ -1260,6 +1262,7 @@
                 this.renderCreatures();
                 this.renderLog();
                 this.updateScene('The Beginning', 'You awaken in an unfamiliar place. The air smells of ' + this.biomes.forest.name + '.', false);
+                this._addTileEvent(this._label('ui.tileEvent.arrival', 'You arrive here.'), 'move');
                 this.autoSave();
             },
 
@@ -1946,7 +1949,10 @@
                 room.explored = true;
                 this.creatures = this._tileCreatures(room.creatures || []);
                 this.currentBiome = room.biome;
-                this.log.push({ text: this._label('structure.entered', 'Entered {name}.', { name: this.activeInterior.structureName }), type: 'discovery' });
+                this._clearTileEvents();
+                const enteredText = this._label('structure.entered', 'Entered {name}.', { name: this.activeInterior.structureName });
+                this.log.push({ text: enteredText, type: 'discovery' });
+                this._addTileEvent(enteredText, 'discovery');
                 this.updateScene(this.activeInterior.structureName, room.description, false);
                 this.renderMap();
                 this.renderCreatures();
@@ -1970,7 +1976,10 @@
                 this.currentBiome = tile.biome;
                 this.persistTileDelta(tile.x, tile.y, tile);
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
-                this.log.push({ text: this._label('structure.exited', 'Exited {name}.', { name: this.STRUCTURES[tile.structure]?.name || this._label('structure.fallbackName', 'the structure') }), type: 'move' });
+                this._clearTileEvents();
+                const exitedText = this._label('structure.exited', 'Exited {name}.', { name: this.STRUCTURES[tile.structure]?.name || this._label('structure.fallbackName', 'the structure') });
+                this.log.push({ text: exitedText, type: 'move' });
+                this._addTileEvent(exitedText, 'move');
                 this.showExplorationActions();
                 this.renderMap();
                 this.renderCreatures();
@@ -1998,11 +2007,14 @@
                 this.creatures = this._tileCreatures(room.creatures || []);
                 this.currentBiome = room.biome;
                 const biome = this.biomes[room.biome] || this.biomes.indoors;
-                this.log.push({ text: this._label('structure.movedInside', 'Moved inside {name} to {x}, {y}.', {
+                this._clearTileEvents();
+                const movedInsideText = this._label('structure.movedInside', 'Moved inside {name} to {x}, {y}.', {
                     name: this.activeInterior.structureName,
                     x: nx,
                     y: ny
-                }), type: 'move' });
+                });
+                this.log.push({ text: movedInsideText, type: 'move' });
+                this._addTileEvent(movedInsideText, 'move');
                 if (!wasExplored && this._worldChance('interior-encounter', this.activeInterior.origin.x, this.activeInterior.origin.y, biome.encounterChance || 0, nx, ny)) {
                     this.spawnWildEncounter(room, false, true);
                 }
@@ -2038,25 +2050,24 @@
                 this.clearTileBoundExplorationTargets();
                 this.location.x += dx; this.location.y += dy;
                 this._advanceTime(1);
+                this._clearTileEvents();
                 document.getElementById('coords').textContent = `${this.location.x}, ${this.location.y}`;
 
                 // Check if destination was explored BEFORE we call exploreTile (which marks it)
                 const wasExplored = this.isExplored(this.location.x, this.location.y);
                 const tile = this.exploreTile(this.location.x, this.location.y);
                 const biome = this.biomes[tile.biome];
-                this.log.push({
-                    text: this._label('log.movedTo', 'Moved to {x}, {y} ({biome})', {
-                        x: this.location.x,
-                        y: this.location.y,
-                        biome: biome.name
-                    }),
-                    type: 'move'
+                const movedText = this._label('log.movedTo', 'Moved to {x}, {y} ({biome})', {
+                    x: this.location.x,
+                    y: this.location.y,
+                    biome: biome.name
                 });
+                this.log.push({ text: movedText, type: 'move' });
+                this._addTileEvent(movedText, 'move');
                 if (tile.hasLandmark) {
-                    this.log.push({
-                        text: this._label('log.discoveredLandmark', 'Discovered {name}!', { name: tile.landmarkName }),
-                        type: 'discovery'
-                    });
+                    const landmarkText = this._label('log.discoveredLandmark', 'Discovered {name}!', { name: tile.landmarkName });
+                    this.log.push({ text: landmarkText, type: 'discovery' });
+                    this._addTileEvent(landmarkText, 'discovery');
                 }
 
                 if (wasExplored) {
@@ -2064,7 +2075,9 @@
                     this.creatures = this._tileCreatures(tile.creatures || []);
                     const enemies = this._livingEnemies(this.creatures);
                     if (enemies.length > 0) {
-                        this.log.push({ text: `You encounter ${enemies.map(e => e.name).join(', ')}!`, type: 'combat' });
+                        const encounterText = `You encounter ${enemies.map(e => e.name).join(', ')}!`;
+                        this.log.push({ text: encounterText, type: 'combat' });
+                        this._addTileEvent(encounterText, 'combat');
                         this.startCombat(enemies);
                     } else if (this.creatures.length > 0) {
                         this.updateScene(`${biome.name} - ${tile.hasLandmark ? tile.landmarkName : 'Wilderness'}`, `You return to the ${biome.name}. ${tile.description}`, false);
@@ -2088,7 +2101,9 @@
                 if (!this.combatState.active) {
                     const restoredEnemies = this._livingEnemies(this.creatures);
                     if (restoredEnemies.length > 0) {
-                        this.log.push({ text: `You encounter ${restoredEnemies.map(e => e.name).join(', ')}!`, type: 'combat' });
+                        const encounterText = `You encounter ${restoredEnemies.map(e => e.name).join(', ')}!`;
+                        this.log.push({ text: encounterText, type: 'combat' });
+                        this._addTileEvent(encounterText, 'combat');
                         this.startCombat(restoredEnemies);
                     }
                 }
@@ -7583,6 +7598,7 @@
                 if (mobileTitle) mobileTitle.textContent = title || '';
                 if (mobileDesc) mobileDesc.innerHTML = html || '';
                 if (mobileSheet) mobileSheet.classList.add('rich-content');
+                this.renderTileEvents();
             },
 
             updateScene(title, description, inCombat) {
@@ -7596,6 +7612,7 @@
 	                if (mobileTitle) mobileTitle.textContent = title || '';
 	                if (mobileDesc) mobileDesc.textContent = description || '';
 	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
+                    this.renderTileEvents();
 	                const actions = document.getElementById('scene-actions');
                 if (actions?.dataset?.richHidden) {
                     delete actions.dataset.richHidden;
@@ -7694,6 +7711,58 @@
                 const full = needsCombatMeta ? { ...this._currentCombatLogMeta(meta), ...next, ...meta } : { ...next, ...meta };
                 this.log.push(full);
                 return full;
+            },
+            _clearTileEvents() {
+                this.tileEvents = [];
+                this.renderTileEvents();
+            },
+            _tileEventTimestamp() {
+                try {
+                    return `${this._timeLabel()} ${this._isNight() ? this._label('ui.tileInfo.night', 'Night') : this._label('ui.tileInfo.day', 'Day')}`;
+                } catch(e) {
+                    return '';
+                }
+            },
+            _addTileEvent(text, type = 'discovery', meta = {}) {
+                const message = String(text || '').trim();
+                if (!message) return null;
+                const event = {
+                    text: message,
+                    type: type || 'discovery',
+                    x: this.inInterior ? this.interiorLocation?.x : this.location?.x,
+                    y: this.inInterior ? this.interiorLocation?.y : this.location?.y,
+                    time: this._tileEventTimestamp(),
+                    ...meta
+                };
+                if (!Array.isArray(this.tileEvents)) this.tileEvents = [];
+                this.tileEvents.push(event);
+                if (this.tileEvents.length > 12) this.tileEvents = this.tileEvents.slice(-12);
+                this.renderTileEvents();
+                return event;
+            },
+            _tileEventFeedHtml() {
+                const events = Array.isArray(this.tileEvents) ? this.tileEvents.slice(-6) : [];
+                if (!events.length) return '';
+                const title = this._escapeHtml(this._label('ui.tileEvents.title', 'Here now'));
+                const items = events.map(event => {
+                    const type = event.type || 'discovery';
+                    const meta = this._logCategoryMeta(type);
+                    const time = event.time ? `<span class="tile-event-time">${this._escapeHtml(event.time)}</span>` : '';
+                    return `<div class="tile-event-item ${this._escapeHtml(type)}" role="listitem">` +
+                        `<span class="tile-event-icon" aria-label="${this._escapeHtml(meta.label)}">${this._escapeHtml(meta.icon)}</span>` +
+                        `<span class="tile-event-text">${this._escapeHtml(event.text)}</span>` +
+                        time +
+                    `</div>`;
+                }).join('');
+                return `<section class="tile-event-feed" aria-label="${title}"><div class="tile-event-title">${title}</div><div class="tile-event-list" role="list">${items}</div></section>`;
+            },
+            renderTileEvents() {
+                const html = this._tileEventFeedHtml();
+                ['tile-event-feed', 'mobile-tile-event-feed'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = html;
+                });
+                return html;
             },
             _logTimestamp(entry, indexFromEnd = 0) {
                 if (entry?.round && entry?.turnIndex) {
@@ -7817,12 +7886,15 @@
                     result = 'Nothing of interest here.';
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                this._addTileEvent(result, 'discovery');
                 this.renderLog();
                 this.autoSave();
             },
             rest() {
                 if (!this._canRestHere()) {
-                    this.log.push({ text: this._label('log.restUnavailable', 'There is no safe place to rest here.'), type: 'discovery' });
+                    const unavailableText = this._label('log.restUnavailable', 'There is no safe place to rest here.');
+                    this.log.push({ text: unavailableText, type: 'discovery' });
+                    this._addTileEvent(unavailableText, 'discovery');
                     this.renderLog();
                     this.renderExplorationActions();
                     return;
@@ -7830,7 +7902,9 @@
                 const healAmount = 30 + this._partyRoleEffect('support', 10, 20);
                 const healed = new Set([this.player, ...this.party]);
                 healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + healAmount); });
-                this.log.push({ text: this._label('log.rested', 'Rested and recovered.'), type: 'heal' });
+                const restedText = this._label('log.rested', 'Rested and recovered.');
+                this.log.push({ text: restedText, type: 'heal' });
+                this._addTileEvent(restedText, 'heal');
                 this.renderLog(); this.renderParty();
             },
 

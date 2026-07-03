@@ -481,6 +481,9 @@ test('Template has all panels', () => {
 
 test('Scene description supports rich bounded content', () => {
   assertContains(template, '<div class="scene-description" id="scene-description">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
+  assertContains(template, 'id="tile-event-feed"', 'Desktop scene should expose a tile-scoped event feed slot');
+  assertContains(template, 'id="mobile-tile-event-feed"', 'Mobile scene should expose a tile-scoped event feed slot');
+  assertContains(template, '.tile-event-feed', 'Tile event feed styles should be bounded and reusable');
   assertContains(template, '.scene-actions > .action-btn', 'Desktop scene action buttons should have scoped sizing rules');
   assertContains(template, 'flex-wrap: wrap;', 'Desktop scene action rows should wrap instead of forcing horizontal scroll');
   assertContains(template, 'overflow-x: hidden;', 'Desktop scene action rows should not create horizontal page overflow');
@@ -795,6 +798,14 @@ test('Desktop panel navigation focuses existing panels instead of no-oping', () 
   assertContains(appContent, 'scrollIntoView({', 'desktop panel navigation should scroll the panel into view');
   assertContains(appContent, "classList.remove('nav-focus')", 'desktop panel navigation should clear stale focus highlights');
   assertContains(template, '.panel.nav-focus', 'desktop panel navigation should expose a visual focus state');
+});
+
+test('Tile event feed is ephemeral scene presentation', () => {
+  assertContains(appContent, 'tileEvents: []', 'App state should track current tile events separately from durable logs');
+  assertContains(appContent, '_clearTileEvents()', 'Tile event feed should expose a clear helper');
+  assertContains(appContent, '_addTileEvent(text', 'Tile event feed should expose an append helper');
+  assertContains(appContent, 'renderTileEvents()', 'Tile event feed should render into scene slots');
+  assertContains(appContent, "['tile-event-feed', 'mobile-tile-event-feed']", 'Tile events should mirror to desktop and mobile scene slots');
 });
 
 test('Mobile gameplay surface keeps map units and scene together', () => {
@@ -3535,6 +3546,31 @@ test('Moving tiles clears tile-bound creature targets but keeps party selections
   assertEqual(App.explorationActorIds.includes('ally-1'), true, 'Selected party actor should survive tile movement');
   assertEqual(App.explorationTargetIds.includes('party:ally-1'), true, 'Selected party target should survive tile movement');
   assertEqual(App.explorationTargetIds.includes('creature:creature-1'), false, 'Selected creature target should clear when leaving its tile');
+});
+
+test('Moving tiles clears current tile event feed but keeps durable log', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [], description: 'Start' }],
+    ['1,0', { x: 1, y: 0, biome: 'forest', explored: true, creatures: [], items: [], description: 'Next' }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.log = [{ text: 'Old durable entry', type: 'discovery' }];
+  App.tileEvents = [{ text: 'Old tile-only event', type: 'discovery', time: '08:00 Day' }];
+  App.renderTileEvents();
+  assertContains(elements.get('tile-event-feed').innerHTML, 'Old tile-only event', 'Precondition: tile feed should render current tile events');
+
+  App.move(1, 0);
+
+  assertEqual(App.log.some(entry => entry.text === 'Old durable entry'), true, 'Durable log should survive tile movement');
+  assertEqual(App.tileEvents.some(entry => entry.text === 'Old tile-only event'), false, 'Tile feed should clear events from the prior tile');
+  assertContains(elements.get('tile-event-feed').innerHTML, 'Moved to 1, 0', 'New tile feed should show arrival context');
+  assertContains(elements.get('mobile-tile-event-feed').innerHTML, 'Moved to 1, 0', 'Mobile scene should mirror tile events');
 });
 
 test('Recruitment is gated by pleasure and willingness score', () => {

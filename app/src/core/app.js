@@ -361,8 +361,154 @@
                 const keys = this._contextActionKeys();
                 const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
-                const targetActions = this._renderExplorationTargetActions(includePanels ? 'sheet' : 'desktop');
-                return targetActions + allKeys.map(key => this._contextActionButton(key)).join('');
+                return allKeys.map(key => this._contextActionButton(key)).join('');
+            },
+            _buildInteractionCommand(context = {}) {
+                const mode = context.mode || (this.combatState?.active ? 'combat' : 'adventure');
+                const actors = context.actors || (mode === 'combat'
+                    ? [context.actor || this.activeActor || this._currentCombatActor()].filter(Boolean)
+                    : this._getExplorationActors());
+                const targets = context.targets || (mode === 'combat'
+                    ? [context.target].filter(Boolean)
+                    : this._getExplorationTargets());
+                const targetTypes = new Set(targets.map(target => this.party.includes(target) ? 'party' : (target.disposition === this.DISPOSITION.ENEMY ? 'enemy' : 'creature')));
+                return {
+                    mode,
+                    actorIds: actors.map(actor => actor?.id || actor?.name).filter(Boolean),
+                    targetIds: targets.map(target => target?.id || target?.name).filter(Boolean),
+                    targetType: targetTypes.size > 1 ? 'mixed' : ([...targetTypes][0] || context.targetType || null),
+                    action: context.action || null,
+                    subAction: context.subAction || null,
+                    source: context.source || 'panel-card',
+                    timing: context.timing || 'immediate',
+                    resolveAt: context.resolveAt || null,
+                    constraints: context.constraints || {},
+                    actors,
+                    targets
+                };
+            },
+            _validateInteractionCommand(command) {
+                if (!command || !command.action) return { ok: false, reason: 'missing-action' };
+                if (!command.actors?.length) return { ok: false, reason: 'missing-actor' };
+                if (['fight', 'flirt', 'fuck', 'feast', 'feed', 'inspect'].includes(command.action) && !command.targets?.length && command.mode !== 'combat') {
+                    return { ok: false, reason: 'missing-target' };
+                }
+                if (command.mode === 'combat') {
+                    const current = this._currentCombatActor() || this.activeActor || command.actors[0];
+                    const actor = command.actors[0];
+                    if (!current || !actor || this._unitSelectionId(current) !== this._unitSelectionId(actor)) return { ok: false, reason: 'not-current-actor' };
+                    if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
+                        const target = command.targets[0];
+                        if (!target || target.CPun <= 0 || target.disposition !== this.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
+                        if (!this._canReachCombatTarget(actor, target, command.action)) return { ok: false, reason: 'cannot-reach' };
+                    }
+                }
+                return { ok: true };
+            },
+            _dispatchInteractionCommand(command) {
+                const valid = this._validateInteractionCommand(command);
+                if (!valid.ok) return false;
+                this.lastIntentCommand = {
+                    actorIds: command.actorIds,
+                    action: command.action,
+                    subAction: command.subAction,
+                    targetIds: command.targetIds,
+                    targetType: command.targetType,
+                    source: command.source,
+                    mode: command.mode,
+                    timing: command.timing
+                };
+                if (command.mode === 'combat') {
+                    if (command.timing === 'queued') return this.queueSyncAction(command.action, command.targets?.[0]);
+                    if (command.targets?.length) return this.executeActionAgainstTarget(command.action, command.actors[0], command.targets[0]);
+                    return this.executeCombatIntent(command.action, command.actors[0]);
+                }
+                return this.resolveExplorationTargetAction(command.action, command.subAction, command.source);
+            },
+            _clearTransientInteractionState() {
+                this.targetSelection = null;
+                this.syncSelection = null;
+                this._syncSelected = [];
+                this._syncParticipants = null;
+                this._syncType = null;
+            },
+            _panelInteractionTrayTitle(mode) {
+                return mode === 'combat'
+                    ? this._label('combat.panelActions', 'Combat actions')
+                    : this._label('target.selectedSummary', 'Selected exploration targets');
+            },
+            _renderPanelInteractionTray(mode = this.combatState?.active ? 'combat' : 'adventure') {
+                if (mode === 'combat') return this._renderCombatPanelTray();
+                return this._renderExplorationTargetActions('panel-tray');
+            },
+            _renderCombatPanelTray() {
+                if (!this.combatState?.active) return '';
+                const actor = this.activeActor || this._currentCombatActor();
+                const label = this._escapeHtml(this._panelInteractionTrayTitle('combat'));
+                if (this.syncSelection?.active) {
+                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                    if (this.syncSelection.phase === 'choose') {
+                        const title = this._escapeHtml(this._label('combat.sync.chooseAction', 'Choose Sync Action'));
+                        const syncButton = (type, icon, key, fallback) => {
+                            const buttonLabel = this._escapeHtml(this._label(key, fallback));
+                            return `<button class="action-btn" title="${buttonLabel}" aria-label="${buttonLabel}" onclick="App.selectSyncParticipants('${type}')">${icon} ${buttonLabel}</button>`;
+                        };
+                        return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${this._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Flirt')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Seduce')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+                    }
+                    const participants = this._syncSelectedParticipants();
+                    const names = participants.map(unit => unit.name).join(', ') || (actor?.name || '');
+                    const needMore = participants.length < 2;
+                    const message = needMore
+                        ? this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.')
+                        : this._label('combat.sync.selectTarget', 'Select sync target');
+                    return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${this._escapeHtml(this._label('target.actors', 'Actors'))}: ${this._escapeHtml(names)}</span><span>${this._escapeHtml(message)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
+                }
+                if (this.targetSelection?.source === 'combat') {
+                    const action = this._uiLabel(this.targetSelection.action || 'action');
+                    const text = this._label('combat.panelFirstTargeting', 'Targeting: {action}. Pick a valid target in the enemy panel.', { action });
+                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                    return `<div class="panel-interaction-tray combat-target-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${this._escapeHtml(actor?.name || '')}</span><span>${this._escapeHtml(text)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
+                }
+                return '';
+            },
+            _syncSelectedParticipants() {
+                if (!this.syncSelection?.active) return [];
+                const ids = this.syncSelection.participantIds || [];
+                return ids.map(id => this.party.find(unit => this._unitSelectionId(unit) === id || unit.id === id || unit.name === id)).filter(Boolean);
+            },
+            _isSyncParticipant(unit) {
+                if (!unit || !this.syncSelection?.active) return false;
+                const id = this._unitSelectionId(unit);
+                return (this.syncSelection.participantIds || []).includes(id);
+            },
+            _toggleSyncParticipantById(id) {
+                if (!this.syncSelection?.active || this.syncSelection.phase !== 'participants') return false;
+                const participantIds = this.syncSelection.participantIds || [];
+                const actorId = this.syncSelection.actorId;
+                if (id === actorId) return false;
+                this.syncSelection.participantIds = participantIds.includes(id)
+                    ? participantIds.filter(existing => existing !== id)
+                    : [...participantIds, id];
+                this._syncSelected = this.syncSelection.participantIds
+                    .map(pid => this.party.find(unit => this._unitSelectionId(unit) === pid))
+                    .map(unit => this.party.indexOf(unit))
+                    .filter(index => index >= 0);
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
+                return true;
+            },
+            _syncParticipantButton(unit, compact = false) {
+                if (!this.syncSelection?.active || this.syncSelection.phase !== 'participants' || !unit || unit.CPun <= 0) return '';
+                const id = this._unitSelectionId(unit);
+                const selected = this._isSyncParticipant(unit);
+                const actorLocked = id === this.syncSelection.actorId;
+                const label = actorLocked
+                    ? this._label('target.actorRole', 'Actor')
+                    : (selected ? this._label('target.targetRole', 'Target') : this._label('combat.sync.selectParticipants', 'Select participants for sync'));
+                const title = this._escapeHtml(this._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: unit.name || 'ally' }));
+                const disabled = actorLocked ? ' disabled' : '';
+                return `<button class="action-btn${selected ? ' primary' : ''}" title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${this._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;
             },
             _isCurrentCombatActor(unit) {
                 if (!unit || !this.combatState?.active) return false;
@@ -3033,7 +3179,7 @@
             },
 
             showActorActions(actor) {
-                this.targetSelection = null;
+                this._clearTransientInteractionState();
                 this.activeActor = actor || this.player;
                 const actions = document.getElementById('scene-actions');
                 if (actions) actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor);
@@ -3054,15 +3200,20 @@
             },
 
             cancelTargetSelection() {
-                this.targetSelection = null;
+                this._clearTransientInteractionState();
                 this.renderCreatures();
+                this.renderParty();
                 this.renderMobileCombatToolbelt();
-                if (this.combatState.active) this.showPlayerActions();
+                if (this.combatState.active) this.showActorActions(this._currentCombatActor() || this.activeActor || this.player);
                 else this.showExplorationActions();
             },
 
             canSelectCreatureTarget(unit) {
-                if (!unit || unit.CPun <= 0 || !this.targetSelection) return false;
+                if (!unit || unit.CPun <= 0) return false;
+                if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
+                    return unit.disposition === this.DISPOSITION.ENEMY && this._syncSelectedParticipants().length >= 2;
+                }
+                if (!this.targetSelection) return false;
                 if (this.targetSelection.source === 'combat') {
                     const actor = this.activeActor || this.player;
                     return unit.disposition === this.DISPOSITION.ENEMY && this._canReachCombatTarget(actor, unit, this.targetSelection.action);
@@ -3076,23 +3227,34 @@
                     this.cancelTargetSelection();
                     return;
                 }
+                if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
+                    return this.queueSyncAction(this.syncSelection.type, target);
+                }
                 const targetIndex = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0).indexOf(target);
                 if (targetIndex === -1) {
                     this.cancelTargetSelection();
                     return;
                 }
                 const actor = this.activeActor || this.player;
-                if (!this._canReachCombatTarget(actor, target, action)) {
+                const command = this._buildInteractionCommand({
+                    mode: 'combat',
+                    actors: [actor],
+                    targets: [target],
+                    action,
+                    source: 'panel-card',
+                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+                });
+                const valid = this._validateInteractionCommand(command);
+                if (!valid.ok) {
                     this._pushLog(this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', {
                         actor: actor.name,
                         target: target.name
-                    }), 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'targeting' });
-                    this.targetSelection = null;
+                    }), 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: valid.reason });
                     this.renderLog();
                     this.renderCreatures();
+                    this.renderParty();
                     this.renderMobileCombatToolbelt();
-                    this.showActorActions(actor);
-                    return;
+                    return false;
                 }
                 this.targetSelection = null;
                 this.renderMobileCombatToolbelt();
@@ -3482,80 +3644,66 @@
             // ===== SYNCHRONIZED ACTIONS =====
             showSyncMenu() {
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
                 if (allies.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('combat.sync.noAllies', 'No allies available for sync.'))}</p><button class="nav-btn" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.processTurn()">${cancelLabel}</button>`;
-                    return;
+                    this.log.push({ text: this._label('combat.sync.noAllies', 'No allies available for sync.'), type: 'combat' });
+                    this.renderLog();
+                    return false;
                 }
-                let html = `<h3>${this._escapeHtml(this._label('combat.sync.chooseAction', 'Choose Sync Action'))}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
-                const syncButton = (type, icon, key, fallback) => {
-                    const label = this._escapeHtml(this._label(key, fallback));
-                    return `<button class="action-btn" title="${label}" aria-label="${label}" onclick="App.selectSyncParticipants('${type}')">${icon} ${label}</button>`;
-                };
-                html += syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Seduce');
-                html += syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Flirt');
-                html += syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight');
-                html += syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed');
-                html += `<button class="nav-btn" style="margin-top:8px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.processTurn()">${cancelLabel}</button>`;
-                html += `</div>`;
-                document.getElementById('scene-description').innerHTML = html;
+                const actor = this.activeActor || this._currentCombatActor() || this.player;
+                const actorId = this._unitSelectionId(actor);
+                this.targetSelection = null;
+                this.syncSelection = { active: true, phase: 'choose', actorId, participantIds: [actorId], type: null };
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
+                return true;
             },
 
             selectSyncParticipants(syncType) {
-                const allies = this.party.filter(p => p.CPun > 0);
-                let html = `<h3>${this._escapeHtml(this._label('combat.sync.selectParticipants', 'Select participants for sync'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
-                allies.forEach((a, i) => {
-                    const label = this._escapeHtml(this._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: a.name }));
-                    html += `<button class="option-card" id="sync-part-${i}" title="${label}" aria-label="${label}" onclick="App.toggleSyncParticipant(${i})">`;
-                    html += `<div style="font-size:28px">${a.icon}</div><div>${a.name}</div><div style="font-size:11px;color:var(--text-muted)">${a.CPun}/${a.MPun}</div>`;
-                    html += `</button>`;
-                });
-                const confirmLabel = this._escapeHtml(this._label('combat.sync.confirmParticipants', 'Confirm Participants'));
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                html += `</div><div style="margin-top:12px"><button class="action-btn primary" title="${confirmLabel}" aria-label="${confirmLabel}" onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button></div>`;
-                html += `<button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.showSyncMenu()">${backLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
-                this._syncSelected = [];
+                const actor = this.activeActor || this._currentCombatActor() || this.player;
+                const actorId = this._unitSelectionId(actor);
+                this.syncSelection = { active: true, phase: 'participants', actorId, participantIds: [actorId], type: syncType };
+                this._syncSelected = [this.party.indexOf(actor)].filter(index => index >= 0);
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
             },
 
             toggleSyncParticipant(idx) {
-                if (this._syncSelected.includes(idx)) {
-                    this._syncSelected = this._syncSelected.filter(i => i !== idx);
-                    document.getElementById('sync-part-' + idx).style.borderColor = 'var(--border-default)';
-                } else {
-                    this._syncSelected.push(idx);
-                    document.getElementById('sync-part-' + idx).style.borderColor = 'var(--accent-primary)';
-                }
+                const unit = this.party[idx];
+                if (!unit) return false;
+                return this._toggleSyncParticipantById(this._unitSelectionId(unit));
             },
 
             confirmSyncParticipants(syncType) {
-                const participants = this._syncSelected.map(i => this.party[i]).filter(Boolean);
+                if (syncType && (!this.syncSelection?.active || this.syncSelection.type !== syncType)) this.selectSyncParticipants(syncType);
+                const participants = this._syncSelectedParticipants();
                 if (participants.length < 2) {
-                    const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                    document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'))}</p><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.selectSyncParticipants('${syncType}')">${backLabel}</button>`;
-                    return;
+                    this.log.push({ text: this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
+                    this.renderLog();
+                    this.renderParty();
+                    return false;
                 }
-                // Select target
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                let html = `<h3>${this._escapeHtml(this._label('combat.sync.selectTarget', 'Select sync target'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
-                enemies.forEach((e, i) => {
-                    const targetLabel = this._escapeHtml(this._label('combat.sync.selectTargetFor', 'Select {name} as sync target', { name: e.name }));
-                    html += `<button class="option-card" title="${targetLabel}" aria-label="${targetLabel}" onclick="App.queueSyncAction('${syncType}', ${i})">`;
-                    html += `<div style="font-size:32px">${e.icon}</div><div style="color:var(--text-primary);font-weight:600">${e.name}</div><div style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('party.punishment', 'Punishment'))}: ${e.CPun}/${e.MPun}</div>`;
-                    html += `</button>`;
-                });
-                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                html += `</div><button class="nav-btn" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.showSyncMenu()">${cancelLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
                 this._syncParticipants = participants;
-                this._syncType = syncType;
+                this._syncType = syncType || this.syncSelection?.type;
+                this.syncSelection = { ...this.syncSelection, phase: 'target', type: this._syncType };
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
+                return true;
             },
 
             queueSyncAction(syncType, targetIndex) {
-                const target = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[targetIndex];
+                const target = typeof targetIndex === 'object'
+                    ? targetIndex
+                    : this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[targetIndex];
                 if (!target) return;
-                const participants = this._syncParticipants;
+                const participants = this._syncParticipants || this._syncSelectedParticipants();
+                if (!participants || participants.length < 2) {
+                    this.log.push({ text: this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
+                    this.renderLog();
+                    return false;
+                }
                 // Find the slowest participant's turn position
                 let slowestIdx = -1, slowestInit = Infinity;
 	                for (const p of participants) {
@@ -3582,10 +3730,12 @@
                     const qEntry = this.combatState.turnQueue.find(q => q.unit === p);
                     if (qEntry) qEntry.actedThisRound = true;
                 }
+                this._clearTransientInteractionState();
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
                 this.nextTurn();
+                return true;
             },
 
             _resolveSyncAction(sync) {
@@ -4483,7 +4633,7 @@
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
-                    const actionSource = source === 'desktop' ? 'desktop-target' : 'target-bar';
+                    const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' ? 'panel-tray' : 'target-bar');
                     const defaultSubAction = this.SUB_ACTIONS[key] ? this._getDefaultSubAction(key) : null;
                     const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
                     const handler = defaultSubAction
@@ -4495,7 +4645,10 @@
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
                 const primaryLine = summary.primaryActor ? `<span class="selected-target-primary">${this._escapeHtml(this._label('target.primaryActor', 'Primary'))}: ${this._escapeHtml(summary.primaryActor.name || 'You')}</span>` : '';
                 const helperLine = summary.helperNames?.length ? `<span class="selected-target-helpers">${this._escapeHtml(this._label('target.helpers', 'Helpers'))}: ${this._escapeHtml(summary.helperNames.join(', '))}</span>` : '';
-                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+                const content = `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+                return source === 'panel-tray'
+                    ? `<div class="panel-interaction-tray adventure-interaction-tray">${content}</div>`
+                    : content;
             },
 
             openExplorationTargetSubActionSheet(action, source = 'target-bar') {
@@ -4593,56 +4746,20 @@
             },
 
             showInteractMenu() {
-                const friendlies = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY && c.CPun > 0);
-                const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
-                const title = this._escapeHtml(this._label('ui.creatureActions', 'Creature actions'));
-                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                const card = (c, type, index, statusLabel) => {
-                    const name = this._escapeHtml(c.name || 'creature');
-                    const label = this._escapeHtml(`${this._uiLabel('interact')} ${c.name || 'creature'}`);
-                    const status = `${statusLabel} | ${this._label('party.punishment', 'Punishment')}: ${c.CPun}/${c.MPun}`;
-                    return `<button class="option-card" title="${label}" aria-label="${label}" onclick="App.showCreatureInteract('${type}', ${index})"><div style="font-size:32px">${this._escapeHtml(c.icon || '')}</div><div style="color:var(--text-primary);font-weight:600">${name}</div><div style="color:var(--text-muted);font-size:12px">${this._escapeHtml(status)}</div></button>`;
-                };
-                let html = `<h3>${title}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">`;
-                allies.forEach((c, i) => {
-                    html += card(c, 'party', i, this._label('party.ally', 'Ally'));
-                });
-                friendlies.forEach((c, i) => {
-                    html += card(c, 'creature', i, this._unitDispositionLabel(c));
-                });
-                html += `</div><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.showExplorationActions()">${cancelLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
+                this.log.push({ text: this._label('target.chooseFromPanel', 'Select a target from the creature panel.'), type: 'discovery' });
+                this.renderLog();
+                this.renderParty();
+                this.renderCreatures();
+                this.renderExplorationActions();
+                return false;
             },
 
             showCreatureInteract(type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return;
-                const targetName = this._escapeHtml(target.name || 'creature');
-                const actionButton = action => {
-                    const label = this._escapeHtml(this._uiLabel(action));
-                    const title = this._escapeHtml(`${this._uiLabel(action)} ${target.name || 'creature'}`);
-                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="App.outsideAction('${action}', '${type}', ${index})">${this._actionIcon(action)} ${label}</button>`;
-                };
-                let html = `<h3>${targetName}</h3><div style="display:flex;flex-direction:column;gap:12px;">`;
-                html += actionButton('fight');
-                if (type === 'party' || this._hasBaselineInteractionEligibility(target, 'sensitiveSocial')) {
-                    html += actionButton('flirt');
-                    html += actionButton('fuck');
-                }
-                html += actionButton('feast');
-                html += actionButton('feed');
-                if (type === 'creature' && target.disposition === this.DISPOSITION.FRIENDLY) {
-                    const recruitLabel = this._escapeHtml(this._uiLabel('recruit'));
-                    const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${target.name || 'creature'}`);
-                    html += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="App.recruitCreatureFromIndex(${index})">💕 ${recruitLabel}</button>`;
-                }
-                if (type === 'party') {
-                    html += actionButton('inspect');
-                }
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                html += `<button class="nav-btn" style="margin-top:8px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showInteractMenu()">${backLabel}</button>`;
-                html += `</div>`;
-                document.getElementById('scene-description').innerHTML = html;
+                const id = type === 'party' ? this._unitSelectionId(target) : String(target.id || target.name);
+                this.toggleExplorationTarget(type, id);
+                return false;
             },
 
             outsideAction(action, type, index) {
@@ -6890,7 +7007,10 @@
             renderParty() {
                 this._syncPlayerPartyReference();
                 const container = document.getElementById('party-content');
-                if (container) container.innerHTML = this.party.map((unit, i) => this.renderUnitCard(unit, i, 'party')).join('');
+                if (container) {
+                    const tray = this._renderPanelInteractionTray();
+                    container.innerHTML = `${tray}${this.party.map((unit, i) => this.renderUnitCard(unit, i, 'party')).join('')}`;
+                }
                 this.renderMobilePartyStrip();
             },
             renderCreatures() {
@@ -6910,20 +7030,21 @@
                 }
                 if (mobileTitle) mobileTitle.textContent = titleText;
                 if (container) {
+                    const tray = this._renderPanelInteractionTray();
                     let html = living.map((unit, i) => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                     if (corpses.length > 0) {
                         html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="color:var(--text-muted);font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;">${this._escapeHtml(this._label('disposition.remains', 'Remains'))}</div>`;
                         html += corpses.map(unit => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                         html += '</div>';
                     }
-                    container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;
+                    container.innerHTML = `${tray}${html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`}`;
                 }
                 this.renderMobileCreatureStrip();
             },
             renderMobilePartyStrip() {
                 const strip = document.getElementById('mobile-party-strip');
                 if (!strip) return;
-                strip.innerHTML = this.party.map((unit, i) => this.renderMobileUnitChip(unit, i, 'party')).join('');
+                strip.innerHTML = `${this._renderPanelInteractionTray()}${this.party.map((unit, i) => this.renderMobileUnitChip(unit, i, 'party')).join('')}`;
             },
             renderMobileCreatureStrip() {
                 const strip = document.getElementById('mobile-creature-strip');
@@ -6934,8 +7055,8 @@
                 const visible = [...living, ...corpses];
                 if (card) card.style.display = visible.length > 0 || this.combatState.active ? 'block' : 'none';
                 strip.innerHTML = visible.length > 0
-                    ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
-                    : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
+                    ? `${this._renderPanelInteractionTray()}${visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')}`
+                    : `${this._renderPanelInteractionTray()}<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
             },
             _currentCombatActor() {
                 if (!this.combatState?.active) return null;
@@ -7057,7 +7178,9 @@
                 const roles = [];
                 if (this.combatState?.active) {
                     if (type === 'party' && this._isCurrentCombatActor(unit)) roles.push('actor');
+                    if (type === 'party' && this._isSyncParticipant(unit) && !roles.includes('actor')) roles.push('actor');
                     if (type === 'creature' && this.targetSelection?.source === 'combat' && this.canSelectCreatureTarget(unit)) roles.push('target');
+                    if (type === 'creature' && this.syncSelection?.active && this.syncSelection.phase === 'target' && this.canSelectCreatureTarget(unit)) roles.push('target');
                     return roles;
                 }
                 if (type === 'party' && this._getExplorationActors().includes(unit)) {
@@ -7104,7 +7227,11 @@
                     const targetClass = targetSelected ? ' primary' : '';
                     actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
                 } else if (isParty && this.combatState.active) {
-                    actionButtons = this._combatActionButtons(unit, { compact: true });
+                    if (this.syncSelection?.active && this.syncSelection.phase === 'participants') {
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${this._syncParticipantButton(unit, true)}</div>`;
+                    } else {
+                        actionButtons = this._combatActionButtons(unit, { compact: true });
+                    }
                 }
                 if (isCorpse) {
                     const menuLabel = this._label('ui.creatureActions', 'Creature actions');
@@ -7116,6 +7243,11 @@
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabled.trim())}</div>`;
+                    } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
+                        const isTargetable = this.canSelectCreatureTarget(unit);
+                        const disabled = isTargetable ? '' : ' disabled';
+                        const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: this._label('action.sync', 'Sync') });
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')`, disabled.trim())}</div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
                         const inspectLabel = this._uiLabel('inspect');
@@ -7228,7 +7360,11 @@
                         partyManagementControls = `<div class="unit-actions unit-management-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${partyManagementControls}</div>`;
                     }
                 } else if (isParty && this.combatState.active) {
-                    actionButtons = this._combatActionButtons(unit);
+                    if (this.syncSelection?.active && this.syncSelection.phase === 'participants') {
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${this._syncParticipantButton(unit)}</div>`;
+                    } else {
+                        actionButtons = this._combatActionButtons(unit);
+                    }
                 }
                 if (!isParty && isCorpse) {
                     const targetKey = this._unitKey(unit);
@@ -7248,6 +7384,13 @@
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
                         const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
+                    } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
+                        const canTarget = this.canSelectCreatureTarget(unit);
+                        const disabled = canTarget ? '' : ' disabled';
+                        const targetName = unit.name || 'creature';
+                        const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: this._label('action.sync', 'Sync') }));
+                        const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetName = unit.name || 'creature';
                         const targetLabel = this._escapeHtml(targetName);

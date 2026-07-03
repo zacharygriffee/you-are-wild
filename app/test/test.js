@@ -1559,26 +1559,28 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.player = player;
   App.party = [player, ally];
   App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+  App.activeActor = player;
   App.updateLanguage('es');
   App.showSyncMenu();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
-  assertContains(html, '>Cancelar<', 'Sync menu cancel action should localize');
+  assertContains(html, '>Cancelar<', 'Sync tray cancel action should localize');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Elegir accion sincronizada', 'Sync action menu should not render in center scene');
 
   App.selectSyncParticipants('sync_fight');
-  html = elements.get('scene-description').innerHTML;
-  assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant heading should localize');
+  html = elements.get('party-content').innerHTML;
+  assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
   assertContains(html, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
-  assertContains(html, '>Confirmar participantes<', 'Sync participant confirmation should localize');
-  assertContains(html, '>Volver<', 'Sync participant back action should localize');
 
   App._syncSelected = [0, 1];
+  App.syncSelection.participantIds = ['sync-player', 'sync-ally'];
   App.confirmSyncParticipants('sync_fight');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
-  assertContains(html, 'aria-label="Seleccionar Enemy como objetivo sincronizado"', 'Sync target card should expose localized accessible label');
-  assertContains(html, 'Castigo: 100/100', 'Sync target stat label should localize');
+  assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Sincronizar"', 'Sync target card should expose localized accessible label');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Seleccionar objetivo sincronizado', 'Sync target menu should not render in center scene');
 });
 
 test('Softcore player KO removes player from acting while allies continue', () => {
@@ -2754,22 +2756,15 @@ test('Fallback interact menu localizes labels and keeps target indexes stable', 
   App.updateLanguage('es');
 
   App.showInteractMenu();
-  const menuHtml = elements.get('scene-description').innerHTML;
-  assertContains(menuHtml, 'Acciones de criatura', 'Fallback interact menu title should localize');
-  assertContains(menuHtml, "showCreatureInteract('party', 0)", 'Ally card should use an ally-local index');
-  assertContains(menuHtml, "showCreatureInteract('creature', 0)", 'Creature card should use a creature-local index after allies');
-  assertContains(menuHtml, 'Ally &lt;One&gt;', 'Fallback menu should escape ally names');
-  assertContains(menuHtml, 'Friendly &lt;Two&gt;', 'Fallback menu should escape creature names');
-  assertContains(menuHtml, 'aria-label="Interactuar Friendly &lt;Two&gt;"', 'Creature card should expose a localized accessible label');
-  assertContains(menuHtml, 'aria-label="Cancelar"', 'Fallback cancel button should expose a localized accessible label');
+  const menuHtml = elements.get('scene-description')?.innerHTML || '';
+  assertNotContains(menuHtml, 'Acciones de criatura', 'Fallback interact menu should not render actor actions in center scene');
+  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Creature panel remains the action surface');
+  assertContains(App.log[App.log.length - 1].text, 'Selecciona un objetivo desde el panel de criaturas.', 'Fallback interact wrapper should guide the player to panels');
 
   App.showCreatureInteract('creature', 0);
-  const actionHtml = elements.get('scene-description').innerHTML;
-  assertContains(actionHtml, 'Friendly &lt;Two&gt;', 'Creature interaction heading should escape target names');
-  assertContains(actionHtml, 'aria-label="Luchar Friendly &lt;Two&gt;"', 'Creature fight action should localize its accessible label');
-  assertContains(actionHtml, '>🔥 Seducir<', 'Creature pleasure action should localize its visible label');
-  assertContains(actionHtml, 'aria-label="Reclutar Friendly &lt;Two&gt;"', 'Recruit action should localize its accessible label');
-  assertContains(actionHtml, 'aria-label="Volver"', 'Back button should expose a localized accessible label');
+  const actionHtml = elements.get('scene-description')?.innerHTML || '';
+  assertNotContains(actionHtml, 'aria-label="Luchar Friendly &lt;Two&gt;"', 'Creature interaction wrapper should not render action buttons in center scene');
+  assertContains(elements.get('enemies-content').innerHTML, 'selected selected-target', 'Creature interaction wrapper should mark the panel target instead');
 });
 
 test('Combat context keeps non-enemy creature interaction in panels', () => {
@@ -3654,19 +3649,21 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
   assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
   const actionsHtml = elements.get('scene-actions').innerHTML;
-  assertContains(actionsHtml, 'selected-target-summary', 'Context actions should include a selected-target summary');
-  assertContains(actionsHtml, 'aria-label="Objetivos de exploracion seleccionados"', 'Target summary region label should localize');
-  assertContains(actionsHtml, 'Actores: Actor, Helper', 'Context actions should show localized selected actor names');
-  assertContains(actionsHtml, 'class="selected-target-primary">Principal: Actor</span>', 'Context actions should identify the primary actor for group actions');
-  assertContains(actionsHtml, 'class="selected-target-helpers">Ayudantes: Helper</span>', 'Context actions should identify helper actors for group actions');
-  assertContains(actionsHtml, 'Objetivos: Ally Target, Creature Target', 'Context actions should show localized selected target names');
-  assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos"', 'Selected-target action labels should use localized target counts');
-  assertContains(actionsHtml, 'class="target-action-row"', 'Desktop selected-target action buttons should be wrapped in a bounded row');
-  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Desktop selected-target action buttons should dispatch the default sub-action directly');
-  assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
-  assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
-  assertContains(template, '.scene-actions .target-action-row', 'Selected-target action buttons should use bounded desktop scene-action sizing');
-  assertContains(template, '.scene-actions > .selected-target-summary', 'Selected-target summary should be constrained as a scene action grid item');
+  const trayHtml = elements.get('party-content').innerHTML;
+  assertNotContains(actionsHtml, 'selected-target-summary', 'Context actions should not include actor-target controls');
+  assertContains(trayHtml, 'selected-target-summary', 'Panel tray should include a selected-target summary');
+  assertContains(trayHtml, 'aria-label="Objetivos de exploracion seleccionados"', 'Target summary region label should localize');
+  assertContains(trayHtml, 'Actores: Actor, Helper', 'Panel tray should show localized selected actor names');
+  assertContains(trayHtml, 'class="selected-target-primary">Principal: Actor</span>', 'Panel tray should identify the primary actor for group actions');
+  assertContains(trayHtml, 'class="selected-target-helpers">Ayudantes: Helper</span>', 'Panel tray should identify helper actors for group actions');
+  assertContains(trayHtml, 'Objetivos: Ally Target, Creature Target', 'Panel tray should show localized selected target names');
+  assertContains(trayHtml, 'aria-label="Coquetear 2 objetivos"', 'Selected-target action labels should use localized target counts');
+  assertContains(trayHtml, 'class="target-action-row"', 'Panel selected-target action buttons should be wrapped in a bounded row');
+  assertContains(trayHtml, "resolveExplorationTargetAction('flirt','tease','panel-tray')", 'Panel selected-target action buttons should dispatch the default sub-action directly');
+  assertContains(trayHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
+  assertContains(trayHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
+  assertContains(template, '.panel-interaction-tray .target-action-row', 'Selected-target action buttons should use bounded panel tray sizing');
+  assertContains(template, '.panel-interaction-tray .selected-target-summary', 'Selected-target summary should be constrained as a panel tray item');
   assertContains(template, '.selected-target-summary > span', 'Selected-target summary labels should wrap individually');
   assertContains(template, '.unit-card.selected-actor', 'Actor-selected cards should have distinct styling');
   assertContains(template, '.unit-card.selected-target', 'Target-selected cards should have distinct styling');
@@ -3679,12 +3676,12 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(template, '.scene-actions .action-caption', 'Scene action captions should be constrained independently');
   assertContains(template, '.scene-actions .target-action-row .action-icon', 'Selected-target action icons should be block-level compact controls');
   assertContains(template, 'max-width: calc(100vw - 36px);', 'Desktop intent popup should clamp to viewport width');
-  assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
-  assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
-  assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
-  assertNotContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Desktop selected-target actions should not require a second picker click for the default action');
+  assertNotContains(trayHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
+  assertNotContains(trayHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
+  assertNotContains(trayHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
+  assertNotContains(trayHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Panel selected-target actions should not require a second picker click for the default action');
   const mobileActionsHtml = App._renderContextActions(true);
-  assertContains(mobileActionsHtml, "resolveExplorationTargetAction('flirt','tease','target-bar')", 'Mobile selected-target action buttons should dispatch the default sub-action directly');
+  assertNotContains(mobileActionsHtml, "resolveExplorationTargetAction('flirt','tease','target-bar')", 'Mobile center action bar should not render actor-target actions');
   App.toggleExplorationTarget('party', 'actor-1');
   const actorTargetCard = App.renderUnitCard(actor, 0, 'party');
   const actorTargetChip = App.renderMobileUnitChip(actor, 0, 'party');
@@ -3735,7 +3732,8 @@ test('Exploration target summary escapes actor and target names', () => {
   App.player = actor;
   App.party = [actor, target];
   App.toggleExplorationTarget('party', 'target-1');
-  const actionsHtml = elements.get('scene-actions').innerHTML;
+  App.renderParty();
+  const actionsHtml = elements.get('party-content').innerHTML;
   assertContains(actionsHtml, 'Actor &lt;One&gt;', 'Actor names in target summary should be escaped');
   assertContains(actionsHtml, 'Target &amp; Two', 'Target names in target summary should be escaped');
 });

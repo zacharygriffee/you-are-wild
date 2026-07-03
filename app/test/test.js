@@ -965,6 +965,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');
   assertContains(template, 'text-overflow: ellipsis;', 'desktop target action captions should clip instead of pushing horizontal scroll');
+  assertContains(template, 'justify-content: safe center;', 'desktop center content should avoid clipping the top of tall rich content');
+  assertContains(template, '@supports not (justify-content: safe center)', 'desktop center content should have a fallback for safe centering');
 });
 
 test('Large map discovery surface exists', () => {

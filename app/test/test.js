@@ -1246,7 +1246,7 @@ test('Static shell localization updates text and accessibility attributes', () =
 
 test('Instant Win is gated behind Overpowered cheat', () => {
   const { App, elements } = loadAppForCombat();
-  const player = makeUnit('You');
+  const player = makeUnit('You', { xp: 0 });
   const enemy = makeUnit('Enemy', { disposition: App.DISPOSITION.ENEMY });
   App.player = player;
   App.party = [player];
@@ -6042,7 +6042,7 @@ test('Predator enemy AI prioritizes livestock and prey targets', () => {
 test('Outnumbered low-health enemies can flee', () => {
   const { App } = loadAppForCombat(() => 0);
   App.worldMeta = { seed: 'enemy-flee', generatorVersion: 2 };
-  const player = makeUnit('You');
+  const player = makeUnit('You', { xp: 0 });
   const ally = makeUnit('Ally');
   const enemy = makeUnit('Enemy', { id: 'flee-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
   App.player = player;
@@ -6055,9 +6055,11 @@ test('Outnumbered low-health enemies can flee', () => {
   App.updateLanguage('es');
   App.nextTurn = function() { this._enemyFledAdvanced = true; };
   App.enemyTurn(enemy);
-  assertEqual(enemy.disposition, App.DISPOSITION.NEUTRAL, 'Outnumbered wounded enemy should flee on morale roll');
-  assertEqual(enemy.CPun, 0, 'Fleeing enemy should be removed from combat by HP gate');
-  assertContains(App.log[App.log.length - 1].text, 'Enemy huye aterrorizado!', 'Enemy morale flee log should localize');
+  assertEqual(App.creatures.includes(enemy), false, 'Outnumbered wounded enemy should leave the area on morale flee');
+  assertEqual(App.combatState.active, false, 'Combat should end when the last enemy flees');
+  assertEqual(player.xp, 0, 'Enemy fleeing should not award default victory XP');
+  assertContains(App.log.map(entry => entry.text).join('\n'), 'Enemy huye aterrorizado!', 'Enemy morale flee log should localize');
+  assertContains(App.log[App.log.length - 1].text, 'The encounter breaks off.', 'Enemy-only flee should use a non-victory disengage outcome');
 });
 
 test('Enemy morale flee is deterministic by combat state', () => {
@@ -6077,6 +6079,44 @@ test('Enemy morale flee is deterministic by combat state', () => {
     return App._enemyShouldFlee(enemy, [player, ally]);
   };
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Enemy morale flee should not depend on ambient Math.random');
+});
+
+test('Enemy morale flee persists as area cleanup after save and load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0, { binary: Binary });
+  App.worldMeta = { worldId: 'enemy-flee-save-world', seed: 'enemy-flee', generatorVersion: 2, mapModsHash: 'core' };
+  const player = makeUnit('You', { id: 'player-enemy-flee-save' });
+  const ally = makeUnit('Ally', { id: 'ally-enemy-flee-save' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-flee-save', disposition: App.DISPOSITION.ENEMY, CPun: 40, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.dayCount = 0;
+  App.timeHour = 0;
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: enemy, initiative: 10 }], syncActions: [] };
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+
+  App.enemyTurn(enemy);
+  assertEqual(App.creatures.length, 0, 'Fled enemy should leave active creatures before saving');
+  assertEqual(App.worldMap.get('0,0').creatures.length, 0, 'Fled enemy should leave persisted current tile before saving');
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual save should complete after enemy morale flee');
+
+  const loadedApp = loadAppForCombat(() => 0, { binary: Binary });
+  loadedApp.App._dbGet = async () => savedBuffers[savedBuffers.length - 1];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Enemy-flee save should load');
+  assertEqual(loadedApp.App.creatures.some(creature => creature.id === 'enemy-flee-save'), false, 'Fled enemy should not reload into area creatures');
+  assertEqual(loadedApp.App.worldMap.get('0,0').creatures.some(creature => creature.id === 'enemy-flee-save'), false, 'Fled enemy should not reload into tile creatures');
+  assertEqual(loadedApp.App.combatState.active, false, 'Fled-enemy save should reload outside combat');
 });
 
 test('Enemy target dodge is deterministic by combat state', () => {

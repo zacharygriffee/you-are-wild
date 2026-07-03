@@ -4014,13 +4014,17 @@
                 }
                 this._enemyCallReinforcement(enemy);
                 if (this._enemyShouldFlee(enemy, targets)) {
-	                    this.log.push({ text: this._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
-	                    enemy.disposition = this.DISPOSITION.NEUTRAL;
-	                    enemy.CPun = 0;
-	                    this._emitCombatAction('enemy_flee', enemy, null, 'fled');
-	                    this.renderCreatures();
+                    this.log.push({ text: this._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
+                    enemy.fledCombat = true;
+                    this._emitCombatAction('enemy_flee', enemy, null, 'fled');
+                    this._removeCreatureFromArea(enemy);
+                    this.renderCreatures();
                     this.renderLog();
-                    this.nextTurn();
+                    if (this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0).length === 0) {
+                        this.endCombat('disengage');
+                    } else {
+                        this.nextTurn();
+                    }
                     return;
                 }
                 if (!this._canReachCombatTarget(enemy, target, 'fight')) {
@@ -4163,6 +4167,9 @@
                 } else if (outcome === 'flee') {
                     this.log.push({ text: this._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
                     this.updateScene('Escaped', 'You put distance between yourself and danger.', false);
+                } else if (outcome === 'disengage') {
+                    this.log.push({ text: this._label('combat.disengaged', 'The encounter breaks off.'), type: 'move' });
+                    this.updateScene('Disengaged', this._label('combat.disengaged', 'The encounter breaks off.'), false);
                 } else {
                     this.log.push({ text: this._label('combat.defeat', 'Defeat...'), type: 'combat' });
                     this.updateScene('Defeat', 'Darkness claims you...', false);

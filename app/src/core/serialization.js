@@ -113,6 +113,8 @@
     };
   };
 
+  const unitRef = unit => unit ? String(unit.id || unit.name || '') : '';
+
   // Save codecs
   Binary.codecs = {
     // Unit stats
@@ -137,9 +139,9 @@
         Binary.string.preencode(s, obj.name); Binary.string.preencode(s, obj.species);
         Binary.string.preencode(s, obj.icon); Binary.string.preencode(s, obj.gender || 'female');
         Binary.string.preencode(s, obj.disposition || 'party');
-        Binary.vuint.preencode(s, obj.level); Binary.vuint.preencode(s, obj.CPun || obj.hp || 100);
-        Binary.vuint.preencode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.preencode(s, obj.CPle || 0);
-        Binary.vuint.preencode(s, obj.MPle || 100); Binary.codecs.stats.preencode(s, liveStats(obj));
+        Binary.vuint.preencode(s, obj.level); Binary.vuint.preencode(s, obj.CPun ?? obj.hp ?? 100);
+        Binary.vuint.preencode(s, obj.MPun ?? obj.maxHp ?? 100); Binary.vuint.preencode(s, obj.CPle ?? 0);
+        Binary.vuint.preencode(s, obj.MPle ?? 100); Binary.codecs.stats.preencode(s, liveStats(obj));
         Binary.array(Binary.string).preencode(s, obj.tags || []);
         Binary.array(Binary.string).preencode(s, obj.bodyParts || []);
         Binary.json.preencode(s, obj.stomach || []); Binary.json.preencode(s, obj.womb || []);
@@ -149,9 +151,9 @@
         Binary.string.encode(s, obj.name); Binary.string.encode(s, obj.species);
         Binary.string.encode(s, obj.icon); Binary.string.encode(s, obj.gender || 'female');
         Binary.string.encode(s, obj.disposition || 'party');
-        Binary.vuint.encode(s, obj.level); Binary.vuint.encode(s, obj.CPun || obj.hp || 100);
-        Binary.vuint.encode(s, obj.MPun || obj.maxHp || 100); Binary.vuint.encode(s, obj.CPle || 0);
-        Binary.vuint.encode(s, obj.MPle || 100); Binary.codecs.stats.encode(s, liveStats(obj));
+        Binary.vuint.encode(s, obj.level); Binary.vuint.encode(s, obj.CPun ?? obj.hp ?? 100);
+        Binary.vuint.encode(s, obj.MPun ?? obj.maxHp ?? 100); Binary.vuint.encode(s, obj.CPle ?? 0);
+        Binary.vuint.encode(s, obj.MPle ?? 100); Binary.codecs.stats.encode(s, liveStats(obj));
         Binary.array(Binary.string).encode(s, obj.tags || []);
         Binary.array(Binary.string).encode(s, obj.bodyParts || []);
         Binary.json.encode(s, obj.stomach || []); Binary.json.encode(s, obj.womb || []);
@@ -264,14 +266,35 @@
       .filter(key => String(key).startsWith('party:'))
       .map(String);
 
+    const combatState = appState.combatState?.active ? {
+      active: true,
+      round: appState.combatState.round || 1,
+      currentTurn: appState.combatState.currentTurn || 0,
+      xpEarned: appState.combatState.xpEarned || 0,
+      activeActorId: appState.activeActor ? unitRef(appState.activeActor) : null,
+      turnQueue: (appState.combatState.turnQueue || []).map(entry => ({
+        unitId: unitRef(entry.unit),
+        initiative: entry.initiative || 0,
+        actedThisRound: Boolean(entry.actedThisRound)
+      })).filter(entry => entry.unitId),
+      syncActions: (appState.combatState.syncActions || []).map(sync => ({
+        type: sync.type,
+        participantIds: (sync.participants || []).map(unitRef).filter(Boolean),
+        targetId: unitRef(sync.target),
+        resolveAtIndex: sync.resolveAtIndex || 0,
+        round: sync.round || 1,
+        resolved: Boolean(sync.resolved)
+      })).filter(sync => sync.targetId || sync.participantIds.length)
+    } : { active: false };
+
     const saveData = {
       version: 10,
       playerName: appState.player?.name || 'You',
       playerSpecies: appState.player?.species || 'human',
       locationX: appState.location?.x || 0,
       locationY: appState.location?.y || 0,
-      playerHp: appState.player?.CPun || 100,
-      playerMaxHp: appState.player?.MPun || 100,
+      playerHp: appState.player?.CPun ?? 100,
+      playerMaxHp: appState.player?.MPun ?? 100,
       playerStats: liveStats(appState.player),
       playerLevel: appState.player?.level || 1,
       party: appState.party || [],
@@ -295,7 +318,8 @@
         partyAIOrders,
         explorationActorIds,
         explorationPartyTargetIds,
-        encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null
+        encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null,
+        combatState
       }
     };
     return Binary.encode(Binary.codecs.save, saveData);

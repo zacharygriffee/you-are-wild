@@ -1361,6 +1361,14 @@
             _tileCreatures(list = []) {
                 return (list || []).filter(c => this._isCorpse(c) || c.CPun > 0);
             },
+            _unitSaveRef(unit) {
+                return unit ? String(unit.id || unit.name || '') : '';
+            },
+            _findUnitBySaveRef(ref) {
+                const key = String(ref || '');
+                if (!key) return null;
+                return [...(this.party || []), ...(this.creatures || [])].find(unit => this._unitSaveRef(unit) === key || String(unit.name || '') === key) || null;
+            },
             _containerCapacity(unit, container = 'stomach') {
                 const base = Math.max(1, (unit?.size || 4) + (unit?.appetite || 0));
                 return container === 'stomach' ? base : Math.max(1, Math.floor(base / 2));
@@ -1477,8 +1485,33 @@
             _removeCreatureFromArea(unit) {
                 if (!unit) return;
                 this.creatures = this.creatures.filter(c => c !== unit);
+                this.combatState.turnQueue = (this.combatState.turnQueue || []).filter(entry => entry.unit !== unit);
                 this._normalizeExplorationSelections();
                 this._syncCurrentTileCreatures();
+            },
+            _removeContainedTarget(target) {
+                if (!target) return;
+                if (this.party.includes(target)) this._removeContainedPartyMember(target);
+                else this._removeCreatureFromArea(target);
+                this.combatState.turnQueue = (this.combatState.turnQueue || []).filter(entry => entry.unit !== target);
+                this.combatState.syncActions = (this.combatState.syncActions || []).filter(sync => sync.target !== target && !(sync.participants || []).includes(target));
+                if (this.activeActor === target) this.activeActor = null;
+                if (this.targetSelection?.target === target || this.targetSelection?.targetId === this._unitSaveRef(target)) this.targetSelection = null;
+                this._syncCurrentTileCreatures();
+            },
+            _containTargetIn(predator, target, container = 'stomach', extra = {}) {
+                if (!predator || !target) return null;
+                const prey = this._createStomachPrey(target, {
+                    ...extra,
+                    inWomb: container === 'womb' || extra.inWomb,
+                    inCock: container === 'balls' || extra.inCock
+                });
+                if (!Array.isArray(predator[container])) predator[container] = [];
+                predator[container].push(prey);
+                target.CPun = 0;
+                target.CPle = 0;
+                this._removeContainedTarget(target);
+                return prey;
             },
             _turnCreatureHostile(unit) {
                 unit.disposition = this.DISPOSITION.ENEMY;
@@ -1878,10 +1911,17 @@
             },
             persistAllTileDeltas() {
                 if (!this.tileDeltas) this.tileDeltas = new Map();
+                this._syncCurrentTileCreatures();
                 for (const tile of this.worldMap.values()) {
                     this.persistTileDelta(tile.x, tile.y, tile);
                 }
                 return this.tileDeltas;
+            },
+            _prepareSaveSnapshot() {
+                this._syncPlayerPartyReference();
+                this._normalizeExplorationSelections();
+                this._syncCurrentTileCreatures();
+                this.persistAllTileDeltas();
             },
             _tileDeltaRecordFromEntry(key, delta) {
                 const [x, y] = key.split(',').map(Number);
@@ -3136,6 +3176,8 @@
                 this.renderCreatures();
                 this.renderParty();
                 this.combatState.processing = false;
+                this._syncCurrentTileCreatures();
+                this.autoSave();
                 this.nextTurn();
             },
 
@@ -3149,10 +3191,7 @@
                         const canEat = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canEat) { result = `${target.name} is too strong or too big to consume!`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
-                        const prey = this._createStomachPrey(target);
-                        if (!actor.stomach) actor.stomach = [];
-                        actor.stomach.push(prey);
-                        target.CPun = 0; target.CPle = 0;
+                        this._containTargetIn(actor, target, 'stomach');
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 20);
                         actor.Feas += 1;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
@@ -3176,10 +3215,7 @@
                         const canCV = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canCV) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'balls')) { result = this._capacityFailureMessage(actor, target, 'balls'); break; }
-                        const prey = this._createStomachPrey(target, { inCock: true });
-                        if (!actor.balls) actor.balls = [];
-                        actor.balls.push(prey);
-                        target.CPun = 0; target.CPle = 0;
+                        this._containTargetIn(actor, target, 'balls', { inCock: true });
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         actor.cum = (actor.cum || 0) + 1;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
@@ -3191,10 +3227,7 @@
                         const canUB = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canUB) { result = `${target.name} is too strong or too big!`; break; }
                         if (!this._canFitPrey(actor, target, 'womb')) { result = this._capacityFailureMessage(actor, target, 'womb'); break; }
-                        const prey = this._createStomachPrey(target, { inWomb: true });
-                        if (!actor.womb) actor.womb = [];
-                        actor.womb.push(prey);
-                        target.CPun = 0; target.CPle = 0;
+                        this._containTargetIn(actor, target, 'womb', { inWomb: true });
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 15);
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
                         result = `${actorName} draw${actorVerb} ${target.name} into their womb, warm walls closing around them.`;
@@ -3251,10 +3284,7 @@
                         if (!isWilling && !this.cheats.canEatAnything) { result = `${target.name} refuses to be fed to ${actorName}.`; break; }
                         if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
-                        const prey = this._createStomachPrey(target, { willingSacrifice: true });
-                        if (!actor.stomach) actor.stomach = [];
-                        actor.stomach.push(prey);
-                        target.CPun = 0; target.CPle = 0;
+                        this._containTargetIn(actor, target, 'stomach', { willingSacrifice: true });
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
                         result = `${target.name} willingly feeds themself to ${actorName}, sliding down into warmth.`;
                         break;
@@ -3267,10 +3297,7 @@
                         const holder = holders[0] || this.creatures.filter(c => c.CPun > 0 && c !== target && c !== actor)[0];
                         if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
-                        const prey = this._createStomachPrey(target, { forcedFed: true, by: actor.name });
-                        if (!actor.stomach) actor.stomach = [];
-                        actor.stomach.push(prey);
-                        target.CPun = 0; target.CPle = 0;
+                        this._containTargetIn(actor, target, 'stomach', { forcedFed: true, by: actor.name });
                         target.forcedFed = true;
                         actor.forcedFed = true;
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
@@ -3614,17 +3641,15 @@
                     case 'sync_feed': {
                         const totalFeas = sync.participants.reduce((sum, p) => sum + (p.Feas || 0), 0);
                         const canEat = sync.target.CPun <= sync.target.MPun * 0.3 || totalFeas > sync.target.Flee + 5;
-	                        if (canEat) {
-	                            const eater = sync.participants[0];
-	                            if (!this._canFitPrey(eater, sync.target, 'stomach')) {
-	                                result = this._capacityFailureMessage(eater, sync.target, 'stomach');
-	                                break;
-	                            }
-	                            if (!eater.stomach) eater.stomach = [];
-	                            eater.stomach.push(this._createStomachPrey(sync.target));
-	                            sync.target.CPun = 0;
-	                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
-	                            result = `${sync.participants.map(p => p.name).join(' and ')} force ${sync.target.name} into ${eater.name}'s stomach!`;
+                        if (canEat) {
+                            const eater = sync.participants[0];
+                            if (!this._canFitPrey(eater, sync.target, 'stomach')) {
+                                result = this._capacityFailureMessage(eater, sync.target, 'stomach');
+                                break;
+                            }
+                            this._containTargetIn(eater, sync.target, 'stomach');
+                            this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
+                            result = `${sync.participants.map(p => p.name).join(' and ')} force ${sync.target.name} into ${eater.name}'s stomach!`;
                         } else {
                             result = `${sync.target.name} is too strong to be force-fed!`;
                         }
@@ -3775,9 +3800,7 @@
                             const weakest = enemies.reduce((w, e) => (e.CPun / e.MPun < w.CPun / w.MPun) ? e : w, enemies[0]);
                             const canEat = weakest.CPun <= weakest.MPun * 0.3 || (ally.Feas > weakest.Flee && ally.size >= weakest.size - 2);
                             if (canEat && this._canFitPrey(ally, weakest, 'stomach')) {
-                                if (!ally.stomach) ally.stomach = [];
-                                ally.stomach.push(this._createStomachPrey(weakest));
-                                weakest.CPun = 0;
+                                this._containTargetIn(ally, weakest, 'stomach');
                                 ally.hunger = Math.max(0, ally.hunger - 50);
                                 ally.obedient = true; // Feeding restores loyalty
                                 this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
@@ -3811,9 +3834,7 @@
                     const predators = this.party.filter(p => p !== ally && p.CPun > 0 && p.hunger > 50 && p.Feas > ally.Flee && p.size >= ally.size - 2 && this._canFitPrey(p, ally, 'stomach'));
                     if (predators.length > 0) {
                         const pred = predators.reduce((best, p) => p.hunger > best.hunger ? p : best, predators[0]);
-                        if (!pred.stomach) pred.stomach = [];
-                        pred.stomach.push(this._createStomachPrey(ally, { willingSacrifice: true }));
-                        ally.CPun = 0; ally.CPle = 0;
+                        this._containTargetIn(pred, ally, 'stomach', { willingSacrifice: true });
                         pred.hunger = Math.max(0, pred.hunger - 50);
                         pred.obedient = true;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
@@ -4609,12 +4630,8 @@
                 if (!prey || !consumer || prey === consumer) return this._label('group.feed.selfBlocked', '{name} cannot feed into themself yet.', { name: prey?.name || 'Someone' });
                 if (prey === this.player || prey.mc) return this._label('group.feed.playerBlocked', '{name} cannot be handed off as prey right now.', { name: prey.name });
                 if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
-                if (!consumer.stomach) consumer.stomach = [];
-                consumer.stomach.push(this._createStomachPrey(prey, { willingSacrifice: true }));
-                prey.CPun = 0;
-                prey.CPle = 0;
+                this._containTargetIn(consumer, prey, 'stomach', { willingSacrifice: true });
                 consumer.hunger = Math.max(0, (consumer.hunger || 0) - 40);
-                this._removeContainedPartyMember(prey);
                 return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their stomach.', { prey: prey.name, consumer: consumer.name });
             },
 
@@ -5096,11 +5113,7 @@
                             result = this._capacityFailureMessage(capacityActor, target, 'stomach');
                             break;
                         }
-                        if (!primary.stomach) primary.stomach = [];
-                        primary.stomach.push(this._createStomachPrey(target));
-                        target.CPun = 0;
-                        if (this.party.includes(target) && target !== primary) this._removeContainedPartyMember(target);
-                        else if (this.creatures.includes(target)) this._removeCreatureFromArea(target);
+                        this._containTargetIn(primary, target, 'stomach');
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                         result = this._label('group.feast.swallow', '{helpers} help {primary} swallow {target}.', {
                             helpers: helpers.map(actor => actor.name).join(', ') || primary.name,
@@ -5240,14 +5253,7 @@
                                 result = this._capacityFailureMessage(actor, target, 'stomach');
                                 break;
                             }
-                            if (!actor.stomach) actor.stomach = [];
-                            actor.stomach.push(this._createStomachPrey(target));
-                            target.CPun = 0;
-                            if (this.party.includes(target) && target !== actor) {
-                                this._removeContainedPartyMember(target);
-                            } else if (this.creatures.includes(target)) {
-                                this._removeCreatureFromArea(target);
-                            }
+                            this._containTargetIn(actor, target, 'stomach');
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             const owner = actor === this.player || actor.name === this.player?.name ? this._label('party.you', 'You') : actor.name;
                             result = this._label('explore.feast.swallow', '{actor} swallows {target} whole. They settle in {owner} stomach.', {
@@ -9387,8 +9393,7 @@
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
                 try {
-                    this._syncPlayerPartyReference();
-                    this.persistAllTileDeltas();
+                    this._prepareSaveSnapshot();
                     let worldStoreSaved = false;
                     try {
                         await this.persistWorldStateToMapStore();
@@ -9423,8 +9428,7 @@
             async _saveToSlotConfirmed(slotName) {
                 const slotLabel = this._slotDisplayLabel(slotName);
                 try {
-                    this._syncPlayerPartyReference();
-                    this.persistAllTileDeltas();
+                    this._prepareSaveSnapshot();
                     let worldStoreSaved = false;
                     try {
                         await this.persistWorldStateToMapStore();
@@ -9523,21 +9527,22 @@
                     this.activeSlot = slotName;
                     this._restoreWorldState(loaded);
                     await this.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
+                    this._restoreCombatState(loaded.questState?.combatState);
                     this._normalizeExplorationSelections();
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
-                    this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
+                    this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', this.combatState.active);
                     this._setStoredValue('lastSlot', slotName);
                     // Revive any dead party members on load (softcore)
                     let revived = false;
-	                    if (this.player && this.player.CPun <= 0) {
-	                        this.player.CPun = 1;
-	                        this.player.knockedOut = false;
-	                        revived = true;
-	                    }
-	                    for (const p of this.party) {
-	                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
-	                        p.knockedOut = false;
+                    if (this.player && this.player.CPun <= 0) {
+                        this.player.CPun = 1;
+                        this.player.knockedOut = false;
+                        revived = true;
+                    }
+                    for (const p of this.party) {
+                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
+                        p.knockedOut = false;
                     }
                     if (revived) {
                         this.log.push({ text: this._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: this.player.name }), type: 'discovery' });
@@ -9571,6 +9576,55 @@
                 const currentTile = this.getTile(this.location.x, this.location.y);
                 this.currentBiome = currentTile.biome;
                 this.creatures = this._tileCreatures(currentTile.creatures || []);
+            },
+            _restoreCombatState(savedCombat) {
+                const livingEnemies = this._livingEnemies(this.creatures);
+                if (!savedCombat?.active || livingEnemies.length === 0) {
+                    this.mode = this.GAME_MODE.NORMAL;
+                    this.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+                    this.activeActor = null;
+                    this.targetSelection = null;
+                    return false;
+                }
+                const resolve = ref => this._findUnitBySaveRef(ref);
+                let turnQueue = (savedCombat.turnQueue || [])
+                    .map(entry => {
+                        const unit = resolve(entry.unitId);
+                        if (!unit || unit.CPun <= 0 || unit.knockedOut) return null;
+                        return {
+                            unit,
+                            initiative: entry.initiative || this._calcInitiative(unit),
+                            actedThisRound: Boolean(entry.actedThisRound)
+                        };
+                    })
+                    .filter(Boolean);
+                if (turnQueue.length === 0) {
+                    turnQueue = [...this.party, ...livingEnemies]
+                        .filter(unit => unit.CPun > 0 && !unit.knockedOut)
+                        .map(unit => ({ unit, initiative: this._calcInitiative(unit), actedThisRound: false }))
+                        .sort((a, b) => b.initiative - a.initiative);
+                }
+                const maxTurn = Math.max(0, turnQueue.length - 1);
+                this.mode = this.GAME_MODE.COMBAT;
+                this.combatState = {
+                    active: true,
+                    round: Math.max(1, savedCombat.round || 1),
+                    currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
+                    turnQueue,
+                    syncActions: (savedCombat.syncActions || []).map(sync => ({
+                        type: sync.type,
+                        participants: (sync.participantIds || []).map(resolve).filter(Boolean),
+                        target: resolve(sync.targetId),
+                        resolveAtIndex: sync.resolveAtIndex || 0,
+                        round: sync.round || savedCombat.round || 1,
+                        resolved: Boolean(sync.resolved)
+                    })).filter(sync => sync.target || sync.participants.length),
+                    processing: false,
+                    xpEarned: savedCombat.xpEarned || 0
+                };
+                this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
+                this.targetSelection = null;
+                return true;
             },
             async loadLastPlayed() {
                 const lastSlot = this._getStoredValue('lastSlot');

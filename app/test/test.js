@@ -1969,6 +1969,59 @@ test('Core gameplay loop can move fight loot save and reload state', () => {
   assertEqual(loaded.worldMap['1,0'].creatures[0].looted, true, 'Saved world tile should preserve corpse loot state');
 });
 
+test('Active tile creature damage and combat state survive save and load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-save-combat', Figh: 20 });
+  const enemy = makeUnit('Ratfolk', {
+    id: 'enemy-save-combat',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 17,
+    MPun: 43,
+    Flee: 1
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'combat-save-world', seed: 'combat-save-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 15,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = enemy;
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual save should complete');
+  const loaded = Binary.loadGame(savedBuffers[0]);
+  assertEqual(loaded.worldMap['0,0'].creatures[0].CPun, 17, 'Saved current tile creature should keep damaged punishment');
+  assertEqual(loaded.worldMap['0,0'].creatures[0].MPun, 43, 'Saved current tile creature should keep max punishment');
+  assertEqual(loaded.questState.combatState.active, true, 'Save metadata should preserve active combat');
+  assertEqual(loaded.questState.combatState.currentTurn, 1, 'Save metadata should preserve current turn index');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  loadedApp.App._dbGet = async () => savedBuffers[0];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Saved combat slot should load');
+  assertEqual(loadedApp.App.creatures[0].CPun, 17, 'Loaded active tile enemy should keep damaged punishment');
+  assertEqual(loadedApp.App.combatState.active, true, 'Loaded active combat should remain in combat mode');
+  assertEqual(loadedApp.App.mode, loadedApp.App.GAME_MODE.COMBAT, 'Loaded active combat should restore combat game mode');
+  assertEqual(loadedApp.App.combatState.turnQueue[1].unit.id, 'enemy-save-combat', 'Loaded combat queue should point at restored enemy object');
+});
+
 test('Combat action guardrails and flee outcome feedback localize', () => {
   const { App } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');
@@ -1990,6 +2043,33 @@ test('Combat action guardrails and flee outcome feedback localize', () => {
 
   App.endCombat('flee');
   assertContains(App.log[App.log.length - 1].text, 'Escapaste del encuentro.', 'Flee outcome feedback should localize');
+});
+
+test('Combat swallow removes contained creature from area panel', () => {
+  const { App } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-swallow', Feas: 80, size: 8, appetite: 8 });
+  const enemy = makeUnit('Batfolk', {
+    id: 'enemy-swallow',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 5,
+    MPun: 40,
+    Flee: 1,
+    size: 2
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() {};
+  App.executeActionAgainstTarget('feast', player, enemy);
+  assertEqual(App.creatures.length, 0, 'Swallowed enemy should be removed from area creatures');
+  assertEqual(player.stomach.length, 1, 'Swallowed enemy should be stored in predator container');
+  assertEqual(player.stomach[0].id, 'enemy-swallow', 'Container prey should preserve original id');
+  assertEqual(App.worldMap.get('0,0').creatures.length, 0, 'Current tile should not keep swallowed enemy card');
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === enemy), false, 'Combat queue should drop swallowed enemy');
 });
 
 test('Defeat return-to-menu uses in-app confirmation', () => {

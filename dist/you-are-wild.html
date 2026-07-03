@@ -4009,6 +4009,186 @@ const WorldGen = (() => {
 </script>
 
 <script>
+/**
+ * Asset and tileset manifest registry.
+ * Keeps provenance, licensing, relative paths, and tile-key mappings outside map logic.
+ */
+(function() {
+  'use strict';
+
+  const TILE_KEYS = {
+    unknown: 'unknown',
+    biomes: {
+      grove: 'terrain-grove',
+      forest: 'terrain-forest',
+      plains: 'terrain-plains',
+      swamp: 'terrain-swamp',
+      cave: 'terrain-cave',
+      jungle: 'terrain-jungle',
+      beach: 'terrain-beach',
+      cliff: 'terrain-cliff',
+      water: 'terrain-water',
+      dungeon: 'terrain-dungeon',
+      manor: 'terrain-manor',
+      road: 'route-road-horizontal',
+      bridge: 'route-bridge-horizontal'
+    },
+    roads: {
+      'north-south': 'route-road-vertical',
+      'east-west': 'route-road-horizontal',
+      vertical: 'route-road-vertical',
+      horizontal: 'route-road-horizontal',
+      end: 'route-road-end',
+      'corner-ne': 'route-road-corner-ne',
+      'corner-es': 'route-road-corner-es',
+      'corner-sw': 'route-road-corner-sw',
+      'corner-wn': 'route-road-corner-wn',
+      't-north': 'route-road-t-north',
+      't-east': 'route-road-t-east',
+      't-south': 'route-road-t-south',
+      't-west': 'route-road-t-west',
+      intersection: 'route-road-intersection'
+    },
+    bridges: {
+      'north-south': 'route-bridge-vertical',
+      'east-west': 'route-bridge-horizontal',
+      vertical: 'route-bridge-vertical',
+      horizontal: 'route-bridge-horizontal'
+    },
+    poi: {
+      settlement: 'poi-settlement',
+      restSite: 'poi-rest-site',
+      dangerSite: 'poi-danger-site',
+      resourceSite: 'poi-resource-site',
+      landmark: 'poi-landmark',
+      structure: 'poi-structure'
+    },
+    structures: {
+      camp: 'structure-camp',
+      hut: 'structure-hut',
+      ruins: 'structure-ruins',
+      spring: 'structure-spring',
+      shrine: 'structure-shrine',
+      farm: 'structure-farm',
+      village: 'structure-village',
+      cave: 'structure-cave',
+      web: 'structure-web'
+    },
+    interior: {
+      room: 'interior-room',
+      cave: 'interior-cave-room',
+      exit: 'interior-exit',
+      wall: 'interior-wall',
+      door: 'interior-door'
+    }
+  };
+
+  const fallbackTiles = Object.values(TILE_KEYS.biomes)
+    .concat(Object.values(TILE_KEYS.roads))
+    .concat(Object.values(TILE_KEYS.bridges))
+    .concat(Object.values(TILE_KEYS.poi))
+    .concat(Object.values(TILE_KEYS.structures))
+    .concat(Object.values(TILE_KEYS.interior))
+    .concat([TILE_KEYS.unknown])
+    .reduce((acc, key) => {
+      acc[key] = { fallback: 'emoji' };
+      return acc;
+    }, {});
+
+  const ASSET_MANIFEST = {
+    version: 1,
+    activeTileset: 'core-emoji-fallback',
+    fallbackTileset: 'core-emoji-fallback',
+    tilesets: {
+      'core-emoji-fallback': {
+        id: 'core-emoji-fallback',
+        type: 'tileset',
+        version: '1.0.0',
+        author: 'Project',
+        license: 'project-internal',
+        allowedUse: ['bundled', 'mod-fallback', 'redistributable-with-project'],
+        provenance: {
+          kind: 'procedural_ui',
+          tool: 'html-css-emoji',
+          generatedBy: 'project',
+          generatedAt: null,
+          notes: 'No bitmap assets. Map renders text/icon fallback for every known tile key.'
+        },
+        relativeBasePath: '',
+        fallback: { mode: 'emoji', required: true },
+        tiles: fallbackTiles
+      },
+      'painted-chatgpt-image-tileset-placeholder': {
+        id: 'painted-chatgpt-image-tileset-placeholder',
+        type: 'tileset',
+        version: '0.1.0',
+        author: 'Project owner',
+        license: 'owner-supplied-ai-generated',
+        allowedUse: ['first-party-prototype', 'local-build', 'future-mod-pack'],
+        enabled: false,
+        provenance: {
+          kind: 'ai_generated',
+          tool: 'ChatGPT Image',
+          generatedBy: 'project-owner',
+          generatedAt: null,
+          source: 'user-provided tilesheet screenshot',
+          notes: 'Placeholder metadata only. Individual tile image files have not been extracted or imported yet.'
+        },
+        relativeBasePath: 'assets/tilesets/painted-chatgpt-image/',
+        fallback: { mode: 'tileset-key', tilesetId: 'core-emoji-fallback' },
+        tiles: {}
+      }
+    }
+  };
+
+  const AssetManifest = {
+    manifest: ASSET_MANIFEST,
+    tileKeys: TILE_KEYS,
+    getTileset(id = ASSET_MANIFEST.activeTileset) {
+      return ASSET_MANIFEST.tilesets[id] || ASSET_MANIFEST.tilesets[ASSET_MANIFEST.fallbackTileset];
+    },
+    getTileAsset(key, tilesetId = ASSET_MANIFEST.activeTileset) {
+      const tileset = this.getTileset(tilesetId);
+      const fallback = this.getTileset(ASSET_MANIFEST.fallbackTileset);
+      const entry = tileset?.tiles?.[key] || fallback?.tiles?.[key] || null;
+      if (!entry) return null;
+      return {
+        ...entry,
+        id: `${tileset.id}:${key}`,
+        key,
+        tilesetId: tileset.id,
+        src: entry.src ? `${tileset.relativeBasePath || ''}${entry.src}` : null,
+        provenance: tileset.provenance,
+        license: tileset.license,
+        allowedUse: tileset.allowedUse || [],
+        fallbackMode: entry.fallback || tileset.fallback?.mode || 'emoji'
+      };
+    },
+    registerTileset(tileset) {
+      if (!tileset || !tileset.id) return false;
+      ASSET_MANIFEST.tilesets[tileset.id] = {
+        type: 'tileset',
+        version: '1.0.0',
+        tiles: {},
+        fallback: { mode: 'tileset-key', tilesetId: ASSET_MANIFEST.fallbackTileset },
+        ...tileset
+      };
+      return true;
+    },
+    setActiveTileset(id) {
+      if (!ASSET_MANIFEST.tilesets[id]) return false;
+      ASSET_MANIFEST.activeTileset = id;
+      return true;
+    }
+  };
+
+  if (typeof window !== 'undefined') window.AssetManifest = AssetManifest;
+  if (typeof globalThis !== 'undefined') globalThis.AssetManifest = AssetManifest;
+})();
+
+</script>
+
+<script>
 
         // =============================================
         // FIGHT FUCK FEED - MECHANICS OVERHAUL
@@ -4045,7 +4225,9 @@ const WorldGen = (() => {
                 mod: { label: 'Mod', icon: '🧩' }
             },
             MAP_TILESET_KEYS: {
+                ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys : {}),
                 biomes: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.biomes : {}),
                     grove: 'terrain-grove',
                     forest: 'terrain-forest',
                     plains: 'terrain-plains',
@@ -4062,6 +4244,7 @@ const WorldGen = (() => {
                     entrance: 'terrain-entrance'
                 },
                 roads: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.roads : {}),
                     'east-west': 'route-road-horizontal',
                     'north-south': 'route-road-vertical',
                     corner: 'route-road-corner',
@@ -4077,10 +4260,12 @@ const WorldGen = (() => {
                     end: 'route-road-end'
                 },
                 bridges: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.bridges : {}),
                     'east-west': 'route-bridge-horizontal',
                     'north-south': 'route-bridge-vertical'
                 },
                 poi: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.poi : {}),
                     settlement: 'poi-settlement',
                     restSite: 'poi-rest-site',
                     resourceSite: 'poi-resource-site',
@@ -4089,6 +4274,7 @@ const WorldGen = (() => {
                     structure: 'poi-structure'
                 },
                 structures: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.structures : {}),
                     camp: 'structure-camp',
                     spring: 'structure-spring',
                     cabin: 'structure-cabin',
@@ -4104,6 +4290,7 @@ const WorldGen = (() => {
                     web: 'structure-web'
                 },
                 interior: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.interior : {}),
                     room: 'interior-room',
                     cave: 'interior-cave-room',
                     exit: 'interior-exit',
@@ -11258,6 +11445,7 @@ const WorldGen = (() => {
             _mapTileVisual(tile, options = {}) {
                 const known = Boolean(tile);
                 if (!known) {
+                    const asset = this._tilesetAssetForKey('unknown');
                     return {
                         icon: '·',
                         tilesetKey: 'unknown',
@@ -11266,7 +11454,8 @@ const WorldGen = (() => {
                         classes: 'map-visual-unknown',
                         label: options.label || 'Unknown',
                         marker: null,
-                        hasPaintedAsset: false
+                        hasPaintedAsset: Boolean(asset?.src),
+                        asset
                     };
                 }
                 const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
@@ -11317,6 +11506,7 @@ const WorldGen = (() => {
                     icon = '●';
                     classes.push('map-visual-current');
                 }
+                const asset = this._tilesetAssetForKey(tilesetKey);
                 return {
                     icon,
                     tilesetKey,
@@ -11326,18 +11516,28 @@ const WorldGen = (() => {
                     classes: classes.join(' '),
                     label: biome.name || biomeId,
                     marker: options.questMarker || options.poi || null,
-                    hasPaintedAsset: false
+                    hasPaintedAsset: Boolean(asset?.src),
+                    asset
                 };
+            },
+            _tilesetAssetForKey(key) {
+                if (typeof globalThis === 'undefined' || !globalThis.AssetManifest || !globalThis.AssetManifest.getTileAsset) return null;
+                return globalThis.AssetManifest.getTileAsset(key);
             },
             _mapTileAttrs(visual) {
                 const key = this._escapeHtml(visual?.tilesetKey || 'unknown');
                 const base = this._escapeHtml(visual?.baseTilesetKey || key);
                 const kind = this._escapeHtml(visual?.kind || 'unknown');
                 const shape = visual?.routeShape ? ` data-route-shape="${this._escapeHtml(visual.routeShape)}"` : '';
-                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}`;
+                const asset = visual?.asset;
+                const assetAttrs = asset
+                    ? ` data-asset-id="${this._escapeHtml(asset.id)}" data-asset-fallback="${this._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${this._escapeHtml(asset.src)}"` : ''}`
+                    : '';
+                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${assetAttrs}`;
             },
             _interiorTileVisual(room = null, options = {}) {
                 if (!room) {
+                    const asset = this._tilesetAssetForKey(this.MAP_TILESET_KEYS.interior.wall);
                     return {
                         icon: '■',
                         tilesetKey: this.MAP_TILESET_KEYS.interior.wall,
@@ -11346,7 +11546,8 @@ const WorldGen = (() => {
                         classes: 'map-visual map-visual-interior map-visual-interior-wall',
                         label: options.label || 'Wall',
                         marker: null,
-                        hasPaintedAsset: false
+                        hasPaintedAsset: Boolean(asset?.src),
+                        asset
                     };
                 }
                 const biomeId = room.biome || 'indoors';
@@ -11367,6 +11568,7 @@ const WorldGen = (() => {
                     classes.push('map-visual-interior-feature');
                 }
                 const biome = this.biomes[biomeId] || this.biomes.indoors || {};
+                const asset = this._tilesetAssetForKey(tilesetKey);
                 return {
                     icon,
                     tilesetKey,
@@ -11376,7 +11578,8 @@ const WorldGen = (() => {
                     classes: classes.join(' '),
                     label: room.exit ? 'Exit' : (this.STRUCTURES[room.structure]?.name || biome.name || 'Room'),
                     marker: null,
-                    hasPaintedAsset: false
+                    hasPaintedAsset: Boolean(asset?.src),
+                    asset
                 };
             },
 

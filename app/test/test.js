@@ -101,18 +101,32 @@ const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
+const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
+const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
 const globalNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'global-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
 const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
+const buildContent = fs.readFileSync(path.join(__dirname, '..', 'build.js'), 'utf8');
 
 function loadWorldGenForTest() {
   return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
 }
 
+function loadAssetManifestForTest() {
+  const g = {};
+  return new Function('globalThis', 'window', `${assetManifestContent}\nreturn globalThis.AssetManifest;`)(g, g);
+}
+
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
+});
+
+test('Asset manifest module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/asset-manifest.js'", 'Asset manifest should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/asset-manifest.js'") < buildContent.indexOf("'src/core/app.js'"), 'Asset manifest should load before app.js');
+  assertContains(appContent, 'globalThis.AssetManifest', 'App should read asset manifest through global registry');
 });
 
 test('Game mode constants exist', () => {
@@ -410,6 +424,21 @@ test('Content templates exist', () => {
   assertContains(contentContent, 'encounter:', 'encounter templates missing');
   assertContains(contentContent, 'combat:', 'combat templates missing');
   assertContains(contentContent, 'action:', 'action templates missing');
+});
+
+test('Asset manifest supports tileset provenance and fallback metadata', () => {
+  const manifest = loadAssetManifestForTest();
+  assertEqual(manifest.manifest.activeTileset, 'core-emoji-fallback', 'Default tileset should keep emoji fallback active');
+  assertEqual(manifest.tileKeys.biomes.forest, 'terrain-forest', 'Manifest should expose stable terrain tile keys');
+  const fallbackForest = manifest.getTileAsset('terrain-forest');
+  assertEqual(fallbackForest.fallbackMode, 'emoji', 'Fallback tileset should preserve emoji rendering mode');
+  assertEqual(fallbackForest.src, null, 'Fallback tileset should not require image assets');
+  const painted = manifest.manifest.tilesets['painted-chatgpt-image-tileset-placeholder'];
+  assertEqual(painted.provenance.kind, 'ai_generated', 'Painted tileset placeholder should record AI-generated provenance');
+  assertEqual(painted.provenance.tool, 'ChatGPT Image', 'Painted tileset placeholder should record generation tool');
+  assertEqual(painted.provenance.generatedBy, 'project-owner', 'Painted tileset placeholder should record project-owner source');
+  assertEqual(painted.relativeBasePath, 'assets/tilesets/painted-chatgpt-image/', 'Painted tileset placeholder should use relative asset paths');
+  assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
 });
 
 test('Corpse content templates exist', () => {
@@ -971,7 +1000,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${appContent}\nreturn window.App;`
   );
   const App = appFactory(
     {},
@@ -3930,6 +3959,9 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   assertEqual(roadVisual.tilesetKey, 'route-road-vertical', 'Road visual should expose a direction-specific tileset key');
   assertEqual(roadVisual.baseTilesetKey, 'terrain-forest', 'Road visual should preserve forest base terrain key');
   assertEqual(roadVisual.routeShape, 'north-south', 'Road visual should use stored direction when no neighbor resolver is available');
+  assertEqual(roadVisual.asset.key, 'route-road-vertical', 'Road visual should resolve manifest asset metadata');
+  assertEqual(roadVisual.asset.fallbackMode, 'emoji', 'Road visual should preserve fallback mode without imported art');
+  assertEqual(roadVisual.hasPaintedAsset, false, 'Road visual should not claim painted assets before import');
   assertEqual(forestRoad.biome, 'forest', 'Visual mapping should not replace the base biome with road');
   assertEqual(bridgeVisual.tilesetKey, 'route-bridge-horizontal', 'Bridge visual should expose a direction-specific tileset key');
   assertEqual(bridgeVisual.baseTilesetKey, 'terrain-water', 'Bridge visual should preserve water base terrain key');
@@ -3949,8 +3981,11 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.renderLargeMap();
   assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Minimap should infer route shape from known neighbors');
   assertContains(elements.get('mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Minimap should render base terrain tileset keys');
+  assertContains(elements.get('mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Minimap should expose asset manifest ids');
+  assertContains(elements.get('mini-map').innerHTML, 'data-asset-fallback="emoji"', 'Minimap should expose fallback rendering mode');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-id="core-emoji-fallback:structure-camp"', 'Large map should expose structure asset ids');
 });
 
 test('Map route visuals infer corners and intersections from known neighbors', () => {
@@ -4010,6 +4045,7 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   const caveVisual = App._interiorTileVisual(cave);
   const exitVisual = App._interiorTileVisual(exit);
   assertEqual(wallVisual.tilesetKey, 'interior-wall', 'Missing interior rooms should expose a wall tileset key');
+  assertEqual(wallVisual.asset.key, 'interior-wall', 'Interior wall visual should resolve manifest asset metadata');
   assertEqual(indoorVisual.tilesetKey, 'structure-camp', 'Interior feature rooms should reuse known structure tileset keys');
   assertEqual(indoorVisual.baseTilesetKey, 'terrain-indoors', 'Interior feature rooms should preserve indoor base terrain key');
   assertEqual(caveVisual.tilesetKey, 'interior-cave-room', 'Cave interiors should expose a cave-room tileset key');
@@ -4030,6 +4066,7 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   App.renderMap();
   const html = elements.get('mini-map').innerHTML;
   assertContains(html, 'data-tileset-key="interior-exit"', 'Rendered interior minimap should expose exit tileset key');
+  assertContains(html, 'data-asset-id="core-emoji-fallback:interior-exit"', 'Rendered interior minimap should expose exit asset id');
   assertContains(html, 'data-tileset-key="structure-camp"', 'Rendered interior minimap should expose feature tileset key');
   assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior minimap should expose cave room tileset key');
   assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior minimap should expose wall tileset key for missing rooms');

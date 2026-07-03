@@ -34,7 +34,9 @@
                 mod: { label: 'Mod', icon: '🧩' }
             },
             MAP_TILESET_KEYS: {
+                ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys : {}),
                 biomes: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.biomes : {}),
                     grove: 'terrain-grove',
                     forest: 'terrain-forest',
                     plains: 'terrain-plains',
@@ -51,6 +53,7 @@
                     entrance: 'terrain-entrance'
                 },
                 roads: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.roads : {}),
                     'east-west': 'route-road-horizontal',
                     'north-south': 'route-road-vertical',
                     corner: 'route-road-corner',
@@ -66,10 +69,12 @@
                     end: 'route-road-end'
                 },
                 bridges: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.bridges : {}),
                     'east-west': 'route-bridge-horizontal',
                     'north-south': 'route-bridge-vertical'
                 },
                 poi: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.poi : {}),
                     settlement: 'poi-settlement',
                     restSite: 'poi-rest-site',
                     resourceSite: 'poi-resource-site',
@@ -78,6 +83,7 @@
                     structure: 'poi-structure'
                 },
                 structures: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.structures : {}),
                     camp: 'structure-camp',
                     spring: 'structure-spring',
                     cabin: 'structure-cabin',
@@ -93,6 +99,7 @@
                     web: 'structure-web'
                 },
                 interior: {
+                    ...(typeof globalThis !== 'undefined' && globalThis.AssetManifest ? globalThis.AssetManifest.tileKeys.interior : {}),
                     room: 'interior-room',
                     cave: 'interior-cave-room',
                     exit: 'interior-exit',
@@ -7247,6 +7254,7 @@
             _mapTileVisual(tile, options = {}) {
                 const known = Boolean(tile);
                 if (!known) {
+                    const asset = this._tilesetAssetForKey('unknown');
                     return {
                         icon: '·',
                         tilesetKey: 'unknown',
@@ -7255,7 +7263,8 @@
                         classes: 'map-visual-unknown',
                         label: options.label || 'Unknown',
                         marker: null,
-                        hasPaintedAsset: false
+                        hasPaintedAsset: Boolean(asset?.src),
+                        asset
                     };
                 }
                 const biomeId = tile.displayBiome || tile.derivedBiome || tile.biome || 'plains';
@@ -7306,6 +7315,7 @@
                     icon = '●';
                     classes.push('map-visual-current');
                 }
+                const asset = this._tilesetAssetForKey(tilesetKey);
                 return {
                     icon,
                     tilesetKey,
@@ -7315,18 +7325,28 @@
                     classes: classes.join(' '),
                     label: biome.name || biomeId,
                     marker: options.questMarker || options.poi || null,
-                    hasPaintedAsset: false
+                    hasPaintedAsset: Boolean(asset?.src),
+                    asset
                 };
+            },
+            _tilesetAssetForKey(key) {
+                if (typeof globalThis === 'undefined' || !globalThis.AssetManifest || !globalThis.AssetManifest.getTileAsset) return null;
+                return globalThis.AssetManifest.getTileAsset(key);
             },
             _mapTileAttrs(visual) {
                 const key = this._escapeHtml(visual?.tilesetKey || 'unknown');
                 const base = this._escapeHtml(visual?.baseTilesetKey || key);
                 const kind = this._escapeHtml(visual?.kind || 'unknown');
                 const shape = visual?.routeShape ? ` data-route-shape="${this._escapeHtml(visual.routeShape)}"` : '';
-                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}`;
+                const asset = visual?.asset;
+                const assetAttrs = asset
+                    ? ` data-asset-id="${this._escapeHtml(asset.id)}" data-asset-fallback="${this._escapeHtml(asset.fallbackMode || 'emoji')}"${asset.src ? ` data-asset-src="${this._escapeHtml(asset.src)}"` : ''}`
+                    : '';
+                return `data-tileset-key="${key}" data-base-tileset-key="${base}" data-map-kind="${kind}"${shape}${assetAttrs}`;
             },
             _interiorTileVisual(room = null, options = {}) {
                 if (!room) {
+                    const asset = this._tilesetAssetForKey(this.MAP_TILESET_KEYS.interior.wall);
                     return {
                         icon: '■',
                         tilesetKey: this.MAP_TILESET_KEYS.interior.wall,
@@ -7335,7 +7355,8 @@
                         classes: 'map-visual map-visual-interior map-visual-interior-wall',
                         label: options.label || 'Wall',
                         marker: null,
-                        hasPaintedAsset: false
+                        hasPaintedAsset: Boolean(asset?.src),
+                        asset
                     };
                 }
                 const biomeId = room.biome || 'indoors';
@@ -7356,6 +7377,7 @@
                     classes.push('map-visual-interior-feature');
                 }
                 const biome = this.biomes[biomeId] || this.biomes.indoors || {};
+                const asset = this._tilesetAssetForKey(tilesetKey);
                 return {
                     icon,
                     tilesetKey,
@@ -7365,7 +7387,8 @@
                     classes: classes.join(' '),
                     label: room.exit ? 'Exit' : (this.STRUCTURES[room.structure]?.name || biome.name || 'Room'),
                     marker: null,
-                    hasPaintedAsset: false
+                    hasPaintedAsset: Boolean(asset?.src),
+                    asset
                 };
             },
 

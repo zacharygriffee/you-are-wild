@@ -708,12 +708,27 @@
             max-width: 100%;
             width: min(100%, 720px);
             overflow-x: hidden;
+            min-width: 0;
         }
 
         .scene-actions > .action-btn {
             width: 100%;
             min-width: 72px;
             max-width: 120px;
+            min-inline-size: 0;
+        }
+
+        .scene-actions > .action-legend,
+        .scene-actions > .selected-target-summary {
+            grid-column: 1 / -1;
+            min-width: 0;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .scene-actions > .action-legend span {
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .scene-actions .target-action-row {
@@ -723,11 +738,21 @@
             justify-content: center;
             gap: var(--space-md);
             max-width: 100%;
+            width: 100%;
+            min-width: 0;
+            overflow-x: hidden;
         }
 
         .scene-actions .target-action-row > .action-btn {
             min-width: 0;
             width: 100%;
+            max-width: 96px;
+        }
+
+        .scene-actions .action-caption {
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            text-align: center;
         }
 
         .mobile-play-surface {

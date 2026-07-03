@@ -3068,6 +3068,9 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
   assertContains(template, '.scene-actions .target-action-row', 'Selected-target action buttons should use bounded desktop scene-action sizing');
+  assertContains(template, '.scene-actions > .selected-target-summary', 'Selected-target summary should be constrained as a scene action grid item');
+  assertContains(template, 'overflow-wrap: anywhere;', 'Long selected actor and target names should wrap instead of forcing horizontal scroll');
+  assertContains(template, '.scene-actions .action-caption', 'Scene action captions should be constrained independently');
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');

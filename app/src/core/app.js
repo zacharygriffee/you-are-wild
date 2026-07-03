@@ -7012,8 +7012,8 @@
             },
             _unitSelectionChips(unit, type) {
                 const labels = {
-                    actor: this._label('target.act', 'Act'),
-                    target: this._label('target.mark', 'Target')
+                    actor: this._label('target.actorRole', 'Actor'),
+                    target: this._label('target.targetRole', 'Target')
                 };
                 const chips = this._unitSelectionRoles(unit, type).map(role => {
                     const safeLabel = this._escapeHtml(labels[role] || role);

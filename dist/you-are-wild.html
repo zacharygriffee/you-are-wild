@@ -852,6 +852,21 @@
             box-shadow: var(--shadow-glow);
         }
 
+        .unit-card.selected-actor {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35), var(--shadow-glow);
+        }
+
+        .unit-card.selected-target {
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
+        }
+
+        .unit-card.selected-actor.selected-target {
+            border-color: var(--accent-warning);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.45), 0 0 0 3px rgba(255, 0, 128, 0.22), var(--shadow-glow);
+        }
+
         .unit-card.expanded {
             border-color: var(--accent-secondary);
         }
@@ -1093,6 +1108,19 @@
         .unit-trait-chip.selection {
             background: rgba(0, 212, 170, 0.12);
         }
+
+        .unit-trait-chip.selection[data-selection-role="actor"] {
+            color: var(--accent-primary);
+            border-color: rgba(0, 212, 170, 0.45);
+            background: rgba(0, 212, 170, 0.12);
+        }
+
+        .unit-trait-chip.selection[data-selection-role="target"] {
+            color: var(--accent-secondary);
+            border-color: rgba(255, 0, 128, 0.45);
+            background: rgba(255, 0, 128, 0.12);
+        }
+
 
         body.high-contrast .unit-bar-track {
             border-color: var(--border-default);
@@ -2035,6 +2063,22 @@
                 border-color: var(--accent-primary);
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25), var(--shadow-glow);
             }
+
+            .mobile-unit-chip.selected-actor {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35), var(--shadow-glow);
+            }
+
+            .mobile-unit-chip.selected-target {
+                border-color: var(--accent-secondary);
+                box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
+            }
+
+            .mobile-unit-chip.selected-actor.selected-target {
+                border-color: var(--accent-warning);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.45), 0 0 0 3px rgba(255, 0, 128, 0.22), var(--shadow-glow);
+            }
+
 
             .mobile-unit-chip .unit-actions {
                 margin-top: 6px !important;
@@ -11477,8 +11521,8 @@ const WorldGen = (() => {
             },
             _unitSelectionChips(unit, type) {
                 const labels = {
-                    actor: this._label('target.act', 'Act'),
-                    target: this._label('target.mark', 'Target')
+                    actor: this._label('target.actorRole', 'Actor'),
+                    target: this._label('target.targetRole', 'Target')
                 };
                 const chips = this._unitSelectionRoles(unit, type).map(role => {
                     const safeLabel = this._escapeHtml(labels[role] || role);
@@ -15456,6 +15500,8 @@ const CONTENT_SYSTEM = {
             'target.targets': 'Targets',
             'target.act': 'Act',
             'target.mark': 'Target',
+            'target.actorRole': 'Actor',
+            'target.targetRole': 'Target',
             'target.selectActorFor': 'Select {name} to act',
             'target.markFor': 'Mark {name} as target',
             'target.selectAs': 'Select {name} as {action} target',
@@ -16117,6 +16163,8 @@ const CONTENT_SYSTEM = {
             'target.targets': 'Objetivos',
             'target.act': 'Actuar',
             'target.mark': 'Objetivo',
+            'target.actorRole': 'Actor',
+            'target.targetRole': 'Objetivo',
             'target.selectActorFor': 'Seleccionar {name} para actuar',
             'target.markFor': 'Marcar {name} como objetivo',
             'target.selectAs': 'Seleccionar {name} como objetivo de {action}',

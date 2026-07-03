@@ -599,8 +599,10 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
 });
 
 test('Overlay close controls clear active overlay state', () => {
-  assertContains(globalNavContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'returnToGame should close all overlay surfaces together');
-  assertContains(globalNavContent, "el.classList?.remove('active')", 'returnToGame should clear active class from closed overlays');
+  assertContains(template, 'onclick="returnToGame()"', 'overlay close buttons should use shared close helper');
+  assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
+  assertContains(appContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
+  assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
@@ -796,6 +798,31 @@ test('Create screen links content level to highlighted settings control', () => 
   assertContains(template, '.settings-focus', 'settings highlight style should exist');
 });
 
+test('Settings opened from create returns to character creation with draft preserved', () => {
+  const { App, elements, document } = loadAppForCombat();
+  App.player = null;
+  App.screen = 'create';
+  App.selectedSpecies = 'fox';
+  App.selectedGender = 'female';
+  App.selectedBodyParts = new Set(['wings']);
+  document.getElementById('char-name').value = 'Draft Name';
+
+  App.openContentSettingsFromCreate();
+  assertEqual(App.settingsReturnScreen, 'create', 'Settings should remember it was opened from character creation');
+  assertEqual(App.screen, 'settings', 'Settings should become the active screen');
+  assertEqual(elements.get('screen-settings').style.display, 'block', 'Settings screen should be visible');
+  assertEqual(elements.get('settings-content-level').scrolledIntoView, true, 'Content level section should be brought into view');
+
+  App.returnToGame();
+  assertEqual(App.screen, 'create', 'Closing settings should return to character creation');
+  assertEqual(elements.get('screen-create').style.display, 'flex', 'Create screen should be visible after closing settings');
+  assertEqual(elements.get('screen-menu').style.display, 'none', 'Menu should not replace the create draft after closing settings');
+  assertEqual(App.selectedSpecies, 'fox', 'Create species draft should be preserved');
+  assertEqual(App.selectedGender, 'female', 'Create gender draft should be preserved');
+  assertEqual(App.selectedBodyParts.has('wings'), true, 'Create body part draft should be preserved');
+  assertEqual(elements.get('char-name').value, 'Draft Name', 'Create name draft should be preserved');
+});
+
 test('Create screen encounter preferences use dynamic identity percentages', () => {
   assertContains(template, 'id="encounter-weight-female"', 'female encounter percentage control missing');
   assertContains(template, 'id="encounter-weight-male"', 'male encounter percentage control missing');
@@ -955,6 +982,7 @@ function makeElement() {
     querySelectorAll() { return []; },
     remove() { this.removed = true; },
     insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
+    scrollIntoView() { this.scrolledIntoView = true; },
     dataset: {},
     classList: {
       add: (...names) => names.forEach(name => classes.add(name)),

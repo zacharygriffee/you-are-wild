@@ -4478,13 +4478,13 @@
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
-                    const opensSubActionSheet = Boolean(this.SUB_ACTIONS[key]);
                     const actionSource = source === 'desktop' ? 'desktop-target' : 'target-bar';
-                    const handler = opensSubActionSheet
-                        ? `App.openExplorationTargetSubActionSheet('${key}','${actionSource}')`
+                    const defaultSubAction = this.SUB_ACTIONS[key] ? this._getDefaultSubAction(key) : null;
+                    const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
+                    const handler = defaultSubAction
+                        ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                         : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
-                    const dialogAttrs = opensSubActionSheet ? ` aria-haspopup="dialog" aria-controls="${source === 'desktop' ? 'desktop-intent-menu' : 'mobile-context-menu'}"` : '';
-                    return `<button class="action-btn" title="${title}" aria-label="${title}"${dialogAttrs} onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
+                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));

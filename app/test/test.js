@@ -3659,7 +3659,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'Objetivos: Ally Target, Creature Target', 'Context actions should show localized selected target names');
   assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos"', 'Selected-target action labels should use localized target counts');
   assertContains(actionsHtml, 'class="target-action-row"', 'Desktop selected-target action buttons should be wrapped in a bounded row');
-  assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="desktop-intent-menu"', 'Desktop selected-target sub-action buttons should advertise and target their dialog popup');
+  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Desktop selected-target action buttons should dispatch the default sub-action directly');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
   assertContains(template, '.scene-actions .target-action-row', 'Selected-target action buttons should use bounded desktop scene-action sizing');
@@ -3679,10 +3679,9 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
-  assertContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Desktop context actions should route registered actions through the desktop selected-target sub-action picker');
+  assertNotContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Desktop selected-target actions should not require a second picker click for the default action');
   const mobileActionsHtml = App._renderContextActions(true);
-  assertContains(mobileActionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="mobile-context-menu"', 'Mobile selected-target sub-action buttons should still advertise and target the mobile dialog popup');
-  assertContains(mobileActionsHtml, "openExplorationTargetSubActionSheet('flirt','target-bar')", 'Mobile context actions should route registered actions through the mobile selected-target sub-action picker');
+  assertContains(mobileActionsHtml, "resolveExplorationTargetAction('flirt','tease','target-bar')", 'Mobile selected-target action buttons should dispatch the default sub-action directly');
   App.toggleExplorationTarget('party', 'actor-1');
   const actorTargetCard = App.renderUnitCard(actor, 0, 'party');
   const actorTargetChip = App.renderMobileUnitChip(actor, 0, 'party');
@@ -8280,7 +8279,7 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(App.lastIntentCommand.subAction, 'attack', 'Desktop menu selection should record the chosen sub-action');
 });
 
-test('Desktop marked-target actions stay bounded and use desktop sub-action sheets', () => {
+test('Desktop marked-target actions stay bounded and dispatch default actions directly', () => {
   const { App, body } = loadAppForCombat();
   const actor = makeUnit('You', { id: 'player-1' });
   const target = makeUnit('Wolfkin Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY, CPun: 80, MPun: 100 });
@@ -8292,12 +8291,49 @@ test('Desktop marked-target actions stay bounded and use desktop sub-action shee
 
   const html = App._renderExplorationTargetActions('desktop');
   assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
-  assertContains(html, "App.openExplorationTargetSubActionSheet('fight','desktop-target')", 'Desktop marked-target actions should open desktop sub-action source');
-  assertContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target actions should advertise the desktop popup');
+  assertContains(html, "App.resolveExplorationTargetAction('fight','attack','desktop-target')", 'Desktop marked-target Fight should dispatch the default attack directly');
+  assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','desktop-target')", 'Desktop marked-target Feast should dispatch the default swallow directly');
+  assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
+});
+
+test('Marked creature target Fight button resolves the default attack', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'player-1', Figh: 40 });
+  const target = makeUnit('Ratfolk', { id: 'rat-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, con: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App.explorationActorIds = ['player-1'];
+  App.explorationTargetIds = ['creature:rat-target'];
+
+  const resolved = App.resolveExplorationTargetAction('fight', 'attack', 'desktop-target');
+  assertEqual(resolved, true, 'Marked-target Fight should resolve successfully');
+  assert(target.CPun < 100, 'Marked-target Fight should damage the selected creature');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked-target Fight should clear selected targets');
+  assertEqual(App.lastIntentCommand.source, 'desktop-target', 'Marked-target Fight should preserve command source');
+  assertEqual(App.lastIntentCommand.subAction, 'attack', 'Marked-target Fight should record the default sub-action');
+});
+
+test('Marked creature target Feast button resolves default swallow and removes contained creature', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'player-1', Feas: 40, Flee: 40, size: 6, stomach: [] });
+  const target = makeUnit('Ratfolk', { id: 'rat-feast-target', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 100, size: 3, Flee: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App.explorationActorIds = ['player-1'];
+  App.explorationTargetIds = ['creature:rat-feast-target'];
+
+  const resolved = App.resolveExplorationTargetAction('feast', 'swallow', 'desktop-target');
+  assertEqual(resolved, true, 'Marked-target Feast should resolve successfully');
+  assertEqual(App.creatures.includes(target), false, 'Contained marked target should leave the creature panel');
+  assertEqual(actor.stomach.length, 1, 'Marked-target Feast should place the target in the actor container');
+  assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked-target Feast should clear selected targets');
+  assertEqual(App.lastIntentCommand.subAction, 'swallow', 'Marked-target Feast should record the default sub-action');
 });
 
 test('Desktop play surface renders adjacent movement cells', () => {

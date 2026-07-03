@@ -202,7 +202,7 @@
             },
             _label(key, fallback, vars = {}) {
                 const label = this._t(key, vars);
-                return label === key ? fallback : label;
+                return label === key ? String(fallback ?? '').replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '') : label;
             },
             _uiLabel(key) {
                 const isSFW = CONTENT.preferences.maxTier < 2;
@@ -6013,6 +6013,20 @@
                 return `${objective.type || 'find'} ${target}`;
             },
 
+            _questRewardPreviewText(reward = {}) {
+                const parts = [];
+                if (reward.xp) parts.push(this._label('quest.reward.xp', '{count} XP', { count: reward.xp }));
+                if (reward.gold) parts.push(this._label('quest.reward.gold', '{count} gold', { count: reward.gold }));
+                for (const itemName of reward.items || []) {
+                    parts.push(this._label('quest.reward.item', '{name}', { name: itemName }));
+                }
+                if (reward.recruit) {
+                    parts.push(this._label('quest.reward.recruit', 'Recruit: {name}', { name: reward.recruit.name || this._label('party.ally', 'Ally') }));
+                }
+                if (parts.length === 0) parts.push(this._label('quest.reward.none', 'No listed reward'));
+                return parts.map(part => this._escapeHtml(part)).join('<br>');
+            },
+
             _getQuestById(questId) {
                 return (this.quests || []).find(q => q.id === questId);
             },
@@ -6025,6 +6039,44 @@
                 const giver = this._getQuestGiverByKey(targetId);
                 if (!giver) return false;
                 return this.acceptQuest(giver.quest, giver);
+            },
+
+            previewQuestFromUnit(targetId) {
+                const giver = this._getQuestGiverByKey(targetId);
+                if (!giver) return false;
+                if (giver.questAccepted || this._getQuestById(giver.quest?.id)) {
+                    this.showQuestLog();
+                    return true;
+                }
+                return this.showQuestPreview(giver.quest, giver);
+            },
+
+            showQuestPreview(quest, giver = null) {
+                const normalized = this._normalizeQuest(quest, giver);
+                const targetKey = giver ? String(giver.id || giver.name || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'") : '';
+                const title = this._escapeHtml(this._label('quest.previewTitle', 'Quest Preview'));
+                const acceptLabel = this._escapeHtml(this._label('action.acceptQuest', 'Accept Quest'));
+                const acceptTitle = this._escapeHtml(this._label('action.acceptQuestFrom', 'Accept quest from {name}', { name: giver?.name || normalized.giverName || normalized.title }));
+                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
+                let html = `<div class="quest-preview" style="max-width:720px;margin:0 auto;text-align:left;display:grid;gap:12px;">`;
+                html += `<h3 style="color:var(--accent-primary);margin:0;">${title}: ${this._escapeHtml(normalized.title)}</h3>`;
+                if (normalized.description) html += `<p style="color:var(--text-secondary);margin:0;">${this._escapeHtml(normalized.description)}</p>`;
+                html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${this._escapeHtml(this._label('quest.objectives', 'Objectives'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this._questProgressText(normalized)}</div>`;
+                for (const objective of normalized.objectives || []) {
+                    const routePreview = this._questRoutePreviewText(objective);
+                    const marker = this._nextQuestObjectiveMarker(objective);
+                    if (routePreview || marker) {
+                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || this._escapeHtml(this._questMarkerPreview(marker, objective))}</div>`;
+                    }
+                }
+                html += `</div>`;
+                html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${this._escapeHtml(this._label('quest.rewards', 'Rewards'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this._questRewardPreviewText(normalized.reward)}</div></div>`;
+                html += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="nav-btn primary" title="${acceptTitle}" aria-label="${acceptTitle}" onclick="App.acceptQuestFromUnit('${targetKey}')">📜 ${acceptLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.renderCreatures();App.renderExplorationActions();">${closeLabel}</button></div>`;
+                html += `</div>`;
+                document.getElementById('scene-title').textContent = normalized.title;
+                document.getElementById('scene-description').innerHTML = html;
+                document.getElementById('scene-actions').innerHTML = '';
+                return true;
             },
 
             acceptQuest(quest, giver = null) {
@@ -6858,7 +6910,7 @@
                         }
                         if (unit.quest) {
                             const questLabel = this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest');
-                            actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, `event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')`);
+                            actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, `event.stopPropagation();App.previewQuestFromUnit('${targetKey}')`);
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
                             actionButtons += chipButton('action-btn primary', '🪙', `${this._uiLabel('trade')} ${unitName}`, `event.stopPropagation();App.showTrade('${targetKey}')`);
@@ -6994,7 +7046,7 @@
                         if (unit.quest) {
                             const questLabel = this._escapeHtml(this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'));
                             const questTitle = this._escapeHtml(this._label(unit.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', unit.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName }));
-                            actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="event.stopPropagation();App.acceptQuestFromUnit('${targetKey}')">📜 ${questLabel}</button>`;
+                            actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="event.stopPropagation();App.previewQuestFromUnit('${targetKey}')">📜 ${questLabel}</button>`;
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
                             const tradeLabel = this._escapeHtml(this._uiLabel('trade'));
@@ -8811,7 +8863,7 @@
                 if (action === 'loot') return Boolean(this.lootCorpse(targetId));
                 if (action === 'scavenge') return Boolean(this.scavengeCorpse(targetId));
                 if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
-                if (action === 'quest') return Boolean(this.acceptQuestFromUnit(targetId));
+                if (action === 'quest') return Boolean(this.previewQuestFromUnit(targetId));
                 if (action === 'trade') return Boolean(this.showTrade(targetId));
                 return this.outsideActionForCreature(action, targetId, { subAction });
             },

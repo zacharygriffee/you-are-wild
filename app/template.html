@@ -1768,6 +1768,67 @@
                 flex: 0 0 auto;
             }
 
+            .mobile-combat-toolbelt {
+                display: none;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: var(--bg-secondary);
+                padding: 8px;
+                color: var(--text-secondary);
+                font-size: 12px;
+                line-height: 1.35;
+            }
+
+            .mobile-combat-toolbelt.active {
+                display: grid;
+                gap: 6px;
+            }
+
+            .mobile-combat-status {
+                display: flex;
+                justify-content: space-between;
+                gap: 8px;
+                align-items: center;
+                min-width: 0;
+            }
+
+            .mobile-combat-status strong,
+            .mobile-combat-prompt {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .mobile-combat-prompt {
+                color: var(--text-muted);
+                font-size: 11px;
+            }
+
+            .mobile-play-surface.combat-active .mobile-map-card {
+                display: none;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-strips {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .mobile-play-surface.combat-active #mobile-creature-card {
+                order: 1;
+            }
+
+            .mobile-play-surface.combat-active #mobile-combat-toolbelt {
+                order: 2;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-card {
+                order: 3;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-sheet {
+                flex: 1 1 auto;
+                min-height: 160px;
+            }
+
             .mobile-strip-card {
                 padding: 8px;
             }
@@ -2572,13 +2633,14 @@
 	                                </div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
-	                                <div class="mobile-strip-card">
+	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
 	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
 	                                </div>
+	                                <div class="mobile-combat-toolbelt" id="mobile-combat-toolbelt" aria-live="polite"></div>
 	                                <div class="mobile-strip-card" id="mobile-creature-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span id="mobile-creature-title">Creatures</span>

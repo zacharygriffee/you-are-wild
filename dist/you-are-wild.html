@@ -1769,6 +1769,67 @@
                 flex: 0 0 auto;
             }
 
+            .mobile-combat-toolbelt {
+                display: none;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: var(--bg-secondary);
+                padding: 8px;
+                color: var(--text-secondary);
+                font-size: 12px;
+                line-height: 1.35;
+            }
+
+            .mobile-combat-toolbelt.active {
+                display: grid;
+                gap: 6px;
+            }
+
+            .mobile-combat-status {
+                display: flex;
+                justify-content: space-between;
+                gap: 8px;
+                align-items: center;
+                min-width: 0;
+            }
+
+            .mobile-combat-status strong,
+            .mobile-combat-prompt {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .mobile-combat-prompt {
+                color: var(--text-muted);
+                font-size: 11px;
+            }
+
+            .mobile-play-surface.combat-active .mobile-map-card {
+                display: none;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-strips {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .mobile-play-surface.combat-active #mobile-creature-card {
+                order: 1;
+            }
+
+            .mobile-play-surface.combat-active #mobile-combat-toolbelt {
+                order: 2;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-card {
+                order: 3;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-sheet {
+                flex: 1 1 auto;
+                min-height: 160px;
+            }
+
             .mobile-strip-card {
                 padding: 8px;
             }
@@ -2573,13 +2634,14 @@
 	                                </div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
-	                                <div class="mobile-strip-card">
+	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
 	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
 	                                </div>
+	                                <div class="mobile-combat-toolbelt" id="mobile-combat-toolbelt" aria-live="polite"></div>
 	                                <div class="mobile-strip-card" id="mobile-creature-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span id="mobile-creature-title">Creatures</span>
@@ -6371,6 +6433,7 @@ const WorldGen = (() => {
                 this.updateScene(`Round 1`, `Combat started!`, true);
                 this.renderParty();
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 this.processTurn();
             },
 
@@ -6727,6 +6790,7 @@ const WorldGen = (() => {
                 document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
                 this.renderParty();
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 const isParty = this.party.includes(currentUnit);
                 if (isParty && (currentUnit.name === this.player.name || currentUnit.obedient !== false)) {
                     this.showActorActions(currentUnit);
@@ -6744,6 +6808,7 @@ const WorldGen = (() => {
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
                 this._pushLog(`--- Round ${this.combatState.round} ---`, 'combat', { phase: 'round' });
+                this.renderMobileCombatToolbelt();
                 // Increase hunger for all combatants each round (unless Never Hungry cheat)
                 for (const c of living) {
                     if (!this.cheats.neverHungry) {
@@ -6886,6 +6951,7 @@ const WorldGen = (() => {
                     html += this._iconActionButton('skip', '', 'App.nextTurn()');
                 }
                 document.getElementById('scene-actions').innerHTML = html;
+                this.renderMobileCombatToolbelt();
             },
 
             // ===== ACTION TARGETING =====
@@ -6896,11 +6962,13 @@ const WorldGen = (() => {
                 const cancelLabel = this._escapeHtml(this._label('target.cancelAction', 'Cancel {action}', { action: label }));
                 document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('target.chooseFromPanel', 'Select a target from the creature panel.'))}</p><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
             },
 
             cancelTargetSelection() {
                 this.targetSelection = null;
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 if (this.combatState.active) this.showPlayerActions();
                 else this.showExplorationActions();
             },
@@ -6934,10 +7002,12 @@ const WorldGen = (() => {
                     this.targetSelection = null;
                     this.renderLog();
                     this.renderCreatures();
+                    this.renderMobileCombatToolbelt();
                     this.showActorActions(actor);
                     return;
                 }
                 this.targetSelection = null;
+                this.renderMobileCombatToolbelt();
                 this.executeAction(action, targetIndex);
             },
 
@@ -8044,6 +8114,7 @@ const WorldGen = (() => {
                 }
                 this.renderLog();
                 this.showExplorationActions();
+                this.renderMobileCombatToolbelt();
                 this.autoSave();
             },
 
@@ -10609,6 +10680,52 @@ const WorldGen = (() => {
                 strip.innerHTML = visible.length > 0
                     ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
                     : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
+            },
+            _currentCombatActor() {
+                if (!this.combatState?.active) return null;
+                return this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
+            },
+            _mobileCombatPrompt(actor = this._currentCombatActor()) {
+                if (!this.combatState?.active) return '';
+                if (this.targetSelection?.source === 'combat') {
+                    return this._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', {
+                        action: this._uiLabel(this.targetSelection.action || 'action')
+                    });
+                }
+                if (actor && (actor === this.player || this.party.includes(actor))) {
+                    return this._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
+                }
+                if (actor) {
+                    return this._label('mobile.combat.enemyTurn', '{name} is acting.', { name: actor.name || this._label('ui.creatures', 'Creatures') });
+                }
+                return this._label('ui.chooseAction', 'Choose your next action.');
+            },
+            renderMobileCombatToolbelt() {
+                const surface = document.getElementById('mobile-play-surface');
+                const belt = document.getElementById('mobile-combat-toolbelt');
+                const active = Boolean(this.combatState?.active);
+                if (surface?.classList) surface.classList.toggle('combat-active', active);
+                if (!belt) return '';
+                if (!active) {
+                    belt.className = 'mobile-combat-toolbelt';
+                    belt.innerHTML = '';
+                    return '';
+                }
+                const actor = this._currentCombatActor();
+                const round = this.combatState.round || 1;
+                const turn = (this.combatState.currentTurn ?? 0) + 1;
+                const total = Math.max(1, this.combatState.turnQueue?.length || 1);
+                const actorName = actor?.name || this._label('ui.creatures', 'Creatures');
+                const action = this.targetSelection?.source === 'combat' ? this._uiLabel(this.targetSelection.action || 'action') : '';
+                const status = this._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
+                const title = action
+                    ? this._label('mobile.combat.targeting', 'Targeting: {action}', { action })
+                    : this._label('mobile.combat.actor', '{name} to act', { name: actorName });
+                const prompt = this._mobileCombatPrompt(actor);
+                const html = `<div class="mobile-combat-status"><strong>${this._escapeHtml(title)}</strong><span>${this._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${this._escapeHtml(prompt)}</div>`;
+                belt.className = 'mobile-combat-toolbelt active';
+                belt.innerHTML = html;
+                return html;
             },
             _unitBarPercent(current, max) {
                 const safeMax = Number(max);
@@ -13946,6 +14063,12 @@ const CONTENT_SYSTEM = {
             'ui.exploration': 'Exploration',
             'ui.chooseAction': 'Choose your next action.',
             'ui.actorActing': '{name} is acting...',
+            'mobile.combat.actor': '{name} to act',
+            'mobile.combat.chooseAction': 'Choose an action, then tap a target.',
+            'mobile.combat.enemyTurn': '{name} is acting.',
+            'mobile.combat.pickTarget': 'Pick a target in the enemy strip for {action}.',
+            'mobile.combat.status': 'Round {round} · Turn {turn}/{total}',
+            'mobile.combat.targeting': 'Targeting: {action}',
             'ui.welcomeLog': 'Welcome to You Are Wild',
             'ui.scene.wildernessTitle': 'The Wilderness',
             'ui.scene.wildernessIntro': 'You find yourself in an untamed land where predators roam and only the strong survive.',
@@ -14578,6 +14701,12 @@ const CONTENT_SYSTEM = {
             'ui.exploration': 'Exploracion',
             'ui.chooseAction': 'Elige tu proxima accion.',
             'ui.actorActing': '{name} esta actuando...',
+            'mobile.combat.actor': '{name} actua',
+            'mobile.combat.chooseAction': 'Elige una accion y luego toca un objetivo.',
+            'mobile.combat.enemyTurn': '{name} esta actuando.',
+            'mobile.combat.pickTarget': 'Elige un objetivo en la fila enemiga para {action}.',
+            'mobile.combat.status': 'Ronda {round} · Turno {turn}/{total}',
+            'mobile.combat.targeting': 'Objetivo: {action}',
             'ui.welcomeLog': 'Bienvenido a You Are Wild',
             'ui.scene.wildernessTitle': 'La Naturaleza',
             'ui.scene.wildernessIntro': 'Te encuentras en una tierra indomita donde acechan depredadores y solo sobreviven los fuertes.',

@@ -2422,6 +2422,7 @@
                 this.updateScene(`Round 1`, `Combat started!`, true);
                 this.renderParty();
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 this.processTurn();
             },
 
@@ -2778,6 +2779,7 @@
                 document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
                 this.renderParty();
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 const isParty = this.party.includes(currentUnit);
                 if (isParty && (currentUnit.name === this.player.name || currentUnit.obedient !== false)) {
                     this.showActorActions(currentUnit);
@@ -2795,6 +2797,7 @@
                 this.combatState.currentTurn = 0;
                 this.combatState.round++;
                 this._pushLog(`--- Round ${this.combatState.round} ---`, 'combat', { phase: 'round' });
+                this.renderMobileCombatToolbelt();
                 // Increase hunger for all combatants each round (unless Never Hungry cheat)
                 for (const c of living) {
                     if (!this.cheats.neverHungry) {
@@ -2937,6 +2940,7 @@
                     html += this._iconActionButton('skip', '', 'App.nextTurn()');
                 }
                 document.getElementById('scene-actions').innerHTML = html;
+                this.renderMobileCombatToolbelt();
             },
 
             // ===== ACTION TARGETING =====
@@ -2947,11 +2951,13 @@
                 const cancelLabel = this._escapeHtml(this._label('target.cancelAction', 'Cancel {action}', { action: label }));
                 document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(this._label('target.chooseFromPanel', 'Select a target from the creature panel.'))}</p><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
             },
 
             cancelTargetSelection() {
                 this.targetSelection = null;
                 this.renderCreatures();
+                this.renderMobileCombatToolbelt();
                 if (this.combatState.active) this.showPlayerActions();
                 else this.showExplorationActions();
             },
@@ -2985,10 +2991,12 @@
                     this.targetSelection = null;
                     this.renderLog();
                     this.renderCreatures();
+                    this.renderMobileCombatToolbelt();
                     this.showActorActions(actor);
                     return;
                 }
                 this.targetSelection = null;
+                this.renderMobileCombatToolbelt();
                 this.executeAction(action, targetIndex);
             },
 
@@ -4095,6 +4103,7 @@
                 }
                 this.renderLog();
                 this.showExplorationActions();
+                this.renderMobileCombatToolbelt();
                 this.autoSave();
             },
 
@@ -6660,6 +6669,52 @@
                 strip.innerHTML = visible.length > 0
                     ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
                     : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
+            },
+            _currentCombatActor() {
+                if (!this.combatState?.active) return null;
+                return this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
+            },
+            _mobileCombatPrompt(actor = this._currentCombatActor()) {
+                if (!this.combatState?.active) return '';
+                if (this.targetSelection?.source === 'combat') {
+                    return this._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', {
+                        action: this._uiLabel(this.targetSelection.action || 'action')
+                    });
+                }
+                if (actor && (actor === this.player || this.party.includes(actor))) {
+                    return this._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
+                }
+                if (actor) {
+                    return this._label('mobile.combat.enemyTurn', '{name} is acting.', { name: actor.name || this._label('ui.creatures', 'Creatures') });
+                }
+                return this._label('ui.chooseAction', 'Choose your next action.');
+            },
+            renderMobileCombatToolbelt() {
+                const surface = document.getElementById('mobile-play-surface');
+                const belt = document.getElementById('mobile-combat-toolbelt');
+                const active = Boolean(this.combatState?.active);
+                if (surface?.classList) surface.classList.toggle('combat-active', active);
+                if (!belt) return '';
+                if (!active) {
+                    belt.className = 'mobile-combat-toolbelt';
+                    belt.innerHTML = '';
+                    return '';
+                }
+                const actor = this._currentCombatActor();
+                const round = this.combatState.round || 1;
+                const turn = (this.combatState.currentTurn ?? 0) + 1;
+                const total = Math.max(1, this.combatState.turnQueue?.length || 1);
+                const actorName = actor?.name || this._label('ui.creatures', 'Creatures');
+                const action = this.targetSelection?.source === 'combat' ? this._uiLabel(this.targetSelection.action || 'action') : '';
+                const status = this._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
+                const title = action
+                    ? this._label('mobile.combat.targeting', 'Targeting: {action}', { action })
+                    : this._label('mobile.combat.actor', '{name} to act', { name: actorName });
+                const prompt = this._mobileCombatPrompt(actor);
+                const html = `<div class="mobile-combat-status"><strong>${this._escapeHtml(title)}</strong><span>${this._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${this._escapeHtml(prompt)}</div>`;
+                belt.className = 'mobile-combat-toolbelt active';
+                belt.innerHTML = html;
+                return html;
             },
             _unitBarPercent(current, max) {
                 const safeMax = Number(max);

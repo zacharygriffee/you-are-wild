@@ -490,9 +490,7 @@
                     : this._label('combat.invalidCommand', 'That combat action is not valid right now.');
                 this._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
                 this.renderLog();
-                this.renderCreatures();
-                this.renderParty();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
             },
             _dispatchAdventureInteractionCommand(command) {
                 if (!command || command.mode === 'combat') return false;
@@ -534,9 +532,7 @@
                         targetCount: targets.length
                     }), type: 'discovery' });
                     this.renderLog();
-                    this.renderParty();
-                    this.renderCreatures();
-                    this.renderExplorationActions();
+                    this._renderInteractionState({ exploration: true, toolbelt: false });
                     return false;
                 }
                 if (resolved !== false && command.clearTargets) this.clearExplorationTargets();
@@ -549,6 +545,14 @@
                 this._syncSelected = [];
                 this._syncParticipants = null;
                 this._syncType = null;
+            },
+            _renderInteractionState(options = {}) {
+                const includeExploration = options.exploration ?? !this.combatState?.active;
+                const includeToolbelt = options.toolbelt ?? Boolean(this.combatState?.active);
+                this.renderParty();
+                this.renderCreatures();
+                if (includeExploration) this.renderExplorationActions();
+                if (includeToolbelt) this.renderMobileCombatToolbelt();
             },
             _panelInteractionTrayTitle(mode) {
                 return mode === 'combat'
@@ -616,9 +620,7 @@
                     .map(pid => this.party.find(unit => this._unitSelectionId(unit) === pid))
                     .map(unit => this.party.indexOf(unit))
                     .filter(index => index >= 0);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
                 return true;
             },
             _syncParticipantButton(unit, compact = false) {
@@ -3342,9 +3344,7 @@
                 this.activeActor = actor || this.player;
                 const actions = document.getElementById('scene-actions');
                 if (actions) actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
             },
 
             // ===== ACTION TARGETING =====
@@ -3353,18 +3353,16 @@
                 this.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
                 const actions = document.getElementById('scene-actions');
                 if (actions) actions.innerHTML = this._renderCombatPanelPrompt(actor);
-                this.renderCreatures();
-                this.renderParty();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
             },
 
             cancelTargetSelection() {
                 this._clearTransientInteractionState();
-                this.renderCreatures();
-                this.renderParty();
-                this.renderMobileCombatToolbelt();
                 if (this.combatState.active) this.showActorActions(this._currentCombatActor() || this.activeActor || this.player);
-                else this.showExplorationActions();
+                else {
+                    this._renderInteractionState({ exploration: true, toolbelt: false });
+                    this.showExplorationActions();
+                }
             },
 
             canSelectCreatureTarget(unit) {
@@ -3820,9 +3818,7 @@
                 const actorId = this._unitSelectionId(actor);
                 this.targetSelection = null;
                 this.syncSelection = { active: true, phase: 'choose', actorId, participantIds: [actorId], type: null };
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
                 return true;
             },
 
@@ -3831,9 +3827,7 @@
                 const actorId = this._unitSelectionId(actor);
                 this.syncSelection = { active: true, phase: 'participants', actorId, participantIds: [actorId], type: syncType };
                 this._syncSelected = [this.party.indexOf(actor)].filter(index => index >= 0);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
             },
 
             toggleSyncParticipant(idx) {
@@ -3854,9 +3848,7 @@
                 this._syncParticipants = participants;
                 this._syncType = syncType || this.syncSelection?.type;
                 this.syncSelection = { ...this.syncSelection, phase: 'target', type: this._syncType };
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
                 return true;
             },
 
@@ -4749,9 +4741,7 @@
                 if (defaultPlayerOnly && actor !== this.player) {
                     this.explorationActorIds = [id];
                     this.explorationActorId = id;
-                    this.renderParty();
-                    this.renderCreatures();
-                    this.renderExplorationActions();
+                    this._renderInteractionState({ exploration: true, toolbelt: false });
                     return;
                 }
                 if (this.explorationActorIds.includes(id)) {
@@ -4761,9 +4751,7 @@
                 }
                 if (this.explorationActorIds.length === 0) this.explorationActorIds = [this._unitSelectionId(this.player)];
                 this.explorationActorId = this.explorationActorIds[0];
-                this.renderParty();
-                this.renderCreatures();
-                this.renderExplorationActions();
+                this._renderInteractionState({ exploration: true, toolbelt: false });
             },
 
             _explorationTargetKey(type, id) {
@@ -4796,16 +4784,12 @@
                 } else {
                     this.explorationTargetIds.push(key);
                 }
-                this.renderParty();
-                this.renderCreatures();
-                this.renderExplorationActions();
+                this._renderInteractionState({ exploration: true, toolbelt: false });
             },
 
             clearExplorationTargets() {
                 this.explorationTargetIds = [];
-                this.renderParty();
-                this.renderCreatures();
-                this.renderExplorationActions();
+                this._renderInteractionState({ exploration: true, toolbelt: false });
             },
 
             _renderExplorationTargetActions(source = 'sheet') {
@@ -5899,9 +5883,7 @@
                 };
                 this.targetSelection = null;
                 this.syncSelection = null;
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
+                this._renderInteractionState({ exploration: false, toolbelt: true });
                 return true;
             },
             _executeFeedSubAction(subId, actor) {

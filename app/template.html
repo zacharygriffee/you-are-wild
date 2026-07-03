@@ -548,6 +548,7 @@
             padding: clamp(16px, 3vw, 32px);
             overflow: auto;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         .desktop-play-cell:focus-visible {
@@ -564,6 +565,7 @@
             justify-content: center;
             gap: var(--space-md);
             min-height: 100%;
+            min-width: 0;
         }
 
         .desktop-play-cell-icon {
@@ -707,8 +709,8 @@
 
         .scene-actions {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(74px, 96px));
-            gap: var(--space-md);
+            grid-template-columns: repeat(auto-fit, minmax(68px, 92px));
+            gap: var(--space-sm);
             margin-top: var(--space-xl);
             justify-content: center;
             align-items: flex-start;
@@ -720,7 +722,7 @@
 
         .scene-actions > .action-btn {
             width: 100%;
-            min-width: 72px;
+            min-width: 0;
             max-width: 120px;
             min-inline-size: 0;
         }
@@ -741,25 +743,40 @@
         .scene-actions .target-action-row {
             grid-column: 1 / -1;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(74px, 96px));
+            grid-template-columns: repeat(auto-fit, minmax(58px, 82px));
             justify-content: center;
-            gap: var(--space-md);
+            gap: var(--space-sm);
             max-width: 100%;
-            width: 100%;
+            width: min(100%, 560px);
             min-width: 0;
             overflow-x: hidden;
+            margin-inline: auto;
         }
 
         .scene-actions .target-action-row > .action-btn {
             min-width: 0;
             width: 100%;
-            max-width: 96px;
+            max-width: 82px;
+            min-height: 52px;
+            padding: 7px 4px;
         }
 
         .scene-actions .action-caption {
             max-width: 100%;
-            overflow-wrap: anywhere;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             text-align: center;
+            display: block;
+            font-size: 11px;
+            line-height: 1.15;
+        }
+
+        .scene-actions .target-action-row .action-icon {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 18px;
+            line-height: 1;
         }
 
         .mobile-play-surface {
@@ -822,7 +839,9 @@
             position: fixed;
             top: 84px;
             right: 18px;
+            left: auto;
             width: min(320px, calc(100vw - 36px));
+            max-width: calc(100vw - 36px);
             max-height: calc(100vh - 112px);
             max-height: calc(100dvh - 112px);
             overflow: auto;
@@ -856,6 +875,9 @@
             min-height: 42px;
             padding: 8px;
             line-height: 1.15;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            overflow-wrap: anywhere;
         }
 
         .unit-header {

@@ -882,6 +882,9 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(appContent, "_directionLabel", 'desktop play surface should label directional movement cells');
   assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
   assertContains(template, '.scene-actions .target-action-row', 'desktop target actions should be bounded inside the scene action area');
+  assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
+  assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');
+  assertContains(template, 'text-overflow: ellipsis;', 'desktop target action captions should clip instead of pushing horizontal scroll');
 });
 
 test('Large map discovery surface exists', () => {
@@ -3212,6 +3215,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(template, '.scene-actions > .selected-target-summary', 'Selected-target summary should be constrained as a scene action grid item');
   assertContains(template, 'overflow-wrap: anywhere;', 'Long selected actor and target names should wrap instead of forcing horizontal scroll');
   assertContains(template, '.scene-actions .action-caption', 'Scene action captions should be constrained independently');
+  assertContains(template, '.scene-actions .target-action-row .action-icon', 'Selected-target action icons should be block-level compact controls');
+  assertContains(template, 'max-width: calc(100vw - 36px);', 'Desktop intent popup should clamp to viewport width');
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');

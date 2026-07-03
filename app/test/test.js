@@ -2534,7 +2534,7 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.party = [App.player];
   App.creatures = [];
   App.location = { x: 0, y: 0 };
-  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', creatures: [] }]]);
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', overlays: { poi: { category: 'restSite' } }, creatures: [] }]]);
   App.combatState.active = false;
   App.renderExplorationActions();
   const exploreHtml = elements.get('scene-actions').innerHTML;
@@ -4039,6 +4039,17 @@ test('Rest only appears and heals at safe structures', () => {
   App.rest();
   assertEqual(player.CPun, 50, 'Rest should not heal outside safe rest structures');
   assertContains(App.log[App.log.length - 1].text, 'No hay un lugar seguro para descansar aqui.', 'Unsafe rest log should localize');
+  App.worldMap.get('0,0').structure = 'tree';
+  App.renderExplorationActions();
+  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Threat-free scenery should not imply safe rest');
+  App.worldMap.get('0,0').structure = 'camp';
+  App.worldMap.get('0,0').overlays = {};
+  App.renderExplorationActions();
+  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Ordinary camps should not imply safe rest unless generated as rest sites');
+  App.worldMap.get('0,0').overlays = { poi: { category: 'restSite' } };
+  App.renderExplorationActions();
+  assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest-site camps should expose rest');
+  App.worldMap.get('0,0').overlays = {};
   App.worldMap.get('0,0').structure = 'cabin';
   App.renderExplorationActions();
   assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should appear at safe rest structures');
@@ -4560,6 +4571,7 @@ test('Map summary and encounter pressure expose safe UI metadata', () => {
   const summary = WorldGen.getTileMapSummary({
     ...roadTile,
     structure: 'camp',
+    overlays: { ...roadTile.overlays, poi: { category: 'restSite' } },
     explored: true,
     creatures: [
       { name: 'Merchant', disposition: 'merchant', stock: [{ id: 'ration' }] },

@@ -266,7 +266,9 @@ const WorldGen = (() => {
             danger: pressure.finalChance >= 0.66 ? 'high' : (pressure.finalChance >= 0.36 ? 'elevated' : 'low'),
             markers,
             discovered: Boolean(tile.explored),
-            restAvailable: ['cabin', 'hut', 'camp', 'shrine', 'spring'].includes(tile.structure),
+            restAvailable: typeof context.restAvailable === 'boolean'
+                ? context.restAvailable
+                : ['cabin', 'hut', 'shrine', 'spring'].includes(tile.structure) || (tile.structure === 'camp' && tile.overlays?.poi?.category === 'restSite'),
             questRelevant: Boolean(context.questRelevant)
         };
     }

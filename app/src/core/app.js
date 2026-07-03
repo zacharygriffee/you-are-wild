@@ -108,7 +108,7 @@
                     entrance: 'interior-entrance'
                 }
             },
-            SAFE_REST_STRUCTURES: ['cabin', 'hut', 'camp', 'shrine', 'spring'],
+            SAFE_REST_STRUCTURES: ['cabin', 'hut', 'shrine', 'spring'],
             NOCTURNAL_SPECIES: ['bat', 'rat'],
             DIURNAL_SPECIES: ['bunny', 'deer'],
             DAY_VISIBILITY_RADIUS: 2,
@@ -1454,11 +1454,14 @@
                 if (this.inInterior && this.activeInterior) {
                     return this.SAFE_REST_STRUCTURES.includes(this.activeInterior.structure);
                 }
-                const tile = this.worldMap.get(`${this.location.x},${this.location.y}`);
+                const tile = this._currentOverworldTile();
                 if (!tile) return false;
-                if (tile.structure && this.SAFE_REST_STRUCTURES.includes(tile.structure)) return true;
-                const struct = tile.structure ? this.STRUCTURES[tile.structure] : null;
-                return Boolean(struct && struct.threat === 0 && struct.disposition !== 'enemy');
+                return this._isRestCapableStructure(tile.structure, tile);
+            },
+            _isRestCapableStructure(structureId, tile = null) {
+                if (!structureId) return false;
+                if (this.SAFE_REST_STRUCTURES.includes(structureId)) return true;
+                return structureId === 'camp' && tile?.overlays?.poi?.category === 'restSite';
             },
             _isTimid(unit) {
                 return Boolean(unit && (unit.timid || this._getSpeciesTemperament(unit.species).timid));
@@ -7619,25 +7622,26 @@
             getTileMapSummary(tile = null) {
                 const current = tile || this.getTile(this.location.x, this.location.y);
                 if (typeof WorldGen === 'undefined') {
-                    return {
-                        biome: current.displayBiome || current.biome,
-                        coords: { x: current.x, y: current.y },
-                        terrain: { water: Boolean(current.water), tags: Array.isArray(current.terrainTags) ? current.terrainTags.slice() : [] },
-                        traversal: current.traversal || { passable: true, traversalCost: 1, requiredCapability: null, routeModifier: 0 },
-                        danger: 'low',
-                        markers: [],
-                        discovered: Boolean(current.explored),
-                        restAvailable: ['cabin', 'hut', 'camp', 'shrine', 'spring'].includes(current.structure),
-                        questRelevant: false
-                    };
-                }
-                const biome = this.biomes[current.displayBiome || current.biome] || this.biomes[current.biome] || {};
-                return WorldGen.getTileMapSummary(current, {
-                    biomeDef: biome,
-                    biomeDanger: biome.danger || 0,
-                    isNight: this._isNight(),
-                    questRelevant: Boolean(this._largeMapQuestMarker(current.x, current.y))
-                });
+	                    return {
+	                        biome: current.displayBiome || current.biome,
+	                        coords: { x: current.x, y: current.y },
+	                        terrain: { water: Boolean(current.water), tags: Array.isArray(current.terrainTags) ? current.terrainTags.slice() : [] },
+	                        traversal: current.traversal || { passable: true, traversalCost: 1, requiredCapability: null, routeModifier: 0 },
+	                        danger: 'low',
+	                        markers: [],
+	                        discovered: Boolean(current.explored),
+	                        restAvailable: this._isRestCapableStructure(current.structure, current),
+	                        questRelevant: false
+	                    };
+	                }
+	                const biome = this.biomes[current.displayBiome || current.biome] || this.biomes[current.biome] || {};
+	                return WorldGen.getTileMapSummary(current, {
+	                    biomeDef: biome,
+	                    biomeDanger: biome.danger || 0,
+	                    isNight: this._isNight(),
+	                    restAvailable: this._isRestCapableStructure(current.structure, current),
+	                    questRelevant: Boolean(this._largeMapQuestMarker(current.x, current.y))
+	                });
             },
             _tileInfoHtml(tile = null) {
                 if (this.inInterior && this.activeInterior) {

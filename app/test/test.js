@@ -7709,7 +7709,7 @@ test('Save slot status alerts use display slot labels', async () => {
   assertContains(recovery.App.log[recovery.App.log.length - 1].text, 'Te recuperaste al borde de la derrota. Bienvenido de vuelta, Tester.', 'Load recovery log should localize');
 });
 
-test('Settings destructive confirmations localize', () => {
+test('Settings destructive confirmations localize', async () => {
   const clearAll = loadAppForCombat(() => 0.5, { confirm: false });
   clearAll.storage.set('yaw-last-slot', 'slot3');
   clearAll.App.updateLanguage('es');
@@ -7727,6 +7727,23 @@ test('Settings destructive confirmations localize', () => {
   assertEqual(deleteAll.App.pendingConfirm.message, 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'Delete-all saves warning should use active locale');
   deleteAll.App.resolveConfirmDialog(false);
   assertEqual(deleteAll.storage.get('yaw-last-slot'), 'slot2', 'Cancelled delete-all saves should not remove saved state');
+
+  const confirmedDeleteAll = loadAppForCombat(() => 0.5, { confirm: false });
+  const deleted = [];
+  confirmedDeleteAll.storage.set('yaw-last-slot', 'slot2');
+  confirmedDeleteAll.storage.set('yaw-last-save-time', '1720000000000');
+  confirmedDeleteAll.storage.set('yaw-has-played', 'true');
+  confirmedDeleteAll.storage.set('yaw-save-time-slot2', '1720000000000');
+  confirmedDeleteAll.elements.get('menu-continue').style.display = 'block';
+  confirmedDeleteAll.App._dbDelete = async (_store, key) => { deleted.push(key); };
+  confirmedDeleteAll.App._dbGet = async () => undefined;
+  confirmedDeleteAll.App.deleteAllSaves();
+  await confirmedDeleteAll.App.resolveConfirmDialog(true);
+  assertEqual(deleted.join(','), 'slot1,slot2,slot3,slot4,slot5', 'Confirmed delete-all should remove every save slot');
+  assertEqual(confirmedDeleteAll.storage.has('yaw-last-slot'), false, 'Confirmed delete-all should clear last-slot metadata');
+  assertEqual(confirmedDeleteAll.storage.has('yaw-last-save-time'), false, 'Confirmed delete-all should clear last-save metadata');
+  assertEqual(confirmedDeleteAll.storage.has('yaw-has-played'), false, 'Confirmed delete-all should clear has-played metadata');
+  assertEqual(confirmedDeleteAll.elements.get('menu-continue').style.display, 'none', 'Confirmed delete-all should hide Continue Last Game immediately');
 });
 
 test('Incompatible save recovery prompt localizes and scopes actions', async () => {

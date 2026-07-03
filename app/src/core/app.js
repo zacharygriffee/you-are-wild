@@ -1070,14 +1070,13 @@
                 localStorage.removeItem(this._saveTimeKey(slotName));
                 localStorage.removeItem(this._legacySaveTimeKey(slotName));
             },
+            _reloadPage() {
+                if (typeof location !== 'undefined' && location.reload) location.reload();
+            },
 
             init() {
                 console.log('App.init() - Mechanics Overhaul');
-                this.checkLastPlayed().then(hasSave => {
-                    if (hasSave) {
-                        document.getElementById('menu-continue').style.display = 'block';
-                    }
-                }).catch(() => {});
+                this.refreshContinueButton();
                 const hasPlayed = this._getStoredValue('hasPlayed');
                 if (!hasPlayed) {
                     this.showTutorial();
@@ -8340,6 +8339,7 @@
                 } else if (name === 'menu') {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-menu').style.display = 'flex';
+                    this.refreshContinueButton();
                 } else if (name === 'create') {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-create').style.display = 'flex';
@@ -8386,6 +8386,7 @@
                 } else {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-menu').style.display = 'flex';
+                    this.refreshContinueButton();
                 }
             },
             showCharacterStats() {
@@ -8519,8 +8520,9 @@
                 const worldReq = indexedDB.deleteDatabase(this.WORLD_DB_NAME);
                 worldReq.onsuccess = () => console.log('World DB deleted');
                 worldReq.onerror = () => console.error('Failed to delete world DB');
+                this.refreshContinueButton();
                 alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
-                location.reload();
+                this._reloadPage();
             },
             async deleteAllSaves() {
                 return this.showConfirmDialog({
@@ -8542,14 +8544,15 @@
                     this._removeStoredValue('lastSaveTime');
                     this._removeStoredValue('hasPlayed');
                     this.activeSlot = 'slot1';
+                    await this.refreshContinueButton();
                     alert(this._label('save.success.deletedAll', 'All saves deleted.'));
-	                    if (document.getElementById('save-manager')?.classList.contains('active')) {
-	                        this.renderSaveManager();
-	                    }
-	                    location.reload();
-	                } catch (e) {
-	                    alert(this._label('save.error.deleteAllFailed', 'Delete saves failed: {message}', { message: e.message }));
-	                }
+                    if (document.getElementById('save-manager')?.classList.contains('active')) {
+                        this.renderSaveManager();
+                    }
+                    this._reloadPage();
+                } catch (e) {
+                    alert(this._label('save.error.deleteAllFailed', 'Delete saves failed: {message}', { message: e.message }));
+                }
             },
             selectEncounterPreference(val) { this.setEncounterPreferencePreset(val); },
             updateTierButtons() {
@@ -9338,11 +9341,48 @@
 	            },
 
             // ===== SAVE / LOAD =====
-            async checkLastPlayed() {
+            _saveSlotNames() {
+                return Array.from({ length: 5 }, (_, index) => 'slot' + (index + 1));
+            },
+            async _findLatestExistingSaveSlot() {
+                const slots = [];
+                for (const slotName of this._saveSlotNames()) {
+                    const saveData = await this._dbGet('saves', slotName);
+                    if (saveData) {
+                        const time = parseInt(this._getSaveTime(slotName), 10) || 0;
+                        slots.push({ slotName, time });
+                    }
+                }
+                slots.sort((a, b) => b.time - a.time || a.slotName.localeCompare(b.slotName));
+                return slots[0]?.slotName || null;
+            },
+            async _syncLastSaveSlot() {
                 const lastSlot = this._getStoredValue('lastSlot');
-                if (!lastSlot) return false;
-                const saveData = await this._dbGet('saves', lastSlot);
-                return !!saveData;
+                if (lastSlot) {
+                    const saveData = await this._dbGet('saves', lastSlot);
+                    if (saveData) return lastSlot;
+                }
+                const fallbackSlot = await this._findLatestExistingSaveSlot();
+                if (fallbackSlot) {
+                    this._setStoredValue('lastSlot', fallbackSlot);
+                    const saveTime = this._getSaveTime(fallbackSlot);
+                    if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
+                    return fallbackSlot;
+                }
+                this._removeStoredValue('lastSlot');
+                this._removeStoredValue('lastSaveTime');
+                return null;
+            },
+            async refreshContinueButton() {
+                const button = document.getElementById('menu-continue');
+                if (!button) return false;
+                button.style.display = 'none';
+                const hasSave = await this.checkLastPlayed().catch(() => false);
+                button.style.display = hasSave ? 'block' : 'none';
+                return hasSave;
+            },
+            async checkLastPlayed() {
+                return !!(await this._syncLastSaveSlot());
             },
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
@@ -9553,6 +9593,7 @@
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
                     if (this.activeSlot === slotName) this.activeSlot = 'slot1';
+                    await this.refreshContinueButton();
                     this.showSaveManager(this.saveManagerMode || 'load');
                     return true;
                 } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }

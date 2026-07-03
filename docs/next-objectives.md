@@ -11,6 +11,8 @@
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
 - **Automation:** Repo-owned auto-agent lanes live in `.auto-agent/lanes.json`, with human guidance in `docs/AUTO-AGENT-LANES.md`; validate from the auto-agent repo with `node src/cli.js process validate-lane-map --target /home/zevilz/work/porn`
+- **Creature canon:** Humanoid/Sapient Creature Canon doctrine now lives in `docs/creature-canon.md`; use it when formalizing default species taxonomy, sapience metadata, body-plan metadata, and interaction eligibility gates.
+- **Controls doctrine:** The UI-safe control model now lives in `docs/control-model.md`; use it before broad traversal, actor/target selection, intent menu, combat toolbelt, or inspection-surface changes.
 
 ---
 

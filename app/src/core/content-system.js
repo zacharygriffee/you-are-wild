@@ -1339,6 +1339,11 @@ const CONTENT_SYSTEM = {
     templates: {
         // Biome introductions
         biome: {
+            grove: {
+                safe: (ctx) => `You enter a quiet grove. Sunlight gathers under young trees.`,
+                mature: (ctx) => `The grove feels sheltered and calm. Leaves stir softly overhead.`,
+                adult: null
+            },
             forest: {
                 safe: (ctx) => `You enter a dense forest. Sunlight filters through the canopy.`,
                 mature: (ctx) => `The forest closes around you. Shadows dance between ancient trees. Something watches from the underbrush.`,
@@ -1679,7 +1684,11 @@ const CONTENT_SYSTEM = {
     
     // Quick content helpers
     biomeIntro(biome, context = {}) {
-        return this.getContent(`biome.${biome}`, context);
+        const id = String(biome || 'wilderness');
+        const text = this.getContent(`biome.${id}`, context);
+        if (!String(text).startsWith('[Missing content: biome.')) return text;
+        const label = id.replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+        return `You take in the ${label}. The area is quiet for now.`;
     },
     
     encounter(species, context = {}) {

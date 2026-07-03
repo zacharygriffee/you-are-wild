@@ -121,6 +121,17 @@ function loadAssetManifestForTest() {
   return new Function('globalThis', 'window', `${assetManifestContent}\nreturn globalThis.AssetManifest;`)(g, g);
 }
 
+function loadContentSystemForTest() {
+  const storage = new Map();
+  const localStorage = {
+    getItem: key => storage.has(key) ? storage.get(key) : null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key)
+  };
+  const window = { localStorage };
+  return new Function('window', 'localStorage', `${contentSystemContent}\nreturn window.CONTENT;`)(window, localStorage);
+}
+
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
 });
@@ -426,6 +437,18 @@ test('Content templates exist', () => {
   assertContains(contentContent, 'encounter:', 'encounter templates missing');
   assertContains(contentContent, 'combat:', 'combat templates missing');
   assertContains(contentContent, 'action:', 'action templates missing');
+});
+
+test('Biome intro content covers grove and safe unknown fallbacks', () => {
+  const CONTENT = loadContentSystemForTest();
+  CONTENT.setMaxTier(0);
+  const grove = CONTENT.biomeIntro('grove');
+  assertContains(grove, 'grove', 'Grove biome intro should render safe readable content');
+  assertNotContains(grove, '[Missing content', 'Grove biome intro should not leak missing content markers');
+  const unknown = CONTENT.biomeIntro('crystal-bog');
+  assertContains(unknown, 'Crystal Bog', 'Unknown biome fallback should render a readable biome label');
+  assertNotContains(unknown, '[Missing content', 'Unknown biome fallback should not leak missing content markers');
+  assertContains(CONTENT.getContent('quest.missing'), '[Missing content: quest.missing]', 'Non-biome missing content should remain visible for development');
 });
 
 test('Asset manifest supports tileset provenance and fallback metadata', () => {

@@ -2177,6 +2177,51 @@ test('Combat swallow removes contained creature from area panel', () => {
   assertEqual(App.combatState.turnQueue.some(entry => entry.unit === enemy), false, 'Combat queue should drop swallowed enemy');
 });
 
+test('Contained combat targets stay contained after save and load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-contained-save', Feas: 80, size: 8, appetite: 8 });
+  const enemy = makeUnit('Batfolk', {
+    id: 'enemy-contained-save',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 5,
+    MPun: 40,
+    Flee: 1,
+    size: 2
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'contained-save-world', seed: 'contained-save-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() {};
+
+  App.executeActionAgainstTarget('feast', player, enemy);
+  assertEqual(player.stomach.length, 1, 'Swallowed enemy should be stored before saving');
+  assertEqual(App.creatures.length, 0, 'Swallowed enemy should leave active creatures before saving');
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual save should complete after containment');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  loadedApp.App._dbGet = async () => savedBuffers[0];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Contained combat save should load');
+  assertEqual(loadedApp.App.player.stomach.length, 1, 'Contained prey should reload inside predator stomach');
+  assertEqual(loadedApp.App.player.stomach[0].id, 'enemy-contained-save', 'Contained prey should preserve identity after reload');
+  assertEqual(loadedApp.App.creatures.some(creature => creature.id === 'enemy-contained-save'), false, 'Contained prey should not reappear in area creatures after reload');
+  assertEqual(loadedApp.App.worldMap.get('0,0').creatures.some(creature => creature.id === 'enemy-contained-save'), false, 'Contained prey should not reappear in current tile creatures after reload');
+  assertEqual(loadedApp.App.combatState.active, false, 'Combat should not resume when the only enemy is contained');
+});
+
 test('Defeat return-to-menu uses in-app confirmation', () => {
   const cancelled = loadAppForCombat(() => 0.5, { confirm: false });
   let cancelledScreen = null;

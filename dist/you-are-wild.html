@@ -10020,7 +10020,7 @@ const WorldGen = (() => {
                 this.autoSave();
             },
 
-            respecPerks(skipConfirm = false) {
+            _completePerkRespec() {
                 if (!this.player) return;
                 const selected = this.player.perks || [];
                 if (!selected.length) {
@@ -10028,7 +10028,6 @@ const WorldGen = (() => {
                     this.renderLog();
                     return;
                 }
-                if (!skipConfirm && !confirm(this._label('perk.confirmRespec', 'Reset selected perks and refund their choices?'))) return;
                 selected.forEach(perk => {
                     if (perk.stat && typeof perk.val === 'number') {
                         this.player[perk.stat] = Math.max(0, (this.player[perk.stat] || 0) - perk.val);
@@ -10042,6 +10041,24 @@ const WorldGen = (() => {
                 this.renderParty();
                 this.showCharacterStats();
                 this.autoSave();
+            },
+
+            respecPerks(skipConfirm = false) {
+                if (!this.player) return;
+                const selected = this.player.perks || [];
+                if (!selected.length) {
+                    this.log.push({ text: this._label('perk.noneToRespec', 'No perks selected to respec.'), type: 'discovery' });
+                    this.renderLog();
+                    return;
+                }
+                if (skipConfirm) return this._completePerkRespec();
+                return this.showConfirmDialog({
+                    title: this._label('perk.respec', 'Respec Perks'),
+                    message: this._label('perk.confirmRespec', 'Reset selected perks and refund their choices?'),
+                    confirmLabel: this._label('perk.respec', 'Respec Perks'),
+                    cancelLabel: this._label('ui.cancel', 'Cancel'),
+                    onConfirm: () => this._completePerkRespec()
+                });
             },
 
             debugGrantPerkChoice(count = 1) {

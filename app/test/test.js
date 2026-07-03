@@ -7190,10 +7190,15 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
   cancelled.App.party = [cancelled.App.player];
   cancelled.App.choosePerk('predator_instinct');
   cancelled.App.respecPerks();
+  assertEqual(cancelled.confirmations.length, 0, 'Perk respec should not call the browser-native confirm dialog');
+  assert(cancelled.App.pendingConfirm, 'Perk respec should open an in-app confirmation dialog');
+  assertEqual(cancelled.App.pendingConfirm.message, 'Reset selected perks and refund their choices?', 'Perk respec confirmation should localize');
+  cancelled.App.resolveConfirmDialog(false);
+  assertEqual(cancelled.App.pendingConfirm, null, 'Cancelling perk respec should clear pending confirmation state');
   assertEqual(cancelled.App.player.perks.length, 1, 'Cancelled respec should keep selected perks');
   assertEqual(cancelled.App.player.Figh, 12, 'Cancelled respec should keep perk stat bonuses');
 
-  const { App, elements } = loadAppForCombat(() => 0.5, { confirm: true });
+  const { App, elements, confirmations } = loadAppForCombat(() => 0.5, { confirm: true });
   App.player = makeUnit('You', { Figh: 10, Feas: 10, perks: [], pendingPerkChoices: 1 });
   App.party = [App.player];
   App.updateLanguage('es');
@@ -7210,6 +7215,11 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
   assertContains(html, 'Debug +1 opcion de mejora', 'Character stats should expose localized debug perk choice tool');
 
   App.respecPerks();
+  assertEqual(confirmations.length, 0, 'Approved perk respec should not call the browser-native confirm dialog');
+  assert(App.pendingConfirm, 'Approved perk respec should open an in-app confirmation dialog');
+  assertEqual(App.pendingConfirm.message, 'Reiniciar mejoras seleccionadas y reembolsar sus opciones?', 'Approved perk respec confirmation should localize');
+  App.resolveConfirmDialog(true);
+  assertEqual(App.pendingConfirm, null, 'Approved perk respec should clear pending confirmation state');
   assertEqual(App.player.perks.length, 0, 'Respec should clear selected perks');
   assertEqual(App.player.pendingPerkChoices, 2, 'Respec should refund selected perk choices');
   assertEqual(App.player.Figh, 10, 'Respec should remove Figh bonus');

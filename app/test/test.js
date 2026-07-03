@@ -2039,6 +2039,63 @@ test('Active tile creature damage and combat state survive save and load', async
   assertEqual(loadedApp.App.combatState.turnQueue[1].unit.id, 'enemy-save-combat', 'Loaded combat queue should point at restored enemy object');
 });
 
+test('Loading combat on an enemy turn resumes the turn instead of freezing', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-load-resume', Figh: 20 });
+  const enemy = makeUnit('Harpy', {
+    id: 'enemy-load-resume',
+    species: 'harpy',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 28,
+    MPun: 43,
+    Flee: 1
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 8, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMeta = { worldId: 'combat-load-resume-world', seed: 'combat-load-resume-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.worldMap = new Map([['8,0', { ...App.getBaseTile(8, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['8,0']);
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = enemy;
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+  await App._saveToSlotConfirmed('slot1');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { elements } = loadedApp;
+  let resumedEnemyId = null;
+  loadedApp.App.enemyTurn = function(enemyUnit) {
+    resumedEnemyId = enemyUnit.id;
+    this.log.push({ text: `${enemyUnit.name} resumes after load.`, type: 'combat' });
+    this.nextTurn();
+  };
+  loadedApp.App._dbGet = async () => savedBuffers[0];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Enemy-turn combat slot should load');
+  assertEqual(resumedEnemyId, 'enemy-load-resume', 'Load should process the restored enemy turn');
+  assertEqual(loadedApp.App.combatState.active, true, 'Combat should remain active after resuming the enemy turn');
+  assertEqual(loadedApp.App.combatState.currentTurn, 0, 'Enemy turn should advance into the next round/player turn');
+  assertContains(elements.get('scene-title').textContent, "You's turn", 'Loaded combat should render a usable player turn after enemy resumes');
+  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Loaded combat should restore player card actions');
+  assertNotContains(elements.get('scene-title').textContent, 'Loaded', 'Loaded combat should not remain on the generic loaded scene');
+});
+
 test('Queued sync combat actions survive save load and resolve with restored units', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];

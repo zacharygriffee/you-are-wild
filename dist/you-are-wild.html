@@ -14345,9 +14345,6 @@ const WorldGen = (() => {
                     await this.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
                     this._restoreCombatState(loaded.questState?.combatState);
                     this._normalizeExplorationSelections();
-                    this.showScreen('game');
-                    this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
-                    this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', this.combatState.active);
                     this._setStoredValue('lastSlot', slotName);
                     // Revive any dead party members on load (softcore)
                     let revived = false;
@@ -14362,7 +14359,11 @@ const WorldGen = (() => {
                     }
                     if (revived) {
                         this.log.push({ text: this._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: this.player.name }), type: 'discovery' });
-                        this.renderLog();
+                    }
+                    this.showScreen('game');
+                    this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
+                    if (!this._resumeLoadedCombat()) {
+                        this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
                     }
                     return true;
                 } catch (e) { console.error('Load failed:', e); alert(this._label('save.error.loadFailed', 'Load failed: {message}', { message: e.message })); return false; }
@@ -14440,6 +14441,33 @@ const WorldGen = (() => {
                 };
                 this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
                 this.targetSelection = null;
+                return true;
+            },
+            _resumeLoadedCombat() {
+                if (!this.combatState?.active) return false;
+                this._clearTransientInteractionState();
+                const entry = this.combatState.turnQueue?.[this.combatState.currentTurn];
+                const unit = entry?.unit;
+                if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) {
+                    this.processTurn();
+                    return true;
+                }
+                this.activeActor = unit;
+                const isPartyTurn = unit === this.player || this.party.includes(unit);
+                const turnTitle = `Round ${this.combatState.round || 1} - ${unit.name}'s turn`;
+                const turnDescription = isPartyTurn
+                    ? this._label('ui.chooseAction', 'Choose your next action.')
+                    : this._label('ui.actorActing', '{name} is acting...', { name: unit.name });
+                this.updateScene(turnTitle, turnDescription, true);
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
+                if (isPartyTurn) {
+                    this.showActorActions(unit);
+                } else {
+                    this.processTurn();
+                    this.autoSave();
+                }
                 return true;
             },
             async loadLastPlayed() {

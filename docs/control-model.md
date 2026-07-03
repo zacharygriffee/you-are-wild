@@ -24,6 +24,18 @@ Traversal mode owns movement through the world and structure interiors.
 - Desktop hotkeys are additive direction shortcuts: WASD, arrow keys, or numpad-style movement may trigger the same direction choices exposed by the surrounding 3x3 tiles, without creating a separate desktop-only traversal model.
 - Combat can temporarily reduce traversal affordances. If the whole party flees, combat returns to directional escape selection on the play surface.
 
+### Battle mode
+
+Battle mode owns combat selection, intent, and event focus. It is related to Traversal mode because battles happen on the play surface, but it is distinct from Traversal mode because routine movement is no longer the primary loop.
+
+- Battle mode should reduce, hide, or demote routine movement affordances while combat is active. Directional movement returns only for explicit escape flow, forced repositioning, or future battle mechanics that deliberately spend a combat command.
+- The center stage remains the primary combat event focus. It should show the current exchange, recent battle event summary, selected actor and target context, important status changes, and terrain or row context that matters to the next decision.
+- The durable combat/debug log can remain available as history, but battle play should not require reading the lower log for the current exchange when the center stage can carry that information.
+- On mobile, party access belongs in a lower reach-area party strip. The enemy strip sits above the party strip so the player can move from actor selection to target selection without opening unrelated panels.
+- The intent popup or action sheet should appear between party and enemy selections when practical, anchored to the selected actor/target context. It may become a compact desktop popover on wide screens, but it should dispatch through the same intent model.
+- Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
+- Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
+
 ### Selection mode
 
 Selection mode owns who is acting and who or what is being acted on.

@@ -2265,6 +2265,45 @@ test('Fight defeat converts enemies into corpses', () => {
   assertEqual(App._livingEnemies(App.creatures).length, 0, 'Corpses should not count as living enemies');
 });
 
+test('Defeated enemies stay corpses after save and load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const { App } = loadAppForCombat(() => 0, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-defeat-save', Figh: 80, xp: 0, xpToNext: 1000 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-defeat-save', disposition: App.DISPOSITION.ENEMY, CPun: 1, MPun: 30, con: 1 });
+  App.worldMeta = { worldId: 'defeat-save-world', seed: 'defeat-save-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() { this.endCombat(true); };
+  App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+
+  App.executeAction('fight', 0);
+  assertEqual(App.combatState.active, false, 'Defeating the only enemy should end combat before saving');
+  assertEqual(enemy.disposition, App.DISPOSITION.CORPSE, 'Defeated enemy should become corpse before saving');
+  assertEqual(App.worldMap.get('0,0').creatures[0].disposition, App.DISPOSITION.CORPSE, 'Current tile should persist corpse before saving');
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual save should complete after enemy defeat');
+
+  const loadedApp = loadAppForCombat(() => 0, { binary: Binary });
+  loadedApp.App._dbGet = async () => savedBuffers[savedBuffers.length - 1];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Defeated-enemy save should load');
+  assertEqual(loadedApp.App.combatState.active, false, 'Loaded defeated-enemy save should not resume combat');
+  assertEqual(loadedApp.App.creatures.length, 1, 'Loaded current tile should keep the corpse in area creatures');
+  assertEqual(loadedApp.App.creatures[0].id, 'enemy-defeat-save', 'Loaded corpse should preserve enemy identity');
+  assertEqual(loadedApp.App.creatures[0].disposition, loadedApp.App.DISPOSITION.CORPSE, 'Loaded enemy should remain a corpse');
+  assertEqual(loadedApp.App.worldMap.get('0,0').creatures[0].disposition, loadedApp.App.DISPOSITION.CORPSE, 'Loaded current tile should keep corpse disposition');
+});
+
 test('Creature panel renders corpses as remains without target actions', () => {
   const { App, elements } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-1', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });

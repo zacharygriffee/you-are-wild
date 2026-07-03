@@ -7538,60 +7538,6 @@
                 if (type === 'party') this.renderParty(); else this.renderCreatures();
             },
 
-            executeAllyAction(action, index) {
-                const ally = this.party[index];
-                if (!ally || ally.name === this.player?.name) return;
-                let result = '';
-                switch (action) {
-                    case 'feed':
-                        const feedAmount = Math.floor((this.player.Feed || 10) * 2);
-                        ally.CPun = Math.min(ally.MPun, ally.CPun + feedAmount);
-                        ally.hunger = Math.max(0, (ally.hunger || 0) - 25);
-                        if (ally.CPle < ally.MPle * 0.5) {
-                            ally.CPle = Math.min(ally.MPle, ally.CPle + Math.floor(feedAmount * 0.5));
-                        }
-                        ally.obedient = true;
-                        result = `You feed ${ally.name}, restoring ${feedAmount} punishment and sating their hunger. Loyalty restored!`;
-                        break;
-                    case 'flirt':
-                        ally.CPle = Math.min(ally.MPle, ally.CPle + 15);
-                        this.player.CPle = Math.min(this.player.MPle, this.player.CPle + 10);
-                        ally.willing = true;
-                        result = `You flirt with ${ally.name}, raising both your pleasures. They blush warmly.`;
-                        break;
-	                    case 'consume':
-	                        if (!this._canFitPrey(this.player, ally, 'stomach')) {
-	                            result = this._capacityFailureMessage(this.player, ally, 'stomach');
-	                            break;
-	                        }
-	                        this.party.splice(index, 1);
-	                        if (!this.player.stomach) this.player.stomach = [];
-	                        this.player.stomach.push(this._createStomachPrey(ally));
-                        this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 30);
-                        this.player.Feas += 2;
-                        result = `You consume ${ally.name}. Power grows!`;
-                        break;
-                    case 'seduce':
-                        ally.willing = true; ally.obedient = true;
-                        result = `${ally.name} is devoted to you.`;
-                        break;
-                    case 'fuck':
-                        ally.CPle = Math.min(ally.MPle, ally.CPle + 20);
-                        this.player.CPle = Math.min(this.player.MPle, this.player.CPle + 15);
-                        ally.willing = true;
-                        result = `You and ${ally.name} share an intimate moment.`;
-                        break;
-                    case 'inspect':
-                        result = `${ally.name}: Pun ${ally.CPun}/${ally.MPun}, Ple ${ally.CPle}/${ally.MPle}, Size ${ally.size}, App ${ally.appetite}, Parts: ${ally.parts || 'none'}, Chest: ${ally.chest || 'none'}`;
-                        break;
-                }
-                this.log.push({ text: result, type: 'discovery' });
-                this.renderLog(); this.renderParty();
-                if (this.combatState.active) this.nextTurn();
-                else this.showExplorationActions();
-                this.autoSave();
-            },
-
             // ===== MAP RENDERING =====
             _isLargeMapKnown(x, y) {
                 const key = this._tileKey(x, y);

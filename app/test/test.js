@@ -2909,6 +2909,10 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertNotContains(sceneHtml, 'Select a target from the creature panel.', 'Combat targeting guidance should stay out of the center scene description');
 });
 
+test('Panel actor interactions do not keep a legacy ally-only executor', () => {
+  assertNotContains(appContent, 'executeAllyAction(', 'Party actor interactions should route through shared panel dispatch instead of a hardcoded ally executor');
+});
+
 test('Selected party actor resolves exploration attacks against creatures', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Figh: 1 });

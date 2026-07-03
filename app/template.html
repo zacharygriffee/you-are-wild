@@ -138,6 +138,14 @@
             overflow: hidden;
         }
 
+        #app.log-collapsed {
+            grid-template-rows: 60px 1fr 44px;
+        }
+
+        #app.log-expanded {
+            grid-template-rows: 60px minmax(0, 0.7fr) minmax(260px, 0.3fr);
+        }
+
         /* =============================================
            HEADER
            ============================================= */
@@ -1056,6 +1064,7 @@
             border-top: 1px solid var(--border-default);
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
 
         .log-header {
@@ -1073,6 +1082,50 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-secondary);
+        }
+
+        .log-header-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .log-layout-toggle.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        #app.log-collapsed .log-controls,
+        #app.log-collapsed .log-content {
+            display: none;
+        }
+
+        .log-collapsed-summary {
+            display: none;
+            min-width: 0;
+            color: var(--text-muted);
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-left: var(--space-sm);
+            flex: 1;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+        }
+
+        #app.log-collapsed .log-title {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            flex: 1;
+        }
+
+        #app.log-collapsed .log-collapsed-summary {
+            display: inline-block;
         }
 
         .log-controls {
@@ -2719,8 +2772,10 @@
             <!-- Log Panel -->
             <div class="panel-log">
                 <div class="log-header">
-                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span></span>
-                    <div style="display:flex;gap:6px;">
+                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span><span class="log-collapsed-summary" id="log-collapsed-summary"></span></span>
+                    <div class="log-header-actions">
+                        <button class="nav-btn log-layout-toggle" id="log-toggle-collapse" style="padding: 2px 8px; font-size: 10px;" title="Minimize log" aria-label="Minimize log" data-i18n-title="ui.log.minimize" data-i18n-aria-label="ui.log.minimize" data-i18n="ui.log.minimize" onclick="App.toggleLogCollapsed()">Minimize</button>
+                        <button class="nav-btn log-layout-toggle" id="log-toggle-expand" style="padding: 2px 8px; font-size: 10px;" title="Expand log" aria-label="Expand log" data-i18n-title="ui.log.expand" data-i18n-aria-label="ui.log.expand" data-i18n="ui.log.expand" onclick="App.toggleLogExpanded()">Expand</button>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" data-i18n-title="ui.log.export" data-i18n-aria-label="ui.log.export" data-i18n="ui.log.export" onclick="App.exportLog()">Export</button>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Clear log entries" aria-label="Clear log entries" data-i18n-title="ui.log.clear" data-i18n-aria-label="ui.log.clear" data-i18n="ui.log.clear" onclick="clearLog()">Clear</button>
                     </div>

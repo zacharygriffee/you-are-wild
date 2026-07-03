@@ -7103,11 +7103,16 @@ test('Combat log template exposes filters search and export controls', () => {
   assertContains(template, 'data-log-filter="all"', 'Log should expose All filter');
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');
+  assertContains(template, 'id="log-toggle-collapse"', 'Log should expose minimize control');
+  assertContains(template, 'id="log-toggle-expand"', 'Log should expose expand control');
+  assertContains(template, 'id="log-collapsed-summary"', 'Collapsed log should expose latest-entry summary');
   assertContains(template, 'App.exportLog()', 'Log should expose export action');
   assertContains(appContent, 'yaw-log-view', 'Log view preferences should persist separately');
   assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
   assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
   assertContains(template, '.log-category', 'Log category badge style should exist');
+  assertContains(template, '#app.log-collapsed', 'Log collapsed layout style should exist');
+  assertContains(template, '#app.log-expanded', 'Log expanded layout style should exist');
 });
 
 test('Combat log filters by type and search text', () => {
@@ -7137,6 +7142,8 @@ test('Combat log filter and search preferences persist', () => {
   const saved = JSON.parse(storage.get('yaw-log-view'));
   assertEqual(saved.filter, 'loot', 'Log filter should persist');
   assertEqual(saved.search, 'coin', 'Log search should persist');
+  assertEqual(saved.collapsed, false, 'Default collapsed state should persist');
+  assertEqual(saved.expanded, false, 'Default expanded state should persist');
   App.logFilter = 'all';
   App.logSearch = '';
   App.loadLogViewPreferences();
@@ -7147,6 +7154,37 @@ test('Combat log filter and search preferences persist', () => {
   App.loadLogViewPreferences();
   assertEqual(App.logFilter, 'all', 'Invalid stored filter should fall back to all');
   assertEqual(App.logSearch, '', 'Invalid stored search should fall back to empty');
+});
+
+test('Combat log expand and minimize states persist and stay exclusive', () => {
+  const { App, elements, storage } = loadAppForCombat();
+  App.log = [{ text: 'Latest field event', type: 'discovery' }];
+  App.renderLog();
+  const root = elements.get('app');
+  const collapseBtn = elements.get('log-toggle-collapse');
+  const expandBtn = elements.get('log-toggle-expand');
+  App.toggleLogCollapsed();
+  assertEqual(App.logCollapsed, true, 'Log should enter collapsed state');
+  assertEqual(App.logExpanded, false, 'Collapsed log should clear expanded state');
+  assertEqual(root.classList.contains('log-collapsed'), true, 'Collapsed log should apply root class');
+  assertEqual(root.classList.contains('log-expanded'), false, 'Collapsed log should remove expanded class');
+  assertEqual(collapseBtn.getAttribute('aria-pressed'), 'true', 'Collapsed control should expose pressed state');
+  assertEqual(elements.get('log-collapsed-summary').textContent, 'Latest field event', 'Collapsed summary should show latest log entry');
+  let saved = JSON.parse(storage.get('yaw-log-view'));
+  assertEqual(saved.collapsed, true, 'Collapsed state should persist');
+  assertEqual(saved.expanded, false, 'Collapsed state should persist as exclusive');
+  App.toggleLogExpanded();
+  assertEqual(App.logCollapsed, false, 'Expanded log should clear collapsed state');
+  assertEqual(App.logExpanded, true, 'Log should enter expanded state');
+  assertEqual(root.classList.contains('log-collapsed'), false, 'Expanded log should remove collapsed class');
+  assertEqual(root.classList.contains('log-expanded'), true, 'Expanded log should apply root class');
+  assertEqual(expandBtn.getAttribute('aria-pressed'), 'true', 'Expanded control should expose pressed state');
+  saved = JSON.parse(storage.get('yaw-log-view'));
+  assertEqual(saved.collapsed, false, 'Expanded state should persist as exclusive');
+  assertEqual(saved.expanded, true, 'Expanded state should persist');
+  App.toggleLogExpanded();
+  assertEqual(App.logExpanded, false, 'Expanded toggle should restore normal layout');
+  assertEqual(root.classList.contains('log-expanded'), false, 'Restored log should remove expanded class');
 });
 
 test('Combat log renders relative timestamps and status role', () => {

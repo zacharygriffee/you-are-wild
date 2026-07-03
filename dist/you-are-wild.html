@@ -139,6 +139,14 @@
             overflow: hidden;
         }
 
+        #app.log-collapsed {
+            grid-template-rows: 60px 1fr 44px;
+        }
+
+        #app.log-expanded {
+            grid-template-rows: 60px minmax(0, 0.7fr) minmax(260px, 0.3fr);
+        }
+
         /* =============================================
            HEADER
            ============================================= */
@@ -1057,6 +1065,7 @@
             border-top: 1px solid var(--border-default);
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
 
         .log-header {
@@ -1074,6 +1083,50 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-secondary);
+        }
+
+        .log-header-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .log-layout-toggle.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        #app.log-collapsed .log-controls,
+        #app.log-collapsed .log-content {
+            display: none;
+        }
+
+        .log-collapsed-summary {
+            display: none;
+            min-width: 0;
+            color: var(--text-muted);
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-left: var(--space-sm);
+            flex: 1;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+        }
+
+        #app.log-collapsed .log-title {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            flex: 1;
+        }
+
+        #app.log-collapsed .log-collapsed-summary {
+            display: inline-block;
         }
 
         .log-controls {
@@ -2720,8 +2773,10 @@
             <!-- Log Panel -->
             <div class="panel-log">
                 <div class="log-header">
-                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span></span>
-                    <div style="display:flex;gap:6px;">
+                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span><span class="log-collapsed-summary" id="log-collapsed-summary"></span></span>
+                    <div class="log-header-actions">
+                        <button class="nav-btn log-layout-toggle" id="log-toggle-collapse" style="padding: 2px 8px; font-size: 10px;" title="Minimize log" aria-label="Minimize log" data-i18n-title="ui.log.minimize" data-i18n-aria-label="ui.log.minimize" data-i18n="ui.log.minimize" onclick="App.toggleLogCollapsed()">Minimize</button>
+                        <button class="nav-btn log-layout-toggle" id="log-toggle-expand" style="padding: 2px 8px; font-size: 10px;" title="Expand log" aria-label="Expand log" data-i18n-title="ui.log.expand" data-i18n-aria-label="ui.log.expand" data-i18n="ui.log.expand" onclick="App.toggleLogExpanded()">Expand</button>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Export visible log entries" aria-label="Export visible log entries" data-i18n-title="ui.log.export" data-i18n-aria-label="ui.log.export" data-i18n="ui.log.export" onclick="App.exportLog()">Export</button>
                         <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Clear log entries" aria-label="Clear log entries" data-i18n-title="ui.log.clear" data-i18n-aria-label="ui.log.clear" data-i18n="ui.log.clear" onclick="clearLog()">Clear</button>
                     </div>
@@ -4954,6 +5009,8 @@ const WorldGen = (() => {
             tileEvents: [],
             logFilter: 'all',
             logSearch: '',
+            logCollapsed: false,
+            logExpanded: false,
             inventoryFilter: 'all',
             inventorySort: 'name',
             tradeFilter: 'all',
@@ -12122,16 +12179,59 @@ const WorldGen = (() => {
                     const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
                     this.logFilter = allowed.includes(prefs.filter) ? prefs.filter : 'all';
                     this.logSearch = typeof prefs.search === 'string' ? prefs.search : '';
+                    this.logCollapsed = Boolean(prefs.collapsed);
+                    this.logExpanded = Boolean(prefs.expanded) && !this.logCollapsed;
                 } catch(e) {
                     this.logFilter = 'all';
                     this.logSearch = '';
+                    this.logCollapsed = false;
+                    this.logExpanded = false;
                 }
             },
             saveLogViewPreferences() {
                 this._setStoredValue('logView', JSON.stringify({
                     filter: this.logFilter || 'all',
-                    search: this.logSearch || ''
+                    search: this.logSearch || '',
+                    collapsed: Boolean(this.logCollapsed),
+                    expanded: Boolean(this.logExpanded)
                 }));
+            },
+            _applyLogLayoutState() {
+                const root = document.getElementById('app');
+                if (root?.classList) {
+                    root.classList.toggle('log-collapsed', Boolean(this.logCollapsed));
+                    root.classList.toggle('log-expanded', Boolean(this.logExpanded));
+                }
+                const collapseBtn = document.getElementById('log-toggle-collapse');
+                const expandBtn = document.getElementById('log-toggle-expand');
+                if (collapseBtn) {
+                    const label = this.logCollapsed ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.minimize', 'Minimize');
+                    collapseBtn.textContent = label;
+                    collapseBtn.title = label;
+                    collapseBtn.setAttribute('aria-label', label);
+                    collapseBtn.classList?.toggle('active', Boolean(this.logCollapsed));
+                    collapseBtn.setAttribute('aria-pressed', String(Boolean(this.logCollapsed)));
+                }
+                if (expandBtn) {
+                    const label = this.logExpanded ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.expand', 'Expand');
+                    expandBtn.textContent = label;
+                    expandBtn.title = label;
+                    expandBtn.setAttribute('aria-label', label);
+                    expandBtn.classList?.toggle('active', Boolean(this.logExpanded));
+                    expandBtn.setAttribute('aria-pressed', String(Boolean(this.logExpanded)));
+                }
+            },
+            toggleLogCollapsed() {
+                this.logCollapsed = !this.logCollapsed;
+                if (this.logCollapsed) this.logExpanded = false;
+                this.saveLogViewPreferences();
+                this.renderLog();
+            },
+            toggleLogExpanded() {
+                this.logExpanded = !this.logExpanded;
+                if (this.logExpanded) this.logCollapsed = false;
+                this.saveLogViewPreferences();
+                this.renderLog();
             },
             setLogFilter(filter = 'all') {
                 const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
@@ -12185,6 +12285,12 @@ const WorldGen = (() => {
 	                    const latest = this.log[this.log.length - 1];
 	                    mobileLog.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
 	                }
+                    const collapsedSummary = document.getElementById('log-collapsed-summary');
+                    if (collapsedSummary) {
+                        const latest = this.log[this.log.length - 1];
+                        collapsedSummary.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
+                    }
+                    this._applyLogLayoutState();
 	            },
             clearLog() { this.log = []; this.renderLog(); },
             search() {
@@ -14380,6 +14486,9 @@ const CONTENT_SYSTEM = {
             'ui.combatLog': 'Combat Log',
             'ui.log.export': 'Export',
             'ui.log.clear': 'Clear',
+            'ui.log.expand': 'Expand',
+            'ui.log.minimize': 'Minimize',
+            'ui.log.restore': 'Restore',
             'ui.log.all': 'All',
             'ui.log.combat': 'Combat',
             'ui.log.discovery': 'Discovery',
@@ -15026,6 +15135,9 @@ const CONTENT_SYSTEM = {
             'ui.combatLog': 'Registro de combate',
             'ui.log.export': 'Exportar',
             'ui.log.clear': 'Limpiar',
+            'ui.log.expand': 'Expandir',
+            'ui.log.minimize': 'Minimizar',
+            'ui.log.restore': 'Restaurar',
             'ui.log.all': 'Todo',
             'ui.log.combat': 'Combate',
             'ui.log.discovery': 'Descubrimiento',

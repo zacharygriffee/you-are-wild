@@ -763,6 +763,8 @@
             tileEvents: [],
             logFilter: 'all',
             logSearch: '',
+            logCollapsed: false,
+            logExpanded: false,
             inventoryFilter: 'all',
             inventorySort: 'name',
             tradeFilter: 'all',
@@ -7931,16 +7933,59 @@
                     const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
                     this.logFilter = allowed.includes(prefs.filter) ? prefs.filter : 'all';
                     this.logSearch = typeof prefs.search === 'string' ? prefs.search : '';
+                    this.logCollapsed = Boolean(prefs.collapsed);
+                    this.logExpanded = Boolean(prefs.expanded) && !this.logCollapsed;
                 } catch(e) {
                     this.logFilter = 'all';
                     this.logSearch = '';
+                    this.logCollapsed = false;
+                    this.logExpanded = false;
                 }
             },
             saveLogViewPreferences() {
                 this._setStoredValue('logView', JSON.stringify({
                     filter: this.logFilter || 'all',
-                    search: this.logSearch || ''
+                    search: this.logSearch || '',
+                    collapsed: Boolean(this.logCollapsed),
+                    expanded: Boolean(this.logExpanded)
                 }));
+            },
+            _applyLogLayoutState() {
+                const root = document.getElementById('app');
+                if (root?.classList) {
+                    root.classList.toggle('log-collapsed', Boolean(this.logCollapsed));
+                    root.classList.toggle('log-expanded', Boolean(this.logExpanded));
+                }
+                const collapseBtn = document.getElementById('log-toggle-collapse');
+                const expandBtn = document.getElementById('log-toggle-expand');
+                if (collapseBtn) {
+                    const label = this.logCollapsed ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.minimize', 'Minimize');
+                    collapseBtn.textContent = label;
+                    collapseBtn.title = label;
+                    collapseBtn.setAttribute('aria-label', label);
+                    collapseBtn.classList?.toggle('active', Boolean(this.logCollapsed));
+                    collapseBtn.setAttribute('aria-pressed', String(Boolean(this.logCollapsed)));
+                }
+                if (expandBtn) {
+                    const label = this.logExpanded ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.expand', 'Expand');
+                    expandBtn.textContent = label;
+                    expandBtn.title = label;
+                    expandBtn.setAttribute('aria-label', label);
+                    expandBtn.classList?.toggle('active', Boolean(this.logExpanded));
+                    expandBtn.setAttribute('aria-pressed', String(Boolean(this.logExpanded)));
+                }
+            },
+            toggleLogCollapsed() {
+                this.logCollapsed = !this.logCollapsed;
+                if (this.logCollapsed) this.logExpanded = false;
+                this.saveLogViewPreferences();
+                this.renderLog();
+            },
+            toggleLogExpanded() {
+                this.logExpanded = !this.logExpanded;
+                if (this.logExpanded) this.logCollapsed = false;
+                this.saveLogViewPreferences();
+                this.renderLog();
             },
             setLogFilter(filter = 'all') {
                 const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
@@ -7994,6 +8039,12 @@
 	                    const latest = this.log[this.log.length - 1];
 	                    mobileLog.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
 	                }
+                    const collapsedSummary = document.getElementById('log-collapsed-summary');
+                    if (collapsedSummary) {
+                        const latest = this.log[this.log.length - 1];
+                        collapsedSummary.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
+                    }
+                    this._applyLogLayoutState();
 	            },
             clearLog() { this.log = []; this.renderLog(); },
             search() {

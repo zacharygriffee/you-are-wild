@@ -26,15 +26,16 @@ Traversal mode owns movement through the world and structure interiors.
 
 ### Battle mode
 
-Combat toolbelt doctrine defines how battle controls sit around the Play surface before any battle UI implementation changes.
+Battle mode should be carved out only after the actor, target, and intent model is weighted onto the party/creature/enemy panels. Combat should not become a second action UI that duplicates exploration controls in the center tile.
 
-Battle mode owns combat selection, intent, and event focus. It is related to Traversal mode because battles happen on the play surface, but it is distinct from Traversal mode because routine movement is no longer the primary loop.
+Battle mode owns turn order, combat constraints, and event focus. It is related to Traversal mode because battles happen on the play surface, but it is distinct from Traversal mode because routine movement is no longer the primary loop.
 
 - Battle mode should reduce, hide, or demote routine movement affordances while combat is active. Directional movement returns only for explicit escape flow, forced repositioning, or future battle mechanics that deliberately spend a combat command.
-- The center stage remains the primary combat event focus. It should show the current exchange, recent battle event summary, selected actor and target context, important status changes, and terrain or row context that matters to the next decision.
+- The party, creature, and enemy panels/chips are the primary actor and target surfaces in both combat and exploration. Combat adds current-turn and initiative constraints over the same selection model rather than replacing it.
+- The center stage remains the primary combat event focus, not the primary duplicated action grid. It should show the current exchange, recent battle event summary, selected actor and target context, important status changes, and terrain or row context that matters to the next decision.
 - The durable combat/debug log can remain available as history, but battle play should not require reading the lower log for the current exchange when the center stage can carry that information.
 - On mobile, party access belongs in a lower reach-area party strip. The enemy strip sits above the party strip so the player can move from actor selection to target selection without opening unrelated panels.
-- The intent popup or action sheet should appear between party and enemy selections when practical, anchored to the selected actor/target context. It may become a compact desktop popover on wide screens, but it should dispatch through the same intent model.
+- The intent popup, toolbelt, hotbar, or action sheet should appear between or near party/enemy selections when practical, anchored to the selected actor/target context. It may become a compact desktop popover on wide screens, but it should dispatch through the same intent model used outside combat.
 - Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
 - Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
 
@@ -44,6 +45,7 @@ Selection mode owns who is acting and who or what is being acted on.
 
 - Actor selection chooses one or more party members that will perform the next command.
 - Target selection chooses one or more party members, area creatures, corpses, items, merchants, quest givers, structures, POIs, or tiles that the selected actors can address.
+- Actor and target selection should live on cards/chips/panels first. Center-tile summaries may reflect those selections, but should not be the authoritative place where actor/target state is chosen.
 - Selection state must be visible as compact chips, selected card/chip state, or center-surface summaries before dispatch.
 - `Act`, `Target`, and Inspect/Stats remain reachable while multi-character behavior depends on them.
 - Multi-select must preserve existing direct, marked-target, party-vs-party, area-creature, combat-target, and modded action flows.
@@ -58,7 +60,7 @@ Intent mode owns what the selected actors are trying to do.
 - Action menus, bottom sheets, desktop popovers, and future radial controls are alternate presentations of the same intent model.
 - The radial or gesture path must be an accelerator only; every intent needs a labeled, keyboard/focusable, accessible fallback.
 - High-impact commands must not bypass normal confirmation, capacity, eligibility, content-tier, or target-validation gates.
-- Combat intent selection should place party access in the lower reach area on mobile, enemies above the party strip, and the intent sheet between actor and target context where practical.
+- Combat intent selection should reuse the same panel-selected actor/target model as exploration. Battle-specific buttons such as Move Row, Sync/Group, Guard/Wait, or Flee are availability differences on the same command surface, not a separate center-grid action system.
 
 ### Inspection mode
 

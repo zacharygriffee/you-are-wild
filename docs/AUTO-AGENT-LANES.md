@@ -15,25 +15,38 @@ workspaces without turning broad product direction into unattended code changes.
 
 ## Current Lanes
 
-1. `controls-doctrine`
+1. `humanoid-creature-canon-doctrine`
+   - Docs-first lane for default species framing and interaction eligibility.
+   - Establishes that baseline interactable creatures should read as
+     human-level sentient, person-like fantasy beings; ordinary animal
+     classifications are mod opt-ins with stronger gating.
+
+2. `controls-doctrine`
    - Docs-first lane for traversal, selection, intent, and inspection controls.
    - This should complete before broad autonomous UI work.
 
-2. `center-tile-traversal-doctrine`
-   - Docs-first lane for the unified 3x3 center-tile navigation/context surface.
-   - Defines how the center semantic/event slot, directional movement affordances,
-     expanded map mode, and future desktop hotkeys should relate before UI code
-     changes.
+3. `center-tile-traversal-doctrine`
+   - Docs-first lane for the unified 3x3 play surface.
+   - Defines play-surface vs display-map terminology, tile-scoped events,
+     directional movement affordances, expanded map mode, dumb-state-machine
+     viability, optional future LLM-assisted presentation, and desktop hotkeys
+     before UI code changes.
 
-3. `desktop-intent-menu`
+4. `combat-toolbelt-doctrine`
+   - Docs-first lane for battle layout.
+   - Defines party/enemy strips, intent popup/action-sheet placement, center-stage
+     focus, reduced movement affordances during combat, and party-member flee
+     semantics before implementation.
+
+5. `desktop-intent-menu`
    - Desktop-only action menu layout work.
    - Preserve mobile bottom-sheet and long-press behavior.
 
-4. `quest-preview`
+6. `quest-preview`
    - Low-priority feature lane.
    - Adds a localized, safe preview path before quest acceptance.
 
-5. `asset-tileset-manifest`
+7. `asset-tileset-manifest`
    - Feature lane for asset/tileset metadata, AI-generated provenance, relative
      paths, and fallback behavior.
    - Does not import the tilesheet yet.

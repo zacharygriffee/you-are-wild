@@ -55,6 +55,118 @@
   ],
   "lanes": [
     {
+      "laneId": "humanoid-creature-canon-doctrine",
+      "priority": 5,
+      "title": "Humanoid Creature Canon Doctrine",
+      "objective": "Document the default creature canon so baseline interactable species are sapient/person-like rather than ordinary animals, while leaving ordinary animal classifications to explicitly gated mods.",
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/creature-canon.md",
+            "containsAll": [
+              "human-level sentience",
+              "sapience",
+              "bodyPlan",
+              "mod opt-in"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Humanoid/Sapient Creature Canon"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "docs/creature-canon.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "docs/creature-canon.md",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Creature canon document defines human-level sentience as the default baseline for interactable species.",
+          "Creature canon document defines metadata direction for sapience, body plan, and interaction eligibility.",
+          "Creature canon document states ordinary animal classifications are mod opt-ins with stronger gating.",
+          "Next objectives reference the humanoid/sapient creature canon.",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Creature canon document defines human-level sentience as the default baseline for interactable species.",
+            "checkType": "content",
+            "file": "docs/creature-canon.md",
+            "containsAll": [
+              "human-level sentience",
+              "default baseline"
+            ]
+          },
+          {
+            "criterion": "Creature canon document defines metadata direction for sapience, body plan, and interaction eligibility.",
+            "checkType": "content",
+            "file": "docs/creature-canon.md",
+            "containsAll": [
+              "sapience",
+              "bodyPlan",
+              "interaction eligibility"
+            ]
+          },
+          {
+            "criterion": "Creature canon document states ordinary animal classifications are mod opt-ins with stronger gating.",
+            "checkType": "content",
+            "file": "docs/creature-canon.md",
+            "containsAll": [
+              "ordinary animal",
+              "mod opt-in",
+              "gating"
+            ]
+          },
+          {
+            "criterion": "Next objectives reference the humanoid/sapient creature canon.",
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Humanoid/Sapient Creature Canon"
+            ]
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "dist/you-are-wild.html",
+          "app/src/core/app.js",
+          "app/src/core/content-system.js",
+          "app/template.html",
+          "app/test/test.js",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not rewrite species data.",
+          "Does not expand or review explicit content.",
+          "Does not make legal claims."
+        ]
+      }
+    },
+    {
       "laneId": "controls-doctrine",
       "priority": 10,
       "title": "Controls Doctrine",
@@ -149,7 +261,7 @@
       "laneId": "center-tile-traversal-doctrine",
       "priority": 15,
       "title": "Center Tile Traversal Doctrine",
-      "objective": "Define the unified 3x3 center-tile navigation and semantic context surface before implementation, including current-event display, directional tile affordances, expanded map mode, and desktop hotkey direction.",
+      "objective": "Define the unified 3x3 play-surface navigation and semantic context model before implementation, including tile-scoped event display, directional tile affordances, display-map separation, and desktop hotkey direction.",
       "dependencies": [
         "controls-doctrine"
       ],
@@ -160,9 +272,10 @@
             "checkType": "content",
             "file": "docs/control-model.md",
             "containsAll": [
-              "Center tile",
+              "Play surface",
+              "Display map",
               "3x3",
-              "current event",
+              "tile-scoped event feed",
               "Expanded map mode"
             ]
           },
@@ -189,22 +302,34 @@
           "npm run audit:branding"
         ],
         "acceptanceCriteria": [
-          "Control model defines the center tile as the primary semantic play surface.",
+          "Control model defines the play surface as the primary 3x3 traversal and semantic context surface.",
+          "Control model separates the display map from routine traversal.",
           "Control model defines surrounding 3x3 direction tiles as normal movement affordances.",
           "Control model keeps expanded/large map mode separate from routine traversal.",
-          "Control model states that the existing combat/debug log remains durable history while the center tile gets an immediate current-event semantic slot.",
+          "Control model states that tile-scoped events clear on movement while the existing combat/debug log remains durable history.",
+          "Control model keeps dumb-state-machine event generation viable and treats LLM-assisted semantics as optional future presentation.",
           "Next objectives reference the unified center-tile traversal surface.",
           "npm run test exits 0",
           "npm run audit:branding exits 0"
         ],
         "criteriaChecks": [
           {
-            "criterion": "Control model defines the center tile as the primary semantic play surface.",
+            "criterion": "Control model defines the play surface as the primary 3x3 traversal and semantic context surface.",
             "checkType": "content",
             "file": "docs/control-model.md",
             "containsAll": [
-              "Center tile",
-              "semantic play surface"
+              "Play surface",
+              "3x3",
+              "semantic context"
+            ]
+          },
+          {
+            "criterion": "Control model separates the display map from routine traversal.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Display map",
+              "routine traversal"
             ]
           },
           {
@@ -226,12 +351,24 @@
             ]
           },
           {
-            "criterion": "Control model states that the existing combat/debug log remains durable history while the center tile gets an immediate current-event semantic slot.",
+            "criterion": "Control model states that tile-scoped events clear on movement while the existing combat/debug log remains durable history.",
             "checkType": "content",
             "file": "docs/control-model.md",
             "containsAll": [
+              "tile-scoped event feed",
+              "clear on movement",
               "combat/debug log",
-              "current-event"
+              "durable history"
+            ]
+          },
+          {
+            "criterion": "Control model keeps dumb-state-machine event generation viable and treats LLM-assisted semantics as optional future presentation.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "dumb-state-machine",
+              "LLM-assisted",
+              "optional"
             ]
           },
           {
@@ -268,12 +405,148 @@
       }
     },
     {
+      "laneId": "combat-toolbelt-doctrine",
+      "priority": 18,
+      "title": "Combat Toolbelt Doctrine",
+      "objective": "Document the mobile and desktop battle layout doctrine for party/enemy strips, intent popup placement, center-stage focus, and party-member flee semantics before implementation.",
+      "dependencies": [
+        "controls-doctrine",
+        "center-tile-traversal-doctrine"
+      ],
+      "statusBasis": {
+        "mode": "terminal-checks",
+        "terminalChecks": [
+          {
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Combat toolbelt",
+              "party strip",
+              "enemy strip",
+              "flee"
+            ]
+          },
+          {
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Combat Toolbelt"
+            ]
+          }
+        ]
+      },
+      "workOrder": {
+        "likelyFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "expectedChangedFiles": [
+          "docs/control-model.md",
+          "docs/next-objectives.md"
+        ],
+        "requiredCommands": [
+          "npm run test",
+          "npm run audit:branding"
+        ],
+        "acceptanceCriteria": [
+          "Control model defines battle mode as distinct from traversal mode.",
+          "Control model places party access near the lower reach area and enemies above it for mobile.",
+          "Control model defines the intent popup/action sheet between party and enemy selections.",
+          "Control model keeps the center stage as the primary combat event focus while movement affordances are reduced.",
+          "Control model defines flee as party-member dependent, with full-party flee returning to directional escape selection.",
+          "Next objectives reference the combat toolbelt doctrine.",
+          "npm run test exits 0",
+          "npm run audit:branding exits 0"
+        ],
+        "criteriaChecks": [
+          {
+            "criterion": "Control model defines battle mode as distinct from traversal mode.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "Battle mode",
+              "Traversal mode"
+            ]
+          },
+          {
+            "criterion": "Control model places party access near the lower reach area and enemies above it for mobile.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "party strip",
+              "enemy strip",
+              "mobile"
+            ]
+          },
+          {
+            "criterion": "Control model defines the intent popup/action sheet between party and enemy selections.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "intent popup",
+              "action sheet"
+            ]
+          },
+          {
+            "criterion": "Control model keeps the center stage as the primary combat event focus while movement affordances are reduced.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "center stage",
+              "movement affordances"
+            ]
+          },
+          {
+            "criterion": "Control model defines flee as party-member dependent, with full-party flee returning to directional escape selection.",
+            "checkType": "content",
+            "file": "docs/control-model.md",
+            "containsAll": [
+              "party-member dependent",
+              "full-party flee",
+              "directional escape"
+            ]
+          },
+          {
+            "criterion": "Next objectives reference the combat toolbelt doctrine.",
+            "checkType": "content",
+            "file": "docs/next-objectives.md",
+            "containsAll": [
+              "Combat Toolbelt"
+            ]
+          },
+          {
+            "criterion": "npm run test exits 0",
+            "checkType": "command-exit",
+            "command": "npm run test"
+          },
+          {
+            "criterion": "npm run audit:branding exits 0",
+            "checkType": "command-exit",
+            "command": "npm run audit:branding"
+          }
+        ],
+        "forbiddenPaths": [
+          "dist/you-are-wild.html",
+          "app/src/core/app.js",
+          "app/template.html",
+          "app/test/test.js",
+          "package-lock.json"
+        ],
+        "nonClaims": [
+          "Does not implement the combat toolbelt.",
+          "Does not rewrite combat mechanics.",
+          "Does not expand or review explicit content."
+        ]
+      }
+    },
+    {
       "laneId": "desktop-intent-menu",
       "priority": 20,
       "title": "Desktop Intent Menu Layout",
       "objective": "Give desktop creature/person actions a bounded desktop-specific intent surface while preserving mobile long-press and bottom-sheet behavior.",
       "dependencies": [
-        "controls-doctrine"
+        "controls-doctrine",
+        "combat-toolbelt-doctrine"
       ],
       "statusBasis": {
         "mode": "terminal-checks",

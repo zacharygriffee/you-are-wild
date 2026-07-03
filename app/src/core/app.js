@@ -421,11 +421,43 @@
                     timing: command.timing
                 };
                 if (command.mode === 'combat') {
-                    if (command.timing === 'queued') return this.queueSyncAction(command.action, command.targets?.[0]);
-                    if (command.targets?.length) return this.executeActionAgainstTarget(command.action, command.actors[0], command.targets[0]);
-                    return this.executeCombatIntent(command.action, command.actors[0]);
+                    return this._dispatchCombatInteractionCommand(command);
                 }
                 return this._dispatchAdventureInteractionCommand(command);
+            },
+            _dispatchCombatInteractionCommand(command) {
+                if (!command || command.mode !== 'combat') return false;
+                const valid = this._validateInteractionCommand(command);
+                if (!valid.ok) {
+                    this._reportInvalidCombatCommand(command, valid.reason);
+                    return false;
+                }
+                this.lastIntentCommand = {
+                    actorIds: command.actorIds,
+                    action: command.action,
+                    subAction: command.subAction,
+                    targetIds: command.targetIds,
+                    targetType: command.targetType,
+                    source: command.source,
+                    mode: 'combat',
+                    timing: command.timing
+                };
+                if (command.timing === 'queued') return this.queueSyncAction(command.action, command.targets?.[0]);
+                if (command.action === 'feed' && !command.targets?.length) return this.executeFeedAction(command.actors[0]);
+                if (command.targets?.length) return this._resolveCombatAction(command);
+                return this.executeCombatIntent(command.action, command.actors[0]);
+            },
+            _reportInvalidCombatCommand(command, reason = 'invalid-combat-target') {
+                const actor = command?.actors?.[0] || this.activeActor || this._currentCombatActor() || this.player;
+                const target = command?.targets?.[0] || null;
+                const text = reason === 'cannot-reach' && target
+                    ? this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name })
+                    : this._label('combat.invalidCommand', 'That combat action is not valid right now.');
+                this._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
+                this.renderLog();
+                this.renderCreatures();
+                this.renderParty();
+                this.renderMobileCombatToolbelt();
             },
             _dispatchAdventureInteractionCommand(command) {
                 if (!command || command.mode === 'combat') return false;
@@ -478,6 +510,7 @@
             _clearTransientInteractionState() {
                 this.targetSelection = null;
                 this.syncSelection = null;
+                this.feedSelection = null;
                 this._syncSelected = [];
                 this._syncParticipants = null;
                 this._syncType = null;
@@ -495,6 +528,17 @@
                 if (!this.combatState?.active) return '';
                 const actor = this.activeActor || this._currentCombatActor();
                 const label = this._escapeHtml(this._panelInteractionTrayTitle('combat'));
+                if (this.feedSelection?.active) {
+                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
+                    const title = this._escapeHtml(this._label('feed.optionsTitle', 'Feed Options'));
+                    const buttons = (this.feedSelection.subIds || []).map(subId => {
+                        const subDef = this.SUB_ACTIONS.feed?.[subId] || {};
+                        const subLabel = this._escapeHtml(this._getActionLabel('feed', subId));
+                        const icon = subDef.icon || '';
+                        return `<button class="action-btn" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${subId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
+                    }).join('');
+                    return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${this._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+                }
                 if (this.syncSelection?.active) {
                     const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
                     if (this.syncSelection.phase === 'choose') {
@@ -1288,10 +1332,11 @@
                 lastSaveTime: 'fff-last-save-time',
                 saveTimePrefix: 'fff-save-time-'
             },
-            SAVE_DB_NAME: 'YAW_Saves',
-            LEGACY_SAVE_DB_NAME: 'FFF_Saves',
-            WORLD_DB_NAME: 'YAW_Worlds',
-            WORLD_DB_VERSION: 1,
+	            SAVE_DB_NAME: 'YAW_Saves',
+	            LEGACY_SAVE_DB_NAME: 'FFF_Saves',
+	            WORLD_DB_NAME: 'YAW_Worlds',
+	            WORLD_DB_VERSION: 1,
+	            COMBAT_REFRESH_TTL_MS: 2 * 60 * 60 * 1000,
             _saveTimeKey(slotName) { return this.storageKeys.saveTimePrefix + slotName; },
             _legacySaveTimeKey(slotName) { return this.legacyStorageKeys.saveTimePrefix + slotName; },
             _getStoredValue(keyName) {
@@ -1601,6 +1646,40 @@
             },
             _livingEnemies(list = this.creatures) {
                 return list.filter(c => c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c));
+            },
+            _isCombatQueueUnitValid(unit) {
+                if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat || this._isCorpse(unit)) return false;
+                if ((this.party || []).includes(unit)) return true;
+                return (this.creatures || []).includes(unit) && unit.disposition === this.DISPOSITION.ENEMY;
+            },
+            _sanitizeCombatState(options = {}) {
+                if (!this.combatState?.active) return false;
+                const preserveTurn = options.preserveTurn !== false;
+                const previousUnit = this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
+                const validQueue = (this.combatState.turnQueue || [])
+                    .filter(entry => entry && this._isCombatQueueUnitValid(entry.unit));
+                this.combatState.turnQueue = validQueue;
+                this.combatState.syncActions = (this.combatState.syncActions || []).map(sync => {
+                    const participants = (sync.participants || []).filter(unit => this._isCombatQueueUnitValid(unit) && (this.party || []).includes(unit));
+                    const target = this._isCombatQueueUnitValid(sync.target) && sync.target?.disposition === this.DISPOSITION.ENEMY ? sync.target : null;
+                    return { ...sync, participants, target };
+                }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved);
+                if (validQueue.length === 0) {
+                    this.combatState.currentTurn = 0;
+                    this.activeActor = null;
+                } else if (preserveTurn && previousUnit) {
+                    const nextIndex = validQueue.findIndex(entry => entry.unit === previousUnit);
+                    this.combatState.currentTurn = nextIndex >= 0
+                        ? nextIndex
+                        : Math.min(Math.max(0, this.combatState.currentTurn || 0), validQueue.length - 1);
+                } else {
+                    this.combatState.currentTurn = Math.min(Math.max(0, this.combatState.currentTurn || 0), validQueue.length - 1);
+                }
+                this.mode = this.GAME_MODE.COMBAT;
+                const current = validQueue[this.combatState.currentTurn]?.unit || null;
+                if (current) this.activeActor = current;
+                else if (!this._isCombatQueueUnitValid(this.activeActor)) this.activeActor = null;
+                return true;
             },
             _tileCreatures(list = []) {
                 return (list || []).filter(c => this._isCorpse(c) || c.CPun > 0);
@@ -2857,6 +2936,13 @@
                 return Math.max(1, (unit?.con || 10) + this._terrainConModifier(unit));
             },
 
+            _safeRatio(current, max, fallback = 0) {
+                const numerator = Number(current);
+                const denominator = Number(max);
+                if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return fallback;
+                return numerator / denominator;
+            },
+
             _defaultCombatRow(unit) {
                 return unit?.flying || unit?.ranged ? 'back' : 'front';
             },
@@ -3021,6 +3107,11 @@
 
             processTurn() {
                 if (!this.combatState.active) return;
+                this._sanitizeCombatState({ preserveTurn: true });
+                const livingEnemiesNow = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
+                const livingPartyNow = this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
+                if (livingEnemiesNow.length === 0) { this.endCombat(true); return; }
+                if (livingPartyNow.length === 0) { this.endCombat(false); return; }
                 const queue = this.combatState.turnQueue;
                 if (this.combatState.currentTurn >= queue.length) {
                     this._newRound(); return;
@@ -3050,7 +3141,7 @@
                 }
                 // Check victory/defeat
                 const livingEnemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const livingParty = this.party.filter(p => p.CPun > 0 && !p.knockedOut);
+                const livingParty = this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
                 if (livingEnemies.length === 0) { this.endCombat(true); return; }
                 if (livingParty.length === 0) { this.endCombat(false); return; }
                 // Check if unit already acted in a sync this round
@@ -3113,6 +3204,7 @@
                 // Per-turn digestion
                 this._processDigestion();
                 this._processCorpseDecay();
+                this._sanitizeCombatState({ preserveTurn: false });
                 this.processTurn();
             },
 
@@ -3262,11 +3354,6 @@
                 if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                     return this.queueSyncAction(this.syncSelection.type, target);
                 }
-                const targetIndex = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0).indexOf(target);
-                if (targetIndex === -1) {
-                    this.cancelTargetSelection();
-                    return;
-                }
                 const actor = this.activeActor || this.player;
                 const command = this._buildInteractionCommand({
                     mode: 'combat',
@@ -3276,36 +3363,38 @@
                     source: 'panel-card',
                     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
                 });
-                const valid = this._validateInteractionCommand(command);
-                if (!valid.ok) {
-                    this._pushLog(this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', {
-                        actor: actor.name,
-                        target: target.name
-                    }), 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: valid.reason });
-                    this.renderLog();
-                    this.renderCreatures();
-                    this.renderParty();
-                    this.renderMobileCombatToolbelt();
-                    return false;
-                }
-                this.targetSelection = null;
-                this.renderMobileCombatToolbelt();
-                this.executeAction(action, targetIndex);
+                return this._dispatchCombatInteractionCommand(command);
             },
 
             executeAction(action, creatureIndex) {
                 const target = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[creatureIndex];
                 const actor = this.activeActor || this.player;
-                this.executeActionAgainstTarget(action, actor, target);
+                return this._dispatchCombatInteractionCommand(this._buildInteractionCommand({
+                    mode: 'combat',
+                    actors: [actor],
+                    targets: [target].filter(Boolean),
+                    action,
+                    source: 'legacy-wrapper',
+                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+                }));
+            },
+
+            _resolveCombatAction(command) {
+                const actor = command?.actors?.[0] || this.activeActor || this._currentCombatActor() || this.player;
+                const target = command?.targets?.[0] || null;
+                this.targetSelection = null;
+                this.renderMobileCombatToolbelt();
+                return this.executeActionAgainstTarget(command.action, actor, target);
             },
 
             executeActionAgainstTarget(action, actor, target) {
                 this.combatState.processing = true;
-                if (!target || target.CPun <= 0 || !actor) { this.combatState.processing = false; this.nextTurn(); return; }
-                const actorName = actor.name === this.player?.name ? 'You' : actor.name;
-                const actorVerb = actor.name === this.player?.name ? '' : 's';
-                let result = '';
-                switch (action) {
+                try {
+                    if (!target || target.CPun <= 0 || !actor) { this.combatState.processing = false; this.nextTurn(); return false; }
+                    const actorName = actor.name === this.player?.name ? 'You' : actor.name;
+                    const actorVerb = actor.name === this.player?.name ? '' : 's';
+                    let result = '';
+                    switch (action) {
                     case 'fight': {
                         if (this._terrainCausesMiss(actor, target, action)) {
                             result = `${actorName} miss${actorVerb} ${target.name}.`;
@@ -3332,7 +3421,7 @@
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
                         }
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (charm > resist) {
                             const oldPle = target.CPle;
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
@@ -3362,7 +3451,7 @@
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 5;
                         }
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (charm > resist) {
                             const oldPle = target.CPle;
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
@@ -3407,16 +3496,27 @@
                         this._emitSubAction('feast', subId, actor, target, result);
                         break;
 	                    }
-	                }
-	                this._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
-                this._emitCombatAction(action, actor, target, result);
-                this.renderLog();
-                this.renderCreatures();
-                this.renderParty();
-                this.combatState.processing = false;
-                this._syncCurrentTileCreatures();
-                this.autoSave();
-                this.nextTurn();
+                    }
+                    this._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
+                    this._emitCombatAction(action, actor, target, result);
+                    this.renderLog();
+                    this.renderCreatures();
+                    this.renderParty();
+                    this._syncCurrentTileCreatures();
+                    this._sanitizeCombatState({ preserveTurn: true });
+                    this.autoSave();
+                    this.nextTurn();
+                    return true;
+                } catch (e) {
+                    console.error('Combat action failed:', e);
+                    this._pushLog(this._label('combat.actionFailed', 'Combat action failed. Try another action.'), 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action, phase: 'error' });
+                    this.renderLog();
+                    this.renderCreatures();
+                    this.renderParty();
+                    return false;
+                } finally {
+                    if (this.combatState) this.combatState.processing = false;
+                }
             },
 
             // ===== SUB-ACTION ENGINE =====
@@ -3774,9 +3874,16 @@
                 if (sync.resolved) return;
                 sync.resolved = true;
                 // Check if any participant incapacitated
-                const incapacitated = sync.participants.filter(p => p.CPun <= 0);
+                const incapacitated = (sync.participants || []).filter(p => !p || p.CPun <= 0 || p.knockedOut || p.fledCombat);
                 if (incapacitated.length > 0) {
-                    this.log.push({ text: this._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p.name).join(', ') }), type: 'combat' });
+                    this.log.push({ text: this._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p?.name || 'Unknown').join(', ') }), type: 'combat' });
+                    this.renderLog();
+                    this.nextTurn();
+                    return;
+                }
+                sync.participants = (sync.participants || []).filter(unit => this._isCombatQueueUnitValid(unit) && this.party.includes(unit));
+                if (!sync.target || !this._isCombatQueueUnitValid(sync.target) || sync.participants.length < 2) {
+                    this.log.push({ text: this._label('combat.sync.failedInvalid', 'Sync failed! The target or participants are no longer available.'), type: 'combat' });
                     this.renderLog();
                     this.nextTurn();
                     return;
@@ -3795,7 +3902,7 @@
                             const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
                             totalCharm += speciesMatch * 5;
                         }
-                        const resist = (sync.target.wis || 10) + (sync.target.CPle / sync.target.MPle * 10);
+                        const resist = (sync.target.wis || 10) + (this._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
                         const oldPle = sync.target.CPle;
                         if (totalCharm > resist * 1.5) {
 	                            sync.target.CPle = sync.target.MPle;
@@ -3831,7 +3938,7 @@
                             const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
                             totalCharm += speciesMatch * 3;
                         }
-                        const resist = (sync.target.wis || 10) + (sync.target.CPle / sync.target.MPle * 10);
+                        const resist = (sync.target.wis || 10) + (this._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
                         if (totalCharm > resist * 1.2) {
                             sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.4));
                             sync.target.charmed = (sync.target.charmed || 0) + 2;
@@ -4040,7 +4147,7 @@
                     if (ally.CPle >= ally.MPle * 0.8) {
                         const target = enemies[Math.floor(this._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-target') * enemies.length) % enemies.length];
                         let charm = ally.Fuck + ally.Flir + this._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-charm') * 10;
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
                             this.log.push({ text: `${ally.name} is aroused and seduces ${target.name}! Pleasure rises to ${target.CPle}/${target.MPle}.`, type: 'combat' });
@@ -4317,6 +4424,8 @@
             },
 
             nextTurn() {
+                if (!this.combatState.active) return;
+                this._sanitizeCombatState({ preserveTurn: false });
                 this.combatState.currentTurn++;
                 if (this.combatState.currentTurn >= this.combatState.turnQueue.length) {
                     this._newRound(); return;
@@ -5355,7 +5464,7 @@
                     case 'fuck': {
                         const selfIncludedPartyTarget = this.party.includes(target) && livingActors.includes(target);
                         const totalCharm = livingActors.reduce((sum, actor) => sum + (actor[action === 'fuck' ? 'Fuck' : 'Flir'] || 10) + (actor.cha || 10) * 0.5, 0);
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (totalCharm > resist) {
                             const gain = Math.floor(totalCharm * (action === 'fuck' ? 0.45 : 0.3));
                             target.CPle = Math.min(target.MPle, target.CPle + gain);
@@ -5439,7 +5548,7 @@
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 5;
                         }
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
@@ -5504,7 +5613,7 @@
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
                         }
-                        const resist = (target.wis || 10) + (target.CPle / target.MPle * 10);
+                        const resist = (target.wis || 10) + (this._safeRatio(target.CPle, target.MPle) * 10);
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                             target.charmed = (target.charmed || 0) + 1;
@@ -5726,9 +5835,9 @@
             },
 
             // ===== FEED ACTION =====
-            executeFeedAction() {
+            executeFeedAction(actor = this.activeActor || this.player) {
                 // Feed targets allies, not enemies - use sub-action picker for ally target
-                const actor = this.activeActor || this.player;
+                actor = actor || this.activeActor || this.player;
                 const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name);
                 const available = this._getAvailableSubActions('feed', actor, null);
                 const validSubs = available.filter(s => s.available);
@@ -5746,19 +5855,21 @@
                     this.log.push({ text: this._label('feed.noOptions', 'No feed options available right now.'), type: 'combat' });
                     this.renderLog(); this.nextTurn(); return;
                 }
-                if (validSubs.length === 1) {
-                    this._executeFeedSubAction(validSubs[0].id, actor);
-                    return;
-                }
-                // Show sub-action picker for feed
-                let html = `<h3>${this._escapeHtml(this._label('feed.optionsTitle', 'Feed Options'))}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
-                for (const sub of validSubs) {
-                    const subLabel = this._escapeHtml(sub.label);
-                    html += `<button class="action-btn" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${sub.id}', App.activeActor || App.player)">${sub.icon} ${subLabel}</button>`;
-                }
-                const cancelLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                html += `</div><button class="nav-btn" style="margin-top:12px" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
+	                if (validSubs.length === 1) {
+	                    this._executeFeedSubAction(validSubs[0].id, actor);
+	                    return true;
+	                }
+                this.feedSelection = {
+                    active: true,
+                    actorId: this._unitSelectionId(actor),
+                    subIds: validSubs.map(sub => sub.id)
+                };
+                this.targetSelection = null;
+                this.syncSelection = null;
+                this.renderParty();
+                this.renderCreatures();
+                this.renderMobileCombatToolbelt();
+                return true;
             },
             _executeFeedSubAction(subId, actor) {
                 const subDef = this.SUB_ACTIONS.feed && this.SUB_ACTIONS.feed[subId];
@@ -5799,9 +5910,12 @@
                 const result = this._doSubAction('feed', subId, actor, target, actorName, actorVerb);
                 this.log.push({ text: result, type: 'heal' });
                 this._emitCombatAction('feed', actor, target, result);
+                this.feedSelection = null;
                 this.renderLog();
                 this.renderParty();
+                this.renderCreatures();
                 this.combatState.processing = false;
+                this._sanitizeCombatState({ preserveTurn: true });
                 this.nextTurn();
             },
 
@@ -8722,10 +8836,11 @@
             },
             _clearAllDataConfirmed() {
                 // Delete all saves from IndexedDB
-                for (let i = 1; i <= 5; i++) {
-                    this._dbDelete('saves', 'slot' + i).catch(() => {});
-                    this._removeSaveTime('slot' + i);
-                }
+	                for (let i = 1; i <= 5; i++) {
+	                    this._dbDelete('saves', 'slot' + i).catch(() => {});
+	                    this._removeSaveTime('slot' + i);
+	                    this._clearCombatRefreshSnapshot('slot' + i);
+	                }
                 this._removeStoredValue('lastSlot');
                 this._removeStoredValue('lastSaveTime');
                 this._removeStoredValue('hasPlayed');
@@ -8764,10 +8879,11 @@
             },
             async _deleteAllSavesConfirmed() {
                 try {
-                    for (let i = 1; i <= 5; i++) {
-                        await this._dbDelete('saves', 'slot' + i);
-                        this._removeSaveTime('slot' + i);
-                    }
+	                    for (let i = 1; i <= 5; i++) {
+	                        await this._dbDelete('saves', 'slot' + i);
+	                        this._removeSaveTime('slot' + i);
+	                        this._clearCombatRefreshSnapshot('slot' + i);
+	                    }
                     this._removeStoredValue('lastSlot');
                     this._removeStoredValue('lastSaveTime');
                     this._removeStoredValue('hasPlayed');
@@ -9130,8 +9246,14 @@
                     return true;
                 }
                 if (action === 'feed') {
-                    this.executeFeedAction();
-                    return true;
+                    return this._dispatchCombatInteractionCommand(this._buildInteractionCommand({
+                        mode: 'combat',
+                        actors: [current],
+                        targets: [],
+                        action: 'feed',
+                        source: 'panel-card',
+                        targetType: 'party'
+                    }));
                 }
                 if (action === 'sync') {
                     this.showSyncMenu();
@@ -9499,10 +9621,11 @@
                 const slotName = fallbackSlotName || pending.slotName;
                 const saveData = fallbackSaveData || pending.saveData;
                 this.closeSaveRecoveryDialog();
-                if (action === 'delete' && slotName) {
-                    await this._dbDelete('saves', slotName);
-                    this._removeSaveTime(slotName);
-                    alert(this._label('save.recovery.deleted', 'Save deleted.'));
+	                if (action === 'delete' && slotName) {
+	                    await this._dbDelete('saves', slotName);
+	                    this._removeSaveTime(slotName);
+	                    this._clearCombatRefreshSnapshot(slotName);
+	                    alert(this._label('save.recovery.deleted', 'Save deleted.'));
                     return false;
                 }
                 if (action === 'backup' && slotName && saveData) {
@@ -9698,19 +9821,24 @@
                 }
             },
             _readCombatRefreshSnapshot(slotName = this.activeSlot) {
-                if (typeof localStorage === 'undefined') return null;
+                if (typeof localStorage === 'undefined' || typeof Binary === 'undefined') return null;
                 try {
                     const raw = localStorage.getItem(this._combatRefreshKey(slotName));
                     if (!raw) return null;
                     const parsed = JSON.parse(raw);
                     if (!parsed || parsed.slot !== slotName || !Array.isArray(parsed.data)) return null;
+                    const savedAt = Number(parsed.savedAt || 0);
+                    if (!savedAt || Date.now() - savedAt > this.COMBAT_REFRESH_TTL_MS) {
+                        this._clearCombatRefreshSnapshot(slotName);
+                        return null;
+                    }
                     const bytes = new Uint8Array(parsed.data);
                     const loaded = Binary.loadGame(bytes);
                     if (!loaded?.questState?.combatState?.active) {
                         this._clearCombatRefreshSnapshot(slotName);
                         return null;
                     }
-                    return { saveData: bytes, savedAt: parsed.savedAt || 0 };
+                    return { saveData: bytes, savedAt };
                 } catch (e) {
                     console.warn('Combat refresh snapshot load failed', e);
                     this._clearCombatRefreshSnapshot(slotName);
@@ -9947,21 +10075,22 @@
                     round: Math.max(1, savedCombat.round || 1),
                     currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
                     turnQueue,
-                    syncActions: (savedCombat.syncActions || []).map(sync => ({
-                        type: sync.type,
-                        participants: (sync.participantIds || []).map(resolve).filter(Boolean),
-                        target: resolve(sync.targetId),
-                        resolveAtIndex: sync.resolveAtIndex || 0,
-                        round: sync.round || savedCombat.round || 1,
-                        resolved: Boolean(sync.resolved)
-                    })).filter(sync => sync.target || sync.participants.length),
-                    processing: false,
-                    xpEarned: savedCombat.xpEarned || 0
-                };
-                this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
-                this.targetSelection = null;
-                return true;
-            },
+	                    syncActions: (savedCombat.syncActions || []).map(sync => ({
+	                        type: sync.type,
+	                        participants: (sync.participantIds || []).map(resolve).filter(Boolean),
+	                        target: resolve(sync.targetId),
+	                        resolveAtIndex: sync.resolveAtIndex || 0,
+	                        round: sync.round || savedCombat.round || 1,
+	                        resolved: Boolean(sync.resolved)
+	                    })).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
+	                    processing: false,
+	                    xpEarned: savedCombat.xpEarned || 0
+	                };
+	                this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
+	                this.targetSelection = null;
+	                this._sanitizeCombatState({ preserveTurn: true });
+	                return true;
+	            },
             _resumeLoadedCombat() {
                 if (!this.combatState?.active) return false;
                 this._clearTransientInteractionState();

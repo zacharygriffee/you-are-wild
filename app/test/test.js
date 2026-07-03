@@ -1463,20 +1463,21 @@ test('Sync action resolves only at stored round and queue index', () => {
   App.player = player;
   App.party = [player, ally];
   App.creatures = [enemy];
-  App.combatState = {
-    active: true,
-    round: 1,
-    currentTurn: 0,
-    processing: false,
-    xpEarned: 0,
-    turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }],
-    syncActions: [{ type: 'sync_fight', participants: [player, ally], target: enemy, resolveAtIndex: 1, resolved: false, round: 1 }]
-  };
-  App.processTurn();
-  assertEqual(App.combatState.syncActions[0].resolved, false, 'Sync resolved before slowest participant index');
-  App.combatState.currentTurn = 1;
-  App.processTurn();
-  assertEqual(App.combatState.syncActions[0].resolved, true, 'Sync did not resolve at slowest participant index');
+	  App.combatState = {
+	    active: true,
+	    round: 1,
+	    currentTurn: 0,
+	    processing: false,
+	    xpEarned: 0,
+	    turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }],
+	    syncActions: [{ type: 'sync_fight', participants: [player, ally], target: enemy, resolveAtIndex: 1, resolved: false, round: 1 }]
+	  };
+	  App.processTurn();
+	  assertEqual(App.combatState.syncActions[0]?.resolved, false, 'Sync resolved before slowest participant index');
+	  assertEqual(enemy.CPun, 100, 'Sync should not affect the target before the stored queue index');
+	  App.combatState.currentTurn = 1;
+	  App.processTurn();
+	  assert(enemy.CPun < 100 || enemy.disposition === App.DISPOSITION.CORPSE, 'Sync did not resolve at slowest participant index');
 });
 
 test('Sync failure and submissive recruit prompts localize', () => {
@@ -1542,16 +1543,17 @@ test('Sync failure and submissive recruit prompts localize', () => {
   assertEqual(approveRecruitCase.App.pendingConfirm, null, 'Approved submissive recruitment should clear pending confirmation state');
   assert(approveRecruitCase.App.party.some(unit => unit.name === 'Mouse'), 'Approved submissive recruitment should add target to party');
 
-  const syncRecruitCase = loadAppForCombat(() => 0, { confirm: false });
-  const syncSeducer = makeUnit('You', { Fuck: 100, Flir: 100 });
-  const syncTarget = makeUnit('Mouse', { disposition: syncRecruitCase.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
-  syncRecruitCase.App.player = syncSeducer;
-  syncRecruitCase.App.party = [syncSeducer];
-  syncRecruitCase.App.creatures = [syncTarget];
-  syncRecruitCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [], syncActions: [] };
-  syncRecruitCase.App.nextTurn = function() {};
-  syncRecruitCase.App.updateLanguage('es');
-  syncRecruitCase.App._resolveSyncAction({ type: 'sync_fuck', participants: [syncSeducer], target: syncTarget, resolved: false, round: 1 });
+	  const syncRecruitCase = loadAppForCombat(() => 0, { confirm: false });
+	  const syncSeducer = makeUnit('You', { Fuck: 100, Flir: 100 });
+	  const syncHelper = makeUnit('Ally', { Fuck: 100, Flir: 100 });
+	  const syncTarget = makeUnit('Mouse', { disposition: syncRecruitCase.App.DISPOSITION.ENEMY, CPle: 0, MPle: 100, wis: 1 });
+	  syncRecruitCase.App.player = syncSeducer;
+	  syncRecruitCase.App.party = [syncSeducer, syncHelper];
+	  syncRecruitCase.App.creatures = [syncTarget];
+	  syncRecruitCase.App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [], syncActions: [] };
+	  syncRecruitCase.App.nextTurn = function() {};
+	  syncRecruitCase.App.updateLanguage('es');
+	  syncRecruitCase.App._resolveSyncAction({ type: 'sync_fuck', participants: [syncSeducer, syncHelper], target: syncTarget, resolved: false, round: 1 });
   assertEqual(syncRecruitCase.confirmations.length, 0, 'Sync submissive recruitment should not call the browser-native confirm dialog');
   assert(syncRecruitCase.App.pendingConfirm, 'Sync submissive recruitment should open an in-app confirmation dialog');
   assertEqual(syncRecruitCase.App.pendingConfirm.message, 'Mouse esta sumiso. Reclutarlo para tu grupo?', 'Sync submissive recruitment confirmation should localize');
@@ -2266,6 +2268,110 @@ test('Combat intent dispatcher preserves feed as party support', () => {
   assertEqual(result, true, 'Feed intent should dispatch as a valid combat intent');
   assert(ally.CPun > 10, 'Feed intent should heal a wounded ally instead of selecting an enemy feast target');
   assertEqual(App.targetSelection, null, 'Feed intent should not enter enemy target-pick mode');
+});
+
+test('Combat target dispatch uses the clicked unit instead of filtered index drift', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-direct-target', Figh: 60 });
+  const first = makeUnit('First Enemy', { id: 'enemy-first', disposition: App.DISPOSITION.ENEMY, CPun: 80, con: 1 });
+  const second = makeUnit('Second Enemy', { id: 'enemy-second', disposition: App.DISPOSITION.ENEMY, CPun: 80, con: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [first, second];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: first, initiative: 10 }, { unit: second, initiative: 9 }], syncActions: [] };
+  App.activeActor = player;
+  App.nextTurn = function() {};
+  App.selectTarget('fight');
+  const beforeFirst = first.CPun;
+  const beforeSecond = second.CPun;
+  App.executeActionOnTarget('fight', 'enemy-second');
+  assertEqual(first.CPun, beforeFirst, 'Direct target dispatch should not damage an earlier filtered enemy');
+  assert(second.CPun < beforeSecond, 'Direct target dispatch should damage the clicked enemy id');
+});
+
+test('Combat feed sub-action picker renders in the panel tray, not center scene', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-feed-tray' });
+  const ally = makeUnit('Ally', { id: 'ally-feed-tray', CPun: 50, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [];
+  App.activeActor = player;
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }], syncActions: [] };
+  App._getAvailableSubActions = () => [
+    { id: 'heal', label: 'Heal', icon: 'H', available: true },
+    { id: 'breastfeed', label: 'Support', icon: 'S', available: true }
+  ];
+  const result = App.executeCombatIntent('feed');
+  assertEqual(result, true, 'Feed intent should enter panel feed selection when multiple sub-actions exist');
+  assert(App.feedSelection?.active, 'Feed selection state should be active for panel tray rendering');
+  const partyHtml = elements.get('party-content')?.innerHTML || App._renderPanelInteractionTray('combat');
+  const sceneHtml = elements.get('scene-description')?.innerHTML || '';
+  assertContains(partyHtml, 'combat-feed-tray', 'Feed options should render in the party panel tray');
+  assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');
+});
+
+test('Combat social actions tolerate zero max pleasure without NaN', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-safe-ple', Flir: 80, Fuck: 80 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-safe-ple', disposition: App.DISPOSITION.ENEMY, CPle: 0, MPle: 0, wis: 1 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  App.nextTurn = function() {};
+  App.executeActionAgainstTarget('flirt', player, enemy);
+  const text = App.log.map(entry => entry.text).join('\n');
+  assertNotContains(text, 'NaN', 'Combat social logs should not expose NaN when MPle is zero');
+  assert(Number.isFinite(enemy.CPle), 'Combat social action should keep CPle finite when MPle is zero');
+});
+
+test('Combat sanitizer removes stale queue and sync references', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-sanitize' });
+  const ally = makeUnit('Ally', { id: 'ally-sanitize' });
+  const containedEnemy = makeUnit('Contained Enemy', { id: 'enemy-contained-sanitize', disposition: App.DISPOSITION.ENEMY, CPun: 0 });
+  const liveEnemy = makeUnit('Live Enemy', { id: 'enemy-live-sanitize', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [liveEnemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 1,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: containedEnemy, initiative: 15 }, { unit: liveEnemy, initiative: 10 }],
+    syncActions: [
+      { type: 'sync_fight', participants: [player, ally], target: liveEnemy, resolveAtIndex: 2, resolved: false, round: 1 },
+      { type: 'sync_fight', participants: [player], target: containedEnemy, resolveAtIndex: 1, resolved: false, round: 1 }
+    ]
+  };
+  App._sanitizeCombatState({ preserveTurn: true });
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === containedEnemy), false, 'Sanitizer should remove contained or missing queue units');
+  assertEqual(App.combatState.syncActions.length, 1, 'Sanitizer should drop malformed sync actions');
+  assertEqual(App.combatState.syncActions[0].target, liveEnemy, 'Sanitizer should preserve valid sync actions');
+});
+
+test('Expired combat refresh snapshots are ignored and cleared', () => {
+  const Binary = loadBinaryForTest();
+  const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const player = makeUnit('You', { id: 'player-expired-refresh' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-expired-refresh', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.activeSlot = 'slot1';
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [enemy], items: [] }]]);
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
+  assertEqual(App._writeCombatRefreshSnapshot(), true, 'Combat refresh snapshot should write for active combat');
+  const key = App._combatRefreshKey('slot1');
+  const parsed = JSON.parse(storage.get(key));
+  parsed.savedAt = Date.now() - App.COMBAT_REFRESH_TTL_MS - 1;
+  storage.set(key, JSON.stringify(parsed));
+  assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Expired combat refresh snapshot should be ignored');
+  assertEqual(storage.has(key), false, 'Expired combat refresh snapshot should be cleared');
 });
 
 test('Combat swallow removes contained creature from area panel', () => {

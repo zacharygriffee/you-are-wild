@@ -284,7 +284,7 @@
         resolveAtIndex: sync.resolveAtIndex || 0,
         round: sync.round || 1,
         resolved: Boolean(sync.resolved)
-      })).filter(sync => sync.targetId || sync.participantIds.length)
+      })).filter(sync => sync.targetId && sync.participantIds.length >= 2 && !sync.resolved)
     } : { active: false };
 
     const saveData = {

@@ -1577,8 +1577,9 @@ test('Sync action menus localize visible and accessible labels', () => {
   App._syncSelected = [0, 1];
   App.syncSelection.participantIds = ['sync-player', 'sync-ally'];
   App.confirmSyncParticipants('sync_fight');
-  html = elements.get('enemies-content').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
+  html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Sincronizar"', 'Sync target card should expose localized accessible label');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Seleccionar objetivo sincronizado', 'Sync target menu should not render in center scene');
 });
@@ -2738,7 +2739,7 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.showActorActions(App.player);
   const combatHtml = elements.get('scene-actions').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
-  assertContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should show panel-first guidance');
+  assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Fight"', 'Desktop combat center should not duplicate panel action buttons');
   assertContains(partyHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button on the active actor card');
   assertContains(partyHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button on the active actor card');
@@ -2781,7 +2782,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   App.renderCreatures();
   const actionsHtml = elements.get('scene-actions').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
-  assertContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should point to panel-first controls');
+  assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should not duplicate panel-first guidance');
   assertNotContains(actionsHtml, "executeCombatIntent('fight')", 'Combat center should not expose enemy action targeting');
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should expose enemy action targeting');
   assertContains(elements.get('party-content').innerHTML, "App.executeCombatIntent('feed')", 'Active party card should still expose party feed action');
@@ -5294,8 +5295,8 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
 
   App.selectTarget('fight');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should show selected action');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick a target in the enemy strip', 'Mobile combat toolbelt should prompt target selection from strips');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should not duplicate selected target guidance');
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick a target in the enemy strip', 'Mobile combat toolbelt should not prompt target selection from strips');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
 
   App.combatState.active = false;
@@ -5318,7 +5319,7 @@ test('Combat creature target button localizes visible and accessible labels', ()
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertNotContains(sceneHtml, 'Selecciona un objetivo desde el panel de criaturas.', 'Target selection prompt should not overwrite the center scene');
   assertNotContains(sceneHtml, 'aria-label="Cancelar Luchar"', 'Target cancellation should not render in the center scene');
-  assertContains(elements.get('scene-actions').innerHTML, 'Objetivo de Luchar. Elige un objetivo valido en el panel enemigo.', 'Panel-first targeting prompt should localize in the bounded action area');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'Objetivo de Luchar. Elige un objetivo valido en el panel enemigo.', 'Center should not duplicate panel targeting guidance');
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
   assertContains(html, '>Objetivo<', 'Combat target button visible label should localize');
@@ -5452,7 +5453,7 @@ test('Combat move action swaps row and costs the active turn', () => {
   App.activeActor = player;
   App.updateLanguage('es');
   App.showActorActions(player);
-  assertContains(elements.get('scene-actions').innerHTML, 'Usa la carta del actor activo', 'Scene center should guide to the active actor card');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'Usa la carta del actor activo', 'Scene center should not duplicate active actor guidance');
   assertContains(elements.get('party-content').innerHTML, 'aria-label="Mover fila"', 'Move row button should expose localized accessible label on the actor card');
   assertContains(elements.get('party-content').innerHTML, '>↕️ Mover fila<', 'Move row button visible label should localize on the actor card');
   App.nextTurn = function() { this._movedTurn = true; };
@@ -5630,7 +5631,7 @@ test('Obedient ally turns use the same panel target selection', () => {
   App.processTurn();
   const actionsHtml = elements.get('scene-actions').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
-  assertContains(actionsHtml, 'panel-first-combat-prompt', 'Ally turn should keep center as panel-first guidance');
+  assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Ally turn should keep center free of redundant guidance');
   assertContains(partyHtml, "executeCombatIntent('fight')", 'Ally turn should expose manual actions on the active actor card');
   assertContains(partyHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
   assertContains(partyHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
@@ -5666,7 +5667,7 @@ test('Player combat action controls localize on active actor card', () => {
   assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
-  assertContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat actions out of the context area');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
   App.updateScene('Combat', 'Panel first', true);
   assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
   assertEqual(elements.get('mobile-combat-actions').style.display, 'none', 'Mobile combat action bar should stay hidden while toolbelt and panels handle combat');
@@ -7417,7 +7418,7 @@ test('Closing stats during combat restores the active party turn', () => {
   App.closeSceneDetails();
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(elements.get('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should restore the combat turn title');
-  assertContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should restore panel-first combat guidance');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions on the active actor card');
   assertEqual(elements.get('scene-actions').style.display, '', 'Closing combat stats should restore action bar display');
 });

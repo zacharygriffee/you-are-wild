@@ -463,12 +463,6 @@
                         : this._label('combat.sync.selectTarget', 'Select sync target');
                     return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${this._escapeHtml(this._label('target.actors', 'Actors'))}: ${this._escapeHtml(names)}</span><span>${this._escapeHtml(message)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
                 }
-                if (this.targetSelection?.source === 'combat') {
-                    const action = this._uiLabel(this.targetSelection.action || 'action');
-                    const text = this._label('combat.panelFirstTargeting', 'Targeting: {action}. Pick a valid target in the enemy panel.', { action });
-                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                    return `<div class="panel-interaction-tray combat-target-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${this._escapeHtml(actor?.name || '')}</span><span>${this._escapeHtml(text)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
-                }
                 return '';
             },
             _syncSelectedParticipants() {
@@ -517,21 +511,7 @@
                 return actor === unit || this._unitSelectionId(actor) === this._unitSelectionId(unit);
             },
             _renderCombatPanelPrompt(actor = this.activeActor || this._currentCombatActor()) {
-                if (!this.combatState?.active) return '';
-                const label = this._escapeHtml(this._label('combat.panelFirstStatus', 'Combat controls'));
-                let text = '';
-                if (this.targetSelection?.source === 'combat') {
-                    text = this._label('combat.panelFirstTargeting', 'Targeting: {action}. Pick a valid target in the enemy panel.', {
-                        action: this._uiLabel(this.targetSelection.action || 'action')
-                    });
-                } else if (actor && (actor === this.player || this.party.includes(actor))) {
-                    text = this._label('combat.panelFirstPrompt', 'Use the active actor card for combat intent, then pick a target in the enemy panel.');
-                } else if (actor) {
-                    text = this._label('combat.panelFirstEnemyTurn', '{name} is acting. Combat controls stay in the party and creature panels.', { name: actor.name });
-                } else {
-                    text = this._label('combat.panelFirstPrompt', 'Use the active actor card for combat intent, then pick a target in the enemy panel.');
-                }
-                return `<div class="panel-first-combat-prompt" role="status" aria-label="${label}">${this._escapeHtml(text)}</div>`;
+                return '';
             },
             _combatActionButtons(actor, options = {}) {
                 if (!this.combatState?.active || !actor || !(actor === this.player || this.party.includes(actor))) return '';
@@ -7030,14 +7010,13 @@
                 }
                 if (mobileTitle) mobileTitle.textContent = titleText;
                 if (container) {
-                    const tray = this._renderPanelInteractionTray();
                     let html = living.map((unit, i) => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                     if (corpses.length > 0) {
                         html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="color:var(--text-muted);font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;">${this._escapeHtml(this._label('disposition.remains', 'Remains'))}</div>`;
                         html += corpses.map(unit => this.renderUnitCard(unit, this.creatures.indexOf(unit), 'creature')).join('');
                         html += '</div>';
                     }
-                    container.innerHTML = `${tray}${html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`}`;
+                    container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;
                 }
                 this.renderMobileCreatureStrip();
             },
@@ -7055,8 +7034,8 @@
                 const visible = [...living, ...corpses];
                 if (card) card.style.display = visible.length > 0 || this.combatState.active ? 'block' : 'none';
                 strip.innerHTML = visible.length > 0
-                    ? `${this._renderPanelInteractionTray()}${visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')}`
-                    : `${this._renderPanelInteractionTray()}<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
+                    ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
+                    : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
             },
             _currentCombatActor() {
                 if (!this.combatState?.active) return null;
@@ -7064,11 +7043,6 @@
             },
             _mobileCombatPrompt(actor = this._currentCombatActor()) {
                 if (!this.combatState?.active) return '';
-                if (this.targetSelection?.source === 'combat') {
-                    return this._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', {
-                        action: this._uiLabel(this.targetSelection.action || 'action')
-                    });
-                }
                 if (actor && (actor === this.player || this.party.includes(actor))) {
                     return this._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
                 }
@@ -7093,11 +7067,8 @@
                 const turn = (this.combatState.currentTurn ?? 0) + 1;
                 const total = Math.max(1, this.combatState.turnQueue?.length || 1);
                 const actorName = actor?.name || this._label('ui.creatures', 'Creatures');
-                const action = this.targetSelection?.source === 'combat' ? this._uiLabel(this.targetSelection.action || 'action') : '';
                 const status = this._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
-                const title = action
-                    ? this._label('mobile.combat.targeting', 'Targeting: {action}', { action })
-                    : this._label('mobile.combat.actor', '{name} to act', { name: actorName });
+                const title = this._label('mobile.combat.actor', '{name} to act', { name: actorName });
                 const prompt = this._mobileCombatPrompt(actor);
                 const html = `<div class="mobile-combat-status"><strong>${this._escapeHtml(title)}</strong><span>${this._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${this._escapeHtml(prompt)}</div>`;
                 belt.className = 'mobile-combat-toolbelt active';

@@ -346,7 +346,7 @@
                 const keys = this._contextActionKeys();
                 const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
                 const allKeys = [...keys, ...panelKeys];
-                const targetActions = this._renderExplorationTargetActions();
+                const targetActions = this._renderExplorationTargetActions(includePanels ? 'sheet' : 'desktop');
                 return targetActions + allKeys.map(key => this._contextActionButton(key)).join('');
             },
             BODY_PARTS: {
@@ -464,6 +464,72 @@
                 centaur: { aggressive: true, territorial: true, herd: true },
                 troll: { aggressive: true, territorial: true, apex: true },
                 dragon: { aggressive: true, apex: true, territorial: true }
+            },
+            DEFAULT_SPECIES_CANON: {
+                sapience: 'person',
+                bodyPlan: 'beastfolk',
+                baselineInteraction: 'sapient',
+                defaultGame: true,
+                modOnlyAnimal: false
+            },
+            SPECIES_CANON: {
+                human: { bodyPlan: 'humanoid', traits: ['person', 'civilized'] },
+                wolf: { bodyPlan: 'beastfolk', traits: ['person', 'canine-folk', 'pack'] },
+                fox: { bodyPlan: 'beastfolk', traits: ['person', 'canine-folk', 'cunning'] },
+                cat: { bodyPlan: 'beastfolk', traits: ['person', 'feline-folk', 'agile'] },
+                dragon: { bodyPlan: 'dragonfolk', traits: ['person', 'monsterfolk', 'scaled'] },
+                naga: { bodyPlan: 'serpentfolk', traits: ['person', 'monsterfolk', 'serpentine'] },
+                bear: { bodyPlan: 'beastfolk', traits: ['person', 'ursine-folk', 'strong'] },
+                tiger: { bodyPlan: 'beastfolk', traits: ['person', 'feline-folk', 'stalker'] },
+                bunny: { bodyPlan: 'beastfolk', traits: ['person', 'lagomorph-folk', 'swift'] },
+                slime: { bodyPlan: 'oozefolk', traits: ['person', 'monsterfolk', 'amorphous'] },
+                harpy: { bodyPlan: 'harpyfolk', traits: ['person', 'winged-folk', 'aerial'] },
+                bat: { bodyPlan: 'beastfolk', traits: ['person', 'winged-folk', 'nocturnal'] },
+                deer: { bodyPlan: 'beastfolk', traits: ['person', 'cervid-folk', 'graceful'] },
+                frog: { bodyPlan: 'beastfolk', traits: ['person', 'amphibian-folk', 'aquatic'] },
+                plant: { bodyPlan: 'plantfolk', traits: ['person', 'plantlike', 'rooted'] },
+                shroom: { bodyPlan: 'plantfolk', traits: ['person', 'fungal-folk', 'spore'] },
+                bee: { bodyPlan: 'insectfolk', traits: ['person', 'hive-folk', 'winged'] },
+                goblin: { bodyPlan: 'humanoid', traits: ['person', 'goblinkin', 'cunning'] },
+                mouse: { bodyPlan: 'beastfolk', traits: ['person', 'rodent-folk', 'small'] },
+                rat: { bodyPlan: 'beastfolk', traits: ['person', 'rodent-folk', 'nocturnal'] },
+                pig: { bodyPlan: 'beastfolk', traits: ['person', 'porcine-folk', 'sturdy'] },
+                cow: { bodyPlan: 'beastfolk', traits: ['person', 'bovine-folk', 'herd'] },
+                sheep: { bodyPlan: 'beastfolk', traits: ['person', 'ovine-folk', 'herd'] },
+                horse: { bodyPlan: 'beastfolk', traits: ['person', 'equine-folk', 'swift'] },
+                lizard: { bodyPlan: 'beastfolk', traits: ['person', 'reptile-folk', 'scaled'] },
+                spider: { bodyPlan: 'arachnefolk', traits: ['person', 'arachnid-folk', 'web'] },
+                centaur: { bodyPlan: 'centaurfolk', traits: ['person', 'hybrid-folk', 'herd'] },
+                drow: { bodyPlan: 'humanoid', traits: ['person', 'elfkin', 'darkvision'] },
+                hyena: { bodyPlan: 'beastfolk', traits: ['person', 'hyena-folk', 'pack'] },
+                raccoon: { bodyPlan: 'beastfolk', traits: ['person', 'raccoon-folk', 'cunning'] },
+                otter: { bodyPlan: 'beastfolk', traits: ['person', 'otter-folk', 'aquatic'] },
+                fish: { bodyPlan: 'merfolk', traits: ['person', 'aquatic-folk', 'swimmer'] },
+                crab: { bodyPlan: 'crustaceanfolk', traits: ['person', 'shore-folk', 'armored'] },
+                siren: { bodyPlan: 'merfolk', traits: ['person', 'aquatic-folk', 'singer'] },
+                troll: { bodyPlan: 'humanoid', traits: ['person', 'trollkin', 'large'] },
+                bandit: { bodyPlan: 'humanoid', traits: ['person', 'outlaw', 'civilized'] },
+                skeleton: { sapience: 'spirit', bodyPlan: 'humanoid', traits: ['person', 'undead', 'constructlike'] },
+                goat: { bodyPlan: 'beastfolk', traits: ['person', 'caprine-folk', 'climber'] },
+                eagle: { bodyPlan: 'avianfolk', traits: ['person', 'winged-folk', 'aerial'] }
+            },
+            _speciesCanon(sid) {
+                const override = this.SPECIES_CANON[sid] || {};
+                return {
+                    ...this.DEFAULT_SPECIES_CANON,
+                    ...override,
+                    traits: [...new Set([...(this.DEFAULT_SPECIES_CANON.traits || []), ...(override.traits || [])])]
+                };
+            },
+            _applySpeciesCanon(unit) {
+                if (!unit) return unit;
+                const canon = this._speciesCanon(unit.species || 'human');
+                unit.sapience = unit.sapience || canon.sapience;
+                unit.bodyPlan = unit.bodyPlan || canon.bodyPlan;
+                unit.baselineInteraction = unit.baselineInteraction || canon.baselineInteraction;
+                unit.modOnlyAnimal = unit.modOnlyAnimal ?? canon.modOnlyAnimal;
+                unit.speciesTraits = [...new Set([...(unit.speciesTraits || []), ...(canon.traits || [])])];
+                return unit;
             },
             PREDATOR_PREY_RELATION: {
                 wolf: { prey: ['bunny', 'deer', 'sheep', 'goat', 'pig', 'cow', 'mouse', 'rat'] },
@@ -691,44 +757,44 @@
             // === SPECIES & BIOMES (unchanged) ===
             species: [
                 { id: 'human', name: 'Human', icon: '👤', desc: 'Adaptable survivor' },
-                { id: 'wolf', name: 'Wolf', icon: '🐺', desc: 'Fierce predator' },
-                { id: 'fox', name: 'Fox', icon: '🦊', desc: 'Cunning trickster' },
-                { id: 'cat', name: 'Cat', icon: '🐱', desc: 'Agile hunter' },
-                { id: 'dragon', name: 'Dragon', icon: '🐲', desc: 'Powerful beast' },
+                { id: 'wolf', name: 'Wolfkin', icon: '🐺', desc: 'Sapient pack hunter' },
+                { id: 'fox', name: 'Foxfolk', icon: '🦊', desc: 'Sapient cunning trickster' },
+                { id: 'cat', name: 'Catfolk', icon: '🐱', desc: 'Sapient agile hunter' },
+                { id: 'dragon', name: 'Dragonkin', icon: '🐲', desc: 'Sapient powerful drakefolk' },
                 { id: 'naga', name: 'Naga', icon: '🐍', desc: 'Serpent folk' },
-                { id: 'bear', name: 'Bear', icon: '🐻', desc: 'Strong brawler' },
-                { id: 'tiger', name: 'Tiger', icon: '🐅', desc: 'Deadly stalker' },
-                { id: 'bunny', name: 'Bunny', icon: '🐰', desc: 'Swift prey' },
-                { id: 'slime', name: 'Slime', icon: '🟢', desc: 'Amorphous' },
+                { id: 'bear', name: 'Bearfolk', icon: '🐻', desc: 'Sapient strong brawler' },
+                { id: 'tiger', name: 'Tigerfolk', icon: '🐅', desc: 'Sapient deadly stalker' },
+                { id: 'bunny', name: 'Bunnyfolk', icon: '🐰', desc: 'Sapient swift wanderer' },
+                { id: 'slime', name: 'Slimefolk', icon: '🟢', desc: 'Sapient amorphous person' },
                 { id: 'harpy', name: 'Harpy', icon: '🦅', desc: 'Sky hunter' },
-                { id: 'bat', name: 'Bat', icon: '🦇', desc: 'Night stalker' },
-                { id: 'deer', name: 'Deer', icon: '🦌', desc: 'Graceful prey' },
-                { id: 'frog', name: 'Frog', icon: '🐸', desc: 'Swamp dweller' },
-                { id: 'plant', name: 'Plant', icon: '🌿', desc: 'Carnivorous flora' },
-                { id: 'shroom', name: 'Shroom', icon: '🍄', desc: 'Spore bearer' },
-                { id: 'bee', name: 'Bee', icon: '🐝', desc: 'Hive warrior' },
+                { id: 'bat', name: 'Batfolk', icon: '🦇', desc: 'Sapient night stalker' },
+                { id: 'deer', name: 'Deerfolk', icon: '🦌', desc: 'Sapient graceful wanderer' },
+                { id: 'frog', name: 'Frogfolk', icon: '🐸', desc: 'Sapient swamp dweller' },
+                { id: 'plant', name: 'Plantfolk', icon: '🌿', desc: 'Sapient living flora' },
+                { id: 'shroom', name: 'Shroomfolk', icon: '🍄', desc: 'Sapient spore bearer' },
+                { id: 'bee', name: 'Beefolk', icon: '🐝', desc: 'Sapient hive warrior' },
                 { id: 'goblin', name: 'Goblin', icon: '👺', desc: 'Mischief maker' },
-                { id: 'mouse', name: 'Mouse', icon: '🐭', desc: 'Tiny survivor' },
-                { id: 'rat', name: 'Rat', icon: '🐀', desc: 'Sewer dweller' },
-                { id: 'pig', name: 'Pig', icon: '🐷', desc: 'Mud roller' },
-                { id: 'cow', name: 'Cow', icon: '🐮', desc: 'Milk maid' },
-                { id: 'sheep', name: 'Sheep', icon: '🐑', desc: 'Woolly prey' },
-                { id: 'horse', name: 'Horse', icon: '🐴', desc: 'Gallant steed' },
-                { id: 'lizard', name: 'Lizard', icon: '🦎', desc: 'Sun basker' },
-                { id: 'spider', name: 'Spider', icon: '🕷️', desc: 'Web weaver' },
-                { id: 'centaur', name: 'Centaur', icon: '🐎', desc: 'Half-beast warrior' },
+                { id: 'mouse', name: 'Mousefolk', icon: '🐭', desc: 'Sapient small survivor' },
+                { id: 'rat', name: 'Ratfolk', icon: '🐀', desc: 'Sapient night dweller' },
+                { id: 'pig', name: 'Pigfolk', icon: '🐷', desc: 'Sapient sturdy forager' },
+                { id: 'cow', name: 'Cowfolk', icon: '🐮', desc: 'Sapient bovine villager' },
+                { id: 'sheep', name: 'Sheepfolk', icon: '🐑', desc: 'Sapient woolly wanderer' },
+                { id: 'horse', name: 'Horsefolk', icon: '🐴', desc: 'Sapient gallant runner' },
+                { id: 'lizard', name: 'Lizardfolk', icon: '🦎', desc: 'Sapient sun basker' },
+                { id: 'spider', name: 'Arachne', icon: '🕷️', desc: 'Sapient web weaver' },
+                { id: 'centaur', name: 'Centaur', icon: '🐎', desc: 'Sapient hybrid warrior' },
                 { id: 'drow', name: 'Drow', icon: '🧝', desc: 'Dark elf' },
-                { id: 'hyena', name: 'Hyena', icon: '🐆', desc: 'Laughing hunter' },
-                { id: 'raccoon', name: 'Raccoon', icon: '🦝', desc: 'Trash bandit' },
-                { id: 'otter', name: 'Otter', icon: '🦦', desc: 'River playmate' },
-                { id: 'fish', name: 'Fish', icon: '🐟', desc: 'Water dweller' },
-                { id: 'crab', name: 'Crab', icon: '🦀', desc: 'Beach scuttler' },
-                { id: 'siren', name: 'Siren', icon: '🧜', desc: 'Enchanting songstress' },
+                { id: 'hyena', name: 'Hyenafolk', icon: '🐆', desc: 'Sapient laughing hunter' },
+                { id: 'raccoon', name: 'Raccoonfolk', icon: '🦝', desc: 'Sapient clever scavenger' },
+                { id: 'otter', name: 'Otterfolk', icon: '🦦', desc: 'Sapient river rover' },
+                { id: 'fish', name: 'Merfolk', icon: '🐟', desc: 'Sapient water dweller' },
+                { id: 'crab', name: 'Crabfolk', icon: '🦀', desc: 'Sapient shore dweller' },
+                { id: 'siren', name: 'Siren', icon: '🧜', desc: 'Sapient enchanting singer' },
                 { id: 'troll', name: 'Troll', icon: '👹', desc: 'Bridge guardian' },
                 { id: 'bandit', name: 'Bandit', icon: '🥷', desc: 'Road robber' },
-                { id: 'skeleton', name: 'Skeleton', icon: '💀', desc: 'Ancient bones' },
-                { id: 'goat', name: 'Goat', icon: '🐐', desc: 'Cliff climber' },
-                { id: 'eagle', name: 'Eagle', icon: '🦅', desc: 'Sky predator' }
+                { id: 'skeleton', name: 'Awakened Skeleton', icon: '💀', desc: 'Sapient ancient bones' },
+                { id: 'goat', name: 'Goatfolk', icon: '🐐', desc: 'Sapient cliff climber' },
+                { id: 'eagle', name: 'Eaglefolk', icon: '🦅', desc: 'Sapient sky hunter' }
             ],
             biomes: {
                 grove: { name: 'Grove', role: 'region', icon: '🌳', color: '#3a6b2a', bgColor: '#2a4a1a', danger: 1, encounterChance: 0.08, friendlyChance: 0.12, structureChance: 0.05,
@@ -1119,6 +1185,7 @@
                     tags: [species.name], perks: [], stomach: [], womb: [], balls: [], cum: 0, status: {},
                     expanded: true, hero: true, ally: false, mc: true, obedient: true, willing: true
                 };
+                this._applySpeciesCanon(this.player);
                 this._applySpeciesAbilities(this.player);
                 this.party = [this.player];
                 this.partyLeaderId = this._unitSelectionId(this.player);
@@ -1558,6 +1625,7 @@
                 unit.appetite = unit.appetite || 4;
                 unit.bodyParts = unit.bodyParts || this.SPECIES_DEFAULT_PARTS[unit.species] || [];
                 unit.tags = unit.tags || [species?.name || unit.species || 'Unknown'];
+                this._applySpeciesCanon(unit);
                 unit.perks = unit.perks || [];
                 unit.pendingPerkChoices = unit.pendingPerkChoices || 0;
                 unit.stomach = unit.stomach || [];
@@ -2162,6 +2230,7 @@
                         expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: roll('willing', i) < 0.3,
                         ...this.SPECIES_ABILITIES[sid] || {}
                     };
+                    this._applySpeciesCanon(creature);
                     creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
                     this._applyTimeOfDayToCreature(creature);
                     // Calculate disposition based on temperament
@@ -2239,6 +2308,7 @@
                             expanded: false, hero: false, ally: false, mc: false, obedient: false, willing: disp === this.DISPOSITION.FRIENDLY,
                             ...this.SPECIES_ABILITIES[sid] || {}
                         };
+                        this._applySpeciesCanon(creature);
                         creature.ambushReady = firstEntry && Boolean(this._getSpeciesTemperament(sid).ambush);
                         this._applyTimeOfDayToCreature(creature);
                         enemies.push(creature);
@@ -4241,7 +4311,7 @@
                 this.renderExplorationActions();
             },
 
-            _renderExplorationTargetActions() {
+            _renderExplorationTargetActions(source = 'sheet') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
                 const actors = this._getExplorationActors();
@@ -4252,15 +4322,16 @@
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
                     const opensSubActionSheet = Boolean(this.SUB_ACTIONS[key]);
+                    const actionSource = source === 'desktop' ? 'desktop-target' : 'target-bar';
                     const handler = opensSubActionSheet
-                        ? `App.openExplorationTargetSubActionSheet('${key}','target-bar')`
-                        : `App.resolveExplorationTargetAction('${key}',null,'target-bar')`;
-                    const dialogAttrs = opensSubActionSheet ? ' aria-haspopup="dialog" aria-controls="mobile-context-menu"' : '';
+                        ? `App.openExplorationTargetSubActionSheet('${key}','${actionSource}')`
+                        : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
+                    const dialogAttrs = opensSubActionSheet ? ` aria-haspopup="dialog" aria-controls="${source === 'desktop' ? 'desktop-intent-menu' : 'mobile-context-menu'}"` : '';
                     return `<button class="action-btn" title="${title}" aria-label="${title}"${dialogAttrs} onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
                 }).join('');
                 const clearLabel = this._escapeHtml(this._t('target.clear'));
                 const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
-                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div>${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button>`;
+                return `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span><span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
             },
 
             openExplorationTargetSubActionSheet(action, source = 'target-bar') {
@@ -4273,7 +4344,8 @@
                 const title = `${this._uiLabel(action)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="mobile-context-menu intent-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="mobile-context-menu-actions" role="menu">`;
+                const surface = this._intentMenuSurface(source);
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -4285,7 +4357,7 @@
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
+                const menu = document.getElementById(surface.id);
                 this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
@@ -6596,6 +6668,7 @@
                 }
                 if (unit.flying) add('flying', this._label('unit.trait.flying', 'Flying'), 'ability');
                 if (unit.darkvision) add('darkvision', this._label('unit.trait.darkvision', 'Darkvision'), 'ability');
+                if (unit.sapience === 'person' || unit.speciesTraits?.includes('person')) add('person', this._label('unit.trait.person', 'Person'), 'special');
                 return chips.slice(0, Math.max(0, limit));
             },
             _unitTraitChips(unit, type, limit = 3) {
@@ -7269,6 +7342,33 @@
                 const escapedLabel = this._escapeHtml(label);
                 return `<span class="desktop-play-cell-icon" aria-hidden="true">${this._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
             },
+            _directionLabel(dx, dy) {
+                const directions = {
+                    '-1,-1': this._label('direction.northwest', 'Northwest'),
+                    '0,-1': this._label('direction.north', 'North'),
+                    '1,-1': this._label('direction.northeast', 'Northeast'),
+                    '-1,0': this._label('direction.west', 'West'),
+                    '1,0': this._label('direction.east', 'East'),
+                    '-1,1': this._label('direction.southwest', 'Southwest'),
+                    '0,1': this._label('direction.south', 'South'),
+                    '1,1': this._label('direction.southeast', 'Southeast')
+                };
+                return directions[`${dx},${dy}`] || '';
+            },
+            _updateDesktopCenterTile(visual, label) {
+                const el = document.getElementById('desktop-play-cell-center');
+                if (!el) return;
+                el.className = `desktop-play-cell center ${visual?.classes || ''}`;
+                if (typeof el.setAttribute === 'function') {
+                    el.setAttribute('title', this._escapeHtml(label));
+                    el.setAttribute('aria-label', this._escapeHtml(label));
+                    el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
+                    el.setAttribute('data-map-kind', visual?.kind || 'current');
+                    if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
+                }
+            },
             _updateDesktopPlayCell(el, visual, label, dx, dy, moveable = true) {
                 if (!el) return;
                 const classes = `desktop-play-cell${moveable ? ' moveable' : ''} ${visual.classes || ''}`;
@@ -7287,6 +7387,8 @@
                     else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
                     if (moveable) el.setAttribute('onclick', `App.move(${dx},${dy})`);
                     else if (typeof el.removeAttribute === 'function') el.removeAttribute('onclick');
+                    if (moveable) el.setAttribute('onkeydown', `if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}`);
+                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('onkeydown');
                 }
                 el.onclick = moveable ? () => this.move(dx, dy) : null;
             },
@@ -7311,9 +7413,13 @@
                         const ty = cy + cell.dy;
                         const room = this.activeInterior.tiles[`${tx},${ty}`];
                         const visual = this._interiorTileVisual(room);
-                        const label = `${visual.label} (${tx}, ${ty})`;
+                        const direction = this._directionLabel(cell.dx, cell.dy);
+                        const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
                         this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, Boolean(room));
                     });
+                    const currentRoom = this.activeInterior.tiles[`${cx},${cy}`];
+                    const currentVisual = this._interiorTileVisual(currentRoom);
+                    this._updateDesktopCenterTile(currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
                     return;
                 }
                 const cx = this.location.x;
@@ -7327,9 +7433,15 @@
                     const visual = this._mapTileVisual(tile, {
                         neighborResolver: (nx, ny) => this.getTile(nx, ny)
                     });
-                    const label = `${visual.label} (${tx}, ${ty})`;
+                    const direction = this._directionLabel(cell.dx, cell.dy);
+                    const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
                     this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, true);
                 });
+                const currentTile = this.getTile(cx, cy);
+                const currentVisual = this._mapTileVisual(currentTile, {
+                    neighborResolver: (nx, ny) => this.getTile(nx, ny)
+                });
+                this._updateDesktopCenterTile(currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
             },
 
             renderMap() {
@@ -8404,7 +8516,7 @@
             },
             _intentMenuSurface(source = 'sheet', presentation = 'sheet') {
                 const normalizedSource = String(source || 'sheet');
-                const isDesktop = normalizedSource === 'desktop' || presentation === 'desktop';
+                const isDesktop = normalizedSource === 'desktop' || normalizedSource.startsWith('desktop-') || presentation === 'desktop';
                 const presentationName = isDesktop ? 'desktop' : (presentation === 'radial' ? 'radial' : 'sheet');
                 return {
                     id: isDesktop ? 'desktop-intent-menu' : 'mobile-context-menu',

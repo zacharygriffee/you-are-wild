@@ -816,6 +816,10 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, '.desktop-play-surface', 'desktop play surface styles missing');
   assertContains(appContent, 'renderDesktopPlaySurface()', 'desktop play surface renderer missing');
   assertContains(appContent, "_desktopPlayCellHtml", 'desktop play surface cell helper missing');
+  assertContains(appContent, "_updateDesktopCenterTile", 'desktop play surface should preserve center content while annotating the current tile');
+  assertContains(appContent, "_directionLabel", 'desktop play surface should label directional movement cells');
+  assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
+  assertContains(template, '.scene-actions .target-action-row', 'desktop target actions should be bounded inside the scene action area');
 });
 
 test('Large map discovery surface exists', () => {
@@ -835,6 +839,17 @@ test('Action icon labels and legend styles exist', () => {
   assertContains(appContent, '_actionLegend', 'Action legend helper missing');
   assertContains(template, '.action-legend', 'Action legend styles missing');
   assertContains(template, '.action-caption', 'Action caption styles missing');
+});
+
+test('Default species canon is sapient and person-like', () => {
+  assertContains(appContent, 'DEFAULT_SPECIES_CANON:', 'Default species canon missing');
+  assertContains(appContent, 'SPECIES_CANON:', 'Species canon registry missing');
+  assertContains(appContent, "_applySpeciesCanon(unit)", 'Species canon should normalize units');
+  assertContains(appContent, "name: 'Wolfkin'", 'Wolf default display should read as folk/kin');
+  assertContains(appContent, "name: 'Bunnyfolk'", 'Bunny default display should read as folk/kin');
+  assertContains(appContent, "name: 'Mousefolk'", 'Mouse default display should read as folk/kin');
+  assertNotContains(appContent, "bodyPlan: 'animal'", 'Default species should not be classified as ordinary animals');
+  assertNotContains(appContent, "sapience: 'animal'", 'Default species should not use animal sapience');
 });
 
 // === COMBAT BEHAVIOR TESTS ===
@@ -860,6 +875,7 @@ function makeElement() {
     setAttribute(name, value) { attributes.set(name, String(value)); },
     getAttribute(name) { return attributes.get(name) || null; },
     hasAttribute(name) { return attributes.has(name); },
+    removeAttribute(name) { attributes.delete(name); },
     contains(target) { return target === this || target?.parentNode === this; },
     querySelectorAll() { return []; },
     remove() { this.removed = true; },
@@ -3005,14 +3021,18 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'Actores: Actor', 'Context actions should show localized selected actor names');
   assertContains(actionsHtml, 'Objetivos: Ally Target, Creature Target', 'Context actions should show localized selected target names');
   assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos"', 'Selected-target action labels should use localized target counts');
-  assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="mobile-context-menu"', 'Selected-target sub-action buttons should advertise and target their dialog popup');
+  assertContains(actionsHtml, 'class="target-action-row"', 'Desktop selected-target action buttons should be wrapped in a bounded row');
+  assertContains(actionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="desktop-intent-menu"', 'Desktop selected-target sub-action buttons should advertise and target their dialog popup');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
-  assertContains(template, '.scene-actions > .action-btn', 'Selected-target action buttons should use bounded desktop scene-action sizing');
+  assertContains(template, '.scene-actions .target-action-row', 'Selected-target action buttons should use bounded desktop scene-action sizing');
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
-  assertContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','target-bar')", 'Context actions should route registered actions through the selected-target sub-action picker');
+  assertContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Desktop context actions should route registered actions through the desktop selected-target sub-action picker');
+  const mobileActionsHtml = App._renderContextActions(true);
+  assertContains(mobileActionsHtml, 'aria-label="Coquetear 2 objetivos" aria-haspopup="dialog" aria-controls="mobile-context-menu"', 'Mobile selected-target sub-action buttons should still advertise and target the mobile dialog popup');
+  assertContains(mobileActionsHtml, "openExplorationTargetSubActionSheet('flirt','target-bar')", 'Mobile context actions should route registered actions through the mobile selected-target sub-action picker');
 });
 
 test('Desktop creature card action labels localize', () => {
@@ -7298,6 +7318,26 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(App.lastIntentCommand.subAction, 'attack', 'Desktop menu selection should record the chosen sub-action');
 });
 
+test('Desktop marked-target actions stay bounded and use desktop sub-action sheets', () => {
+  const { App, body } = loadAppForCombat();
+  const actor = makeUnit('You', { id: 'player-1' });
+  const target = makeUnit('Wolfkin Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY, CPun: 80, MPun: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  App.explorationActorIds = ['player-1'];
+  App.explorationTargetIds = ['creature:guide-1'];
+
+  const html = App._renderExplorationTargetActions('desktop');
+  assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
+  assertContains(html, "App.openExplorationTargetSubActionSheet('fight','desktop-target')", 'Desktop marked-target actions should open desktop sub-action source');
+  assertContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target actions should advertise the desktop popup');
+
+  App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
+  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
+});
+
 test('Desktop play surface renders adjacent movement cells', () => {
   const { App, elements } = loadAppForCombat();
   const ids = ['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'];
@@ -7311,8 +7351,12 @@ test('Desktop play surface renders adjacent movement cells', () => {
   const north = elements.get('desktop-play-cell-n');
   assertContains(north.innerHTML, 'desktop-play-cell-icon', 'Desktop north cell should render a visible tile icon');
   assertContains(north.innerHTML, 'desktop-play-cell-label', 'Desktop north cell should render a compact tile label');
+  assertContains(north.innerHTML, 'North:', 'Desktop north cell should label its movement direction');
   assertEqual(north.getAttribute('onclick'), 'App.move(0,-1)', 'Desktop north cell should move north');
-  assertContains(elements.get('desktop-play-cell-center').className, 'center', 'Desktop play surface should preserve the center tile');
+  assertEqual(north.getAttribute('onkeydown'), "if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(0,-1)}", 'Desktop north cell should support keyboard movement');
+  const center = elements.get('desktop-play-cell-center');
+  assertContains(center.className, 'center', 'Desktop play surface should preserve the center tile');
+  assert(center.getAttribute('data-tileset-key'), 'Desktop center tile should expose tileset metadata');
 });
 
 test('Mobile party long-press menu exposes management actions', () => {

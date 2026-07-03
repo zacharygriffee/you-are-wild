@@ -430,17 +430,38 @@ test('Content templates exist', () => {
 
 test('Asset manifest supports tileset provenance and fallback metadata', () => {
   const manifest = loadAssetManifestForTest();
-  assertEqual(manifest.manifest.activeTileset, 'core-emoji-fallback', 'Default tileset should keep emoji fallback active');
+  assertEqual(manifest.manifest.activeTileset, 'default-basic-tileset', 'Default tileset should use the bundled basic tileset candidate');
+  assertEqual(manifest.manifest.fallbackTileset, 'core-emoji-fallback', 'Emoji tileset should remain the guaranteed fallback');
   assertEqual(manifest.tileKeys.biomes.forest, 'terrain-forest', 'Manifest should expose stable terrain tile keys');
-  const fallbackForest = manifest.getTileAsset('terrain-forest');
+  const fallbackForest = manifest.getTileAsset('terrain-forest', 'core-emoji-fallback');
   assertEqual(fallbackForest.fallbackMode, 'emoji', 'Fallback tileset should preserve emoji rendering mode');
   assertEqual(fallbackForest.src, null, 'Fallback tileset should not require image assets');
-  const painted = manifest.manifest.tilesets['painted-chatgpt-image-tileset-placeholder'];
-  assertEqual(painted.provenance.kind, 'ai_generated', 'Painted tileset placeholder should record AI-generated provenance');
-  assertEqual(painted.provenance.tool, 'ChatGPT Image', 'Painted tileset placeholder should record generation tool');
-  assertEqual(painted.provenance.generatedBy, 'project-owner', 'Painted tileset placeholder should record project-owner source');
-  assertEqual(painted.relativeBasePath, 'assets/tilesets/painted-chatgpt-image/', 'Painted tileset placeholder should use relative asset paths');
+  const painted = manifest.manifest.tilesets['default-basic-tileset'];
+  assertEqual(painted.provenance.kind, 'ai_generated', 'Basic tileset should record AI-generated provenance');
+  assertEqual(painted.provenance.tool, 'ChatGPT Image 2', 'Basic tileset should record generation tool');
+  assertEqual(painted.provenance.generatedBy, 'project-owner', 'Basic tileset should record project-owner source');
+  assertEqual(painted.relativeBasePath, '../media/', 'Basic tileset should use relative sidecar media paths');
+  assertEqual(painted.sheet.src, 'basic-tileset.png', 'Basic tileset should point at the supplied bitmap sheet');
+  assertEqual(painted.aiMetadata.aiMade, true, 'Basic tileset should expose AI-made metadata for future asset-pack policy');
   assert(painted.allowedUse.includes('future-mod-pack'), 'Tileset metadata should allow future mod-pack use');
+  const forestAsset = manifest.getTileAsset('terrain-forest');
+  assertEqual(forestAsset.tilesetId, 'default-basic-tileset', 'Default tile lookup should resolve through the basic tileset');
+  assertEqual(forestAsset.src, '../media/basic-tileset.png', 'Default tile lookup should expose the relative bitmap path');
+  assertEqual(forestAsset.sprite.col, 0, 'Default tile lookup should expose sprite metadata');
+  const missingDefault = manifest.getTileAsset('route-road-end');
+  assertEqual(missingDefault.tilesetId, 'core-emoji-fallback', 'Missing default tiles should honestly identify the emoji fallback tileset');
+  assertEqual(missingDefault.fallbackMode, 'emoji', 'Missing default tiles should retain emoji fallback mode');
+  manifest.registerTileset({
+    id: 'test-mod-tileset',
+    relativeBasePath: '../mods/test-assets/',
+    tiles: {
+      'terrain-forest': { src: 'forest.png', fallback: 'sprite-sheet' }
+    }
+  });
+  manifest.setActiveTileset('test-mod-tileset');
+  assertEqual(manifest.getTileAsset('terrain-forest').tilesetId, 'test-mod-tileset', 'Active mod assets should override default tile assets');
+  assertEqual(manifest.getTileAsset('route-road-vertical').tilesetId, 'default-basic-tileset', 'Missing mod assets should fall through to the default basic tileset');
+  assertEqual(manifest.getTileAsset('route-road-end').tilesetId, 'core-emoji-fallback', 'Missing mod and default assets should fall through to emoji fallback');
 });
 
 test('Corpse content templates exist', () => {
@@ -4030,8 +4051,9 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   assertEqual(roadVisual.baseTilesetKey, 'terrain-forest', 'Road visual should preserve forest base terrain key');
   assertEqual(roadVisual.routeShape, 'north-south', 'Road visual should use stored direction when no neighbor resolver is available');
   assertEqual(roadVisual.asset.key, 'route-road-vertical', 'Road visual should resolve manifest asset metadata');
-  assertEqual(roadVisual.asset.fallbackMode, 'emoji', 'Road visual should preserve fallback mode without imported art');
-  assertEqual(roadVisual.hasPaintedAsset, false, 'Road visual should not claim painted assets before import');
+  assertEqual(roadVisual.asset.tilesetId, 'default-basic-tileset', 'Road visual should resolve through the bundled basic tileset when available');
+  assertEqual(roadVisual.asset.src, '../media/basic-tileset.png', 'Road visual should expose sidecar bitmap metadata');
+  assertEqual(roadVisual.hasPaintedAsset, true, 'Road visual should flag bundled painted asset metadata when available');
   assertEqual(forestRoad.biome, 'forest', 'Visual mapping should not replace the base biome with road');
   assertEqual(bridgeVisual.tilesetKey, 'route-bridge-horizontal', 'Bridge visual should expose a direction-specific tileset key');
   assertEqual(bridgeVisual.baseTilesetKey, 'terrain-water', 'Bridge visual should preserve water base terrain key');
@@ -4051,11 +4073,12 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.renderLargeMap();
   assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Minimap should infer route shape from known neighbors');
   assertContains(elements.get('mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Minimap should render base terrain tileset keys');
-  assertContains(elements.get('mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Minimap should expose asset manifest ids');
+  assertContains(elements.get('mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Minimap should expose fallback asset manifest ids when the basic sheet lacks a key');
   assertContains(elements.get('mini-map').innerHTML, 'data-asset-fallback="emoji"', 'Minimap should expose fallback rendering mode');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
-  assertContains(elements.get('large-map').innerHTML, 'data-asset-id="core-emoji-fallback:structure-camp"', 'Large map should expose structure asset ids');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-id="default-basic-tileset:structure-camp"', 'Large map should expose bundled basic structure asset ids');
+  assertContains(elements.get('large-map').innerHTML, 'data-asset-src="../media/basic-tileset.png"', 'Large map should expose the relative sidecar bitmap path');
 });
 
 test('Map route visuals infer corners and intersections from known neighbors', () => {
@@ -4136,7 +4159,7 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   App.renderMap();
   const html = elements.get('mini-map').innerHTML;
   assertContains(html, 'data-tileset-key="interior-exit"', 'Rendered interior minimap should expose exit tileset key');
-  assertContains(html, 'data-asset-id="core-emoji-fallback:interior-exit"', 'Rendered interior minimap should expose exit asset id');
+  assertContains(html, 'data-asset-id="default-basic-tileset:interior-exit"', 'Rendered interior minimap should expose bundled basic exit asset id');
   assertContains(html, 'data-tileset-key="structure-camp"', 'Rendered interior minimap should expose feature tileset key');
   assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior minimap should expose cave room tileset key');
   assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior minimap should expose wall tileset key for missing rooms');

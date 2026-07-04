@@ -150,6 +150,7 @@ const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobi
 const panelRenderingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-rendering.js'), 'utf8');
 const panelShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-shell.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
+const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party-management.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
@@ -1812,6 +1813,22 @@ test('Panel shell helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_PANEL_SHELL.syncBackdrop(this)', 'App panel backdrop wrapper should delegate to the helper');
 });
 
+test('Party management helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/party-management.js'", 'Party management helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/party-management.js'") < buildContent.indexOf("'src/core/app.js'"), 'Party management helper should load before app.js');
+  assertContains(partyManagementContent, 'const YAW_PARTY_MANAGEMENT = {', 'Party management helper should expose the party management service');
+  assertContains(partyManagementContent, 'setLeader(app, index)', 'Party management helper should own leader changes');
+  assertContains(partyManagementContent, 'setRole(app, index, role)', 'Party management helper should own role changes');
+  assertContains(partyManagementContent, 'setAIOrder(app, index, order)', 'Party management helper should own AI order changes');
+  assertContains(partyManagementContent, 'reorder(app, index, targetIndex)', 'Party management helper should own party reordering');
+  assertContains(partyManagementContent, 'dismiss(app, index)', 'Party management helper should own dismiss confirmation');
+  assertContains(appContent, 'YAW_PARTY_MANAGEMENT.setLeader(this, index)', 'App set leader wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PARTY_MANAGEMENT.setRole(this, index, role)', 'App set role wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PARTY_MANAGEMENT.setAIOrder(this, index, order)', 'App set AI order wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PARTY_MANAGEMENT.reorder(this, index, targetIndex)', 'App reorder wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PARTY_MANAGEMENT.dismiss(this, index)', 'App dismiss wrapper should delegate to the helper');
+});
+
 test('Save manager helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/save-manager.js'", 'Save manager helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/save-manager.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save manager helper should load before app.js');
@@ -3207,7 +3224,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

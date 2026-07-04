@@ -249,10 +249,10 @@
                 return this.party.some(unit => unit && unit.CPun > 0 && unit.darkvision);
             },
             _partyRoleCount(role) {
-                return (this.party || []).filter(unit => unit && unit !== this.player && unit.CPun > 0 && this._getPartyRole(unit) === role).length;
+                return YAW_PARTY_MANAGEMENT.roleCount(this, role);
             },
             _partyRoleEffect(role, amount = 1, cap = Infinity) {
-                return Math.min(cap, this._partyRoleCount(role) * amount);
+                return YAW_PARTY_MANAGEMENT.roleEffect(this, role, amount, cap);
             },
             _mapVisibilityRadius() {
                 if (!this._isNight() || this._partyHasDarkvision()) return this.DAY_VISIBILITY_RADIUS;
@@ -3592,66 +3592,28 @@
 
             // ===== ALLY TURN AI =====
             _getPartyAIOrder(unit) {
-                const order = unit?.aiOrder || 'aggressive';
-                return this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
+                return YAW_PARTY_MANAGEMENT.getAIOrder(this, unit);
             },
             _getPartyRole(unit) {
-                const role = unit?.partyRole || 'companion';
-                return this.PARTY_ROLES[role] ? role : 'companion';
+                return YAW_PARTY_MANAGEMENT.getRole(this, unit);
             },
             _partyAIOrderLabel(order) {
-                const key = this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
-                return this._label(`party.aiOrder.${key}`, this.PARTY_AI_ORDERS[key]);
+                return YAW_PARTY_MANAGEMENT.aiOrderLabel(this, order);
             },
             _partyRoleLabel(role) {
-                const key = this.PARTY_ROLES[role] ? role : 'companion';
-                return this._label(`party.role.${key}`, this.PARTY_ROLES[key]);
+                return YAW_PARTY_MANAGEMENT.roleLabel(this, role);
             },
             _partyAIOrderDescription(order) {
-                const key = this.PARTY_AI_ORDERS[order] ? order : 'aggressive';
-                const fallback = {
-                    aggressive: 'Prioritizes attacking reachable threats.',
-                    defensive: 'Favors safer positioning and protecting allies.',
-                    healer: 'Feeds the most wounded ally first.',
-                    scavenger: 'Looks for corpse-feast opportunities after victory.',
-                    passive: 'Avoids acting unless wounded or pressured.'
-                }[key];
-                return this._label(`party.aiOrderDescription.${key}`, fallback);
+                return YAW_PARTY_MANAGEMENT.aiOrderDescription(this, order);
             },
             _partyRoleDescription(role) {
-                const key = this.PARTY_ROLES[role] ? role : 'companion';
-                const fallback = {
-                    companion: 'No special exploration role.',
-                    scout: 'Improves night visibility and route awareness.',
-                    guard: 'Reduces ambush advantage and helps protect camp.',
-                    support: 'Improves recovery when resting somewhere safe.',
-                    gatherer: 'Improves search and foraging results.'
-                }[key];
-                return this._label(`party.roleDescription.${key}`, fallback);
+                return YAW_PARTY_MANAGEMENT.roleDescription(this, role);
             },
             setPartyAIOrder(index, order) {
-                const unit = this.party[index];
-                if (!unit || unit === this.player || !this.PARTY_AI_ORDERS[order]) return;
-                unit.aiOrder = order;
-                this.log.push({ text: this._label('party.aiOrderSet', '{name} will act {order}.', {
-                    name: unit.name,
-                    order: this._partyAIOrderLabel(order).toLowerCase()
-                }), type: 'discovery' });
-                this.renderParty();
-                this.renderLog();
-                this.autoSave();
+                return YAW_PARTY_MANAGEMENT.setAIOrder(this, index, order);
             },
             setPartyRole(index, role) {
-                const unit = this.party[index];
-                if (!unit || unit === this.player || !this.PARTY_ROLES[role]) return;
-                unit.partyRole = role;
-                this.log.push({ text: this._label('party.roleSet', '{name} is assigned as {role}.', {
-                    name: unit.name,
-                    role: this._partyRoleLabel(role).toLowerCase()
-                }), type: 'discovery' });
-                this.renderParty();
-                this.renderLog();
-                this.autoSave();
+                return YAW_PARTY_MANAGEMENT.setRole(this, index, role);
             },
             _allyHealWounded(ally) {
                 const wounded = this.party
@@ -4139,117 +4101,47 @@
             },
 
             _getPartyLeader() {
-                const leader = this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId || ''));
-                return leader || this.player || this.party[0] || null;
+                return YAW_PARTY_MANAGEMENT.leader(this);
             },
 
             setPartyLeader(index) {
-                const unit = this.party[index];
-                if (!unit) return;
-                this.partyLeaderId = this._unitSelectionId(unit);
-                this.log.push({ text: this._label('party.leaderSet', '{name} is now party leader.', { name: unit.name }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.autoSave();
+                return YAW_PARTY_MANAGEMENT.setLeader(this, index);
             },
 
             movePartyMember(index, direction) {
-                const targetIndex = index + direction;
-                return this.reorderPartyMember(index, targetIndex);
+                return YAW_PARTY_MANAGEMENT.move(this, index, direction);
             },
 
             reorderPartyMember(index, targetIndex) {
-                if (index <= 0 || targetIndex <= 0 || targetIndex >= this.party.length || index === targetIndex) return false;
-                const [unit] = this.party.splice(index, 1);
-                this.party.splice(targetIndex, 0, unit);
-                this.log.push({ text: this._label('party.positionChanged', '{name} changes party position.', { name: unit.name }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.autoSave();
-                return true;
+                return YAW_PARTY_MANAGEMENT.reorder(this, index, targetIndex);
             },
 
             startPartyDrag(index) {
-                if (index <= 0 || !this.party[index] || this.combatState.active) return false;
-                this.draggedPartyIndex = index;
-                return true;
+                return YAW_PARTY_MANAGEMENT.startDrag(this, index);
             },
 
             dragPartyOver(event) {
-                if (event && typeof event.preventDefault === 'function') event.preventDefault();
+                return YAW_PARTY_MANAGEMENT.dragOver(event);
             },
 
             clearPartyDrag() {
-                this.draggedPartyIndex = null;
+                return YAW_PARTY_MANAGEMENT.clearDrag(this);
             },
 
             dropPartyMember(targetIndex) {
-                const draggedIndex = Number(this.draggedPartyIndex);
-                this.clearPartyDrag();
-                if (!Number.isInteger(draggedIndex)) return false;
-                return this.reorderPartyMember(draggedIndex, targetIndex);
+                return YAW_PARTY_MANAGEMENT.drop(this, targetIndex);
             },
 
             _dropDismissedPartyMember(unit) {
-                const tile = this._currentExplorationTile();
-                if (!unit || !tile) return null;
-                const dismissed = this._normalizeUnit({
-                    ...unit,
-                    disposition: this.DISPOSITION.NEUTRAL,
-                    ally: false,
-                    mc: false,
-                    obedient: false,
-                    formerPartyMember: true,
-                    formerPartyRole: this._getPartyRole(unit),
-                    partyRole: 'companion'
-                }, {});
-                const sameUnit = candidate => this._unitSelectionId(candidate) === this._unitSelectionId(dismissed);
-                this.creatures = this._tileCreatures([...(this.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);
-                tile.creatures = this._tileCreatures([...(tile.creatures || []).filter(candidate => !sameUnit(candidate)), dismissed]);
-                if (this.inInterior && this.activeInterior?.origin) {
-                    const origin = this.getTile(this.activeInterior.origin.x, this.activeInterior.origin.y);
-                    origin.interior = this.activeInterior;
-                    this.persistTileDelta(origin.x, origin.y, origin);
-                } else if (Number.isFinite(Number(tile.x)) && Number.isFinite(Number(tile.y))) {
-                    this.persistTileDelta(tile.x, tile.y, tile);
-                }
-                return dismissed;
+                return YAW_PARTY_MANAGEMENT.dropDismissed(this, unit);
             },
 
             dismissPartyMember(index) {
-                const unit = this.party[index];
-                if (!unit || unit === this.player || unit.mc) return;
-                const confirmMessage = this._label('party.confirmDismiss', 'Dismiss {name} from the party?', { name: unit.name });
-                return this.showConfirmDialog({
-                    title: this._label('party.dismiss', 'Dismiss'),
-                    message: confirmMessage,
-                    confirmLabel: this._label('party.dismiss', 'Dismiss'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    danger: true,
-                    onConfirm: () => this._dismissPartyMemberConfirmed(index)
-                });
+                return YAW_PARTY_MANAGEMENT.dismiss(this, index);
             },
 
             _dismissPartyMemberConfirmed(index) {
-                const unit = this.party[index];
-                if (!unit || unit === this.player || unit.mc) return false;
-                this.party.splice(index, 1);
-                const dropped = this._dropDismissedPartyMember(unit);
-                this._normalizeExplorationSelections();
-                if (this.partyLeaderId === this._unitSelectionId(unit)) this.partyLeaderId = this._unitSelectionId(this.player);
-                this.log.push({
-                    text: this._label(
-                        dropped ? 'party.dismissedNearby' : 'party.dismissed',
-                        dropped ? '{name} leaves the party and remains nearby.' : '{name} leaves the party.',
-                        { name: unit.name }
-                    ),
-                    type: 'discovery'
-                });
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.autoSave();
-                return true;
+                return YAW_PARTY_MANAGEMENT.confirmDismiss(this, index);
             },
 
             showPartyMemberStats(index) {

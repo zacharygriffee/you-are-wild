@@ -49,6 +49,7 @@ const SCRIPT_ORDER = [
   'src/core/panel-rendering.js',
   'src/core/panel-shell.js',
   'src/core/unit-selection.js',
+  'src/core/party-management.js',
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',
   'src/core/mobile-gestures.js',

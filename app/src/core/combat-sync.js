@@ -101,6 +101,131 @@ const YAW_COMBAT_SYNC = {
         app.renderCreatures();
         app.nextTurn();
         return true;
+    },
+
+    resolveAction(app, sync) {
+        if (sync.resolved) return;
+        sync.resolved = true;
+        const incapacitated = (sync.participants || []).filter(p => !p || p.CPun <= 0 || p.knockedOut || p.fledCombat);
+        if (incapacitated.length > 0) {
+            app.log.push({ text: app._label('combat.sync.failedIncapacitated', 'Sync failed! {names} cannot participate.', { names: incapacitated.map(p => p?.name || 'Unknown').join(', ') }), type: 'combat' });
+            app.renderLog();
+            app.nextTurn();
+            return;
+        }
+        sync.participants = (sync.participants || []).filter(unit => app._isCombatQueueUnitValid(unit) && app.party.includes(unit));
+        if (!sync.target || !app._isCombatQueueUnitValid(sync.target) || sync.participants.length < 2) {
+            app.log.push({ text: app._label('combat.sync.failedInvalid', 'Sync failed! The target or participants are no longer available.'), type: 'combat' });
+            app.renderLog();
+            app.nextTurn();
+            return;
+        }
+        if (sync.target.CPun <= 0) {
+            app.log.push({ text: `Sync target ${sync.target.name} is already defeated!`, type: 'combat' });
+            app.renderLog();
+            app.nextTurn();
+            return;
+        }
+        let result = '';
+        switch (sync.type) {
+            case 'sync_fuck': {
+                let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Fuck || 0) + (p.Flir || 0), 0);
+                if (app.settings.sameSpeciesBonus) {
+                    const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
+                    totalCharm += speciesMatch * 5;
+                }
+                const resist = (sync.target.wis || 10) + (app._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
+                const oldPle = sync.target.CPle;
+                if (totalCharm > resist * 1.5) {
+                    sync.target.CPle = sync.target.MPle;
+                    sync.target.disposition = app.DISPOSITION.FRIENDLY;
+                    sync.target.willing = true;
+                    sync.target.orgasmed = true;
+                    app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
+                    result = `${sync.participants.map(p => p.name).join(' and ')} overwhelm ${sync.target.name} with pleasure! They submit completely.`;
+                    if (app.settings.refractoryPeriod) {
+                        sync.target.refractory = true;
+                        result += ` They are spent and need recovery...`;
+                    }
+                    setTimeout(() => {
+                        app._confirmRecruitCreature(sync.target);
+                    }, 100);
+                } else if (totalCharm > resist) {
+                    sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
+                    result = `${sync.participants.map(p => p.name).join(' and ')} pleasure ${sync.target.name}! They are dazed but not fully broken.`;
+                    if (sync.target.CPle >= sync.target.MPle * 0.8 && oldPle < sync.target.MPle * 0.8) {
+                        result += ` ${sync.target.name} orgasms!`;
+                        sync.target.orgasmed = true;
+                        if (app.settings.refractoryPeriod) sync.target.refractory = true;
+                    }
+                } else {
+                    result = `${sync.target.name} resists the combined advances!`;
+                }
+                break;
+            }
+            case 'sync_flirt': {
+                let totalCharm = sync.participants.reduce((sum, p) => sum + (p.Flir || 0) + (p.cha || 10) * 0.5, 0);
+                if (app.settings.sameSpeciesBonus) {
+                    const speciesMatch = sync.participants.filter(p => p.species === sync.target.species).length;
+                    totalCharm += speciesMatch * 3;
+                }
+                const resist = (sync.target.wis || 10) + (app._safeRatio(sync.target.CPle, sync.target.MPle) * 10);
+                if (totalCharm > resist * 1.2) {
+                    sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.4));
+                    sync.target.charmed = (sync.target.charmed || 0) + 2;
+                    sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 2);
+                    sync.target.disposition = app.DISPOSITION.FRIENDLY;
+                    sync.target.willing = true;
+                    app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
+                    result = `${sync.participants.map(p => p.name).join(' and ')} charm ${sync.target.name} into submission! They are utterly captivated.`;
+                } else if (totalCharm > resist) {
+                    sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
+                    sync.target.charmed = (sync.target.charmed || 0) + 1;
+                    sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
+                    result = `${sync.participants.map(p => p.name).join(' and ')} flirt with ${sync.target.name}, softening their guard. Pleasure rises to ${sync.target.CPle}/${sync.target.MPle}.`;
+                } else {
+                    result = `${sync.target.name} resists the group's combined charm!`;
+                }
+                break;
+            }
+            case 'sync_fight': {
+                const totalStr = sync.participants.reduce((sum, p) => sum + (p.Figh || 0), 0);
+                const def = app._effectiveCon(sync.target);
+                const dmg = Math.max(1, Math.floor(totalStr - def * 0.5 + app._combatDamageVariance(sync.participants[0], sync.target, `sync-fight:${sync.participants.map(p => app._unitSelectionId(p)).join('|')}`, 10)));
+                sync.target.CPun -= dmg;
+                result = `${sync.participants.map(p => p.name).join(' and ')} gang up on ${sync.target.name}, dealing ${dmg} punishment!`;
+                if (sync.target.CPun <= 0) {
+                    result += ` ${sync.target.name} is overwhelmed and collapses!`;
+                    app._awardCombatXP(app.XP_REWARDS.defeatEnemy);
+                    if (app.settings.endoMode) { sync.target.CPun = 1; sync.target.disposition = app.DISPOSITION.FRIENDLY; }
+                    else app._makeCorpse(sync.target, 'fight');
+                }
+                break;
+            }
+            case 'sync_feed': {
+                const totalFeas = sync.participants.reduce((sum, p) => sum + (p.Feas || 0), 0);
+                const canEat = sync.target.CPun <= sync.target.MPun * 0.3 || totalFeas > sync.target.Flee + 5;
+                if (canEat) {
+                    const eater = sync.participants[0];
+                    if (!app._canFitPrey(eater, sync.target, 'stomach')) {
+                        result = app._capacityFailureMessage(eater, sync.target, 'stomach');
+                        break;
+                    }
+                    app._containTargetIn(eater, sync.target, 'stomach');
+                    app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
+                    result = `${sync.participants.map(p => p.name).join(' and ')} force ${sync.target.name} into ${eater.name}'s stomach!`;
+                } else {
+                    result = `${sync.target.name} is too strong to be force-fed!`;
+                }
+                break;
+            }
+        }
+        app.log.push({ text: result, type: 'combat' });
+        app._emitCombatAction(sync.type, sync.participants, sync.target, result);
+        app.renderLog();
+        app.renderCreatures();
+        app.renderParty();
+        app.nextTurn();
     }
 };
 

@@ -1841,9 +1841,14 @@ test('Combat sync helper module is registered before app code', () => {
   assertContains(combatSyncContent, 'showMenu(app)', 'Combat sync helper should own sync menu setup');
   assertContains(combatSyncContent, 'selectParticipants(app, syncType)', 'Combat sync helper should own participant selection setup');
   assertContains(combatSyncContent, 'queueAction(app, syncType, targetIndex)', 'Combat sync helper should own delayed sync queueing');
+  assertContains(combatSyncContent, 'resolveAction(app, sync)', 'Combat sync helper should own delayed sync resolution');
+  assertContains(combatSyncContent, "app._label('combat.sync.failedIncapacitated'", 'Combat sync helper should preserve localized incapacitated failure');
+  assertContains(combatSyncContent, "app._emitCombatAction(sync.type, sync.participants, sync.target, result)", 'Combat sync helper should preserve sync action event emission');
+  assertContains(combatSyncContent, 'app.nextTurn()', 'Combat sync helper should continue advancing turns after resolution');
   assertContains(appContent, 'YAW_COMBAT_SYNC.showMenu(this)', 'App sync menu wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.selectParticipants(this, syncType)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex)', 'App sync queue wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SYNC.resolveAction(this, sync)', 'App sync resolution wrapper should delegate to the helper');
 });
 
 test('Combat mobility helper module is registered before app code', () => {

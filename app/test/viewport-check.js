@@ -182,19 +182,33 @@ async function checkViewport(browser, name, width, height) {
 
     await page.evaluate(() => {
       App.closeMobileContextMenu();
-      App.showMobileCreatureContext('creature-1');
+      App.creatures.push({
+        id: 'corpse-1',
+        name: 'Fallen',
+        species: 'human',
+        icon: '👤',
+        disposition: App.DISPOSITION.CORPSE,
+        CPun: 0,
+        MPun: 100,
+        CPle: 0,
+        MPle: 100,
+        stomach: [],
+        womb: [],
+        balls: []
+      });
+      App.showMobileCreatureContext('corpse-1');
     });
     await page.waitForTimeout(50);
-    const creatureMenu = await readContextMenuBounds('creature menu');
-    assert(creatureMenu.exists, `${name}: creature long-press menu should render`);
-    assert.strictEqual(creatureMenu.role, 'dialog', `${name}: creature long-press menu should use dialog semantics`);
-    assert.strictEqual(creatureMenu.ariaModal, 'true', `${name}: creature long-press menu should be modal`);
-    assert(creatureMenu.overflowY === 'auto' || creatureMenu.overflowY === 'scroll', `${name}: creature long-press menu should be scrollable`);
-    assert(creatureMenu.top >= -1, `${name}: creature long-press menu should not clip above viewport`);
-    assert(creatureMenu.left >= -1, `${name}: creature long-press menu should not clip left`);
-    assert(creatureMenu.right <= creatureMenu.viewportWidth + 1, `${name}: creature long-press menu should not clip right`);
-    assert(creatureMenu.bottom <= creatureMenu.viewportHeight + 1, `${name}: creature long-press menu should not clip below viewport`);
-    if (creatureMenu.toolbarVisible) assert(creatureMenu.bottom <= creatureMenu.toolbarTop + 1, `${name}: creature long-press menu should stay above mobile toolbar`);
+    const corpseMenu = await readContextMenuBounds('corpse menu');
+    assert(corpseMenu.exists, `${name}: corpse long-press menu should render`);
+    assert.strictEqual(corpseMenu.role, 'dialog', `${name}: corpse long-press menu should use dialog semantics`);
+    assert.strictEqual(corpseMenu.ariaModal, 'true', `${name}: corpse long-press menu should be modal`);
+    assert(corpseMenu.overflowY === 'auto' || corpseMenu.overflowY === 'scroll', `${name}: corpse long-press menu should be scrollable`);
+    assert(corpseMenu.top >= -1, `${name}: corpse long-press menu should not clip above viewport`);
+    assert(corpseMenu.left >= -1, `${name}: corpse long-press menu should not clip left`);
+    assert(corpseMenu.right <= corpseMenu.viewportWidth + 1, `${name}: corpse long-press menu should not clip right`);
+    assert(corpseMenu.bottom <= corpseMenu.viewportHeight + 1, `${name}: corpse long-press menu should not clip below viewport`);
+    if (corpseMenu.toolbarVisible) assert(corpseMenu.bottom <= corpseMenu.toolbarTop + 1, `${name}: corpse long-press menu should stay above mobile toolbar`);
   }
 
   await page.close();

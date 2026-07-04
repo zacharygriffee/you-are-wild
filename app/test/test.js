@@ -5415,7 +5415,7 @@ test('Desktop creature card action labels localize', () => {
   assertContains(html, '>Marcar<', 'Creature target visible label should localize');
   assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
   assertNotContains(html, "showIntentMenu('creature','friendly-1','desktop')", 'Creature card should not expose duplicate visible action menu');
-  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Creature card should support desktop secondary-click radial intent menu');
+  assertNotContains(html, "showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Living creature card should not expose a secondary-click primary-action popup');
   assertNotContains(html, "outsideActionForCreature('fight','friendly-1')", 'Creature card should not show primary action spam by default');
   assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
   assertContains(html, 'aria-label="Aceptar mision de Friendly"', 'Quest action should localize accessible label');
@@ -5426,12 +5426,6 @@ test('Desktop creature card action labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
   assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Creature action menu should localize inspect accessible label');
-  App.closeMobileContextMenu();
-  App.showRadialIntentMenu('creature', 'friendly-1', 'secondary-click');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Secondary-click intent menu should use radial presentation scaffold');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','secondary-click')", 'Secondary-click radial intent menu should preserve command source into sub-action picker');
-  App.openIntentSubActionSheet('creature', 'friendly-1', 'flirt', 'secondary-click');
-  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-1','flirt','secondary-click','tease')", 'Sub-action sheet should dispatch the default sub-action with preserved source');
   App.closeMobileContextMenu();
 });
 
@@ -7540,7 +7534,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
   assertContains(html, '>Marcar<', 'Target mark visible label should localize');
   assertNotContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party card should not expose a duplicate visible action menu');
-  assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',2,'secondary-click')", 'Party card should support desktop secondary-click radial intent menu');
+  assertNotContains(html, "showRadialIntentMenu('party',2,'secondary-click')", 'Living party card should not expose a secondary-click primary-action popup');
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
   assertContains(html, '>Estadisticas<', 'Stats visible label should localize');
@@ -9025,8 +9019,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertContains(mobileCreatureChip, "outsideActionForCreature('inspect','fox-1')", 'Mobile creature chip should expose direct inspect');
   assertNotContains(mobileCreatureChip, "showIntentMenu('creature','fox-1')", 'Mobile creature chip should not duplicate marked-target actions behind a visible action menu');
-  assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');
-  assertContains(mobileCreatureChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should keep secondary-click radial intent fallback');
+  assertNotContains(mobilePartyChip, "showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should not expose a secondary-click primary-action popup');
+  assertNotContains(mobileCreatureChip, "showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
 });
 
@@ -10503,19 +10497,12 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Party long-press menu title should be addressable');
   assertContains(body.innerHTML, 'Party actions', 'Party menu should use accessible party action label');
   assertContains(body.innerHTML, 'Stats', 'Party menu should expose stats');
-  assertContains(body.innerHTML, 'aria-label="Party actions"', 'Party menu should expose an intent-sheet entry');
+  assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Party menu should not duplicate marked-target actions behind an intent-sheet entry');
+  assertNotContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party menu should not expose primary action spam');
   assertContains(body.innerHTML, 'Make Leader', 'Party menu should expose leader action for allies');
   assertContains(body.innerHTML, 'Party role for Ally', 'Party menu should expose role selector');
   assertContains(body.innerHTML, 'AI order for Ally', 'Party menu should expose AI selector');
   assertContains(body.innerHTML, 'Dismiss', 'Party menu should expose dismiss action for allies');
-  App.mobilePartyContextAction('actions', 1);
-  assertContains(body.innerHTML, 'aria-label="Fight Ally"', 'Party long-press actions entry should open the shared intent sheet');
-  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party intent sheet should use its visible title as dialog label');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',1,'fight','sheet')", 'Party intent sheet should route primary actions through the sub-action picker');
-  App.openIntentSubActionSheet('party', 1, 'fight', 'sheet');
-  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Party sub-action sheet should use its visible title as dialog label');
-  assertContains(body.innerHTML, "App.selectIntent('party',1,'fight','sheet','attack')", 'Party sub-action sheet should dispatch through shared intent selection');
-  App.closeMobileContextMenu();
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('lead', 1);
   assertEqual(App._getPartyLeader(), ally, 'Party menu leader action should update leader');
@@ -10538,7 +10525,7 @@ test('Mobile party long-press menu uses localized management labels', () => {
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'aria-label="Acciones del grupo"', 'Party menu label should localize');
   assertContains(body.innerHTML, 'Estadisticas', 'Stats menu item should localize');
-  assertContains(body.innerHTML, '>Acciones del grupo<', 'Intent-sheet menu entry should localize');
+  assertNotContains(body.innerHTML, "mobilePartyContextAction('actions'", 'Localized party menu should not include a duplicate intent-sheet entry');
   assertContains(body.innerHTML, 'Hacer lider', 'Leader menu item should localize');
   assertContains(body.innerHTML, '>Rol<', 'Role field label should localize');
   assertContains(body.innerHTML, 'aria-label="Rol de grupo para Ally"', 'Role select accessible label should localize');
@@ -10576,38 +10563,15 @@ test('Mobile party long-press role selectors refresh after changes', () => {
   assertContains(body.innerHTML, 'Alimenta primero al aliado mas herido.', 'Mobile AI selector should refresh selected AI helper text');
 });
 
-test('Mobile creature long-press menu exposes core actions', () => {
-  const { App, body, document } = loadAppForCombat();
-  const opener = makeElement();
-  document.activeElement = opener;
+test('Mobile creature long-press marks living targets without opening action menus', () => {
+  const { App, body } = loadAppForCombat();
   App.player = makeUnit('You', { Flir: 40, Fuck: 40, cha: 40 });
   App.party = [App.player];
   App.creatures = [makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true })];
   App.showMobileCreatureContext('willing-1');
-  assertContains(body.innerHTML, 'role="dialog"', 'Long-press menu should expose dialog semantics');
-  assertContains(body.innerHTML, 'aria-modal="true"', 'Long-press menu should behave as a modal action menu');
-  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Long-press menu should use its visible title as dialog label');
-  assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Long-press menu title should be addressable');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Long-press menu should use the radial intent presentation scaffold');
-  assertContains(body.innerHTML, 'data-intent-presentation="radial"', 'Long-press menu should mark radial presentation for styling and later gesture handling');
-  assertContains(body.innerHTML, 'role="menu"', 'Long-press menu should expose menu semantics for actions');
-  assertContains(body.innerHTML, 'Fight', 'Long-press menu should expose Fight');
-  assertContains(body.innerHTML, 'Flirt', 'Long-press menu should expose Flirt');
-  assertContains(body.innerHTML, 'Fuck', 'Long-press menu should expose Fuck');
-  assertContains(body.innerHTML, 'Feast', 'Long-press menu should expose Feast');
-  assertContains(body.innerHTML, 'Feed', 'Long-press menu should expose Feed');
-  assertContains(body.innerHTML, 'Inspect', 'Long-press menu should expose Inspect');
-  assertContains(body.innerHTML, 'Recruit', 'Long-press menu should expose Recruit when available');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','willing-1','fight','longpress')", 'Long-press menu should route registered primary actions through the sub-action picker');
-  App.openIntentSubActionSheet('creature', 'willing-1', 'flirt', 'longpress');
-  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Long-press sub-action sheet should use its visible title as dialog label');
-  assertContains(body.innerHTML, "App.selectIntent('creature','willing-1','flirt','longpress','tease')", 'Long-press sub-action sheet should preserve command source');
-  App.selectIntent('creature', 'willing-1', 'flirt', 'longpress', 'tease');
-  assertEqual(App.lastIntentCommand.source, 'longpress', 'Long-press selection should record its command source');
-  assertEqual(App.lastIntentCommand.subAction, 'tease', 'Long-press selection should record selected sub-action');
-  assertEqual(App.lastIntentCommand.action, 'flirt', 'Long-press selection should record selected intent');
-  App.closeMobileContextMenu();
-  assertEqual(opener.focused, true, 'Closing long-press menu should restore focus to opener');
+  assertEqual(App.explorationTargetIds.includes('creature:willing-1'), true, 'Living creature long-press should mark the creature as the current target');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Living creature long-press should not open a duplicate primary-action menu');
+  assertContains(App._renderPanelInteractionTray(), 'selected-target-summary', 'Marked living creature should use the panel interaction tray for actions');
 });
 
 test('Radial intent menu remains an accelerator over shared dispatch', () => {
@@ -10627,25 +10591,23 @@ test('Radial intent menu remains an accelerator over shared dispatch', () => {
   assert(enemy.CPun < 100, 'Radial accelerator should reuse existing outside-combat dispatch');
 });
 
-test('Mobile creature long-press menu uses localized action labels', () => {
+test('Mobile creature long-press target marking is mode-safe and repeatable', () => {
   const { App, body } = loadAppForCombat();
   App.player = makeUnit('You', { Flir: 40, Fuck: 40, cha: 40 });
   App.party = [App.player];
   App.creatures = [makeUnit('Willing', { id: 'willing-es', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true })];
   App.updateLanguage('es');
   App.showMobileCreatureContext('willing-es');
-  assertContains(body.innerHTML, 'aria-label="Acciones de criatura"', 'Creature menu label should localize');
-  assertContains(body.innerHTML, 'Luchar', 'Fight menu item should localize');
-  assertContains(body.innerHTML, 'Coquetear', 'Flirt menu item should localize');
-  assertContains(body.innerHTML, 'Seducir', 'Fuck menu item should localize');
-  assertContains(body.innerHTML, 'Devorar', 'Feast menu item should localize');
-  assertContains(body.innerHTML, 'Alimentar', 'Feed menu item should localize');
-  assertContains(body.innerHTML, 'Inspeccionar', 'Inspect menu item should localize');
-  assertContains(body.innerHTML, 'Reclutar', 'Recruit menu item should localize');
-  assertContains(body.innerHTML, 'Cerrar', 'Close menu item should localize');
+  assertEqual(App.explorationTargetIds.join(','), 'creature:willing-es', 'Living creature long-press should mark a localized target');
+  App.showMobileCreatureContext('willing-es');
+  assertEqual(App.explorationTargetIds.length, 0, 'Repeating living creature long-press should unmark the target');
+  App.combatState.active = true;
+  App.showMobileCreatureContext('willing-es');
+  assertEqual(App.explorationTargetIds.length, 0, 'Combat creature long-press should not mutate adventure marks');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Combat creature long-press should not open an adventure action menu');
 });
 
-test('Mobile creature long-press menu preserves contextual quest and trade intents', () => {
+test('Mobile creature long-press preserves quest and trade as visible card actions', () => {
   const { App, body } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
@@ -10654,12 +10616,14 @@ test('Mobile creature long-press menu preserves contextual quest and trade inten
     makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT, stock: [{ id: 'ration', price: 2 }] })
   ];
   App.showMobileCreatureContext('guide-1');
-  assertContains(body.innerHTML, 'Accept Quest', 'Long-press menu should expose quest intent when relevant');
-  assertContains(body.innerHTML, "App.selectIntent('creature','guide-1','quest','longpress')", 'Quest long-press action should use shared intent dispatch');
-  App.closeMobileContextMenu();
+  assertEqual(App.explorationTargetIds.includes('creature:guide-1'), true, 'Quest creature long-press should still only mark the target');
   App.showMobileCreatureContext('merchant-1');
-  assertContains(body.innerHTML, 'Trade', 'Long-press menu should expose trade intent when relevant');
-  assertContains(body.innerHTML, "App.selectIntent('creature','merchant-1','trade','longpress')", 'Trade long-press action should use shared intent dispatch');
+  assertEqual(App.explorationTargetIds.includes('creature:merchant-1'), true, 'Merchant long-press should still only mark the target');
+  const guideHtml = App.renderMobileUnitChip(App.creatures[0], 0, 'creature');
+  const merchantHtml = App.renderMobileUnitChip(App.creatures[1], 1, 'creature');
+  assertContains(guideHtml, "previewQuestFromUnit('guide-1')", 'Quest action should remain visible on the creature chip');
+  assertContains(merchantHtml, "showTrade('merchant-1')", 'Trade action should remain visible on the creature chip');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Quest and trade long-press should not open a duplicate action menu');
 });
 
 test('Mobile map pinch changes zoom and applies transform', () => {

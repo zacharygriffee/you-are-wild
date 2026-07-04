@@ -7528,9 +7528,7 @@
                     }
                 }
                 const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-                const canOpenIntentMenu = isParty
-                    ? !this.combatState.active
-                    : isCorpse || (unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY));
+                const canOpenIntentMenu = !isParty && isCorpse;
                 const contextMenuAttr = canOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
                     : '';
@@ -7706,9 +7704,7 @@
                 const statLabels = {
                     equipment: this._escapeHtml(this._label('party.equipment', 'Equipment'))
                 };
-                const cardCanOpenIntentMenu = isParty
-                    ? !this.combatState.active
-                    : (isCorpse || (unit.CPun > 0 && !this.targetSelection && (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY)));
+                const cardCanOpenIntentMenu = !isParty && isCorpse;
                 const cardContextMenuAttr = cardCanOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
                     : '';
@@ -9894,7 +9890,6 @@
                 const orderDescription = this._partyAIOrderDescription(order);
                 let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
                 html += actionButton(this._label('party.stats', 'Stats'), 'stats');
-                html += actionButton(menuLabel, 'actions', ' primary');
                 if (unit !== this.player && !unit.mc) {
                     if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
                     html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" title="${this._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${this._escapeHtml(roleDescription)}</small></label>`;
@@ -9916,7 +9911,6 @@
                 }
                 this.closeMobileContextMenu();
                 if (action === 'stats') return this.showPartyMemberStats(index);
-                if (action === 'actions') return this.showIntentMenu('party', index);
                 if (action === 'lead') return this.setPartyLeader(index);
                 if (action === 'dismiss') return this.dismissPartyMember(index);
             },
@@ -9937,6 +9931,11 @@
             showMobileCreatureContext(targetId) {
                 const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
                 if (!target) return;
+                if (!this._isCorpse(target)) {
+                    if (this.combatState?.active) return false;
+                    this.toggleExplorationTarget('creature', String(target.id || target.name));
+                    return false;
+                }
                 return this.showRadialIntentMenu('creature', targetId, 'longpress');
             },
             mobileCreatureContextAction(action, targetId) {

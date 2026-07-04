@@ -470,6 +470,22 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.creatureChipCount, 1, 'Mobile creature strip should render the area creature chip');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should not expose actor controls at mobile viewport');
 
+  state = await page.evaluate(() => {
+    App.showMobileCreatureContext('friendly-1');
+    const marked = [...App.explorationTargetIds];
+    const menuVisible = Boolean(document.querySelector('#mobile-context-menu'));
+    const creatureChipHtml = document.querySelector('#mobile-creature-strip')?.innerHTML || '';
+    App.clearExplorationTargets();
+    return {
+      marked,
+      menuVisible,
+      hasRadialEntry: creatureChipHtml.includes("showRadialIntentMenu('creature','friendly-1'")
+    };
+  });
+  assert.deepStrictEqual(state.marked, ['creature:friendly-1'], 'Mobile living creature long-press should mark the target');
+  assert.strictEqual(state.menuVisible, false, 'Mobile living creature long-press should not open a duplicate action menu');
+  assert.strictEqual(state.hasRadialEntry, false, 'Mobile living creature chip should not expose a secondary-click primary-action popup');
+
   await page.locator(`#mobile-party-strip button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
   await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   const mobileTray = page.locator('#mobile-party-strip .panel-interaction-tray').first();

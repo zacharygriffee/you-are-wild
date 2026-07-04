@@ -126,6 +126,7 @@ const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
@@ -1968,6 +1969,22 @@ test('Center context helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
+test('Log view helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/log-view.js'", 'Log view helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/log-view.js'") < buildContent.indexOf("'src/core/app.js'"), 'Log view helper should load before app.js');
+  assertContains(logViewContent, 'const YAW_LOG_VIEW = {', 'Log view helper should expose the log service');
+  assertContains(logViewContent, 'filteredEntries(app)', 'Log view helper should own filtering');
+  assertContains(logViewContent, 'normalizePreferences(app, input = {})', 'Log view helper should own preference normalization');
+  assertContains(logViewContent, 'applyLayoutState(app)', 'Log view helper should own layout state updates');
+  assertContains(logViewContent, 'export(app)', 'Log view helper should own visible log export');
+  assertContains(logViewContent, 'render(app)', 'Log view helper should own DOM rendering');
+  assertContains(appContent, 'YAW_LOG_VIEW.timestamp(this, entry, indexFromEnd)', 'App log timestamp wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_LOG_VIEW.filteredEntries(this)', 'App log filter wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_LOG_VIEW.setFilter(this, filter)', 'App setLogFilter wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_LOG_VIEW.export(this)', 'App exportLog wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_LOG_VIEW.render(this)', 'App renderLog wrapper should delegate to the helper');
+});
+
 test('Tile event feed helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/tile-event-feed.js'", 'Tile event feed helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/tile-event-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Tile event feed helper should load before app.js');
@@ -3314,7 +3331,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

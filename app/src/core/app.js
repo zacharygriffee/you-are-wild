@@ -6486,166 +6486,54 @@
                 return YAW_TILE_EVENT_FEED.render(this);
             },
             _logTimestamp(entry, indexFromEnd = 0) {
-                if (entry?.round && entry?.turnIndex) {
-                    const actor = entry.actorName ? ` · ${entry.actorName}` : '';
-                    return `R${entry.round} T${entry.turnIndex}${actor}`;
-                }
-                if (entry?.round && this.combatState?.round) {
-                    const diff = Math.max(0, this.combatState.round - entry.round);
-                    if (diff === 0) return 'this round';
-                    return diff === 1 ? '1 round ago' : `${diff} rounds ago`;
-                }
-                if (indexFromEnd <= 0) return 'just now';
-                return indexFromEnd === 1 ? '1 turn ago' : `${indexFromEnd} turns ago`;
+                return YAW_LOG_VIEW.timestamp(this, entry, indexFromEnd);
             },
             _logCategoryMeta(type = 'discovery') {
-                return this.LOG_CATEGORIES[type] || { label: type || 'Discovery', icon: '•' };
+                return YAW_LOG_VIEW.categoryMeta(this, type);
             },
             _filteredLogEntries() {
-                const filter = this.logFilter || 'all';
-                const query = (this.logSearch || '').trim().toLowerCase();
-                return (this.log || []).filter(entry => {
-                    if (filter !== 'all' && (entry.type || 'discovery') !== filter) return false;
-                    if (query && !String(entry.text || '').toLowerCase().includes(query)) return false;
-                    return true;
-                });
+                return YAW_LOG_VIEW.filteredEntries(this);
             },
             _allowedLogFilters() {
-                return ['all', 'combat', 'discovery', 'loot', 'heal'];
+                return YAW_LOG_VIEW.allowedFilters();
             },
             _normalizeLogViewPreferences(input = {}) {
-                const prefs = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
-                const filter = this._allowedLogFilters().includes(prefs.filter) ? prefs.filter : 'all';
-                const search = typeof prefs.search === 'string' ? prefs.search.slice(0, 120) : '';
-                const collapsed = prefs.collapsed === true;
-                const expanded = prefs.expanded === true && !collapsed;
-                return { filter, search, collapsed, expanded };
+                return YAW_LOG_VIEW.normalizePreferences(this, input);
             },
             _applyLogViewPreferences(preferences = {}) {
-                const normalized = this._normalizeLogViewPreferences(preferences);
-                this.logFilter = normalized.filter;
-                this.logSearch = normalized.search;
-                this.logCollapsed = normalized.collapsed;
-                this.logExpanded = normalized.expanded;
-                return normalized;
+                return YAW_LOG_VIEW.applyPreferences(this, preferences);
             },
             _logViewPreferencesForStorage() {
-                return this._applyLogViewPreferences({
-                    filter: this.logFilter,
-                    search: this.logSearch,
-                    collapsed: this.logCollapsed,
-                    expanded: this.logExpanded
-                });
+                return YAW_LOG_VIEW.preferencesForStorage(this);
             },
             loadLogViewPreferences() {
-                try {
-                    const prefs = JSON.parse(this._getStoredValue('logView') || '{}');
-                    const normalized = this._applyLogViewPreferences(prefs);
-                    this._setStoredValue('logView', JSON.stringify(normalized));
-                } catch(e) {
-                    const normalized = this._applyLogViewPreferences({});
-                    this._setStoredValue('logView', JSON.stringify(normalized));
-                }
+                return YAW_LOG_VIEW.loadPreferences(this);
             },
             saveLogViewPreferences() {
-                this._setStoredValue('logView', JSON.stringify(this._logViewPreferencesForStorage()));
+                return YAW_LOG_VIEW.savePreferences(this);
             },
             _applyLogLayoutState() {
-                const root = document.getElementById('app');
-                if (root?.classList) {
-                    root.classList.toggle('log-collapsed', Boolean(this.logCollapsed));
-                    root.classList.toggle('log-expanded', Boolean(this.logExpanded));
-                }
-                const collapseBtn = document.getElementById('log-toggle-collapse');
-                const expandBtn = document.getElementById('log-toggle-expand');
-                if (collapseBtn) {
-                    const label = this.logCollapsed ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.minimize', 'Minimize');
-                    collapseBtn.textContent = label;
-                    collapseBtn.title = label;
-                    collapseBtn.setAttribute('aria-label', label);
-                    collapseBtn.classList?.toggle('active', Boolean(this.logCollapsed));
-                    collapseBtn.setAttribute('aria-pressed', String(Boolean(this.logCollapsed)));
-                }
-                if (expandBtn) {
-                    const label = this.logExpanded ? this._label('ui.log.restore', 'Restore') : this._label('ui.log.expand', 'Expand');
-                    expandBtn.textContent = label;
-                    expandBtn.title = label;
-                    expandBtn.setAttribute('aria-label', label);
-                    expandBtn.classList?.toggle('active', Boolean(this.logExpanded));
-                    expandBtn.setAttribute('aria-pressed', String(Boolean(this.logExpanded)));
-                }
+                return YAW_LOG_VIEW.applyLayoutState(this);
             },
             toggleLogCollapsed() {
-                this.logCollapsed = !this.logCollapsed;
-                if (this.logCollapsed) this.logExpanded = false;
-                this.saveLogViewPreferences();
-                this.renderLog();
+                return YAW_LOG_VIEW.toggleCollapsed(this);
             },
             toggleLogExpanded() {
-                this.logExpanded = !this.logExpanded;
-                if (this.logExpanded) this.logCollapsed = false;
-                this.saveLogViewPreferences();
-                this.renderLog();
+                return YAW_LOG_VIEW.toggleExpanded(this);
             },
             setLogFilter(filter = 'all') {
-                this.logFilter = this._allowedLogFilters().includes(filter) ? filter : 'all';
-                this.saveLogViewPreferences();
-                this.renderLog();
+                return YAW_LOG_VIEW.setFilter(this, filter);
             },
             setLogSearch(value = '') {
-                this.logSearch = typeof value === 'string' ? value : '';
-                this.saveLogViewPreferences();
-                this.renderLog();
+                return YAW_LOG_VIEW.setSearch(this, value);
             },
             exportLog() {
-                const lines = this._filteredLogEntries().map((entry, index, arr) => {
-                    const indexFromEnd = arr.length - 1 - index;
-                    return `[${entry.type || 'discovery'} | ${this._logTimestamp(entry, indexFromEnd)}] ${entry.text}`;
-                });
-                const text = lines.join('\n');
-                if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && document?.createElement) {
-                    try {
-                        const blob = new Blob([text], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `combat-log-${Date.now()}.txt`;
-                        if (typeof a.click === 'function') a.click();
-                        URL.revokeObjectURL(url);
-                    } catch(e) {}
-                }
-                return text;
+                return YAW_LOG_VIEW.export(this);
             },
-	            renderLog() {
-	                const container = document.getElementById('log-content');
-                    const filtered = this._filteredLogEntries();
-	                const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => {
-                        const indexFromEnd = visibleIndex;
-                        const type = e.type || 'discovery';
-                        const meta = this._logCategoryMeta(type);
-	                    let cn = 'log-entry';
-	                    if (type) cn += ` ${type}`;
-	                    return `<div class="${cn}" role="status"><span class="log-time">${this._escapeHtml(this._logTimestamp(e, indexFromEnd))}</span><span class="log-category" aria-label="${this._escapeHtml(meta.label)}"><span aria-hidden="true">${this._escapeHtml(meta.icon)}</span> ${this._escapeHtml(meta.label)}</span>${this._escapeHtml(e.text)}</div>`;
-	                }).join('');
-	                if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${this._escapeHtml(this._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
-                    document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.logFilter === (this.logFilter || 'all'));
-                    });
-                    const search = document.getElementById('log-search');
-                    if (search && search.value !== (this.logSearch || '')) search.value = this.logSearch || '';
-	                const mobileLog = document.getElementById('mobile-log-summary');
-	                if (mobileLog) {
-	                    const latest = this.log[this.log.length - 1];
-	                    mobileLog.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
-	                }
-                    const collapsedSummary = document.getElementById('log-collapsed-summary');
-                    if (collapsedSummary) {
-                        const latest = this.log[this.log.length - 1];
-                        collapsedSummary.textContent = latest ? latest.text : this._label('ui.welcomeLog', 'Welcome to You Are Wild');
-                    }
-                    this._applyLogLayoutState();
-	            },
-            clearLog() { this.log = []; this.renderLog(); },
+		            renderLog() {
+		                return YAW_LOG_VIEW.render(this);
+		            },
+            clearLog() { return YAW_LOG_VIEW.clear(this); },
             search() {
                 this._advanceTime(1);
                 const tile = this._currentExplorationTile();

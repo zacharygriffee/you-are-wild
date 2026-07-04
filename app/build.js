@@ -25,6 +25,7 @@ const SCRIPT_ORDER = [
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',
   'src/core/center-context.js',
+  'src/core/log-view.js',
   'src/core/tile-event-feed.js',
   'src/core/structure-navigation.js',
   'src/core/sub-actions.js',

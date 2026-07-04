@@ -7619,7 +7619,7 @@
                     const targetClass = targetSelected ? ' primary' : '';
                     const actorPressed = selectedActors.includes(unit);
                     const targetPressed = targetSelected;
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, this._selectionControlAttrs('actor', actorPressed))}${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, this._selectionControlAttrs('target', targetPressed))}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Actor'), this._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, this._selectionControlAttrs('actor', actorPressed))}${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, this._selectionControlAttrs('target', targetPressed))}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
                 } else if (isParty && this.combatState.active) {
                     if (this.syncSelection?.active && this.syncSelection.phase === 'participants') {
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${this._syncParticipantButton(unit, true)}</div>`;
@@ -7708,8 +7708,8 @@
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = this._isExplorationTarget('party', this._unitSelectionId(unit)) ? ' primary' : '';
                     const targetKey = this._unitKey(unit);
-                    const actorLabel = this._escapeHtml(this._label('target.act', 'Act'));
-                    const actorTitle = this._escapeHtml(this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }));
+                    const actorLabel = this._escapeHtml(this._label('target.act', 'Actor'));
+                    const actorTitle = this._escapeHtml(this._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }));
                     const targetLabel = this._escapeHtml(this._targetMarkLabel());
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
                     const actorPressed = selectedActors.includes(unit);

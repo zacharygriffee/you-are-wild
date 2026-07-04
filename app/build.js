@@ -22,6 +22,7 @@ const SCRIPT_ORDER = [
   'src/core/storage-system.js',
   'src/core/world-state.js',
   'src/core/world-store.js',
+  'src/core/map-visuals.js',
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',
   'src/core/local-map.js',

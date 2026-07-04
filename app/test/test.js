@@ -123,6 +123,7 @@ section('Structure Tests', 'core');
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
+const mapVisualsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'map-visuals.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const localMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'local-map.js'), 'utf8');
@@ -1949,6 +1950,22 @@ test('Large map helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_LARGE_MAP.setZoom(this, delta)', 'App large map zoom should delegate to the helper');
 });
 
+test('Map visual helper module is registered before map surfaces and app code', () => {
+  assertContains(buildContent, "'src/core/map-visuals.js'", 'Map visual helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/map-visuals.js'") < buildContent.indexOf("'src/core/large-map.js'"), 'Map visual helper should load before large map helper');
+  assert(buildContent.indexOf("'src/core/map-visuals.js'") < buildContent.indexOf("'src/core/desktop-play-surface.js'"), 'Map visual helper should load before desktop traversal surface');
+  assert(buildContent.indexOf("'src/core/map-visuals.js'") < buildContent.indexOf("'src/core/local-map.js'"), 'Map visual helper should load before local map helper');
+  assert(buildContent.indexOf("'src/core/map-visuals.js'") < buildContent.indexOf("'src/core/app.js'"), 'Map visual helper should load before app.js');
+  assertContains(mapVisualsContent, 'const YAW_MAP_VISUALS = {', 'Map visual helper should expose the shared map visual service');
+  assertContains(mapVisualsContent, 'mapTileVisual(app, tile, options = {})', 'Map visual helper should own overworld tile visuals');
+  assertContains(mapVisualsContent, 'interiorTileVisual(app, room = null, options = {})', 'Map visual helper should own interior tile visuals');
+  assertContains(mapVisualsContent, 'mapTileAttrs(app, visual)', 'Map visual helper should own rendered tileset metadata attributes');
+  assertContains(mapVisualsContent, 'tileInfoHtml(app, tile = null)', 'Map visual helper should own current-tile info rendering');
+  assertContains(appContent, 'YAW_MAP_VISUALS.mapTileVisual(this, tile, options)', 'App map tile visual wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MAP_VISUALS.interiorTileVisual(this, room, options)', 'App interior tile visual wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MAP_VISUALS.renderTileInfo(this, tile)', 'App tile info renderer should delegate to the helper');
+});
+
 test('Desktop play surface helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/desktop-play-surface.js'", 'Desktop play surface helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/desktop-play-surface.js'") < buildContent.indexOf("'src/core/app.js'"), 'Desktop play surface helper should load before app.js');
@@ -3363,7 +3380,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

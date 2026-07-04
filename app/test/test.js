@@ -5391,6 +5391,25 @@ test('Marked multi-target stat gate preserves selections for correction', () => 
   assertContains(App.log[App.log.length - 1].text, 'Actor no puede manejar 2 objetivos con coquetear todavia.', 'Blocked marked multi-target action should localize the stat gate');
 });
 
+test('Marked target action rejects stale selected actors without falling back to player', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('Player', { id: 'player-1', Flir: 80, cha: 30 });
+  const target = makeUnit('Target', { id: 'target-a', CPle: 0, MPle: 100, wis: 1 });
+  App.player = player;
+  App.party = [player, target];
+  App.explorationActorIds = ['missing-actor'];
+  App.explorationActorId = 'missing-actor';
+  App.toggleExplorationTarget('party', 'target-a');
+
+  const resolved = App.resolveExplorationTargetAction('flirt', 'tease', 'panel-tray');
+
+  assertEqual(resolved, false, 'Marked target action should reject stale selected actors');
+  assertEqual(target.CPle, 0, 'Stale selected actor should not fall back to the player and mutate the target');
+  assertEqual(App.explorationActorIds.join(','), 'missing-actor', 'Rejected stale actor command should preserve selected actor ids for correction');
+  assertEqual(App.explorationTargetIds.join(','), 'party:target-a', 'Rejected stale actor command should preserve marked targets for correction');
+  assertContains(App.log[App.log.length - 1].text, 'Select a living actor before using flirt on marked targets.', 'Rejected stale actor command should explain the correction');
+});
+
 test('Capable actor can resolve one action across multiple exploration targets', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });

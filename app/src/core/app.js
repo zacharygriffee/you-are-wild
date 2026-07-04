@@ -4820,6 +4820,18 @@
                 this._renderInteractionState({ exploration: true, toolbelt: false });
             },
 
+            _reportInvalidExplorationActorSelection(action) {
+                this.log.push({
+                    text: this._label('target.invalidActorSelection', 'Select a living actor before using {action} on marked targets.', {
+                        action: this._uiLabel(action).toLowerCase()
+                    }),
+                    type: 'discovery'
+                });
+                this.renderLog();
+                this._renderInteractionState({ exploration: true, toolbelt: false });
+                return false;
+            },
+
             _renderExplorationTargetActions(source = 'sheet') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
@@ -4880,7 +4892,17 @@
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0) return false;
-                const actors = this._getExplorationActors();
+                const selectedActorIds = Array.isArray(this.explorationActorIds)
+                    ? this.explorationActorIds.map(id => String(id)).filter(Boolean)
+                    : [];
+                const actors = selectedActorIds.length > 0
+                    ? selectedActorIds
+                        .map(id => this.party.find(unit => this._unitSelectionId(unit) === id && this._isLivingCreature(unit)))
+                        .filter(Boolean)
+                    : this._getExplorationActors();
+                if (selectedActorIds.length > 0 && actors.length !== selectedActorIds.length) {
+                    return this._reportInvalidExplorationActorSelection(action);
+                }
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
                 const command = this._buildPanelInteractionCommand({
                     mode: 'adventure',

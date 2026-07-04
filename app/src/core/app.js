@@ -2288,93 +2288,59 @@
             },
 
             _currentBiomeId() {
-                const tile = this.worldMap?.get(`${this.location.x},${this.location.y}`);
-                return tile?.biome || this.currentBiome || null;
+                return YAW_COMBAT_RULES.currentBiomeId(this);
             },
 
             _isDenseForestBiome(biomeId = this._currentBiomeId()) {
-                return biomeId === 'forest' || biomeId === 'jungle' || biomeId === 'grove';
+                return YAW_COMBAT_RULES.isDenseForestBiome(biomeId);
             },
 
             _terrainSpeedModifier(unit, biomeId = this._currentBiomeId()) {
-                let mod = 0;
-                if (biomeId === 'water') mod += unit?.swimming ? 2 : -2;
-                if (this._isDenseForestBiome(biomeId)) mod -= 2;
-                return mod;
+                return YAW_COMBAT_RULES.terrainSpeedModifier(this, unit, biomeId);
             },
 
             _terrainConModifier(unit, biomeId = this._currentBiomeId()) {
-                return this._isDenseForestBiome(biomeId) ? 2 : 0;
+                return YAW_COMBAT_RULES.terrainConModifier(this, unit, biomeId);
             },
 
             _effectiveSpeed(unit) {
-                const frozenSlow = unit?.status?.freeze?.slowTurns > 0 ? -2 : 0;
-                return Math.max(1, (unit?.spd || 10) + this._terrainSpeedModifier(unit) + frozenSlow);
+                return YAW_COMBAT_RULES.effectiveSpeed(this, unit);
             },
 
             _effectiveCon(unit) {
-                return Math.max(1, (unit?.con || 10) + this._terrainConModifier(unit));
+                return YAW_COMBAT_RULES.effectiveCon(this, unit);
             },
 
             _safeRatio(current, max, fallback = 0) {
-                const numerator = Number(current);
-                const denominator = Number(max);
-                if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return fallback;
-                return numerator / denominator;
+                return YAW_COMBAT_RULES.safeRatio(current, max, fallback);
             },
 
             _defaultCombatRow(unit) {
-                return unit?.flying || unit?.ranged ? 'back' : 'front';
+                return YAW_COMBAT_RULES.defaultCombatRow(unit);
             },
 
             _assignCombatRows(units) {
-                for (const unit of units) {
-                    if (!unit || unit.CPun <= 0) continue;
-                    if (unit.combatRow !== 'front' && unit.combatRow !== 'back') {
-                        unit.combatRow = this._defaultCombatRow(unit);
-                    }
-                }
+                return YAW_COMBAT_RULES.assignCombatRows(this, units);
             },
 
             _isPhysicalCombatAction(action) {
-                return action === 'fight' || action === 'feast';
+                return YAW_COMBAT_RULES.isPhysicalCombatAction(action);
             },
 
             _canReachCombatTarget(actor, target, action = 'fight') {
-                if (!actor || !target || target.CPun <= 0) return false;
-                if (!this._isPhysicalCombatAction(action)) return true;
-                if (target.flying && !actor.flying && !actor.ranged && !actor.antiflying) return false;
-                if (target.combatRow !== 'back') return true;
-                return Boolean(actor.flying || actor.ranged || actor.antiflying);
+                return YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action);
             },
 
             _terrainCausesMiss(actor, target, action = 'fight') {
-                if (!this._isPhysicalCombatAction(action)) return false;
-                if (this._currentBiomeId() === 'cave'
-                    && !actor?.darkvision
-                    && this._combatStateRoll('combat-terrain-miss', actor, `${this._unitSelectionId(target)}:${action}`) < 0.5) {
-                    this.log.push({ text: `${actor.name} loses the target in the cave darkness!`, type: 'combat' });
-                    return true;
-                }
-                return false;
+                return YAW_COMBAT_RULES.terrainCausesMiss(this, actor, target, action);
             },
 
             _applyTerrainRoundEffects(living) {
-                if (this._currentBiomeId() !== 'swamp') return;
-                for (const unit of living) {
-                    if (!unit || unit.CPun <= 0 || unit.flying || unit.status?.stuck) continue;
-                    if (this._combatStateRoll('combat-terrain-stuck', unit, 'round-effect') < 0.2) {
-                        unit.status = unit.status || {};
-                        unit.status.stuck = { turns: 1 };
-                    }
-                }
+                return YAW_COMBAT_RULES.applyTerrainRoundEffects(this, living);
             },
 
             _physicalDamageMultiplier(actor, target) {
-                let mult = 1;
-                if (actor?.flying && target?.combatRow === 'back') mult += 0.2;
-                if (actor?.combatRow === 'back' && target?.combatRow === 'front' && (actor.ranged || actor.antiflying)) mult -= 0.1;
-                return Math.max(0.5, mult);
+                return YAW_COMBAT_RULES.physicalDamageMultiplier(this, actor, target);
             },
             _actionRatingFromRoll(entry, roll) {
                 if (entry > 55) return Math.round(entry + (roll * 21 - 10));

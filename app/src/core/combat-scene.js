@@ -52,6 +52,26 @@ const YAW_COMBAT_SCENE = {
             });
     },
 
+    selectedIntentEntry(app, actor = null) {
+        if (!app.targetSelection || app.targetSelection.source !== 'combat') return null;
+        const currentActor = actor || this.actor(app);
+        const actorId = currentActor ? app._unitSelectionId(currentActor) : '';
+        const selectionActorId = app.targetSelection.actorId;
+        if (selectionActorId && actorId && selectionActorId !== actorId && selectionActorId !== currentActor?.id && selectionActorId !== currentActor?.name) return null;
+        const action = app.targetSelection.action || 'action';
+        const actionLabel = app._uiLabel(action);
+        const actorName = currentActor?.name || app._label('ui.combat', 'Combat');
+        return {
+            action,
+            actionLabel,
+            actorName,
+            text: app._label('combat.exchange.selectedIntent', '{actor} selected {action}.', {
+                actor: actorName,
+                action: actionLabel
+            })
+        };
+    },
+
     sceneHtml(app, unit = null) {
         const actor = this.actor(app, unit);
         const turn = (app.combatState?.currentTurn ?? 0) + 1;
@@ -64,6 +84,10 @@ const YAW_COMBAT_SCENE = {
         const description = this.turnDescription(app, actor);
         const recent = this.recentExchangeEntries(app, 3);
         const pendingGroups = this.pendingGroupEntries(app);
+        const selectedIntent = this.selectedIntentEntry(app, actor);
+        const selectedIntentHtml = selectedIntent
+            ? `<div class="combat-selected-intent" aria-label="${app._escapeHtml(app._label('combat.exchange.selectedTitle', 'Selected intent'))}"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.selectedTitle', 'Selected intent'))}</div><span class="combat-exchange-actor">${app._escapeHtml(selectedIntent.actorName)}</span><span class="combat-exchange-intent">${app._escapeHtml(selectedIntent.actionLabel)}</span><span class="combat-exchange-text">${app._escapeHtml(selectedIntent.text)}</span></div>`
+            : '';
         const pendingHtml = pendingGroups.length
             ? `<div class="combat-pending-groups" aria-label="${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}</div>${pendingGroups.map(entry => `<div class="combat-pending-group"><span class="combat-exchange-intent">${app._escapeHtml(entry.action)}</span><span class="combat-exchange-text">${app._escapeHtml(entry.text)}</span></div>`).join('')}</div>`
             : '';
@@ -78,6 +102,7 @@ const YAW_COMBAT_SCENE = {
         return `<section class="combat-scene-summary" aria-label="${app._escapeHtml(app._label('combat.exchange.summary', 'Combat summary'))}">`
             + `<div class="combat-current-turn"><span>${app._escapeHtml(status)}</span><strong>${app._escapeHtml(actor?.name || app._label('ui.combat', 'Combat'))}</strong></div>`
             + `<p>${app._escapeHtml(description)}</p>`
+            + selectedIntentHtml
             + pendingHtml
             + `<div class="combat-recent-exchange"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}</div><ol>${recentHtml}</ol></div>`
             + `</section>`;

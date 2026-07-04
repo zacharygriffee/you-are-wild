@@ -2215,6 +2215,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
   assertContains(contentContent, "'combat.exchange.pendingTitle': 'Queued groups'", 'English queued group summary label missing');
   assertContains(contentContent, "'combat.exchange.pendingTitle': 'Grupos en cola'", 'Spanish queued group summary label missing');
+  assertContains(contentContent, "'combat.exchange.selectedTitle': 'Selected intent'", 'English selected intent summary label missing');
+  assertContains(contentContent, "'combat.exchange.selectedTitle': 'Intencion seleccionada'", 'Spanish selected intent summary label missing');
+  assertContains(contentContent, "'combat.exchange.selectedIntent': '{actor} selected {action}.'", 'English selected intent summary template missing');
+  assertContains(contentContent, "'combat.exchange.selectedIntent': '{actor} eligio {action}.'", 'Spanish selected intent summary template missing');
   assertContains(contentContent, "'combat.exchange.pendingGroup': '{participants} prepare {action} against {target}. Resolves at turn {order}.'", 'English queued group summary template missing');
   assertContains(contentContent, "'combat.exchange.pendingGroup': '{participants} preparan {action} contra {target}. Se resuelve en el turno {order}.'", 'Spanish queued group summary template missing');
   assertContains(contentContent, "'quest.previewTitle': 'Quest Preview'", 'English quest preview title missing');
@@ -2723,6 +2727,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
   assertContains(template, '.intent-menu-radial .mobile-context-menu-actions', 'radial intent menus should have dedicated mobile layout hooks');
   assertContains(template, '.combat-pending-groups', 'combat center should style queued group feedback');
+  assertContains(template, '.combat-selected-intent', 'combat center should style selected intent feedback');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
 });
@@ -8258,13 +8263,17 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.combatState.active = true;
   App.nextTurn = function() {};
   App.selectTarget('fight');
-  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'creature panel', 'Target picker should not replace center with target guidance');
+  let centerHtml = elements.get('scene-description')?.innerHTML || '';
+  assertNotContains(centerHtml, 'creature panel', 'Target picker should not replace center with target guidance');
+  assertContains(centerHtml, 'combat-selected-intent', 'Target picker should surface selected combat intent as passive center context');
+  assertContains(centerHtml, 'Selected intent', 'Target picker should label the selected intent summary');
+  assertContains(centerHtml, 'You selected Fight.', 'Target picker should summarize selected actor and action');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should execute selected action');
   assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as Fight target"', 'Target button should describe selected combat action');
   assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
   App.executeActionOnTarget('fight', 'enemy-1');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
-  const centerHtml = elements.get('scene-description')?.innerHTML || '';
+  centerHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(centerHtml, 'combat-scene-summary', 'Combat center should render a bounded current-exchange summary');
   assertContains(centerHtml, 'Recent exchange', 'Combat center should label recent combat feedback');
   assertContains(centerHtml, 'hit', 'Combat center should surface the resolved exchange text');

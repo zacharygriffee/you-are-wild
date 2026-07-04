@@ -8,6 +8,7 @@ const YAW_COMBAT_TARGETING = {
         const actor = app.activeActor || app.player;
         app.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
         app._clearCenterActionsForCombat();
+        app.renderCombatSceneForTurn(actor);
         app._renderInteractionState({ exploration: false, toolbelt: true });
     },
 

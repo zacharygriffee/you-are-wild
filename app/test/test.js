@@ -123,6 +123,7 @@ section('Structure Tests', 'core');
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
+const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
@@ -1326,6 +1327,14 @@ test('Storage helper module is registered before app code', () => {
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
   assertContains(appContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName)', 'App combat refresh write should delegate to storage helper with the requested slot');
   assertContains(appContent, 'YAW_STORAGE.readCombatRefreshSnapshot(this, slotName)', 'App combat refresh read should delegate to storage helper');
+});
+
+test('Combat scene helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-scene.js'", 'Combat scene helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-scene.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat scene helper should load before app.js');
+  assertContains(combatSceneContent, 'const YAW_COMBAT_SCENE = {', 'Combat scene helper should expose the combat scene service');
+  assertContains(appContent, 'YAW_COMBAT_SCENE.renderForTurn(this, unit)', 'App combat scene wrapper should delegate rendering to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SCENE.sceneHtml(this, unit)', 'App combat scene HTML wrapper should delegate to the helper');
 });
 
 test('App-emitted module hooks are declared by the module registry', () => {
@@ -2613,7 +2622,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

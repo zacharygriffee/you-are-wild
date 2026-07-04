@@ -7440,38 +7440,10 @@
                 return this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
             },
             _mobileCombatPrompt(actor = this._currentCombatActor()) {
-                if (!this.combatState?.active) return '';
-                if (actor && (actor === this.player || this.party.includes(actor))) {
-                    return this._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
-                }
-                if (actor) {
-                    return this._label('mobile.combat.enemyTurn', '{name} is acting.', { name: actor.name || this._label('ui.creatures', 'Creatures') });
-                }
-                return this._label('ui.chooseAction', 'Choose your next action.');
+                return YAW_MOBILE_COMBAT_TOOLBELT.prompt(this, actor);
             },
             renderMobileCombatToolbelt() {
-                const surface = document.getElementById('mobile-play-surface');
-                const belt = document.getElementById('mobile-combat-toolbelt');
-                const active = Boolean(this.combatState?.active);
-                if (surface?.classList) surface.classList.toggle('combat-active', active);
-                if (!belt) return '';
-                if (!active) {
-                    belt.className = 'mobile-combat-toolbelt';
-                    belt.innerHTML = '';
-                    return '';
-                }
-                const actor = this._currentCombatActor();
-                const round = this.combatState.round || 1;
-                const turn = (this.combatState.currentTurn ?? 0) + 1;
-                const total = Math.max(1, this.combatState.turnQueue?.length || 1);
-                const actorName = actor?.name || this._label('ui.creatures', 'Creatures');
-                const status = this._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
-                const title = this._label('mobile.combat.actor', '{name} to act', { name: actorName });
-                const prompt = this._mobileCombatPrompt(actor);
-                const html = `<div class="mobile-combat-status"><strong>${this._escapeHtml(title)}</strong><span>${this._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${this._escapeHtml(prompt)}</div>`;
-                belt.className = 'mobile-combat-toolbelt active';
-                belt.innerHTML = html;
-                return html;
+                return YAW_MOBILE_COMBAT_TOOLBELT.render(this);
             },
             _unitBarPercent(current, max) {
                 return YAW_UNIT_CARD_STATUS.barPercent(current, max);

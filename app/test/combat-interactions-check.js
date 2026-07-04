@@ -1192,6 +1192,40 @@ async function runContentSettingsBrowserFlow(page) {
   assert.strictEqual(state.adultToggleDisabled, true, 'Returning to safe tier should disable adult controls');
 }
 
+async function runIndexedDbNamespaceBrowserFlow(page) {
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+
+  let names = await browserDatabaseNames(page);
+  assert(names.includes('YAW_Modules'), 'Generated app boot should use the active YAW module database');
+  assert(names.includes('YAW_Saves'), 'Generated app boot should use the active YAW save database');
+  assert(!names.includes('FFFme_Modules'), 'Generated app boot should not recreate the legacy module database');
+  assert(!names.includes('FFF_Saves'), 'Generated app boot should not recreate the legacy save database');
+
+  await page.evaluate(async () => {
+    await MODULE_SYSTEM.init();
+    App.worldMeta = {
+      worldId: 'namespace-world',
+      seed: 'namespace-seed',
+      generatorVersion: 2,
+      mapModsHash: 'core'
+    };
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], items: [] }]]);
+    App.tileDeltas = new Map([['0,0', { explored: true, biome: 'grove', name: 'Namespace Test Grove' }]]);
+    await App.persistWorldStateToMapStore();
+    MODULE_SYSTEM.closeDatabase();
+  });
+
+  names = await browserDatabaseNames(page);
+  for (const activeName of ['YAW_Modules', 'YAW_Saves', 'YAW_Worlds']) {
+    assert(names.includes(activeName), `Generated app should use active IndexedDB namespace ${activeName}`);
+  }
+  for (const legacyName of ['FFFme_Modules', 'FFF_Saves']) {
+    assert(!names.includes(legacyName), `Generated app should not recreate legacy IndexedDB namespace ${legacyName}`);
+  }
+}
+
 async function runMalformedSaveMetadataBrowserFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
@@ -1301,6 +1335,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runRadialIntentSubActionPresentationFlow(page);
     await runMobileSelectionAndCombatFlow(page);
     await runContentSettingsBrowserFlow(page);
+    await runIndexedDbNamespaceBrowserFlow(page);
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

@@ -8151,7 +8151,7 @@
                         }
                         html += '</div>';
                     }
-                    const containers = [document.getElementById('mini-map'), document.getElementById('mobile-mini-map')].filter(Boolean);
+                    const containers = [document.getElementById('mobile-mini-map')].filter(Boolean);
                     containers.forEach(container => { container.innerHTML = html; });
                     const coords = document.getElementById('coords');
                     if (coords) coords.textContent = `Inside ${this.activeInterior.structureName}`;
@@ -8200,7 +8200,7 @@
 	                    }
 	                    html += '</div>';
 	                }
-	                const containers = [document.getElementById('mini-map'), document.getElementById('mobile-mini-map')].filter(Boolean);
+		                const containers = [document.getElementById('mobile-mini-map')].filter(Boolean);
 	                containers.forEach(container => { container.innerHTML = html; });
                     const mobileCoords = document.getElementById('mobile-coords');
                     if (mobileCoords) mobileCoords.textContent = `${cx}, ${cy}`;
@@ -9370,6 +9370,10 @@
                 if (!panel) return;
                 const isMobile = window.innerWidth <= 1024;
                 if (!isMobile) {
+                    if (p === 'map') {
+                        this.toggleDesktopMapPanel(panel);
+                        return;
+                    }
                     this.focusDesktopPanel(p);
                     return;
                 }
@@ -9377,6 +9381,13 @@
                 document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(p => p.classList.remove('active'));
                 if (!wasActive) panel.classList.add('active');
                 this.syncPanelBackdrop();
+            },
+            toggleDesktopMapPanel(panel) {
+                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('nav-focus'));
+                const isActive = panel.classList.toggle('active');
+                if (!isActive) return;
+                if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+                try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
             },
             focusDesktopPanel(p) {
                 const panel = document.getElementById('panel-' + p);

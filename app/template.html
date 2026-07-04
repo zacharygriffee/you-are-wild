@@ -233,8 +233,8 @@
         .stage {
             grid-area: stage;
             display: grid;
-            grid-template-columns: 220px 1fr 280px 280px;
-            grid-template-areas: "map main party enemies";
+            grid-template-columns: minmax(520px, 1fr) 260px 260px;
+            grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
             overflow: hidden;
@@ -283,6 +283,20 @@
         /* Map Panel */
         .panel-map {
             grid-area: map;
+            display: none;
+            position: fixed;
+            top: calc(60px + var(--space-md));
+            left: var(--space-md);
+            right: var(--space-md);
+            bottom: calc(140px + var(--space-md));
+            width: min(900px, calc(100vw - (var(--space-md) * 2)));
+            margin: 0 auto;
+            z-index: 180;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .panel-map.active {
+            display: flex;
         }
 
         .mini-map {
@@ -1881,13 +1895,13 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: 180px 1fr 240px 240px;
+                grid-template-columns: minmax(480px, 1fr) 240px 240px;
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: 160px 1fr 200px 200px;
+                grid-template-columns: minmax(420px, 1fr) 220px 220px;
             }
         }
 
@@ -1956,6 +1970,7 @@
             .panel-map,
             .panel-party,
             .panel-enemies {
+                display: flex;
                 position: fixed;
                 top: 60px;
                 left: 8px;
@@ -1988,6 +2003,9 @@
 
             .panel-map {
                 grid-area: auto;
+                width: auto;
+                margin: 0;
+                box-shadow: none;
             }
 
             .panel-party {
@@ -2913,15 +2931,13 @@
             <div class="stage">
                 <!-- Map Panel -->
                 <div class="panel panel-map" id="panel-map">
-                    <div class="panel-header">
-                        <span>🗺️ <span data-i18n="ui.map">Map</span></span>
-                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
-                    </div>
-                    <div class="panel-content">
-                        <div class="mini-map" id="mini-map">
-                        <!-- Populated by App.renderMap() -->
-                    </div>
-                    <div class="tile-info" id="tile-info" aria-live="polite" style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);font-size:12px;line-height:1.5;color:var(--text-secondary);">
+	                    <div class="panel-header">
+	                        <span>🗺️ <span data-i18n="ui.map">Map</span></span>
+	                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
+	                        <button class="nav-btn" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
+	                    </div>
+	                    <div class="panel-content">
+	                    <div class="tile-info" id="tile-info" aria-live="polite" style="padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);font-size:12px;line-height:1.5;color:var(--text-secondary);">
                         <!-- Populated by App.renderMap() -->
                     </div>
                     <div class="large-map-wrap">

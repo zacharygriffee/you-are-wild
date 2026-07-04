@@ -2040,6 +2040,7 @@ test('Mobile panels and actions expose map party and enemies', () => {
 
 test('Desktop panel navigation focuses existing panels instead of no-oping', () => {
   assertContains(appContent, 'focusDesktopPanel(p)', 'desktop panel navigation should call a focus helper');
+  assertContains(appContent, 'toggleDesktopMapPanel(panel)', 'desktop map navigation should toggle the map overlay');
   assertContains(appContent, 'scrollIntoView({', 'desktop panel navigation should scroll the panel into view');
   assertContains(appContent, "classList.remove('nav-focus')", 'desktop panel navigation should clear stale focus highlights');
   assertContains(template, '.panel.nav-focus', 'desktop panel navigation should expose a visual focus state');
@@ -2105,6 +2106,11 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, '.desktop-play-cell-content::before', 'desktop center content should use spacer centering instead of clipping-prone vertical centering');
   assertContains(template, 'justify-content: flex-start;', 'desktop center content should start tall content at the top for predictable scrolling');
   assertContains(template, 'overflow-wrap: anywhere;', 'desktop center text should wrap instead of forcing horizontal overflow');
+  assertContains(template, 'grid-template-areas: "main party enemies";', 'desktop stage should reserve columns for main play and actor panels only');
+  assertContains(template, 'grid-template-columns: minmax(520px, 1fr) 260px 260px;', 'desktop stage should not reserve a permanent left map column');
+  assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
+  assertNotContains(template, 'id="mini-map"', 'desktop should not render a duplicate minimap now that movement lives in the center play surface');
+  assertNotContains(appContent, "document.getElementById('mini-map')", 'renderMap should not target the removed desktop minimap');
 });
 
 test('Large map discovery surface exists', () => {
@@ -2116,6 +2122,7 @@ test('Large map discovery surface exists', () => {
   assertContains(template, 'App.recenterLargeMap()', 'Large map recenter control missing');
   assertContains(template, '.large-map-tile', 'Large map tile styles missing');
   assertContains(appContent, 'renderLargeMap()', 'Large map renderer missing');
+  assertContains(appContent, 'toggleDesktopMapPanel(panel)', 'Large map should be toggleable from desktop navigation');
 });
 
 test('Action icon labels and legend styles exist', () => {
@@ -5976,8 +5983,8 @@ test('Minimap resolves adjacent tile biomes without exploring them', () => {
   assert(adjacentTile, 'Adjacent minimap tile should be resolved into worldMap');
   assertEqual(App.exploredTiles.has('1,0'), false, 'Resolved adjacent tile should not be marked explored');
   const adjacentBiome = App.biomes[adjacentTile.biome];
-  assertContains(elements.get('mini-map').innerHTML, adjacentBiome.icon, 'Adjacent tile biome icon should render on minimap');
-  assertContains(elements.get('mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
+  assertContains(elements.get('mobile-mini-map').innerHTML, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile minimap');
+  assertContains(elements.get('mobile-mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
 });
 
 test('Map tile visuals expose tileset keys while preserving base biome identity', () => {
@@ -6048,10 +6055,10 @@ test('Map tile visuals expose tileset keys while preserving base biome identity'
   App.exploredTiles = new Set(['0,0', '1,0', '0,1']);
   App.renderMap();
   App.renderLargeMap();
-  assertContains(elements.get('mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Minimap should infer route shape from known neighbors');
-  assertContains(elements.get('mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Minimap should render base terrain tileset keys');
-  assertContains(elements.get('mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Minimap should expose fallback asset manifest ids when the basic sheet lacks a key');
-  assertContains(elements.get('mini-map').innerHTML, 'data-asset-fallback="emoji"', 'Minimap should expose fallback rendering mode');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-tileset-key="route-road-end"', 'Mobile minimap should infer route shape from known neighbors');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-base-tileset-key="terrain-forest"', 'Mobile minimap should render base terrain tileset keys');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-asset-id="core-emoji-fallback:route-road-end"', 'Mobile minimap should expose fallback asset manifest ids when the basic sheet lacks a key');
+  assertContains(elements.get('mobile-mini-map').innerHTML, 'data-asset-fallback="emoji"', 'Mobile minimap should expose fallback rendering mode');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="route-bridge-horizontal"', 'Large map should render bridge tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-tileset-key="structure-camp"', 'Large map should render structure tileset keys');
   assertContains(elements.get('large-map').innerHTML, 'data-asset-id="default-basic-tileset:structure-camp"', 'Large map should expose bundled basic structure asset ids');
@@ -6134,13 +6141,13 @@ test('Interior map visuals expose tileset metadata for rooms exits and features'
   };
   App.interiorLocation = { x: 0, y: 0 };
   App.renderMap();
-  const html = elements.get('mini-map').innerHTML;
-  assertContains(html, 'data-tileset-key="interior-exit"', 'Rendered interior minimap should expose exit tileset key');
-  assertContains(html, 'data-asset-id="default-basic-tileset:interior-exit"', 'Rendered interior minimap should expose bundled basic exit asset id');
-  assertContains(html, 'data-tileset-key="structure-camp"', 'Rendered interior minimap should expose feature tileset key');
-  assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior minimap should expose cave room tileset key');
-  assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior minimap should expose wall tileset key for missing rooms');
-  assertContains(html, 'data-map-kind="interior-exit"', 'Rendered interior minimap should expose interior map kind');
+  const html = elements.get('mobile-mini-map').innerHTML;
+  assertContains(html, 'data-tileset-key="interior-exit"', 'Rendered interior mobile minimap should expose exit tileset key');
+  assertContains(html, 'data-asset-id="default-basic-tileset:interior-exit"', 'Rendered interior mobile minimap should expose bundled basic exit asset id');
+  assertContains(html, 'data-tileset-key="structure-camp"', 'Rendered interior mobile minimap should expose feature tileset key');
+  assertContains(html, 'data-tileset-key="interior-cave-room"', 'Rendered interior mobile minimap should expose cave room tileset key');
+  assertContains(html, 'data-tileset-key="interior-wall"', 'Rendered interior mobile minimap should expose wall tileset key for missing rooms');
+  assertContains(html, 'data-map-kind="interior-exit"', 'Rendered interior mobile minimap should expose interior map kind');
 });
 
 test('Super-patch generation uses seeded region biomes only', () => {
@@ -6781,10 +6788,10 @@ test('Night map visibility shrinks unless the party has darkvision', () => {
   farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
-  assertNotContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Far explored tile should be hidden by night visibility');
+  assertNotContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Far explored tile should be hidden by night visibility');
   App.player.darkvision = true;
   App.renderMap();
-  assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Darkvision should restore full minimap visibility');
+  assertContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Darkvision should restore full minimap visibility');
 });
 
 test('Scout party role improves night map visibility', () => {
@@ -6803,7 +6810,7 @@ test('Scout party role improves night map visibility', () => {
   farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
-  assertContains(elements.get('mini-map').innerHTML, App.biomes.cave.icon, 'Scout role should recover one tile of night visibility');
+  assertContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Scout role should recover one tile of night visibility');
 });
 
 test('Diurnal creatures spawned at night start asleep', () => {

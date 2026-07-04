@@ -229,8 +229,8 @@ const MODULE_SYSTEM = {
 
     _assertModuleCodeSyntax(code, moduleId = 'module') {
         try {
-            new Function('sandbox', `
-                with(sandbox) {
+            new Function('runtimeContext', `
+                with(runtimeContext) {
                     ${code}
                 }
             `);
@@ -612,8 +612,8 @@ const MODULE_SYSTEM = {
                 this.unloadModule(module.id);
             }
 
-            // Create sandboxed context
-            const sandbox = {
+            // Create the trusted-local module runtime context. This is not a security boundary.
+            const runtimeContext = {
                 MODS: this.createModAPI(module.id, module.manifest),
                 console: window.console,
                 setTimeout: window.setTimeout,
@@ -630,19 +630,19 @@ const MODULE_SYSTEM = {
                 Boolean: window.Boolean
             };
             
-            // Execute module code in sandbox
-            const fn = new Function('sandbox', `
-                with(sandbox) {
+            // Execute module code in the trusted-local runtime context.
+            const fn = new Function('runtimeContext', `
+                with(runtimeContext) {
                     ${module.code}
                 }
             `);
             
             this.loadingModuleId = module.id;
-            fn(sandbox);
+            fn(runtimeContext);
             
             this.activeModules.set(module.id, {
                 ...module,
-                sandbox
+                runtimeContext
             });
             
             console.log(`Module loaded: ${module.manifest.name}`);

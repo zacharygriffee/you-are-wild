@@ -1885,6 +1885,11 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(moduleSystemContent, "'world:add_biome'", 'Module biome mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_species'", 'Module species mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_item'", 'Module item mutation permission should be explicit');
+  assertContains(moduleSystemContent, 'TRUST_BOUNDARY', 'Module trust boundary should be explicit in source');
+  assertContains(moduleSystemContent, 'trusted-local', 'Module trust boundary should be named trusted-local');
+  assertContains(moduleSystemContent, 'trusted-local module runtime context', 'Module execution wording should describe a trusted-local runtime context');
+  assertContains(moduleSystemContent, 'not a security boundary', 'Module execution wording should avoid implying isolation');
+  assertNotContains(moduleSystemContent.toLowerCase(), 'sandbox', 'Module system should not describe trusted-local execution as a sandbox');
   assertContains(modUiContent, "permissions: ['world:add_biome', 'content:add_species']", 'Example biome module should declare required mutation permissions');
   assertContains(modUiContent, "this.escapeHtml(manifest.name", 'Mod names should be escaped before rendering');
   assertContains(modUiContent, "this.escapeHtml(manifest.description", 'Mod descriptions should be escaped before rendering');

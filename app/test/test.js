@@ -140,6 +140,7 @@ const actionRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ru
 const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species-system.js'), 'utf8');
 const unitLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-lifecycle.js'), 'utf8');
 const unitContainersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containers.js'), 'utf8');
+const unitContainmentContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containment.js'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
@@ -1711,6 +1712,21 @@ test('Unit container helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_UNIT_CONTAINERS.capacity(unit, container)', 'App capacity wrapper should delegate to unit containers');
   assertContains(appContent, 'YAW_UNIT_CONTAINERS.canFit(predator, prey, container)', 'App fit wrapper should delegate to unit containers');
   assertContains(appContent, 'YAW_UNIT_CONTAINERS.failureMessage(this, actor, target, container)', 'App capacity failure wrapper should delegate to unit containers');
+});
+
+test('Unit containment helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/unit-containment.js'", 'Unit containment helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/unit-containers.js'") < buildContent.indexOf("'src/core/unit-containment.js'"), 'Unit containment should load after unit containers');
+  assert(buildContent.indexOf("'src/core/unit-containment.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit containment helper should load before app.js');
+  assertContains(unitContainmentContent, 'const YAW_UNIT_CONTAINMENT = {', 'Unit containment helper should expose the containment service');
+  assertContains(unitContainmentContent, 'createPrey(app, target, extra = {})', 'Unit containment helper should own contained-unit snapshots');
+  assertContains(unitContainmentContent, 'emptyStatDrain()', 'Unit containment helper should own stat drain defaults');
+  assertContains(unitContainmentContent, 'containerConfigs()', 'Unit containment helper should own containment processing configs');
+  assertContains(unitContainmentContent, 'processContainer(app, unit, config)', 'Unit containment helper should own per-container tick processing');
+  assertContains(unitContainmentContent, "MODULE_SYSTEM.executeHook('onDigestionTick'", 'Unit containment helper should preserve module tick hooks');
+  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.createPrey(this, target, extra)', 'App contained-unit wrapper should delegate to unit containment');
+  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.processContainer(this, unit, config)', 'App container processing wrapper should delegate to unit containment');
+  assertContains(appContent, 'YAW_UNIT_CONTAINMENT.process(this, unit)', 'App containment processing wrapper should delegate to unit containment');
 });
 
 test('Time system helper module is registered before app code', () => {
@@ -3721,7 +3737,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -4083,14 +4099,14 @@ test('Feast lifecycle state machine exists', () => {
   assertContains(appContent, '_digestionContainerConfigs', '_digestionContainerConfigs missing');
   assertContains(appContent, '_processDigestionContainer', '_processDigestionContainer missing');
   assertContains(appContent, '_emptyStatDrain', '_emptyStatDrain missing');
-  assertContains(appContent, "digestionState:", 'digestionState field missing');
-  assertContains(appContent, "digestionProgress:", 'digestionProgress field missing');
-  assertContains(appContent, "statDrain:", 'statDrain field missing');
-  assertContains(appContent, "inStomach:", 'inStomach field missing');
-  assertContains(appContent, "inWomb:", 'inWomb field missing');
-  assertContains(appContent, "inCock:", 'inCock field missing');
-  assertContains(appContent, "willingSacrifice:", 'willingSacrifice field missing');
-  assertContains(appContent, "forcedFed:", 'forcedFed field missing');
+  assertContains(unitContainmentContent, "digestionState:", 'digestionState field missing');
+  assertContains(unitContainmentContent, "digestionProgress:", 'digestionProgress field missing');
+  assertContains(unitContainmentContent, "statDrain:", 'statDrain field missing');
+  assertContains(unitContainmentContent, "inStomach:", 'inStomach field missing');
+  assertContains(unitContainmentContent, "inWomb:", 'inWomb field missing');
+  assertContains(unitContainmentContent, "inCock:", 'inCock field missing');
+  assertContains(unitContainmentContent, "willingSacrifice:", 'willingSacrifice field missing');
+  assertContains(unitContainmentContent, "forcedFed:", 'forcedFed field missing');
 });
 
 test('New creature properties exist', () => {

@@ -326,20 +326,10 @@
                 return YAW_INTERACTION_DISPATCH.dispatchAdventure(this, command);
             },
             _clearTransientInteractionState() {
-                this.targetSelection = null;
-                this.syncSelection = null;
-                this.feedSelection = null;
-                this._syncSelected = [];
-                this._syncParticipants = null;
-                this._syncType = null;
+                return YAW_INTERACTION_STATE.clearTransient(this);
             },
             _renderInteractionState(options = {}) {
-                const includeExploration = options.exploration ?? !this.combatState?.active;
-                const includeToolbelt = options.toolbelt ?? Boolean(this.combatState?.active);
-                this.renderParty();
-                this.renderCreatures();
-                if (includeExploration) this.renderExplorationActions();
-                if (includeToolbelt) this.renderMobileCombatToolbelt();
+                return YAW_INTERACTION_STATE.render(this, options);
             },
             _panelInteractionTrayTitle(mode) {
                 return YAW_PANEL_INTERACTIONS.title(this, mode);
@@ -351,29 +341,13 @@
                 return YAW_PANEL_INTERACTIONS.combat(this);
             },
             _syncSelectedParticipants() {
-                if (!this.syncSelection?.active) return [];
-                const ids = this.syncSelection.participantIds || [];
-                return ids.map(id => this.party.find(unit => this._unitSelectionId(unit) === id || unit.id === id || unit.name === id)).filter(Boolean);
+                return YAW_INTERACTION_STATE.syncSelectedParticipants(this);
             },
             _isSyncParticipant(unit) {
-                if (!unit || !this.syncSelection?.active) return false;
-                const id = this._unitSelectionId(unit);
-                return (this.syncSelection.participantIds || []).includes(id);
+                return YAW_INTERACTION_STATE.isSyncParticipant(this, unit);
             },
             _toggleSyncParticipantById(id) {
-                if (!this.syncSelection?.active || this.syncSelection.phase !== 'participants') return false;
-                const participantIds = this.syncSelection.participantIds || [];
-                const actorId = this.syncSelection.actorId;
-                if (id === actorId) return false;
-                this.syncSelection.participantIds = participantIds.includes(id)
-                    ? participantIds.filter(existing => existing !== id)
-                    : [...participantIds, id];
-                this._syncSelected = this.syncSelection.participantIds
-                    .map(pid => this.party.find(unit => this._unitSelectionId(unit) === pid))
-                    .map(unit => this.party.indexOf(unit))
-                    .filter(index => index >= 0);
-                this._renderInteractionState({ exploration: false, toolbelt: true });
-                return true;
+                return YAW_INTERACTION_STATE.toggleSyncParticipantById(this, id);
             },
             _syncParticipantButton(unit, compact = false) {
                 return YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact);

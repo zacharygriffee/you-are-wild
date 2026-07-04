@@ -7877,32 +7877,11 @@
                 return YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId);
             },
             handleTouchStart(e) {
-                this._touchStartX = e.changedTouches[0].screenX;
-                this._touchStartY = e.changedTouches[0].screenY;
+                return YAW_MOBILE_GESTURES.handleTouchStart(this, e);
             },
             handleTouchEnd(e) {
-                const endX = e.changedTouches[0].screenX;
-                const endY = e.changedTouches[0].screenY;
-                const dx = endX - this._touchStartX;
-                const dy = endY - this._touchStartY;
-                if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
-                if (window.innerWidth > 1024) return;
-                const mapP = document.getElementById('panel-map');
-                const partyP = document.getElementById('panel-party');
-                const enemiesP = document.getElementById('panel-enemies');
-                this._haptic(6);
-                if (dx > 0) {
-                    if (partyP && partyP.classList.contains('active')) partyP.classList.remove('active');
-                    else if (enemiesP && enemiesP.classList.contains('active')) enemiesP.classList.remove('active');
-                    else if (mapP && !mapP.classList.contains('active')) mapP.classList.add('active');
-	                } else {
-	                    if (mapP && mapP.classList.contains('active')) mapP.classList.remove('active');
-	                    else if (partyP && !partyP.classList.contains('active')) partyP.classList.add('active');
-	                    else if (partyP && partyP.classList.contains('active') && enemiesP) { partyP.classList.remove('active'); enemiesP.classList.add('active'); }
-	                    else if (enemiesP && enemiesP.classList.contains('active')) enemiesP.classList.remove('active');
-	                }
-	                this.syncPanelBackdrop();
-	            },
+                return YAW_MOBILE_GESTURES.handleTouchEnd(this, e);
+            },
 
             // ===== SAVE / LOAD =====
             _saveSlotNames() {

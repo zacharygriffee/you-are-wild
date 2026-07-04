@@ -1782,11 +1782,15 @@ test('Mobile gesture helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-gestures.js'", 'Mobile gesture helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-gestures.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile gesture helper should load before app.js');
   assertContains(mobileGesturesContent, 'const YAW_MOBILE_GESTURES = {', 'Mobile gesture helper should expose the gesture service');
+  assertContains(mobileGesturesContent, 'handleTouchStart(app, event)', 'Mobile gesture helper should own swipe start');
+  assertContains(mobileGesturesContent, 'handleTouchEnd(app, event)', 'Mobile gesture helper should own swipe completion');
   assertContains(mobileGesturesContent, 'handleMapTouchStart(app, event)', 'Mobile gesture helper should own pinch start');
   assertContains(mobileGesturesContent, 'handleMapTouchMove(app, event)', 'Mobile gesture helper should own pinch movement');
   assertContains(mobileGesturesContent, 'startCreaturePress(app, targetId)', 'Mobile gesture helper should own creature long-press timers');
   assertContains(mobileGesturesContent, 'startPartyPress(app, index)', 'Mobile gesture helper should own party long-press timers');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.haptic(pattern)', 'App haptic wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchStart(this, e)', 'App swipe start wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchEnd(this, e)', 'App swipe end wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchStart(this, e)', 'App map touch start wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchMove(this, e)', 'App map touch move wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.startCreaturePress(this, targetId)', 'App creature long-press wrapper should delegate to the helper');
@@ -3160,6 +3164,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const elements = new Map();
   const body = makeElement();
   const listeners = new Map();
+  const appWindow = options.window || {};
   const document = {
     body,
     activeElement: body,
@@ -3170,6 +3175,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     getElementById(id) {
       if (!elements.has(id)) elements.set(id, makeElement());
       return elements.get(id);
+    },
+    querySelector(selector) {
+      return options.querySelector ? options.querySelector(selector, elements) : null;
     },
     querySelectorAll(selector) {
       return options.querySelectorAll ? options.querySelectorAll(selector, elements) : [];
@@ -3212,7 +3220,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     }
   };
   const App = appFactory(
-    {},
+    appWindow,
     document,
     localStorage,
     {
@@ -3280,7 +3288,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem };
+  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, window: appWindow };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -12301,10 +12309,34 @@ test('Mobile map pinch changes zoom and applies transform', () => {
   assertEqual(App._pinchStartDistance, 0, 'Pinch end should clear gesture distance');
 });
 
+test('Mobile swipe gestures toggle panels and backdrop', () => {
+  const panelIds = ['panel-map', 'panel-party', 'panel-enemies'];
+  const { App, elements, window: appWindow } = loadAppForCombat(() => 0.5, {
+    querySelector(selector, elements) {
+      if (selector !== '.panel-map.active, .panel-party.active, .panel-enemies.active') return null;
+      return panelIds.map(id => elements.get(id)).find(panel => panel && panel.classList.contains('active')) || null;
+    }
+  });
+  appWindow.innerWidth = 390;
+  panelIds.concat('panel-backdrop').forEach(id => elements.set(id, makeElement()));
+  App._haptic = pattern => { App.__lastHaptic = pattern; };
+
+  App.handleTouchStart({ changedTouches: [{ screenX: 0, screenY: 0 }] });
+  App.handleTouchEnd({ changedTouches: [{ screenX: 80, screenY: 4 }] });
+  assertEqual(elements.get('panel-map').classList.contains('active'), true, 'Right swipe should open the mobile map panel');
+  assertEqual(elements.get('panel-backdrop').classList.contains('active'), true, 'Swipe-opened panel should sync the backdrop');
+  assertEqual(App.__lastHaptic, 6, 'Swipe should trigger light haptic feedback');
+
+  App.handleTouchStart({ changedTouches: [{ screenX: 100, screenY: 0 }] });
+  App.handleTouchEnd({ changedTouches: [{ screenX: 20, screenY: 0 }] });
+  assertEqual(elements.get('panel-map').classList.contains('active'), false, 'Left swipe should close the open map panel');
+  assertEqual(elements.get('panel-backdrop').classList.contains('active'), false, 'Swipe-closed panel should clear the backdrop');
+});
+
 test('Mobile gesture helpers include haptic feedback hooks', () => {
   assertContains(mobileGesturesContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
   assertContains(mobileGesturesContent, 'app._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
-  assertContains(appContent, 'this._haptic(6)', 'Swipe gestures should trigger haptic feedback');
+  assertContains(mobileGesturesContent, 'app._haptic(6)', 'Swipe gestures should trigger haptic feedback');
 });
 
 // === SUMMARY ===

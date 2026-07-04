@@ -128,6 +128,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
+const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species-system.js'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
@@ -3137,15 +3138,24 @@ test('Action icon labels and legend styles exist', () => {
 test('Default species canon is sapient and person-like', () => {
   assertContains(appContent, 'DEFAULT_SPECIES_CANON:', 'Default species canon missing');
   assertContains(appContent, 'SPECIES_CANON:', 'Species canon registry missing');
-  assertContains(appContent, "_applySpeciesCanon(unit)", 'Species canon should normalize units');
+  assertContains(appContent, 'YAW_SPECIES_SYSTEM.applyCanon(this, unit)', 'App species canon wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SPECIES_SYSTEM.hasBaselineInteractionEligibility(this, unit, interaction)', 'App baseline eligibility wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SPECIES_SYSTEM.baseStats(sid)', 'App base stat wrapper should delegate to the helper');
+  assertContains(speciesSystemContent, 'const YAW_SPECIES_SYSTEM = {', 'Species system helper should expose the species service');
+  assertContains(speciesSystemContent, 'applyCanon(app, unit)', 'Species system helper should normalize units');
   assertContains(appContent, 'interactionEligibility:', 'Species canon should include interaction eligibility metadata');
-  assertContains(appContent, '_hasBaselineInteractionEligibility', 'Baseline interaction should be gated by species canon');
-  assertContains(appContent, "baselineInteraction === 'sapient'", 'Baseline interaction eligibility should require sapient canon metadata');
+  assertContains(speciesSystemContent, 'hasBaselineInteractionEligibility(app, unit, interaction = \'social\')', 'Baseline interaction should be gated by species canon');
+  assertContains(speciesSystemContent, "baselineInteraction === 'sapient'", 'Baseline interaction eligibility should require sapient canon metadata');
   assertContains(appContent, "name: 'Wolfkin'", 'Wolf default display should read as folk/kin');
   assertContains(appContent, "name: 'Bunnyfolk'", 'Bunny default display should read as folk/kin');
   assertContains(appContent, "name: 'Mousefolk'", 'Mouse default display should read as folk/kin');
   assertNotContains(appContent, "bodyPlan: 'animal'", 'Default species should not be classified as ordinary animals');
   assertNotContains(appContent, "sapience: 'animal'", 'Default species should not use animal sapience');
+});
+
+test('Species system helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/species-system.js'", 'Species system helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/species-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Species system helper should load before app.js');
 });
 
 // === COMBAT BEHAVIOR TESTS ===
@@ -3238,7 +3248,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

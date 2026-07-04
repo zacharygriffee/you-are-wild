@@ -27,6 +27,7 @@ const SCRIPT_ORDER = [
   'src/core/center-context.js',
   'src/core/sub-actions.js',
   'src/core/action-ui.js',
+  'src/core/species-system.js',
   'src/core/time-system.js',
   'src/core/interaction-dispatch.js',
   'src/core/interaction-state.js',

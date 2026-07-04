@@ -2014,9 +2014,12 @@ test('Combat actor state helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-actor-state.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat actor state helper should load before app.js');
   assertContains(combatActorStateContent, 'const YAW_COMBAT_ACTOR_STATE = {', 'Combat actor state helper should expose the actor-state service');
   assertContains(combatActorStateContent, 'current(app)', 'Combat actor state helper should own current turn actor lookup');
+  assertContains(combatActorStateContent, 'sanitize(app, options = {})', 'Combat actor state helper should own combat queue sanitization');
+  assertContains(combatActorStateContent, 'app.combatState.syncActions = (app.combatState.syncActions || []).map', 'Combat actor state helper should repair sync actions during sanitization');
   assertContains(combatActorStateContent, 'isCurrent(app, unit)', 'Combat actor state helper should own current actor comparisons');
   assertContains(combatActorStateContent, 'mobilePrompt(app, actor = app._currentCombatActor())', 'Combat actor state helper should own mobile prompt coordination');
   assertContains(combatActorStateContent, 'YAW_MOBILE_COMBAT_TOOLBELT.prompt(app, actor)', 'Combat actor state helper should reuse the mobile combat toolbelt prompt renderer');
+  assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.sanitize(this, options)', 'App combat state sanitizer wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.current(this)', 'App current combat actor wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.isCurrent(this, unit)', 'App current combat actor comparison wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.mobilePrompt(this, actor)', 'App mobile combat prompt wrapper should delegate to the helper');

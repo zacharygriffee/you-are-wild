@@ -1110,33 +1110,7 @@
                 return YAW_UNIT_LIFECYCLE.isCombatQueueUnitValid(this, unit);
             },
             _sanitizeCombatState(options = {}) {
-                if (!this.combatState?.active) return false;
-                const preserveTurn = options.preserveTurn !== false;
-                const previousUnit = this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
-                const validQueue = (this.combatState.turnQueue || [])
-                    .filter(entry => entry && this._isCombatQueueUnitValid(entry.unit));
-                this.combatState.turnQueue = validQueue;
-                this.combatState.syncActions = (this.combatState.syncActions || []).map(sync => {
-                    const participants = (sync.participants || []).filter(unit => this._isCombatQueueUnitValid(unit) && (this.party || []).includes(unit));
-                    const target = this._isCombatQueueUnitValid(sync.target) && sync.target?.disposition === this.DISPOSITION.ENEMY ? sync.target : null;
-                    return { ...sync, participants, target };
-                }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved);
-                if (validQueue.length === 0) {
-                    this.combatState.currentTurn = 0;
-                    this.activeActor = null;
-                } else if (preserveTurn && previousUnit) {
-                    const nextIndex = validQueue.findIndex(entry => entry.unit === previousUnit);
-                    this.combatState.currentTurn = nextIndex >= 0
-                        ? nextIndex
-                        : Math.min(Math.max(0, this.combatState.currentTurn || 0), validQueue.length - 1);
-                } else {
-                    this.combatState.currentTurn = Math.min(Math.max(0, this.combatState.currentTurn || 0), validQueue.length - 1);
-                }
-                this.mode = this.GAME_MODE.COMBAT;
-                const current = validQueue[this.combatState.currentTurn]?.unit || null;
-                if (current) this.activeActor = current;
-                else if (!this._isCombatQueueUnitValid(this.activeActor)) this.activeActor = null;
-                return true;
+                return YAW_COMBAT_ACTOR_STATE.sanitize(this, options);
             },
             _tileCreatures(list = []) {
                 return YAW_UNIT_LIFECYCLE.tileCreatures(this, list);

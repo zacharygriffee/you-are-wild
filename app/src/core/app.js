@@ -6954,14 +6954,7 @@
                 this.endCombat(true);
             },
             clearAllData() {
-                return this.showConfirmDialog({
-                    title: this._label('settings.title', 'Settings'),
-                    message: this._label('settings.confirmClearAllData', 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?'),
-                    confirmLabel: this._label('settings.clearAllSaves', 'Clear All Saves'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    danger: true,
-                    onConfirm: () => this._clearAllDataConfirmed()
-                });
+                return YAW_SETTINGS_DATA_FLOW.clearAllData(this);
             },
             _deleteDatabase(dbName) {
                 return YAW_STORAGE.deleteDatabase(dbName);
@@ -6981,76 +6974,13 @@
                 }
             },
             async _clearAllDataConfirmed() {
-                try {
-                    for (let i = 1; i <= 5; i++) {
-                        const slotName = 'slot' + i;
-                        await this._dbDelete('saves', slotName).catch(e => console.warn(`Failed to delete ${slotName}`, e));
-                        this._removeSaveTime(slotName);
-                        this._clearCombatRefreshSnapshot(slotName);
-                    }
-                    this._removeStoredValue('lastSlot');
-                    this._removeStoredValue('lastSaveTime');
-                    this._removeStoredValue('hasPlayed');
-                    this._removeStoredValue('tutorialComplete');
-                    this._removeStoredValue('settings');
-                    this._removeStoredValue('contentPrefs');
-                    this._removeStoredValue('logView');
-
-                    const currentDbNames = [
-                        this._moduleDbName(),
-                        this.SAVE_DB_NAME,
-                        this.WORLD_DB_NAME
-                    ];
-                    const legacyDbNames = [
-                        this._legacyModuleDbName(),
-                        this.LEGACY_SAVE_DB_NAME
-                    ];
-                    this._closeModuleDatabase();
-                    await Promise.all([
-                        ...currentDbNames.map(dbName => this._deleteDatabase(dbName)),
-                        ...legacyDbNames.map(dbName => this._deleteLegacyDatabase(dbName))
-                    ]);
-                    const continueButton = document.getElementById('menu-continue');
-                    if (continueButton) continueButton.style.display = 'none';
-                    alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
-                    this._reloadPage();
-                    return true;
-                } catch (e) {
-                    console.error('Clear all data failed:', e);
-                    alert(this._label('settings.clearAllDataFailed', 'Failed to clear all data: {message}', { message: e.message || e }));
-                    return false;
-                }
+                return YAW_SETTINGS_DATA_FLOW.clearAllDataConfirmed(this);
             },
             async deleteAllSaves() {
-                return this.showConfirmDialog({
-                    title: this._label('settings.clearAllSaves', 'Clear All Saves'),
-                    message: this._label('save.confirmDeleteAll', 'Delete ALL save data? This cannot be undone!'),
-                    confirmLabel: this._label('settings.clearAllSaves', 'Clear All Saves'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    danger: true,
-                    onConfirm: () => this._deleteAllSavesConfirmed()
-                });
+                return YAW_SETTINGS_DATA_FLOW.deleteAllSaves(this);
             },
             async _deleteAllSavesConfirmed() {
-                try {
-	                    for (let i = 1; i <= 5; i++) {
-	                        await this._dbDelete('saves', 'slot' + i);
-	                        this._removeSaveTime('slot' + i);
-	                        this._clearCombatRefreshSnapshot('slot' + i);
-	                    }
-                    this._removeStoredValue('lastSlot');
-                    this._removeStoredValue('lastSaveTime');
-                    this._removeStoredValue('hasPlayed');
-                    this.activeSlot = 'slot1';
-                    await this.refreshContinueButton();
-                    alert(this._label('save.success.deletedAll', 'All saves deleted.'));
-                    if (document.getElementById('save-manager')?.classList.contains('active')) {
-                        this.renderSaveManager();
-                    }
-                    this._reloadPage();
-                } catch (e) {
-                    alert(this._label('save.error.deleteAllFailed', 'Delete saves failed: {message}', { message: e.message }));
-                }
+                return YAW_SETTINGS_DATA_FLOW.deleteAllSavesConfirmed(this);
             },
             selectEncounterPreference(val) { this.setEncounterPreferencePreset(val); },
             updateTierButtons() {

@@ -157,6 +157,7 @@ const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const dialogFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8');
+const settingsDataFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-data-flow.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
@@ -1918,6 +1919,23 @@ test('Dialog flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DIALOG_FLOW.resolveSaveRecovery(this, action, fallbackSlotName, fallbackSaveData)', 'App save-recovery resolver should delegate to the helper');
 });
 
+test('Settings data flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/settings-data-flow.js'", 'Settings data flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/settings-data-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Settings data flow helper should load before app.js');
+  assertContains(settingsDataFlowContent, 'const YAW_SETTINGS_DATA_FLOW = {', 'Settings data flow helper should expose the cleanup service');
+  assertContains(settingsDataFlowContent, 'currentDatabaseNames(app)', 'Settings cleanup should declare active database names in one helper');
+  assertContains(settingsDataFlowContent, 'app.SAVE_DB_NAME', 'Settings cleanup should delete the active YAW save database through app constants');
+  assertContains(settingsDataFlowContent, 'app.WORLD_DB_NAME', 'Settings cleanup should delete the active YAW world database through app constants');
+  assertContains(settingsDataFlowContent, 'legacyDatabaseNames(app)', 'Settings cleanup should isolate legacy database cleanup');
+  assertContains(settingsDataFlowContent, 'app._deleteLegacyDatabase(dbName)', 'Legacy database cleanup should remain existence-gated');
+  assertContains(settingsDataFlowContent, 'clearAllData(app)', 'Settings cleanup should own clear-all confirmation flow');
+  assertContains(settingsDataFlowContent, 'deleteAllSaves(app)', 'Settings cleanup should own delete-all-saves confirmation flow');
+  assertContains(appContent, 'YAW_SETTINGS_DATA_FLOW.clearAllData(this)', 'App clear-all wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_DATA_FLOW.clearAllDataConfirmed(this)', 'App clear-all confirmation wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_DATA_FLOW.deleteAllSaves(this)', 'App delete-all wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_DATA_FLOW.deleteAllSavesConfirmed(this)', 'App delete-all confirmation wrapper should delegate to the helper');
+});
+
 test('Large map helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/large-map.js'", 'Large map helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/large-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Large map helper should load before app.js');
@@ -2647,14 +2665,14 @@ test('Scene description supports rich bounded content', () => {
 test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(template, 'App.deleteAllSaves()', 'settings clear saves button should call deleteAllSaves');
   assertContains(appContent, 'async deleteAllSaves()', 'deleteAllSaves handler missing');
-  assertContains(appContent, 'this._reloadPage()', 'deleteAllSaves should refresh UI after clearing saves');
+  assertContains(settingsDataFlowContent, 'app._reloadPage()', 'deleteAllSaves should refresh UI after clearing saves');
   assertContains(storageSystemContent, 'location.reload()', 'storage helper should perform page reload');
-  assertContains(appContent, "this._label('save.confirmDeleteAll'", 'deleteAllSaves warning should come from localized copy');
-  assertContains(appContent, "this._label('save.success.deletedAll'", 'deleteAllSaves success alert should come from localized copy');
-  assertContains(appContent, "this._label('save.error.deleteAllFailed'", 'deleteAllSaves failure alert should come from localized copy');
-  assertContains(appContent, "this._label('settings.confirmClearAllData'", 'clearAllData warning should come from localized copy');
-  assertContains(appContent, "this._label('settings.clearAllDataDone'", 'clearAllData success alert should come from localized copy');
-  assertContains(appContent, "this._label('settings.clearAllDataFailed'", 'clearAllData failure alert should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('save.confirmDeleteAll'", 'deleteAllSaves warning should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('save.success.deletedAll'", 'deleteAllSaves success alert should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('save.error.deleteAllFailed'", 'deleteAllSaves failure alert should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('settings.confirmClearAllData'", 'clearAllData warning should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('settings.clearAllDataDone'", 'clearAllData success alert should come from localized copy');
+  assertContains(settingsDataFlowContent, "app._label('settings.clearAllDataFailed'", 'clearAllData failure alert should come from localized copy');
 });
 
 test('Mod manager UI uses localized safe rendering for module metadata', () => {
@@ -3282,7 +3300,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

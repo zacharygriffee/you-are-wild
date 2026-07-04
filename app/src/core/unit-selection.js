@@ -61,6 +61,12 @@ const YAW_UNIT_SELECTION = {
         return app._label('unit.cardFocus', 'Focus {name} card', { name: unit?.name || 'unit' });
     },
 
+    focusAttrs(app, unit, expanded = false) {
+        const focusTitle = app._escapeHtml(this.focusLabel(app, unit));
+        const state = expanded ? 'expanded' : 'collapsed';
+        return `role="button" tabindex="0" data-card-purpose="focus-toggle" data-card-state="${state}" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${expanded ? 'true' : 'false'}"`;
+    },
+
     chips(app, unit, type) {
         const chips = this.roles(app, unit, type).map(role => {
             const safeLabel = app._escapeHtml(this.roleLabel(app, role));

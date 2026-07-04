@@ -7595,14 +7595,15 @@
             _unitSelectionRoleLabel(role) {
                 return YAW_UNIT_SELECTION.roleLabel(this, role);
             },
-            _unitCardFocusLabel(unit) {
-                return YAW_UNIT_SELECTION.focusLabel(this, unit);
+            _unitCardFocusAttrs(unit, expanded = false) {
+                return YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded);
             },
             _unitSelectionChips(unit, type) {
                 return YAW_UNIT_SELECTION.chips(this, unit, type);
             },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';
+                const isExpanded = unit.expanded || false;
                 const isParty = type === 'party';
                 const isCorpse = !isParty && this._isCorpse(unit);
                 const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
@@ -7678,8 +7679,7 @@
                     : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
                 const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${this._unitSelectionClass(unit, type)}`;
                 const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
-                const focusTitle = this._escapeHtml(this._unitCardFocusLabel(unit));
-                return `<div class="${chipClass}" role="button" tabindex="0" data-card-purpose="focus-toggle" title="${focusTitle}" aria-label="${focusTitle}" onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
+                return `<div class="${chipClass}" ${this._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
                     <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
@@ -7845,8 +7845,7 @@
                 const cardContextMenuAttr = cardCanOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
                     : '';
-                const focusTitle = this._escapeHtml(this._unitCardFocusLabel(unit));
-                return `<div class="${cardClass}" role="button" tabindex="0" data-card-purpose="focus-toggle" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${isExpanded ? 'true' : 'false'}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+                return `<div class="${cardClass}" ${this._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">

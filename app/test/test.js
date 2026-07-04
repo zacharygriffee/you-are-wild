@@ -1349,7 +1349,9 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/unit-selection.js'", 'Unit selection helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/unit-selection.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit selection helper should load before app.js');
   assertContains(unitSelectionContent, 'const YAW_UNIT_SELECTION = {', 'Unit selection helper should expose the selection service');
+  assertContains(unitSelectionContent, 'focusAttrs(app, unit, expanded = false)', 'Unit selection helper should own focus-toggle semantics');
   assertContains(appContent, 'YAW_UNIT_SELECTION.roles(this, unit, type)', 'App unit selection role wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded)', 'App unit focus wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.controlAttrs(this, kind, active)', 'App selection control wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.chips(this, unit, type)', 'App selection chip wrapper should delegate to the helper');
 });
@@ -10089,7 +10091,9 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
 
   assertContains(playerCard, 'data-card-purpose="focus-toggle"', 'Desktop card container should identify click/keyboard behavior as focus/detail toggling');
+  assertContains(playerCard, 'data-card-state="collapsed"', 'Desktop card should expose collapsed focus/detail state separately from selection state');
   assertContains(playerCard, 'aria-label="Focus You card"', 'Desktop card container should keep focus copy separate from actor selection');
+  assertContains(playerCard, 'aria-expanded="false"', 'Desktop collapsed card should expose collapsed detail state');
   assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Unselected party actor control should expose false pressed state');
   assertContains(playerCard, 'data-selection-mode="act-actor" data-selection-state="available"', 'Actor control should expose its act-actor mode and available state');
   assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
@@ -10104,12 +10108,22 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(mobilePlayerChip, 'data-card-purpose="focus-toggle"', 'Mobile chip container should identify click/keyboard behavior as focus/detail toggling');
+  assertContains(mobilePlayerChip, 'data-card-state="collapsed"', 'Mobile chip should expose collapsed focus/detail state separately from selection state');
+  assertContains(mobilePlayerChip, 'aria-expanded="false"', 'Mobile collapsed chip should expose collapsed detail state');
   assertContains(mobilePlayerChip, 'data-selection-control="actor" aria-pressed="false"', 'Mobile Act control should expose actor pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available"', 'Mobile Act control should expose act-actor mode');
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
   assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature Mark control should expose mark-target mode');
+
+  player.expanded = true;
+  const expandedPlayerCard = App.renderUnitCard(player, 0, 'party');
+  const expandedMobilePlayerChip = App.renderMobileUnitChip(player, 0, 'party');
+  assertContains(expandedPlayerCard, 'data-card-state="expanded"', 'Desktop expanded card should expose expanded focus/detail state');
+  assertContains(expandedPlayerCard, 'aria-expanded="true"', 'Desktop expanded card should expose expanded detail state');
+  assertContains(expandedMobilePlayerChip, 'data-card-state="expanded"', 'Mobile expanded chip should expose expanded focus/detail state');
+  assertContains(expandedMobilePlayerChip, 'aria-expanded="true"', 'Mobile expanded chip should expose expanded detail state');
 
   App.combatState.active = true;
   App.activeActor = player;

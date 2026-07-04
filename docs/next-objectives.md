@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Build:** 361/361 tests pass, 11/11 lint modules clean, viewport smoke checks pass, dist fresh
-- **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), modular JS source in `app/src/`, template shell in `app/template.html`
+- **Build:** 613/613 tests pass, 92/92 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
+- **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 92-script modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
 - **Automation:** Repo-owned auto-agent lanes live in `.auto-agent/lanes.json`, with human guidance in `docs/AUTO-AGENT-LANES.md`; validate from the auto-agent repo with `node src/cli.js process validate-lane-map --target /home/zevilz/work/porn`
@@ -389,4 +389,4 @@ app/
 
 ---
 
-*Generated 2026-07-01. If you have questions, check the source in `src/core/app.js` and `src/core/content-system.js` before asking. The README at `README.md` has the build commands.*
+*Generated 2026-07-04. If you have questions, check the source in `src/core/app.js` and `src/core/content-system.js` before asking. The README at `README.md` has the build commands.*

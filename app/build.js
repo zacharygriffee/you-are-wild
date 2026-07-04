@@ -51,6 +51,7 @@ const SCRIPT_ORDER = [
   'src/core/unit-selection.js',
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',
+  'src/core/mobile-gestures.js',
   'src/core/mobile-context-menu.js',
   'src/core/save-manager.js',
   'src/core/save-persistence.js',

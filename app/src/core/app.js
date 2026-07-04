@@ -7699,59 +7699,34 @@
                 return YAW_PANEL_SHELL.syncBackdrop(this);
             },
             _haptic(pattern = 12) {
-                if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                    try { navigator.vibrate(pattern); } catch(e) {}
-                }
+                return YAW_MOBILE_GESTURES.haptic(pattern);
             },
             _touchDistance(touches) {
-                if (!touches || touches.length < 2) return 0;
-                const dx = touches[0].screenX - touches[1].screenX;
-                const dy = touches[0].screenY - touches[1].screenY;
-                return Math.sqrt(dx * dx + dy * dy);
+                return YAW_MOBILE_GESTURES.touchDistance(touches);
             },
             handleMapTouchStart(e) {
-                if (!e.touches || e.touches.length < 2) return;
-                this._pinchStartDistance = this._touchDistance(e.touches);
-                this._pinchStartZoom = this.mobileMapZoom || 1;
+                return YAW_MOBILE_GESTURES.handleMapTouchStart(this, e);
             },
             handleMapTouchMove(e) {
-                if (!e.touches || e.touches.length < 2 || !this._pinchStartDistance) return;
-                if (typeof e.preventDefault === 'function') e.preventDefault();
-                const distance = this._touchDistance(e.touches);
-                const nextZoom = Math.max(0.75, Math.min(1.8, this._pinchStartZoom * (distance / this._pinchStartDistance)));
-                this.mobileMapZoom = Math.round(nextZoom * 100) / 100;
-                this.applyMobileMapZoom();
+                return YAW_MOBILE_GESTURES.handleMapTouchMove(this, e);
             },
             handleMapTouchEnd() {
-                this._pinchStartDistance = 0;
+                return YAW_MOBILE_GESTURES.handleMapTouchEnd(this);
             },
             applyMobileMapZoom() {
-                const map = document.getElementById('mobile-mini-map');
-                if (map) map.style.transform = `scale(${this.mobileMapZoom || 1})`;
+                return YAW_MOBILE_GESTURES.applyMobileMapZoom(this);
             },
             startMobileCreaturePress(e, targetId) {
-                this.cancelMobileCreaturePress();
-                this._mobilePressTargetId = targetId;
-                this._mobilePressTimer = setTimeout(() => {
-                    this._haptic([12, 20, 12]);
-                    this.showMobileCreatureContext(targetId);
-                }, 500);
+                return YAW_MOBILE_GESTURES.startCreaturePress(this, targetId);
             },
             cancelMobileCreaturePress() {
-                if (this._mobilePressTimer) clearTimeout(this._mobilePressTimer);
-                this._mobilePressTimer = null;
+                return YAW_MOBILE_GESTURES.cancelCreaturePress(this);
             },
             startMobilePartyPress(e, index) {
-                this.cancelMobilePartyPress();
-                this._mobilePartyPressIndex = index;
-                this._mobilePartyPressTimer = setTimeout(() => {
-                    this._haptic([12, 20, 12]);
-                    this.showMobilePartyContext(index);
-                }, 500);
+                return YAW_MOBILE_GESTURES.startPartyPress(this, index);
             },
             cancelMobilePartyPress() {
-                if (this._mobilePartyPressTimer) clearTimeout(this._mobilePartyPressTimer);
-                this._mobilePartyPressTimer = null;
+                return YAW_MOBILE_GESTURES.cancelPartyPress(this);
             },
             _intentCommand(type, targetRef, action, subAction = null, source = 'sheet') {
                 return YAW_INTERACTION_DISPATCH.intentCommand(this, type, targetRef, action, subAction, source);

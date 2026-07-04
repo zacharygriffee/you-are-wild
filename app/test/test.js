@@ -152,6 +152,7 @@ const panelShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-shel
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
+const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
 const savePersistenceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-persistence.js'), 'utf8');
@@ -1777,6 +1778,21 @@ test('Mobile context menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId)', 'App mobile creature context actions should delegate to the helper');
 });
 
+test('Mobile gesture helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/mobile-gestures.js'", 'Mobile gesture helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/mobile-gestures.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile gesture helper should load before app.js');
+  assertContains(mobileGesturesContent, 'const YAW_MOBILE_GESTURES = {', 'Mobile gesture helper should expose the gesture service');
+  assertContains(mobileGesturesContent, 'handleMapTouchStart(app, event)', 'Mobile gesture helper should own pinch start');
+  assertContains(mobileGesturesContent, 'handleMapTouchMove(app, event)', 'Mobile gesture helper should own pinch movement');
+  assertContains(mobileGesturesContent, 'startCreaturePress(app, targetId)', 'Mobile gesture helper should own creature long-press timers');
+  assertContains(mobileGesturesContent, 'startPartyPress(app, index)', 'Mobile gesture helper should own party long-press timers');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.haptic(pattern)', 'App haptic wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchStart(this, e)', 'App map touch start wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchMove(this, e)', 'App map touch move wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.startCreaturePress(this, targetId)', 'App creature long-press wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_GESTURES.startPartyPress(this, index)', 'App party long-press wrapper should delegate to the helper');
+});
+
 test('Panel shell helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/panel-shell.js'", 'Panel shell helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/panel-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel shell helper should load before app.js');
@@ -3183,7 +3199,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -12286,8 +12302,8 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 });
 
 test('Mobile gesture helpers include haptic feedback hooks', () => {
-  assertContains(appContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
-  assertContains(appContent, 'this._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
+  assertContains(mobileGesturesContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
+  assertContains(mobileGesturesContent, 'app._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
   assertContains(appContent, 'this._haptic(6)', 'Swipe gestures should trigger haptic feedback');
 });
 

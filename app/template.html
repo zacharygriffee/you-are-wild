@@ -709,6 +709,98 @@
             white-space: nowrap;
         }
 
+        .combat-scene-summary {
+            width: 100%;
+            max-width: 720px;
+            display: grid;
+            gap: var(--space-sm);
+            text-align: left;
+            color: var(--text-secondary);
+        }
+
+        .combat-current-turn {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: var(--space-xs) var(--space-md);
+            padding: 8px 10px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.6);
+            font-size: 12px;
+        }
+
+        .combat-current-turn strong {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .combat-recent-exchange {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(20, 20, 40, 0.55);
+            padding: 10px;
+            max-height: min(24dvh, 180px);
+            overflow: auto;
+            overscroll-behavior: contain;
+        }
+
+        .combat-exchange-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .combat-recent-exchange ol {
+            list-style: none;
+            display: grid;
+            gap: 6px;
+        }
+
+        .combat-exchange-item {
+            display: grid;
+            grid-template-columns: auto auto minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 6px;
+            padding: 5px 6px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.025);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .combat-exchange-item.muted {
+            grid-template-columns: minmax(0, 1fr);
+            color: var(--text-muted);
+        }
+
+        .combat-exchange-actor {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .combat-exchange-intent {
+            color: var(--accent-primary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .combat-exchange-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .combat-exchange-time {
+            color: var(--text-muted);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
         .party-stats-view {
             width: min(100%, 720px);
             max-height: min(72dvh, 680px);

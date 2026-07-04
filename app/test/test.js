@@ -7933,6 +7933,12 @@ test('Combat target selection is rendered on creature panel cards', () => {
   assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
   App.executeActionOnTarget('fight', 'enemy-1');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
+  const centerHtml = elements.get('scene-description')?.innerHTML || '';
+  assertContains(centerHtml, 'combat-scene-summary', 'Combat center should render a bounded current-exchange summary');
+  assertContains(centerHtml, 'Recent exchange', 'Combat center should label recent combat feedback');
+  assertContains(centerHtml, 'hit', 'Combat center should surface the resolved exchange text');
+  assertNotContains(centerHtml, 'executeActionOnTarget', 'Combat center summary should not duplicate target controls');
+  assertNotContains(centerHtml, 'executeCombatIntent', 'Combat center summary should not duplicate actor intent controls');
 });
 
 test('Mobile combat toolbelt promotes enemy and party strips during targeting', () => {

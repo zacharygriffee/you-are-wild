@@ -234,9 +234,18 @@ async function clickIntentAndTarget(page, action) {
 async function runActionMatrix(page) {
   await setupCombat(page);
   await clickIntentAndTarget(page, 'fight');
-  let state = await page.evaluate(() => ({ enemyPun: App.creatures[0]?.CPun, targetSelection: App.targetSelection }));
+  let state = await page.evaluate(() => ({
+    enemyPun: App.creatures[0]?.CPun,
+    targetSelection: App.targetSelection,
+    centerSummary: Boolean(document.querySelector('#desktop-play-cell-center .combat-scene-summary')),
+    recentExchange: document.querySelector('#desktop-play-cell-center .combat-recent-exchange')?.textContent || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
   assert(state.enemyPun < 100, 'Fight should damage a reachable enemy through panel clicks');
   assert.strictEqual(state.targetSelection, null, 'Fight should clear target selection after resolving');
+  assert.strictEqual(state.centerSummary, true, 'Combat center should render current-exchange feedback after a panel action');
+  assert(state.recentExchange.includes('hit') || state.recentExchange.includes('miss'), 'Combat center should surface the resolved exchange text');
+  assert.strictEqual(state.centerHasActorControls, false, 'Combat center feedback should not duplicate actor or target controls');
 
   await setupCombat(page);
   await clickIntentAndTarget(page, 'flirt');

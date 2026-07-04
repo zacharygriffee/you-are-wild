@@ -3295,7 +3295,7 @@
                     if (currentUnit.CPun <= 0) { this._pushLog(`${currentUnit.name} succumbs to the envelopment!`, 'combat', { actor: currentUnit, phase: 'status' }); }
                     this.renderLog(); this.nextTurn(); return;
                 }
-                document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${currentUnit.name}'s turn`;
+                this.renderCombatSceneForTurn(currentUnit);
                 this.renderParty();
                 this.renderCreatures();
                 this.renderMobileCombatToolbelt();
@@ -3431,9 +3431,71 @@
             showActorActions(actor) {
                 this._clearTransientInteractionState();
                 this.activeActor = actor || this.player;
+                this.renderCombatSceneForTurn(this.activeActor);
                 const actions = document.getElementById('scene-actions');
                 if (actions) actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor);
                 this._renderInteractionState({ exploration: false, toolbelt: true });
+            },
+
+            _combatTurnTitle(unit = null) {
+                const actor = unit || this._currentCombatActor() || this.activeActor || this.player;
+                return `Round ${this.combatState?.round || 1} - ${actor?.name || this._label('ui.combat', 'Combat')}'s turn`;
+            },
+            _combatTurnDescription(unit = null) {
+                const actor = unit || this._currentCombatActor() || this.activeActor || this.player;
+                const isPartyTurn = actor && (actor === this.player || this.party.includes(actor));
+                return isPartyTurn
+                    ? this._label('ui.chooseAction', 'Choose your next action.')
+                    : this._label('ui.actorActing', '{name} is acting...', { name: actor?.name || this._label('ui.creatures', 'Creatures') });
+            },
+            _recentCombatExchangeEntries(limit = 3) {
+                const entries = Array.isArray(this.log) ? this.log : [];
+                return entries
+                    .filter(entry => entry && entry.type === 'combat' && entry.text && entry.phase !== 'start')
+                    .slice(-Math.max(1, limit));
+            },
+            _combatSceneHtml(unit = null) {
+                const actor = unit || this._currentCombatActor() || this.activeActor || this.player;
+                const turn = (this.combatState?.currentTurn ?? 0) + 1;
+                const total = Math.max(1, this.combatState?.turnQueue?.length || 1);
+                const status = this._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', {
+                    round: this.combatState?.round || 1,
+                    turn,
+                    total
+                });
+                const description = this._combatTurnDescription(actor);
+                const recent = this._recentCombatExchangeEntries(3);
+                const recentHtml = recent.length
+                    ? recent.map(entry => {
+                        const actorName = entry.actorName ? `<span class="combat-exchange-actor">${this._escapeHtml(entry.actorName)}</span>` : '';
+                        const action = entry.action ? `<span class="combat-exchange-intent">${this._escapeHtml(this._uiLabel(entry.action))}</span>` : '';
+                        const stamp = this._logTimestamp(entry);
+                        return `<li class="combat-exchange-item">${actorName}${action}<span class="combat-exchange-text">${this._escapeHtml(entry.text)}</span><span class="combat-exchange-time">${this._escapeHtml(stamp)}</span></li>`;
+                    }).join('')
+                    : `<li class="combat-exchange-item muted"><span class="combat-exchange-text">${this._escapeHtml(this._label('combat.exchange.none', 'No exchanges yet.'))}</span></li>`;
+                return `<section class="combat-scene-summary" aria-label="${this._escapeHtml(this._label('combat.exchange.summary', 'Combat summary'))}">`
+                    + `<div class="combat-current-turn"><span>${this._escapeHtml(status)}</span><strong>${this._escapeHtml(actor?.name || this._label('ui.combat', 'Combat'))}</strong></div>`
+                    + `<p>${this._escapeHtml(description)}</p>`
+                    + `<div class="combat-recent-exchange"><div class="combat-exchange-title">${this._escapeHtml(this._label('combat.exchange.recent', 'Recent exchange'))}</div><ol>${recentHtml}</ol></div>`
+                    + `</section>`;
+            },
+            renderCombatSceneForTurn(unit = null) {
+                if (!this.combatState?.active) return false;
+                const title = this._combatTurnTitle(unit);
+                const html = this._combatSceneHtml(unit);
+                const textDescription = this._combatTurnDescription(unit);
+                const titleEl = document.getElementById('scene-title');
+                const descEl = document.getElementById('scene-description');
+                const mobileTitle = document.getElementById('mobile-scene-title');
+                const mobileDesc = document.getElementById('mobile-scene-description');
+                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
+                if (titleEl) titleEl.textContent = title;
+                if (descEl) descEl.innerHTML = html;
+                if (mobileTitle) mobileTitle.textContent = title;
+                if (mobileDesc) mobileDesc.innerHTML = html;
+                if (mobileSheet) mobileSheet.classList.remove('rich-content');
+                this.renderTileEvents();
+                return textDescription;
             },
 
             // ===== ACTION TARGETING =====
@@ -3627,6 +3689,7 @@
                     }
                     this._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
                     this._emitCombatAction(action, actor, target, result);
+                    this.renderCombatSceneForTurn(actor);
                     this.renderLog();
                     this.renderCreatures();
                     this.renderParty();
@@ -8518,6 +8581,7 @@
 		                const mobileCombat = document.getElementById('mobile-combat-actions');
 		                const mobileExplore = document.getElementById('mobile-explore-actions');
 	                if (inCombat) {
+                        this.renderCombatSceneForTurn(this.activeActor || this._currentCombatActor());
 	                    if (actions) {
 	                        actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor || this._currentCombatActor());
 	                    }
@@ -8563,18 +8627,10 @@
                         const entry = this.combatState.turnQueue?.[this.combatState.currentTurn];
                         const unit = entry?.unit;
                         if (unit) {
-                            document.getElementById('scene-title').textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            const turnDescription = unit === this.player || this.party.includes(unit)
-                                ? this._label('ui.chooseAction', 'Choose your next action.')
-                                : this._label('ui.actorActing', '{name} is acting...', { name: unit.name });
-                            document.getElementById('scene-description').innerHTML = `<p>${this._escapeHtml(turnDescription)}</p>`;
                             const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
-                            const mobileTitle = document.getElementById('mobile-scene-title');
-                            const mobileDesc = document.getElementById('mobile-scene-description');
                             const actions = document.getElementById('scene-actions');
                             if (mobileSheet) mobileSheet.classList.remove('rich-content');
-                            if (mobileTitle) mobileTitle.textContent = `Round ${this.combatState.round} - ${unit.name}'s turn`;
-                            if (mobileDesc) mobileDesc.textContent = turnDescription;
+                            this.renderCombatSceneForTurn(unit);
                             if (actions?.dataset?.richHidden) {
                                 delete actions.dataset.richHidden;
                                 actions.style.display = '';
@@ -10622,11 +10678,7 @@
                 }
                 this.activeActor = unit;
                 const isPartyTurn = unit === this.player || this.party.includes(unit);
-                const turnTitle = `Round ${this.combatState.round || 1} - ${unit.name}'s turn`;
-                const turnDescription = isPartyTurn
-                    ? this._label('ui.chooseAction', 'Choose your next action.')
-                    : this._label('ui.actorActing', '{name} is acting...', { name: unit.name });
-                this.updateScene(turnTitle, turnDescription, true);
+                this.renderCombatSceneForTurn(unit);
                 this.renderParty();
                 this.renderCreatures();
                 this.renderMobileCombatToolbelt();

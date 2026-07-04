@@ -125,6 +125,7 @@ const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
+const tileResourcesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-resources.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
@@ -1956,6 +1957,23 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
 });
 
+test('Tile resource helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/tile-resources.js'", 'Tile resource helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/tile-resources.js'") < buildContent.indexOf("'src/core/app.js'"), 'Tile resource helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/tile-resources.js'") < buildContent.indexOf("'src/core/center-context.js'"), 'Tile resource helper should load before center context');
+  assertContains(tileResourcesContent, 'const YAW_TILE_RESOURCES = {', 'Tile resource helper should expose the center tile resource service');
+  assertContains(tileResourcesContent, 'search(app)', 'Tile resource helper should own center-tile search behavior');
+  assertContains(tileResourcesContent, 'canSearchHere(app, tile =', 'Tile resource helper should own search eligibility');
+  assertContains(tileResourcesContent, 'tileItemSummary(app, tile =', 'Tile resource helper should own tile-local item summaries');
+  assertContains(tileResourcesContent, 'takeTileItems(app)', 'Tile resource helper should own tile-local item pickup');
+  assertContains(tileResourcesContent, 'app.persistTileDelta(tileX, tileY, tile)', 'Resource search should persist consumed resource-site state');
+  assertContains(tileResourcesContent, 'app._persistCurrentExplorationTile(tile)', 'Tile pickup should persist tile-local item removal');
+  assertContains(appContent, 'YAW_TILE_RESOURCES.search(this)', 'App search wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TILE_RESOURCES.canSearchHere(this, tile)', 'App search eligibility wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TILE_RESOURCES.tileItemSummary(this, tile)', 'App tile item summary wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TILE_RESOURCES.takeTileItems(this)', 'App tile item pickup wrapper should delegate to the helper');
+});
+
 test('Center context helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
@@ -3331,7 +3349,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

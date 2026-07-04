@@ -6535,109 +6535,22 @@
 		            },
             clearLog() { return YAW_LOG_VIEW.clear(this); },
             search() {
-                this._advanceTime(1);
-                const tile = this._currentExplorationTile();
-                const tileX = Number(tile?.x ?? this.location?.x ?? 0);
-                const tileY = Number(tile?.y ?? this.location?.y ?? 0);
-                const searchDay = this.dayCount || 0;
-                const searchHour = this.timeHour || 0;
-                const roll = this._worldRoll('search-roll', tileX, tileY, searchDay, searchHour);
-                const findChance = Math.min(0.85, 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0) + this._partyRoleEffect('gatherer', 0.1, 0.25));
-                let result = '';
-                const resourceSite = tile?.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched;
-                if (resourceSite && this.inventory.length >= this.MAX_INVENTORY) {
-                    result = this._label('inventory.full', 'Inventory is full.');
-                } else if (resourceSite) {
-                    const items = Object.keys(this.ITEMS);
-                    const iname = this._pickWorldList(items, 'resource-site-search-item-name', tileX, tileY, searchDay) || items[0] || 'Old Coin';
-                    const iid = `resource_${tileX}_${tileY}_${searchDay}`;
-                    this.inventory.push({ id: iid, name: iname });
-                    tile.resourceSearched = true;
-                    this.persistTileDelta(tileX, tileY, tile);
-                    this._updateQuestProgress('find', { item: iname, name: iname });
-                    result = 'You found a ' + iname + '!';
-                } else if (roll < findChance) {
-                    const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;
-                    const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
-                    const items = Object.keys(this.ITEMS);
-                    const iname = authoredLoot || this._pickWorldList(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
-                    if (authoredLoot) {
-                        tile.structureLooted = true;
-                        this.persistTileDelta(tileX, tileY, tile);
-                    }
-                    const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
-                    this.inventory.push({ id: iid, name: iname });
-                    this._updateQuestProgress('find', { item: iname, name: iname });
-                    result = 'You found a ' + iname + '!';
-                } else if (roll < 0.6) {
-                    result = 'You explore the area. ' + tile.description;
-                } else {
-                    result = 'Nothing of interest here.';
-                }
-                this.log.push({ text: result, type: 'discovery' });
-                this._addTileEvent(result, 'discovery');
-                this.renderLog();
-                this.renderExplorationActions();
-                this.autoSave();
+                return YAW_TILE_RESOURCES.search(this);
             },
             _canSearchHere(tile = this._currentExplorationTile()) {
-                if (!tile) return false;
-                if (tile.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched) return true;
-                const struct = tile.structure ? this.STRUCTURES[tile.structure] : null;
-                return Boolean(struct?.lootTable && !tile.structureLooted);
+                return YAW_TILE_RESOURCES.canSearchHere(this, tile);
             },
             _canTakeTileItems(tile = this._currentExplorationTile()) {
-                return Array.isArray(tile?.items) && tile.items.length > 0;
+                return YAW_TILE_RESOURCES.canTakeTileItems(tile);
             },
             _tileItemLabel(item) {
-                return item?.name || String(item || this._label('ui.item', 'item'));
+                return YAW_TILE_RESOURCES.tileItemLabel(this, item);
             },
             _tileItemSummary(tile = this._currentExplorationTile()) {
-                const items = Array.isArray(tile?.items) ? tile.items : [];
-                if (items.length === 0) return '';
-                const names = items.slice(0, 3).map(item => this._tileItemLabel(item));
-                const suffix = items.length > names.length
-                    ? this._label('ui.tileItems.more', ' and {count} more', { count: items.length - names.length })
-                    : '';
-                return this._label('ui.tileItems.summary', 'Items here: {items}{suffix}.', {
-                    items: names.join(', '),
-                    suffix
-                });
+                return YAW_TILE_RESOURCES.tileItemSummary(this, tile);
             },
             takeTileItems() {
-                const tile = this._currentExplorationTile();
-                if (!this._canTakeTileItems(tile)) return false;
-                const space = Math.max(0, this.MAX_INVENTORY - this.inventory.length);
-                if (space <= 0) {
-                    const fullText = this._label('inventory.full', 'Inventory is full.');
-                    this.log.push({ text: fullText, type: 'loot' });
-                    this._addTileEvent(fullText, 'loot');
-                    this.renderLog();
-                    this.renderExplorationActions();
-                    this.autoSave();
-                    return true;
-                }
-                const taken = tile.items.splice(0, space).map((item, index) => {
-                    if (item && typeof item === 'object' && !Array.isArray(item)) return this._cloneTileValue(item);
-                    const tileX = Number(tile.x ?? this.location?.x ?? 0);
-                    const tileY = Number(tile.y ?? this.location?.y ?? 0);
-                    return { id: `tile_item_${tileX}_${tileY}_${index}`, name: this._tileItemLabel(item) };
-                });
-                this.inventory.push(...taken);
-                this._persistCurrentExplorationTile(tile);
-                const itemNames = taken.map(item => this._tileItemLabel(item)).join(', ');
-                const tookText = this._label('log.tookTileItems', 'Picked up {items}.', { items: itemNames });
-                this.log.push({ text: tookText, type: 'loot' });
-                this._addTileEvent(tookText, 'loot');
-                if (tile.items.length > 0) {
-                    const fullText = this._label('inventory.full', 'Inventory is full.');
-                    this.log.push({ text: fullText, type: 'loot' });
-                    this._addTileEvent(fullText, 'loot');
-                }
-                this.renderLog();
-                this.renderExplorationActions();
-                this.autoSave();
-                return true;
+                return YAW_TILE_RESOURCES.takeTileItems(this);
             },
             rest() {
                 return YAW_STRUCTURE_NAVIGATION.rest(this);

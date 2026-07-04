@@ -41,6 +41,30 @@ async function createIndexedDb(page, name, stores = ['records']) {
   }), { name, stores });
 }
 
+async function putIndexedDbValue(page, name, store, key, value) {
+  await page.evaluate(({ name, store, key, value }) => new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = event => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
+    };
+    req.onsuccess = event => {
+      const db = event.target.result;
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(new Uint8Array(value), key);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    };
+    req.onerror = () => reject(req.error);
+  }), { name, store, key, value });
+}
+
 async function browserDatabaseNames(page) {
   return page.evaluate(async () => {
     if (!indexedDB.databases) return [];
@@ -794,6 +818,59 @@ async function runClearAllBrowserStorageFlow(page) {
   assert(names.includes('FFF_Unrelated'), 'Browser clear-all should not delete unrelated legacy-looking databases');
 }
 
+async function runMalformedSaveMetadataBrowserFlow(page) {
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+
+  await page.evaluate(() => {
+    localStorage.setItem('yaw-last-slot', '../bad');
+    localStorage.setItem('yaw-last-save-time', '999');
+    localStorage.setItem('yaw-save-time-slot2', '1700000000000');
+  });
+  await putIndexedDbValue(page, 'YAW_Saves', 'saves', 'slot2', [1, 2, 3]);
+
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+  await page.waitForFunction(() => localStorage.getItem('yaw-last-slot') === 'slot2', null, { timeout: 5000 });
+
+  let state = await page.evaluate(() => ({
+    lastSlot: localStorage.getItem('yaw-last-slot'),
+    lastSaveTime: localStorage.getItem('yaw-last-save-time'),
+    invalidSlotTime: localStorage.getItem('yaw-save-time-../bad'),
+    continueVisible: getComputedStyle(document.querySelector('#menu-continue')).display !== 'none',
+    screen: App.screen
+  }));
+  assert.strictEqual(state.lastSlot, 'slot2', 'Browser boot should replace malformed last-slot metadata with the latest valid slot');
+  assert.strictEqual(state.lastSaveTime, '1700000000000', 'Browser boot should replace stale last-save metadata with the valid slot timestamp');
+  assert.strictEqual(state.invalidSlotTime, null, 'Browser boot should not create timestamp metadata for malformed slot names');
+  assert.strictEqual(state.continueVisible, true, 'Browser boot should keep Continue available after recovering valid save metadata');
+  assert.strictEqual(state.screen, 'menu', 'Malformed save metadata sync should not force navigation or broken UI state');
+
+  state = await page.evaluate(async () => {
+    localStorage.setItem('yaw-last-slot', '../bad');
+    localStorage.setItem('yaw-last-save-time', '999');
+    const originalDbGet = App._dbGet.bind(App);
+    const queriedKeys = [];
+    App._dbGet = async (store, key) => {
+      queriedKeys.push(String(key));
+      return originalDbGet(store, key);
+    };
+    const synced = await App._syncLastSaveSlot();
+    App._dbGet = originalDbGet;
+    return {
+      synced,
+      queriedKeys,
+      lastSlot: localStorage.getItem('yaw-last-slot'),
+      lastSaveTime: localStorage.getItem('yaw-last-save-time')
+    };
+  });
+  assert.strictEqual(state.synced, 'slot2', 'Browser save sync should recover the latest valid slot after malformed metadata returns');
+  assert(!state.queriedKeys.includes('../bad'), 'Browser save sync should never query IndexedDB with a malformed slot key');
+  assert.strictEqual(state.lastSlot, 'slot2', 'Browser save sync should rewrite malformed last-slot metadata after recovery');
+  assert.strictEqual(state.lastSaveTime, '1700000000000', 'Browser save sync should restore the valid slot timestamp after recovery');
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -811,6 +888,7 @@ async function runClearAllBrowserStorageFlow(page) {
     await runContextualCardIntentSourceFlow(page);
     await runDesktopIntentSubActionSheetFlow(page);
     await runMobileSelectionAndCombatFlow(page);
+    await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();
   } finally {

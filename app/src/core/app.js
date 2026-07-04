@@ -633,8 +633,11 @@
                 if (!actor) return false;
                 return actor === unit || this._unitSelectionId(actor) === this._unitSelectionId(unit);
             },
-            _renderCombatPanelPrompt(actor = this.activeActor || this._currentCombatActor()) {
-                return '';
+            _clearCenterActionsForCombat() {
+                const actions = document.getElementById('scene-actions');
+                if (!actions) return;
+                actions.innerHTML = '';
+                actions.classList?.remove('center-tile-actions');
             },
             _combatActionButtons(actor, options = {}) {
                 if (!this.combatState?.active || !actor || !(actor === this.player || this.party.includes(actor))) return '';
@@ -3422,8 +3425,7 @@
                 this._clearTransientInteractionState();
                 this.activeActor = actor || this.player;
                 this.renderCombatSceneForTurn(this.activeActor);
-                const actions = document.getElementById('scene-actions');
-                if (actions) actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor);
+                this._clearCenterActionsForCombat();
                 this._renderInteractionState({ exploration: false, toolbelt: true });
             },
 
@@ -3447,8 +3449,7 @@
             selectTarget(action) {
                 const actor = this.activeActor || this.player;
                 this.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
-                const actions = document.getElementById('scene-actions');
-                if (actions) actions.innerHTML = this._renderCombatPanelPrompt(actor);
+                this._clearCenterActionsForCombat();
                 this._renderInteractionState({ exploration: false, toolbelt: true });
             },
 
@@ -8286,9 +8287,7 @@
 		                const mobileExplore = document.getElementById('mobile-explore-actions');
 	                if (inCombat) {
                         this.renderCombatSceneForTurn(this.activeActor || this._currentCombatActor());
-	                    if (actions) {
-	                        actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor || this._currentCombatActor());
-	                    }
+	                    this._clearCenterActionsForCombat();
                     if (mobileCombat) {
                         mobileCombat.innerHTML = '';
                         mobileCombat.style.display = 'none';

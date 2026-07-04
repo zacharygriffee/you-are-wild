@@ -4761,7 +4761,10 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.showActorActions(App.player);
   const combatHtml = elements.get('scene-actions').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
+  assertEqual(combatHtml, '', 'Desktop combat should clear stale exploration center actions instead of rendering prompt controls');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
+  assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
+  assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Fight"', 'Desktop combat center should not duplicate panel action buttons');
   assertContains(partyHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button on the active actor card');
   assertContains(partyHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button on the active actor card');
@@ -8459,7 +8462,9 @@ test('Player combat action controls localize on active actor card', () => {
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
   assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while combat panels own controls');
   App.updateScene('Combat', 'Panel first', true);
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'Combat scene updates should keep center actions empty');
   assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
   assertEqual(elements.get('mobile-combat-actions').style.display, 'none', 'Mobile combat action bar should stay hidden while toolbelt and panels handle combat');
 });

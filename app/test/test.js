@@ -148,6 +148,7 @@ const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
+const saveSlotFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-slot-flow.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const sceneShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'scene-shell.js'), 'utf8');
 const combatSaveStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-save-state.js'), 'utf8');
@@ -1674,6 +1675,23 @@ test('Save manager helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SAVE_MANAGER.render(this, mode)', 'App save manager renderer should delegate to the helper');
 });
 
+test('Save slot flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/save-slot-flow.js'", 'Save slot flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/save-slot-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save slot flow helper should load before app.js');
+  assertContains(saveSlotFlowContent, 'const YAW_SAVE_SLOT_FLOW = {', 'Save slot flow helper should expose the slot flow service');
+  assertContains(saveSlotFlowContent, "['load', 'save', 'new'].includes(mode)", 'Save slot flow should clamp manager modes');
+  assertContains(saveSlotFlowContent, "app._normalizeSaveSlotName(slotName, null)", 'Destructive new/delete slot flows should reject malformed slot names');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should remain localized');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should remain localized');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.deleteSlot'", 'Delete warning should remain localized and scoped');
+  assertContains(saveSlotFlowContent, "app._dbDelete('saves', slotName)", 'Delete flow should remove only the selected save slot');
+  assertContains(saveSlotFlowContent, 'app.showSaveManager(app.saveManagerMode ||', 'Delete flow should preserve the current save manager mode');
+  assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.showNewGameManager(this)', 'App new-game manager wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.beginNewGameInSlot(this, slotName)', 'App new-game slot wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.saveToSlot(this, slotName)', 'App manual save wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.deleteSlot(this, slotName)', 'App delete-slot wrapper should delegate to the helper');
+});
+
 test('Large map helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/large-map.js'", 'Large map helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/large-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Large map helper should load before app.js');
@@ -2540,7 +2558,8 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
   assertContains(template, "App.showSaveManager('save')", 'Game Save nav should open save-specific slot mode');
   assertContains(template, "App.showSaveManager('load')", 'Game Load nav should open load-specific slot mode');
-  assertContains(appContent, "showSaveManager('new')", 'New game manager should render save slots in new-run mode');
+  assertContains(saveSlotFlowContent, "showManager(app, 'new')", 'New game manager helper should render save slots in new-run mode');
+  assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.showNewGameManager(this)', 'App new game manager wrapper should delegate slot selection');
   assertContains(saveManagerContent, "saveButton('nav-btn primary'", 'Save manager should generate accessible action buttons');
   assertContains(saveManagerContent, "app._label('save.toolbarNew'", 'Load manager should expose a localized always-visible New Game entry point');
   assertContains(contentContent, "'save.newRun': 'New Run'", 'Load/save slot manager should expose localized new-run slot takeover');
@@ -2568,9 +2587,9 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(contentContent, "'save.slotActions.occupiedLoad': 'Actions: Load, New Run, Delete'", 'Slot cards should summarize load-mode actions');
   assertContains(template, '.save-slot-summary', 'Save slot cards should have compact action-summary styling');
   assertContains(saveManagerContent, 'aria-label="${app._escapeHtml(titleText)}"', 'Generated save slot buttons should expose accessible names');
-  assertContains(appContent, "this._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should come from localized copy');
-  assertContains(appContent, "this._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should come from localized copy');
-  assertContains(appContent, "this._label('save.confirm.deleteSlot'", 'Delete slot warning should come from localized copy');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should come from localized copy');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should come from localized copy');
+  assertContains(saveSlotFlowContent, "app._label('save.confirm.deleteSlot'", 'Delete slot warning should come from localized copy');
   assertContains(saveManagerContent, 'then(ok => { if (ok) App.showScreen', 'Load action should enter game only after a successful slot load');
   assertNotContains(saveManagerContent, "then(() => { App.showScreen", 'Load action should not enter game after a failed slot load');
   assertContains(contentContent, "'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.'", 'New game overwrite warning should name the selected slot and be irreversible');
@@ -3001,7 +3020,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveSlotFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

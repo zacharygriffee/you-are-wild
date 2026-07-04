@@ -8193,42 +8193,18 @@
                 this.syncAccessibilityControls();
                 this.syncLanguageControl();
             },
-            showNewGameManager() { this.showSaveManager('new'); },
+            showNewGameManager() { return YAW_SAVE_SLOT_FLOW.showNewGameManager(this); },
             showSaveManager(mode = 'load') {
-                const safeMode = ['load', 'save', 'new'].includes(mode) ? mode : 'load';
-                this.saveManagerMode = safeMode;
-                this.showScreen('save-manager');
-                this.renderSaveManager(safeMode);
+                return YAW_SAVE_SLOT_FLOW.showManager(this, mode);
             },
             _slotDisplayLabel(slotName) {
-                const match = String(slotName || '').match(/^slot(\d+)$/);
-                return match ? this._label('save.slotLabel', 'Slot {number}', { number: match[1] }) : String(slotName || '');
+                return YAW_SAVE_SLOT_FLOW.slotDisplayLabel(this, slotName);
             },
             beginNewGameInSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName, null);
-                if (!slotName) return false;
-                const saveTime = this._getSaveTime(slotName);
-                const hasData = parseInt(saveTime) > 0;
-                const slotLabel = this._slotDisplayLabel(slotName);
-                if (hasData) {
-                    return this.showConfirmDialog({
-                        title: this._label('save.newTitle', 'Choose New Game Slot'),
-                        message: this._label('save.confirm.newGameOverwrite', 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', { slot: slotLabel }),
-                        confirmLabel: this._label('save.overwriteSlot', 'Overwrite Slot'),
-                        cancelLabel: this._label('ui.cancel', 'Cancel'),
-                        danger: true,
-                        onConfirm: () => this._startNewGameInSlot(slotName)
-                    });
-                }
-                return this._startNewGameInSlot(slotName);
+                return YAW_SAVE_SLOT_FLOW.beginNewGameInSlot(this, slotName);
             },
             _startNewGameInSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName, null);
-                if (!slotName) return false;
-                this.activeSlot = slotName;
-                this._setStoredValue('lastSlot', slotName);
-                this.showScreen('create');
-                return true;
+                return YAW_SAVE_SLOT_FLOW.startNewGameInSlot(this, slotName);
             },
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 return YAW_SAVE_MANAGER.render(this, mode);
@@ -8663,52 +8639,10 @@
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
             async saveToSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                if (!this.player) { alert(this._label('save.error.noGame', 'No game to save!')); return; }
-                const saveTime = this._getSaveTime(slotName);
-                const slotLabel = this._slotDisplayLabel(slotName);
-                if (parseInt(saveTime) > 0 && slotName !== this.activeSlot) {
-                    return this.showConfirmDialog({
-                        title: this._label('save.saveTitle', 'Save Game'),
-                        message: this._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotLabel }),
-                        confirmLabel: this._label('save.save', 'Save'),
-                        cancelLabel: this._label('ui.cancel', 'Cancel'),
-                        danger: true,
-                        onConfirm: () => this._saveToSlotConfirmed(slotName)
-                    });
-                }
-                return this._saveToSlotConfirmed(slotName);
+                return YAW_SAVE_SLOT_FLOW.saveToSlot(this, slotName);
             },
             async _saveToSlotConfirmed(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                const slotLabel = this._slotDisplayLabel(slotName);
-                try {
-                    this._prepareSaveSnapshot();
-                    let worldStoreSaved = false;
-                    try {
-                        await this.persistWorldStateToMapStore();
-                        worldStoreSaved = true;
-                    } catch (e) {
-                        console.warn('World map persistence failed', e);
-                    }
-                    const saveData = Binary.saveGame(this, { omitWorldMap: worldStoreSaved });
-                    await this._dbPut('saves', slotName, saveData);
-                    this.activeSlot = slotName;
-                    this._setStoredValue('lastSlot', slotName);
-                    this._setStoredValue('lastSaveTime', Date.now().toString());
-                    this._setSaveTime(slotName, Date.now().toString());
-                    if (this.combatState?.active) this._writeCombatRefreshSnapshot(slotName);
-                    else this._clearCombatRefreshSnapshot(slotName);
-                    this._emitModuleHook('onGameSave', {
-                        slotName,
-                        auto: false,
-                        worldStoreSaved,
-                        combatActive: Boolean(this.combatState?.active)
-                    });
-                    alert(this._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
-                    return true;
-                } catch (e) { alert(this._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
-                return false;
+                return YAW_SAVE_SLOT_FLOW.saveToSlotConfirmed(this, slotName);
             },
             async loadFromSlot(slotName) {
                 slotName = this._normalizeSaveSlotName(slotName);
@@ -8936,36 +8870,10 @@
                 return await this.loadFromSlot(lastSlot);
             },
             async deleteSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName, null);
-                if (!slotName) return false;
-                const slotLabel = this._slotDisplayLabel(slotName);
-                return this.showConfirmDialog({
-                    title: this._label('save.delete', 'Delete'),
-                    message: this._label('save.confirm.deleteSlot', 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', { slot: slotLabel }),
-                    confirmLabel: this._label('save.delete', 'Delete'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    danger: true,
-                    onConfirm: () => this._deleteSlotConfirmed(slotName)
-                });
+                return YAW_SAVE_SLOT_FLOW.deleteSlot(this, slotName);
             },
             async _deleteSlotConfirmed(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName, null);
-                if (!slotName) return false;
-                try {
-                    await this._dbDelete('saves', slotName);
-                    this._removeSaveTime(slotName);
-                    this._clearCombatRefreshSnapshot(slotName);
-                    const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), null);
-                    if (lastSlot === slotName) {
-                        this._removeStoredValue('lastSlot');
-                        this._removeStoredValue('lastSaveTime');
-                    }
-                    if (this._normalizeSaveSlotName(this.activeSlot) === slotName) this.activeSlot = 'slot1';
-                    await this.refreshContinueButton();
-                    this.showSaveManager(this.saveManagerMode || 'load');
-                    return true;
-                } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
-                return false;
+                return YAW_SAVE_SLOT_FLOW.deleteSlotConfirmed(this, slotName);
             },
             async _dbOpen(dbName = this.SAVE_DB_NAME) { return YAW_STORAGE.dbOpen(this, dbName); },
             async _dbPut(store, key, value) { return YAW_STORAGE.dbPut(this, store, key, value); },

@@ -5400,6 +5400,9 @@ test('Marked target action rejects stale selected actors without falling back to
   App.explorationActorIds = ['missing-actor'];
   App.explorationActorId = 'missing-actor';
   App.toggleExplorationTarget('party', 'target-a');
+  const trayHtml = App._renderExplorationTargetActions('panel-tray');
+  assertContains(trayHtml, 'Select a living actor', 'Marked target tray should explain stale actor selection instead of showing player fallback');
+  assertNotContains(trayHtml, 'Primary: Player', 'Marked target tray should not present the player as primary when explicit actor selection is stale');
 
   const resolved = App.resolveExplorationTargetAction('flirt', 'tease', 'panel-tray');
 

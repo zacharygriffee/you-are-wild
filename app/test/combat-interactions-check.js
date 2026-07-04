@@ -373,6 +373,58 @@ async function runAdventureMarkedTargetFlow(page) {
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
 }
 
+async function runStaleMarkedActorFlow(page) {
+  await setupAdventure(page);
+  await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+  await page.evaluate(() => {
+    App.explorationActorIds = ['missing-actor'];
+    App.explorationActorId = 'missing-actor';
+    App.lastIntentCommand = null;
+    App.renderParty();
+    App.renderCreatures();
+    App.renderExplorationActions();
+  });
+
+  const tray = page.locator('#party-content .panel-interaction-tray');
+  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Stale actor marked-target tray should still render for correction');
+
+  let state = await page.evaluate(() => {
+    const trayEl = document.querySelector('#party-content .panel-interaction-tray');
+    return {
+      trayText: trayEl?.textContent || '',
+      trayHasPlayerPrimary: trayEl?.textContent?.includes('Primary: You') || false,
+      targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
+      actorIds: [...App.explorationActorIds],
+      targetIds: [...App.explorationTargetIds],
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert(state.trayText.includes('Select a living actor'), 'Stale actor tray should explain that an actor must be selected');
+  assert.strictEqual(state.trayHasPlayerPrimary, false, 'Stale actor tray should not present the player as primary actor');
+  assert.strictEqual(state.targetPle, 0, 'Stale actor setup should start before target mutation');
+  assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor setup should preserve explicit invalid actor id');
+  assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor setup should preserve marked creature target');
+  assert.strictEqual(state.centerHasActorControls, false, 'Stale actor tray should keep center free of actor controls');
+
+  await page.locator(`#party-content .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  state = await page.evaluate(() => ({
+    targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
+    actorIds: [...App.explorationActorIds],
+    targetIds: [...App.explorationTargetIds],
+    lastCommand: App.lastIntentCommand,
+    lastLog: App.log[App.log.length - 1]?.text || '',
+    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.targetPle, 0, 'Stale actor marked-target action should not fall back to player and mutate target');
+  assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor rejection should preserve actor selection for correction');
+  assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor rejection should preserve marked target for correction');
+  assert.strictEqual(state.lastCommand, null, 'Stale actor rejection should not record a resolved intent command');
+  assert(state.lastLog.includes('Select a living actor before using flirt on marked targets.'), 'Stale actor rejection should log correction guidance');
+  assert.strictEqual(state.trayVisible, true, 'Stale actor rejection should keep the tray visible for correction');
+  assert.strictEqual(state.centerHasActorControls, false, 'Stale actor rejection should keep center free of actor controls');
+}
+
 async function runSelectionSemanticsFlow(page) {
   await setupAdventure(page);
 
@@ -883,6 +935,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
     await runAdventureMarkedTargetFlow(page);
+    await runStaleMarkedActorFlow(page);
     await runSelectionSemanticsFlow(page);
     await runCenterResourceSearchFlow(page);
     await runContextualCardIntentSourceFlow(page);

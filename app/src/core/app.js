@@ -4595,6 +4595,23 @@
             _getExplorationActor(actorId = null) {
                 return this._getExplorationActors(actorId)[0] || this.player;
             },
+            _selectedExplorationActorState({ allowFallback = true } = {}) {
+                const selectedActorIds = Array.isArray(this.explorationActorIds)
+                    ? this.explorationActorIds.map(id => String(id)).filter(Boolean)
+                    : [];
+                if (selectedActorIds.length > 0) {
+                    const actors = selectedActorIds
+                        .map(id => this.party.find(unit => this._unitSelectionId(unit) === id && this._isLivingCreature(unit)))
+                        .filter(Boolean);
+                    return {
+                        actorIds: selectedActorIds,
+                        actors,
+                        valid: actors.length === selectedActorIds.length
+                    };
+                }
+                const actors = allowFallback ? this._getExplorationActors() : [];
+                return { actorIds: [], actors, valid: actors.length > 0 || !allowFallback };
+            },
             _explorationActorsForOptionalId(actorId = null) {
                 if (!actorId) return this._getExplorationActors();
                 const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
@@ -4835,11 +4852,17 @@
             _renderExplorationTargetActions(source = 'sheet') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || this.combatState.active) return '';
-                const actors = this._getExplorationActors();
+                const actorState = this._selectedExplorationActorState();
+                const actors = actorState.valid ? actorState.actors : [];
                 const label = this._escapeHtml(this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
-                const actorNames = actors.map(actor => actor.name).join(', ') || 'You';
+                const actorNames = actorState.valid
+                    ? (actors.map(actor => actor.name).join(', ') || 'You')
+                    : this._label('target.invalidActorSummary', 'Select a living actor');
                 const targetNames = targets.map(target => target.name).join(', ');
-                const summary = { primaryActor: actors[0] || this.player, helperNames: actors.slice(1).map(actor => actor.name) };
+                const summary = {
+                    primaryActor: actorState.valid ? (actors[0] || this.player) : null,
+                    helperNames: actorState.valid ? actors.slice(1).map(actor => actor.name) : []
+                };
                 const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
                 const buttons = keys.map(key => {
                     const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
@@ -4892,15 +4915,9 @@
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0) return false;
-                const selectedActorIds = Array.isArray(this.explorationActorIds)
-                    ? this.explorationActorIds.map(id => String(id)).filter(Boolean)
-                    : [];
-                const actors = selectedActorIds.length > 0
-                    ? selectedActorIds
-                        .map(id => this.party.find(unit => this._unitSelectionId(unit) === id && this._isLivingCreature(unit)))
-                        .filter(Boolean)
-                    : this._getExplorationActors();
-                if (selectedActorIds.length > 0 && actors.length !== selectedActorIds.length) {
+                const actorState = this._selectedExplorationActorState();
+                const actors = actorState.actors;
+                if (!actorState.valid) {
                     return this._reportInvalidExplorationActorSelection(action);
                 }
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;

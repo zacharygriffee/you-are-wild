@@ -1023,6 +1023,175 @@ async function runClearAllBrowserStorageFlow(page) {
   assert(names.includes('FFF_Unrelated'), 'Browser clear-all should not delete unrelated legacy-looking databases');
 }
 
+async function runContentSettingsBrowserFlow(page) {
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App && window.CONTENT), null, { timeout: 5000 });
+
+  let state = await page.evaluate(() => {
+    App.showScreen('settings');
+    App.showSettings();
+    const tierSafe = document.querySelector('#tier-safe');
+    const matureSection = document.querySelector('[data-setting-tier="mature"]');
+    const adultSection = document.querySelector('[data-setting-tier="adult"]');
+    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
+    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
+    return {
+      maxTier: CONTENT.preferences.maxTier,
+      prefsMaxTier: prefs.maxTier,
+      voreEnabled: CONTENT.preferences.voreEnabled,
+      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
+      fatalVore: App.settings.fatalVore,
+      cockVoreEnabled: App.settings.cockVoreEnabled,
+      forcedFeeding: App.settings.forcedFeeding,
+      savedCockVore: settings.cockVoreEnabled,
+      safeSelected: tierSafe?.style.background.includes('accent-primary') || false,
+      matureVisible: getComputedStyle(matureSection).display !== 'none',
+      adultVisible: getComputedStyle(adultSection).display !== 'none',
+      voreDisabled: document.querySelector('#toggle-vore')?.disabled || false,
+      explicitDisabled: document.querySelector('#toggle-explicit')?.disabled || false,
+      adultToggleDisabled: document.querySelector('#toggle-cockVore')?.disabled || false
+    };
+  });
+
+  assert.strictEqual(state.maxTier, 0, 'Generated app should boot with safe content tier by default');
+  assert.strictEqual(state.prefsMaxTier, 0, 'Generated app should persist safe content tier under yaw-content-prefs');
+  assert.strictEqual(state.voreEnabled, false, 'Generated app should not enable mature content flags by default');
+  assert.strictEqual(state.explicitDescriptions, false, 'Generated app should not enable explicit descriptions by default');
+  assert.strictEqual(state.fatalVore, false, 'Generated app should force mature app settings off at safe tier');
+  assert.strictEqual(state.cockVoreEnabled, false, 'Generated app should force adult app settings off at safe tier');
+  assert.strictEqual(state.forcedFeeding, false, 'Generated app should force adult interaction settings off at safe tier');
+  assert.strictEqual(state.savedCockVore, false, 'Generated app should persist sanitized safe-tier settings');
+  assert.strictEqual(state.safeSelected, true, 'Safe tier button should render selected on boot');
+  assert.strictEqual(state.matureVisible, false, 'Safe tier should hide mature settings in the generated app');
+  assert.strictEqual(state.adultVisible, false, 'Safe tier should hide adult settings in the generated app');
+  assert.strictEqual(state.voreDisabled, true, 'Hidden mature content toggle should be disabled at safe tier');
+  assert.strictEqual(state.explicitDisabled, true, 'Hidden explicit content toggle should be disabled at safe tier');
+  assert.strictEqual(state.adultToggleDisabled, true, 'Hidden adult interaction toggles should be disabled at safe tier');
+
+  await page.evaluate(() => {
+    localStorage.setItem('yaw-content-prefs', JSON.stringify({
+      maxTier: 'adult',
+      voreEnabled: 'true',
+      explicitDescriptions: 'true',
+      filterTags: ['safe_tag', 'bad tag'],
+      language: 'missing',
+      injected: true
+    }));
+    localStorage.setItem('yaw-settings', JSON.stringify({
+      fatalVore: 'true',
+      cockVoreEnabled: 'true',
+      forcedFeeding: 'true',
+      highContrast: true,
+      partyPlayFightMode: 'unsafe',
+      injected: true
+    }));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App && window.CONTENT), null, { timeout: 5000 });
+
+  state = await page.evaluate(() => {
+    App.showScreen('settings');
+    App.showSettings();
+    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
+    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
+    return {
+      maxTier: CONTENT.preferences.maxTier,
+      prefs,
+      voreEnabled: CONTENT.preferences.voreEnabled,
+      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
+      language: CONTENT.preferences.language,
+      fatalVore: App.settings.fatalVore,
+      cockVoreEnabled: App.settings.cockVoreEnabled,
+      forcedFeeding: App.settings.forcedFeeding,
+      partyPlayFightMode: App.settings.partyPlayFightMode,
+      injectedSetting: App.settings.injected,
+      savedSettings: settings,
+      matureVisible: getComputedStyle(document.querySelector('[data-setting-tier="mature"]')).display !== 'none',
+      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none'
+    };
+  });
+
+  assert.strictEqual(state.maxTier, 0, 'Malformed stored content tier should fall back to safe in the generated app');
+  assert.strictEqual(state.prefs.maxTier, 0, 'Malformed content preferences should be rewritten under the YAW key');
+  assert.strictEqual(state.prefs.injected, undefined, 'Generated app should drop unknown content preference keys');
+  assert.deepStrictEqual(state.prefs.filterTags, ['safe_tag'], 'Generated app should sanitize persisted content filter tags');
+  assert.strictEqual(state.voreEnabled, false, 'String truthy stored mature flags should not enable content');
+  assert.strictEqual(state.explicitDescriptions, false, 'String truthy stored explicit flags should not enable content');
+  assert.strictEqual(state.language, 'en', 'Unknown stored language should normalize to English');
+  assert.strictEqual(state.fatalVore, false, 'String truthy stored mature setting should not enable runtime behavior');
+  assert.strictEqual(state.cockVoreEnabled, false, 'String truthy stored adult setting should not enable runtime behavior');
+  assert.strictEqual(state.forcedFeeding, false, 'String truthy stored adult interaction setting should not enable runtime behavior');
+  assert.strictEqual(state.partyPlayFightMode, 'nonlethal', 'Unknown stored interaction mode should normalize safely');
+  assert.strictEqual(state.injectedSetting, undefined, 'Generated app should drop unknown stored settings keys');
+  assert.strictEqual(state.savedSettings.injected, undefined, 'Generated app should rewrite settings without unknown keys');
+  assert.strictEqual(state.matureVisible, false, 'Generated app should keep mature settings hidden after malformed stored preferences');
+  assert.strictEqual(state.adultVisible, false, 'Generated app should keep adult settings hidden after malformed stored preferences');
+
+  await page.locator('#tier-adult').click();
+  await page.locator('#toggle-vore').click();
+  await page.locator('#toggle-explicit').click();
+  await page.locator('#toggle-cockVore').click();
+  await page.locator('#toggle-forcedFeed').click();
+
+  state = await page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
+    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
+    return {
+      maxTier: CONTENT.preferences.maxTier,
+      prefs,
+      voreEnabled: CONTENT.preferences.voreEnabled,
+      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
+      cockVoreEnabled: App.settings.cockVoreEnabled,
+      forcedFeeding: App.settings.forcedFeeding,
+      savedCockVore: settings.cockVoreEnabled,
+      savedForcedFeeding: settings.forcedFeeding,
+      matureVisible: getComputedStyle(document.querySelector('[data-setting-tier="mature"]')).display !== 'none',
+      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none'
+    };
+  });
+
+  assert.strictEqual(state.maxTier, 2, 'Adult content should require explicit tier selection in the generated app');
+  assert.strictEqual(state.prefs.maxTier, 2, 'Adult opt-in should persist under yaw-content-prefs');
+  assert.strictEqual(state.voreEnabled, true, 'Mature gated toggle should only enable after adult tier is selected');
+  assert.strictEqual(state.explicitDescriptions, true, 'Explicit descriptions should only enable after adult tier is selected');
+  assert.strictEqual(state.cockVoreEnabled, true, 'Adult interaction setting should only enable after adult tier is selected');
+  assert.strictEqual(state.forcedFeeding, true, 'Adult interaction toggle should persist through the generated app settings path');
+  assert.strictEqual(state.savedCockVore, true, 'Adult interaction setting should persist under yaw-settings');
+  assert.strictEqual(state.savedForcedFeeding, true, 'Adult interaction toggle should persist under yaw-settings');
+  assert.strictEqual(state.matureVisible, true, 'Adult tier should expose mature settings');
+  assert.strictEqual(state.adultVisible, true, 'Adult tier should expose adult settings');
+
+  await page.locator('#tier-safe').click();
+  state = await page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('yaw-content-prefs') || '{}');
+    const settings = JSON.parse(localStorage.getItem('yaw-settings') || '{}');
+    return {
+      maxTier: CONTENT.preferences.maxTier,
+      prefs,
+      voreEnabled: CONTENT.preferences.voreEnabled,
+      explicitDescriptions: CONTENT.preferences.explicitDescriptions,
+      cockVoreEnabled: App.settings.cockVoreEnabled,
+      forcedFeeding: App.settings.forcedFeeding,
+      savedCockVore: settings.cockVoreEnabled,
+      savedForcedFeeding: settings.forcedFeeding,
+      adultVisible: getComputedStyle(document.querySelector('[data-setting-tier="adult"]')).display !== 'none',
+      adultToggleDisabled: document.querySelector('#toggle-cockVore')?.disabled || false
+    };
+  });
+
+  assert.strictEqual(state.maxTier, 0, 'Returning to safe tier should update runtime content preferences');
+  assert.strictEqual(state.prefs.maxTier, 0, 'Returning to safe tier should persist under yaw-content-prefs');
+  assert.strictEqual(state.voreEnabled, false, 'Returning to safe tier should clear mature content flags');
+  assert.strictEqual(state.explicitDescriptions, false, 'Returning to safe tier should clear explicit content flags');
+  assert.strictEqual(state.cockVoreEnabled, false, 'Returning to safe tier should clear adult interaction settings');
+  assert.strictEqual(state.forcedFeeding, false, 'Returning to safe tier should clear adult interaction toggles');
+  assert.strictEqual(state.savedCockVore, false, 'Returning to safe tier should persist sanitized adult settings');
+  assert.strictEqual(state.savedForcedFeeding, false, 'Returning to safe tier should persist sanitized adult interaction settings');
+  assert.strictEqual(state.adultVisible, false, 'Returning to safe tier should hide adult settings');
+  assert.strictEqual(state.adultToggleDisabled, true, 'Returning to safe tier should disable adult controls');
+}
+
 async function runMalformedSaveMetadataBrowserFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
@@ -1131,6 +1300,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runDesktopIntentSubActionSheetFlow(page);
     await runRadialIntentSubActionPresentationFlow(page);
     await runMobileSelectionAndCombatFlow(page);
+    await runContentSettingsBrowserFlow(page);
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

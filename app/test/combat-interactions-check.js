@@ -522,6 +522,51 @@ async function runCenterResourceSearchFlow(page) {
   assert.strictEqual(state.centerHasActorControls, false, 'Resource-site Search should keep center free of actor controls after resolving');
 }
 
+async function runContextualCardIntentSourceFlow(page) {
+  await setupAdventure(page);
+  const desktopInspect = page.locator(`#enemies-content button[onclick*="selectIntent('creature','friendly-1','inspect','panel-card')"]`).first();
+  await assert.doesNotReject(() => desktopInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop creature card Inspect should render through shared intent selection');
+  await desktopInspect.click();
+
+  let state = await page.evaluate(() => ({
+    action: App.lastIntentCommand?.action || '',
+    source: App.lastIntentCommand?.source || '',
+    mode: App.lastIntentCommand?.mode || '',
+    targetIds: App.lastIntentCommand?.targetIds || [],
+    lastLog: App.log[App.log.length - 1]?.text || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.action, 'inspect', 'Desktop creature card Inspect should record the selected action');
+  assert.strictEqual(state.source, 'panel-card', 'Desktop creature card Inspect should preserve panel-card source metadata');
+  assert.strictEqual(state.mode, 'adventure', 'Desktop creature card Inspect should normalize as an adventure command');
+  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Desktop creature card Inspect should record the clicked creature target');
+  assert(state.lastLog.includes('Friendly [human]'), 'Desktop creature card Inspect should still use the normal inspect resolution');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop creature card Inspect should keep center free of actor controls');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupAdventure(page);
+  const mobileInspect = page.locator(`#mobile-creature-strip button[onclick*="selectIntent('creature','friendly-1','inspect','mobile-chip')"]`).first();
+  await assert.doesNotReject(() => mobileInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile creature chip Inspect should render through shared intent selection');
+  await mobileInspect.click();
+
+  state = await page.evaluate(() => ({
+    action: App.lastIntentCommand?.action || '',
+    source: App.lastIntentCommand?.source || '',
+    mode: App.lastIntentCommand?.mode || '',
+    targetIds: App.lastIntentCommand?.targetIds || [],
+    lastLog: App.log[App.log.length - 1]?.text || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.action, 'inspect', 'Mobile creature chip Inspect should record the selected action');
+  assert.strictEqual(state.source, 'mobile-chip', 'Mobile creature chip Inspect should preserve mobile-chip source metadata');
+  assert.strictEqual(state.mode, 'adventure', 'Mobile creature chip Inspect should normalize as an adventure command');
+  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Mobile creature chip Inspect should record the tapped creature target');
+  assert(state.lastLog.includes('Friendly [human]'), 'Mobile creature chip Inspect should still use the normal inspect resolution');
+  assert.strictEqual(state.centerHasActorControls, false, 'Mobile creature chip Inspect should keep center free of actor controls');
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
@@ -694,6 +739,7 @@ async function runClearAllBrowserStorageFlow(page) {
     await runAdventureMarkedTargetFlow(page);
     await runSelectionSemanticsFlow(page);
     await runCenterResourceSearchFlow(page);
+    await runContextualCardIntentSourceFlow(page);
     await runMobileSelectionAndCombatFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

@@ -2428,10 +2428,7 @@
                 return YAW_COMBAT_ENEMIES.shouldFlee(this, enemy, targets);
             },
             _combatStateRoll(namespace, unit = null, purpose = 'roll') {
-                const x = Number(this.location?.x ?? 0);
-                const y = Number(this.location?.y ?? 0);
-                const unitId = this._unitSelectionId(unit || {});
-                return this._worldRoll(namespace, x, y, unitId, this.combatState.round || 0, this.combatState.currentTurn || 0, this.dayCount || 0, this.timeHour || 0, purpose);
+                return YAW_COMBAT_STATE_ROLL.roll(this, namespace, unit, purpose);
             },
             _enemyCallReinforcement(enemy) {
                 return YAW_COMBAT_ENEMIES.callReinforcement(this, enemy);

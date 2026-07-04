@@ -484,6 +484,36 @@ asyncTest('Module system imports and exports versioned module package envelopes'
     assertContains(e.message, 'package id', 'Package id mismatch should report package id validation');
   }
   assertEqual(rejected, true, 'Mismatched package ids should reject');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      packageType: 'yaw-module',
+      packageVersion: 1,
+      packageId: 'packaged-module',
+      trustBoundary: 'remote',
+      module: envelope.module
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'package trustBoundary', 'Package trust boundary mismatch should report package-level validation');
+  }
+  assertEqual(rejected, true, 'Mismatched package trust boundaries should reject');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      packageType: 'yaw-module',
+      packageVersion: 1,
+      packageId: 'packaged-module',
+      gameVersion: 'tomorrow',
+      module: envelope.module
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'gameVersion', 'Malformed package gameVersion should report package-level version validation');
+  }
+  assertEqual(rejected, true, 'Malformed package game versions should reject');
   assertEqual((await MODULE_SYSTEM.getAllModules()).length, 1, 'Rejected package envelopes should not add stored modules');
 });
 

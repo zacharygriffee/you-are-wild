@@ -181,6 +181,15 @@ const MODULE_SYSTEM = {
                 throw new Error('Module package id must match manifest id');
             }
         }
+        if (packageData.trustBoundary !== undefined) {
+            const trustBoundary = String(packageData.trustBoundary || '').trim();
+            if (trustBoundary !== this.TRUST_BOUNDARY) {
+                throw new Error(`Module package trustBoundary must be ${this.TRUST_BOUNDARY}`);
+            }
+        }
+        if (packageData.gameVersion !== undefined) {
+            this._normalizeGameVersion(packageData.gameVersion, 'gameVersion');
+        }
         return packageData.module;
     },
 

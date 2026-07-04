@@ -567,6 +567,75 @@ async function runContextualCardIntentSourceFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runDesktopIntentSubActionSheetFlow(page) {
+  await setupAdventure(page);
+
+  let state = await page.evaluate(() => ({
+    partyHasDuplicateMenu: (document.querySelector('#party-content')?.innerHTML || '').includes("showIntentMenu('party'"),
+    creatureHasDuplicateMenu: (document.querySelector('#enemies-content')?.innerHTML || '').includes("showIntentMenu('creature'"),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.partyHasDuplicateMenu, false, 'Desktop party cards should not expose duplicate visible intent menus');
+  assert.strictEqual(state.creatureHasDuplicateMenu, false, 'Desktop living creature cards should not expose duplicate visible intent menus');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop intent sheet flow should start with center free of actor controls');
+
+  await page.evaluate(() => App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop'));
+  const menu = page.locator('#desktop-intent-menu');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop intent menu should render when invoked');
+
+  state = await page.evaluate(() => {
+    const menuEl = document.querySelector('#desktop-intent-menu');
+    return {
+      presentation: menuEl?.getAttribute('data-intent-presentation') || '',
+      hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
+      hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
+      hasFightSheetButton: (menuEl?.innerHTML || '').includes("openIntentSubActionSheet('creature','friendly-1','fight','desktop')"),
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.presentation, 'desktop', 'Desktop intent menu should declare desktop presentation');
+  assert.strictEqual(state.hasDesktopClass, true, 'Desktop intent menu should use desktop layout class');
+  assert.strictEqual(state.hasMobileMenu, false, 'Desktop intent menu should not reuse the mobile context sheet');
+  assert.strictEqual(state.hasFightSheetButton, true, 'Desktop Fight action should open the shared sub-action sheet');
+  assert.strictEqual(state.centerHasActorControls, false, 'Opening the desktop intent menu should not move actor controls into center');
+
+  await page.locator(`#desktop-intent-menu button[onclick*="openIntentSubActionSheet('creature','friendly-1','fight','desktop')"]`).first().click();
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop sub-action sheet should render on the desktop surface');
+
+  state = await page.evaluate(() => {
+    const menuEl = document.querySelector('#desktop-intent-menu');
+    return {
+      hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
+      hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.hasDesktopClass, true, 'Desktop sub-action sheet should stay on the desktop surface');
+  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should dispatch through selectIntent with a sub-action');
+  assert.strictEqual(state.hasMobileMenu, false, 'Desktop sub-action sheet should not create a mobile menu');
+  assert.strictEqual(state.centerHasActorControls, false, 'Opening a desktop sub-action sheet should not move actor controls into center');
+
+  await page.locator(`#desktop-intent-menu button[onclick*="selectIntent('creature','friendly-1','fight','desktop','attack')"]`).first().click();
+
+  state = await page.evaluate(() => ({
+    menuVisible: Boolean(document.querySelector('#desktop-intent-menu')),
+    action: App.lastIntentCommand?.action || '',
+    subAction: App.lastIntentCommand?.subAction || '',
+    source: App.lastIntentCommand?.source || '',
+    mode: App.lastIntentCommand?.mode || '',
+    targetIds: App.lastIntentCommand?.targetIds || [],
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.menuVisible, false, 'Selecting a desktop sub-action should close the intent sheet');
+  assert.strictEqual(state.action, 'fight', 'Desktop sub-action selection should record the selected action');
+  assert.strictEqual(state.subAction, 'attack', 'Desktop sub-action selection should record the chosen sub-action');
+  assert.strictEqual(state.source, 'desktop', 'Desktop sub-action selection should preserve desktop command source metadata');
+  assert.strictEqual(state.mode, 'adventure', 'Desktop sub-action selection should normalize as an adventure command');
+  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Desktop sub-action selection should record the clicked creature target');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop sub-action resolution should keep center free of actor controls');
+}
+
 async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
@@ -740,6 +809,7 @@ async function runClearAllBrowserStorageFlow(page) {
     await runSelectionSemanticsFlow(page);
     await runCenterResourceSearchFlow(page);
     await runContextualCardIntentSourceFlow(page);
+    await runDesktopIntentSubActionSheetFlow(page);
     await runMobileSelectionAndCombatFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

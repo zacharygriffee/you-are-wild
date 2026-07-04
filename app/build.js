@@ -55,6 +55,7 @@ const SCRIPT_ORDER = [
   'src/core/combat-rules.js',
   'src/core/combat-status.js',
   'src/core/combat-turns.js',
+  'src/core/combat-lifecycle.js',
   'src/core/combat-actions.js',
   'src/core/combat-targeting.js',
   'src/core/combat-resolution.js',

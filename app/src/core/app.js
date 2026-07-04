@@ -2444,73 +2444,16 @@
             },
 
             nextTurn() {
-                if (!this.combatState.active) return;
-                this._sanitizeCombatState({ preserveTurn: false });
-                this.combatState.currentTurn++;
-                if (this.combatState.currentTurn >= this.combatState.turnQueue.length) {
-                    this._newRound(); return;
-                }
-                this.processTurn();
+                return YAW_COMBAT_LIFECYCLE.nextTurn(this);
             },
 
 
             endCombat(result) {
-                const outcome = result === true ? 'victory' : result === false ? 'defeat' : (result || 'victory');
-                this.mode = this.GAME_MODE.NORMAL;
-                this.combatState.active = false;
-                this.combatState.processing = false;
-                this.combatState.turnQueue = [];
-                this.combatState.currentTurn = 0;
-                this.combatState.syncActions = [];
-                this.activeActor = null;
-                this._clearTransientInteractionState();
-                this._clearCombatRefreshSnapshot(this.activeSlot);
-                this.party.forEach(p => { p.fledCombat = false; });
-                if (this.player?.knockedOut) {
-                    this.player.knockedOut = false;
-                    this.player.CPun = Math.max(1, this.player.CPun || 0);
-                    this.log.push({ text: this._label('combat.playerComesTo', '{name} comes to after the fight.', { name: this.player.name }), type: 'discovery' });
-                }
-                if (outcome === 'victory') {
-                    this.log.push({ text: this._label('combat.victory', 'Victory! Enemies defeated or subdued.'), type: 'discovery' });
-                    const texts = ['The battlefield falls silent.','Your enemies lie defeated.','Another victory, another feast.','You emerge from the chaos unscathed.'];
-                    this.updateScene('Victory', texts[Math.floor(Math.random() * texts.length)], false);
-                    this.gainXP(this.combatState.xpEarned || this.XP_REWARDS.defeatEnemy);
-                    // Convert friendly enemies to neutral/friendly for potential recruitment
-                    for (const c of this.creatures) {
-                        if (c.disposition === this.DISPOSITION.FRIENDLY && c.CPun > 0) {
-                            this.log.push({ text: `${c.name} looks at you with submissive eyes...`, type: 'discovery' });
-                        }
-                    }
-                    this._runPostCombatScavengers();
-                } else if (outcome === 'flee') {
-                    this.log.push({ text: this._label('combat.escapedEncounter', 'You escaped the encounter.'), type: 'move' });
-                    this.updateScene('Escaped', 'You put distance between yourself and danger.', false);
-                } else if (outcome === 'disengage') {
-                    this.log.push({ text: this._label('combat.disengaged', 'The encounter breaks off.'), type: 'move' });
-                    this.updateScene('Disengaged', this._label('combat.disengaged', 'The encounter breaks off.'), false);
-                } else {
-                    this.log.push({ text: this._label('combat.defeat', 'Defeat...'), type: 'combat' });
-                    this.updateScene('Defeat', 'Darkness claims you...', false);
-                    setTimeout(() => { this._confirmDefeatReturnToMenu(); }, 1500);
-                }
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.showExplorationActions();
-                this.renderMobileCombatToolbelt();
-                this.autoSave();
+                return YAW_COMBAT_LIFECYCLE.endCombat(this, result);
             },
 
             _confirmDefeatReturnToMenu() {
-                return this.showConfirmDialog({
-                    title: this._label('combat.defeat', 'Defeat...'),
-                    message: this._label('combat.confirmReturnToMenu', 'Defeat! Return to menu?'),
-                    confirmLabel: this._label('ui.returnToMenu', 'Return to Menu'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    danger: true,
-                    onConfirm: () => this.showScreen('menu')
-                });
+                return YAW_COMBAT_LIFECYCLE.confirmDefeatReturnToMenu(this);
             },
 
             // ===== OUTSIDE COMBAT INTERACTION =====

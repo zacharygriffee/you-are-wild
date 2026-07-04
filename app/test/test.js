@@ -153,6 +153,7 @@ const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-c
 const combatRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-rules.js'), 'utf8');
 const combatStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-status.js'), 'utf8');
 const combatTurnsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-turns.js'), 'utf8');
+const combatLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-lifecycle.js'), 'utf8');
 const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
 const combatTargetingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-targeting.js'), 'utf8');
 const combatResolutionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-resolution.js'), 'utf8');
@@ -1808,6 +1809,22 @@ test('Combat action helper module is registered before app code', () => {
   assertNotContains(combatTurnsContent, 'Math.random', 'Combat turns helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_TURNS.processTurn(this)', 'App processTurn wrapper should delegate to combat turns');
   assertContains(appContent, 'YAW_COMBAT_TURNS.newRound(this)', 'App new round wrapper should delegate to combat turns');
+  assertContains(buildContent, "'src/core/combat-lifecycle.js'", 'Combat lifecycle helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-turns.js'") < buildContent.indexOf("'src/core/combat-lifecycle.js'"), 'Combat lifecycle should load after combat turns');
+  assert(buildContent.indexOf("'src/core/combat-lifecycle.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat lifecycle helper should load before app.js');
+  assertContains(combatLifecycleContent, 'const YAW_COMBAT_LIFECYCLE = {', 'Combat lifecycle helper should expose the lifecycle service');
+  assertContains(combatLifecycleContent, 'nextTurn(app)', 'Combat lifecycle helper should own turn advancement');
+  assertContains(combatLifecycleContent, 'endCombat(app, result)', 'Combat lifecycle helper should own combat completion');
+  assertContains(combatLifecycleContent, 'confirmDefeatReturnToMenu(app)', 'Combat lifecycle helper should own defeat confirmation routing');
+  assertContains(combatLifecycleContent, "app._combatStateRoll('combat-victory-scene'", 'Combat victory scene selection should use deterministic combat rolls');
+  assertContains(combatLifecycleContent, 'app._clearCombatRefreshSnapshot(app.activeSlot)', 'Combat lifecycle should clear combat refresh snapshots when combat ends');
+  assertContains(combatLifecycleContent, 'app._runPostCombatScavengers()', 'Combat lifecycle should preserve post-combat ally cleanup');
+  assertContains(combatLifecycleContent, 'app.showConfirmDialog({', 'Combat lifecycle should use the in-app confirmation flow for defeat');
+  assertContains(combatLifecycleContent, 'app.autoSave()', 'Combat lifecycle should preserve autosave after combat ends');
+  assertNotContains(combatLifecycleContent, 'Math.random', 'Combat lifecycle helper should not use ambient randomness');
+  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.nextTurn(this)', 'App nextTurn wrapper should delegate to combat lifecycle');
+  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.endCombat(this, result)', 'App endCombat wrapper should delegate to combat lifecycle');
+  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.confirmDefeatReturnToMenu(this)', 'App defeat confirmation wrapper should delegate to combat lifecycle');
   assertContains(buildContent, "'src/core/combat-actions.js'", 'Combat action helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat action helper should load before app.js');
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Combat action helper should load before mobile chips that reuse combat action wrappers');
@@ -3793,7 +3810,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -5297,6 +5314,37 @@ test('Defeat return-to-menu uses in-app confirmation', () => {
   approved.App.resolveConfirmDialog(true);
   assertEqual(approvedScreen, 'menu', 'Approving defeat return should open the menu screen');
   assertEqual(approved.App.pendingConfirm, null, 'Approved defeat return should clear pending confirmation state');
+});
+
+test('Victory combat end scene does not depend on ambient Math.random', () => {
+  const buildCase = random => {
+    const { App } = loadAppForCombat(random);
+    const player = makeUnit('You', { id: 'player-victory-scene' });
+    let sceneText = '';
+    App.worldMeta = { worldId: 'world_test', seed: 'victory-scene-seed', generatorVersion: 2, mapModsHash: 'core' };
+    App.location = { x: 3, y: -2 };
+    App.dayCount = 4;
+    App.timeHour = 12;
+    App.player = player;
+    App.party = [player];
+    App.creatures = [];
+    App.combatState.active = true;
+    App.combatState.round = 3;
+    App.combatState.currentTurn = 2;
+    App.combatState.xpEarned = 0;
+    App.updateScene = (_title, text) => { sceneText = text; };
+    App.gainXP = () => {};
+    App._runPostCombatScavengers = () => {};
+    App.renderLog = () => {};
+    App.renderParty = () => {};
+    App.renderCreatures = () => {};
+    App.showExplorationActions = () => {};
+    App.renderMobileCombatToolbelt = () => {};
+    App.autoSave = () => {};
+    App.endCombat(true);
+    return sceneText;
+  };
+  assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Victory scene text should not depend on ambient Math.random');
 });
 
 test('Fight defeat converts enemies into corpses', () => {

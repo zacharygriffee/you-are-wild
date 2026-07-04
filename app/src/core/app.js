@@ -3514,86 +3514,11 @@
             },
 
             // ===== FEED ACTION =====
-            executeFeedAction(actor = this.activeActor || this.player) {
-                // Feed targets allies, not enemies - use sub-action picker for ally target
-                actor = actor || this.activeActor || this.player;
-                const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name);
-                const available = this._getAvailableSubActions('feed', actor, null);
-                const validSubs = available.filter(s => s.available);
-                if (allies.some(ally => ally.CPun < ally.MPun) && !validSubs.some(sub => sub.id === 'heal')) {
-                    const healDef = this.SUB_ACTIONS.feed && this.SUB_ACTIONS.feed.heal;
-                    validSubs.unshift({
-                        id: 'heal',
-                        label: this._getActionLabel('feed', 'heal'),
-                        icon: healDef?.icon || '',
-                        available: true,
-                        setting: healDef?.setting || null
-                    });
-                }
-                if (validSubs.length === 0) {
-                    this.log.push({ text: this._label('feed.noOptions', 'No feed options available right now.'), type: 'combat' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-	                if (validSubs.length === 1) {
-	                    this._executeFeedSubAction(validSubs[0].id, actor);
-	                    return true;
-	                }
-                this.feedSelection = {
-                    active: true,
-                    actorId: this._unitSelectionId(actor),
-                    subIds: validSubs.map(sub => sub.id)
-                };
-                this.targetSelection = null;
-                this.syncSelection = null;
-                this._renderInteractionState({ exploration: false, toolbelt: true });
-                return true;
+            executeFeedAction(actor = this.activeActor || this._currentCombatActor() || this.player) {
+                return YAW_COMBAT_FEED.executeAction(this, actor);
             },
             _executeFeedSubAction(subId, actor) {
-                const subDef = this.SUB_ACTIONS.feed && this.SUB_ACTIONS.feed[subId];
-                if (!subDef) return;
-                this.defaultSubActions.feed = subId;
-                const actorName = actor.name === this.player?.name ? 'You' : actor.name;
-                const actorVerb = actor.name === this.player?.name ? '' : 's';
-                let target = null;
-                if (subId === 'heal' || subId === 'breastfeed') {
-                    const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name && p.CPun < p.MPun);
-                    if (allies.length === 0) {
-                        this.log.push({ text: this._label('feed.noWoundedAllies', 'No wounded allies to feed.'), type: 'combat' });
-                        this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
-                    }
-                    target = allies.reduce((w, a) => (a.CPun / a.MPun < w.CPun / w.MPun) ? a : w, allies[0]);
-                } else if (subId === 'sacrifice') {
-                    const prey = this.party.filter(p => p.CPun > 0 && p.name !== actor.name && (p.livestock || p.willingPrey));
-                    if (prey.length === 0) {
-                        this.log.push({ text: this._label('feed.noWillingLivestock', 'No willing livestock to sacrifice.'), type: 'combat' });
-                        this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
-                    }
-                    target = prey[0];
-                } else if (subId === 'forceFeed') {
-                    // Need to select target enemy and holder - simplified: pick random enemy and first available holder
-                    const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                    if (enemies.length === 0) {
-                        this.log.push({ text: this._label('feed.noForceFeedEnemies', 'No enemies to force-feed.'), type: 'combat' });
-                        this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
-                    }
-                    target = enemies[0]; // actor is the predator, target is the prey to be forced into actor
-                    // Actually for forceFeed, actor is the predator, target is the prey
-                    // But we need a holder too. Let's just use the first available holder.
-                }
-                if (!target) {
-                    this.log.push({ text: this._label('feed.noValidTarget', 'No valid target for this feed action.'), type: 'combat' });
-                    this.renderLog(); this.combatState.processing = false; this.nextTurn(); return;
-                }
-                const result = this._doSubAction('feed', subId, actor, target, actorName, actorVerb);
-                this.log.push({ text: result, type: 'heal' });
-                this._emitCombatAction('feed', actor, target, result);
-                this.feedSelection = null;
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.combatState.processing = false;
-                this._sanitizeCombatState({ preserveTurn: true });
-                this.nextTurn();
+                return YAW_COMBAT_FEED.executeSubAction(this, subId, actor);
             },
 
             // ===== XP/LEVELING =====

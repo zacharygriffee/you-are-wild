@@ -161,6 +161,7 @@ const combatAlliesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-a
 const combatEnemiesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-enemies.js'), 'utf8');
 const combatSyncContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-sync.js'), 'utf8');
 const combatMobilityContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-mobility.js'), 'utf8');
+const combatFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-feed.js'), 'utf8');
 const combatIntentsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-intents.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
@@ -1929,6 +1930,22 @@ test('Combat mobility helper module is registered before app code', () => {
   assertNotContains(combatMobilityContent, 'Math.random', 'Combat mobility helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_MOBILITY.moveRow(this)', 'App row movement wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_MOBILITY.attemptFlee(this)', 'App flee wrapper should delegate to the helper');
+});
+
+test('Combat feed helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-feed.js'", 'Combat feed helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/combat-intents.js'"), 'Combat feed should load before combat intents that dispatch feed');
+  assert(buildContent.indexOf("'src/core/combat-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat feed helper should load before app.js');
+  assertContains(combatFeedContent, 'const YAW_COMBAT_FEED = {', 'Combat feed helper should expose the feed service');
+  assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player)', 'Combat feed helper should own feed intent execution');
+  assertContains(combatFeedContent, 'executeSubAction(app, subId, actor)', 'Combat feed helper should own feed sub-action execution');
+  assertContains(combatFeedContent, 'app.feedSelection = {', 'Combat feed helper should own feed panel selection state');
+  assertContains(combatFeedContent, 'app._renderInteractionState({ exploration: false, toolbelt: true })', 'Combat feed helper should render feed options through panel/toolbelt state');
+  assertNotContains(combatFeedContent, 'Math.random', 'Combat feed helper should not use ambient randomness');
+  assertNotContains(combatFeedContent, 'random enemy', 'Combat feed helper should not retain stale random-target comments');
+  assertNotContains(combatFeedContent, 'simplified', 'Combat feed helper should not retain stale simplified-target comments');
+  assertContains(appContent, 'YAW_COMBAT_FEED.executeAction(this, actor)', 'App feed action wrapper should delegate to combat feed');
+  assertContains(appContent, 'YAW_COMBAT_FEED.executeSubAction(this, subId, actor)', 'App feed sub-action wrapper should delegate to combat feed');
 });
 
 test('Combat intent helper module is registered before app code', () => {
@@ -3811,7 +3828,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -4156,6 +4173,41 @@ test('Feed unavailable feedback localizes and does not throw without a selected 
 
   App._executeFeedSubAction('heal', player);
   assertContains(App.log[App.log.length - 1].text, 'No hay aliados heridos para alimentar.', 'No-wounded feed log should localize');
+});
+
+test('Combat feed defaults to the current combat actor', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-feed-current', CPun: 25, MPun: 100 });
+  const ally = makeUnit('Ally', { id: 'ally-feed-current', CPun: 100, MPun: 100, Feed: 20 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [];
+  App.activeActor = null;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 20 }],
+    syncActions: []
+  };
+  App._getAvailableSubActions = () => [];
+  let healedBy = null;
+  let healedTarget = null;
+  App._doSubAction = (_action, _subId, actor, target) => {
+    healedBy = actor;
+    healedTarget = target;
+    target.CPun += 10;
+    return 'healed';
+  };
+  App.nextTurn = function() { this._feedAdvanced = true; };
+
+  const result = App.executeFeedAction();
+  assertEqual(result, true, 'Current actor feed should resolve as a valid feed action');
+  assertEqual(healedBy, ally, 'Feed should use the current combat actor when no explicit actor is passed');
+  assertEqual(healedTarget, player, 'Current actor feed should target the wounded party member');
+  assertEqual(App._feedAdvanced, true, 'Current actor feed should consume the turn');
 });
 
 test('Action constants include all 6 primary actionables', () => {

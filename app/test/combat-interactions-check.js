@@ -1226,6 +1226,119 @@ async function runIndexedDbNamespaceBrowserFlow(page) {
   }
 }
 
+async function runSaveManagerSlotBrowserFlow(page) {
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+
+  await page.evaluate(() => {
+    localStorage.setItem('yaw-save-time-slot2', '1710000000000');
+    localStorage.setItem('yaw-save-time-slot3', '1720000000000');
+    App.activeSlot = 'slot1';
+    App.showNewGameManager();
+  });
+
+  let state = await page.evaluate(() => ({
+    mode: App.saveManagerMode,
+    label: document.querySelector('#save-manager')?.getAttribute('aria-label') || '',
+    visible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none',
+    hasOverwriteSlot2: Boolean(document.querySelector(`#save-manager button[aria-label="Overwrite Slot 2 with a new game"]`)),
+    hasDeleteSlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Delete Slot 3"]`)),
+    hasSaveSlot2: Boolean(document.querySelector(`#save-manager button[aria-label="Save current game to Slot 2"]`)),
+    slot2Time: localStorage.getItem('yaw-save-time-slot2'),
+    slot3Time: localStorage.getItem('yaw-save-time-slot3')
+  }));
+  assert.strictEqual(state.mode, 'new', 'Browser new-game manager should enter new slot mode');
+  assert.strictEqual(state.label, 'Choose New Game Slot', 'Browser new-game manager should expose the new-slot dialog label');
+  assert.strictEqual(state.visible, true, 'Browser new-game manager should be visible');
+  assert.strictEqual(state.hasOverwriteSlot2, true, 'Browser occupied new-game slot should expose overwrite action');
+  assert.strictEqual(state.hasDeleteSlot3, true, 'Browser occupied new-game slot should expose delete action');
+  assert.strictEqual(state.hasSaveSlot2, false, 'Browser new-game slot mode should not expose save-current-game actions');
+  assert.strictEqual(state.slot2Time, '1710000000000', 'Browser slot precondition should mark slot2 occupied');
+  assert.strictEqual(state.slot3Time, '1720000000000', 'Browser slot precondition should mark slot3 occupied');
+
+  await page.locator(`#save-manager button[aria-label="Overwrite Slot 2 with a new game"]`).click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'visible', timeout: 1000 }), 'Browser occupied new-game overwrite should open confirmation');
+
+  state = await page.evaluate(() => ({
+    pending: Boolean(App.pendingConfirm),
+    message: document.querySelector('#app-confirm-message')?.textContent || '',
+    confirmLabel: Array.from(document.querySelectorAll('#app-confirm-dialog button')).map(btn => btn.textContent.trim()).join('|'),
+    activeSlot: App.activeSlot,
+    lastSlot: localStorage.getItem('yaw-last-slot'),
+    createVisible: getComputedStyle(document.querySelector('#screen-create')).display !== 'none',
+    saveManagerVisible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none'
+  }));
+  assert.strictEqual(state.pending, true, 'Browser occupied new-game overwrite should use in-app pending confirmation');
+  assert.strictEqual(state.message, 'Start a new game in Slot 2? This will overwrite that save slot. This cannot be undone.', 'Browser occupied new-game overwrite should name the selected slot');
+  assert(state.confirmLabel.includes('Overwrite Slot'), 'Browser occupied new-game confirmation should expose overwrite label');
+  assert.strictEqual(state.activeSlot, 'slot1', 'Browser occupied new-game confirmation should not change active slot before approval');
+  assert.strictEqual(state.lastSlot, null, 'Browser occupied new-game confirmation should not persist lastSlot before approval');
+  assert.strictEqual(state.createVisible, false, 'Browser occupied new-game confirmation should not open character creation before approval');
+  assert.strictEqual(state.saveManagerVisible, true, 'Browser occupied new-game confirmation should leave save manager behind the modal');
+
+  await page.locator('#app-confirm-dialog button').first().click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'detached', timeout: 1000 }), 'Browser cancelled new-game overwrite should close confirmation');
+  state = await page.evaluate(() => ({
+    pending: Boolean(App.pendingConfirm),
+    activeSlot: App.activeSlot,
+    lastSlot: localStorage.getItem('yaw-last-slot'),
+    createVisible: getComputedStyle(document.querySelector('#screen-create')).display !== 'none',
+    saveManagerVisible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none'
+  }));
+  assert.strictEqual(state.pending, false, 'Browser cancelled new-game overwrite should clear pending confirmation');
+  assert.strictEqual(state.activeSlot, 'slot1', 'Browser cancelled new-game overwrite should keep the active slot');
+  assert.strictEqual(state.lastSlot, null, 'Browser cancelled new-game overwrite should not persist lastSlot');
+  assert.strictEqual(state.createVisible, false, 'Browser cancelled new-game overwrite should not open character creation');
+  assert.strictEqual(state.saveManagerVisible, true, 'Browser cancelled new-game overwrite should keep save manager visible');
+
+  await page.locator(`#save-manager button[aria-label="Overwrite Slot 2 with a new game"]`).click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'visible', timeout: 1000 }), 'Browser approved new-game overwrite should reopen confirmation');
+  await page.locator('#app-confirm-dialog button.primary').click();
+  await page.waitForFunction(() => localStorage.getItem('yaw-last-slot') === 'slot2', null, { timeout: 1000 });
+
+  state = await page.evaluate(() => ({
+    pending: Boolean(App.pendingConfirm),
+    activeSlot: App.activeSlot,
+    lastSlot: localStorage.getItem('yaw-last-slot'),
+    createVisible: getComputedStyle(document.querySelector('#screen-create')).display !== 'none',
+    saveManagerVisible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none'
+  }));
+  assert.strictEqual(state.pending, false, 'Browser approved new-game overwrite should clear pending confirmation');
+  assert.strictEqual(state.activeSlot, 'slot2', 'Browser approved new-game overwrite should select the requested slot');
+  assert.strictEqual(state.lastSlot, 'slot2', 'Browser approved new-game overwrite should persist the requested slot');
+  assert.strictEqual(state.createVisible, true, 'Browser approved new-game overwrite should open character creation');
+  assert.strictEqual(state.saveManagerVisible, false, 'Browser approved new-game overwrite should close the save manager overlay');
+
+  await page.evaluate(() => {
+    localStorage.setItem('yaw-save-time-slot3', '1720000000000');
+    App.showNewGameManager();
+  });
+  await page.locator(`#save-manager button[aria-label="Delete Slot 3"]`).click();
+  await assert.doesNotReject(() => page.locator('#app-confirm-dialog').waitFor({ state: 'visible', timeout: 1000 }), 'Browser delete slot should open confirmation');
+  await page.locator('#app-confirm-dialog button.primary').click();
+  await page.waitForFunction(() => localStorage.getItem('yaw-save-time-slot3') === null, null, { timeout: 1000 });
+
+  state = await page.evaluate(() => ({
+    pending: Boolean(App.pendingConfirm),
+    mode: App.saveManagerMode,
+    label: document.querySelector('#save-manager')?.getAttribute('aria-label') || '',
+    slot3Time: localStorage.getItem('yaw-save-time-slot3'),
+    saveManagerVisible: getComputedStyle(document.querySelector('#save-manager')).display !== 'none',
+    hasUseEmptySlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Start new game in Slot 3"]`)),
+    hasSaveSlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Save current game to Slot 3"]`)),
+    hasLoadSlot3: Boolean(document.querySelector(`#save-manager button[aria-label="Load Slot 3"]`))
+  }));
+  assert.strictEqual(state.pending, false, 'Browser delete slot should clear pending confirmation');
+  assert.strictEqual(state.mode, 'new', 'Browser delete from new-game slot mode should preserve new mode');
+  assert.strictEqual(state.label, 'Choose New Game Slot', 'Browser delete from new-game mode should keep new-game dialog label');
+  assert.strictEqual(state.slot3Time, null, 'Browser delete slot should remove only the selected slot timestamp');
+  assert.strictEqual(state.saveManagerVisible, true, 'Browser delete from new-game mode should return to the save manager');
+  assert.strictEqual(state.hasUseEmptySlot3, true, 'Browser deleted new-game slot should become an empty new-run target');
+  assert.strictEqual(state.hasSaveSlot3, false, 'Browser delete from new-game mode should not switch to save actions');
+  assert.strictEqual(state.hasLoadSlot3, false, 'Browser deleted slot should not expose a load action');
+}
+
 async function runMalformedSaveMetadataBrowserFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
@@ -1336,6 +1449,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runMobileSelectionAndCombatFlow(page);
     await runContentSettingsBrowserFlow(page);
     await runIndexedDbNamespaceBrowserFlow(page);
+    await runSaveManagerSlotBrowserFlow(page);
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

@@ -126,6 +126,7 @@ const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species-system.js'), 'utf8');
@@ -1931,6 +1932,22 @@ test('Center context helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
+test('Structure navigation helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/structure-navigation.js'", 'Structure navigation helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/structure-navigation.js'") < buildContent.indexOf("'src/core/app.js'"), 'Structure navigation helper should load before app.js');
+  assertContains(structureNavigationContent, 'const YAW_STRUCTURE_NAVIGATION = {', 'Structure navigation helper should expose the traversal service');
+  assertContains(structureNavigationContent, 'currentExplorationTile(app)', 'Structure navigation helper should own current exploration tile resolution');
+  assertContains(structureNavigationContent, 'enter(app)', 'Structure navigation helper should own entering structures');
+  assertContains(structureNavigationContent, 'exit(app)', 'Structure navigation helper should own exiting structures');
+  assertContains(structureNavigationContent, 'moveInterior(app, dx, dy)', 'Structure navigation helper should own interior movement');
+  assertContains(structureNavigationContent, 'rest(app)', 'Structure navigation helper should own safe rest flow');
+  assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.currentExplorationTile(this)', 'App current tile wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.enter(this)', 'App enter-structure wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.exit(this)', 'App exit-structure wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.moveInterior(this, dx, dy)', 'App interior movement wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.rest(this)', 'App rest wrapper should delegate to the helper');
+});
+
 test('App-emitted module hooks are declared by the module registry', () => {
   const emittedHookNames = [...appContent.matchAll(/MODULE_SYSTEM\.executeHook\('([^']+)'/g)].map(match => match[1]);
   const declaredHookNames = [...moduleSystemContent.matchAll(/^\s+(on[A-Za-z0-9_]+): \[\]/gm)].map(match => match[1]);
@@ -3248,7 +3265,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

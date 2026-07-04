@@ -4253,32 +4253,7 @@
             },
 
             showPartyMemberStats(index) {
-                const unit = this.party[index];
-                if (!unit) return;
-                const stats = this._unitDisplayStats(unit);
-                const statusKey = this._getPartyLeader() === unit ? 'party.leader' : (unit === this.player ? 'party.you' : 'party.ally');
-                const statusText = this._escapeHtml(this._label(statusKey, statusKey === 'party.leader' ? 'Leader' : statusKey === 'party.you' ? 'You' : 'Ally'));
-                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: unit.species }));
-                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
-                const perks = (unit.perks || []).map(perk => this._escapeHtml(perk.name)).join(', ') || this._escapeHtml(this._label('party.none', 'None'));
-                const html = `<div class="party-stats-view" role="region" aria-label="${this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
-                    <div class="party-stats-header">
-                        <div><h3>${unit.icon || ''} ${this._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
-                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
-                    </div>
-                    <div class="party-stats-grid">
-                        ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
-                        ${statCard('party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
-                        ${statCard('party.combat', 'Combat', `Figh ${stats.Figh} | Feas ${stats.Feas}<br>Flir ${stats.Flir} | ${this._escapeHtml(this._uiLabel('fuck'))} ${stats.Fuck}<br>Flee ${stats.Flee} | Feed ${stats.Feed}`)}
-                        ${statCard('party.attributes', 'Attributes', `STR ${stats.str} | CON ${stats.con} | SPD ${stats.spd}<br>INT ${stats.int} | WIS ${stats.wis} | CHA ${stats.cha}`)}
-                        ${statCard('party.capacity', 'Capacity', `${this._containerSummary(unit, 'stomach')} stomach<br>${this._containerSummary(unit, 'womb')} womb<br>${this._containerSummary(unit, 'balls')} balls`)}
-                        ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
-                        ${statCard('party.perks', 'Perks', perks)}
-                    </div>
-                    <div class="party-stats-footer"><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button></div></div>`;
-                this.showPartyPanelDetail(`${unit.icon || ''} ${unit.name}`, html);
+                return YAW_STATS_PANEL.showPartyMember(this, index);
             },
 
             selectExplorationActor(index) {
@@ -5535,37 +5510,7 @@
             },
 
             showPerkSelection() {
-                if (!this.player) return;
-                const pending = this.player.pendingPerkChoices || 0;
-                const choices = this._availablePerkChoices();
-                const filters = this._availablePerkTreeFilters(this.player);
-                if (!filters.some(([value]) => value === this.perkTreeFilter)) this.perkTreeFilter = 'all';
-                const visibleTrees = Object.entries(this._perkTreesForUnit(this.player)).filter(([treeId]) => this.perkTreeFilter === 'all' || this.perkTreeFilter === treeId);
-                const titleLabel = this._escapeHtml(this._label('perk.choose', 'Choose Perk'));
-                const pendingLabel = this._escapeHtml(this._label('perk.pending', 'Pending choices: {count}', { count: pending }));
-                const treesLabel = this._escapeHtml(this._label('perk.trees', 'Perk trees'));
-                const backLabel = this._escapeHtml(this._label('perk.back', 'Back'));
-                let html = `<h3>${titleLabel}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${pendingLabel}</p><div class="action-legend" role="tablist" aria-label="${treesLabel}" style="margin-bottom:12px;">`;
-                filters.forEach(([value, label]) => {
-                    const active = this.perkTreeFilter === value ? ' selected' : '';
-                    const escapedValue = this._escapeHtml(value);
-                    const filterLabel = this._escapeHtml(label);
-                    html += `<button class="action-chip${active}" role="tab" aria-selected="${this.perkTreeFilter === value ? 'true' : 'false'}" data-perk-filter="${escapedValue}" title="${filterLabel}" aria-label="${filterLabel}" onclick="App.setPerkTreeFilter('${escapedValue}')">${filterLabel}</button>`;
-                });
-                html += `</div><div style="display:grid;gap:12px;">`;
-                for (const [treeId, tree] of visibleTrees) {
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${tree.label}</div><div style="display:grid;gap:8px;margin-top:8px;">`;
-                    choices.filter(perk => perk.tree === treeId).forEach(perk => {
-                        const disabled = pending <= 0 || !perk.available ? ' disabled' : '';
-                        const reqTree = perk.requires?.tree ? this._perkTreesForUnit(this.player)[perk.requires.tree]?.label || perk.requires.tree : null;
-                        const req = perk.requires ? (perk.requires.perk ? ` Requires ${perk.requires.perk}.` : ` Requires ${perk.requires.count || 1} ${reqTree} perk${(perk.requires.count || 1) === 1 ? '' : 's'}.`) : '';
-                        const chooseTitle = this._escapeHtml(this._label('perk.chooseNamed', 'Choose {name}', { name: perk.name }));
-                        html += `<button class="nav-btn" style="text-align:left;white-space:normal;padding:8px;" title="${chooseTitle}" aria-label="${chooseTitle}" ${disabled} onclick="App.choosePerk('${perk.id}')"><strong>${perk.name}</strong> <span style="color:var(--text-muted);font-size:11px">[${perk.treeLabel}]</span><br><span style="font-size:11px;color:var(--text-muted)">${perk.desc}${req}</span></button>`;
-                    });
-                    html += `</div></div>`;
-                }
-                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>`;
-                this.showPartyPanelDetail(titleLabel, html);
+                return YAW_STATS_PANEL.showPerkSelection(this);
             },
 
             // ===== MERCHANTS / TRADE =====
@@ -7448,41 +7393,7 @@
                 }
             },
             showCharacterStats() {
-                if (!this.player) return;
-                const p = this._syncPlayerPartyReference() || this.player;
-                const stats = this._unitDisplayStats(p);
-                const pendingCount = p.pendingPerkChoices || 0;
-                const choosePerkLabel = this._escapeHtml(this._label('perk.chooseCount', 'Choose Perk ({count})', { count: pendingCount }));
-                const respecLabel = this._escapeHtml(this._label('perk.respec', 'Respec Perks'));
-                const debugGrantLabel = this._escapeHtml(this._label('perk.debugGrant', 'Debug +1 Perk Choice'));
-                const closeLabel = this._escapeHtml(this._label('perk.closeStats', 'Close'));
-                const perkButton = pendingCount > 0 ? `<button class="nav-btn" style="margin-top:12px" title="${choosePerkLabel}" aria-label="${choosePerkLabel}" onclick="App.showPerkSelection()">${choosePerkLabel}</button>` : '';
-                const respecDisabled = (p.perks || []).length ? '' : ' disabled';
-                const statCard = (labelKey, fallback, body) => `<div class="option-card"><strong>${this._escapeHtml(this._label(labelKey, fallback))}</strong><br>${body}</div>`;
-                const levelText = this._escapeHtml(this._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: p.species }));
-                const xpText = this._escapeHtml(this._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: p.xp, xpToNext: p.xpToNext }));
-                const noneText = this._escapeHtml(this._label('party.none', 'None'));
-                const parts = this._escapeHtml(p.parts || this._label('party.none', 'None'));
-                const chest = this._escapeHtml(p.chest || this._label('party.none', 'None'));
-                const bodyParts = (p.bodyParts || []).map(b => this._escapeHtml(this.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
-                const perks = (p.perks || []).map(pk => this._escapeHtml(pk.name)).join(', ') || noneText;
-                let html = `<div class="party-stats-view character-stats-view" role="region" aria-label="${closeLabel}">
-                    <div class="party-stats-header">
-                        <div><h1 style="color:var(--accent-primary)">📊 ${this._escapeHtml(p.name)}</h1><p style="color:var(--text-muted);margin-top:4px">${levelText} | ${xpText}</p></div>
-                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
-                    </div>
-                    <div class="party-stats-grid">
-                        ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
-                        ${statCard('party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
-                        ${statCard('character.combatStats', 'Combat Stats', `Figh: ${stats.Figh} | Feas: ${stats.Feas} | Flir: ${stats.Flir}<br>${this._escapeHtml(this._uiLabel('fuck'))}: ${stats.Fuck} | Flee: ${stats.Flee} | Feed: ${stats.Feed}`)}
-                        ${statCard('party.attributes', 'Attributes', `STR: ${stats.str} | CON: ${stats.con} | SPD: ${stats.spd}<br>INT: ${stats.int} | WIS: ${stats.wis} | CHA: ${stats.cha}`)}
-                        ${statCard('character.body', 'Body', `${this._escapeHtml(this._label('character.size', 'Size'))}: ${p.size} | ${this._escapeHtml(this._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${this._escapeHtml(this._label('character.parts', 'Parts'))}: ${parts} | ${this._escapeHtml(this._label('character.chest', 'Chest'))}: ${chest}<br>${this._escapeHtml(this._label('character.bodyParts', 'Body'))}: ${bodyParts}`)}
-                        ${statCard('party.equipment', 'Equipment', this._equipmentSummary(p))}
-                        ${statCard('party.perks', 'Perks', perks)}
-                        ${statCard('character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
-                    </div>
-                    <div class="party-stats-footer">${perkButton}<button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button></div></div>`;
-                this.showPartyPanelDetail(`${p.name} ${this._label('party.stats', 'Stats')}`, html);
+                return YAW_STATS_PANEL.showCharacter(this);
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
             toggleCheat(cheat) {

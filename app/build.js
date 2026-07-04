@@ -43,6 +43,7 @@ const SCRIPT_ORDER = [
   'src/core/unit-card.js',
   'src/core/equipment-system.js',
   'src/core/inventory-panel.js',
+  'src/core/stats-panel.js',
   'src/core/mobile-unit-strips.js',
   'src/core/panel-rendering.js',
   'src/core/unit-selection.js',

@@ -7506,7 +7506,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, '>Actuar<', 'Actor selection visible label should localize');
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
   assertContains(html, '>Marcar<', 'Target mark visible label should localize');
-  assertContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party action menu should expose localized accessible label');
+  assertNotContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party card should not expose a duplicate visible action menu');
   assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',2,'secondary-click')", 'Party card should support desktop secondary-click radial intent menu');
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
   assertContains(html, 'aria-label="Mostrar estadisticas de Ally B"', 'Stats control should expose localized accessible label');
@@ -8974,7 +8974,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(partyCard, "event.key==='Enter'||event.key===' '", 'Desktop unit cards should activate with Enter or Space');
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
-  assertContains(partyCard, 'aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu(\'party\',0,\'desktop\')', 'Party action menu button should advertise and target its dialog popup');
+  assertNotContains(partyCard, "App.showIntentMenu('party',0,'desktop')", 'Party card should not duplicate marked-target actions behind a visible action menu');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
   assertContains(creatureCard, "outsideActionForCreature('inspect'", 'Creature inspect action should remain available from creature card');
   assertNotContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Default creature card should not duplicate marked-target actions behind a visible action menu');
@@ -8985,7 +8985,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
-  assertContains(mobilePartyChip, 'aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu(\'party\',0)', 'Mobile party action menu button should advertise and target its dialog popup');
+  assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertContains(mobileCreatureChip, "outsideActionForCreature('inspect','fox-1')", 'Mobile creature chip should expose direct inspect');
   assertNotContains(mobileCreatureChip, "showIntentMenu('creature','fox-1')", 'Mobile creature chip should not duplicate marked-target actions behind a visible action menu');
   assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');
@@ -10315,7 +10315,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(partyHtml, 'Aliado', 'Mobile party status should localize');
   assertContains(partyHtml, 'aria-label="Seleccionar Ally para actuar"', 'Mobile party actor button should localize accessible label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
-  assertContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party action menu button should localize accessible label');
+  assertNotContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party chip should not expose a duplicate visible action menu');
   assertContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile party stats button should localize accessible label');
   assertContains(partyHtml, '>Actuar<', 'Mobile party actor button text should localize');
   assertContains(partyHtml, '>Marcar<', 'Mobile party target button text should localize');
@@ -10348,11 +10348,15 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   App.creatures = [friendly];
 
   const partyHtml = App.renderUnitCard(ally, 1, 'party');
-  assertContains(partyHtml, 'aria-controls="desktop-intent-menu"', 'Desktop party card should target the desktop intent surface');
-  assertContains(partyHtml, "App.showIntentMenu('party',1,'desktop')", 'Desktop party card should request the desktop intent source');
+  assertNotContains(partyHtml, 'aria-controls="desktop-intent-menu"', 'Desktop party card should not expose a duplicate visible desktop intent menu');
+  assertNotContains(partyHtml, "App.showIntentMenu('party',1,'desktop')", 'Desktop party card should use actor and target marking instead of visible desktop intent source');
   const creatureHtml = App.renderUnitCard(friendly, 0, 'creature');
   assertNotContains(creatureHtml, 'aria-controls="desktop-intent-menu"', 'Living creature card should not expose a duplicate visible desktop intent menu');
   assertNotContains(creatureHtml, "App.showIntentMenu('creature','friendly-desktop','desktop')", 'Living creature card should use marking/inspect instead of visible desktop intent source');
+
+  App.showIntentMenu('party', 1, 'desktop');
+  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop party intent menu should still use the desktop-specific dialog when invoked directly');
+  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',1,'fight','desktop')", 'Desktop party primary actions should keep the desktop source when invoked directly');
 
   App.showIntentMenu('creature', 'friendly-desktop', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');

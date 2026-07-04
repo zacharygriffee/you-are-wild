@@ -8098,6 +8098,35 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   assertContains(App.log[App.log.length - 1].text, 'You no puede alcanzar a Backline desde aqui.', 'Blocked reach log should localize');
 });
 
+test('Sync combat target selection respects participant reach', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-sync-reach', Figh: 30, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'ally-sync-reach', Figh: 30, combatRow: 'front' });
+  const enemy = makeUnit('Backline', { id: 'sync-backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
+  App.activeActor = player;
+  App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-reach', participantIds: ['player-sync-reach', 'ally-sync-reach'] };
+  App._syncParticipants = [player, ally];
+  App.nextTurn = function() { this._syncReachConsumedTurn = true; };
+
+  App.renderCreatures();
+  assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should reject enemies no selected participant can reach');
+  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync target should render as a disabled control');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Unreachable sync target should expose blocked combat-pick state');
+  assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Unreachable sync target should not queue');
+  assertEqual(App.combatState.syncActions.length, 0, 'Unreachable sync target should not create a queued sync action');
+  assertEqual(App._syncReachConsumedTurn, undefined, 'Rejected sync target should not consume the active turn');
+  assertContains(App.log[App.log.length - 1].text, 'You, Ally cannot reach Backline from here.', 'Rejected sync target should explain the reach failure');
+
+  ally.ranged = true;
+  App.renderCreatures();
+  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow a target at least one selected participant can reach');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Reachable sync target should render as pickable');
+});
+
 test('Combat move action swaps row and costs the active turn', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-move', combatRow: 'front' });
@@ -9878,9 +9907,10 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const ally = makeUnit('Ally', { id: 'ally-1' });
   const creature = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const blockedEnemy = makeUnit('Flying Enemy', { id: 'enemy-flying', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, flying: true });
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [creature, enemy];
+  App.creatures = [creature, enemy, blockedEnemy];
   App.explorationActorIds = ['ally-1'];
   App.explorationTargetIds = ['party:player-1', 'creature:guide-1'];
 
@@ -9918,10 +9948,16 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
   const enemyCard = App.renderUnitCard(enemy, 1, 'creature');
   const mobileEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');
+  const blockedEnemyCard = App.renderUnitCard(blockedEnemy, 2, 'creature');
+  const mobileBlockedEnemyChip = App.renderMobileUnitChip(blockedEnemy, 2, 'creature');
   assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat Pick button should identify combat target selection separately from exploration marking');
   assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Desktop combat Pick button should expose combat-pick mode');
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat Pick button should identify combat target selection separately from exploration marking');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Mobile combat Pick button should expose combat-pick mode');
+  assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop blocked combat target should be an actual disabled control');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Desktop blocked combat target should expose blocked combat-pick state');
+  assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-pick state');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });

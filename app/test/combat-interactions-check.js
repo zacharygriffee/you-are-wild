@@ -274,34 +274,31 @@ async function runReachabilityMatrix(page) {
   await page.locator(`#party-content button[onclick*="executeCombatIntent('fight')"]`).first().click();
   let target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
-  let attrs = await target.evaluate(el => ({ ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable fight target should be visibly unavailable but clickable for feedback');
+  let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
+  assert.strictEqual(attrs.disabled, true, 'Unreachable fight target should be an actual disabled control');
+  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable fight target should expose disabled state accessibly');
   assert(attrs.label.includes('Cannot select Enemy as Fight target'), 'Unreachable fight target should explain why it is unavailable');
-  await target.click({ force: true });
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures[0]?.CPun,
-    targetSelectionAction: App.targetSelection?.action || null,
-    lastLog: App.log[App.log.length - 1]?.text || ''
+    targetSelectionAction: App.targetSelection?.action || null
   }));
-  assert.strictEqual(state.enemyPun, 100, 'Invalid fight target click should not damage enemy');
-  assert.strictEqual(state.targetSelectionAction, 'fight', 'Invalid fight target click should preserve selected intent for correction');
-  assert(state.lastLog.includes('cannot reach'), 'Invalid fight target click should log reach feedback');
+  assert.strictEqual(state.enemyPun, 100, 'Disabled fight target should not damage enemy');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Disabled fight target should preserve selected intent for correction');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 20, MPun: 100, size: 2 } });
   await page.locator(`#party-content button[onclick*="executeCombatIntent('feast')"]`).first().click();
   target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
-  attrs = await target.evaluate(el => ({ ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable feast target should be visibly unavailable but clickable for feedback');
-  await target.click({ force: true });
+  attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
+  assert.strictEqual(attrs.disabled, true, 'Unreachable feast target should be an actual disabled control');
+  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable feast target should expose disabled state accessibly');
+  assert(attrs.label.includes('Cannot select Enemy as') && attrs.label.includes('target'), 'Unreachable feast target should explain why it is unavailable');
   state = await page.evaluate(() => ({
     stomachCount: App.player.stomach.length,
-    targetSelectionAction: App.targetSelection?.action || null,
-    lastLog: App.log[App.log.length - 1]?.text || ''
+    targetSelectionAction: App.targetSelection?.action || null
   }));
-  assert.strictEqual(state.stomachCount, 0, 'Invalid feast target click should not contain enemy');
-  assert.strictEqual(state.targetSelectionAction, 'feast', 'Invalid feast target click should preserve selected intent for correction');
-  assert(state.lastLog.includes('cannot reach'), 'Invalid feast target click should log reach feedback');
+  assert.strictEqual(state.stomachCount, 0, 'Disabled feast target should not contain enemy');
+  assert.strictEqual(state.targetSelectionAction, 'feast', 'Disabled feast target should preserve selected intent for correction');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await clickIntentAndTarget(page, 'flirt');

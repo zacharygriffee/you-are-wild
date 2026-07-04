@@ -3456,7 +3456,8 @@
             canSelectCreatureTarget(unit) {
                 if (!unit || unit.CPun <= 0) return false;
                 if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
-                    return unit.disposition === this.DISPOSITION.ENEMY && this._syncSelectedParticipants().length >= 2;
+                    const participants = this._syncParticipants || this._syncSelectedParticipants();
+                    return this._canSyncTarget(participants, unit, this.syncSelection.type);
                 }
                 if (!this.targetSelection) return false;
                 if (this.targetSelection.source === 'combat') {
@@ -3464,6 +3465,18 @@
                     return unit.disposition === this.DISPOSITION.ENEMY && this._canReachCombatTarget(actor, unit, this.targetSelection.action);
                 }
                 return unit.disposition !== this.DISPOSITION.PARTY;
+            },
+
+            _syncBaseAction(syncType) {
+                return String(syncType || 'sync_fight').replace(/^sync_/, '') || 'fight';
+            },
+
+            _canSyncTarget(participants, target, syncType = 'sync_fight') {
+                const livingParticipants = (participants || []).filter(unit => unit && unit.CPun > 0);
+                if (!target || target.CPun <= 0 || target.disposition !== this.DISPOSITION.ENEMY) return false;
+                if (livingParticipants.length < 2) return false;
+                const action = this._syncBaseAction(syncType);
+                return livingParticipants.some(unit => this._canReachCombatTarget(unit, target, action));
             },
 
             executeActionOnTarget(action, targetId) {
@@ -3942,6 +3955,13 @@
                 if (!participants || participants.length < 2) {
                     this.log.push({ text: this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
                     this.renderLog();
+                    return false;
+                }
+                if (!this._canSyncTarget(participants, target, syncType)) {
+                    const names = participants.map(p => p?.name).filter(Boolean).join(', ') || this._label('action.sync', 'Sync');
+                    this.log.push({ text: this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: names, target: target.name }), type: 'combat' });
+                    this.renderLog();
+                    this.renderCreatures();
                     return false;
                 }
                 // Find the slowest participant's turn position
@@ -7634,14 +7654,14 @@
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
                         const disabledClass = isTargetable ? '' : ' disabled';
-                        const disabledAttr = isTargetable ? '' : 'aria-disabled="true"';
+                        const disabledAttr = isTargetable ? '' : 'disabled aria-disabled="true"';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
                         const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}${this._selectionControlAttrs('combat-target', isTargetable)}`;
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const isTargetable = this.canSelectCreatureTarget(unit);
-                        const disabled = isTargetable ? '' : ' disabled';
+                        const disabled = isTargetable ? '' : 'disabled aria-disabled="true"';
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: this._label('action.sync', 'Sync') });
                         const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}${this._selectionControlAttrs('combat-target', isTargetable)}`;
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
@@ -7781,7 +7801,7 @@
                     if (this.targetSelection) {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabledClass = canTarget ? '' : ' disabled';
-                        const disabledAttr = canTarget ? '' : 'aria-disabled="true"';
+                        const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
                         const targetName = unit.name || 'creature';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
@@ -7789,7 +7809,7 @@
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${this._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const canTarget = this.canSelectCreatureTarget(unit);
-                        const disabled = canTarget ? '' : ' disabled';
+                        const disabled = canTarget ? '' : ' disabled aria-disabled="true"';
                         const targetName = unit.name || 'creature';
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: this._label('action.sync', 'Sync') }));
                         const targetLabel = this._escapeHtml(this._combatTargetPickLabel());

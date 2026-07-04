@@ -584,6 +584,18 @@ asyncTest('Module system rejects malformed manifests before storage', async () =
   rejected = false;
   try {
     await MODULE_SYSTEM.installModule({
+      manifest: { id: 'unknown-permission', name: 'Unknown Permission', version: '1.0.0', permissions: ['world:rewrite_everything'] },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'unknown permission world:rewrite_everything', 'Unknown permission ids should report the unsupported permission');
+  }
+  assertEqual(rejected, true, 'Unknown permission ids should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
       manifest: { id: 'bad-dependency', name: 'Bad Dependency', version: '1.0.0', dependencies: ['core-api', 42] },
       code: ''
     });
@@ -1829,6 +1841,8 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, 'await this.refreshModList();', 'Mod enable failures should refresh list state after rejection');
   assertContains(modUiContent, 'alert(text);', 'Mod enable failures should surface a user-facing alert');
   assertContains(moduleSystemContent, '_requirePermission(moduleId, manifest', 'Module API mutations should enforce declared permissions');
+  assertContains(moduleSystemContent, 'KNOWN_PERMISSIONS', 'Module permissions should be declared as a known contract');
+  assertContains(moduleSystemContent, 'unknown permission', 'Unknown module permissions should reject before install');
   assertContains(moduleSystemContent, "'world:add_biome'", 'Module biome mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_species'", 'Module species mutation permission should be explicit');
   assertContains(moduleSystemContent, "'content:add_item'", 'Module item mutation permission should be explicit');

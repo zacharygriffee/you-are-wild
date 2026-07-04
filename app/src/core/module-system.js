@@ -13,6 +13,7 @@ const MODULE_SYSTEM = {
     PACKAGE_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
+    KNOWN_PERMISSIONS: ['ui.read', 'world:add_biome', 'content:add_species', 'content:add_item'],
     db: null,
     
     // Hooks registry
@@ -71,6 +72,16 @@ const MODULE_SYSTEM = {
             if (!normalized.includes(token)) normalized.push(token);
         }
         return normalized;
+    },
+
+    _normalizePermissions(value) {
+        const permissions = this._normalizeStringList(value, 'permissions');
+        for (const permission of permissions) {
+            if (!this.KNOWN_PERMISSIONS.includes(permission)) {
+                throw new Error(`Module manifest permissions contains unknown permission ${permission}`);
+            }
+        }
+        return permissions;
     },
 
     _normalizeGameVersion(value, fieldName = 'minGameVersion') {
@@ -138,7 +149,7 @@ const MODULE_SYSTEM = {
             type: String(manifest.type || 'feature_pack').trim() || 'feature_pack',
             contentRating,
             trustBoundary,
-            permissions: this._normalizeStringList(manifest.permissions, 'permissions'),
+            permissions: this._normalizePermissions(manifest.permissions),
             dependencies,
             minGameVersion
         };

@@ -149,6 +149,7 @@ const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-men
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
 const saveSlotFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-slot-flow.js'), 'utf8');
+const saveLoadFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-load-flow.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const sceneShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'scene-shell.js'), 'utf8');
 const combatSaveStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-save-state.js'), 'utf8');
@@ -1692,6 +1693,21 @@ test('Save slot flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.deleteSlot(this, slotName)', 'App delete-slot wrapper should delegate to the helper');
 });
 
+test('Save load flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/save-load-flow.js'", 'Save load flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/save-load-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save load flow helper should load before app.js');
+  assertContains(saveLoadFlowContent, 'const YAW_SAVE_LOAD_FLOW = {', 'Save load flow helper should expose the load flow service');
+  assertContains(saveLoadFlowContent, 'app._readCombatRefreshSnapshot(slotName)', 'Load flow should prefer combat refresh snapshots when present');
+  assertContains(saveLoadFlowContent, 'app.showSaveRecoveryDialog(slotName, saveData)', 'Load flow should hand incompatible saves to recovery UI');
+  assertContains(saveLoadFlowContent, "app._label('save.error.noSave'", 'Missing save feedback should remain localized');
+  assertContains(saveLoadFlowContent, "app._label('save.error.loadFailed'", 'Load failure feedback should remain localized');
+  assertContains(saveLoadFlowContent, "app._label('save.recoveredOnLoad'", 'Softcore revive feedback should remain localized');
+  assertContains(saveLoadFlowContent, "app._emitModuleHook('onGameLoad'", 'Load flow should preserve game-load module hooks');
+  assertContains(saveLoadFlowContent, "app._removeStoredValue('lastSlot')", 'Last-played load should clear malformed stored slot names');
+  assertContains(appContent, 'YAW_SAVE_LOAD_FLOW.loadFromSlot(this, slotName)', 'App load wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SAVE_LOAD_FLOW.loadLastPlayed(this)', 'App last-played wrapper should delegate to the helper');
+});
+
 test('Large map helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/large-map.js'", 'Large map helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/large-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Large map helper should load before app.js');
@@ -3020,7 +3036,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveSlotFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

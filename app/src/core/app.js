@@ -8645,140 +8645,7 @@
                 return YAW_SAVE_SLOT_FLOW.saveToSlotConfirmed(this, slotName);
             },
             async loadFromSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                try {
-                    const slotLabel = this._slotDisplayLabel(slotName);
-                    let saveData = await this._dbGet('saves', slotName);
-                    const combatSnapshot = this._readCombatRefreshSnapshot(slotName);
-                    if (combatSnapshot?.saveData) saveData = combatSnapshot.saveData;
-                    if (!saveData) { alert(this._label('save.error.noSave', 'No save in {slot}', { slot: slotLabel })); return false; }
-                    let loaded;
-                    try {
-                        loaded = Binary.loadGame(saveData);
-                    } catch (e) {
-                        console.error('Incompatible save:', e);
-                        this.showSaveRecoveryDialog(slotName, saveData);
-                        return false;
-                    }
-                    this.encounterPreference = loaded.encounterPreference || 'any';
-                    this.encounterWeights = this._normalizeEncounterWeights(loaded.questState?.encounterWeights || this._legacyEncounterWeights(this.encounterPreference));
-                    this.selectedEncounterWeights = { ...this.encounterWeights };
-                    this.selectedEncounterPreference = this._encounterPreferenceFromWeights(this.encounterWeights);
-	                    this.player = {
-	                        name: loaded.playerName, species: loaded.playerSpecies, icon: this.species.find(s => s.id === loaded.playerSpecies)?.icon || '👤',
-	                        gender: loaded.playerGender || 'female', level: loaded.playerLevel, CPun: loaded.playerHp, MPun: loaded.playerMaxHp, CPle: Math.floor(loaded.playerMaxHp * 0.5), MPle: loaded.playerMaxHp,
-	                        stats: loaded.playerStats, tags: [this.species.find(s => s.id === loaded.playerSpecies)?.name || 'Human']
-	                    };
-	                    this._normalizeUnit(this.player, { disposition: this.DISPOSITION.PARTY, hero: true, ally: false, mc: true, obedient: true, willing: true });
-	                    this.location = { x: loaded.locationX, y: loaded.locationY };
-	                    this.largeMapOffset = { x: 0, y: 0 };
-	                    this.largeMapRadius = this.largeMapRadius || 8;
-	                    const loadedParty = loaded.party && loaded.party.length ? loaded.party : [this.player];
-	                    this.party = loadedParty.map((unit, index) => this._normalizeUnit(unit, {
-	                        disposition: this.DISPOSITION.PARTY,
-	                        hero: index === 0,
-	                        ally: index !== 0,
-	                        mc: index === 0,
-	                        obedient: true
-	                    }));
-                    const partyUnitRefs = Array.isArray(loaded.questState?.partyUnitRefs) ? loaded.questState.partyUnitRefs : [];
-                    for (let index = 0; index < this.party.length; index++) {
-                        const ref = partyUnitRefs[index];
-                        if (!ref?.id) continue;
-                        const unit = this.party[index];
-                        const refName = String(ref.name || '');
-                        const refSpecies = String(ref.species || '');
-                        const matchesName = !refName || String(unit.name || '') === refName;
-                        const matchesSpecies = !refSpecies || String(unit.species || '') === refSpecies;
-                        if (matchesName && matchesSpecies) unit.id = String(ref.id);
-                    }
-	                    const playerIndex = this.party.findIndex(p => p.name === this.player.name && p.species === this.player.species);
-	                    if (playerIndex >= 0) {
-	                        this.player = this.party[playerIndex];
-	                        this.player.hero = true;
-	                        this.player.ally = false;
-	                        this.player.mc = true;
-	                    } else {
-	                        this.party.unshift(this.player);
-                    }
-                    const savedRoles = loaded.questState?.partyRoles || {};
-                    const savedAIOrders = loaded.questState?.partyAIOrders || {};
-                    for (const unit of this.party) {
-                        const keys = [unit.id, unit.name].filter(Boolean).map(String);
-                        const role = keys.map(key => savedRoles[key]).find(value => this.PARTY_ROLES[value]);
-                        const order = keys.map(key => savedAIOrders[key]).find(value => this.PARTY_AI_ORDERS[value]);
-                        if (role) unit.partyRole = role;
-                        if (order) unit.aiOrder = order;
-                    }
-                    this.explorationActorIds = Array.isArray(loaded.questState?.explorationActorIds) ? loaded.questState.explorationActorIds.map(String) : [];
-                    this.explorationTargetIds = Array.isArray(loaded.questState?.explorationPartyTargetIds) ? loaded.questState.explorationPartyTargetIds.map(String) : [];
-                    this.currentBiome = loaded.currentBiome || 'forest';
-                    this.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;
-                    this.dayCount = loaded.questState?.dayCount || 0;
-                    const structuredLog = Array.isArray(loaded.questState?.logEntries) ? loaded.questState.logEntries : null;
-                    this.log = structuredLog
-                        ? structuredLog.map(entry => ({
-                            text: String(entry?.text || ''),
-                            type: String(entry?.type || 'discovery'),
-                            ...(Number.isFinite(entry?.round) ? { round: entry.round } : {}),
-                            ...(Number.isFinite(entry?.turnIndex) ? { turnIndex: entry.turnIndex } : {}),
-                            ...(entry?.actor ? { actor: String(entry.actor) } : {}),
-                            ...(entry?.phase ? { phase: String(entry.phase) } : {})
-                        })).filter(entry => entry.text)
-                        : (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
-                    this.creatures = [];
-                    this.inventory = loaded.inventory || [];
-                    this.quests = loaded.questState?.quests || [];
-                    this.player.gold = loaded.questState?.playerGold || this.player.gold || 0;
-                    this.player.equipment = loaded.questState?.playerEquipment || this.player.equipment || {};
-                    this.player.equipmentBaseStats = loaded.questState?.playerEquipmentBaseStats || null;
-                    this._recalculateEquipment(this.player, { inferBase: !loaded.questState?.playerEquipmentBaseStats });
-                    this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
-                    this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
-                    this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);
-                    this.worldMeta = this._normalizeWorldMeta(loaded.worldMeta, {
-                        worldId: 'world_legacy',
-                        seed: loaded.currentBiome || 'default',
-                        generatorVersion: 1,
-                        mapModsHash: 'legacy'
-                    });
-                    this.inInterior = false;
-                    this.activeInterior = null;
-                    this.interiorLocation = { x: 0, y: 0 };
-                    this.activeSlot = slotName;
-                    this._restoreWorldState(loaded);
-                    await this.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
-                    this._restoreCombatState(loaded.questState?.combatState);
-                    this._normalizeExplorationSelections();
-                    this._setStoredValue('lastSlot', slotName);
-                    const saveTime = this._getSaveTime(slotName);
-                    if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
-                    // Revive any dead party members on load (softcore)
-                    let revived = false;
-                    if (this.player && this.player.CPun <= 0) {
-                        this.player.CPun = 1;
-                        this.player.knockedOut = false;
-                        revived = true;
-                    }
-                    for (const p of this.party) {
-                        if (p.CPun <= 0) { p.CPun = 1; revived = true; }
-                        p.knockedOut = false;
-                    }
-                    if (revived) {
-                        this.log.push({ text: this._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: this.player.name }), type: 'discovery' });
-                    }
-                    this.showScreen('game');
-                    this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
-                    if (!this._resumeLoadedCombat()) {
-                        this.showExplorationActions();
-                    }
-                    this._emitModuleHook('onGameLoad', {
-                        slotName,
-                        combatActive: Boolean(this.combatState?.active),
-                        location: { ...this.location }
-                    });
-                    return true;
-                } catch (e) { console.error('Load failed:', e); alert(this._label('save.error.loadFailed', 'Load failed: {message}', { message: e.message })); return false; }
+                return YAW_SAVE_LOAD_FLOW.loadFromSlot(this, slotName);
             },
             _restoreWorldState(loaded) {
                 this.worldMap = new Map();
@@ -8861,13 +8728,7 @@
                 return YAW_COMBAT_SAVE_STATE.resumeLoadedCombat(this);
             },
             async loadLastPlayed() {
-                const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), null);
-                if (!lastSlot) {
-                    this._removeStoredValue('lastSlot');
-                    this._removeStoredValue('lastSaveTime');
-                    return false;
-                }
-                return await this.loadFromSlot(lastSlot);
+                return YAW_SAVE_LOAD_FLOW.loadLastPlayed(this);
             },
             async deleteSlot(slotName) {
                 return YAW_SAVE_SLOT_FLOW.deleteSlot(this, slotName);

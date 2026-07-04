@@ -279,10 +279,7 @@
                 return YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact);
             },
             _isCurrentCombatActor(unit) {
-                if (!unit || !this.combatState?.active) return false;
-                const actor = this.activeActor || this._currentCombatActor();
-                if (!actor) return false;
-                return actor === unit || this._unitSelectionId(actor) === this._unitSelectionId(unit);
+                return YAW_COMBAT_ACTOR_STATE.isCurrent(this, unit);
             },
             _clearCenterActionsForCombat() {
                 return YAW_SCENE_SHELL.clearCenterActionsForCombat(this);

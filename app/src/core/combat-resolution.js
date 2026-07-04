@@ -4,6 +4,14 @@
  */
 
 const YAW_COMBAT_RESOLUTION = {
+    resolveCommand(app, command) {
+        const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
+        const target = command?.targets?.[0] || null;
+        app.targetSelection = null;
+        app.renderMobileCombatToolbelt();
+        return app.executeActionAgainstTarget(command.action, actor, target);
+    },
+
     executeActionAgainstTarget(app, action, actor, target) {
         app.combatState.processing = true;
         try {

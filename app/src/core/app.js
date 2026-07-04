@@ -2052,11 +2052,7 @@
             },
 
             _resolveCombatAction(command) {
-                const actor = command?.actors?.[0] || this.activeActor || this._currentCombatActor() || this.player;
-                const target = command?.targets?.[0] || null;
-                this.targetSelection = null;
-                this.renderMobileCombatToolbelt();
-                return this.executeActionAgainstTarget(command.action, actor, target);
+                return YAW_COMBAT_RESOLUTION.resolveCommand(this, command);
             },
 
             executeActionAgainstTarget(action, actor, target) {

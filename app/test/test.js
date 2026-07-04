@@ -1903,11 +1903,14 @@ test('Combat resolution helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/combat-resolution.js'", 'Combat resolution helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/combat-resolution.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat resolution helper should load before app.js');
   assertContains(combatResolutionContent, 'const YAW_COMBAT_RESOLUTION = {', 'Combat resolution helper should expose the resolution service');
+  assertContains(combatResolutionContent, 'resolveCommand(app, command)', 'Combat resolution helper should own shared combat command adaptation');
+  assertContains(combatResolutionContent, 'app.renderMobileCombatToolbelt()', 'Combat command resolution should refresh the mobile combat toolbelt after clearing target state');
   assertContains(combatResolutionContent, 'executeActionAgainstTarget(app, action, actor, target)', 'Combat resolution helper should own direct action resolution');
   assertContains(combatResolutionContent, "app._pushLog(result, 'combat'", 'Combat resolution helper should preserve structured combat logging');
   assertContains(combatResolutionContent, 'app._sanitizeCombatState({ preserveTurn: true })', 'Combat resolution helper should preserve combat state sanitization before advancing');
   assertContains(combatResolutionContent, 'app.autoSave()', 'Combat resolution helper should preserve autosave after resolved direct actions');
   assertNotContains(combatResolutionContent, 'Math.random', 'Combat resolution helper should not use ambient randomness');
+  assertContains(appContent, 'YAW_COMBAT_RESOLUTION.resolveCommand(this, command)', 'App combat command resolver should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target)', 'App direct combat action wrapper should delegate to the helper');
 });
 

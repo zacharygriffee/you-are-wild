@@ -9,6 +9,26 @@ const YAW_COMBAT_ACTOR_STATE = {
         return app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit || null;
     },
 
+    ambushInitiativeBonus(app) {
+        return Math.max(25, 100 - app._partyRoleEffect('guard', 35, 75));
+    },
+
+    initiative(app, unit) {
+        let base = app._effectiveSpeed(unit) + app._combatStateRoll('combat-initiative', unit, 'jitter') * 10;
+        if (unit.bodyParts) {
+            for (const bp of unit.bodyParts) {
+                const part = app.BODY_PARTS[bp];
+                if (part && part.priority) base += part.priority;
+            }
+        }
+        if (unit.fastFlee) base += 2;
+        if (unit.cum >= 20) base -= 5;
+        const stomachSize = (unit.stomach?.length || 0) + (unit.womb?.length || 0) + (unit.balls?.length || 0);
+        if (stomachSize >= 3) base -= 2;
+        if (stomachSize >= 6) base -= 4;
+        return Math.max(1, base);
+    },
+
     syncActionLabel(app, type) {
         const action = { sync_fight: 'fight', sync_flirt: 'flirt', sync_fuck: 'fuck', sync_feed: 'feed' }[type];
         return action ? app._uiLabel(action) : app._label('combat.group', 'Group');

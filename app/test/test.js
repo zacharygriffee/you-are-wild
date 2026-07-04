@@ -2017,6 +2017,10 @@ test('Combat actor state helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-actor-state.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat actor state helper should load before app.js');
   assertContains(combatActorStateContent, 'const YAW_COMBAT_ACTOR_STATE = {', 'Combat actor state helper should expose the actor-state service');
   assertContains(combatActorStateContent, 'current(app)', 'Combat actor state helper should own current turn actor lookup');
+  assertContains(combatActorStateContent, 'ambushInitiativeBonus(app)', 'Combat actor state helper should own ambush initiative bonuses');
+  assertContains(combatActorStateContent, 'initiative(app, unit)', 'Combat actor state helper should own initiative calculation');
+  assertContains(combatActorStateContent, "app._combatStateRoll('combat-initiative', unit, 'jitter')", 'Combat initiative should use deterministic combat state rolls');
+  assertNotContains(combatActorStateContent, 'Math.random', 'Combat actor state helper should not use ambient randomness');
   assertContains(combatActorStateContent, 'syncActionLabel(app, type)', 'Combat actor state helper should own sync action labels');
   assertContains(combatActorStateContent, 'pendingSyncForUnit(app, unit)', 'Combat actor state helper should own pending sync lookup');
   assertContains(combatActorStateContent, 'turnOrderInfo(app, unit)', 'Combat actor state helper should own turn order info');
@@ -2027,6 +2031,8 @@ test('Combat actor state helper module is registered before app code', () => {
   assertContains(combatActorStateContent, 'isCurrent(app, unit)', 'Combat actor state helper should own current actor comparisons');
   assertContains(combatActorStateContent, 'mobilePrompt(app, actor = app._currentCombatActor())', 'Combat actor state helper should own mobile prompt coordination');
   assertContains(combatActorStateContent, 'YAW_MOBILE_COMBAT_TOOLBELT.prompt(app, actor)', 'Combat actor state helper should reuse the mobile combat toolbelt prompt renderer');
+  assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.ambushInitiativeBonus(this)', 'App ambush initiative wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.initiative(this, c)', 'App initiative wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.syncActionLabel(this, type)', 'App sync action label wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.pendingSyncForUnit(this, unit)', 'App pending sync wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.turnOrderInfo(this, unit)', 'App turn order info wrapper should delegate to the helper');

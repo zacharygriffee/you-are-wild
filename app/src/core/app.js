@@ -1816,23 +1816,11 @@
             },
 
             _ambushInitiativeBonus() {
-                return Math.max(25, 100 - this._partyRoleEffect('guard', 35, 75));
+                return YAW_COMBAT_ACTOR_STATE.ambushInitiativeBonus(this);
             },
 
             _calcInitiative(c) {
-                let base = this._effectiveSpeed(c) + this._combatStateRoll('combat-initiative', c, 'jitter') * 10;
-                if (c.bodyParts) {
-                    for (const bp of c.bodyParts) {
-                        const part = this.BODY_PARTS[bp];
-                        if (part && part.priority) base += part.priority;
-                    }
-                }
-                if (c.fastFlee) base += 2;
-                if (c.cum >= 20) base -= 5;
-                const stomachSize = (c.stomach?.length || 0) + (c.womb?.length || 0) + (c.balls?.length || 0);
-                if (stomachSize >= 3) base -= 2;
-                if (stomachSize >= 6) base -= 4;
-                return Math.max(1, base);
+                return YAW_COMBAT_ACTOR_STATE.initiative(this, c);
             },
 
             _syncActionLabel(type) {

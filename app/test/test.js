@@ -11768,7 +11768,19 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Desktop primary actions should keep the desktop source');
   assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop intent menu should use the shared intent close handler');
   assertNotContains(body.innerHTML, 'App.closeMobileContextMenu()', 'Desktop intent menu should not emit the mobile-specific close handler');
+  assert(App._mobileContextOutsideHandler, 'Desktop intent menu should register outside pointer dismissal');
+  assert(listeners.has('pointerdown'), 'Desktop intent menu should listen for outside pointer dismissal');
+  const outsideDismissMenu = elements.get('desktop-intent-menu');
+  outsideDismissMenu.removed = undefined;
+  listeners.get('pointerdown')({ target: outsideDismissMenu });
+  assertEqual(outsideDismissMenu.removed, undefined, 'Pointer inside the desktop intent menu should not dismiss it');
+  listeners.get('pointerdown')({ target: body });
+  assertEqual(outsideDismissMenu.removed, true, 'Pointer outside the desktop intent menu should dismiss it');
+  assertEqual(App._mobileContextOutsideHandler, null, 'Closing desktop intent menu should clear outside pointer dismissal');
+  assertEqual(opener.focused, true, 'Outside dismissal should restore focus to the desktop opener');
 
+  document.activeElement = opener;
+  App.showIntentMenu('creature', 'friendly-desktop', 'desktop');
   App.openIntentSubActionSheet('creature', 'friendly-desktop', 'fight', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop sub-action picker should remain on the desktop surface');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-desktop','fight','desktop','attack')", 'Desktop sub-action selection should dispatch through shared intent selection');

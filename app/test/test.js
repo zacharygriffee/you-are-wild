@@ -173,6 +173,7 @@ const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const dialogFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8');
+const settingsFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-flow.js'), 'utf8');
 const settingsDataFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'settings-data-flow.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
@@ -2170,6 +2171,24 @@ test('Dialog flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DIALOG_FLOW.resolveSaveRecovery(this, action, fallbackSlotName, fallbackSaveData)', 'App save-recovery resolver should delegate to the helper');
 });
 
+test('Settings flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/settings-flow.js'", 'Settings flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/settings-flow.js'") < buildContent.indexOf("'src/core/settings-data-flow.js'"), 'Settings flow helper should load before destructive settings data flow');
+  assert(buildContent.indexOf("'src/core/settings-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Settings flow helper should load before app.js');
+  assertContains(settingsFlowContent, 'const YAW_SETTINGS_FLOW = {', 'Settings flow helper should expose the settings service');
+  assertContains(settingsFlowContent, 'defaultSettings()', 'Settings flow helper should own safe runtime defaults');
+  assertContains(settingsFlowContent, 'normalize(app, input = {}, base = app.settings)', 'Settings flow helper should own settings normalization');
+  assertContains(settingsFlowContent, 'enforceContentTierSettings(app)', 'Settings flow helper should own content-tier enforcement');
+  assertContains(settingsFlowContent, "CONTENT.setPreference('explicitDescriptions', false)", 'Settings flow helper should disable explicit descriptions below adult');
+  assertContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'Settings flow helper should disable mature mechanics in safe mode');
+  assertContains(settingsFlowContent, 'enforceModuleContentPolicy(app)', 'Settings flow helper should keep module policy enforcement');
+  assertContains(settingsFlowContent, 'updateAccessibilitySetting(app, key, value)', 'Settings flow helper should own accessibility changes');
+  assertContains(appContent, 'YAW_SETTINGS_FLOW.defaultSettings()', 'App default settings wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_FLOW.enforceContentTierSettings(this)', 'App content-tier wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_FLOW.updateLanguage(this, language)', 'App language wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SETTINGS_FLOW.show(this)', 'App settings screen wrapper should delegate to the helper');
+});
+
 test('Settings data flow helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/settings-data-flow.js'", 'Settings data flow helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/settings-data-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Settings data flow helper should load before app.js');
@@ -3269,13 +3288,13 @@ test('Settings default safe and reveal controls by content maturity', () => {
   assertContains(template, "App.setContentTier('mature')", 'mature content button should use App content-tier helper');
   assertContains(template, "App.setContentTier('adult')", 'adult content button should use App content-tier helper');
   assertContains(appContent, 'CONTENT.applyPreferences(savedPrefs', 'App startup should normalize stored content preferences through CONTENT');
-  assertContains(appContent, 'syncSettingVisibility()', 'settings tier visibility helper missing');
-  assertContains(appContent, 'enforceContentTierSettings()', 'settings should enforce hidden-tier toggles when content level changes');
-  assertContains(appContent, 'enforceModuleContentPolicy()', 'settings should enforce active module content policy when content level changes');
-  assertContains(appContent, 'MODULE_SYSTEM.enforceContentPolicy()', 'App module policy helper should delegate to module system enforcement');
-  assertContains(appContent, "this._label('mod.disabledByContentPolicy'", 'App should localize module content-policy disable logs');
-  assertContains(appContent, "CONTENT.setPreference('explicitDescriptions', false)", 'lowering tier should disable explicit descriptions');
-  assertContains(appContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering to safe should disable mature mechanics');
+  assertContains(settingsFlowContent, 'syncSettingVisibility(app)', 'settings tier visibility helper missing');
+  assertContains(settingsFlowContent, 'enforceContentTierSettings(app)', 'settings should enforce hidden-tier toggles when content level changes');
+  assertContains(settingsFlowContent, 'enforceModuleContentPolicy(app)', 'settings should enforce active module content policy when content level changes');
+  assertContains(settingsFlowContent, 'MODULE_SYSTEM.enforceContentPolicy()', 'Settings flow module policy helper should delegate to module system enforcement');
+  assertContains(settingsFlowContent, "app._label('mod.disabledByContentPolicy'", 'Settings flow should localize module content-policy disable logs');
+  assertContains(settingsFlowContent, "CONTENT.setPreference('explicitDescriptions', false)", 'lowering tier should disable explicit descriptions');
+  assertContains(settingsFlowContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering to safe should disable mature mechanics');
   assertContains(contentContent, "'ui.menu.contentDefault': 'Safe content is enabled by default'", 'menu should describe safe default');
 });
 
@@ -3342,8 +3361,8 @@ test('Create screen requires explicit gender and anatomy choices', () => {
 test('Create screen links content level to highlighted settings control', () => {
   assertContains(template, 'id="create-content-level-label"', 'create screen should show the active content level');
   assertContains(template, 'App.openContentSettingsFromCreate()', 'create screen content control should open settings');
-  assertContains(appContent, "settingsReturnScreen = 'create'", 'settings opened from create should return to create');
-  assertContains(appContent, "target.classList.add('settings-focus')", 'content settings target should be highlighted');
+  assertContains(settingsFlowContent, "settingsReturnScreen = 'create'", 'settings opened from create should return to create');
+  assertContains(settingsFlowContent, "target.classList.add('settings-focus')", 'content settings target should be highlighted');
   assertContains(template, 'id="settings-content-level"', 'settings content level section should be directly targetable');
   assertContains(template, '.settings-focus', 'settings highlight style should exist');
 });
@@ -3630,7 +3649,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

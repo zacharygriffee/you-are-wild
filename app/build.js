@@ -74,6 +74,7 @@ const SCRIPT_ORDER = [
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',
   'src/core/dialog-flow.js',
+  'src/core/settings-flow.js',
   'src/core/settings-data-flow.js',
   'src/core/mobile-gestures.js',
   'src/core/mobile-context-menu.js',

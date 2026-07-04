@@ -5443,237 +5443,64 @@
             },
             selectEncounterPreference(val) { this.setEncounterPreferencePreset(val); },
             updateTierButtons() {
-                const btns = { safe: 'tier-safe', mature: 'tier-mature', adult: 'tier-adult' };
-                const tiers = { safe: 0, mature: 1, adult: 2 };
-                for (const [tier, id] of Object.entries(btns)) {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        const selected = CONTENT.preferences.maxTier === tiers[tier];
-                        el.style.background = selected ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
-                        el.style.color = selected ? 'var(--bg-primary)' : 'var(--text-secondary)';
-                    }
-                }
-                this.syncCreateContentLevel();
-                this.syncSettingVisibility();
+                return YAW_SETTINGS_FLOW.updateTierButtons(this);
             },
             _tierValue(tier) {
-                if (typeof tier === 'number') return Math.max(0, Math.min(2, tier));
-                return ({ safe: 0, mature: 1, adult: 2 })[tier] ?? 0;
+                return YAW_SETTINGS_FLOW.tierValue(tier);
             },
             _tierName(value = CONTENT.preferences.maxTier) {
-                const tier = this._tierValue(value);
-                if (tier >= 2) return 'adult';
-                if (tier >= 1) return 'mature';
-                return 'safe';
+                return YAW_SETTINGS_FLOW.tierName(this, value);
             },
             _defaultSettings() {
-                return {
-                    powerDynamics: false, endoMode: false, slowDigestion: false,
-                    fatalVore: false, chewing: false, allTheWayThrough: false,
-                    hardcore: false, scat: false, watersports: false,
-                    boneCrushing: false, unwillingWarnings: false,
-                    statAbsorption: true, refractoryPeriod: false,
-                    sameSpeciesBonus: false, fluidEnabled: false,
-                    cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
-                    partyPlayFightMode: 'nonlethal',
-                    highContrast: false, reducedMotion: false, fontSize: 14
-                };
+                return YAW_SETTINGS_FLOW.defaultSettings();
             },
             _settingsBooleanKeys() {
-                return [
-                    'powerDynamics', 'endoMode', 'slowDigestion', 'fatalVore', 'chewing',
-                    'allTheWayThrough', 'hardcore', 'scat', 'watersports', 'boneCrushing',
-                    'unwillingWarnings', 'statAbsorption', 'refractoryPeriod', 'sameSpeciesBonus',
-                    'fluidEnabled', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding',
-                    'highContrast', 'reducedMotion'
-                ];
+                return YAW_SETTINGS_FLOW.booleanKeys();
             },
             _normalizeSettings(input = {}, base = this.settings) {
-                const defaults = this._defaultSettings();
-                const source = {
-                    ...defaults,
-                    ...(base && typeof base === 'object' && !Array.isArray(base) ? base : {}),
-                    ...(input && typeof input === 'object' && !Array.isArray(input) ? input : {})
-                };
-                const normalized = {};
-                for (const key of this._settingsBooleanKeys()) {
-                    normalized[key] = source[key] === true;
-                }
-                normalized.partyPlayFightMode = ['nonlethal', 'lethal'].includes(source.partyPlayFightMode)
-                    ? source.partyPlayFightMode
-                    : defaults.partyPlayFightMode;
-                const parsedFontSize = Number(source.fontSize);
-                normalized.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsedFontSize) ? Math.round(parsedFontSize) : defaults.fontSize));
-                return normalized;
+                return YAW_SETTINGS_FLOW.normalize(this, input, base);
             },
             _settingsForStorage() {
-                this.settings = this._normalizeSettings(this.settings, this._defaultSettings());
-                return { ...this.settings };
+                return YAW_SETTINGS_FLOW.forStorage(this);
             },
             setContentTier(tier) {
-                const nextTier = this._tierValue(tier);
-                CONTENT.setMaxTier(nextTier);
-                this.enforceContentTierSettings();
-                this.enforceModuleContentPolicy();
-                this.syncSettingVisibility();
-                this.syncCreateContentLevel();
-                this.saveSettings();
+                return YAW_SETTINGS_FLOW.setContentTier(this, tier);
             },
             enforceContentTierSettings() {
-                const tier = this._tierValue(CONTENT?.preferences?.maxTier);
-                const matureSettings = ['endoMode', 'fatalVore', 'slowDigestion', 'statAbsorption', 'chewing', 'allTheWayThrough', 'powerDynamics', 'refractoryPeriod', 'sameSpeciesBonus'];
-                const adultSettings = ['fluidEnabled', 'scat', 'watersports', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding', 'boneCrushing', 'unwillingWarnings'];
-                if (tier < 2) {
-                    CONTENT.setPreference('explicitDescriptions', false);
-                    adultSettings.forEach(key => { this.settings[key] = false; });
-                }
-                if (tier < 1) {
-                    CONTENT.setPreference('voreEnabled', false);
-                    matureSettings.forEach(key => { this.settings[key] = false; });
-                }
+                return YAW_SETTINGS_FLOW.enforceContentTierSettings(this);
             },
             enforceModuleContentPolicy() {
-                if (typeof MODULE_SYSTEM === 'undefined' || typeof MODULE_SYSTEM.enforceContentPolicy !== 'function') return;
-                MODULE_SYSTEM.enforceContentPolicy().then(disabled => {
-                    if (!disabled || disabled.length === 0) return;
-                    const names = disabled.map(mod => mod?.manifest?.name || mod?.id).filter(Boolean).join(', ');
-                    this.log.push({ text: this._label('mod.disabledByContentPolicy', 'Disabled {count} module(s) blocked by current content settings: {names}', { count: disabled.length, names }), type: 'mod' });
-                    this.renderLog();
-                    if (typeof ModUI !== 'undefined' && typeof ModUI.refreshModList === 'function') {
-                        ModUI.refreshModList();
-                    }
-                }).catch(e => {
-                    console.error('Failed to enforce module content policy:', e);
-                });
+                return YAW_SETTINGS_FLOW.enforceModuleContentPolicy(this);
             },
             syncSettingVisibility() {
-                const current = this._tierValue(CONTENT?.preferences?.maxTier);
-                document.querySelectorAll('[data-setting-tier]').forEach(el => {
-                    const required = this._tierValue(el.dataset.settingTier);
-                    const visible = required <= current;
-                    el.style.display = visible ? '' : 'none';
-                    if (!visible) {
-                        el.querySelectorAll('input, select, button, textarea').forEach(control => {
-                            control.disabled = true;
-                        });
-                    } else {
-                        el.querySelectorAll('input, select, button, textarea').forEach(control => {
-                            control.disabled = false;
-                        });
-                    }
-                });
+                return YAW_SETTINGS_FLOW.syncSettingVisibility(this);
             },
             syncCreateContentLevel() {
-                const label = document.getElementById('create-content-level-label');
-                if (!label) return;
-                const tierName = this._tierName();
-                const labelKey = `settings.${tierName}`;
-                const fallback = tierName.charAt(0).toUpperCase() + tierName.slice(1);
-                label.textContent = this._label(labelKey, fallback);
+                return YAW_SETTINGS_FLOW.syncCreateContentLevel(this);
             },
             openContentSettingsFromCreate() {
-                this.settingsReturnScreen = 'create';
-                this.showScreen('settings');
-                this.showSettings();
-                const target = document.getElementById('settings-content-level');
-                if (!target) return;
-                target.classList.add('settings-focus');
-                try {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } catch (e) {
-                    target.scrollIntoView();
-                }
-                clearTimeout(this._settingsFocusTimer);
-                this._settingsFocusTimer = setTimeout(() => target.classList.remove('settings-focus'), 1600);
+                return YAW_SETTINGS_FLOW.openContentSettingsFromCreate(this);
             },
             saveSettings() {
-                this._setStoredValue('settings', JSON.stringify(this._settingsForStorage()));
-                if (CONTENT?.preferences) {
-                    this._setStoredValue('contentPrefs', JSON.stringify(CONTENT.preferences));
-                }
-                this.updateTierButtons();
+                return YAW_SETTINGS_FLOW.save(this);
             },
             updateLanguage(language) {
-                if (CONTENT?.setLanguage) {
-                    CONTENT.setLanguage(language);
-                } else if (CONTENT?.preferences) {
-                    CONTENT.preferences.language = language;
-                }
-                this.saveSettings();
-                this.syncLanguageControl();
-                this.applyStaticLocalization();
-                this.renderExplorationActions();
-                this.renderParty();
-                this.renderCreatures();
+                return YAW_SETTINGS_FLOW.updateLanguage(this, language);
             },
             syncLanguageControl() {
-                const language = document.getElementById('setting-language');
-                if (language) language.value = CONTENT?.preferences?.language || 'en';
+                return YAW_SETTINGS_FLOW.syncLanguageControl(this);
             },
             updateAccessibilitySetting(key, value) {
-                if (key === 'fontSize') {
-                    const parsed = Number(value);
-                    this.settings.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsed) ? parsed : 14));
-                } else if (key === 'highContrast' || key === 'reducedMotion') {
-                    this.settings[key] = Boolean(value);
-                } else {
-                    return;
-                }
-                this.applyAccessibilitySettings();
-                this.syncAccessibilityControls();
-                this.saveSettings();
+                return YAW_SETTINGS_FLOW.updateAccessibilitySetting(this, key, value);
             },
             applyAccessibilitySettings() {
-                const body = document.body;
-                if (!body) return;
-                const fontSize = Math.max(12, Math.min(20, Number(this.settings.fontSize) || 14));
-                body.classList.toggle('high-contrast', Boolean(this.settings.highContrast));
-                body.classList.toggle('reduced-motion', Boolean(this.settings.reducedMotion));
-                if (body.style?.setProperty) {
-                    body.style.setProperty('--base-font-size', `${fontSize}px`);
-                } else {
-                    body.style['--base-font-size'] = `${fontSize}px`;
-                    body.style.fontSize = `${fontSize}px`;
-                }
+                return YAW_SETTINGS_FLOW.applyAccessibilitySettings(this);
             },
             syncAccessibilityControls() {
-                const highContrast = document.getElementById('setting-high-contrast');
-                const reducedMotion = document.getElementById('setting-reduced-motion');
-                const fontSize = document.getElementById('setting-font-size');
-                const fontSizeValue = document.getElementById('setting-font-size-value');
-                const size = Math.max(12, Math.min(20, Number(this.settings.fontSize) || 14));
-                if (highContrast) highContrast.checked = Boolean(this.settings.highContrast);
-                if (reducedMotion) reducedMotion.checked = Boolean(this.settings.reducedMotion);
-                if (fontSize) fontSize.value = String(size);
-                if (fontSizeValue) fontSizeValue.textContent = `${size}px`;
+                return YAW_SETTINGS_FLOW.syncAccessibilityControls(this);
             },
             showSettings() {
-                document.getElementById('screen-settings').style.display = 'block';
-                document.getElementById('toggle-vore').checked = CONTENT.preferences.voreEnabled;
-                document.getElementById('toggle-explicit').checked = CONTENT.preferences.explicitDescriptions;
-                document.getElementById('toggle-endo').checked = App.settings.endoMode;
-                document.getElementById('toggle-fatal').checked = App.settings.fatalVore;
-                document.getElementById('toggle-slow').checked = App.settings.slowDigestion;
-                document.getElementById('toggle-absorb').checked = App.settings.statAbsorption;
-                document.getElementById('toggle-chew').checked = App.settings.chewing;
-                document.getElementById('toggle-attw').checked = App.settings.allTheWayThrough;
-                document.getElementById('toggle-power').checked = App.settings.powerDynamics;
-                document.getElementById('toggle-refractory').checked = App.settings.refractoryPeriod;
-                document.getElementById('toggle-same').checked = App.settings.sameSpeciesBonus;
-                document.getElementById('toggle-fluids').checked = App.settings.fluidEnabled;
-                document.getElementById('toggle-scat').checked = App.settings.scat;
-                document.getElementById('toggle-ws').checked = App.settings.watersports;
-                document.getElementById('toggle-cockVore').checked = App.settings.cockVoreEnabled;
-                document.getElementById('toggle-unbirth').checked = App.settings.unbirthEnabled;
-                document.getElementById('toggle-forcedFeed').checked = App.settings.forcedFeeding;
-                document.getElementById('toggle-bones').checked = App.settings.boneCrushing;
-                document.getElementById('toggle-warn').checked = App.settings.unwillingWarnings;
-                document.getElementById('toggle-hardcore').checked = App.settings.hardcore;
-                this.updateTierButtons();
-                this.updateCheatButtons();
-                this.applyAccessibilitySettings();
-                this.syncAccessibilityControls();
-                this.syncLanguageControl();
+                return YAW_SETTINGS_FLOW.show(this);
             },
             showNewGameManager() { return YAW_SAVE_SLOT_FLOW.showNewGameManager(this); },
             showSaveManager(mode = 'load') {

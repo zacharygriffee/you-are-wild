@@ -25,6 +25,7 @@ const SCRIPT_ORDER = [
   'src/core/center-context.js',
   'src/core/panel-interactions.js',
   'src/core/unit-card-status.js',
+  'src/core/combat-actions.js',
   'src/core/mobile-combat-toolbelt.js',
   'src/core/mobile-unit-chip.js',
   'src/core/mobile-unit-strips.js',

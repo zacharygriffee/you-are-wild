@@ -581,16 +581,7 @@
                 return true;
             },
             _syncParticipantButton(unit, compact = false) {
-                if (!this.syncSelection?.active || this.syncSelection.phase !== 'participants' || !unit || unit.CPun <= 0) return '';
-                const id = this._unitSelectionId(unit);
-                const selected = this._isSyncParticipant(unit);
-                const actorLocked = id === this.syncSelection.actorId;
-                const label = actorLocked
-                    ? this._label('target.actorRole', 'Actor')
-                    : (selected ? this._label('target.targetRole', 'Target') : this._label('combat.sync.selectParticipants', 'Select participants for sync'));
-                const title = this._escapeHtml(this._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: unit.name || 'ally' }));
-                const disabled = actorLocked ? ' disabled' : '';
-                return `<button class="action-btn${selected ? ' primary' : ''}" title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${this._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;
+                return YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact);
             },
             _isCurrentCombatActor(unit) {
                 if (!unit || !this.combatState?.active) return false;
@@ -605,40 +596,7 @@
                 actions.classList?.remove('center-tile-actions');
             },
             _combatActionButtons(actor, options = {}) {
-                if (!this.combatState?.active || !actor || !(actor === this.player || this.party.includes(actor))) return '';
-                if (!this._isCurrentCombatActor(actor)) return '';
-                const compact = Boolean(options.compact);
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const allies = this.party.filter(p => p.CPun > 0 && p.name !== actor.name);
-                const buttons = [];
-                if (this.cheats.overpowered && actor?.name === this.player?.name) {
-                    const instantWinLabel = this._escapeHtml(this._label('combat.instantWin', 'Instant Win'));
-                    const instantWinTitle = this._escapeHtml(this._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
-                    buttons.push(`<button class="action-btn" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
-                }
-                if (enemies.length > 0) {
-                    buttons.push(this._combatIntentButton('fight', actor, 'primary'));
-                    buttons.push(this._combatIntentButton('flirt', actor));
-                    buttons.push(this._combatIntentButton('feast', actor));
-                    buttons.push(this._combatIntentButton('fuck', actor));
-                }
-                if (allies.length > 0) {
-                    buttons.push(this._iconActionButton('feed', this._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')"));
-                }
-                if (enemies.length > 0) {
-                    buttons.push(this._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')"));
-                    const moveRowLabel = this._escapeHtml(this._label('action.moveRow', 'Move Row'));
-                    buttons.push(`<button class="action-btn" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
-                }
-                if (actor?.name === this.player?.name) {
-                    buttons.push(this._iconActionButton('flee', this._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')"));
-                } else {
-                    buttons.push(this._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')"));
-                }
-                if (buttons.length === 0) return '';
-                const label = this._escapeHtml(this._label('combat.panelActions', 'Combat actions'));
-                const compactClass = compact ? ' compact' : '';
-                return `<div class="unit-actions unit-combat-actions${compactClass}" aria-label="${label}">${buttons.join('')}</div>`;
+                return YAW_COMBAT_ACTIONS.actionButtons(this, actor, options);
             },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },

@@ -128,6 +128,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
+const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
@@ -1381,6 +1382,20 @@ test('Unit card status helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_UNIT_CARD_STATUS.traitChips(this, unit, type, limit)', 'App trait chip wrapper should delegate to the helper');
 });
 
+test('Combat action helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-actions.js'", 'Combat action helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat action helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Combat action helper should load before mobile chips that reuse combat action wrappers');
+  assertContains(combatActionsContent, 'const YAW_COMBAT_ACTIONS = {', 'Combat action helper should expose the combat action service');
+  assertContains(combatActionsContent, 'syncParticipantButton(app, unit, compact = false)', 'Combat action helper should own sync participant buttons');
+  assertContains(combatActionsContent, 'actionButtons(app, actor, options = {})', 'Combat action helper should own combat action buttons');
+  assertContains(combatActionsContent, "app._combatIntentButton('fight', actor, 'primary')", 'Combat action helper should keep fight on the shared combat intent button path');
+  assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');
+  assertContains(combatActionsContent, "App.executeCombatIntent('flee')", 'Combat action helper should keep flee on the shared combat dispatcher');
+  assertContains(appContent, 'YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact)', 'App sync participant wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_ACTIONS.actionButtons(this, actor, options)', 'App combat action wrapper should delegate to the helper');
+});
+
 test('Mobile combat toolbelt helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-combat-toolbelt.js'", 'Mobile combat toolbelt helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-combat-toolbelt.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile combat toolbelt helper should load before app.js');
@@ -2624,7 +2639,7 @@ test('Battle mode contract keeps combat panel-first', () => {
   assertContains(contract, 'Initiative queue decides whose actor card is active', 'Battle mode contract should define initiative as a combat constraint');
   assertContains(appContent, 'executeCombatIntent(action', 'Combat intent should route through a shared dispatcher');
   assertContains(appContent, 'combatAction(action) {\n                return this.executeCombatIntent', 'Legacy combatAction wrapper should delegate to the shared dispatcher');
-  assertContains(appContent, "_combatIntentButton('fight'", 'Panel combat buttons should dispatch through the shared combat intent path');
+  assertContains(combatActionsContent, "app._combatIntentButton('fight'", 'Panel combat buttons should dispatch through the shared combat intent path');
   assertNotContains(contentSystemContent, 'combat.panelFirst', 'Combat should not retain obsolete center prompt locale keys');
 });
 
@@ -2775,7 +2790,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

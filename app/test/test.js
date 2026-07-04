@@ -123,6 +123,7 @@ section('Structure Tests', 'core');
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
+const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
@@ -1345,6 +1346,15 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_UNIT_SELECTION.roles(this, unit, type)', 'App unit selection role wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.controlAttrs(this, kind, active)', 'App selection control wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.chips(this, unit, type)', 'App selection chip wrapper should delegate to the helper');
+});
+
+test('Large map helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/large-map.js'", 'Large map helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/large-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Large map helper should load before app.js');
+  assertContains(largeMapContent, 'const YAW_LARGE_MAP = {', 'Large map helper should expose the map planning service');
+  assertContains(appContent, 'YAW_LARGE_MAP.render(this)', 'App large map renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_LARGE_MAP.resolveTile(this, x, y)', 'App large map tile resolver should delegate to the helper');
+  assertContains(appContent, 'YAW_LARGE_MAP.setZoom(this, delta)', 'App large map zoom should delegate to the helper');
 });
 
 test('App-emitted module hooks are declared by the module registry', () => {
@@ -2632,7 +2642,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

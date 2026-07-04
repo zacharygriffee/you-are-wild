@@ -7891,45 +7891,19 @@
 
             // ===== MAP RENDERING =====
             _isLargeMapKnown(x, y) {
-                const key = this._tileKey(x, y);
-                if (x === this.location.x && y === this.location.y) return true;
-                if (this.exploredTiles?.has(key)) return true;
-                const cached = this.worldMap?.get(key);
-                if (cached && (cached.explored || cached.hasLandmark || cached.structure || (cached.creatures || []).length || (cached.items || []).length)) return true;
-                const delta = this.getTileDelta(x, y);
-                return Boolean(delta && (delta.explored || delta.hasLandmark || delta.structure || (delta.creatures || []).length || (delta.items || []).length));
+                return YAW_LARGE_MAP.isKnown(this, x, y);
             },
 
             _resolveLargeMapTile(x, y) {
-                if (!this._isLargeMapKnown(x, y)) return null;
-                const key = this._tileKey(x, y);
-                const cached = this.worldMap?.get(key);
-                if (cached) return cached;
-                return this.applyTileDelta(this.getBaseTile(x, y), this.getTileDelta(x, y));
+                return YAW_LARGE_MAP.resolveTile(this, x, y);
             },
 
             _largeMapPoiLabel(tile) {
-                if (!tile) return '';
-                if (tile.hasLandmark && tile.landmarkName) return tile.landmarkName;
-                if (tile.structure) return this.STRUCTURES[tile.structure]?.name || tile.structure;
-                const living = (tile.creatures || []).filter(creature => this._isLivingCreature(creature));
-                if (living.length > 0) return `${living.length} creature${living.length === 1 ? '' : 's'}`;
-                if ((tile.items || []).length > 0) return `${tile.items.length} item${tile.items.length === 1 ? '' : 's'}`;
-                return '';
+                return YAW_LARGE_MAP.poiLabel(this, tile);
             },
 
             _largeMapQuestMarker(x, y) {
-                for (const quest of this.quests || []) {
-                    if (quest.status !== 'active') continue;
-                    for (const objective of quest.objectives || []) {
-                        const marker = this._nextQuestObjectiveMarker(objective);
-                        if (!marker) continue;
-                        if (Number(marker.x) === Number(x) && Number(marker.y) === Number(y)) {
-                            return `${quest.title}: ${marker.label || objective.label || this._questObjectiveLabel(objective)}`;
-                        }
-                    }
-                }
-                return '';
+                return YAW_LARGE_MAP.questMarker(this, x, y);
             },
             _isRouteVisualTile(tile) {
                 return Boolean(tile?.overlays?.road || tile?.overlays?.bridge);
@@ -8104,81 +8078,19 @@
             },
 
             setLargeMapZoom(delta) {
-                const current = this.largeMapRadius || 8;
-                this.largeMapRadius = Math.max(4, Math.min(12, current + delta));
-                return this.renderLargeMap();
+                return YAW_LARGE_MAP.setZoom(this, delta);
             },
 
             panLargeMap(dx, dy) {
-                const offset = this.largeMapOffset || { x: 0, y: 0 };
-                const step = Math.max(1, Math.floor((this.largeMapRadius || 8) / 2));
-                this.largeMapOffset = {
-                    x: offset.x + dx * step,
-                    y: offset.y + dy * step
-                };
-                return this.renderLargeMap();
+                return YAW_LARGE_MAP.pan(this, dx, dy);
             },
 
             recenterLargeMap() {
-                this.largeMapOffset = { x: 0, y: 0 };
-                return this.renderLargeMap();
+                return YAW_LARGE_MAP.recenter(this);
             },
 
             renderLargeMap() {
-                const container = document.getElementById('large-map');
-                const poiContainer = document.getElementById('large-map-pois');
-                const viewLabel = document.getElementById('large-map-view');
-                if (!container) return '';
-                if (this.inInterior && this.activeInterior) {
-                    const message = this._label('ui.largeMap.outsideOnly', 'Discovered region is available outside.');
-                    container.innerHTML = `<div class="large-map-tile known" style="width:auto;min-width:180px;padding:8px;">${this._escapeHtml(message)}</div>`;
-                    if (poiContainer) poiContainer.innerHTML = '';
-                    if (viewLabel) viewLabel.textContent = this._label('ui.largeMap.interior', 'Interior');
-                    return container.innerHTML;
-                }
-                const offset = this.largeMapOffset || { x: 0, y: 0 };
-                const cx = this.location.x + (offset.x || 0);
-                const cy = this.location.y + (offset.y || 0);
-                const radius = this.largeMapRadius || 8;
-                if (viewLabel) viewLabel.textContent = `${cx}, ${cy} · ${radius * 2 + 1}x${radius * 2 + 1}`;
-                const points = [];
-                let html = '';
-                for (let dy = -radius; dy <= radius; dy++) {
-                    html += '<div class="large-map-row">';
-                    for (let dx = -radius; dx <= radius; dx++) {
-                        const x = cx + dx;
-                        const y = cy + dy;
-                        const isCurrent = x === this.location.x && y === this.location.y;
-                        const tile = this._resolveLargeMapTile(x, y);
-                        const poi = this._largeMapPoiLabel(tile);
-                        const questMarker = this._largeMapQuestMarker(x, y);
-                        const visual = this._mapTileVisual(tile, {
-                            isCurrent,
-                            questMarker,
-                            poi,
-                            neighborResolver: (nx, ny) => this._resolveLargeMapTile(nx, ny)
-                        });
-                        let classes = 'large-map-tile';
-                        if (tile) classes += ' known';
-                        if (isCurrent) classes += ' current';
-                        if (poi) classes += ' poi';
-                        if (questMarker) classes += ' quest';
-                        if (visual.classes) classes += ` ${visual.classes}`;
-                        const label = tile ? `${visual.label} (${x}, ${y})` : `Unknown (${x}, ${y})`;
-                        const markerLabel = questMarker || poi;
-                        html += `<div class="${classes}" ${this._mapTileAttrs(visual)} title="${this._escapeHtml(markerLabel ? `${label}: ${markerLabel}` : label)}" aria-label="${this._escapeHtml(label)}">${this._escapeHtml(visual.icon)}</div>`;
-                        if (poi) points.push({ x, y, biome: visual.label || 'Known area', poi });
-                        if (questMarker) points.push({ x, y, biome: 'Quest', poi: questMarker });
-                    }
-                    html += '</div>';
-                }
-                container.innerHTML = html;
-                if (poiContainer) {
-                    poiContainer.innerHTML = points.length
-                        ? points.slice(0, 6).map(point => `<div>${this._escapeHtml(point.poi)} <span style="color:var(--text-muted);">(${point.x}, ${point.y})</span></div>`).join('')
-                        : '<div>No discovered points of interest nearby.</div>';
-                }
-                return html;
+                return YAW_LARGE_MAP.render(this);
             },
 
             _dangerPressureLabel(value = 0) {

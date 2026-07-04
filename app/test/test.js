@@ -4099,7 +4099,7 @@ test('Combat actions emit module hook payloads', () => {
 });
 
 test('Exploration context keeps creature interaction in panels', () => {
-  const { App, elements, body } = loadAppForCombat();
+  const { App, elements } = loadAppForCombat();
   const player = makeUnit('You');
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
   const neutral = makeUnit('Neutral', { id: 'neutral-1', disposition: App.DISPOSITION.NEUTRAL });
@@ -4114,13 +4114,15 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden until it has stronger mechanics');
   assertNotContains(actionsHtml, 'App.showInventory()', 'Inventory should stay out of center context actions');
   assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
-  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Friendly card should expose creature action menu');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','friendly-1')", 'Friendly card should expose target marking');
+  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('inspect','friendly-1')", 'Friendly card should expose direct inspect');
+  assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Friendly card should not duplicate marked-target interactions behind a visible action menu');
   assertNotContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should not spam primary actions by default');
-  App.showIntentMenu('creature', 'friendly-1');
-  assertContains(body.innerHTML, 'aria-label="Fight Friendly"', 'Creature action menu should expose fight');
-  assertContains(body.innerHTML, 'aria-label="Flirt Friendly"', 'Creature action menu should expose baseline interaction');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-1','fight','sheet')", 'Creature action menu should open sub-action sheet for registered primary actions');
-  App.closeMobileContextMenu();
+  App.selectExplorationActor(0);
+  App.toggleExplorationTarget('creature', 'friendly-1');
+  const trayHtml = App._renderPanelInteractionTray();
+  assertContains(trayHtml, 'aria-label="Fight 1 target"', 'Marked creature target actions should live above party cards');
+  assertContains(trayHtml, 'aria-label="Flirt 1 target"', 'Marked creature target actions should include baseline interactions above party cards');
   assertContains(elements.get('enemies-content').innerHTML, "recruitCreatureById('friendly-1')", 'Friendly card should offer recruitment');
 });
 
@@ -4284,7 +4286,8 @@ test('Fallback interact menu localizes labels and keeps target indexes stable', 
   App.showInteractMenu();
   const menuHtml = elements.get('scene-description')?.innerHTML || '';
   assertNotContains(menuHtml, 'Acciones de criatura', 'Fallback interact menu should not render actor actions in center scene');
-  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Creature panel remains the action surface');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','friendly-1')", 'Creature panel remains the target selection surface');
+  assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Creature panel should not duplicate marked-target actions behind a visible menu');
   assertContains(App.log[App.log.length - 1].text, 'Selecciona un objetivo desde el panel de criaturas.', 'Fallback interact wrapper should guide the player to panels');
 
   App.showCreatureInteract('creature', 0);
@@ -4311,7 +4314,9 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertNotContains(actionsHtml, "executeCombatIntent('fight')", 'Combat center should not expose enemy action targeting');
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should expose enemy action targeting');
   assertContains(elements.get('party-content').innerHTML, "App.executeCombatIntent('feed')", 'Active party card should still expose party feed action');
-  assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should keep baseline interaction actions in an action menu');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','neutral-1')", 'Neutral creature card should keep target marking in panel');
+  assertContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('inspect','neutral-1')", 'Neutral creature card should keep direct inspect in panel');
+  assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should not duplicate marked-target actions behind a visible menu');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
@@ -5364,7 +5369,7 @@ test('Desktop creature card action labels localize', () => {
   assertContains(html, 'aria-label="Marcar Friendly como objetivo"', 'Creature target button should localize accessible label');
   assertContains(html, '>Marcar<', 'Creature target visible label should localize');
   assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
-  assertContains(html, "showIntentMenu('creature','friendly-1','desktop')", 'Creature card should expose compact action menu');
+  assertNotContains(html, "showIntentMenu('creature','friendly-1','desktop')", 'Creature card should not expose duplicate visible action menu');
   assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Creature card should support desktop secondary-click radial intent menu');
   assertNotContains(html, "outsideActionForCreature('fight','friendly-1')", 'Creature card should not show primary action spam by default');
   assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
@@ -5375,6 +5380,7 @@ test('Desktop creature card action labels localize', () => {
   App.showIntentMenu('creature', 'friendly-1');
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
+  assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Creature action menu should localize inspect accessible label');
   App.closeMobileContextMenu();
   App.showRadialIntentMenu('creature', 'friendly-1', 'secondary-click');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Secondary-click intent menu should use radial presentation scaffold');
@@ -8862,8 +8868,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(partyCard, 'aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu(\'party\',0,\'desktop\')', 'Party action menu button should advertise and target its dialog popup');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
   assertContains(creatureCard, "outsideActionForCreature('inspect'", 'Creature inspect action should remain available from creature card');
-  assertContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Existing creature actions should move behind the card action menu');
-  assertContains(creatureCard, 'aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu(\'creature\',\'fox-1\',\'desktop\')', 'Creature action menu button should advertise and target its dialog popup');
+  assertNotContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Default creature card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(creatureCard, "outsideActionForCreature('fight'", 'Default creature card should not show primary action spam');
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
@@ -8872,7 +8877,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertContains(mobilePartyChip, 'aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu(\'party\',0)', 'Mobile party action menu button should advertise and target its dialog popup');
-  assertContains(mobileCreatureChip, 'aria-haspopup="dialog" aria-controls="mobile-context-menu" onclick="event.stopPropagation();App.showIntentMenu(\'creature\',\'fox-1\')', 'Mobile creature action menu button should advertise and target its dialog popup');
+  assertContains(mobileCreatureChip, "outsideActionForCreature('inspect','fox-1')", 'Mobile creature chip should expose direct inspect');
+  assertNotContains(mobileCreatureChip, "showIntentMenu('creature','fox-1')", 'Mobile creature chip should not duplicate marked-target actions behind a visible action menu');
   assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');
   assertContains(mobileCreatureChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should keep secondary-click radial intent fallback');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
@@ -10182,13 +10188,14 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(creatureHtml, 'aria-label="Castigo: 100%"', 'Mobile creature health bar should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Marcar Friendly como objetivo"', 'Mobile creature target button should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Inspeccionar Friendly"', 'Mobile inspect icon should expose localized accessible label');
-  assertContains(creatureHtml, 'aria-label="Acciones de criatura: Friendly"', 'Mobile creature action menu button should localize accessible label');
+  assertNotContains(creatureHtml, 'aria-label="Acciones de criatura: Friendly"', 'Mobile creature chip should not expose a duplicate visible action menu');
   assertNotContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile creature chip should not show primary action spam by default');
   assertContains(creatureHtml, 'aria-label="Reclutar Friendly"', 'Mobile recruit icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Aceptar mision Friendly"', 'Mobile quest icon should expose localized accessible label');
   App.showIntentMenu('creature', 'friendly-1');
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Mobile intent menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Mobile intent menu should localize pleasure accessible label');
+  assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Mobile intent menu should localize inspect accessible label');
   App.closeMobileContextMenu();
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
   assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
@@ -10208,8 +10215,8 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertContains(partyHtml, 'aria-controls="desktop-intent-menu"', 'Desktop party card should target the desktop intent surface');
   assertContains(partyHtml, "App.showIntentMenu('party',1,'desktop')", 'Desktop party card should request the desktop intent source');
   const creatureHtml = App.renderUnitCard(friendly, 0, 'creature');
-  assertContains(creatureHtml, 'aria-controls="desktop-intent-menu"', 'Desktop creature card should target the desktop intent surface');
-  assertContains(creatureHtml, "App.showIntentMenu('creature','friendly-desktop','desktop')", 'Desktop creature card should request the desktop intent source');
+  assertNotContains(creatureHtml, 'aria-controls="desktop-intent-menu"', 'Living creature card should not expose a duplicate visible desktop intent menu');
+  assertNotContains(creatureHtml, "App.showIntentMenu('creature','friendly-desktop','desktop')", 'Living creature card should use marking/inspect instead of visible desktop intent source');
 
   App.showIntentMenu('creature', 'friendly-desktop', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');

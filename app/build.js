@@ -43,6 +43,7 @@ const SCRIPT_ORDER = [
   'src/core/interaction-state.js',
   'src/core/exploration-selection.js',
   'src/core/marked-target-actions.js',
+  'src/core/recruitment-flow.js',
   'src/core/panel-interactions.js',
   'src/core/unit-stats.js',
   'src/core/unit-card-status.js',

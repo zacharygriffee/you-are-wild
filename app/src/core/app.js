@@ -3589,23 +3589,11 @@
             },
 
             _getRecruitScore(actor, target) {
-                if (!actor || !target || this._isCorpse(target)) return 0;
-                const pleasureRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);
-                let score = Math.floor(pleasureRatio * 100);
-                if (target.willing) score += 20;
-                if (target.orgasmed) score += 15;
-                if (target.disposition === this.DISPOSITION.FRIENDLY) score += 20;
-                if (target.disposition === this.DISPOSITION.NEUTRAL) score += 5;
-                if (this.settings.sameSpeciesBonus && target.species === actor.species) score += 8;
-                score += Math.floor(((actor.cha || 10) + (actor.Flir || 10) + (actor.Fuck || 10) - (target.wis || 10)) / 6);
-                if (target.disposition === this.DISPOSITION.ENEMY) score -= 40;
-                return score;
+                return YAW_RECRUITMENT_FLOW.score(this, actor, target);
             },
 
             _canRecruit(actor, target) {
-                if (!target || target.disposition !== this.DISPOSITION.FRIENDLY || this.party.includes(target)) return false;
-                if (!this._hasBaselineInteractionEligibility(target, 'recruit')) return false;
-                return this._getRecruitScore(actor, target) >= 85;
+                return YAW_RECRUITMENT_FLOW.canRecruit(this, actor, target);
             },
 
             showInteractMenu() {
@@ -4493,55 +4481,19 @@
             },
 
             recruitCreatureFromIndex(index) {
-                const target = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
-                if (!target) return false;
-                return this.recruitCreature(target, this._getExplorationActor());
+                return YAW_RECRUITMENT_FLOW.fromIndex(this, index);
             },
 
             recruitCreatureById(targetId) {
-                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target || target.disposition !== this.DISPOSITION.FRIENDLY) return false;
-                return this.recruitCreature(target, this._getExplorationActor());
+                return YAW_RECRUITMENT_FLOW.byId(this, targetId);
             },
 
             _confirmRecruitCreature(target) {
-                if (!target) return false;
-                return this.showConfirmDialog({
-                    title: this._label('action.recruit', 'Recruit'),
-                    message: this._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }),
-                    confirmLabel: this._label('action.recruit', 'Recruit'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    onConfirm: () => this.recruitCreature(target)
-                });
+                return YAW_RECRUITMENT_FLOW.confirm(this, target);
             },
 
             recruitCreature(target, actor = this.player, options = {}) {
-                if (this.party.length >= this.MAX_PARTY_SIZE) {
-                    this.log.push({ text: this._label('recruit.partyFull', 'Party is full! Cannot recruit {name}', { name: target.name }), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                if (!options.force && !this._canRecruit(actor, target)) {
-                    this.log.push({ text: this._label('recruit.notReady', '{name} is not ready to join the party.', { name: target.name }), type: 'discovery' });
-                    this.renderLog();
-                    this.renderCreatures();
-                    return false;
-                }
-	                target.disposition = this.DISPOSITION.PARTY;
-	                target.ally = true;
-	                target.obedient = true;
-	                target.CPun = Math.max(1, target.CPun);
-	                this._normalizeUnit(target, { disposition: this.DISPOSITION.PARTY, ally: true, obedient: true });
-	                this.party.push(target);
-                this.creatures = this.creatures.filter(c => c !== target);
-                this.log.push({ text: this._label('recruit.joined', '{name} joins your party!', { name: target.name }), type: 'discovery' });
-                this.gainXP(this.BALANCE.recruitXP);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderLog();
-                this.showExplorationActions();
-                this.autoSave();
-                return true;
+                return YAW_RECRUITMENT_FLOW.recruit(this, target, actor, options);
             },
 
             // ===== FLEE =====

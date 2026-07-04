@@ -18,6 +18,7 @@
                 search: 'Search',
                 rest: 'Rest',
                 inventory: 'Items',
+                takeItems: 'Take Items',
                 quests: 'Quests',
                 interact: 'Interact',
                 enter: 'Enter',
@@ -270,7 +271,7 @@
                 });
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', takeItems: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;
@@ -348,6 +349,7 @@
             _contextActionKeys() {
                 const keys = [];
                 if ((this.quests || []).length > 0) keys.push('quests');
+                if (this._canTakeTileItems()) keys.unshift('takeItems');
                 if (this._canSearchHere()) keys.unshift('search');
                 if (this.inInterior) keys.unshift('exit');
                 else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
@@ -358,6 +360,7 @@
                 const handlers = {
                     rest: 'App.rest()',
                     search: 'App.search()',
+                    takeItems: 'App.takeTileItems()',
                     quests: 'App.showQuestLog()',
                     stats: 'App.showCharacterStats()',
                     enter: 'App.enterStructure()',
@@ -1900,6 +1903,14 @@
                     tile.creatures = this._tileCreatures(this.creatures);
                     this.persistTileDelta(tile.x, tile.y, tile);
                 }
+            },
+            _persistCurrentExplorationTile(tile = this._currentExplorationTile()) {
+                if (!tile) return null;
+                if (this.inInterior && this.activeInterior?.origin) {
+                    const origin = this.getTile(this.activeInterior.origin.x, this.activeInterior.origin.y);
+                    return this.persistTileDelta(origin.x, origin.y, origin);
+                }
+                return this.persistTileDelta(tile.x, tile.y, tile);
             },
             _dropPartyCorpse(unit, cause = 'fight') {
                 if (!unit || unit === this.player || unit.name === this.player?.name) return false;
@@ -8215,6 +8226,8 @@
                 if (tile?.description) details.push(tile.description);
                 if (structure) details.push(`${structure.icon || '🚪'} ${structure.name}`);
                 if (tile?.hasLandmark && tile.landmarkName) details.push(tile.landmarkName);
+                const itemSummary = this._tileItemSummary(tile);
+                if (itemSummary) details.push(itemSummary);
                 const description = details.length
                     ? details.join(' ')
                     : `${biome.icon || ''} ${this._label('ui.chooseAction', 'Choose your next action.')}`;
@@ -8840,6 +8853,58 @@
                 if (tile.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched) return true;
                 const struct = tile.structure ? this.STRUCTURES[tile.structure] : null;
                 return Boolean(struct?.lootTable && !tile.structureLooted);
+            },
+            _canTakeTileItems(tile = this._currentExplorationTile()) {
+                return Array.isArray(tile?.items) && tile.items.length > 0;
+            },
+            _tileItemLabel(item) {
+                return item?.name || String(item || this._label('ui.item', 'item'));
+            },
+            _tileItemSummary(tile = this._currentExplorationTile()) {
+                const items = Array.isArray(tile?.items) ? tile.items : [];
+                if (items.length === 0) return '';
+                const names = items.slice(0, 3).map(item => this._tileItemLabel(item));
+                const suffix = items.length > names.length
+                    ? this._label('ui.tileItems.more', ' and {count} more', { count: items.length - names.length })
+                    : '';
+                return this._label('ui.tileItems.summary', 'Items here: {items}{suffix}.', {
+                    items: names.join(', '),
+                    suffix
+                });
+            },
+            takeTileItems() {
+                const tile = this._currentExplorationTile();
+                if (!this._canTakeTileItems(tile)) return false;
+                const space = Math.max(0, this.MAX_INVENTORY - this.inventory.length);
+                if (space <= 0) {
+                    const fullText = this._label('inventory.full', 'Inventory is full.');
+                    this.log.push({ text: fullText, type: 'loot' });
+                    this._addTileEvent(fullText, 'loot');
+                    this.renderLog();
+                    this.renderExplorationActions();
+                    return true;
+                }
+                const taken = tile.items.splice(0, space).map((item, index) => {
+                    if (item && typeof item === 'object' && !Array.isArray(item)) return this._cloneTileValue(item);
+                    const tileX = Number(tile.x ?? this.location?.x ?? 0);
+                    const tileY = Number(tile.y ?? this.location?.y ?? 0);
+                    return { id: `tile_item_${tileX}_${tileY}_${index}`, name: this._tileItemLabel(item) };
+                });
+                this.inventory.push(...taken);
+                this._persistCurrentExplorationTile(tile);
+                const itemNames = taken.map(item => this._tileItemLabel(item)).join(', ');
+                const tookText = this._label('log.tookTileItems', 'Picked up {items}.', { items: itemNames });
+                this.log.push({ text: tookText, type: 'loot' });
+                this._addTileEvent(tookText, 'loot');
+                if (tile.items.length > 0) {
+                    const fullText = this._label('inventory.full', 'Inventory is full.');
+                    this.log.push({ text: fullText, type: 'loot' });
+                    this._addTileEvent(fullText, 'loot');
+                }
+                this.renderLog();
+                this.renderExplorationActions();
+                this.autoSave();
+                return true;
             },
             rest() {
                 if (!this._canRestHere()) {

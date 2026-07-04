@@ -6500,6 +6500,32 @@ test('Moving between tiles does not copy carried inventory into ground items', (
   assertEqual(App.getTileDelta(0, 0).items[0].name, 'Healing Herb', 'Persisted tile delta should keep ground items separate from carried inventory');
 });
 
+test('Center tile exposes only tile-local item pickup', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  let autoSaveCalls = 0;
+  App.player = player;
+  App.party = [player];
+  App.inventory = [];
+  App.autoSave = () => { autoSaveCalls += 1; };
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'A saved clearing.', creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }] }]]);
+
+  const context = App._centerTileContext();
+  assertContains(context.description, 'Items here: Healing Herb.', 'Center context should summarize tile-local items');
+  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Center context should expose tile-local pickup');
+  assertNotContains(App._renderContextActions(false), 'App.showInventory()', 'Tile-local pickup should not expose carried inventory in the center');
+
+  assertEqual(App.takeTileItems(), true, 'Taking tile items should report a handled action');
+  assertEqual(App.inventory.length, 1, 'Tile-local pickup should move the item into carried inventory');
+  assertEqual(App.inventory[0].name, 'Healing Herb', 'Tile-local pickup should preserve item identity');
+  assertEqual(App.worldMap.get('0,0').items.length, 0, 'Tile-local pickup should remove the item from the ground');
+  assertNotContains(App._renderContextActions(false), 'App.takeTileItems()', 'Tile-local pickup should disappear after the ground is empty');
+  assertContains(App.log[App.log.length - 1].text, 'Picked up Healing Herb.', 'Tile-local pickup should log the item transfer');
+  assertEqual(autoSaveCalls, 1, 'Tile-local pickup should autosave changed world and inventory state');
+});
+
 test('Interior movement persists room creatures and exits to overworld', () => {
   const { App } = loadAppForCombat(() => 1);
   const player = makeUnit('You');

@@ -306,6 +306,13 @@ const MODULE_SYSTEM = {
             };
         });
     },
+
+    closeDatabase() {
+        if (this.db && typeof this.db.close === 'function') {
+            this.db.close();
+        }
+        this.db = null;
+    },
     
     // Register a hook
     registerHook(event, callback, priority = 0, moduleId = null) {

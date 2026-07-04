@@ -961,6 +961,8 @@ test('Storage helper module is registered before app code', () => {
   assertContains(storageSystemContent, 'deleteDatabaseIfExists(dbName)', 'Storage helper should delete legacy IndexedDB names only when present');
   assertNotContains(storageSystemContent, 'readFrom(app.LEGACY_SAVE_DB_NAME)', 'Save loads should not open the legacy FFF_Saves namespace');
   assertNotContains(storageSystemContent, 'deleteFrom(app.LEGACY_SAVE_DB_NAME)', 'Save deletes should not open the legacy FFF_Saves namespace');
+  assertContains(moduleSystemContent, 'closeDatabase()', 'Module system should expose a way to close IndexedDB before destructive deletion');
+  assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
   assertContains(appContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName)', 'App combat refresh write should delegate to storage helper with the requested slot');
   assertContains(appContent, 'YAW_STORAGE.readCombatRefreshSnapshot(this, slotName)', 'App combat refresh read should delegate to storage helper');
 });
@@ -9978,8 +9980,10 @@ test('Settings destructive confirmations localize', async () => {
   });
   const deletedSlotsForClearAll = [];
   let clearAllReloaded = false;
+  let moduleDbClosed = false;
   confirmedClearAll.storage.set('yaw-last-slot', 'slot4');
   confirmedClearAll.storage.set('yaw-has-played', 'true');
+  confirmedClearAll.moduleSystem.closeDatabase = () => { moduleDbClosed = true; };
   confirmedClearAll.App._dbDelete = async (_store, key) => { deletedSlotsForClearAll.push(key); };
   confirmedClearAll.App.refreshContinueButton = async () => true;
   confirmedClearAll.App._reloadPage = () => { clearAllReloaded = true; };
@@ -9988,6 +9992,7 @@ test('Settings destructive confirmations localize', async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
   assertEqual(clearAllReloaded, false, 'Confirmed clear-all should wait for database deletion before reload');
   assertEqual(deletedSlotsForClearAll.join(','), 'slot1,slot2,slot3,slot4,slot5', 'Confirmed clear-all should delete every save slot first');
+  assertEqual(moduleDbClosed, true, 'Confirmed clear-all should close the module DB before deleting IndexedDB namespaces');
   assertEqual(deletedDatabases.join(','), 'YAW_Modules,YAW_Saves,YAW_Worlds', 'Confirmed clear-all should request active YAW database deletion without opening legacy namespaces');
   for (const request of deleteRequests) request.onsuccess({ target: request });
   assertEqual(await clearAllPromise, true, 'Confirmed clear-all should resolve true after database deletion succeeds');

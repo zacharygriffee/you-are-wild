@@ -8956,6 +8956,11 @@
             _legacyModuleDbName() {
                 return (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?.LEGACY_DB_NAME) || 'FFFme_Modules';
             },
+            _closeModuleDatabase() {
+                if (typeof MODULE_SYSTEM !== 'undefined' && typeof MODULE_SYSTEM.closeDatabase === 'function') {
+                    MODULE_SYSTEM.closeDatabase();
+                }
+            },
             async _clearAllDataConfirmed() {
                 try {
                     for (let i = 1; i <= 5; i++) {
@@ -8981,11 +8986,13 @@
                         this._legacyModuleDbName(),
                         this.LEGACY_SAVE_DB_NAME
                     ];
+                    this._closeModuleDatabase();
                     await Promise.all([
                         ...currentDbNames.map(dbName => this._deleteDatabase(dbName)),
                         ...legacyDbNames.map(dbName => this._deleteLegacyDatabase(dbName))
                     ]);
-                    await this.refreshContinueButton();
+                    const continueButton = document.getElementById('menu-continue');
+                    if (continueButton) continueButton.style.display = 'none';
                     alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
                     this._reloadPage();
                     return true;

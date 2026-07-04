@@ -24,6 +24,31 @@ async function clearBrowserStorage(page) {
   });
 }
 
+async function createIndexedDb(page, name, stores = ['records']) {
+  await page.evaluate(({ name, stores }) => new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = event => {
+      const db = event.target.result;
+      for (const store of stores) {
+        if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
+      }
+    };
+    req.onsuccess = event => {
+      event.target.result.close();
+      resolve();
+    };
+    req.onerror = () => reject(req.error);
+  }), { name, stores });
+}
+
+async function browserDatabaseNames(page) {
+  return page.evaluate(async () => {
+    if (!indexedDB.databases) return [];
+    const databases = await indexedDB.databases();
+    return databases.map(db => db.name).filter(Boolean).sort();
+  });
+}
+
 async function setupCombat(page, options = {}) {
   await page.evaluate(({ playerOverrides = {}, enemyOverrides = {}, allyOverrides = {}, withAlly = false }) => {
     const makeUnit = (name, id, overrides = {}) => ({
@@ -430,6 +455,53 @@ async function runSelectionSemanticsFlow(page) {
   assert.strictEqual(state.hasAdventureMark, false, 'Combat target picking should not render adventure Mark controls');
 }
 
+async function runClearAllBrowserStorageFlow(page) {
+  await clearBrowserStorage(page);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+
+  await createIndexedDb(page, 'YAW_Modules', ['modules', 'assets', 'settings']);
+  await createIndexedDb(page, 'YAW_Saves', ['saves']);
+  await createIndexedDb(page, 'YAW_Worlds', ['tiles']);
+  await createIndexedDb(page, 'FFFme_Modules', ['modules']);
+  await createIndexedDb(page, 'FFF_Saves', ['saves']);
+  await createIndexedDb(page, 'FFF_Unrelated', ['records']);
+
+  let names = await browserDatabaseNames(page);
+  for (const expected of ['YAW_Modules', 'YAW_Saves', 'YAW_Worlds', 'FFFme_Modules', 'FFF_Saves', 'FFF_Unrelated']) {
+    assert(names.includes(expected), `Precondition: ${expected} should exist in browser IndexedDB`);
+  }
+
+  const result = await page.evaluate(async () => {
+    window.__clearAllAlerts = [];
+    window.__clearAllReloaded = false;
+    window.alert = message => window.__clearAllAlerts.push(String(message));
+    App._reloadPage = () => { window.__clearAllReloaded = true; };
+    localStorage.setItem('yaw-last-slot', 'slot1');
+    localStorage.setItem('yaw-save-time-slot1', '12345');
+    App.clearAllData();
+    const confirmed = await App.resolveConfirmDialog(true);
+    return {
+      confirmed,
+      alerts: window.__clearAllAlerts,
+      reloaded: window.__clearAllReloaded,
+      lastSlot: localStorage.getItem('yaw-last-slot'),
+      saveTime: localStorage.getItem('yaw-save-time-slot1')
+    };
+  });
+  assert.strictEqual(result.confirmed, true, 'Browser clear-all should resolve true after deleting data');
+  assert.strictEqual(result.reloaded, true, 'Browser clear-all should request reload after deletion');
+  assert.strictEqual(result.lastSlot, null, 'Browser clear-all should remove active last-slot metadata');
+  assert.strictEqual(result.saveTime, null, 'Browser clear-all should remove slot save-time metadata');
+  assert(result.alerts.some(text => text.includes('All data cleared')), 'Browser clear-all should report success');
+
+  names = await browserDatabaseNames(page);
+  for (const deleted of ['YAW_Modules', 'YAW_Saves', 'YAW_Worlds', 'FFFme_Modules', 'FFF_Saves']) {
+    assert(!names.includes(deleted), `Browser clear-all should delete ${deleted}`);
+  }
+  assert(names.includes('FFF_Unrelated'), 'Browser clear-all should not delete unrelated legacy-looking databases');
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -443,6 +515,7 @@ async function runSelectionSemanticsFlow(page) {
     await runReachabilityMatrix(page);
     await runAdventureMarkedTargetFlow(page);
     await runSelectionSemanticsFlow(page);
+    await runClearAllBrowserStorageFlow(page);
     await page.close();
   } finally {
     await browser.close();

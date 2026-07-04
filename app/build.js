@@ -23,6 +23,7 @@ const SCRIPT_ORDER = [
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',
   'src/core/center-context.js',
+  'src/core/sub-actions.js',
   'src/core/action-ui.js',
   'src/core/panel-interactions.js',
   'src/core/unit-card-status.js',

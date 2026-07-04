@@ -126,6 +126,7 @@ const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
@@ -1386,6 +1387,23 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass)', 'App combat intent button wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.legend(this, keys)', 'App action legend wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.icon(key)', 'App action icon wrapper should delegate to the helper');
+});
+
+test('Sub-action helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/sub-actions.js'", 'Sub-action helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/sub-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Sub-action helper should load before app.js');
+  assertContains(subActionsContent, 'const YAW_SUB_ACTIONS = {', 'Sub-action helper should expose the sub-action service');
+  assertContains(subActionsContent, 'definitions: {', 'Sub-action helper should own built-in sub-action definitions');
+  assertContains(subActionsContent, 'defaultActions()', 'Sub-action helper should create fresh default sub-action state');
+  assertContains(subActionsContent, 'available(app, action, actor, target)', 'Sub-action helper should own sub-action availability filtering');
+  assertContains(subActionsContent, 'isAvailable(app, def, actor, target, holder = [])', 'Sub-action helper should own defensive sub-action validation');
+  assertContains(subActionsContent, 'label(app, action, subAction)', 'Sub-action helper should own safe sub-action labels');
+  assertContains(appContent, 'SUB_ACTIONS: YAW_SUB_ACTIONS.definitions', 'App should read sub-action definitions from the helper');
+  assertContains(appContent, 'defaultSubActions: YAW_SUB_ACTIONS.defaultActions()', 'App should initialize mutable sub-action defaults from the helper');
+  assertContains(appContent, 'YAW_SUB_ACTIONS.getDefault(this, action)', 'App default sub-action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SUB_ACTIONS.available(this, action, actor, target)', 'App available sub-action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SUB_ACTIONS.isAvailable(this, def, actor, target, holder)', 'App sub-action validation wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SUB_ACTIONS.label(this, action, subAction)', 'App action label wrapper should delegate to the helper');
 });
 
 test('Unit card status helper module is registered before app code', () => {
@@ -2806,7 +2824,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${actionUiContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -3108,15 +3126,15 @@ test('Action constants include all 6 primary actionables', () => {
 
 test('Sub-action registry exists with feast and feed sub-actions', () => {
   assertContains(appContent, 'SUB_ACTIONS:', 'SUB_ACTIONS registry missing');
-  assertContains(appContent, "feast: {", 'Feast sub-actions missing');
-  assertContains(appContent, "feed: {", 'Feed sub-actions missing');
-  assertContains(appContent, "swallow:", 'Swallow sub-action missing');
-  assertContains(appContent, "heal:", 'Heal sub-action missing');
-  assertContains(appContent, "breastfeed:", 'Breastfeed sub-action missing');
-  assertContains(appContent, "sacrifice:", 'Sacrifice sub-action missing');
-  assertContains(appContent, "forceFeed:", 'ForceFeed sub-action missing');
-  assertContains(appContent, "cockVore:", 'CockVore sub-action missing');
-  assertContains(appContent, "unbirth:", 'Unbirth sub-action missing');
+  assertContains(subActionsContent, "feast: {", 'Feast sub-actions missing');
+  assertContains(subActionsContent, "feed: {", 'Feed sub-actions missing');
+  assertContains(subActionsContent, "swallow:", 'Swallow sub-action missing');
+  assertContains(subActionsContent, "heal:", 'Heal sub-action missing');
+  assertContains(subActionsContent, "breastfeed:", 'Breastfeed sub-action missing');
+  assertContains(subActionsContent, "sacrifice:", 'Sacrifice sub-action missing');
+  assertContains(subActionsContent, "forceFeed:", 'ForceFeed sub-action missing');
+  assertContains(subActionsContent, "cockVore:", 'CockVore sub-action missing');
+  assertContains(subActionsContent, "unbirth:", 'Unbirth sub-action missing');
 });
 
 test('Sub-action helpers exist', () => {

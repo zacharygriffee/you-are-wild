@@ -1939,9 +1939,18 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'grantReward(app, quest)', 'Quest flow helper should own quest reward grants');
   assertContains(questFlowContent, 'turnIn(app, questId)', 'Quest flow helper should own quest turn-in behavior');
   assertContains(questFlowContent, 'focusObjectiveOnMap(app, questId, objectiveId)', 'Quest flow helper should own objective map focus behavior');
+  assertContains(questFlowContent, 'templateForStructure(app, structureId, tile = null)', 'Quest flow helper should own structure quest template selection');
+  assertContains(questFlowContent, 'createStructureGiver(app, structureId, tile)', 'Quest flow helper should own structure quest-giver creation');
+  assertContains(questFlowContent, 'maybeSpawnStructureGiver(app, tile)', 'Quest flow helper should own structure quest-giver placement');
+  assertContains(questFlowContent, "'structure-quest-template'", 'Structure quest template selection should use deterministic world keys');
+  assertContains(questFlowContent, "'structure-quest-giver'", 'Structure quest-giver placement should use deterministic world keys');
+  assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
+  assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
+  assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
   assertContains(questFlowContent, 'app.showCreaturePanelDetail(normalized.title, html)', 'Quest preview should render through creature panel details');
   assertContains(questFlowContent, 'app.autoSave()', 'Quest state changes should keep autosaving');
   assertNotContains(questFlowContent, 'Date.now', 'Quest reward item ids should remain deterministic');
+  assertNotContains(questFlowContent, 'Math.random', 'Quest flow helper should not use ambient randomness');
   assertNotContains(questFlowContent, "document.getElementById('scene-description')", 'Quest flow helper should not render into center tile content');
   assertContains(appContent, 'YAW_QUEST_FLOW.normalize(this, quest, giver)', 'App quest normalization wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.accept(this, quest, giver)', 'App accept quest wrapper should delegate to the helper');

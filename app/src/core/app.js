@@ -4691,66 +4691,15 @@
             },
 
             _questTemplateForStructure(structureId, tile = null) {
-                const config = this.STRUCTURES[structureId]?.quest;
-                const templates = config?.templates || [];
-                if (!templates.length) return null;
-                const x = tile?.x ?? 0;
-                const y = tile?.y ?? 0;
-                const templateId = typeof WorldGen !== 'undefined'
-                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-template', x, y, templates) || templates[0])
-                    : templates[0];
-                const source = this.QUEST_TEMPLATES[templateId];
-                if (!source) return null;
-                const quest = JSON.parse(JSON.stringify(source));
-                const tileId = tile ? `${tile.x}_${tile.y}` : 'local';
-                quest.id = quest.id || `${templateId}_${tileId}`;
-                quest.templateId = templateId;
-                if (tile) quest.giverLocation = { x: Number(tile.x), y: Number(tile.y), label: this.STRUCTURES[structureId]?.name || 'Quest giver' };
-                return quest;
+                return YAW_QUEST_FLOW.templateForStructure(this, structureId, tile);
             },
 
             _createStructureQuestGiver(structureId, tile) {
-                const struct = this.STRUCTURES[structureId];
-                const questConfig = struct?.quest;
-                if (!questConfig) return null;
-                const quest = this._questTemplateForStructure(structureId, tile);
-                if (!quest) return null;
-                const speciesPool = questConfig.species || ['human'];
-                const x = tile?.x ?? 0;
-                const y = tile?.y ?? 0;
-                const sid = typeof WorldGen !== 'undefined'
-                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-species', x, y, speciesPool) || 'human')
-                    : speciesPool[0] || 'human';
-                const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
-                return this._normalizeUnit({
-                    id: `questgiver_${structureId}_${x}_${y}`,
-                    name: `${sp?.name || 'Local'} Guide`,
-                    species: sid,
-                    icon: sp?.icon || '👤',
-                    disposition: this.DISPOSITION.QUEST_GIVER,
-                    level: Math.max(1, this.player?.level || 1),
-                    bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [],
-                    quest,
-                    tags: [sp?.name || sid, 'Quest', struct.name],
-                    expanded: false,
-                    hero: false,
-                    ally: false,
-                    mc: false,
-                    obedient: false,
-                    willing: true
-                });
+                return YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile);
             },
 
             _maybeSpawnStructureQuestGiver(tile) {
-                if (!tile?.structure || !this.STRUCTURES[tile.structure]?.quest) return null;
-                const config = this.STRUCTURES[tile.structure].quest;
-                if (typeof WorldGen !== 'undefined' && !WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-quest-giver', tile.x, tile.y, config.chance ?? 0)) return null;
-                if (typeof WorldGen === 'undefined' && (config.chance ?? 0) <= 0) return null;
-                const questGiver = this._createStructureQuestGiver(tile.structure, tile);
-                if (!questGiver) return null;
-                this.creatures = this._tileCreatures([...(this.creatures || []), questGiver]);
-                tile.creatures = this._tileCreatures(this.creatures);
-                return questGiver;
+                return YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile);
             },
 
             _itemCategory(item) {

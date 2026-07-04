@@ -110,6 +110,7 @@ const WorldGen = (() => {
         const roughness = fractalNoise2D(seed, version, 'roughness', x - 707, y + 409, 18, 4, 0.56);
         const danger = fractalNoise2D(seed, version, 'danger', x - 311, y - 149, 34, 4, 0.52);
         const waterPressure = clamp01((1 - elevation) * 0.72 + moisture * 0.52 - roughness * 0.18 - safeStart * 0.45);
+        const safeDangerDampening = (version || 1) >= 2 ? 0.75 : 0.45;
         const water = waterPressure > 0.72 && elevation < 0.48;
         return {
             elevation,
@@ -120,7 +121,7 @@ const WorldGen = (() => {
             waterPressure,
             water,
             danger,
-            dangerPressure: clamp01(Math.max(0, danger - safeStart * 0.45)),
+            dangerPressure: clamp01(Math.max(0, danger - safeStart * safeDangerDampening)),
             safeStart
         };
     }
@@ -566,7 +567,13 @@ const WorldGen = (() => {
         const coast = coastInfo(seed, version, x, y);
         fields.nearWater = coast.nearWater;
         fields.regionInfluence = regionCell.influence;
-        const derivedBiome = classifyBiome(fields, macroBiome, regionBiomes);
+        let derivedBiome = classifyBiome(fields, macroBiome, regionBiomes);
+        if (version >= 2 && fields.safeStart >= 0.35) {
+            const safeStartBiomes = ['grove', 'plains', 'forest', 'beach'];
+            if (!safeStartBiomes.includes(derivedBiome)) {
+                derivedBiome = regionBiomes.includes('grove') ? 'grove' : (regionBiomes.find(id => safeStartBiomes.includes(id)) || 'plains');
+            }
+        }
         const road = getRoadOverlay(seed, version, x, y, fields);
         const bridge = getBridgeOverlay(seed, version, x, y, fields, road);
         const poi = getPoiForTile(seed, version, x, y, regionCell);

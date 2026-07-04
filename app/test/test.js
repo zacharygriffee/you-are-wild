@@ -6413,21 +6413,41 @@ test('Terrain traversal metadata defines conservative passability and route cost
 test('Versioned start area validation guarantees early route and rest access', () => {
   const WorldGen = loadWorldGenForTest();
   const { App } = loadAppForCombat();
-  App.worldMeta = { worldId: 'world-start-safe', seed: 'default', generatorVersion: 2, mapModsHash: 'core' };
-  App.worldMap = new Map();
-  App.tileDeltas = new Map();
-  App.exploredTiles = new Set();
-  const result = WorldGen.validateStartArea(App.worldMeta, App._regionBiomeKeys());
-  assertEqual(result.ok, true, 'Default versioned start area should satisfy safety invariants');
-  assertEqual(result.checks.safeBiomeRadius, true, 'Start area should have enough low-danger passable terrain');
-  assertEqual(result.checks.noHardLockout, true, 'Start should not be surrounded by blocked terrain');
-  assertEqual(result.checks.routeAccess, true, 'Start should have nearby route access');
-  assertEqual(result.checks.restCandidate, true, 'Start should have a nearby rest-site candidate');
-  const restBase = App.getBaseTile(4, 0);
-  assert(restBase.overlays?.road, 'Start rest candidate should sit on a deterministic route seam');
-  assertEqual(restBase.overlays?.poi?.category, 'restSite', 'Start rest candidate should be a deterministic rest-site POI');
-  const discovered = App.exploreTile(4, 0);
-  assertEqual(discovered.structure, 'camp', 'Rest-site POI should resolve to a rest-capable structure on discovery');
+  const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
+  for (const seed of seeds) {
+    App.worldMeta = { worldId: `world-start-safe-${seed}`, seed, generatorVersion: 2, mapModsHash: 'core' };
+    App.worldMap = new Map();
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set();
+    const result = WorldGen.validateStartArea(App.worldMeta, App._regionBiomeKeys());
+    assertEqual(result.ok, true, `Versioned start area should satisfy safety invariants for seed ${seed}`);
+    assertEqual(result.checks.safeBiomeRadius, true, `Start area should have enough low-danger passable terrain for seed ${seed}`);
+    assertEqual(result.checks.noHardLockout, true, `Start should not be surrounded by blocked terrain for seed ${seed}`);
+    assertEqual(result.checks.lowDangerResource, true, `Start should have low-danger resource terrain for seed ${seed}`);
+    assertEqual(result.checks.routeAccess, true, `Start should have nearby route access for seed ${seed}`);
+    assertEqual(result.checks.restCandidate, true, `Start should have a nearby rest-site candidate for seed ${seed}`);
+    assertEqual(result.checks.earlyPoi, true, `Start should have early POI availability for seed ${seed}`);
+
+    const startBase = App.getBaseTile(0, 0);
+    assertEqual(startBase.traversal.passable, true, `Start tile should be passable for seed ${seed}`);
+    const passableAdjacent = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+      .filter(([dx, dy]) => App.getBaseTile(dx, dy).traversal.passable).length;
+    assert(passableAdjacent >= 2, `Start should have at least two passable cardinal exits for seed ${seed}`);
+
+    const startRoad = [];
+    for (let x = 0; x <= 4; x++) {
+      const tile = App.getBaseTile(x, 0);
+      startRoad.push(tile);
+      assert(tile.overlays?.road, `Route to start rest site should stay on road at ${x},0 for seed ${seed}`);
+      assertEqual(tile.traversal.passable, true, `Route tile ${x},0 should be passable for seed ${seed}`);
+    }
+    assert(startRoad.every(tile => ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)), `Start route should stay on safe base terrain for seed ${seed}`);
+
+    const restBase = App.getBaseTile(4, 0);
+    assertEqual(restBase.overlays?.poi?.category, 'restSite', `Start rest candidate should be a deterministic rest-site POI for seed ${seed}`);
+    const discovered = App.exploreTile(4, 0);
+    assertEqual(discovered.structure, 'camp', `Rest-site POI should resolve to a rest-capable structure on discovery for seed ${seed}`);
+  }
 });
 
 test('Map summary and encounter pressure expose safe UI metadata', () => {

@@ -5058,131 +5058,51 @@
             },
 
             _perkTreeCount(treeId, unit = this.player) {
-                return (unit?.perks || []).filter(perk => perk.tree === treeId).length;
+                return YAW_PERK_FLOW.treeCount(this, treeId, unit);
             },
 
             _hasPerk(perkId, unit = this.player) {
-                return (unit?.perks || []).some(perk => perk.id === perkId);
+                return YAW_PERK_FLOW.hasPerk(this, perkId, unit);
             },
 
             _hasPerkEffect(effect, unit = this.player) {
-                return (unit?.perks || []).some(perk => perk.perkEffect === effect);
+                return YAW_PERK_FLOW.hasEffect(this, effect, unit);
             },
 
             _canChoosePerk(perk, treeId, unit = this.player) {
-                if (!perk || !unit || this._hasPerk(perk.id, unit)) return false;
-                if (!perk.requires) return true;
-                if (perk.requires.perk && !this._hasPerk(perk.requires.perk, unit)) return false;
-                if (perk.requires.tree && this._perkTreeCount(perk.requires.tree, unit) < (perk.requires.count || 1)) return false;
-                return true;
+                return YAW_PERK_FLOW.canChoose(this, perk, treeId, unit);
             },
 
             _perkTreesForUnit(unit = this.player) {
-                const trees = { ...this.PERK_TREES };
-                const speciesTree = this.SPECIES_PERK_TREES[unit?.species];
-                if (speciesTree) trees[`species:${unit.species}`] = speciesTree;
-                return trees;
+                return YAW_PERK_FLOW.treesForUnit(this, unit);
             },
 
             _availablePerkChoices(unit = this.player) {
-                const choices = [];
-                for (const [treeId, tree] of Object.entries(this._perkTreesForUnit(unit))) {
-                    for (const perk of tree.perks) {
-                        choices.push({ ...perk, tree: treeId, treeLabel: tree.label, available: this._canChoosePerk(perk, treeId, unit) });
-                    }
-                }
-                return choices;
+                return YAW_PERK_FLOW.availableChoices(this, unit);
             },
 
             _availablePerkTreeFilters(unit = this.player) {
-                return [['all', this._label('perk.filter.all', 'All')], ...Object.entries(this._perkTreesForUnit(unit)).map(([treeId, tree]) => [treeId, tree.label])];
+                return YAW_PERK_FLOW.availableFilters(this, unit);
             },
 
             setPerkTreeFilter(filter) {
-                const valid = this._availablePerkTreeFilters().map(([value]) => value);
-                this.perkTreeFilter = valid.includes(filter) ? filter : 'all';
-                this.showPerkSelection();
+                return YAW_PERK_FLOW.setFilter(this, filter);
             },
 
             choosePerk(perkId) {
-                if (!this.player || (this.player.pendingPerkChoices || 0) <= 0) return;
-                const choice = this._availablePerkChoices().find(perk => perk.id === perkId);
-                if (!choice || !choice.available) {
-                    this.log.push({ text: this._label('perk.notAvailable', 'That perk is not available yet.'), type: 'discovery' });
-                    this.renderLog();
-                    this.showPerkSelection();
-                    return;
-                }
-                this.player.perks = this.player.perks || [];
-                this.player.perks.push({
-                    id: choice.id,
-                    tree: choice.tree,
-                    species: choice.tree.startsWith('species:') ? this.player.species : null,
-                    name: choice.name,
-                    stat: choice.stat,
-                    val: choice.val,
-                    perkEffect: choice.perkEffect || null,
-                    desc: choice.desc
-                });
-                if (choice.stat) this.player[choice.stat] = (this.player[choice.stat] || 0) + (choice.val || 0);
-                this.player.pendingPerkChoices = Math.max(0, (this.player.pendingPerkChoices || 0) - 1);
-                this.log.push({ text: this._label('perk.chosen', 'Perk chosen: {name}. {description}', { name: choice.name, description: choice.desc }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                if (this.player.pendingPerkChoices > 0) this.showPerkSelection();
-                else this.showCharacterStats();
-                this.autoSave();
+                return YAW_PERK_FLOW.choose(this, perkId);
             },
 
             _completePerkRespec() {
-                if (!this.player) return;
-                const selected = this.player.perks || [];
-                if (!selected.length) {
-                    this.log.push({ text: this._label('perk.noneToRespec', 'No perks selected to respec.'), type: 'discovery' });
-                    this.renderLog();
-                    return;
-                }
-                selected.forEach(perk => {
-                    if (perk.stat && typeof perk.val === 'number') {
-                        this.player[perk.stat] = Math.max(0, (this.player[perk.stat] || 0) - perk.val);
-                    }
-                });
-                this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + selected.length;
-                this.player.perks = [];
-                this.perkTreeFilter = 'all';
-                this.log.push({ text: this._label(selected.length === 1 ? 'perk.respecDoneOne' : 'perk.respecDoneMany', selected.length === 1 ? 'Perks reset. Refunded {count} choice.' : 'Perks reset. Refunded {count} choices.', { count: selected.length }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.showCharacterStats();
-                this.autoSave();
+                return YAW_PERK_FLOW.completeRespec(this);
             },
 
             respecPerks(skipConfirm = false) {
-                if (!this.player) return;
-                const selected = this.player.perks || [];
-                if (!selected.length) {
-                    this.log.push({ text: this._label('perk.noneToRespec', 'No perks selected to respec.'), type: 'discovery' });
-                    this.renderLog();
-                    return;
-                }
-                if (skipConfirm) return this._completePerkRespec();
-                return this.showConfirmDialog({
-                    title: this._label('perk.respec', 'Respec Perks'),
-                    message: this._label('perk.confirmRespec', 'Reset selected perks and refund their choices?'),
-                    confirmLabel: this._label('perk.respec', 'Respec Perks'),
-                    cancelLabel: this._label('ui.cancel', 'Cancel'),
-                    onConfirm: () => this._completePerkRespec()
-                });
+                return YAW_PERK_FLOW.respec(this, skipConfirm);
             },
 
             debugGrantPerkChoice(count = 1) {
-                if (!this.player) return;
-                const grant = Math.max(1, Math.floor(Number(count) || 1));
-                this.player.pendingPerkChoices = (this.player.pendingPerkChoices || 0) + grant;
-                this.log.push({ text: `Debug: granted ${grant} perk choice${grant === 1 ? '' : 's'}.`, type: 'discovery' });
-                this.renderLog();
-                this.showCharacterStats();
-                this.autoSave();
+                return YAW_PERK_FLOW.debugGrant(this, count);
             },
 
             showPerkSelection() {

@@ -52,6 +52,7 @@ const SCRIPT_ORDER = [
   'src/core/equipment-system.js',
   'src/core/inventory-panel.js',
   'src/core/trade-flow.js',
+  'src/core/perk-flow.js',
   'src/core/stats-panel.js',
   'src/core/quest-panel.js',
   'src/core/mobile-unit-strips.js',

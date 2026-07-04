@@ -2222,6 +2222,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const prompts = [];
   const hooks = [];
   const moduleSystem = {
+    DB_NAME: 'YAW_Modules',
+    LEGACY_DB_NAME: 'FFFme_Modules',
     executeHook(event, payload) {
       hooks.push({ event, payload });
       return Promise.resolve();
@@ -2313,7 +2315,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.renderCreatures = App.renderCreatures.bind(App);
   App.showExplorationActions = function() {};
   App.autoSave = async function() {};
-  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners };
+  return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem };
 }
 
 function makeUnit(name, overrides = {}) {
@@ -9925,6 +9927,30 @@ test('Settings destructive confirmations localize', async () => {
   assertEqual(await clearAllPromise, true, 'Confirmed clear-all should resolve true after database deletion succeeds');
   assertEqual(clearAllReloaded, true, 'Confirmed clear-all should reload only after database deletion succeeds');
   assertEqual(confirmedClearAll.alerts[0], 'All data cleared. Refresh the page to start fresh.', 'Confirmed clear-all should show success after deletes finish');
+
+  const declaredModuleDeletes = [];
+  const declaredModuleDeleteRequests = [];
+  const declaredModuleClearAll = loadAppForCombat(() => 0.5, {
+    indexedDB: {
+      open() { return {}; },
+      deleteDatabase(name) {
+        declaredModuleDeletes.push(name);
+        const request = { onsuccess: null, onerror: null, onblocked: null, error: null };
+        declaredModuleDeleteRequests.push(request);
+        return request;
+      }
+    }
+  });
+  declaredModuleClearAll.moduleSystem.DB_NAME = 'YAW_Modules_Custom';
+  declaredModuleClearAll.App._dbDelete = async () => {};
+  declaredModuleClearAll.App.refreshContinueButton = async () => true;
+  declaredModuleClearAll.App._reloadPage = () => {};
+  declaredModuleClearAll.App.clearAllData();
+  const declaredModuleClearPromise = declaredModuleClearAll.App.resolveConfirmDialog(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assertEqual(declaredModuleDeletes.join(','), 'YAW_Modules_Custom,YAW_Saves,YAW_Worlds', 'Clear-all should follow the active module DB name declared by MODULE_SYSTEM');
+  for (const request of declaredModuleDeleteRequests) request.onsuccess({ target: request });
+  assertEqual(await declaredModuleClearPromise, true, 'Clear-all should still resolve after deleting declared module database');
 
   const legacyDeletes = [];
   const legacyDeleteRequests = [];

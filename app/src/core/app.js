@@ -8948,6 +8948,12 @@
             _deleteLegacyDatabase(dbName) {
                 return YAW_STORAGE.deleteDatabaseIfExists(dbName);
             },
+            _moduleDbName() {
+                return (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?.DB_NAME) || 'YAW_Modules';
+            },
+            _legacyModuleDbName() {
+                return (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM?.LEGACY_DB_NAME) || 'FFFme_Modules';
+            },
             async _clearAllDataConfirmed() {
                 try {
                     for (let i = 1; i <= 5; i++) {
@@ -8965,12 +8971,12 @@
                     this._removeStoredValue('logView');
 
                     const currentDbNames = [
-                        'YAW_Modules',
+                        this._moduleDbName(),
                         this.SAVE_DB_NAME,
                         this.WORLD_DB_NAME
                     ];
                     const legacyDbNames = [
-                        'FFFme_Modules',
+                        this._legacyModuleDbName(),
                         this.LEGACY_SAVE_DB_NAME
                     ];
                     await Promise.all([

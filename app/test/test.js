@@ -6387,11 +6387,15 @@ test('Recruitment is gated by pleasure and willingness score', () => {
 });
 
 test('Rest only appears and heals at safe structures', () => {
-  const { App, elements } = loadAppForCombat();
+  const { App, elements, hooks } = loadAppForCombat();
   const player = makeUnit('You', { CPun: 50, MPun: 100 });
+  let autoSaveCalls = 0;
   App.player = player;
   App.party = [player];
   App.location = { x: 0, y: 0 };
+  App.timeHour = 20;
+  App.dayCount = 2;
+  App.autoSave = () => { autoSaveCalls += 1; };
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: null }]]);
   App.updateLanguage('es');
   App.renderExplorationActions();
@@ -6399,6 +6403,8 @@ test('Rest only appears and heals at safe structures', () => {
   assertNotContains(elements.get('scene-actions').innerHTML, 'App.showInventory()', 'Center tile context should not expose inventory; player card owns carried items');
   App.rest();
   assertEqual(player.CPun, 50, 'Rest should not heal outside safe rest structures');
+  assertEqual(App.timeHour, 20, 'Unsafe rest should not advance time');
+  assertEqual(autoSaveCalls, 0, 'Unsafe rest should not autosave');
   assertContains(App.log[App.log.length - 1].text, 'No hay un lugar seguro para descansar aqui.', 'Unsafe rest log should localize');
   App.worldMap.get('0,0').structure = 'tree';
   App.renderExplorationActions();
@@ -6416,6 +6422,14 @@ test('Rest only appears and heals at safe structures', () => {
   assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should appear at safe rest structures');
   App.rest();
   assertEqual(player.CPun, 80, 'Rest should heal at safe rest structures');
+  assertEqual(App.timeHour, 4, 'Safe rest should advance the in-game clock');
+  assertEqual(App.dayCount, 3, 'Safe rest should advance the day when crossing midnight');
+  assertEqual(autoSaveCalls, 1, 'Safe rest should autosave changed core state');
+  const tickHook = hooks.find(hook => hook.event === 'onTick');
+  assert(tickHook, 'Safe rest should emit the shared time tick hook');
+  assertEqual(tickHook.payload.hours, 8, 'Rest tick should report the rest duration');
+  assertEqual(tickHook.payload.previousHour, 20, 'Rest tick should report the previous hour');
+  assertEqual(tickHook.payload.currentHour, 4, 'Rest tick should report the current hour');
   assertContains(App.log[App.log.length - 1].text, 'Descansaste y te recuperaste.', 'Safe rest log should localize');
 });
 

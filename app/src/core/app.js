@@ -8853,10 +8853,14 @@
                 const healAmount = 30 + this._partyRoleEffect('support', 10, 20);
                 const healed = new Set([this.player, ...this.party]);
                 healed.forEach(p => { p.CPun = Math.min(p.MPun, p.CPun + healAmount); });
+                this._advanceTime(8);
                 const restedText = this._label('log.rested', 'Rested and recovered.');
                 this.log.push({ text: restedText, type: 'heal' });
                 this._addTileEvent(restedText, 'heal');
-                this.renderLog(); this.renderParty();
+                this.renderLog();
+                this.renderParty();
+                this.renderExplorationActions();
+                this.autoSave();
             },
 
             // ===== SCREEN MANAGEMENT =====

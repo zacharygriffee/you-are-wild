@@ -50,6 +50,7 @@ const SCRIPT_ORDER = [
   'src/core/marked-target-actions.js',
   'src/core/recruitment-flow.js',
   'src/core/panel-interactions.js',
+  'src/core/panel-commands.js',
   'src/core/unit-stats.js',
   'src/core/unit-card-status.js',
   'src/core/combat-rules.js',

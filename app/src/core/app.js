@@ -2609,70 +2609,27 @@
             },
 
             showInteractMenu() {
-                this.log.push({ text: this._label('target.chooseFromPanel', 'Select a target from the creature panel.'), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.renderExplorationActions();
-                return false;
+                return YAW_PANEL_COMMANDS.showInteractMenu(this);
             },
 
             showCreatureInteract(type, index) {
-                const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
-                if (!target) return;
-                const id = type === 'party' ? this._unitSelectionId(target) : String(target.id || target.name);
-                this.toggleExplorationTarget(type, id);
-                return false;
+                return YAW_PANEL_COMMANDS.showCreatureInteract(this, type, index);
             },
 
             outsideAction(action, type, index) {
-                const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
-                if (!target) return false;
-                if (type === 'party') return this.outsideActionForParty(action, this.party.indexOf(target));
-                return this.outsideActionForCreature(action, target.id || target.name);
+                return YAW_PANEL_COMMANDS.outsideAction(this, action, type, index);
             },
 
             outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
-                const target = this.party[targetIndex];
-                if (!target) return false;
-                const actors = this._explorationActorsForOptionalId(actorId);
-                if (actorId && actors.length === 0) return false;
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    actors,
-                    targets: [target],
-                    action,
-                    subAction: options.subAction || null,
-                    source: 'party-wrapper',
-                    targetType: 'party'
-                });
+                return YAW_PANEL_COMMANDS.outsideActionForParty(this, action, targetIndex, actorId, options);
             },
 
             outsideActionForCreature(action, targetId, options = {}) {
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    targetType: 'creature',
-                    targetRef: targetId,
-                    action,
-                    subAction: options.subAction || null,
-                    source: 'creature-wrapper'
-                });
+                return YAW_PANEL_COMMANDS.outsideActionForCreature(this, action, targetId, options);
             },
 
             outsideActionForCreatureAs(actorId, action, targetId, options = {}) {
-                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) return false;
-                const actors = this._explorationActorsForOptionalId(actorId);
-                if (actorId && actors.length === 0) return false;
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    actors,
-                    targets: [target],
-                    action,
-                    subAction: options.subAction || null,
-                    source: 'creature-wrapper',
-                    targetType: 'creature'
-                });
+                return YAW_PANEL_COMMANDS.outsideActionForCreatureAs(this, actorId, action, targetId, options);
             },
 
             _removeContainedPartyMember(unit) {

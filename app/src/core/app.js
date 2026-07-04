@@ -1977,40 +1977,22 @@
 
             // ===== ENCOUNTER / SPAWN =====
             _weightedPick(table) {
-                if (!table || table.length === 0) return 'bunny';
-                // Support both old format (array of strings) and new format (array of {id, weight})
-                if (typeof table[0] === 'string') return table[Math.floor(Math.random() * table.length)];
-                const total = table.reduce((sum, e) => sum + (e.weight || 10), 0);
-                let roll = Math.random() * total;
-                for (const entry of table) {
-                    roll -= (entry.weight || 10);
-                    if (roll <= 0) return entry.id;
-                }
-                return table[0].id;
+                return YAW_WORLD_RANDOM.weightedPick(table);
             },
             _worldRoll(namespace, x = 0, y = 0, ...parts) {
-                if (typeof WorldGen === 'undefined') return Math.random();
-                return WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, namespace, x, y, ...parts);
+                return YAW_WORLD_RANDOM.roll(this, namespace, x, y, ...parts);
             },
             _worldChance(namespace, x, y, probability, ...parts) {
-                return this._worldRoll(namespace, x, y, ...parts) < Math.max(0, Math.min(1, probability || 0));
+                return YAW_WORLD_RANDOM.chance(this, namespace, x, y, probability, ...parts);
             },
             _weightedPickWorld(table, namespace, x, y, ...parts) {
-                if (!table || table.length === 0) return 'bunny';
-                if (typeof WorldGen === 'undefined') return this._weightedPick(table);
-                const entries = table.map(entry => typeof entry === 'string'
-                    ? { id: entry, weight: 1 }
-                    : { id: entry.id, weight: entry.weight || 10 });
-                return WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, namespace, x, y, entries) || entries[0]?.id || 'bunny';
+                return YAW_WORLD_RANDOM.weightedPickWorld(this, table, namespace, x, y, ...parts);
             },
             _pickWorldList(items, namespace, x = 0, y = 0, ...parts) {
-                if (!Array.isArray(items) || items.length === 0) return null;
-                const index = Math.floor(this._worldRoll(namespace, x, y, ...parts) * items.length) % items.length;
-                return items[index];
+                return YAW_WORLD_RANDOM.pickList(this, items, namespace, x, y, ...parts);
             },
             _stableIdPart(value, fallback = 'item') {
-                const raw = String(value ?? fallback).toLowerCase();
-                return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+                return YAW_WORLD_RANDOM.stableIdPart(value, fallback);
             },
             _normalizeEncounterWeights(weights = null) {
                 const source = weights && typeof weights === 'object' ? weights : {};

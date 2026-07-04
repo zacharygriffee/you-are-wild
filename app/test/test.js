@@ -182,6 +182,7 @@ const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
 const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
 const worldStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-state.js'), 'utf8');
 const worldStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-store.js'), 'utf8');
+const worldRandomContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-random.js'), 'utf8');
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
@@ -1410,6 +1411,22 @@ test('World store helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_STORE.dbOpen(this)', 'App world DB wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.persist(this)', 'App world persistence wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.load(this)', 'App world load wrapper should delegate to the helper');
+});
+
+test('World random helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/world-random.js'", 'World random helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/world-random.js'") < buildContent.indexOf("'src/core/tile-resources.js'"), 'World random helper should load before tile resources that use world rolls');
+  assert(buildContent.indexOf("'src/core/world-random.js'") < buildContent.indexOf("'src/core/structure-navigation.js'"), 'World random helper should load before structure navigation that uses world chances');
+  assert(buildContent.indexOf("'src/core/world-random.js'") < buildContent.indexOf("'src/core/app.js'"), 'World random helper should load before app.js');
+  assertContains(worldRandomContent, 'const YAW_WORLD_RANDOM = {', 'World random helper should expose deterministic random service');
+  assertContains(worldRandomContent, 'roll(app, namespace, x = 0, y = 0, ...parts)', 'World random helper should own seeded world rolls');
+  assertContains(worldRandomContent, 'WorldGen.hash01(app._mapSeed()', 'World random rolls should derive from the world seed when WorldGen is available');
+  assertContains(worldRandomContent, 'weightedPickWorld(app, table, namespace, x, y, ...parts)', 'World random helper should own seeded weighted picks');
+  assertContains(worldRandomContent, 'WorldGen.pickWeighted(app._mapSeed()', 'World weighted picks should use seeded WorldGen picks');
+  assertContains(worldRandomContent, 'stableIdPart(value, fallback = ', 'World random helper should own stable ID token generation');
+  assertContains(appContent, 'YAW_WORLD_RANDOM.roll(this, namespace, x, y, ...parts)', 'App world roll wrapper should delegate to world random helper');
+  assertContains(appContent, 'YAW_WORLD_RANDOM.weightedPickWorld(this, table, namespace, x, y, ...parts)', 'App weighted world pick wrapper should delegate to world random helper');
+  assertContains(appContent, 'YAW_WORLD_RANDOM.stableIdPart(value, fallback)', 'App stable id wrapper should delegate to world random helper');
 });
 
 test('Combat scene helper module is registered before app code', () => {
@@ -3466,7 +3483,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

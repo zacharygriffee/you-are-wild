@@ -9,6 +9,81 @@ const YAW_COMBAT_ACTOR_STATE = {
         return app.combatState.turnQueue?.[app.combatState.currentTurn]?.unit || null;
     },
 
+    syncActionLabel(app, type) {
+        const action = { sync_fight: 'fight', sync_flirt: 'flirt', sync_fuck: 'fuck', sync_feed: 'feed' }[type];
+        return action ? app._uiLabel(action) : app._label('combat.group', 'Group');
+    },
+
+    pendingSyncForUnit(app, unit) {
+        if (!app.combatState.active || !unit) return null;
+        return (app.combatState.syncActions || []).find(sync =>
+            !sync.resolved &&
+            sync.round === app.combatState.round &&
+            (sync.participants.includes(unit) || sync.target === unit)
+        ) || null;
+    },
+
+    turnOrderInfo(app, unit) {
+        if (!app.combatState.active || !unit) return null;
+        const queue = app.combatState.turnQueue || [];
+        const queueIndex = queue.findIndex(entry => entry.unit === unit);
+        const sync = this.pendingSyncForUnit(app, unit);
+        return {
+            order: queueIndex >= 0 ? queueIndex + 1 : null,
+            current: queueIndex === app.combatState.currentTurn,
+            acted: queueIndex >= 0 && Boolean(queue[queueIndex].actedThisRound),
+            sync,
+            syncOrder: sync ? sync.resolveAtIndex + 1 : null,
+            syncRole: sync ? (sync.participants.includes(unit) ? 'Group' : 'Target') : null
+        };
+    },
+
+    turnOrderBadge(app, unit) {
+        const info = this.turnOrderInfo(app, unit);
+        if (!info || (!info.order && !info.syncOrder)) return '';
+        const base = info.current ? `Now #${info.order}` : (info.order ? `#${info.order}` : '');
+        const acted = info.acted && !info.current ? ' Done' : '';
+        const sync = info.sync ? ` ${info.syncRole} ${this.syncActionLabel(app, info.sync.type)} #${info.syncOrder}` : '';
+        const bg = info.current ? 'var(--accent-primary)' : (info.sync ? 'var(--accent-warning)' : 'var(--bg-tertiary)');
+        const color = info.current || info.sync ? 'var(--bg-primary)' : 'var(--text-secondary)';
+        const turnOrderLabel = app._escapeHtml(app._label('combat.turnOrder', 'Turn order'));
+        return `<span class="turn-order-badge" title="${turnOrderLabel}" aria-label="${turnOrderLabel} ${app._escapeHtml(base + sync)}" style="font-size:10px;font-weight:800;background:${bg};color:${color};border:1px solid var(--border-default);border-radius:6px;padding:2px 5px;margin-left:4px;white-space:nowrap;">${base}${acted}${sync}</span>`;
+    },
+
+    statusText(app, unit) {
+        if (!app.combatState.active || !unit) return '';
+        const bits = [];
+        const info = this.turnOrderInfo(app, unit);
+        if (info?.current) {
+            bits.push(app._label('combat.status.current', '{name} is the current combat actor at turn {order}.', { name: unit.name, order: info.order }));
+        } else if (info?.order) {
+            bits.push(app._label(
+                info.acted ? 'combat.status.queuedActed' : 'combat.status.queued',
+                info.acted ? '{name} is queued at turn {order} and has already acted this round.' : '{name} is queued at turn {order}.',
+                { name: unit.name, order: info.order }
+            ));
+        }
+        if (info?.sync) {
+            const key = info.syncRole === 'Target' ? 'combat.status.syncTarget' : 'combat.status.syncParticipant';
+            const fallback = info.syncRole === 'Target'
+                ? '{name} is target of queued group {action} resolving at turn {order}.'
+                : '{name} is participant in queued group {action} resolving at turn {order}.';
+            bits.push(app._label(key, fallback, { name: unit.name, action: this.syncActionLabel(app, info.sync.type), order: info.syncOrder }));
+        }
+        if (app.targetSelection && !app._isCorpse(unit)) {
+            const action = app.targetSelection.action || 'action';
+            if (!app.party.includes(unit)) {
+                bits.push(app.canSelectCreatureTarget(unit)
+                    ? app._label('combat.status.canTarget', '{name} can be selected as the {action} target.', { name: unit.name, action })
+                    : app._label('combat.status.cannotTarget', '{name} cannot be selected as the {action} target.', { name: unit.name, action }));
+            } else {
+                const actor = app.activeActor || app.player;
+                if (actor === unit) bits.push(app._label('combat.status.choosingTarget', '{name} is choosing a {action} target.', { name: unit.name, action }));
+            }
+        }
+        return bits.join(' ');
+    },
+
     sanitize(app, options = {}) {
         if (!app.combatState?.active) return false;
         const preserveTurn = options.preserveTurn !== false;

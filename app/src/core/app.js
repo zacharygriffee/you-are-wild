@@ -296,179 +296,34 @@
                 return YAW_CENTER_CONTEXT.renderActions(this, includePanels);
             },
             _buildInteractionCommand(context = {}) {
-                const mode = context.mode || (this.combatState?.active ? 'combat' : 'adventure');
-                const actors = context.actors || (mode === 'combat'
-                    ? [context.actor || this.activeActor || this._currentCombatActor()].filter(Boolean)
-                    : this._getExplorationActors());
-                const targets = context.targets || (mode === 'combat'
-                    ? [context.target].filter(Boolean)
-                    : this._getExplorationTargets());
-                const targetTypes = new Set(targets.map(target => this.party.includes(target) ? 'party' : (target.disposition === this.DISPOSITION.ENEMY ? 'enemy' : 'creature')));
-                const inferredTargetType = targetTypes.size > 1 ? 'mixed' : ([...targetTypes][0] || null);
-                return {
-                    mode,
-                    actorIds: actors.map(actor => actor?.id || actor?.name).filter(Boolean),
-                    targetIds: targets.map(target => target?.id || target?.name).filter(Boolean),
-                    targetType: context.targetType || inferredTargetType,
-                    action: context.action || null,
-                    subAction: context.subAction || null,
-                    source: context.source || 'panel-card',
-                    timing: context.timing || 'immediate',
-                    resolveAt: context.resolveAt || null,
-                    constraints: context.constraints || {},
-                    clearTargets: Boolean(context.clearTargets),
-                    actors,
-                    targets
-                };
+                return YAW_INTERACTION_DISPATCH.buildCommand(this, context);
             },
             _resolvePanelUnit(type, ref) {
-                if (!ref && ref !== 0) return null;
-                if (typeof ref === 'object') return ref;
-                const key = String(ref);
-                const byKey = unit => this._unitSelectionId(unit) === key || String(unit?.id || unit?.name) === key;
-                if (type === 'party') return this.party.find(byKey) || this.party[Number(ref)] || null;
-                if (type === 'creature' || type === 'enemy') return this.creatures.find(byKey) || this.creatures[Number(ref)] || null;
-                return this.party.find(byKey) || this.creatures.find(byKey) || null;
+                return YAW_INTERACTION_DISPATCH.resolvePanelUnit(this, type, ref);
             },
             _resolvePanelUnits(type, refs = []) {
-                return (Array.isArray(refs) ? refs : [refs])
-                    .map(ref => this._resolvePanelUnit(type, ref))
-                    .filter(Boolean);
+                return YAW_INTERACTION_DISPATCH.resolvePanelUnits(this, type, refs);
             },
             _buildPanelInteractionCommand(context = {}) {
-                const mode = context.mode || (this.combatState?.active ? 'combat' : 'adventure');
-                const actors = context.actors
-                    || (context.actorRefs ? this._resolvePanelUnits(context.actorType || 'party', context.actorRefs) : null)
-                    || (context.actorRef !== undefined ? this._resolvePanelUnits(context.actorType || 'party', [context.actorRef]) : null)
-                    || (mode === 'combat' ? [this.activeActor || this._currentCombatActor()].filter(Boolean) : this._getExplorationActors());
-                const targets = context.targets
-                    || (context.targetRefs ? this._resolvePanelUnits(context.targetType || 'mixed', context.targetRefs) : null)
-                    || (context.targetRef !== undefined ? this._resolvePanelUnits(context.targetType || 'mixed', [context.targetRef]) : null)
-                    || [];
-                return this._buildInteractionCommand({
-                    ...context,
-                    mode,
-                    actors,
-                    targets,
-                    targetType: context.commandTargetType || context.targetType
-                });
+                return YAW_INTERACTION_DISPATCH.buildPanelCommand(this, context);
             },
             _dispatchPanelInteraction(context = {}) {
-                return this._dispatchInteractionCommand(this._buildPanelInteractionCommand(context));
+                return YAW_INTERACTION_DISPATCH.dispatchPanel(this, context);
             },
             _validateInteractionCommand(command) {
-                if (!command || !command.action) return { ok: false, reason: 'missing-action' };
-                if (!command.actors?.length) return { ok: false, reason: 'missing-actor' };
-                if (['fight', 'flirt', 'fuck', 'feast', 'feed', 'inspect'].includes(command.action) && !command.targets?.length && command.mode !== 'combat') {
-                    return { ok: false, reason: 'missing-target' };
-                }
-                if (command.mode === 'combat') {
-                    const current = this._currentCombatActor() || this.activeActor || command.actors[0];
-                    const actor = command.actors[0];
-                    if (!current || !actor || this._unitSelectionId(current) !== this._unitSelectionId(actor)) return { ok: false, reason: 'not-current-actor' };
-                    if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
-                        const target = command.targets[0];
-                        if (!target || target.CPun <= 0 || target.disposition !== this.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
-                        if (!this._canReachCombatTarget(actor, target, command.action)) return { ok: false, reason: 'cannot-reach' };
-                    }
-                }
-                return { ok: true };
+                return YAW_INTERACTION_DISPATCH.validate(this, command);
             },
             _dispatchInteractionCommand(command) {
-                if (command?.mode === 'combat') {
-                    return this._dispatchCombatInteractionCommand(command);
-                }
-                const valid = this._validateInteractionCommand(command);
-                if (!valid.ok) return false;
-                this.lastIntentCommand = {
-                    actorIds: command.actorIds,
-                    action: command.action,
-                    subAction: command.subAction,
-                    targetIds: command.targetIds,
-                    targetType: command.targetType,
-                    source: command.source,
-                    mode: command.mode,
-                    timing: command.timing
-                };
-                return this._dispatchAdventureInteractionCommand(command);
+                return YAW_INTERACTION_DISPATCH.dispatch(this, command);
             },
             _dispatchCombatInteractionCommand(command) {
-                if (!command || command.mode !== 'combat') return false;
-                const valid = this._validateInteractionCommand(command);
-                if (!valid.ok) {
-                    this._reportInvalidCombatCommand(command, valid.reason);
-                    return false;
-                }
-                this.lastIntentCommand = {
-                    actorIds: command.actorIds,
-                    action: command.action,
-                    subAction: command.subAction,
-                    targetIds: command.targetIds,
-                    targetType: command.targetType,
-                    source: command.source,
-                    mode: 'combat',
-                    timing: command.timing
-                };
-                if (command.timing === 'queued') return this.queueSyncAction(command.action, command.targets?.[0]);
-                if (command.action === 'feed' && !command.targets?.length) return this.executeFeedAction(command.actors[0]);
-                if (command.targets?.length) return this._resolveCombatAction(command);
-                return this.executeCombatIntent(command.action, command.actors[0]);
+                return YAW_INTERACTION_DISPATCH.dispatchCombat(this, command);
             },
             _reportInvalidCombatCommand(command, reason = 'invalid-combat-target') {
-                const actor = command?.actors?.[0] || this.activeActor || this._currentCombatActor() || this.player;
-                const target = command?.targets?.[0] || null;
-                const text = reason === 'cannot-reach' && target
-                    ? this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name })
-                    : this._label('combat.invalidCommand', 'That combat action is not valid right now.');
-                this._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
-                this.renderLog();
-                this._renderInteractionState({ exploration: false, toolbelt: true });
+                return YAW_INTERACTION_DISPATCH.reportInvalidCombat(this, command, reason);
             },
             _dispatchAdventureInteractionCommand(command) {
-                if (!command || command.mode === 'combat') return false;
-                const actors = (command.actors || []).filter(actor => actor && this._isLivingCreature(actor));
-                const targets = (command.targets || []).filter(target => target && this._isLivingCreature(target));
-                if (!command.action || actors.length === 0 || targets.length === 0) return false;
-                this.lastIntentCommand = {
-                    actorIds: actors.map(actor => actor.id || actor.name),
-                    action: command.action,
-                    subAction: command.subAction,
-                    targetId: targets[0]?.id || targets[0]?.name,
-                    targetIds: targets.map(target => target.id || target.name),
-                    targetType: command.targetType || 'marked',
-                    source: command.source || 'panel-card',
-                    mode: 'adventure',
-                    timing: command.timing || 'immediate'
-                };
-                this.closeMobileContextMenu?.();
-                const options = { subAction: command.subAction };
-                let resolved = true;
-                if (targets.length === 1 && actors.length === 1) {
-                    resolved = this.outsideActionOnTarget(command.action, targets[0], actors[0], options);
-                } else if (targets.length === 1 && actors.length > 1) {
-                    resolved = this.outsideGroupActionOnTarget(command.action, targets[0], actors, options);
-                } else if (targets.length > 1 && actors.length === 1) {
-                    resolved = this.outsideActionOnTargets(command.action, targets, actors[0], options);
-                } else if (this._sameUnitSet(actors, targets)) {
-                    resolved = this.outsideMutualGroupAction(command.action, actors, options);
-                } else if (this._isUnitSubset(targets, actors)) {
-                    resolved = this.outsideMutualGroupAction(command.action, actors, options);
-                } else if (this._isUnitSubset(actors, targets)) {
-                    resolved = this.outsideMutualGroupAction(command.action, [...actors, ...targets], options);
-                } else if (actors.length === targets.length) {
-                    resolved = this.outsidePairedActionsOnTargets(command.action, actors, targets, options);
-                } else {
-                    this.log.push({ text: this._label('target.chooseOneActor', 'Choose one actor for multi-target {action} actions, or one target for group {action} actions.', {
-                        action: this._uiLabel(command.action).toLowerCase(),
-                        actorCount: actors.length,
-                        targetCount: targets.length
-                    }), type: 'discovery' });
-                    this.renderLog();
-                    this._renderInteractionState({ exploration: true, toolbelt: false });
-                    return false;
-                }
-                if (resolved !== false && command.clearTargets) this.clearExplorationTargets();
-                return resolved !== false;
+                return YAW_INTERACTION_DISPATCH.dispatchAdventure(this, command);
             },
             _clearTransientInteractionState() {
                 this.targetSelection = null;

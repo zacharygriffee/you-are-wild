@@ -128,6 +128,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
+const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const markedTargetActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marked-target-actions.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
@@ -1384,6 +1385,22 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.render(this, source)', 'App marked-target action wrapper should delegate rendering to the helper');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source)', 'App marked-target sub-action wrapper should delegate to the helper');
+});
+
+test('Interaction dispatch helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/interaction-dispatch.js'", 'Interaction dispatch helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/interaction-dispatch.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction dispatch helper should load before app.js');
+  assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
+  assertContains(interactionDispatchContent, 'buildCommand(app, context = {})', 'Interaction dispatch helper should own generic command building');
+  assertContains(interactionDispatchContent, 'buildPanelCommand(app, context = {})', 'Interaction dispatch helper should own panel command building');
+  assertContains(interactionDispatchContent, 'dispatch(app, command)', 'Interaction dispatch helper should own shared command routing');
+  assertContains(interactionDispatchContent, 'dispatchCombat(app, command)', 'Interaction dispatch helper should own combat command routing');
+  assertContains(interactionDispatchContent, 'dispatchAdventure(app, command)', 'Interaction dispatch helper should own adventure command routing');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildCommand(this, context)', 'App generic command wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildPanelCommand(this, context)', 'App panel command wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatch(this, command)', 'App dispatch wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatchCombat(this, command)', 'App combat dispatch wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatchAdventure(this, command)', 'App adventure dispatch wrapper should delegate to the helper');
 });
 
 test('Action UI helper module is registered before app code', () => {
@@ -2836,7 +2853,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

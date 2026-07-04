@@ -46,6 +46,7 @@ const SCRIPT_ORDER = [
   'src/core/panel-interactions.js',
   'src/core/unit-card-status.js',
   'src/core/combat-rules.js',
+  'src/core/combat-status.js',
   'src/core/combat-actions.js',
   'src/core/combat-targeting.js',
   'src/core/combat-sync.js',

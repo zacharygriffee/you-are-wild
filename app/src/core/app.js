@@ -9986,15 +9986,11 @@
                 return this.showRadialIntentMenu('creature', targetId, 'longpress');
             },
             mobileCreatureContextAction(action, targetId) {
-                this._haptic(8);
-                this.closeMobileContextMenu();
-                if (action === 'recruit') return this.recruitCreatureById(targetId);
-                if (action === 'inspect') {
-                    const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                    if (target) return this.outsideActionOnTarget('inspect', target, this._getExplorationActor());
-                    return;
+                if (action === 'close') {
+                    this.closeMobileContextMenu();
+                    return false;
                 }
-                this.outsideActionForCreature(action, targetId);
+                return this.selectIntent('creature', targetId, action, 'mobile-context');
             },
             handleTouchStart(e) {
                 this._touchStartX = e.changedTouches[0].screenX;

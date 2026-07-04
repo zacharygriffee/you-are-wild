@@ -10866,6 +10866,20 @@ test('Mobile creature long-press marks living targets without opening action men
   assertContains(App._renderPanelInteractionTray(), 'selected-target-summary', 'Marked living creature should use the panel interaction tray for actions');
 });
 
+test('Mobile creature context actions route through shared intent dispatch', () => {
+  const { App } = loadAppForCombat();
+  App.player = makeUnit('You', { id: 'player-1' });
+  App.party = [App.player];
+  App.creatures = [makeUnit('Inspectable', { id: 'inspect-mobile-context', disposition: App.DISPOSITION.FRIENDLY })];
+  const resolved = App.mobileCreatureContextAction('inspect', 'inspect-mobile-context');
+  assertEqual(resolved, true, 'Mobile creature context inspect should resolve through the shared intent route');
+  assertEqual(App.lastIntentCommand.action, 'inspect', 'Mobile creature context should record selected action');
+  assertEqual(App.lastIntentCommand.source, 'mobile-context', 'Mobile creature context should record its source');
+  assertEqual(App.lastIntentCommand.targetId, 'inspect-mobile-context', 'Mobile creature context should record the creature target');
+  assertContains(App.log[App.log.length - 1].text, 'Inspectable [human]', 'Mobile creature context inspect should preserve inspect resolution');
+  assertEqual(App.mobileCreatureContextAction('close', 'inspect-mobile-context'), false, 'Mobile creature context close should remain a canceled action');
+});
+
 test('Radial intent menu remains an accelerator over shared dispatch', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });

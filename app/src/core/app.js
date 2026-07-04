@@ -3166,6 +3166,27 @@
                 return YAW_COMBAT_TARGETING.executeAction(this, action, creatureIndex);
             },
 
+            // ===== SYNCHRONIZED ACTIONS =====
+            showSyncMenu() {
+                return YAW_COMBAT_SYNC.showMenu(this);
+            },
+
+            selectSyncParticipants(syncType) {
+                return YAW_COMBAT_SYNC.selectParticipants(this, syncType);
+            },
+
+            toggleSyncParticipant(idx) {
+                return YAW_COMBAT_SYNC.toggleParticipant(this, idx);
+            },
+
+            confirmSyncParticipants(syncType) {
+                return YAW_COMBAT_SYNC.confirmParticipants(this, syncType);
+            },
+
+            queueSyncAction(syncType, targetIndex) {
+                return YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex);
+            },
+
             _resolveCombatAction(command) {
                 const actor = command?.actors?.[0] || this.activeActor || this._currentCombatActor() || this.player;
                 const target = command?.targets?.[0] || null;
@@ -3559,108 +3580,6 @@
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
                     MODULE_SYSTEM.executeHook('onSubActionExecute', { action, subId, actor, target, result, app: this }).catch(() => {});
                 }
-            },
-
-            // ===== SYNCHRONIZED ACTIONS =====
-            showSyncMenu() {
-                const allies = this.party.filter(p => p.CPun > 0 && p.name !== this.player.name);
-                if (allies.length === 0) {
-                    this.log.push({ text: this._label('combat.sync.noAllies', 'No allies available for sync.'), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                const actor = this.activeActor || this._currentCombatActor() || this.player;
-                const actorId = this._unitSelectionId(actor);
-                this.targetSelection = null;
-                this.syncSelection = { active: true, phase: 'choose', actorId, participantIds: [actorId], type: null };
-                this._renderInteractionState({ exploration: false, toolbelt: true });
-                return true;
-            },
-
-            selectSyncParticipants(syncType) {
-                const actor = this.activeActor || this._currentCombatActor() || this.player;
-                const actorId = this._unitSelectionId(actor);
-                this.syncSelection = { active: true, phase: 'participants', actorId, participantIds: [actorId], type: syncType };
-                this._syncSelected = [this.party.indexOf(actor)].filter(index => index >= 0);
-                this._renderInteractionState({ exploration: false, toolbelt: true });
-            },
-
-            toggleSyncParticipant(idx) {
-                const unit = this.party[idx];
-                if (!unit) return false;
-                return this._toggleSyncParticipantById(this._unitSelectionId(unit));
-            },
-
-            confirmSyncParticipants(syncType) {
-                if (syncType && (!this.syncSelection?.active || this.syncSelection.type !== syncType)) this.selectSyncParticipants(syncType);
-                const participants = this._syncSelectedParticipants();
-                if (participants.length < 2) {
-                    this.log.push({ text: this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
-                    this.renderLog();
-                    this.renderParty();
-                    return false;
-                }
-                this._syncParticipants = participants;
-                this._syncType = syncType || this.syncSelection?.type;
-                this.syncSelection = { ...this.syncSelection, phase: 'target', type: this._syncType };
-                this._renderInteractionState({ exploration: false, toolbelt: true });
-                return true;
-            },
-
-            queueSyncAction(syncType, targetIndex) {
-                const target = typeof targetIndex === 'object'
-                    ? targetIndex
-                    : this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[targetIndex];
-                if (!target) return;
-                const participants = this._syncParticipants || this._syncSelectedParticipants();
-                if (!participants || participants.length < 2) {
-                    this.log.push({ text: this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                if (!this._canSyncTarget(participants, target, syncType)) {
-                    const names = participants.map(p => p?.name).filter(Boolean).join(', ') || this._label('action.sync', 'Sync');
-                    this.log.push({ text: this._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: names, target: target.name }), type: 'combat' });
-                    this.renderLog();
-                    this.renderCreatures();
-                    return false;
-                }
-                const queueEntries = participants.map(p => {
-                    const index = this.combatState.turnQueue.findIndex(q => q.unit === p);
-                    return index >= 0 ? { index, entry: this.combatState.turnQueue[index] } : null;
-                });
-                if (queueEntries.some(entry => !entry)) {
-                    this.log.push({ text: this._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
-                    this.renderLog();
-                    this.renderParty();
-                    this.renderCreatures();
-                    return false;
-                }
-                // Find the slowest participant's turn position.
-                let slowestIdx = -1, slowestInit = Infinity;
-                for (const { index, entry } of queueEntries) {
-                    if (entry.initiative < slowestInit) {
-                        slowestInit = entry.initiative;
-                        slowestIdx = index;
-                    }
-                }
-                this._syncCurrentTileCreatures();
-                this.combatState.syncActions.push({
-                    type: syncType, participants: participants, target: target,
-                    resolveAtIndex: slowestIdx, resolved: false, round: this.combatState.round
-                });
-                this.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${target.name}! Resolves when the slowest participant acts.`, type: 'combat' });
-                // Mark participants as having acted (they skip their individual turns)
-                for (const p of participants) {
-                    const qEntry = this.combatState.turnQueue.find(q => q.unit === p);
-                    if (qEntry) qEntry.actedThisRound = true;
-                }
-                this._clearTransientInteractionState();
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.nextTurn();
-                return true;
             },
 
             _resolveSyncAction(sync) {

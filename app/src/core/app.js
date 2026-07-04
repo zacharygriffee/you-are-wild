@@ -995,190 +995,53 @@
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
                 this.updateTierButtons();
-                const grid = document.getElementById('species-grid');
-                if (grid) grid.innerHTML = this.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
+                this.initSpeciesGrid();
                 this.selectedSpecies = 'human';
                 this.initBodyPartsGrid();
                 this._syncEncounterPreferenceUI();
                 this.showScreen('menu');
             },
 
+            initSpeciesGrid() {
+                return YAW_CREATE_FLOW.initSpeciesGrid(this);
+            },
             selectSpecies(id) {
-                this.selectedSpecies = id;
-                document.querySelectorAll('#species-grid .option-card').forEach(c => c.classList.toggle('selected', c.dataset.species === id));
-                const species = this.species.find(s => s.id === id);
-                const defaults = this.SPECIES_DEFAULT_PARTS[id] || [];
-                this.selectedBodyParts = [...defaults];
-                const info = document.getElementById('species-info');
-                if (info) info.innerHTML = `<div style="font-size:48px;margin-bottom:8px">${species.icon}</div><h3>${species.name}</h3><p>${species.desc}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">Default parts: ${defaults.length ? defaults.map(p => this.BODY_PARTS[p]?.label || p).join(', ') : 'None'}</p>`;
-                // Update body parts grid to reflect defaults
-                document.querySelectorAll('#body-parts-grid .option-card').forEach(c => {
-                    c.classList.toggle('selected', this.selectedBodyParts.includes(c.dataset.part));
-                });
+                return YAW_CREATE_FLOW.selectSpecies(this, id);
             },
 
             _setCreateValidation(message = '') {
-                const el = document.getElementById('create-validation');
-                if (!el) return;
-                el.textContent = message;
-                el.style.display = message ? 'block' : 'none';
+                return YAW_CREATE_FLOW.setValidation(message);
             },
             _setCreateOptionSelection(selector, value, datasetKey = 'value') {
-                document.querySelectorAll(selector).forEach(c => {
-                    c.classList.toggle('selected', c.dataset[datasetKey] === value);
-                });
+                return YAW_CREATE_FLOW.setOptionSelection(selector, value, datasetKey);
             },
             selectGender(g) {
-                this.selectedGender = g;
-                this._setCreateValidation('');
+                return YAW_CREATE_FLOW.selectGender(this, g);
             },
             selectPart(p) {
-                if (this.selectedParts.includes(p)) this.selectedParts = this.selectedParts.filter(x => x !== p);
-                else this.selectedParts.push(p);
-                this._setCreateValidation('');
+                return YAW_CREATE_FLOW.selectPart(this, p);
             },
             toggleBodyPart(id) {
-                if (this.selectedBodyParts.includes(id)) this.selectedBodyParts = this.selectedBodyParts.filter(x => x !== id);
-                else this.selectedBodyParts.push(id);
+                return YAW_CREATE_FLOW.toggleBodyPart(this, id);
             },
             updateAnatomyUI() {
-                document.querySelectorAll('#anatomy-grid .option-card').forEach(c => {
-                    const part = c.dataset.part;
-                    c.classList.toggle('selected', this.selectedParts.includes(part));
-                });
+                return YAW_CREATE_FLOW.updateAnatomyUI(this);
             },
             validateCharacterCreation() {
-                const hasGender = Boolean(this.selectedGender);
-                const hasPrimaryAnatomy = this.selectedParts.includes('clit') || this.selectedParts.includes('cock');
-                const hasChestAnatomy = this.selectedParts.includes('tits') || this.selectedParts.includes('pecs');
-                if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
-                    this._setCreateValidation('');
-                    return true;
-                }
-                const missing = [];
-                if (!hasGender) missing.push(this._label('create.validation.gender', 'choose a gender'));
-                if (!hasPrimaryAnatomy) missing.push(this._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
-                if (!hasChestAnatomy) missing.push(this._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
-                const message = this._label('create.validation.required', 'Before beginning, please {items}.', { items: missing.join(', ') });
-                this._setCreateValidation(message);
-                this.toggleAccordion(!hasGender ? 'gender' : 'anatomy');
-                return false;
+                return YAW_CREATE_FLOW.validate(this);
             },
             randomizeCharacter() {
-                const genders = ['female', 'male', 'nonbinary'];
-                const anatomyPresets = [
-                    ['clit', 'tits'],
-                    ['cock', 'pecs'],
-                    ['cock', 'tits'],
-                    ['clit', 'pecs'],
-                    ['cock', 'clit', 'pecs'],
-                    ['cock', 'clit', 'tits']
-                ];
-                const species = this.species[Math.floor(Math.random() * this.species.length)]?.id || 'human';
-                const gender = genders[Math.floor(Math.random() * genders.length)];
-                const parts = anatomyPresets[Math.floor(Math.random() * anatomyPresets.length)];
-                this.selectSpecies(species);
-                this.selectedGender = gender;
-                this.selectedParts = [...parts];
-                this._setCreateOptionSelection('#gender-grid .option-card', gender);
-                this.updateAnatomyUI();
-                this._setCreateValidation('');
-                this.toggleAccordion('species');
+                return YAW_CREATE_FLOW.randomize(this);
             },
             toggleAccordion(id) {
-                document.querySelectorAll('.accordion-section').forEach(section => {
-                    const sectionId = section.dataset.accordion;
-                    const body = document.getElementById('body-' + sectionId);
-                    const arrow = document.getElementById('arrow-' + sectionId);
-                    if (!body || !arrow) return;
-                    const isSelected = sectionId === id;
-                    body.style.display = isSelected ? 'block' : 'none';
-                    arrow.textContent = isSelected ? '▼' : '▶';
-                });
+                return YAW_CREATE_FLOW.toggleAccordion(id);
             },
             initBodyPartsGrid() {
-                const grid = document.getElementById('body-parts-grid');
-                if (!grid) return;
-                grid.innerHTML = Object.entries(this.BODY_PARTS).map(([id, part]) =>
-                    `<div class="option-card" data-part="${id}" onclick="App.toggleBodyPart('${id}');this.classList.toggle('selected');">
-                        <div style="font-weight:600;color:var(--text-primary)">${part.label}</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${part.desc}</div>
-                    </div>`
-                ).join('');
+                return YAW_CREATE_FLOW.initBodyPartsGrid(this);
             },
 
             createCharacter() {
-                if (!this.validateCharacterCreation()) return;
-                const name = document.getElementById('char-name')?.value?.trim() || 'You';
-                this.playerName = name;
-                const species = this.species.find(s => s.id === this.selectedSpecies);
-                const baseStats = this._getSpeciesBaseStats(this.selectedSpecies);
-                const parts = [...this.selectedParts];
-                const bodyParts = [...this.selectedBodyParts];
-                const hasCock = parts.includes('cock');
-                const hasClit = parts.includes('clit');
-                const hasTits = parts.includes('tits');
-                const maxPun = baseStats.MPun;
-                const maxPle = baseStats.MPle;
-                this.encounterPreference = this.selectedEncounterPreference || 'any';
-                this.encounterWeights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
-                this.player = {
-                    id: 'player_' + Date.now(), name: name, species: this.selectedSpecies,
-                    icon: species.icon, gender: this.selectedGender,
-                    identity: this.selectedGender, parts: hasCock ? 'cock' : (hasClit ? 'clit' : null),
-                    chest: hasTits ? 'tits' : 'pecs', bothParts: hasCock && hasClit,
-                    bodyParts: bodyParts, size: 4, appetite: 4,
-                    level: 1, xp: 0, xpToNext: 100, gold: 0,
-                    MPun: maxPun, CPun: maxPun, MPle: maxPle, CPle: Math.floor(maxPle * 0.5),
-                    Figh: baseStats.Figh, Feas: baseStats.Feas, Flir: baseStats.Flir, Fuck: baseStats.Fuck, Flee: baseStats.Flee, Feed: baseStats.Feed,
-                    str: baseStats.str, con: baseStats.con, spd: baseStats.spd, int: baseStats.int, wis: baseStats.wis, cha: baseStats.cha,
-                    tags: [species.name], perks: [], stomach: [], womb: [], balls: [], cum: 0, status: {},
-                    expanded: true, hero: true, ally: false, mc: true, obedient: true, willing: true
-                };
-                this._applySpeciesCanon(this.player);
-                this._applySpeciesAbilities(this.player);
-                this.party = [this.player];
-                this.partyLeaderId = this._unitSelectionId(this.player);
-                this.creatures = [];
-                this.location = { x: 0, y: 0 };
-                this.largeMapOffset = { x: 0, y: 0 };
-                this.largeMapRadius = 8;
-                this.timeHour = 8;
-                this.dayCount = 0;
-                this.log = [{ text: 'Welcome to the world, ' + name + '.', type: 'discovery' }];
-                this.tileEvents = [];
-                this.worldMap = new Map();
-                this.exploredTiles = new Set();
-                this.worldMeta = {
-                    worldId: `world_${Date.now()}`,
-                    seed: `${name || 'You'}:${this.selectedSpecies}:default`,
-                    generatorVersion: 2,
-                    mapModsHash: 'core',
-                    createdAt: Date.now()
-                };
-                this.superPatchMap = new Map();
-                this.currentBiome = 'forest';
-                this.inventory = [];
-                this.quests = [];
-                this.mode = this.GAME_MODE.NORMAL;
-                this.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
-                this.targetSelection = null;
-                this.activeActor = null;
-                this.explorationActorIds = [this._unitSelectionId(this.player)];
-                this.explorationActorId = this.explorationActorIds[0];
-                this.inInterior = false;
-                this.activeInterior = null;
-                this.interiorLocation = { x: 0, y: 0 };
-                this.exploreTile(0, 0);
-                this.showScreen('game');
-                this._renderTime();
-                this.renderMap();
-                this.renderParty();
-                this.renderCreatures();
-                this.renderLog();
-                this.updateScene('The Beginning', 'You awaken in an unfamiliar place. The air smells of ' + this.biomes.forest.name + '.', false);
-                this._addTileEvent(this._label('ui.tileEvent.arrival', 'You arrive here.'), 'move');
-                this.autoSave();
+                return YAW_CREATE_FLOW.createCharacter(this);
             },
 
             _getSpeciesBaseStats(sid) {

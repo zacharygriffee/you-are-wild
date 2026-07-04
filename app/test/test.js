@@ -193,6 +193,7 @@ const worldStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-stat
 const worldStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-store.js'), 'utf8');
 const worldRandomContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-random.js'), 'utf8');
 const encounterPreferencesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'encounter-preferences.js'), 'utf8');
+const createFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'create-flow.js'), 'utf8');
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
@@ -1457,6 +1458,22 @@ test('Encounter preference helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.normalize(weights)', 'App encounter weight wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.updateWeight(this, key, value)', 'App encounter weight update wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.pickIdentity(rollValue, weights)', 'App encounter identity wrapper should delegate to the helper');
+});
+
+test('Create flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/create-flow.js'", 'Create flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/encounter-preferences.js'") < buildContent.indexOf("'src/core/create-flow.js'"), 'Create flow should load after encounter preference helpers');
+  assert(buildContent.indexOf("'src/core/create-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Create flow helper should load before app.js');
+  assertContains(createFlowContent, 'const YAW_CREATE_FLOW = {', 'Create flow helper should expose the create service');
+  assertContains(createFlowContent, 'validate(app)', 'Create flow helper should own character validation');
+  assertContains(createFlowContent, 'randomize(app)', 'Create flow helper should own random character draft setup');
+  assertContains(createFlowContent, 'createCharacter(app)', 'Create flow helper should own new-run initialization');
+  assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'Create flow should stop invalid starts');
+  assertContains(createFlowContent, 'app.exploreTile(0, 0)', 'Create flow should initialize the starting tile');
+  assertContains(createFlowContent, 'app.autoSave()', 'Create flow should auto-save the new run');
+  assertContains(appContent, 'YAW_CREATE_FLOW.selectSpecies(this, id)', 'App species wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_CREATE_FLOW.validate(this)', 'App validation wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_CREATE_FLOW.createCharacter(this)', 'App create-character wrapper should delegate to the helper');
 });
 
 test('Combat scene helper module is registered before app code', () => {
@@ -3350,9 +3367,9 @@ test('Create screen requires explicit gender and anatomy choices', () => {
   assertContains(template, '<div class="option-card" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
   assertContains(template, 'id="create-validation" class="create-validation" role="alert" aria-live="polite"', 'create validation message should be visible to assistive tech');
   assertContains(template, 'data-i18n="create.random"', 'random character button should be explicit and localizable');
-  assertContains(appContent, 'validateCharacterCreation()', 'create flow should validate required character choices');
-  assertContains(appContent, 'if (!this.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
-  assertContains(appContent, 'randomizeCharacter()', 'zero-config character creation should be explicit');
+  assertContains(appContent, 'validateCharacterCreation()', 'create flow should expose required character validation');
+  assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
+  assertContains(appContent, 'YAW_CREATE_FLOW.randomize(this)', 'zero-config character creation should delegate through the create helper');
   assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
   assertContains(contentContent, "'create.random': 'Random Character'", 'English random character label missing');
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
@@ -3403,7 +3420,7 @@ test('Create screen encounter preferences use dynamic identity percentages', () 
   assertContains(encounterPreferencesContent, "preset(value)", 'encounter preset helper missing');
   assertContains(encounterPreferencesContent, "pickIdentity(rollValue", 'encounter identity picker missing');
   assertContains(encounterPreferencesContent, "updateWeight(app, key, value)", 'encounter percentage update helper missing');
-  assertContains(appContent, "this.encounterWeights = this._normalizeEncounterWeights(this.selectedEncounterWeights)", 'created character should persist selected encounter weights');
+  assertContains(createFlowContent, "app.encounterWeights = app._normalizeEncounterWeights(app.selectedEncounterWeights)", 'created character should persist selected encounter weights');
   assertContains(serContent, 'encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null', 'encounter weights should persist in save metadata');
 });
 
@@ -3649,7 +3666,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

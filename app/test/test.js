@@ -148,6 +148,7 @@ const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
+const savePersistenceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-persistence.js'), 'utf8');
 const saveSlotFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-slot-flow.js'), 'utf8');
 const saveLoadFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-load-flow.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
@@ -1676,6 +1677,22 @@ test('Save manager helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SAVE_MANAGER.render(this, mode)', 'App save manager renderer should delegate to the helper');
 });
 
+test('Save persistence helper module is registered before save flows and app code', () => {
+  assertContains(buildContent, "'src/core/save-persistence.js'", 'Save persistence helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/save-persistence.js'") < buildContent.indexOf("'src/core/save-slot-flow.js'"), 'Save persistence helper should load before save slot flow');
+  assert(buildContent.indexOf("'src/core/save-persistence.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save persistence helper should load before app.js');
+  assertContains(savePersistenceContent, 'const YAW_SAVE_PERSISTENCE = {', 'Save persistence helper should expose the persistence service');
+  assertContains(savePersistenceContent, 'async writeSlot(app, slotName', 'Save persistence helper should own shared slot writes');
+  assertContains(savePersistenceContent, 'app._prepareSaveSnapshot()', 'Shared save persistence should prepare the save snapshot');
+  assertContains(savePersistenceContent, 'await app.persistWorldStateToMapStore()', 'Shared save persistence should attempt sparse world persistence');
+  assertContains(savePersistenceContent, "await app._dbPut('saves', slotName, saveData)", 'Shared save persistence should write the selected save slot');
+  assertContains(savePersistenceContent, 'const savedAt = Date.now().toString()', 'Shared save persistence should stamp slot metadata once per save');
+  assertContains(savePersistenceContent, "app._emitModuleHook('onGameSave'", 'Shared save persistence should emit save hooks');
+  assertContains(savePersistenceContent, 'async autoSave(app)', 'Save persistence helper should own auto-save persistence');
+  assertContains(appContent, 'YAW_SAVE_PERSISTENCE.autoSave(this)', 'App auto-save wrapper should delegate to the helper');
+  assertContains(saveSlotFlowContent, 'YAW_SAVE_PERSISTENCE.writeSlot(app, slotName, { auto: false })', 'Manual save confirmation should use shared save persistence');
+});
+
 test('Save slot flow helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/save-slot-flow.js'", 'Save slot flow helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/save-slot-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save slot flow helper should load before app.js');
@@ -3036,7 +3053,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -8090,7 +8107,7 @@ test('Sparse map IndexedDB store contract is present', () => {
   assertContains(appContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
   assertContains(appContent, 'persistWorldStateToMapStore()', 'World map persistence helper should exist');
   assertContains(appContent, 'loadWorldStateFromMapStore()', 'World map load helper should exist');
-  assertContains(appContent, 'omitWorldMap: worldStoreSaved', 'Slot saves should omit full worldMap only after world-store persistence succeeds');
+  assertContains(savePersistenceContent, 'omitWorldMap: worldStoreSaved', 'Slot saves should omit full worldMap only after world-store persistence succeeds');
 });
 
 test('Sparse map tile delta records round-trip through store shape', () => {

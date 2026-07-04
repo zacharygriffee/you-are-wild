@@ -8611,32 +8611,7 @@
                 return YAW_COMBAT_SAVE_STATE.clearRefreshSnapshot(this, slotName);
             },
             async autoSave() {
-                if (!this.player || this.screen !== 'game') return;
-                this.activeSlot = this._normalizeSaveSlotName(this.activeSlot);
-                try {
-                    this._prepareSaveSnapshot();
-                    let worldStoreSaved = false;
-                    try {
-                        await this.persistWorldStateToMapStore();
-                        worldStoreSaved = true;
-                    } catch (e) {
-                        console.warn('World map persistence failed', e);
-                    }
-                    const saveData = Binary.saveGame(this, { omitWorldMap: worldStoreSaved });
-                    await this._dbPut('saves', this.activeSlot, saveData);
-                    this._setStoredValue('lastSlot', this.activeSlot);
-                    this._setStoredValue('lastSaveTime', Date.now().toString());
-                    this._setSaveTime(this.activeSlot, Date.now().toString());
-                    if (this.combatState?.active) this._writeCombatRefreshSnapshot();
-                    else this._clearCombatRefreshSnapshot(this.activeSlot);
-                    this._emitModuleHook('onGameSave', {
-                        slotName: this.activeSlot,
-                        auto: true,
-                        worldStoreSaved,
-                        combatActive: Boolean(this.combatState?.active)
-                    });
-                    console.log('Auto-saved to', this.activeSlot);
-                } catch (e) { console.error('Auto-save failed:', e); }
+                return YAW_SAVE_PERSISTENCE.autoSave(this);
             },
             async saveToSlot(slotName) {
                 return YAW_SAVE_SLOT_FLOW.saveToSlot(this, slotName);

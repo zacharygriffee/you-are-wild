@@ -70,29 +70,7 @@ const YAW_SAVE_SLOT_FLOW = {
         slotName = app._normalizeSaveSlotName(slotName);
         const slotLabel = app._slotDisplayLabel(slotName);
         try {
-            app._prepareSaveSnapshot();
-            let worldStoreSaved = false;
-            try {
-                await app.persistWorldStateToMapStore();
-                worldStoreSaved = true;
-            } catch (e) {
-                console.warn('World map persistence failed', e);
-            }
-            const saveData = Binary.saveGame(app, { omitWorldMap: worldStoreSaved });
-            await app._dbPut('saves', slotName, saveData);
-            app.activeSlot = slotName;
-            const savedAt = Date.now().toString();
-            app._setStoredValue('lastSlot', slotName);
-            app._setStoredValue('lastSaveTime', savedAt);
-            app._setSaveTime(slotName, savedAt);
-            if (app.combatState?.active) app._writeCombatRefreshSnapshot(slotName);
-            else app._clearCombatRefreshSnapshot(slotName);
-            app._emitModuleHook('onGameSave', {
-                slotName,
-                auto: false,
-                worldStoreSaved,
-                combatActive: Boolean(app.combatState?.active)
-            });
+            await YAW_SAVE_PERSISTENCE.writeSlot(app, slotName, { auto: false });
             alert(app._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
             return true;
         } catch (e) { alert(app._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }

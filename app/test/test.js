@@ -136,6 +136,7 @@ const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-c
 const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
+const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
@@ -1496,6 +1497,17 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${targetKey}')", 'Mobile creature chip should keep target marking on the Mark control');
   assertContains(mobileUnitChipContent, "App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')", 'Mobile corpse chips should keep secondary-click intent acceleration');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
+});
+
+test('Unit card helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/unit-card.js'", 'Unit card helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/unit-card.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit card helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/unit-card.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Unit card helper should load before later panel render helpers');
+  assertContains(unitCardContent, 'const YAW_UNIT_CARD = {', 'Unit card helper should expose a renderer service');
+  assertContains(unitCardContent, 'render(app, unit, index, type)', 'Unit card helper should own desktop card rendering');
+  assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${targetKey}')", 'Unit card helper should retain creature target marking');
+  assertContains(unitCardContent, "App.selectIntent('creature','${targetKey}','${action}','panel-card')", 'Unit card helper should retain panel intent dispatch');
+  assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
 });
 
 test('Mobile unit strip helper module is registered before app code', () => {
@@ -2869,7 +2881,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

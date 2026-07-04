@@ -1,0 +1,120 @@
+/**
+ * YOU ARE WILD DIALOG FLOW
+ * Shared confirmation and save-recovery modal lifecycle.
+ */
+
+const YAW_DIALOG_FLOW = {
+    showConfirm(app, options = {}) {
+        const message = String(options.message || '');
+        if (!message) return false;
+        if (typeof document === 'undefined' || !document.body) {
+            if (typeof confirm === 'function' && !confirm(message)) {
+                return typeof options.onCancel === 'function' ? options.onCancel() : false;
+            }
+            return typeof options.onConfirm === 'function' ? options.onConfirm() : true;
+        }
+        this.closeConfirm(app, { restoreFocus: false });
+        const id = `confirm-${Date.now ? Date.now() : 'dialog'}`;
+        const title = options.title || app._label('ui.confirm', 'Confirm');
+        const confirmLabel = options.confirmLabel || app._label('ui.confirm', 'Confirm');
+        const cancelLabel = options.cancelLabel || app._label('ui.cancel', 'Cancel');
+        app.pendingConfirm = {
+            id,
+            title,
+            message,
+            confirmLabel,
+            cancelLabel,
+            danger: Boolean(options.danger),
+            onConfirm: options.onConfirm || null,
+            onCancel: options.onCancel || null
+        };
+        const dangerClass = options.danger ? ' danger' : '';
+        const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message"><div class="app-confirm-card"><h3 id="app-confirm-title">${app._escapeHtml(title)}</h3><p id="app-confirm-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveConfirmDialog(false)">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" onclick="App.resolveConfirmDialog(true)">${app._escapeHtml(confirmLabel)}</button></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const dialog = document.getElementById('app-confirm-dialog');
+        app._activateFocusTrap(dialog, { close: () => app.resolveConfirmDialog(false) });
+        return false;
+    },
+
+    resolveConfirm(app, confirmed) {
+        const pending = app.pendingConfirm;
+        this.closeConfirm(app);
+        if (!pending) return false;
+        if (!confirmed) return typeof pending.onCancel === 'function' ? pending.onCancel() : false;
+        return typeof pending.onConfirm === 'function' ? pending.onConfirm() : true;
+    },
+
+    closeConfirm(app, options = {}) {
+        const dialog = typeof document !== 'undefined' ? document.getElementById('app-confirm-dialog') : null;
+        if (dialog) dialog.remove();
+        app.pendingConfirm = null;
+        app._restoreFocusTrap(options);
+    },
+
+    showSaveRecovery(app, slotName, saveData) {
+        const message = app._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:');
+        if (typeof document === 'undefined' || !document.body) {
+            const choice = typeof prompt === 'function' ? prompt(message) : null;
+            if (choice === '1') return app.resolveSaveRecoveryDialog('delete', slotName, saveData);
+            if (choice === '2') return app.resolveSaveRecoveryDialog('backup', slotName, saveData);
+            return false;
+        }
+        this.closeConfirm(app, { restoreFocus: false });
+        this.closeSaveRecovery(app, { restoreFocus: false });
+        const title = app._label('save.recovery.title', 'Recover Save');
+        const deleteLabel = app._label('save.recovery.delete', 'Delete Save');
+        const backupLabel = app._label('save.recovery.backup', 'Download Backup');
+        const cancelLabel = app._label('ui.cancel', 'Cancel');
+        app.pendingSaveRecovery = { slotName, saveData, message };
+        const html = `<div class="app-confirm-backdrop" id="save-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="save-recovery-title" aria-describedby="save-recovery-message"><div class="app-confirm-card"><h3 id="save-recovery-title">${app._escapeHtml(title)}</h3><p id="save-recovery-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('cancel')">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('backup')">${app._escapeHtml(backupLabel)}</button><button class="nav-btn primary danger" onclick="App.resolveSaveRecoveryDialog('delete')">${app._escapeHtml(deleteLabel)}</button></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const dialog = document.getElementById('save-recovery-dialog');
+        app._activateFocusTrap(dialog, { close: () => app.resolveSaveRecoveryDialog('cancel') });
+        return false;
+    },
+
+    async resolveSaveRecovery(app, action, fallbackSlotName = null, fallbackSaveData = null) {
+        const pending = app.pendingSaveRecovery || {};
+        const slotName = app._normalizeSaveSlotName(fallbackSlotName || pending.slotName, null);
+        const saveData = fallbackSaveData || pending.saveData;
+        this.closeSaveRecovery(app);
+        if (action === 'delete' && slotName) {
+            await app._dbDelete('saves', slotName);
+            app._removeSaveTime(slotName);
+            app._clearCombatRefreshSnapshot(slotName);
+            alert(app._label('save.recovery.deleted', 'Save deleted.'));
+            return false;
+        }
+        if (action === 'backup' && slotName && saveData) {
+            this.downloadSaveBackup(slotName, saveData);
+            alert(app._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
+            return false;
+        }
+        return false;
+    },
+
+    closeSaveRecovery(app, options = {}) {
+        const dialog = typeof document !== 'undefined' ? document.getElementById('save-recovery-dialog') : null;
+        if (dialog) dialog.remove();
+        app.pendingSaveRecovery = null;
+        app._restoreFocusTrap(options);
+    },
+
+    downloadSaveBackup(slotName, saveData) {
+        const bytes = new Uint8Array(saveData);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const base64 = btoa(binary);
+        const blob = new Blob([base64], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'yaw_save_' + slotName + '_backup.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.YAW_DIALOG_FLOW = YAW_DIALOG_FLOW;
+}

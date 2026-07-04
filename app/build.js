@@ -55,6 +55,7 @@ const SCRIPT_ORDER = [
   'src/core/party-management.js',
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',
+  'src/core/dialog-flow.js',
   'src/core/mobile-gestures.js',
   'src/core/mobile-context-menu.js',
   'src/core/save-manager.js',

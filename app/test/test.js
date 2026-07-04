@@ -156,6 +156,7 @@ const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-se
 const partyManagementContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'party-management.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
+const dialogFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'dialog-flow.js'), 'utf8');
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
@@ -1901,6 +1902,22 @@ test('Save load flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SAVE_LOAD_FLOW.loadLastPlayed(this)', 'App last-played wrapper should delegate to the helper');
 });
 
+test('Dialog flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/dialog-flow.js'", 'Dialog flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/dialog-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Dialog flow helper should load before app.js');
+  assertContains(dialogFlowContent, 'const YAW_DIALOG_FLOW = {', 'Dialog flow helper should expose the dialog service');
+  assertContains(dialogFlowContent, 'showConfirm(app, options = {})', 'Dialog flow helper should own confirmation modal rendering');
+  assertContains(dialogFlowContent, 'resolveConfirm(app, confirmed)', 'Dialog flow helper should own confirmation resolution');
+  assertContains(dialogFlowContent, 'showSaveRecovery(app, slotName, saveData)', 'Dialog flow helper should own save-recovery rendering');
+  assertContains(dialogFlowContent, 'resolveSaveRecovery(app, action, fallbackSlotName = null, fallbackSaveData = null)', 'Dialog flow helper should own save-recovery actions');
+  assertContains(dialogFlowContent, "app._activateFocusTrap(dialog", 'Dialog flow should preserve focus trapping for dialogs');
+  assertContains(dialogFlowContent, "app._label('save.recovery.prompt'", 'Save recovery prompt should remain localized in the helper');
+  assertContains(appContent, 'YAW_DIALOG_FLOW.showConfirm(this, options)', 'App confirm wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_DIALOG_FLOW.resolveConfirm(this, confirmed)', 'App confirm resolver should delegate to the helper');
+  assertContains(appContent, 'YAW_DIALOG_FLOW.showSaveRecovery(this, slotName, saveData)', 'App save-recovery wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_DIALOG_FLOW.resolveSaveRecovery(this, action, fallbackSlotName, fallbackSaveData)', 'App save-recovery resolver should delegate to the helper');
+});
+
 test('Large map helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/large-map.js'", 'Large map helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/large-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Large map helper should load before app.js');
@@ -3265,7 +3282,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

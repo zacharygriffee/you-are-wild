@@ -7414,107 +7414,25 @@
                 return this.closeIntentMenu();
             },
             showConfirmDialog(options = {}) {
-                const message = String(options.message || '');
-                if (!message) return false;
-                if (typeof document === 'undefined' || !document.body) {
-                    if (typeof confirm === 'function' && !confirm(message)) {
-                        return typeof options.onCancel === 'function' ? options.onCancel() : false;
-                    }
-                    return typeof options.onConfirm === 'function' ? options.onConfirm() : true;
-                }
-                this.closeConfirmDialog({ restoreFocus: false });
-                const id = `confirm-${Date.now ? Date.now() : 'dialog'}`;
-                const title = options.title || this._label('ui.confirm', 'Confirm');
-                const confirmLabel = options.confirmLabel || this._label('ui.confirm', 'Confirm');
-                const cancelLabel = options.cancelLabel || this._label('ui.cancel', 'Cancel');
-                this.pendingConfirm = {
-                    id,
-                    title,
-                    message,
-                    confirmLabel,
-                    cancelLabel,
-                    danger: Boolean(options.danger),
-                    onConfirm: options.onConfirm || null,
-                    onCancel: options.onCancel || null
-                };
-                const dangerClass = options.danger ? ' danger' : '';
-                const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message"><div class="app-confirm-card"><h3 id="app-confirm-title">${this._escapeHtml(title)}</h3><p id="app-confirm-message">${this._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveConfirmDialog(false)">${this._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" onclick="App.resolveConfirmDialog(true)">${this._escapeHtml(confirmLabel)}</button></div></div></div>`;
-                document.body.insertAdjacentHTML('beforeend', html);
-                const dialog = document.getElementById('app-confirm-dialog');
-                this._activateFocusTrap(dialog, { close: () => this.resolveConfirmDialog(false) });
-                return false;
+                return YAW_DIALOG_FLOW.showConfirm(this, options);
             },
             resolveConfirmDialog(confirmed) {
-                const pending = this.pendingConfirm;
-                this.closeConfirmDialog();
-                if (!pending) return false;
-                if (!confirmed) return typeof pending.onCancel === 'function' ? pending.onCancel() : false;
-                return typeof pending.onConfirm === 'function' ? pending.onConfirm() : true;
+                return YAW_DIALOG_FLOW.resolveConfirm(this, confirmed);
             },
             closeConfirmDialog(options = {}) {
-                const dialog = document.getElementById('app-confirm-dialog');
-                if (dialog) dialog.remove();
-                this.pendingConfirm = null;
-                this._restoreFocusTrap(options);
+                return YAW_DIALOG_FLOW.closeConfirm(this, options);
             },
             showSaveRecoveryDialog(slotName, saveData) {
-                const message = this._label('save.recovery.prompt', 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:');
-                if (typeof document === 'undefined' || !document.body) {
-                    const choice = typeof prompt === 'function' ? prompt(message) : null;
-                    if (choice === '1') return this.resolveSaveRecoveryDialog('delete', slotName, saveData);
-                    if (choice === '2') return this.resolveSaveRecoveryDialog('backup', slotName, saveData);
-                    return false;
-                }
-                this.closeConfirmDialog({ restoreFocus: false });
-                this.closeSaveRecoveryDialog({ restoreFocus: false });
-                const title = this._label('save.recovery.title', 'Recover Save');
-                const deleteLabel = this._label('save.recovery.delete', 'Delete Save');
-                const backupLabel = this._label('save.recovery.backup', 'Download Backup');
-                const cancelLabel = this._label('ui.cancel', 'Cancel');
-                this.pendingSaveRecovery = { slotName, saveData, message };
-                const html = `<div class="app-confirm-backdrop" id="save-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="save-recovery-title" aria-describedby="save-recovery-message"><div class="app-confirm-card"><h3 id="save-recovery-title">${this._escapeHtml(title)}</h3><p id="save-recovery-message">${this._escapeHtml(message)}</p><div class="app-confirm-actions"><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('cancel')">${this._escapeHtml(cancelLabel)}</button><button class="nav-btn" onclick="App.resolveSaveRecoveryDialog('backup')">${this._escapeHtml(backupLabel)}</button><button class="nav-btn primary danger" onclick="App.resolveSaveRecoveryDialog('delete')">${this._escapeHtml(deleteLabel)}</button></div></div></div>`;
-                document.body.insertAdjacentHTML('beforeend', html);
-                const dialog = document.getElementById('save-recovery-dialog');
-                this._activateFocusTrap(dialog, { close: () => this.resolveSaveRecoveryDialog('cancel') });
-                return false;
+                return YAW_DIALOG_FLOW.showSaveRecovery(this, slotName, saveData);
             },
             async resolveSaveRecoveryDialog(action, fallbackSlotName = null, fallbackSaveData = null) {
-                const pending = this.pendingSaveRecovery || {};
-                const slotName = this._normalizeSaveSlotName(fallbackSlotName || pending.slotName, null);
-                const saveData = fallbackSaveData || pending.saveData;
-                this.closeSaveRecoveryDialog();
-	                if (action === 'delete' && slotName) {
-	                    await this._dbDelete('saves', slotName);
-	                    this._removeSaveTime(slotName);
-	                    this._clearCombatRefreshSnapshot(slotName);
-	                    alert(this._label('save.recovery.deleted', 'Save deleted.'));
-                    return false;
-                }
-                if (action === 'backup' && slotName && saveData) {
-                    this._downloadSaveBackup(slotName, saveData);
-                    alert(this._label('save.recovery.backupDownloaded', 'Backup downloaded. Save remains intact.'));
-                    return false;
-                }
-                return false;
+                return YAW_DIALOG_FLOW.resolveSaveRecovery(this, action, fallbackSlotName, fallbackSaveData);
             },
             closeSaveRecoveryDialog(options = {}) {
-                const dialog = typeof document !== 'undefined' ? document.getElementById('save-recovery-dialog') : null;
-                if (dialog) dialog.remove();
-                this.pendingSaveRecovery = null;
-                this._restoreFocusTrap(options);
+                return YAW_DIALOG_FLOW.closeSaveRecovery(this, options);
             },
             _downloadSaveBackup(slotName, saveData) {
-                const bytes = new Uint8Array(saveData);
-                let binary = '';
-                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-                const base64 = btoa(binary);
-                const blob = new Blob([base64], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'yaw_save_' + slotName + '_backup.txt';
-                a.click();
-                URL.revokeObjectURL(url);
+                return YAW_DIALOG_FLOW.downloadSaveBackup(slotName, saveData);
             },
             showMobilePartyContext(index) {
                 return YAW_MOBILE_CONTEXT_MENU.showParty(this, index);

@@ -991,6 +991,51 @@
             font-size: 11px;
         }
 
+        .unit-actions [data-selection-mode] {
+            border-width: 1px;
+            border-style: solid;
+        }
+
+        .unit-actions [data-selection-mode="act-actor"] {
+            border-color: rgba(0, 212, 170, 0.36);
+            color: var(--accent-primary);
+        }
+
+        .unit-actions [data-selection-mode="act-actor"][data-selection-state="selected"] {
+            background: rgba(0, 212, 170, 0.2);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.18);
+        }
+
+        .unit-actions [data-selection-mode="mark-target"] {
+            border-color: rgba(255, 107, 157, 0.34);
+            color: var(--accent-secondary);
+        }
+
+        .unit-actions [data-selection-mode="mark-target"][data-selection-state="marked"] {
+            background: rgba(255, 107, 157, 0.18);
+            border-color: var(--accent-secondary);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 1px rgba(255, 107, 157, 0.16);
+        }
+
+        .unit-actions [data-selection-mode="combat-pick"] {
+            border-color: rgba(255, 209, 102, 0.5);
+            color: var(--accent-warning);
+        }
+
+        .unit-actions [data-selection-mode="combat-pick"][data-selection-state="pickable"] {
+            background: rgba(255, 209, 102, 0.18);
+            border-color: var(--accent-warning);
+            color: var(--text-primary);
+        }
+
+        .unit-actions [data-selection-mode="combat-pick"][data-selection-state="blocked"] {
+            opacity: 0.58;
+            filter: saturate(0.75);
+        }
+
         .desktop-intent-menu {
             position: fixed;
             top: 84px;

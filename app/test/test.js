@@ -8808,17 +8808,25 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(playerCard, 'data-card-purpose="focus-toggle"', 'Desktop card container should identify click/keyboard behavior as focus/detail toggling');
   assertContains(playerCard, 'aria-label="Focus You card"', 'Desktop card container should keep focus copy separate from actor selection');
   assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Unselected party actor control should expose false pressed state');
+  assertContains(playerCard, 'data-selection-mode="act-actor" data-selection-state="available"', 'Actor control should expose its act-actor mode and available state');
   assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
+  assertContains(playerCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked party target control should expose exploration target mode');
   assertContains(playerCard, 'App.showInventory()', 'Player card should own inventory access');
   assertContains(allyCard, 'data-selection-control="actor" aria-pressed="true"', 'Selected party actor control should expose true pressed state');
+  assertContains(allyCard, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Selected actor control should expose selected actor state');
   assertContains(allyCard, 'data-selection-control="target" aria-pressed="false"', 'Unmarked party target control should expose false pressed state');
+  assertContains(allyCard, 'data-selection-mode="mark-target" data-selection-state="available"', 'Unmarked party target control should expose available target state');
   assertNotContains(allyCard, 'App.showInventory()', 'Non-player party cards should not duplicate inventory access');
   assertContains(creatureCard, 'data-card-purpose="focus-toggle"', 'Creature card container should identify focus/detail behavior');
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
+  assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(mobilePlayerChip, 'data-card-purpose="focus-toggle"', 'Mobile chip container should identify click/keyboard behavior as focus/detail toggling');
   assertContains(mobilePlayerChip, 'data-selection-control="actor" aria-pressed="false"', 'Mobile Act control should expose actor pressed state');
+  assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available"', 'Mobile Act control should expose act-actor mode');
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
+  assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
+  assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature Mark control should expose mark-target mode');
 
   App.combatState.active = true;
   App.activeActor = player;
@@ -8826,8 +8834,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const enemyCard = App.renderUnitCard(enemy, 1, 'creature');
   const mobileEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');
   assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat Pick button should identify combat target selection separately from exploration marking');
+  assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Desktop combat Pick button should expose combat-pick mode');
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat Pick button should identify combat target selection separately from exploration marking');
+  assertContains(mobileEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Mobile combat Pick button should expose combat-pick mode');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
+  assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });
 
 test('Unit cards and mobile chips render capped localized trait chips', () => {

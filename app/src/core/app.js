@@ -7395,6 +7395,18 @@
             _combatTargetPickLabel() {
                 return this._label('target.pick', 'Pick');
             },
+            _selectionControlAttrs(kind, active = false) {
+                if (kind === 'actor') {
+                    return `data-selection-control="actor" aria-pressed="${Boolean(active)}" data-selection-mode="act-actor" data-selection-state="${active ? 'selected' : 'available'}"`;
+                }
+                if (kind === 'target') {
+                    return `data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? 'marked' : 'available'}"`;
+                }
+                if (kind === 'combat-target') {
+                    return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}"`;
+                }
+                return `data-selection-control="${this._escapeHtml(String(kind || 'unknown'))}"`;
+            },
             _unitSelectionRoleLabel(role) {
                 if (role === 'actor') return this._label('target.actorRole', 'Actor');
                 if (role === 'target' && this.combatState?.active) return this._label('target.targetRole', 'Target');
@@ -7431,7 +7443,7 @@
                     const targetClass = targetSelected ? ' primary' : '';
                     const actorPressed = selectedActors.includes(unit);
                     const targetPressed = targetSelected;
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, `data-selection-control="actor" aria-pressed="${actorPressed}"`)}${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, `data-selection-control="target" aria-pressed="${targetPressed}"`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, this._selectionControlAttrs('actor', actorPressed))}${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, this._selectionControlAttrs('target', targetPressed))}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
                 } else if (isParty && this.combatState.active) {
                     if (this.syncSelection?.active && this.syncSelection.phase === 'participants') {
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${this._syncParticipantButton(unit, true)}</div>`;
@@ -7449,19 +7461,19 @@
                         const disabledAttr = isTargetable ? '' : 'aria-disabled="true"';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
-                        const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}data-selection-control="combat-target"`;
+                        const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}${this._selectionControlAttrs('combat-target', isTargetable)}`;
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const isTargetable = this.canSelectCreatureTarget(unit);
                         const disabled = isTargetable ? '' : ' disabled';
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: this._label('action.sync', 'Sync') });
-                        const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}data-selection-control="combat-target"`;
+                        const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}${this._selectionControlAttrs('combat-target', isTargetable)}`;
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
                         const inspectLabel = this._uiLabel('inspect');
                         const menuLabel = this._label('ui.creatureActions', 'Creature actions');
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, `data-selection-control="target" aria-pressed="${targetSelected}"`)}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, this._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, `event.stopPropagation();App.recruitCreatureById('${targetKey}')`);
                         }
@@ -7530,7 +7542,7 @@
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
                     const actorPressed = selectedActors.includes(unit);
                     const targetPressed = this._isExplorationTarget('party', this._unitSelectionId(unit));
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" data-selection-control="actor" aria-pressed="${actorPressed}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" data-selection-control="target" aria-pressed="${targetPressed}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${this._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${this._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
                     actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index},'desktop')">⋯</button>`;
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
@@ -7601,14 +7613,14 @@
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
                         const targetLabel = this._escapeHtml(this._combatTargetPickLabel());
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-selection-control="combat-target" title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${this._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabled = canTarget ? '' : ' disabled';
                         const targetName = unit.name || 'creature';
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: this._label('action.sync', 'Sync') }));
                         const targetLabel = this._escapeHtml(this._combatTargetPickLabel());
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" data-selection-control="combat-target" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${this._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetName = unit.name || 'creature';
                         const targetLabel = this._escapeHtml(targetName);
@@ -7618,7 +7630,7 @@
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                         const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${targetName}`);
                         const targetPressed = this._isExplorationTarget('creature', String(unit.id || unit.name));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-selection-control="target" aria-pressed="${targetPressed}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${this._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
                             actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;

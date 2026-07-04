@@ -281,6 +281,7 @@ const WorldGen = (() => {
         let safeTiles = 0;
         let blockedAdjacent = 0;
         let lowDangerResource = false;
+        let resourceSite = false;
         let routeAccess = false;
         let restCandidate = false;
         let poiCandidate = false;
@@ -320,6 +321,7 @@ const WorldGen = (() => {
         for (const { distance, tile } of reachable) {
             if (distance <= radius && tile.dangerPressure <= 0.36 && ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)) safeTiles++;
             if (distance <= radius && tile.dangerPressure <= 0.32 && ['grove', 'plains', 'forest'].includes(tile.baseBiome)) lowDangerResource = true;
+            if (distance <= radius && tile.overlays?.poi?.category === 'resourceSite') resourceSite = true;
             if (distance <= routeRadius && tile.overlays?.road) routeAccess = true;
             if (distance <= restRadius && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) restCandidate = true;
             if (distance <= restRadius && tile.overlays?.poi) poiCandidate = true;
@@ -329,6 +331,7 @@ const WorldGen = (() => {
             safeBiomeRadius: safeTiles >= minSafeTiles,
             noHardLockout: blockedAdjacent < 4,
             lowDangerResource,
+            resourceSite,
             routeAccess,
             restCandidate,
             connectedRestRoute: routeAccess && restCandidate,
@@ -502,6 +505,15 @@ const WorldGen = (() => {
             return {
                 id: 'poi_start_rest',
                 category: 'restSite',
+                regionId: 'start',
+                anchor: { x, y },
+                startArea: true
+            };
+        }
+        if ((version || 1) >= 2 && x === -2 && y === 0) {
+            return {
+                id: 'poi_start_resource',
+                category: 'resourceSite',
                 regionId: 'start',
                 anchor: { x, y },
                 startArea: true

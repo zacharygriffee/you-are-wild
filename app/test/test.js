@@ -6678,7 +6678,7 @@ test('Terrain traversal metadata defines conservative passability and route cost
 
 test('Versioned start area validation guarantees early route and rest access', () => {
   const WorldGen = loadWorldGenForTest();
-  const { App } = loadAppForCombat();
+  const { App, elements } = loadAppForCombat();
   const seeds = ['default', 'layout-a', 'layout-b', 'route-seed', 'coastal-seed', 'wet-start', 'mountain-start'];
   for (const seed of seeds) {
     App.worldMeta = { worldId: `world-start-safe-${seed}`, seed, generatorVersion: 2, mapModsHash: 'core' };
@@ -6690,6 +6690,7 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(result.checks.safeBiomeRadius, true, `Start area should have enough low-danger passable terrain for seed ${seed}`);
     assertEqual(result.checks.noHardLockout, true, `Start should not be surrounded by blocked terrain for seed ${seed}`);
     assertEqual(result.checks.lowDangerResource, true, `Start should have low-danger resource terrain for seed ${seed}`);
+    assertEqual(result.checks.resourceSite, true, `Start should have a reachable starter resource site for seed ${seed}`);
     assertEqual(result.checks.routeAccess, true, `Start should have nearby route access for seed ${seed}`);
     assertEqual(result.checks.restCandidate, true, `Start should have a nearby rest-site candidate for seed ${seed}`);
     assertEqual(result.checks.connectedRestRoute, true, `Start should have a reachable route to rest for seed ${seed}`);
@@ -6715,6 +6716,19 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(restBase.overlays?.poi?.category, 'restSite', `Start rest candidate should be a deterministic rest-site POI for seed ${seed}`);
     const discovered = App.exploreTile(4, 0);
     assertEqual(discovered.structure, 'camp', `Rest-site POI should resolve to a rest-capable structure on discovery for seed ${seed}`);
+
+    const resourceBase = App.getBaseTile(-2, 0);
+    assertEqual(resourceBase.overlays?.poi?.category, 'resourceSite', `Start resource candidate should be a deterministic resource-site POI for seed ${seed}`);
+    App.player = makeUnit('You');
+    App.party = [App.player];
+    App.inventory = [];
+    App.location = { x: -2, y: 0 };
+    App.exploreTile(-2, 0);
+    App.renderExplorationActions();
+    assertContains(elements.get('scene-actions').innerHTML, 'App.search()', `Starter resource site should expose Search for seed ${seed}`);
+    App.search();
+    assertEqual(App.inventory.length, 1, `Starter resource site search should grant one item for seed ${seed}`);
+    assertEqual(App.getTile(-2, 0).resourceSearched, true, `Starter resource site should persist consumed state for seed ${seed}`);
   }
 });
 

@@ -742,8 +742,31 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.creatureHasDuplicateMenu, false, 'Desktop living creature cards should not expose duplicate visible intent menus');
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop intent sheet flow should start with center free of actor controls');
 
+  await page.evaluate(() => {
+    const oldProbe = document.getElementById('desktop-intent-focus-probe');
+    if (oldProbe) oldProbe.remove();
+    const opener = document.createElement('button');
+    opener.id = 'desktop-intent-focus-probe';
+    opener.textContent = 'Open intent probe';
+    document.body.appendChild(opener);
+    opener.focus();
+    App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop');
+  });
+  let menu = page.locator('#desktop-intent-menu');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop intent menu should render from a focused opener');
+  await page.keyboard.press('Escape');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'detached', timeout: 1000 }), 'Escape should close the generated desktop intent menu');
+  state = await page.evaluate(() => ({
+    activeId: document.activeElement?.id || '',
+    focusTrapActive: Boolean(App._focusTrap),
+    outsideDismissActive: Boolean(App._mobileContextOutsideHandler)
+  }));
+  assert.strictEqual(state.activeId, 'desktop-intent-focus-probe', 'Generated desktop intent menu should restore focus to the opener after Escape');
+  assert.strictEqual(state.focusTrapActive, false, 'Generated desktop intent menu should clear the focus trap after Escape');
+  assert.strictEqual(state.outsideDismissActive, false, 'Generated desktop intent menu should clear outside dismissal after Escape');
+
   await page.evaluate(() => App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop'));
-  const menu = page.locator('#desktop-intent-menu');
+  menu = page.locator('#desktop-intent-menu');
   await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop intent menu should render when invoked');
 
   state = await page.evaluate(() => {

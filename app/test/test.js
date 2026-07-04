@@ -4226,7 +4226,7 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','loot','longpress')", 'Mobile corpse long-press should dispatch loot through shared intent selection');
   assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','longpress')", 'Mobile corpse long-press should dispatch scavenge through shared intent selection');
   assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','fallen-mobile','fight'", 'Mobile corpse long-press should not expose living primary action spam');
-  App.closeMobileContextMenu();
+  App.closeIntentMenu();
 });
 
 test('Corpse card loot actions expose localized accessible labels', () => {
@@ -5010,7 +5010,7 @@ test('Contextual intent dispatch reports corpse loot and scavenge outcomes', () 
   assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','loot','sheet')", 'Corpse intent menu should dispatch loot through shared intent selection');
   assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','scavenge','sheet')", 'Corpse intent menu should dispatch scavenge through shared intent selection');
   assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','corpse-loot-intent','fight'", 'Corpse intent menu should not expose living primary action spam');
-  App.closeMobileContextMenu();
+  App.closeIntentMenu();
   assertEqual(App.selectIntent('creature', 'corpse-loot-intent', 'loot', 'sheet'), true, 'Loot intent should report handled corpse action');
   assertEqual(App.lastIntentCommand.action, 'loot', 'Loot intent should record selected contextual action');
   assertEqual(App.lastIntentCommand.targetId, 'corpse-loot-intent', 'Loot intent should record corpse target id');
@@ -5996,7 +5996,7 @@ test('Desktop creature card action labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
   assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Creature action menu should localize inspect accessible label');
-  App.closeMobileContextMenu();
+  App.closeIntentMenu();
 });
 
 test('Exploration target summary escapes actor and target names', () => {
@@ -8544,7 +8544,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(body.innerHTML, 'aria-label="Seducir Ally B"', 'Party action menu should localize pleasure accessible label');
   assertContains(body.innerHTML, 'aria-label="Inspeccionar Ally B"', 'Party action menu should localize inspect accessible label');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',2,'fight','sheet')", 'Party action menu should open sub-action sheet for registered primary actions');
-  App.closeMobileContextMenu();
+  App.closeIntentMenu();
 });
 
 test('Desktop creature card status and detail labels localize', () => {
@@ -11375,7 +11375,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Mobile intent menu should localize fight accessible label');
   assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Mobile intent menu should localize pleasure accessible label');
   assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Mobile intent menu should localize inspect accessible label');
-  App.closeMobileContextMenu();
+  App.closeIntentMenu();
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
   assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
   assertContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile trade icon should expose localized accessible label');
@@ -11408,10 +11408,14 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertContains(body.innerHTML, 'class="desktop-intent-menu intent-menu intent-menu-desktop"', 'Desktop intent menu should use desktop-specific classes');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop intent menu should not reuse the mobile bottom-sheet id');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Desktop primary actions should keep the desktop source');
+  assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop intent menu should use the shared intent close handler');
+  assertNotContains(body.innerHTML, 'App.closeMobileContextMenu()', 'Desktop intent menu should not emit the mobile-specific close handler');
 
   App.openIntentSubActionSheet('creature', 'friendly-desktop', 'fight', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop sub-action picker should remain on the desktop surface');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-desktop','fight','desktop','attack')", 'Desktop sub-action selection should dispatch through shared intent selection');
+  assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop sub-action picker should use the shared intent close handler');
+  assertContains(appContent, 'closeMobileContextMenu() {\n                return this.closeIntentMenu();', 'Legacy mobile context close method should delegate to the shared intent close handler');
   assert(App._focusTrap, 'Desktop intent menus should activate the shared focus trap');
   assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');
   const desktopMenu = elements.get('desktop-intent-menu');

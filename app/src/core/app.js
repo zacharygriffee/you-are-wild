@@ -4973,7 +4973,7 @@
             openExplorationTargetSubActionSheet(action, source = 'target-bar') {
                 const targets = this._getExplorationTargets();
                 if (targets.length === 0 || !this.SUB_ACTIONS[action]) return this.resolveExplorationTargetAction(action, null, source);
-                this.closeMobileContextMenu();
+                this.closeIntentMenu();
                 const actor = this._getExplorationActor();
                 const subActions = this._getAvailableSubActions(action, actor, targets[0]);
                 const commandSource = String(source || 'target-bar').replace(/'/g, "\\'");
@@ -4990,11 +4990,11 @@
                     html += `<button class="action-btn" role="menuitem" title="${label}${this._escapeHtml(settingHint)}" aria-label="${label}${this._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
                 });
                 const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
+                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
                 const menu = document.getElementById(surface.id);
-                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateFocusTrap(menu, { close: () => this.closeIntentMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
 
@@ -8791,7 +8791,7 @@
                     const target = event && event.target;
                     const inside = target && (target === container || (typeof container.contains === 'function' && container.contains(target)));
                     if (inside) return;
-                    this.closeMobileContextMenu();
+                    this.closeIntentMenu();
                 };
                 setTimeout(() => {
                     if (this._mobileContextOutsideHandler) {
@@ -9639,7 +9639,7 @@
                 const target = this._intentTarget(type, targetRef);
                 if (!target) return;
                 const isCorpse = this._isCorpse(target);
-                this.closeMobileContextMenu();
+                this.closeIntentMenu();
                 const targetName = target.name || (isParty ? 'party member' : 'creature');
                 const menuLabel = this._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
                 const targetLabel = this._escapeHtml(targetName);
@@ -9651,7 +9651,7 @@
                     const icon = this._actionIcon(key);
                     const title = key === 'close' ? label : `${label} ${targetName}`;
                     const handler = action === 'close'
-                        ? 'App.closeMobileContextMenu()'
+                        ? 'App.closeIntentMenu()'
                         : this.SUB_ACTIONS[action]
                             ? `App.openIntentSubActionSheet('${type}',${targetArg},'${action}','${commandSource}')`
                         : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
@@ -9691,7 +9691,7 @@
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
                 const menu = document.getElementById(surface.id);
-                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateFocusTrap(menu, { close: () => this.closeIntentMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
             showRadialIntentMenu(type, targetRef, source = 'radial') {
@@ -9702,7 +9702,7 @@
                 if (!target || this._isCorpse(target) || !this.SUB_ACTIONS[action]) {
                     return this.selectIntent(type, targetRef, action, source);
                 }
-                this.closeMobileContextMenu();
+                this.closeIntentMenu();
                 const isParty = type === 'party';
                 const actor = this._getExplorationActor();
                 const subActions = this._getAvailableSubActions(action, actor, target);
@@ -9724,18 +9724,18 @@
                 const backLabel = this._escapeHtml(this._label('ui.back', 'Back'));
                 const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
                 html += `<button class="action-btn" role="menuitem" title="${backLabel}" aria-label="${backLabel}" onclick="App.showIntentMenu('${type}',${targetArg},'${commandSource}','${surface.presentation}')">${backLabel}</button>`;
-                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
+                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);
                 const menu = document.getElementById(surface.id);
-                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
+                this._activateFocusTrap(menu, { close: () => this.closeIntentMenu() });
                 this._activateOutsideContextDismiss(menu);
             },
             selectIntent(type, targetRef, action, source = 'sheet', subAction = null) {
                 this._haptic(8);
                 if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
                 const command = this._intentCommand(type, targetRef, action, subAction, source);
-                this.closeMobileContextMenu();
+                this.closeIntentMenu();
                 if (action === 'close') return false;
                 const target = this._intentTarget(type, targetRef);
                 if (!target) return false;
@@ -9771,12 +9771,15 @@
                     targetType: 'creature'
                 });
             },
-            closeMobileContextMenu() {
+            closeIntentMenu() {
                 const menu = document.getElementById('mobile-context-menu');
                 if (menu) menu.remove();
                 const desktopMenu = document.getElementById('desktop-intent-menu');
                 if (desktopMenu) desktopMenu.remove();
                 this._restoreFocusTrap();
+            },
+            closeMobileContextMenu() {
+                return this.closeIntentMenu();
             },
             showConfirmDialog(options = {}) {
                 const message = String(options.message || '');

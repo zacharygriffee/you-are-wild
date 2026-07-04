@@ -148,6 +148,7 @@ const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-pane
 const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const panelRenderingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-rendering.js'), 'utf8');
+const panelShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-shell.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
@@ -1776,6 +1777,21 @@ test('Mobile context menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId)', 'App mobile creature context actions should delegate to the helper');
 });
 
+test('Panel shell helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/panel-shell.js'", 'Panel shell helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/panel-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel shell helper should load before app.js');
+  assertContains(panelShellContent, 'const YAW_PANEL_SHELL = {', 'Panel shell helper should expose the panel shell service');
+  assertContains(panelShellContent, 'toggle(app, panelName)', 'Panel shell helper should own panel toggling');
+  assertContains(panelShellContent, 'toggleDesktopMap(app, panel)', 'Panel shell helper should own desktop map overlay toggling');
+  assertContains(panelShellContent, 'focusDesktopPanel(app, panelName)', 'Panel shell helper should own desktop panel focus');
+  assertContains(panelShellContent, 'syncBackdrop()', 'Panel shell helper should own panel backdrop state');
+  assertContains(appContent, 'YAW_PANEL_SHELL.toggle(this, p)', 'App panel toggle wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_SHELL.toggleDesktopMap(this, panel)', 'App desktop map wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_SHELL.focusDesktopPanel(this, p)', 'App desktop panel focus wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_SHELL.closeAll(this)', 'App panel close wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_SHELL.syncBackdrop(this)', 'App panel backdrop wrapper should delegate to the helper');
+});
+
 test('Save manager helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/save-manager.js'", 'Save manager helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/save-manager.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save manager helper should load before app.js');
@@ -2974,8 +2990,8 @@ test('Mobile panels and actions expose map party and enemies', () => {
 test('Desktop panel navigation focuses existing panels instead of no-oping', () => {
   assertContains(appContent, 'focusDesktopPanel(p)', 'desktop panel navigation should call a focus helper');
   assertContains(appContent, 'toggleDesktopMapPanel(panel)', 'desktop map navigation should toggle the map overlay');
-  assertContains(appContent, 'scrollIntoView({', 'desktop panel navigation should scroll the panel into view');
-  assertContains(appContent, "classList.remove('nav-focus')", 'desktop panel navigation should clear stale focus highlights');
+  assertContains(panelShellContent, 'scrollIntoView({', 'desktop panel navigation should scroll the panel into view');
+  assertContains(panelShellContent, "classList.remove('nav-focus')", 'desktop panel navigation should clear stale focus highlights');
   assertContains(template, '.panel.nav-focus', 'desktop panel navigation should expose a visual focus state');
 });
 
@@ -3167,7 +3183,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

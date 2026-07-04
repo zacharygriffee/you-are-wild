@@ -47,6 +47,7 @@ const SCRIPT_ORDER = [
   'src/core/quest-panel.js',
   'src/core/mobile-unit-strips.js',
   'src/core/panel-rendering.js',
+  'src/core/panel-shell.js',
   'src/core/unit-selection.js',
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',

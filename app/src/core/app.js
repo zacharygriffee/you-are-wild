@@ -7684,61 +7684,19 @@
                 return this.executeCombatIntent(action, this.activeActor || this.player);
             },
             togglePanel(p) {
-                const panel = document.getElementById('panel-' + p);
-                if (!panel) return;
-                const isMobile = window.innerWidth <= 1024;
-                if (!isMobile) {
-                    if (p === 'map') {
-                        this.toggleDesktopMapPanel(panel);
-                        return;
-                    }
-                    this.focusDesktopPanel(p);
-                    return;
-                }
-                const wasActive = panel.classList.contains('active');
-                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(p => p.classList.remove('active'));
-                if (!wasActive) panel.classList.add('active');
-                this.syncPanelBackdrop();
+                return YAW_PANEL_SHELL.toggle(this, p);
             },
             toggleDesktopMapPanel(panel) {
-                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('nav-focus'));
-                const isActive = panel.classList.toggle('active');
-                if (!isActive) return;
-                if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
-                try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
+                return YAW_PANEL_SHELL.toggleDesktopMap(this, panel);
             },
             focusDesktopPanel(p) {
-                const panel = document.getElementById('panel-' + p);
-                if (!panel) return;
-                this.closeAllPanels();
-                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panel => panel.classList.remove('nav-focus'));
-                panel.classList.add('nav-focus');
-                if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
-                const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                try {
-                    panel.scrollIntoView({
-                        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-                        block: 'nearest',
-                        inline: 'nearest'
-                    });
-                } catch (e) {
-                    panel.scrollIntoView();
-                }
-                try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
-                clearTimeout(this._panelFocusTimer);
-                this._panelFocusTimer = setTimeout(() => {
-                    panel.classList.remove('nav-focus');
-                }, 1200);
+                return YAW_PANEL_SHELL.focusDesktopPanel(this, p);
             },
             closeAllPanels() {
-                document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(p => p.classList.remove('active'));
-                this.syncPanelBackdrop();
+                return YAW_PANEL_SHELL.closeAll(this);
             },
             syncPanelBackdrop() {
-                const backdrop = document.getElementById('panel-backdrop');
-                if (!backdrop) return;
-                const hasActivePanel = Boolean(document.querySelector('.panel-map.active, .panel-party.active, .panel-enemies.active'));
-                backdrop.classList.toggle('active', hasActivePanel);
+                return YAW_PANEL_SHELL.syncBackdrop(this);
             },
             _haptic(pattern = 12) {
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {

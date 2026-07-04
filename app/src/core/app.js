@@ -8229,8 +8229,11 @@
                     const title = room?.exit
                         ? this._label('structure.exit', 'Exit')
                         : (this.activeInterior.structureName || this._label('ui.largeMap.interior', 'Interior'));
-                    const description = room?.description ||
-                        `${biome.icon || ''} ${this._label('ui.largeMap.interior', 'Interior')} (${this.interiorLocation.x}, ${this.interiorLocation.y})`;
+                    const details = [room?.description ||
+                        `${biome.icon || ''} ${this._label('ui.largeMap.interior', 'Interior')} (${this.interiorLocation.x}, ${this.interiorLocation.y})`];
+                    const itemSummary = this._tileItemSummary(room);
+                    if (itemSummary) details.push(itemSummary);
+                    const description = details.join(' ');
                     return { title, description };
                 }
                 const tile = this._currentExplorationTile() || this.getTile(this.location.x, this.location.y);
@@ -8899,6 +8902,7 @@
                     this._addTileEvent(fullText, 'loot');
                     this.renderLog();
                     this.renderExplorationActions();
+                    this.autoSave();
                     return true;
                 }
                 const taken = tile.items.splice(0, space).map((item, index) => {

@@ -6526,6 +6526,26 @@ test('Center tile exposes only tile-local item pickup', () => {
   assertEqual(autoSaveCalls, 1, 'Tile-local pickup should autosave changed world and inventory state');
 });
 
+test('Full inventory keeps tile-local item pickup stable', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  let autoSaveCalls = 0;
+  App.player = player;
+  App.party = [player];
+  App.inventory = Array.from({ length: App.MAX_INVENTORY }, (_, index) => ({ id: `pack-${index}`, name: `Packed ${index}` }));
+  App.autoSave = () => { autoSaveCalls += 1; };
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'A saved clearing.', creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }] }]]);
+
+  assertEqual(App.takeTileItems(), true, 'Full inventory pickup should still report a handled center action');
+  assertEqual(App.inventory.length, App.MAX_INVENTORY, 'Full inventory pickup should not overfill carried inventory');
+  assertEqual(App.worldMap.get('0,0').items.length, 1, 'Full inventory pickup should keep tile-local items on the ground');
+  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Full inventory pickup should keep Take Items available for correction');
+  assertContains(App.log[App.log.length - 1].text, 'Inventory is full.', 'Full inventory pickup should explain why nothing moved');
+  assertEqual(autoSaveCalls, 1, 'Full inventory pickup should autosave feedback state');
+});
+
 test('Dropping carried inventory creates tile-local pickup state', () => {
   const { App } = loadAppForCombat(() => 1);
   const player = makeUnit('You');
@@ -6547,6 +6567,34 @@ test('Dropping carried inventory creates tile-local pickup state', () => {
   assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the center');
   assertContains(App.log[App.log.length - 1].text, 'Dropped Old Coin.', 'Dropping should log the item transfer');
   assertEqual(autoSaveCalls, 1, 'Dropping should autosave changed world and inventory state');
+});
+
+test('Interior item pickup and drop persist through structure tile deltas', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  let autoSaveCalls = 0;
+  App.player = player;
+  App.party = [player];
+  App.inventory = [];
+  App.autoSave = () => { autoSaveCalls += 1; };
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.enterStructure();
+  autoSaveCalls = 0;
+  App._currentExplorationTile().items = [{ id: 'room-key', name: 'Room Key' }];
+
+  assertEqual(App.takeTileItems(), true, 'Interior tile-local pickup should report a handled action');
+  assertEqual(App.inventory.length, 1, 'Interior pickup should move the room item into carried inventory');
+  assertEqual(App._currentExplorationTile().items.length, 0, 'Interior pickup should remove the item from the current room');
+  assertEqual(App.getTileDelta(0, 0).interior.tiles['0,0'].items.length, 0, 'Interior pickup should persist through the origin structure tile delta');
+
+  assertEqual(App.dropItem('room-key'), true, 'Interior drop should report a handled action');
+  assertEqual(App.inventory.length, 0, 'Interior drop should remove the carried item');
+  assertEqual(App._currentExplorationTile().items[0].name, 'Room Key', 'Interior drop should place the item back in the current room');
+  assertEqual(App.getTileDelta(0, 0).interior.tiles['0,0'].items[0].name, 'Room Key', 'Interior drop should persist through the origin structure tile delta');
+  assertContains(App._centerTileContext().description, 'Items here: Room Key.', 'Interior center context should summarize room-local dropped items');
+  assertEqual(autoSaveCalls, 2, 'Interior pickup and drop should each autosave changed world and inventory state');
 });
 
 test('Interior movement persists room creatures and exits to overworld', () => {

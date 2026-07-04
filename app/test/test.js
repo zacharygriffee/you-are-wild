@@ -10712,6 +10712,30 @@ test('Save slot metadata normalizes stored and requested slot names', async () =
   assertEqual(saveCase.storage.get('yaw-last-slot'), 'slot1', 'Invalid requested save slot should persist only a valid last slot');
   assertEqual(saveCase.storage.has('yaw-save-time-../bad'), false, 'Invalid requested save slot should not create malformed timestamp keys');
 
+  const newGameCase = loadAppForCombat(() => 0.5);
+  newGameCase.storage.set('yaw-save-time-slot1', '1710000000000');
+  newGameCase.App.activeSlot = 'slot2';
+  const newGameStarted = newGameCase.App.beginNewGameInSlot('../bad');
+  assertEqual(newGameStarted, false, 'Invalid requested new-game slot should be rejected instead of falling back');
+  assert(!newGameCase.App.pendingConfirm, 'Invalid requested new-game slot should not open an overwrite confirmation');
+  assertEqual(newGameCase.App.activeSlot, 'slot2', 'Invalid requested new-game slot should not change the active slot');
+  assertEqual(newGameCase.storage.get('yaw-last-slot'), undefined, 'Invalid requested new-game slot should not persist fallback last-slot metadata');
+  assertNotContains(newGameCase.document.getElementById('screen-create').style.display || '', 'flex', 'Invalid requested new-game slot should not open character creation');
+
+  const deleteCase = loadAppForCombat(() => 0.5);
+  const deleteKeys = [];
+  deleteCase.storage.set('yaw-save-time-slot1', '1710000000000');
+  deleteCase.storage.set('yaw-last-slot', 'slot1');
+  deleteCase.App.activeSlot = 'slot2';
+  deleteCase.App._dbDelete = async (_store, key) => { deleteKeys.push(key); };
+  const deleteStarted = await deleteCase.App.deleteSlot('../bad');
+  assertEqual(deleteStarted, false, 'Invalid requested delete slot should be rejected instead of falling back');
+  assert(!deleteCase.App.pendingConfirm, 'Invalid requested delete slot should not open a delete confirmation');
+  assertEqual(deleteKeys.length, 0, 'Invalid requested delete slot should not delete any IndexedDB key');
+  assertEqual(deleteCase.storage.get('yaw-save-time-slot1'), '1710000000000', 'Invalid requested delete slot should preserve valid slot timestamps');
+  assertEqual(deleteCase.storage.get('yaw-last-slot'), 'slot1', 'Invalid requested delete slot should preserve last-slot metadata');
+  assertEqual(deleteCase.App.activeSlot, 'slot2', 'Invalid requested delete slot should not change the active slot');
+
   const loadCase = loadAppForCombat(() => 0.5);
   let loadCalled = false;
   loadCase.storage.set('yaw-last-slot', '../bad');

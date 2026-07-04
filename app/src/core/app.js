@@ -9398,7 +9398,8 @@
                 return match ? this._label('save.slotLabel', 'Slot {number}', { number: match[1] }) : String(slotName || '');
             },
             beginNewGameInSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
+                slotName = this._normalizeSaveSlotName(slotName, null);
+                if (!slotName) return false;
                 const saveTime = this._getSaveTime(slotName);
                 const hasData = parseInt(saveTime) > 0;
                 const slotLabel = this._slotDisplayLabel(slotName);
@@ -9415,7 +9416,8 @@
                 return this._startNewGameInSlot(slotName);
             },
             _startNewGameInSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
+                slotName = this._normalizeSaveSlotName(slotName, null);
+                if (!slotName) return false;
                 this.activeSlot = slotName;
                 this._setStoredValue('lastSlot', slotName);
                 this.showScreen('create');
@@ -10467,7 +10469,8 @@
                 return await this.loadFromSlot(lastSlot);
             },
             async deleteSlot(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
+                slotName = this._normalizeSaveSlotName(slotName, null);
+                if (!slotName) return false;
                 const slotLabel = this._slotDisplayLabel(slotName);
                 return this.showConfirmDialog({
                     title: this._label('save.delete', 'Delete'),
@@ -10479,7 +10482,8 @@
                 });
             },
             async _deleteSlotConfirmed(slotName) {
-                slotName = this._normalizeSaveSlotName(slotName);
+                slotName = this._normalizeSaveSlotName(slotName, null);
+                if (!slotName) return false;
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);

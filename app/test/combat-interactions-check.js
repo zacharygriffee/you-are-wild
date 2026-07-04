@@ -101,6 +101,79 @@ async function setupCombat(page, options = {}) {
   }, options);
 }
 
+async function setupAdventure(page, options = {}) {
+  await page.evaluate(({ withAlly = true, targetOverrides = {} }) => {
+    const makeUnit = (name, id, overrides = {}) => ({
+      id,
+      name,
+      species: 'human',
+      icon: 'X',
+      level: 1,
+      CPun: 100,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      Figh: 80,
+      Feas: 80,
+      Flir: 80,
+      Fuck: 40,
+      Flee: 80,
+      Feed: 40,
+      str: 10,
+      con: 10,
+      spd: 10,
+      int: 10,
+      wis: 10,
+      cha: 10,
+      size: 4,
+      appetite: 4,
+      stomach: [],
+      womb: [],
+      balls: [],
+      bodyParts: [],
+      tags: ['Person'],
+      status: {},
+      disposition: 'party',
+      ...overrides
+    });
+    const tutorialOverlay = document.getElementById('tutorial-overlay');
+    if (tutorialOverlay) tutorialOverlay.style.display = 'none';
+    App.showScreen('game');
+    App.worldMeta = { worldId: 'adventure-interaction-world', seed: 'adventure-interaction-seed', generatorVersion: 2, mapModsHash: 'core' };
+    App.location = { x: 0, y: 0 };
+    App.currentBiome = 'grove';
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], items: [] }]]);
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set(['0,0']);
+    App.combatState = { active: false, round: 0, currentTurn: 0, processing: false, turnQueue: [], syncActions: [] };
+    App.targetSelection = null;
+    App.syncSelection = null;
+    App.feedSelection = null;
+    App.player = makeUnit('You', 'player-1', { size: 5, appetite: 5 });
+    App.party = [App.player];
+    if (withAlly) App.party.push(makeUnit('Ally', 'ally-1', { Figh: 90, Flir: 90 }));
+    App.creatures = [
+      makeUnit('Friendly', 'friendly-1', {
+        disposition: App.DISPOSITION.FRIENDLY,
+        CPun: 100,
+        MPun: 100,
+        CPle: 0,
+        MPle: 100,
+        con: 1,
+        wis: 1,
+        ...targetOverrides
+      })
+    ];
+    App.explorationActorIds = [App._unitSelectionId(App.player)];
+    App.explorationActorId = App.explorationActorIds[0];
+    App.explorationTargetIds = [];
+    App.renderDesktopPlaySurface();
+    App.renderParty();
+    App.renderCreatures();
+    App.renderExplorationActions();
+  }, options);
+}
+
 async function clickIntentAndTarget(page, action) {
   await page.locator(`#party-content button[onclick*="executeCombatIntent('${action}')"]`).first().click();
   const target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
@@ -191,6 +264,65 @@ async function runReachabilityMatrix(page) {
   assert(state.enemyPle > 0, 'Social combat action should still target flying back-row enemies because it is not physical reach');
 }
 
+async function runAdventureMarkedTargetFlow(page) {
+  await setupAdventure(page);
+  let center = await page.evaluate(() => document.querySelector('#desktop-play-cell-center')?.innerHTML || '');
+  assert(!/selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(center), 'Center tile should not expose actor or target controls in adventure');
+
+  await page.locator(`#party-content button[onclick*="selectExplorationActor(1)"]`).first().click();
+  await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+
+  const tray = page.locator('#party-content .panel-interaction-tray');
+  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Marked target tray should render above party cards');
+  const trayState = await page.evaluate(() => {
+    const trayEl = document.querySelector('#party-content .panel-interaction-tray');
+    const partyContent = document.querySelector('#party-content');
+    return {
+      isFirstChild: partyContent?.firstElementChild === trayEl,
+      hasPanelSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','panel-tray')") || false,
+      actorSummary: trayEl?.textContent?.includes('Actors: Ally') || false,
+      targetSummary: trayEl?.textContent?.includes('Targets: Friendly') || false,
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(trayState.isFirstChild, true, 'Marked target tray should sit above party cards');
+  assert.strictEqual(trayState.hasPanelSource, true, 'Marked target tray should dispatch through the panel-tray command source');
+  assert.strictEqual(trayState.actorSummary, true, 'Marked target tray should summarize the selected actor');
+  assert.strictEqual(trayState.targetSummary, true, 'Marked target tray should summarize the marked creature target');
+  assert.strictEqual(trayState.centerHasActorControls, false, 'Center tile should stay free of actor controls while a target is marked');
+
+  await page.locator(`#party-content .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  const resolved = await page.evaluate(() => ({
+    targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
+    targetsRemaining: App.explorationTargetIds.length,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    commandSource: App.lastIntentCommand?.source || '',
+    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(resolved.targetPle > 0, 'Panel-tray marked target action should resolve against the marked creature');
+  assert.strictEqual(resolved.targetsRemaining, 0, 'Resolved marked target action should clear target marks');
+  assert.deepStrictEqual(resolved.actors, ['ally-1'], 'Resolved marked target action should preserve the selected actor');
+  assert.strictEqual(resolved.commandSource, 'panel-tray', 'Resolved marked target action should preserve panel source metadata');
+  assert.strictEqual(resolved.trayVisible, false, 'Resolved marked target action should remove the tray after clearing targets');
+  assert.strictEqual(resolved.centerHasActorControls, false, 'Center tile should stay free of actor controls after resolving a marked target action');
+
+  await setupAdventure(page);
+  await page.locator(`#party-content button[onclick*="selectExplorationActor(1)"]`).first().click();
+  await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+  await setupCombat(page);
+  const swapped = await page.evaluate(() => ({
+    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    combatButtons: document.querySelector('#party-content')?.innerHTML.includes("executeCombatIntent('fight')") || false,
+    creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target tray');
+  assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the party panel');
+  assert.strictEqual(swapped.creatureMarkButtons, false, 'Switching into combat should replace adventure target marks with combat target picks');
+  assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -202,6 +334,7 @@ async function runReachabilityMatrix(page) {
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
+    await runAdventureMarkedTargetFlow(page);
     await page.close();
   } finally {
     await browser.close();

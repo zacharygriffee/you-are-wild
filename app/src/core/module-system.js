@@ -525,37 +525,38 @@ const MODULE_SYSTEM = {
             this._assertContentRatingEnabled(module.manifest);
             await this._assertNoDependencyCycle(moduleId, module.manifest.dependencies, store);
             await this._assertDependenciesEnabled(moduleId, module.manifest, store);
-        }
-        
-        module.enabled = enabled;
-        await this._request(store.put(module));
-        await this._transactionDone(tx);
-        
-        if (enabled) {
+            await this._transactionDone(tx);
             try {
                 await this.loadModule(module);
             } catch (e) {
-                await this._markModuleDisabled(moduleId);
                 throw e;
             }
-        } else {
-            this.unloadModule(moduleId);
-            module.disabledDependents = await this._disableDependentsOf(moduleId);
+
+            module.enabled = true;
+            try {
+                await this._storeModuleRecord(module);
+            } catch (e) {
+                this.unloadModule(moduleId);
+                throw e;
+            }
+            return module;
         }
+
+        module.enabled = false;
+        await this._request(store.put(module));
+        await this._transactionDone(tx);
+
+        this.unloadModule(moduleId);
+        module.disabledDependents = await this._disableDependentsOf(moduleId);
         
         return module;
     },
 
-    async _markModuleDisabled(moduleId) {
-        this.unloadModule(moduleId);
+    async _storeModuleRecord(module) {
         const db = this._requireDb();
         const tx = db.transaction(['modules'], 'readwrite');
         const store = tx.objectStore('modules');
-        const module = await this._request(store.get(moduleId));
-        if (module) {
-            module.enabled = false;
-            await this._request(store.put(module));
-        }
+        await this._request(store.put(module));
         await this._transactionDone(tx);
         return module;
     },

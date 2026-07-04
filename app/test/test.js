@@ -168,7 +168,7 @@ function loadContentPacksForTest(CONTENT) {
   return window.CONTENT_PACKS;
 }
 
-function createFakeIndexedDb() {
+function createFakeIndexedDb(options = {}) {
   const data = {
     modules: new Map(),
     assets: new Map(),
@@ -218,6 +218,7 @@ function createFakeIndexedDb() {
       put(value) {
         return createRequest(tx, () => {
           const key = value.id !== undefined ? value.id : value.key;
+          if (typeof options.onPut === 'function') options.onPut(name, clone(value), key);
           store.set(key, clone(value));
           return key;
         });
@@ -1005,7 +1006,14 @@ asyncTest('Reinstalling an enabled module unloads stale runtime and disables dep
 
 asyncTest('Module data contributions are owned and removed on disable before reload', async () => {
   const MODULE_SYSTEM = loadModuleSystemForTest();
-  const fakeDb = createFakeIndexedDb();
+  const modulePuts = [];
+  const fakeDb = createFakeIndexedDb({
+    onPut(storeName, value) {
+      if (storeName === 'modules' && value.id === 'failing-data-module') {
+        modulePuts.push(value.enabled);
+      }
+    }
+  });
   MODULE_SYSTEM.db = fakeDb.db;
   const App = MODULE_SYSTEM._testApp;
   App.biomes.grove = { id: 'grove', name: 'Original Grove' };
@@ -1059,6 +1067,7 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(rejected, true, 'Module load failure should reject enable');
   assertEqual(App.items.length, 0, 'Module load failure should clean partial item contributions');
   assertEqual(MODULE_SYSTEM.activeModules.has('failing-data-module'), false, 'Failed module should not remain active');
+  assertEqual(modulePuts.includes(true), false, 'Failed module enable should not persist enabled=true before runtime load succeeds');
   const failedStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'failing-data-module');
   assertEqual(failedStoredModule.enabled, false, 'Failed module enable should roll storage back to disabled');
 

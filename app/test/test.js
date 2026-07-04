@@ -2852,10 +2852,16 @@ test('Flee failure and no-enemy feedback localize', () => {
   failed.App.dayCount = 0;
   failed.App.timeHour = 0;
   failed.App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [], syncActions: [] };
+  failed.App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+  failed.App.syncSelection = { active: true, phase: 'choose', actorId: 'player-1', participantIds: ['player-1'], type: null };
+  failed.App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
   failed.App.nextTurn = function() { this._fleeFailedTurnEnded = true; };
   failed.App.updateLanguage('es');
   failed.App.attemptFlee();
   assertEqual(failed.App._fleeFailedTurnEnded, true, 'Failed flee should still advance the turn');
+  assertEqual(failed.App.targetSelection, null, 'Failed flee should clear stale target selection');
+  assertEqual(failed.App.syncSelection, null, 'Failed flee should clear stale sync selection');
+  assertEqual(failed.App.feedSelection, null, 'Failed flee should clear stale feed selection');
   assertContains(failed.App.log[failed.App.log.length - 1].text, 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee log should localize');
 });
 
@@ -8173,9 +8179,15 @@ test('Combat move action swaps row and costs the active turn', () => {
   assertContains(elements.get('party-content').innerHTML, 'aria-label="Mover fila"', 'Move row button should expose localized accessible label on the actor card');
   assertContains(elements.get('party-content').innerHTML, '>↕️ Mover fila<', 'Move row button visible label should localize on the actor card');
   App.nextTurn = function() { this._movedTurn = true; };
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-move' };
+  App.syncSelection = { active: true, phase: 'choose', actorId: 'player-move', participantIds: ['player-move'], type: null };
+  App.feedSelection = { active: true, actorId: 'player-move', subIds: ['heal'] };
   App.moveCombatRow();
   assertEqual(player.combatRow, 'back', 'Move action should swap front to back');
   assertEqual(App._movedTurn, true, 'Move action should consume the turn');
+  assertEqual(App.targetSelection, null, 'Move row should clear stale target selection');
+  assertEqual(App.syncSelection, null, 'Move row should clear stale sync selection');
+  assertEqual(App.feedSelection, null, 'Move row should clear stale feed selection');
   assertContains(App.log[App.log.length - 1].text, 'You se mueve a la fila Retaguardia.', 'Move row log should localize');
 });
 

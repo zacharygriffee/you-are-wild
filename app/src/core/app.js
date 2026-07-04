@@ -3219,6 +3219,7 @@
             moveCombatRow() {
                 const actor = this.activeActor || this.player;
                 if (!this.combatState.active || !actor || actor.CPun <= 0) return;
+                this._clearTransientInteractionState();
                 actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
                 this._pushLog(this._label('combat.moveRowLog', '{name} moves to the {row} row.', {
                     name: actor.name,
@@ -5985,6 +5986,7 @@
 	                } else {
 	                    this.log.push({ text: this._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name }), type: 'combat' });
 	                    this._emitCombatAction('flee', this.player, enemy, 'failed');
+	                    this._clearTransientInteractionState();
 	                    this.renderLog();
                     this.nextTurn();
                 }

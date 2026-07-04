@@ -345,6 +345,53 @@ async function runStaleSyncParticipantFlow(page) {
   assert(state.lastLog.includes('Participants are no longer in the turn queue'), 'Rejected stale sync should explain the correction');
 }
 
+async function runCombatNonTargetClearFlow(page) {
+  await setupCombat(page);
+  let state = await page.evaluate(() => {
+    App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+    App.syncSelection = { active: true, phase: 'choose', actorId: 'player-1', participantIds: ['player-1'], type: null };
+    App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
+    App._advancedTurn = false;
+    App.moveCombatRow();
+    return {
+      row: App.player.combatRow,
+      targetSelection: App.targetSelection,
+      syncSelection: App.syncSelection,
+      feedSelection: App.feedSelection,
+      advanced: App._advancedTurn
+    };
+  });
+  assert.strictEqual(state.row, 'back', 'Move Row should still change the active actor row');
+  assert.strictEqual(state.targetSelection, null, 'Move Row should clear stale target selection in the built app');
+  assert.strictEqual(state.syncSelection, null, 'Move Row should clear stale sync selection in the built app');
+  assert.strictEqual(state.feedSelection, null, 'Move Row should clear stale feed selection in the built app');
+  assert.strictEqual(state.advanced, true, 'Move Row should still consume the active turn');
+
+  await setupCombat(page, { playerOverrides: { Flee: 1 }, enemyOverrides: { spd: 80 } });
+  state = await page.evaluate(() => {
+    App._combatStateRoll = () => 1;
+    App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+    App.syncSelection = { active: true, phase: 'choose', actorId: 'player-1', participantIds: ['player-1'], type: null };
+    App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
+    App._advancedTurn = false;
+    App.attemptFlee();
+    return {
+      active: App.combatState.active,
+      targetSelection: App.targetSelection,
+      syncSelection: App.syncSelection,
+      feedSelection: App.feedSelection,
+      advanced: App._advancedTurn,
+      lastLog: App.log[App.log.length - 1]?.text || ''
+    };
+  });
+  assert.strictEqual(state.active, true, 'Failed Flee should keep combat active');
+  assert.strictEqual(state.targetSelection, null, 'Failed Flee should clear stale target selection in the built app');
+  assert.strictEqual(state.syncSelection, null, 'Failed Flee should clear stale sync selection in the built app');
+  assert.strictEqual(state.feedSelection, null, 'Failed Flee should clear stale feed selection in the built app');
+  assert.strictEqual(state.advanced, true, 'Failed Flee should still consume the active turn');
+  assert(state.lastLog.includes('Flee failed'), 'Failed Flee should explain the failed escape');
+}
+
 async function runAdventureMarkedTargetFlow(page) {
   await setupAdventure(page);
   let center = await page.evaluate(() => document.querySelector('#desktop-play-cell-center')?.innerHTML || '');
@@ -1000,6 +1047,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
     await runStaleSyncParticipantFlow(page);
+    await runCombatNonTargetClearFlow(page);
     await runAdventureMarkedTargetFlow(page);
     await runStaleMarkedActorFlow(page);
     await runSelectionSemanticsFlow(page);

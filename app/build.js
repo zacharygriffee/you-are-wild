@@ -67,6 +67,7 @@ const SCRIPT_ORDER = [
   'src/core/combat-feed.js',
   'src/core/combat-intents.js',
   'src/core/mobile-combat-toolbelt.js',
+  'src/core/combat-actor-state.js',
   'src/core/mobile-unit-chip.js',
   'src/core/unit-card.js',
   'src/core/equipment-system.js',

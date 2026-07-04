@@ -3861,11 +3861,10 @@
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);
             },
             _currentCombatActor() {
-                if (!this.combatState?.active) return null;
-                return this.combatState.turnQueue?.[this.combatState.currentTurn]?.unit || null;
+                return YAW_COMBAT_ACTOR_STATE.current(this);
             },
             _mobileCombatPrompt(actor = this._currentCombatActor()) {
-                return YAW_MOBILE_COMBAT_TOOLBELT.prompt(this, actor);
+                return YAW_COMBAT_ACTOR_STATE.mobilePrompt(this, actor);
             },
             renderMobileCombatToolbelt() {
                 return YAW_MOBILE_COMBAT_TOOLBELT.render(this);

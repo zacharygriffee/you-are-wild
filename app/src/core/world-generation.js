@@ -284,17 +284,45 @@ const WorldGen = (() => {
         let routeAccess = false;
         let restCandidate = false;
         let poiCandidate = false;
-        for (let x = -restRadius; x <= restRadius; x++) {
-            for (let y = -restRadius; y <= restRadius; y++) {
-                const distance = Math.abs(x) + Math.abs(y);
-                const tile = generateBaseTile(worldMeta, x, y, regionBiomes);
-                if (distance <= radius && tile.traversal.passable && tile.dangerPressure <= 0.36 && ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)) safeTiles++;
-                if (distance === 1 && !tile.traversal.passable) blockedAdjacent++;
-                if (distance <= radius && tile.traversal.passable && tile.dangerPressure <= 0.32 && ['grove', 'plains', 'forest'].includes(tile.baseBiome)) lowDangerResource = true;
-                if (distance <= routeRadius && tile.overlays?.road) routeAccess = true;
-                if (distance <= restRadius && tile.traversal.passable && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) restCandidate = true;
-                if (distance <= restRadius && tile.traversal.passable && tile.overlays?.poi) poiCandidate = true;
+        const tileCache = new Map();
+        const tileAt = (x, y) => {
+            const key = `${x},${y}`;
+            if (!tileCache.has(key)) tileCache.set(key, generateBaseTile(worldMeta, x, y, regionBiomes));
+            return tileCache.get(key);
+        };
+        for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            if (!tileAt(x, y).traversal.passable) blockedAdjacent++;
+        }
+        const reachable = [];
+        const start = tileAt(0, 0);
+        if (start.traversal.passable) {
+            const seen = new Set(['0,0']);
+            const queue = [{ x: 0, y: 0, distance: 0 }];
+            while (queue.length) {
+                const node = queue.shift();
+                const tile = tileAt(node.x, node.y);
+                reachable.push({ ...node, tile });
+                if (node.distance >= restRadius) continue;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = node.x + dx;
+                    const ny = node.y + dy;
+                    const distance = Math.abs(nx) + Math.abs(ny);
+                    if (distance > restRadius) continue;
+                    const key = `${nx},${ny}`;
+                    if (seen.has(key)) continue;
+                    const nextTile = tileAt(nx, ny);
+                    if (!nextTile.traversal.passable) continue;
+                    seen.add(key);
+                    queue.push({ x: nx, y: ny, distance });
+                }
             }
+        }
+        for (const { distance, tile } of reachable) {
+            if (distance <= radius && tile.dangerPressure <= 0.36 && ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)) safeTiles++;
+            if (distance <= radius && tile.dangerPressure <= 0.32 && ['grove', 'plains', 'forest'].includes(tile.baseBiome)) lowDangerResource = true;
+            if (distance <= routeRadius && tile.overlays?.road) routeAccess = true;
+            if (distance <= restRadius && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) restCandidate = true;
+            if (distance <= restRadius && tile.overlays?.poi) poiCandidate = true;
         }
         const minSafeTiles = options.minSafeTiles ?? Math.max(12, Math.floor(radius * radius * 0.3));
         const checks = {
@@ -303,12 +331,13 @@ const WorldGen = (() => {
             lowDangerResource,
             routeAccess,
             restCandidate,
+            connectedRestRoute: routeAccess && restCandidate,
             earlyPoi: poiCandidate
         };
         return {
             ok: Object.values(checks).every(Boolean),
             checks,
-            metrics: { safeTiles, blockedAdjacent, radius, routeRadius, restRadius }
+            metrics: { safeTiles, blockedAdjacent, reachableTiles: reachable.length, radius, routeRadius, restRadius }
         };
     }
 

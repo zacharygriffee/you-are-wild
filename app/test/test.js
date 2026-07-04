@@ -6515,7 +6515,9 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(result.checks.lowDangerResource, true, `Start should have low-danger resource terrain for seed ${seed}`);
     assertEqual(result.checks.routeAccess, true, `Start should have nearby route access for seed ${seed}`);
     assertEqual(result.checks.restCandidate, true, `Start should have a nearby rest-site candidate for seed ${seed}`);
+    assertEqual(result.checks.connectedRestRoute, true, `Start should have a reachable route to rest for seed ${seed}`);
     assertEqual(result.checks.earlyPoi, true, `Start should have early POI availability for seed ${seed}`);
+    assert(result.metrics.reachableTiles >= result.metrics.safeTiles, `Start validation should count safe terrain from reachable tiles for seed ${seed}`);
 
     const startBase = App.getBaseTile(0, 0);
     assertEqual(startBase.traversal.passable, true, `Start tile should be passable for seed ${seed}`);

@@ -5363,249 +5363,67 @@
 
             // ===== QUESTS =====
             _normalizeQuest(quest, giver = null) {
-                const source = quest || {};
-                const id = source.id || `quest_${this._stableIdPart(giver?.id || giver?.name, 'giver')}`;
-                return {
-                    id,
-                    title: source.title || 'Untitled Quest',
-                    description: source.description || '',
-                    giverId: source.giverId || giver?.id || giver?.name || null,
-                    giverName: source.giverName || giver?.name || null,
-                    giverLocation: source.giverLocation || giver?.giverLocation || (giver ? { x: Number(this.location?.x || 0), y: Number(this.location?.y || 0), label: giver.name || 'Quest giver' } : null),
-                    status: source.status || 'available',
-                    turnInRequired: Boolean(source.turnInRequired || source.rewardOnTurnIn),
-                    rewardClaimed: Boolean(source.rewardClaimed),
-                    objectives: (source.objectives || []).map((objective, index) => this._normalizeQuestObjective(objective, id, index)),
-                    reward: source.reward || source.rewards || {}
-                };
+                return YAW_QUEST_FLOW.normalize(this, quest, giver);
             },
 
             _normalizeQuestObjective(objective = {}, questId = 'quest', index = 0) {
-                const checkpoints = (objective.checkpoints || objective.route || []).map((checkpoint, checkpointIndex) => ({
-                    id: checkpoint.id || `${questId}_objective_${index}_checkpoint_${checkpointIndex}`,
-                    label: checkpoint.label || checkpoint.name || `Checkpoint ${checkpointIndex + 1}`,
-                    x: Number(checkpoint.x ?? checkpoint.location?.x ?? checkpoint[0] ?? 0),
-                    y: Number(checkpoint.y ?? checkpoint.location?.y ?? checkpoint[1] ?? 0),
-                    complete: Boolean(checkpoint.complete)
-                }));
-                const location = objective.location || (Number.isFinite(objective.x) && Number.isFinite(objective.y) ? { x: objective.x, y: objective.y } : null);
-                const required = objective.required || objective.count || Math.max(1, checkpoints.length || 1);
-                const normalized = {
-                    id: objective.id || `${questId}_objective_${index}`,
-                    type: objective.type || 'find',
-                    label: objective.label || objective.description || this._questObjectiveLabel(objective),
-                    targetId: objective.targetId || null,
-                    species: objective.species || null,
-                    item: objective.item || null,
-                    location: location ? { x: Number(location.x), y: Number(location.y) } : null,
-                    checkpoints,
-                    required,
-                    progress: objective.progress || 0,
-                    complete: Boolean(objective.complete)
-                };
-                if (normalized.type === 'escort' && normalized.checkpoints.length) {
-                    normalized.progress = Math.min(normalized.progress, normalized.checkpoints.length);
-                    normalized.required = normalized.checkpoints.length;
-                    normalized.checkpoints.forEach((checkpoint, i) => { checkpoint.complete = checkpoint.complete || i < normalized.progress; });
-                    normalized.complete = normalized.complete || normalized.progress >= normalized.required;
-                }
-                return normalized;
+                return YAW_QUEST_FLOW.normalizeObjective(this, objective, questId, index);
             },
 
             _questObjectiveLabel(objective) {
-                const target = objective.item || objective.species || objective.targetId || objective.location?.label || 'target';
-                return `${objective.type || 'find'} ${target}`;
+                return YAW_QUEST_FLOW.objectiveLabel(this, objective);
             },
 
             _questRewardPreviewText(reward = {}) {
-                const parts = [];
-                if (reward.xp) parts.push(this._label('quest.reward.xp', '{count} XP', { count: reward.xp }));
-                if (reward.gold) parts.push(this._label('quest.reward.gold', '{count} gold', { count: reward.gold }));
-                for (const itemName of reward.items || []) {
-                    parts.push(this._label('quest.reward.item', '{name}', { name: itemName }));
-                }
-                if (reward.recruit) {
-                    parts.push(this._label('quest.reward.recruit', 'Recruit: {name}', { name: reward.recruit.name || this._label('party.ally', 'Ally') }));
-                }
-                if (parts.length === 0) parts.push(this._label('quest.reward.none', 'No listed reward'));
-                return parts.map(part => this._escapeHtml(part)).join('<br>');
+                return YAW_QUEST_FLOW.rewardPreviewText(this, reward);
             },
 
             _getQuestById(questId) {
-                return (this.quests || []).find(q => q.id === questId);
+                return YAW_QUEST_FLOW.byId(this, questId);
             },
 
             _getQuestGiverByKey(targetId) {
-                return this.creatures.find(c => String(c.id || c.name) === String(targetId) && c.quest);
+                return YAW_QUEST_FLOW.giverByKey(this, targetId);
             },
 
             acceptQuestFromUnit(targetId) {
-                const giver = this._getQuestGiverByKey(targetId);
-                if (!giver) return false;
-                return this.acceptQuest(giver.quest, giver);
+                return YAW_QUEST_FLOW.acceptFromUnit(this, targetId);
             },
 
             previewQuestFromUnit(targetId) {
-                const giver = this._getQuestGiverByKey(targetId);
-                if (!giver) return false;
-                if (giver.questAccepted || this._getQuestById(giver.quest?.id)) {
-                    this.showQuestLog();
-                    return true;
-                }
-                return this.showQuestPreview(giver.quest, giver);
+                return YAW_QUEST_FLOW.previewFromUnit(this, targetId);
             },
 
             showQuestPreview(quest, giver = null) {
-                const normalized = this._normalizeQuest(quest, giver);
-                const targetKey = giver ? String(giver.id || giver.name || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'") : '';
-                const title = this._escapeHtml(this._label('quest.previewTitle', 'Quest Preview'));
-                const acceptLabel = this._escapeHtml(this._label('action.acceptQuest', 'Accept Quest'));
-                const acceptTitle = this._escapeHtml(this._label('action.acceptQuestFrom', 'Accept quest from {name}', { name: giver?.name || normalized.giverName || normalized.title }));
-                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                let html = `<div class="quest-preview" style="max-width:720px;margin:0 auto;text-align:left;display:grid;gap:12px;">`;
-                html += `<h3 style="color:var(--accent-primary);margin:0;">${title}: ${this._escapeHtml(normalized.title)}</h3>`;
-                if (normalized.description) html += `<p style="color:var(--text-secondary);margin:0;">${this._escapeHtml(normalized.description)}</p>`;
-                html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${this._escapeHtml(this._label('quest.objectives', 'Objectives'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this._questProgressText(normalized)}</div>`;
-                for (const objective of normalized.objectives || []) {
-                    const routePreview = this._questRoutePreviewText(objective);
-                    const marker = this._nextQuestObjectiveMarker(objective);
-                    if (routePreview || marker) {
-                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || this._escapeHtml(this._questMarkerPreview(marker, objective))}</div>`;
-                    }
-                }
-                html += `</div>`;
-                html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${this._escapeHtml(this._label('quest.rewards', 'Rewards'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this._questRewardPreviewText(normalized.reward)}</div></div>`;
-                html += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="nav-btn primary" title="${acceptTitle}" aria-label="${acceptTitle}" onclick="App.acceptQuestFromUnit('${targetKey}')">📜 ${acceptLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.renderCreatures();App.renderExplorationActions();">${closeLabel}</button></div>`;
-                html += `</div>`;
-                this.showCreaturePanelDetail(normalized.title, html);
-                return true;
+                return YAW_QUEST_FLOW.showPreview(this, quest, giver);
             },
 
             acceptQuest(quest, giver = null) {
-                const normalized = this._normalizeQuest(quest, giver);
-                this.quests = this.quests || [];
-                const existing = this._getQuestById(normalized.id);
-                if (existing) {
-                    this.log.push({ text: this._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existing.title }), type: 'discovery' });
-                    this.showQuestLog();
-                    this.renderLog();
-                    return existing;
-                }
-                normalized.status = 'active';
-                this.quests.push(normalized);
-                if (giver) {
-                    giver.questAccepted = true;
-                    if (giver.quest) giver.quest.status = 'active';
-                }
-                this.log.push({ text: this._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
-                this.renderLog();
-                this.renderCreatures();
-                if (giver) {
-                    const title = this._escapeHtml(normalized.title);
-                    const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                    const questLogLabel = this._escapeHtml(this._label('quest.title', 'Quests'));
-                    const accepted = this._escapeHtml(this._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }));
-                    this.showCreaturePanelDetail(title, `<h3>${title}</h3><p style="color:var(--text-muted);margin-top:8px;">${accepted}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="nav-btn primary" title="${questLogLabel}" aria-label="${questLogLabel}" onclick="App.showQuestLog()">${questLogLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('creature')">${closeLabel}</button></div>`);
-                } else {
-                    this.showQuestLog();
-                }
-                this.autoSave();
-                return normalized;
+                return YAW_QUEST_FLOW.accept(this, quest, giver);
             },
 
             _questObjectiveMatches(type, payload, objective) {
-                if (!objective || objective.complete || objective.type !== type) return false;
-                if (objective.species && objective.species !== payload.species && objective.species !== payload.target?.species) return false;
-                if (objective.targetId && String(objective.targetId) !== String(payload.targetId || payload.target?.id || payload.target?.name)) return false;
-                if (objective.item && objective.item !== payload.item && objective.item !== payload.name) return false;
-                if ((objective.type === 'escort' || objective.type === 'travel') && objective.location) {
-                    if (Number(objective.location.x) !== Number(payload.x) || Number(objective.location.y) !== Number(payload.y)) return false;
-                }
-                return true;
+                return YAW_QUEST_FLOW.objectiveMatches(this, type, payload, objective);
             },
 
             _nextQuestCheckpoint(objective) {
-                if (!objective || objective.complete || !Array.isArray(objective.checkpoints) || objective.checkpoints.length === 0) return null;
-                return objective.checkpoints.find(checkpoint => !checkpoint.complete) || null;
+                return YAW_QUEST_FLOW.nextCheckpoint(this, objective);
             },
 
             _nextQuestObjectiveMarker(objective) {
-                if (!objective || objective.complete) return null;
-                return this._nextQuestCheckpoint(objective) || objective.location || null;
+                return YAW_QUEST_FLOW.nextObjectiveMarker(this, objective);
             },
 
             _updateQuestProgress(type, payload = {}) {
-                let changed = false;
-                for (const quest of this.quests || []) {
-                    if (quest.status !== 'active') continue;
-                    quest.rewardClaimed = Boolean(quest.rewardClaimed);
-                    for (const objective of quest.objectives || []) {
-                        if (!this._questObjectiveMatches(type, payload, objective)) continue;
-                        if (objective.type === 'escort' && objective.checkpoints?.length) {
-                            const checkpoint = this._nextQuestCheckpoint(objective);
-                            if (!checkpoint || Number(checkpoint.x) !== Number(payload.x) || Number(checkpoint.y) !== Number(payload.y)) continue;
-                            checkpoint.complete = true;
-                        }
-                        objective.progress = Math.min(objective.required, (objective.progress || 0) + (payload.count || 1));
-                        objective.complete = objective.progress >= objective.required;
-                        changed = true;
-                    }
-                    if ((quest.objectives || []).length > 0 && quest.objectives.every(o => o.complete) && quest.status !== 'completed') {
-                        quest.status = 'completed';
-                        if (quest.turnInRequired) {
-                            this.log.push({ text: this._label('quest.completedTurnIn', 'Quest completed: {title}. Return to {giver} for your reward.', { title: quest.title, giver: quest.giverName || this._label('quest.defaultGiver', 'the quest giver') }), type: 'discovery' });
-                        } else {
-                            this._grantQuestReward(quest);
-                            this.log.push({ text: this._label('quest.completed', 'Quest completed: {title}.', { title: quest.title }), type: 'discovery' });
-                        }
-                    }
-                }
-                if (changed) {
-                    this.renderLog();
-                    this.renderParty();
-                    this.autoSave();
-                }
-                return changed;
+                return YAW_QUEST_FLOW.updateProgress(this, type, payload);
             },
 
             _grantQuestReward(quest) {
-                if (!quest || quest.rewardClaimed) return false;
-                const reward = quest.reward || {};
-                if (reward.xp) this.gainXP(reward.xp);
-                if (reward.gold) this.player.gold = (this.player.gold || 0) + reward.gold;
-                for (const itemName of reward.items || []) {
-                    if (this.inventory.length < this.MAX_INVENTORY) {
-                        this.inventory.push({ id: `quest_item_${this._stableIdPart(quest.id, 'quest')}_${this._stableIdPart(itemName)}_${this.inventory.length}`, name: itemName });
-                    }
-                }
-                if (reward.recruit && this.party.length < this.MAX_PARTY_SIZE) {
-                    const recruit = this._normalizeUnit({ ...reward.recruit }, { disposition: this.DISPOSITION.PARTY, ally: true, obedient: true, willing: true });
-                    this.party.push(recruit);
-                }
-                quest.rewardClaimed = true;
-                return true;
+                return YAW_QUEST_FLOW.grantReward(this, quest);
             },
 
             turnInQuest(questId) {
-                const quest = this._getQuestById(questId);
-                if (!quest || quest.status !== 'completed') {
-                    this.log.push({ text: this._label('quest.notReadyTurnIn', 'That quest is not ready to turn in.'), type: 'discovery' });
-                    this.renderLog();
-                    return false;
-                }
-                if (quest.rewardClaimed) {
-                    this.log.push({ text: this._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: quest.title }), type: 'discovery' });
-                    this.renderLog();
-                    this.showQuestLog();
-                    return false;
-                }
-                const granted = this._grantQuestReward(quest);
-                if (granted) this.log.push({ text: this._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title }), type: 'loot' });
-                this.renderLog();
-                this.renderParty();
-                this.showQuestLog();
-                this.autoSave();
-                return granted;
+                return YAW_QUEST_FLOW.turnIn(this, questId);
             },
 
             _questProgressText(quest) {
@@ -5633,65 +5451,19 @@
             },
 
             focusQuestOnMap(questId, objectiveId) {
-                const quest = (this.quests || []).find(entry => String(entry.id) === String(questId));
-                const objective = (quest?.objectives || []).find(entry => String(entry.id) === String(objectiveId)) || (quest?.objectives || []).find(entry => !entry.complete);
-                const marker = this._nextQuestObjectiveMarker(objective);
-                if (!quest || !marker) {
-                    this.log.push({ text: this._label('quest.noObjectiveMarker', 'No map marker is available for that quest objective.'), type: 'discovery' });
-                    this.renderLog();
-                    return false;
-                }
-                this.largeMapOffset = {
-                    x: Number(marker.x) - Number(this.location.x || 0),
-                    y: Number(marker.y) - Number(this.location.y || 0)
-                };
-                this.renderLargeMap();
-                this.log.push({ text: this._label('quest.mapFocusedObjective', 'Map focused on {title}: {label}.', { title: quest.title, label: marker.label || objective.label || this._questObjectiveLabel(objective) }), type: 'discovery' });
-                this.renderLog();
-                return true;
+                return YAW_QUEST_FLOW.focusObjectiveOnMap(this, questId, objectiveId);
             },
 
             _questTurnInMarker(quest) {
-                const location = quest?.giverLocation;
-                if (!location || !Number.isFinite(Number(location.x)) || !Number.isFinite(Number(location.y))) return null;
-                return {
-                    x: Number(location.x),
-                    y: Number(location.y),
-                    label: location.label || quest.giverName || 'Quest giver'
-                };
+                return YAW_QUEST_FLOW.turnInMarker(this, quest);
             },
 
             focusQuestTurnInOnMap(questId) {
-                const quest = (this.quests || []).find(entry => String(entry.id) === String(questId));
-                const marker = this._questTurnInMarker(quest);
-                if (!quest || !marker) {
-                    this.log.push({ text: this._label('quest.noTurnInLocation', 'No turn-in location is available for that quest.'), type: 'discovery' });
-                    this.renderLog();
-                    return false;
-                }
-                this.largeMapOffset = {
-                    x: Number(marker.x) - Number(this.location.x || 0),
-                    y: Number(marker.y) - Number(this.location.y || 0)
-                };
-                this.renderLargeMap();
-                this.log.push({ text: this._label('quest.mapFocusedTurnIn', 'Map focused on {title} turn-in: {label}.', { title: quest.title, label: marker.label }), type: 'discovery' });
-                this.renderLog();
-                return true;
+                return YAW_QUEST_FLOW.focusTurnInOnMap(this, questId);
             },
 
             _filteredQuestEntries() {
-                const filter = ['all', 'active', 'completed', 'turn-in'].includes(this.questFilter) ? this.questFilter : 'all';
-                const sort = ['status', 'title'].includes(this.questSort) ? this.questSort : 'status';
-                const quests = (this.quests || []).filter(quest => {
-                    if (filter === 'all') return true;
-                    if (filter === 'turn-in') return quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
-                    return quest.status === filter;
-                });
-                return quests.sort((a, b) => {
-                    if (sort === 'title') return (a.title || '').localeCompare(b.title || '');
-                    const weight = quest => quest.status === 'active' ? 0 : (quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed) ? 1 : quest.status === 'completed' ? 2 : 3;
-                    return weight(a) - weight(b) || (a.title || '').localeCompare(b.title || '');
-                });
+                return YAW_QUEST_FLOW.filteredEntries(this);
             },
 
             _questLogControls() {
@@ -5711,13 +5483,11 @@
             },
 
             setQuestFilter(filter) {
-                this.questFilter = ['all', 'active', 'turn-in', 'completed'].includes(filter) ? filter : 'all';
-                this.showQuestLog();
+                return YAW_QUEST_FLOW.setFilter(this, filter);
             },
 
             setQuestSort(sort) {
-                this.questSort = ['status', 'title'].includes(sort) ? sort : 'status';
-                this.showQuestLog();
+                return YAW_QUEST_FLOW.setSort(this, sort);
             },
 
             showQuestLog() {

@@ -155,6 +155,7 @@ const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'invent
 const tradeFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'trade-flow.js'), 'utf8');
 const perkFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-flow.js'), 'utf8');
 const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-panel.js'), 'utf8');
+const questFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-flow.js'), 'utf8');
 const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const panelRenderingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-rendering.js'), 'utf8');
@@ -1761,6 +1762,28 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_STATS_PANEL.showPartyMember(this, index)', 'App party member stats wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_STATS_PANEL.showCharacter(this)', 'App character stats wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_STATS_PANEL.showPerkSelection(this)', 'App perk selection wrapper should delegate to the helper');
+});
+
+test('Quest flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/quest-flow.js'", 'Quest flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/quest-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Quest flow helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/quest-flow.js'") < buildContent.indexOf("'src/core/quest-panel.js'"), 'Quest flow helper should load before quest panel rendering');
+  assertContains(questFlowContent, 'const YAW_QUEST_FLOW = {', 'Quest flow helper should expose the quest flow service');
+  assertContains(questFlowContent, 'normalize(app, quest, giver = null)', 'Quest flow helper should own quest normalization');
+  assertContains(questFlowContent, 'accept(app, quest, giver = null)', 'Quest flow helper should own quest acceptance');
+  assertContains(questFlowContent, 'updateProgress(app, type, payload = {})', 'Quest flow helper should own quest progress updates');
+  assertContains(questFlowContent, 'grantReward(app, quest)', 'Quest flow helper should own quest reward grants');
+  assertContains(questFlowContent, 'turnIn(app, questId)', 'Quest flow helper should own quest turn-in behavior');
+  assertContains(questFlowContent, 'focusObjectiveOnMap(app, questId, objectiveId)', 'Quest flow helper should own objective map focus behavior');
+  assertContains(questFlowContent, 'app.showCreaturePanelDetail(normalized.title, html)', 'Quest preview should render through creature panel details');
+  assertContains(questFlowContent, 'app.autoSave()', 'Quest state changes should keep autosaving');
+  assertNotContains(questFlowContent, 'Date.now', 'Quest reward item ids should remain deterministic');
+  assertNotContains(questFlowContent, "document.getElementById('scene-description')", 'Quest flow helper should not render into center tile content');
+  assertContains(appContent, 'YAW_QUEST_FLOW.normalize(this, quest, giver)', 'App quest normalization wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_FLOW.accept(this, quest, giver)', 'App accept quest wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_FLOW.updateProgress(this, type, payload)', 'App quest progress wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_FLOW.turnIn(this, questId)', 'App quest turn-in wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_FLOW.filteredEntries(this)', 'App quest filtering wrapper should delegate to the helper');
 });
 
 test('Quest panel helper module is registered before app code', () => {
@@ -3414,7 +3437,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

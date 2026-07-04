@@ -2496,8 +2496,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const moduleSystem = {
     DB_NAME: 'YAW_Modules',
     LEGACY_DB_NAME: 'FFFme_Modules',
-    executeHook(event, payload) {
-      hooks.push({ event, payload });
+    executeHook(event, ...args) {
+      hooks.push({ event, payload: args[0], args });
       return Promise.resolve();
     }
   };
@@ -7110,6 +7110,55 @@ test('Sparse map helpers separate generated base tiles from durable deltas', () 
   assertEqual(effective.biome, base.biome, 'Effective tile should inherit generated biome when biome is unchanged');
   assertEqual(effective.elevation, base.elevation, 'Effective tile should retain generated field metadata');
   assertEqual(effective.creatures[0].name, 'Mouse', 'Effective tile should restore delta entities');
+});
+
+test('Map generation hooks run on first exploration and persist safe tile metadata', () => {
+  const { App, hooks, moduleSystem } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-hook', seed: 'hook-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.superPatchMap = new Map();
+  moduleSystem.executeHook = (event, ...args) => {
+    hooks.push({ event, payload: args[0], args });
+    if (event === 'onMapGenerate') {
+      const [tile, x, y, app] = args;
+      assertEqual(x, 5, 'Map generate hook should receive the explored x coordinate');
+      assertEqual(y, -3, 'Map generate hook should receive the explored y coordinate');
+      assertEqual(app, App, 'Map generate hook should receive the live app reference');
+      tile.tag = 'CrystalCave';
+      tile.name = 'Shimmering Cavern';
+      tile.color = '#9b59b6';
+      tile.description = 'Hooked description.';
+    }
+    return Promise.resolve();
+  };
+
+  App.getBaseTile(6, -3);
+  assertEqual(hooks.length, 0, 'Base tile previews should not emit map generation hooks');
+
+  const tile = App.exploreTile(5, -3);
+  const hook = hooks.find(entry => entry.event === 'onMapGenerate');
+  assert(hook, 'First tile exploration should emit onMapGenerate');
+  assertEqual(hook.args[0], tile, 'Map generate hook should receive the live mutable tile');
+  assertEqual(tile.tag, 'CrystalCave', 'Map generate hook should be able to set safe tile tags');
+  assertEqual(tile.name, 'Shimmering Cavern', 'Map generate hook should be able to set safe tile names');
+  assertEqual(tile.color, '#9b59b6', 'Map generate hook should be able to set safe tile colors');
+
+  const delta = App.getTileDelta(5, -3);
+  assert(delta, 'Hook-mutated tile should create a durable tile delta');
+  assertEqual(delta.tag, 'CrystalCave', 'Tile delta should preserve hook-provided tag metadata');
+  assertEqual(delta.name, 'Shimmering Cavern', 'Tile delta should preserve hook-provided name metadata');
+  assertEqual(delta.color, '#9b59b6', 'Tile delta should preserve hook-provided color metadata');
+  assertEqual(delta.description, 'Hooked description.', 'Tile delta should preserve hook-mutated core fields');
+
+  const restored = App.applyTileDelta(App.getBaseTile(5, -3), delta);
+  assertEqual(restored.tag, 'CrystalCave', 'Restored effective tile should include hook-provided tag metadata');
+  assertEqual(restored.name, 'Shimmering Cavern', 'Restored effective tile should include hook-provided name metadata');
+  assertEqual(restored.color, '#9b59b6', 'Restored effective tile should include hook-provided color metadata');
+  hooks.length = 0;
+  App.exploreTile(5, -3);
+  assertEqual(hooks.length, 0, 'Revisiting an explored tile should not re-run map generation hooks');
 });
 
 test('Deterministic world generation paths do not use Math.random', () => {

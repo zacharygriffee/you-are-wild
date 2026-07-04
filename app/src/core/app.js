@@ -2169,6 +2169,12 @@
                 this._emitModuleHook('onCombatAction', { action, actor, target, result });
             },
 
+            _emitMapGenerate(tile, x, y) {
+                if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
+                    MODULE_SYSTEM.executeHook('onMapGenerate', tile, x, y, this).catch(() => {});
+                }
+            },
+
             _awardCombatXP(amount) {
                 this.combatState.xpEarned = (this.combatState.xpEarned || 0) + amount;
             },
@@ -2280,7 +2286,7 @@
                 if (!tile) return null;
                 const base = this.getBaseTile(tile.x, tile.y);
                 const delta = {};
-                const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior'];
+                const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'tag', 'name', 'color'];
                 for (const field of fields) {
                     const value = tile[field];
                     const baseValue = base[field];
@@ -2379,6 +2385,7 @@
                         const table = biome.structureTable || [];
                         tile.structure = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure-kind', x, y, table) || null;
                     }
+                    this._emitMapGenerate(tile, x, y);
                     this.currentBiome = tile.biome;
                     this.persistTileDelta(x, y, tile);
                 }

@@ -338,6 +338,7 @@
             _contextActionKeys() {
                 const keys = [];
                 if ((this.quests || []).length > 0) keys.push('quests');
+                if (this._canSearchHere()) keys.unshift('search');
                 if (this.inInterior) keys.unshift('exit');
                 else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
                 if (this._canRestHere()) keys.unshift('rest');
@@ -346,6 +347,7 @@
             _contextActionButton(key) {
                 const handlers = {
                     rest: 'App.rest()',
+                    search: 'App.search()',
                     inventory: 'App.showInventory()',
                     quests: 'App.showQuestLog()',
                     stats: 'App.showCharacterStats()',
@@ -2274,7 +2276,7 @@
                 if (!tile) return null;
                 const base = this.getBaseTile(tile.x, tile.y);
                 const delta = {};
-                const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'interior'];
+                const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior'];
                 for (const field of fields) {
                     const value = tile[field];
                     const baseValue = base[field];
@@ -8713,7 +8715,19 @@
                 const roll = this._worldRoll('search-roll', tileX, tileY, searchDay, searchHour);
                 const findChance = Math.min(0.85, 0.3 + (this._hasEquipmentEffect(this.player, 'luckyFind') ? 0.15 : 0) + (this._hasPerkEffect('predatorScent') ? 0.1 : 0) + this._partyRoleEffect('gatherer', 0.1, 0.25));
                 let result = '';
-                if (roll < findChance) {
+                const resourceSite = tile?.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched;
+                if (resourceSite && this.inventory.length >= this.MAX_INVENTORY) {
+                    result = this._label('inventory.full', 'Inventory is full.');
+                } else if (resourceSite) {
+                    const items = Object.keys(this.ITEMS);
+                    const iname = this._pickWorldList(items, 'resource-site-search-item-name', tileX, tileY, searchDay) || items[0] || 'Old Coin';
+                    const iid = `resource_${tileX}_${tileY}_${searchDay}`;
+                    this.inventory.push({ id: iid, name: iname });
+                    tile.resourceSearched = true;
+                    this.persistTileDelta(tileX, tileY, tile);
+                    this._updateQuestProgress('find', { item: iname, name: iname });
+                    result = 'You found a ' + iname + '!';
+                } else if (roll < findChance) {
                     const struct = tile?.structure ? this.STRUCTURES[tile.structure] : null;
                     const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
                     const items = Object.keys(this.ITEMS);
@@ -8731,7 +8745,14 @@
                 this.log.push({ text: result, type: 'discovery' });
                 this._addTileEvent(result, 'discovery');
                 this.renderLog();
+                this.renderExplorationActions();
                 this.autoSave();
+            },
+            _canSearchHere(tile = this._currentExplorationTile()) {
+                if (!tile) return false;
+                if (tile.overlays?.poi?.category === 'resourceSite' && !tile.resourceSearched) return true;
+                const struct = tile.structure ? this.STRUCTURES[tile.structure] : null;
+                return Boolean(struct?.lootTable && !tile.structureLooted);
             },
             rest() {
                 if (!this._canRestHere()) {

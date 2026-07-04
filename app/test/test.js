@@ -4048,6 +4048,41 @@ test('Authored loot tables can place equipment on corpses and structures', () =>
   assertEqual(tile.structureLooted, true, 'Structure loot should be marked consumed after search');
 });
 
+test('Resource-site search is deterministic visible and one-time', () => {
+  const lowRandom = loadAppForCombat(() => 0);
+  const highRandom = loadAppForCombat(() => 0.99);
+  for (const ctx of [lowRandom, highRandom]) {
+    const { App, elements } = ctx;
+    App.worldMeta = { worldId: 'world-resource-loop', seed: 'resource-loop-seed', generatorVersion: 2, mapModsHash: 'core' };
+    App.location = { x: 2, y: 0 };
+    App.player = makeUnit('You');
+    App.party = [App.player];
+    App.inventory = [];
+    App.worldMap = new Map([['2,0', { ...App.getBaseTile(2, 0), x: 2, y: 0, explored: true, biome: 'grove', description: 'A berry thicket.', creatures: [], items: [], overlays: { poi: { category: 'resourceSite' } } }]]);
+    App.exploredTiles = new Set(['2,0']);
+    App.renderExplorationActions();
+    assertContains(elements.get('scene-actions').innerHTML, 'App.search()', 'Resource-site center context should expose Search');
+    App.search();
+    assertEqual(App.inventory.length, 1, 'Resource-site search should grant exactly one item');
+    assertEqual(App.getTile(2, 0).resourceSearched, true, 'Resource-site search should mark the tile consumed');
+    assertEqual(App.getTileDelta(2, 0).resourceSearched, true, 'Resource-site search state should persist as a tile delta');
+    assertNotContains(elements.get('scene-actions').innerHTML, 'App.search()', 'Consumed resource sites should stop exposing Search');
+  }
+  assertEqual(lowRandom.App.inventory[0].name, highRandom.App.inventory[0].name, 'Resource-site search item should not depend on ambient Math.random');
+  assertNotContains(lowRandom.App.search.toString(), 'Math.random', 'Resource-site search should not use raw Math.random');
+
+  const full = loadAppForCombat(() => 0);
+  full.App.location = { x: 3, y: 0 };
+  full.App.player = makeUnit('You');
+  full.App.party = [full.App.player];
+  full.App.inventory = Array.from({ length: full.App.MAX_INVENTORY }, (_, index) => ({ id: `full-${index}`, name: 'Old Coin' }));
+  full.App.worldMap = new Map([['3,0', { ...full.App.getBaseTile(3, 0), x: 3, y: 0, explored: true, biome: 'grove', description: 'A berry thicket.', creatures: [], items: [], overlays: { poi: { category: 'resourceSite' } } }]]);
+  full.App.search();
+  assertEqual(full.App.inventory.length, full.App.MAX_INVENTORY, 'Full inventory should prevent resource-site item overflow');
+  assertEqual(full.App.getTile(3, 0).resourceSearched, undefined, 'Blocked resource-site search should not consume the tile');
+  assertContains(full.App.log[full.App.log.length - 1].text, 'Inventory is full.', 'Blocked resource-site search should explain the inventory limit');
+});
+
 test('Gatherer party role improves search find chance', () => {
   const { App } = loadAppForCombat(() => 0.35);
   const player = makeUnit('You');
@@ -4288,7 +4323,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   App.renderCreatures();
   const actionsHtml = elements.get('scene-actions').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Main context should not duplicate panel creature interactions');
-  assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden until it has stronger mechanics');
+  assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden when the current tile has no searchable resource');
   assertNotContains(actionsHtml, 'App.showInventory()', 'Inventory should stay out of center context actions');
   assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','friendly-1')", 'Friendly card should expose target marking');

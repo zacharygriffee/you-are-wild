@@ -6457,7 +6457,8 @@ test('Structures expose enter action and create persistent interiors', () => {
   App.updateLanguage('es');
   App.enterStructure();
   assertEqual(App.log[App.log.length - 1].text, 'No hay una estructura para entrar aqui.', 'Missing-structure feedback should localize');
-  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
+  App.inventory = [{ id: 'pack-coin', name: 'Old Coin' }];
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }], structure: 'cabin', structureSpawned: true }]]);
   const context = App._centerTileContext();
   assertContains(context.title, 'Cabin', `Structure center context should include structure title. Got ${context.title}`);
   assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
@@ -6469,9 +6470,34 @@ test('Structures expose enter action and create persistent interiors', () => {
   assertEqual(App.log[App.log.length - 1].text, 'Entraste en Cabin.', 'Enter structure feedback should localize');
   assertEqual(Object.keys(App.activeInterior.tiles).length, 25, 'Structure interior should be a persistent 5x5 map');
   assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
+  assertEqual(App.worldMap.get('0,0').items[0].name, 'Healing Herb', 'Entering a structure should preserve ground items instead of copying carried inventory');
   assertContains(App._contextActionKeys().join(','), 'exit', 'Interior center context should include exit action key');
   assertContains(App._renderContextActions(false), 'App.exitStructure()', 'Interior center context should generate exit action');
   assertNotContains(App._renderContextActions(false), 'App.enterStructure()', 'Interior center context should not keep stale enter action');
+});
+
+test('Moving between tiles does not copy carried inventory into ground items', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'pack-coin', name: 'Old Coin' }];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.mode = App.GAME_MODE.NORMAL;
+  App.worldMap = new Map([
+    ['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }] }],
+    ['1,0', { x: 1, y: 0, biome: 'forest', explored: true, description: 'A saved clearing.', hasLandmark: false, creatures: [], items: [] }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+
+  App.move(1, 0);
+
+  const originItems = App.worldMap.get('0,0').items || [];
+  assertEqual(originItems.length, 1, 'Leaving a tile should preserve its existing ground item count');
+  assertEqual(originItems[0].name, 'Healing Herb', 'Leaving a tile should keep ground items separate from carried inventory');
+  assertEqual(App.inventory[0].name, 'Old Coin', 'Moving should leave carried inventory on the player');
+  assertEqual(App.getTileDelta(0, 0).items[0].name, 'Healing Herb', 'Persisted tile delta should keep ground items separate from carried inventory');
 });
 
 test('Interior movement persists room creatures and exits to overworld', () => {

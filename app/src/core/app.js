@@ -2410,7 +2410,6 @@
                     return;
                 }
                 tile.creatures = this._tileCreatures(this.creatures);
-                tile.items = this.inventory.slice();
                 this.activeInterior = this._ensureStructureInterior(tile);
                 this.persistTileDelta(tile.x, tile.y, tile);
                 this.clearTileBoundExplorationTargets();
@@ -2523,7 +2522,6 @@
                 const oldTile = this.worldMap.get(oldKey);
                 if (oldTile) {
                     oldTile.creatures = this._tileCreatures(this.creatures);
-                    oldTile.items = this.inventory.slice();
                     this.persistTileDelta(oldTile.x, oldTile.y, oldTile);
                 }
                 this.clearTileBoundExplorationTargets();

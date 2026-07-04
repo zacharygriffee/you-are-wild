@@ -10581,6 +10581,41 @@ test('Party panel details preserve center context actions', () => {
   assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
 });
 
+test('Party panel details repair leaked detail markup from center tile', () => {
+  const { App, document } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.combatState.active = false;
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'Stable tile context' }]]);
+  document.getElementById('scene-title').textContent = 'You';
+  document.getElementById('scene-description').innerHTML = '<div class="party-stats-view character-stats-view">Leaked stats</div>';
+
+  App.showCharacterStats();
+
+  assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
+  assertNotContains(document.getElementById('scene-description').innerHTML, 'party-stats-view', 'Stale stats markup should be cleared from the center tile');
+  assertContains(document.getElementById('scene-description').textContent, 'Stable tile context', 'Center tile should restore the current tile context');
+});
+
+test('Inventory detail repair clears stale inventory markup from center tile', () => {
+  const { App, document } = loadAppForCombat();
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
+  App.combatState.active = false;
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'Known road fork' }]]);
+  document.getElementById('scene-description').innerHTML = '<div class="inventory-panel-detail">Leaked inventory</div>';
+
+  App.showInventory();
+
+  assertContains(document.getElementById('party-content').innerHTML, 'inventory-panel-detail', 'Inventory should render in the party panel');
+  assertContains(document.getElementById('party-content').innerHTML, 'Focus Ring', 'Inventory item should remain visible in the party panel');
+  assertNotContains(document.getElementById('scene-description').innerHTML, 'inventory-panel-detail', 'Stale inventory markup should be cleared from the center tile');
+  assertContains(document.getElementById('scene-description').textContent, 'Known road fork', 'Center tile should restore current tile context after inventory opens');
+});
+
 test('Closing party-panel stats during combat restores party cards without changing center', () => {
   const { App, elements, document } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });

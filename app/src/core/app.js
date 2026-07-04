@@ -6692,7 +6692,7 @@
                 const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
                 const title = this._escapeHtml(this._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: this.inventory.length, max: this.MAX_INVENTORY }));
                 const equippedLabel = this._escapeHtml(this._label('inventory.equippedSection', 'Equipped'));
-                let html = `<h3>${title}</h3>`;
+                let html = `<div class="inventory-panel-detail"><h3>${title}</h3>`;
                 html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">${equippedLabel}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
                 Object.entries(this.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
                     const equipped = this.player?.equipment?.[slot];
@@ -6704,14 +6704,14 @@
                 });
                 html += `</div></div>`;
                 if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.empty', 'Empty.'))}</p>${backButton}`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.empty', 'Empty.'))}</p>${backButton}</div>`;
                     this.showPartyPanelDetail(title, html);
                     return;
                 }
                 html += this._itemListOptions('Inventory');
                 const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
                 if (entries.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>${backButton}`;
+                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>${backButton}</div>`;
                     this.showPartyPanelDetail(title, html);
                     return;
                 }
@@ -6734,7 +6734,7 @@
                     if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">${equipLabel}</button>`;
                     html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
                 });
-                html += `</div>${backButton}`;
+                html += `</div>${backButton}</div>`;
                 this.showPartyPanelDetail(title, html);
             },
             setInventoryFilter(filter) {
@@ -6793,6 +6793,20 @@
                     if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
                     try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
                 }
+                this._restoreCenterContextIfPanelDetailLeaked();
+            },
+            _centerHasPanelDetailLeak() {
+                const desc = document.getElementById('scene-description');
+                const html = desc?.innerHTML || '';
+                return html.includes('party-stats-view') ||
+                    html.includes('character-stats-view') ||
+                    html.includes('inventory-panel-detail');
+            },
+            _restoreCenterContextIfPanelDetailLeaked() {
+                if (this.combatState?.active || !this._centerHasPanelDetailLeak()) return false;
+                const context = this._centerTileContext();
+                this.updateScene(context.title, context.description, false);
+                return true;
             },
             closePanelDetails(panel = 'party') {
                 if (panel === 'party') this.renderParty();
@@ -7308,12 +7322,18 @@
 		                const titleEl = document.getElementById('scene-title');
 	                const descEl = document.getElementById('scene-description');
 	                if (titleEl) titleEl.textContent = title || '';
-	                if (descEl) descEl.textContent = description || '';
+	                if (descEl) {
+	                    descEl.innerHTML = '';
+	                    descEl.textContent = description || '';
+	                }
 	                const mobileTitle = document.getElementById('mobile-scene-title');
 	                const mobileDesc = document.getElementById('mobile-scene-description');
 	                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
 	                if (mobileTitle) mobileTitle.textContent = title || '';
-	                if (mobileDesc) mobileDesc.textContent = description || '';
+	                if (mobileDesc) {
+	                    mobileDesc.innerHTML = '';
+	                    mobileDesc.textContent = description || '';
+	                }
 	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
                     this.renderTileEvents();
 	                const actions = document.getElementById('scene-actions');

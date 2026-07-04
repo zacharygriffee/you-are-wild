@@ -455,6 +455,73 @@ async function runSelectionSemanticsFlow(page) {
   assert.strictEqual(state.hasAdventureMark, false, 'Combat target picking should not render adventure Mark controls');
 }
 
+async function runCenterResourceSearchFlow(page) {
+  await setupAdventure(page);
+  await page.evaluate(() => {
+    App.worldMeta = { worldId: 'browser-resource-world', seed: 'browser-resource-seed', generatorVersion: 2, mapModsHash: 'core' };
+    App.location = { x: 4, y: 0 };
+    App.currentBiome = 'grove';
+    App.inventory = [];
+    App.timeHour = 8;
+    App.dayCount = 1;
+    const tile = {
+      ...App.getBaseTile(4, 0),
+      x: 4,
+      y: 0,
+      explored: true,
+      biome: 'grove',
+      description: 'A marked berry thicket.',
+      creatures: [],
+      items: [],
+      overlays: { poi: { category: 'resourceSite' } }
+    };
+    App.worldMap = new Map([['4,0', tile]]);
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set(['4,0']);
+    App.showExplorationActions();
+    App.renderDesktopPlaySurface();
+  });
+
+  const search = page.locator(`#scene-actions button[onclick*="App.search()"]`).first();
+  await assert.doesNotReject(() => search.waitFor({ state: 'visible', timeout: 1000 }), 'Search should render on a searchable resource-site center tile');
+
+  let state = await page.evaluate(() => ({
+    contextTitle: document.querySelector('#scene-title')?.textContent || '',
+    contextDescription: document.querySelector('#scene-description')?.textContent || '',
+    desktopSearchVisible: Boolean(document.querySelector('#scene-actions button[onclick*="App.search()"]')),
+    mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(state.contextTitle.includes('Grove') || state.contextTitle.includes('Road') || state.contextTitle.includes('Tile'), 'Center context should continue to own the current tile title');
+  assert(state.contextDescription.includes('berry thicket'), 'Center context should describe the searchable resource tile');
+  assert.strictEqual(state.desktopSearchVisible, true, 'Desktop center actions should expose Search before resource-site consumption');
+  assert.strictEqual(state.mobileSearchVisible, true, 'Mobile center actions should expose Search before resource-site consumption');
+  assert.strictEqual(state.centerHasActorControls, false, 'Resource-site center context should not expose actor controls');
+
+  await search.click();
+
+  state = await page.evaluate(() => ({
+    inventoryCount: App.inventory.length,
+    inventoryName: App.inventory[0]?.name || '',
+    tileSearched: App.getTile(4, 0)?.resourceSearched === true,
+    deltaSearched: App.getTileDelta(4, 0)?.resourceSearched === true,
+    desktopSearchVisible: Boolean(document.querySelector('#scene-actions button[onclick*="App.search()"]')),
+    mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
+    latestLog: App.log[App.log.length - 1]?.text || '',
+    latestEvent: App.tileEvents[App.tileEvents.length - 1]?.text || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.inventoryCount, 1, 'Clicking Search should grant one resource-site item through the browser UI');
+  assert(state.inventoryName, 'Resource-site Search should name the found item');
+  assert.strictEqual(state.tileSearched, true, 'Clicking Search should mark the resource-site tile consumed');
+  assert.strictEqual(state.deltaSearched, true, 'Clicking Search should persist resource-site consumption as a tile delta');
+  assert.strictEqual(state.desktopSearchVisible, false, 'Consumed resource sites should remove desktop Search');
+  assert.strictEqual(state.mobileSearchVisible, false, 'Consumed resource sites should remove mobile Search');
+  assert(state.latestLog.includes('You found a '), 'Resource-site Search should report the found item in the log');
+  assert(state.latestEvent.includes('You found a '), 'Resource-site Search should report the found item in the tile event feed');
+  assert.strictEqual(state.centerHasActorControls, false, 'Resource-site Search should keep center free of actor controls after resolving');
+}
+
 async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
@@ -626,6 +693,7 @@ async function runClearAllBrowserStorageFlow(page) {
     await runReachabilityMatrix(page);
     await runAdventureMarkedTargetFlow(page);
     await runSelectionSemanticsFlow(page);
+    await runCenterResourceSearchFlow(page);
     await runMobileSelectionAndCombatFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();

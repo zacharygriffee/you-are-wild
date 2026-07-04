@@ -8182,109 +8182,19 @@
                 });
             },
             _desktopPlayCellHtml(visual, label) {
-                const escapedLabel = this._escapeHtml(label);
-                return `<span class="desktop-play-cell-icon" aria-hidden="true">${this._escapeHtml(visual.icon)}</span><span class="desktop-play-cell-label">${escapedLabel}</span>`;
+                return YAW_DESKTOP_PLAY_SURFACE.cellHtml(this, visual, label);
             },
             _directionLabel(dx, dy) {
-                const directions = {
-                    '-1,-1': this._label('direction.northwest', 'Northwest'),
-                    '0,-1': this._label('direction.north', 'North'),
-                    '1,-1': this._label('direction.northeast', 'Northeast'),
-                    '-1,0': this._label('direction.west', 'West'),
-                    '1,0': this._label('direction.east', 'East'),
-                    '-1,1': this._label('direction.southwest', 'Southwest'),
-                    '0,1': this._label('direction.south', 'South'),
-                    '1,1': this._label('direction.southeast', 'Southeast')
-                };
-                return directions[`${dx},${dy}`] || '';
+                return YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy);
             },
             _updateDesktopCenterTile(visual, label) {
-                const el = document.getElementById('desktop-play-cell-center');
-                if (!el) return;
-                el.className = `desktop-play-cell center ${visual?.classes || ''}`;
-                if (typeof el.setAttribute === 'function') {
-                    el.setAttribute('title', this._escapeHtml(label));
-                    el.setAttribute('aria-label', this._escapeHtml(label));
-                    el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
-                    el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
-                    el.setAttribute('data-map-kind', visual?.kind || 'current');
-                    if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
-                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
-                }
+                return YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label);
             },
             _updateDesktopPlayCell(el, visual, label, dx, dy, moveable = true) {
-                if (!el) return;
-                const classes = `desktop-play-cell${moveable ? ' moveable' : ''} ${visual.classes || ''}`;
-                const escapedLabel = this._escapeHtml(label);
-                el.className = classes;
-                el.innerHTML = this._desktopPlayCellHtml(visual, label);
-                if (typeof el.setAttribute === 'function') {
-                    el.setAttribute('title', escapedLabel);
-                    el.setAttribute('aria-label', escapedLabel);
-                    el.setAttribute('role', 'button');
-                    el.setAttribute('tabindex', moveable ? '0' : '-1');
-                    el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
-                    el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
-                    el.setAttribute('data-map-kind', visual?.kind || 'unknown');
-                    if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
-                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
-                    if (moveable) el.setAttribute('onclick', `App.move(${dx},${dy})`);
-                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('onclick');
-                    if (moveable) el.setAttribute('onkeydown', `if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}`);
-                    else if (typeof el.removeAttribute === 'function') el.removeAttribute('onkeydown');
-                }
-                el.onclick = moveable ? () => this.move(dx, dy) : null;
+                return YAW_DESKTOP_PLAY_SURFACE.updateCell(this, el, visual, label, dx, dy, moveable);
             },
             renderDesktopPlaySurface() {
-                const cells = [
-                    { id: 'desktop-play-cell-nw', dx: -1, dy: -1 },
-                    { id: 'desktop-play-cell-n', dx: 0, dy: -1 },
-                    { id: 'desktop-play-cell-ne', dx: 1, dy: -1 },
-                    { id: 'desktop-play-cell-w', dx: -1, dy: 0 },
-                    { id: 'desktop-play-cell-e', dx: 1, dy: 0 },
-                    { id: 'desktop-play-cell-sw', dx: -1, dy: 1 },
-                    { id: 'desktop-play-cell-s', dx: 0, dy: 1 },
-                    { id: 'desktop-play-cell-se', dx: 1, dy: 1 }
-                ];
-                if (this.inInterior && this.activeInterior) {
-                    const cx = this.interiorLocation.x;
-                    const cy = this.interiorLocation.y;
-                    cells.forEach(cell => {
-                        const el = document.getElementById(cell.id);
-                        if (!el) return;
-                        const tx = cx + cell.dx;
-                        const ty = cy + cell.dy;
-                        const room = this.activeInterior.tiles[`${tx},${ty}`];
-                        const visual = this._interiorTileVisual(room);
-                        const direction = this._directionLabel(cell.dx, cell.dy);
-                        const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-                        this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, Boolean(room));
-                    });
-                    const currentRoom = this.activeInterior.tiles[`${cx},${cy}`];
-                    const currentVisual = this._interiorTileVisual(currentRoom);
-                    this._updateDesktopCenterTile(currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
-                    return;
-                }
-                const cx = this.location.x;
-                const cy = this.location.y;
-                cells.forEach(cell => {
-                    const el = document.getElementById(cell.id);
-                    if (!el) return;
-                    const tx = cx + cell.dx;
-                    const ty = cy + cell.dy;
-                    const tile = this.getTile(tx, ty);
-                    const visual = this._mapTileVisual(tile, {
-                        neighborResolver: (nx, ny) => this.getTile(nx, ny)
-                    });
-                    const direction = this._directionLabel(cell.dx, cell.dy);
-                    const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-                    this._updateDesktopPlayCell(el, visual, label, cell.dx, cell.dy, true);
-                });
-                const currentTile = this.getTile(cx, cy);
-                const currentVisual = this._mapTileVisual(currentTile, {
-                    neighborResolver: (nx, ny) => this.getTile(nx, ny)
-                });
-                this._updateDesktopCenterTile(currentVisual, `${currentVisual.label} (${cx}, ${cy})`);
+                return YAW_DESKTOP_PLAY_SURFACE.render(this);
             },
 
             renderMap() {

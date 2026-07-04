@@ -21,6 +21,7 @@ const SCRIPT_ORDER = [
   'src/core/asset-manifest.js',
   'src/core/storage-system.js',
   'src/core/large-map.js',
+  'src/core/desktop-play-surface.js',
   'src/core/unit-selection.js',
   'src/core/combat-scene.js',
   'src/core/app.js',

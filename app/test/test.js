@@ -124,6 +124,7 @@ const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
+const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
@@ -1355,6 +1356,15 @@ test('Large map helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_LARGE_MAP.render(this)', 'App large map renderer should delegate to the helper');
   assertContains(appContent, 'YAW_LARGE_MAP.resolveTile(this, x, y)', 'App large map tile resolver should delegate to the helper');
   assertContains(appContent, 'YAW_LARGE_MAP.setZoom(this, delta)', 'App large map zoom should delegate to the helper');
+});
+
+test('Desktop play surface helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/desktop-play-surface.js'", 'Desktop play surface helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/desktop-play-surface.js'") < buildContent.indexOf("'src/core/app.js'"), 'Desktop play surface helper should load before app.js');
+  assertContains(desktopPlaySurfaceContent, 'const YAW_DESKTOP_PLAY_SURFACE = {', 'Desktop play surface helper should expose the traversal surface service');
+  assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.render(this)', 'App desktop play renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label)', 'App desktop center updater should delegate to the helper');
+  assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
 });
 
 test('App-emitted module hooks are declared by the module registry', () => {
@@ -2642,7 +2652,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

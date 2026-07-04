@@ -7361,27 +7361,13 @@
 			                }
 			            },
             renderCenterTileActions() {
-                if (this.combatState?.active) return;
-                const actions = document.getElementById('scene-actions');
-                if (actions && !actions.dataset?.richHidden) {
-                    actions.style.display = '';
-                    actions.classList?.add('center-tile-actions');
-                    actions.innerHTML = this._renderContextActions(false);
-                }
-                const mobileExplore = document.getElementById('mobile-explore-actions');
-                if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
+                return YAW_CENTER_CONTEXT.renderCenterActions(this);
             },
 			            renderExplorationActions() {
 		                this.renderCenterTileActions();
 			            },
             showExplorationActions() {
-                const context = this._centerTileContext();
-                this.updateScene(context.title, context.description, false);
-                const titleEl = document.getElementById('scene-title');
-                const descEl = document.getElementById('scene-description');
-                if (titleEl && !titleEl.textContent) titleEl.textContent = context.title || '';
-                if (descEl && !descEl.textContent && !descEl.innerHTML) descEl.textContent = context.description || '';
-                this.renderCenterTileActions();
+                return YAW_CENTER_CONTEXT.showExplorationActions(this);
             },
             closeSceneDetails() {
                 try {

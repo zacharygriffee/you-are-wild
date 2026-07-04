@@ -38,6 +38,28 @@ const YAW_CENTER_CONTEXT = {
         return allKeys.map(key => this.actionButton(app, key)).join('');
     },
 
+    renderCenterActions(app) {
+        if (app.combatState?.active) return;
+        const actions = document.getElementById('scene-actions');
+        if (actions && !actions.dataset?.richHidden) {
+            actions.style.display = '';
+            actions.classList?.add('center-tile-actions');
+            actions.innerHTML = this.renderActions(app, false);
+        }
+        const mobileExplore = document.getElementById('mobile-explore-actions');
+        if (mobileExplore) mobileExplore.innerHTML = this.renderActions(app, true);
+    },
+
+    showExplorationActions(app) {
+        const context = this.context(app);
+        app.updateScene(context.title, context.description, false);
+        const titleEl = document.getElementById('scene-title');
+        const descEl = document.getElementById('scene-description');
+        if (titleEl && !titleEl.textContent) titleEl.textContent = context.title || '';
+        if (descEl && !descEl.textContent && !descEl.innerHTML) descEl.textContent = context.description || '';
+        this.renderCenterActions(app);
+    },
+
     context(app) {
         if (app.inInterior && app.activeInterior) {
             const room = app._currentInteriorTile();

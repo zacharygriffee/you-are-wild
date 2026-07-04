@@ -1650,9 +1650,13 @@ test('Center context helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
+  assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
+  assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.actionKeys(this)', 'App center context action keys should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
 test('App-emitted module hooks are declared by the module registry', () => {

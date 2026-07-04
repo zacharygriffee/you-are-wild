@@ -1101,18 +1101,16 @@
             },
 
             _isCorpse(unit) {
-                return unit?.disposition === this.DISPOSITION.CORPSE;
+                return YAW_UNIT_LIFECYCLE.isCorpse(this, unit);
             },
             _isLivingCreature(unit) {
-                return Boolean(unit && !this._isCorpse(unit) && unit.CPun > 0);
+                return YAW_UNIT_LIFECYCLE.isLiving(this, unit);
             },
             _livingEnemies(list = this.creatures) {
-                return list.filter(c => c.disposition === this.DISPOSITION.ENEMY && this._isLivingCreature(c));
+                return YAW_UNIT_LIFECYCLE.livingEnemies(this, list);
             },
             _isCombatQueueUnitValid(unit) {
-                if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat || this._isCorpse(unit)) return false;
-                if ((this.party || []).includes(unit)) return true;
-                return (this.creatures || []).includes(unit) && unit.disposition === this.DISPOSITION.ENEMY;
+                return YAW_UNIT_LIFECYCLE.isCombatQueueUnitValid(this, unit);
             },
             _sanitizeCombatState(options = {}) {
                 if (!this.combatState?.active) return false;
@@ -1144,15 +1142,13 @@
                 return true;
             },
             _tileCreatures(list = []) {
-                return (list || []).filter(c => this._isCorpse(c) || c.CPun > 0);
+                return YAW_UNIT_LIFECYCLE.tileCreatures(this, list);
             },
             _unitSaveRef(unit) {
-                return unit ? String(unit.id || unit.name || '') : '';
+                return YAW_UNIT_LIFECYCLE.saveRef(unit);
             },
             _findUnitBySaveRef(ref) {
-                const key = String(ref || '');
-                if (!key) return null;
-                return [...(this.party || []), ...(this.creatures || [])].find(unit => this._unitSaveRef(unit) === key || String(unit.name || '') === key) || null;
+                return YAW_UNIT_LIFECYCLE.findBySaveRef(this, ref);
             },
             _containerCapacity(unit, container = 'stomach') {
                 const base = Math.max(1, (unit?.size || 4) + (unit?.appetite || 0));

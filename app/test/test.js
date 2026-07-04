@@ -138,6 +138,7 @@ const uiTextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'ui-text.js'), 
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const actionRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-rules.js'), 'utf8');
 const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species-system.js'), 'utf8');
+const unitLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-lifecycle.js'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
@@ -1679,6 +1680,21 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ACTION_RULES.combatActionRating(this, entry, actor, target, purpose)', 'App combat rating wrapper should delegate to action rules');
   assertContains(appContent, 'YAW_ACTION_RULES.explorationActionRating(this, entry, actor, target, purpose)', 'App exploration rating wrapper should delegate to action rules');
   assertContains(appContent, 'YAW_ACTION_RULES.targetDodgeRoll(this, actor, target, action)', 'App target dodge wrapper should delegate to action rules');
+});
+
+test('Unit lifecycle helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/unit-lifecycle.js'", 'Unit lifecycle helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/species-system.js'") < buildContent.indexOf("'src/core/unit-lifecycle.js'"), 'Unit lifecycle should load after species system');
+  assert(buildContent.indexOf("'src/core/unit-lifecycle.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit lifecycle helper should load before app.js');
+  assertContains(unitLifecycleContent, 'const YAW_UNIT_LIFECYCLE = {', 'Unit lifecycle helper should expose the lifecycle service');
+  assertContains(unitLifecycleContent, 'isCorpse(app, unit)', 'Unit lifecycle helper should own remains predicates');
+  assertContains(unitLifecycleContent, 'isLiving(app, unit)', 'Unit lifecycle helper should own living predicates');
+  assertContains(unitLifecycleContent, 'isCombatQueueUnitValid(app, unit)', 'Unit lifecycle helper should own combat queue validity predicates');
+  assertContains(unitLifecycleContent, 'tileCreatures(app, list = [])', 'Unit lifecycle helper should own active tile creature filtering');
+  assertContains(unitLifecycleContent, 'findBySaveRef(app, ref)', 'Unit lifecycle helper should own save reference lookup');
+  assertContains(appContent, 'YAW_UNIT_LIFECYCLE.isCorpse(this, unit)', 'App corpse wrapper should delegate to unit lifecycle');
+  assertContains(appContent, 'YAW_UNIT_LIFECYCLE.isCombatQueueUnitValid(this, unit)', 'App combat queue validity wrapper should delegate to unit lifecycle');
+  assertContains(appContent, 'YAW_UNIT_LIFECYCLE.findBySaveRef(this, ref)', 'App save ref lookup wrapper should delegate to unit lifecycle');
 });
 
 test('Time system helper module is registered before app code', () => {
@@ -3689,7 +3705,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

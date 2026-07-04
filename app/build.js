@@ -40,6 +40,7 @@ const SCRIPT_ORDER = [
   'src/core/action-ui.js',
   'src/core/action-rules.js',
   'src/core/species-system.js',
+  'src/core/unit-lifecycle.js',
   'src/core/time-system.js',
   'src/core/interaction-dispatch.js',
   'src/core/interaction-state.js',

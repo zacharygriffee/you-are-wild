@@ -37,41 +37,13 @@ const YAW_INTENT_MENU = {
             const title = key === 'close' ? label : `${label} ${targetName}`;
             const handler = action === 'close'
                 ? 'App.closeIntentMenu()'
-                : app.SUB_ACTIONS[action]
-                    ? `App.openIntentSubActionSheet('${type}',${targetArg},'${action}','${commandSource}')`
-                    : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
+                : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
             return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${app._escapeHtml(label)}</button>`;
         };
         let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
-        const selectedActors = app._getExplorationActors();
-        const canUsePrimaryActions = !isCorpse && (!isParty || (selectedActors.length > 0 && !(selectedActors.length === 1 && selectedActors.includes(target))));
-        const canUseBaselineSocial = isParty || app._hasBaselineInteractionEligibility(target, 'sensitiveSocial');
-        if (canUsePrimaryActions) {
-            html += actionButton('fight');
-            if (canUseBaselineSocial) {
-                html += actionButton('flirt');
-                html += actionButton('fuck');
-            }
-            html += actionButton('feast');
-            html += actionButton('feed');
-        }
-        if (isCorpse) {
-            html += actionButton('loot');
-            html += actionButton('scavenge');
-        }
+        html += actionButton('loot');
+        html += actionButton('scavenge');
         html += actionButton('inspect');
-        if (!isParty && app._canRecruit(app._getExplorationActor(), target)) html += actionButton('recruit', 'recruit', ' primary');
-        if (!isParty && target.quest) {
-            const key = target.questAccepted ? 'viewQuest' : 'acceptQuest';
-            const label = app._uiLabel(key);
-            const title = app._label(target.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', target.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName });
-            html += `<button class="action-btn primary" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'quest','${commandSource}')">📜 ${app._escapeHtml(label)}</button>`;
-        }
-        if (!isParty && target.disposition === app.DISPOSITION.MERCHANT) {
-            const label = app._uiLabel('trade');
-            const title = app._label('action.tradeWith', 'Trade with {name}', { name: targetName });
-            html += `<button class="action-btn primary" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="App.selectIntent('${type}',${targetArg},'trade','${commandSource}')">🪙 ${app._escapeHtml(label)}</button>`;
-        }
         html += actionButton('close', 'close');
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);

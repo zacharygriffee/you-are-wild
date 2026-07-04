@@ -11988,6 +11988,9 @@ test('Radial intent menu remains a corpse utility accelerator over shared dispat
   App.player = player;
   App.party = [player];
   App.creatures = [enemy, remains];
+  assertNotContains(intentMenuContent, 'canUsePrimaryActions', 'Intent menu source should not retain dead living-action popup branches');
+  assertNotContains(intentMenuContent, 'canUseBaselineSocial', 'Intent menu source should not retain dead eligibility checks for suppressed menus');
+  assertNotContains(intentMenuContent, "App.openIntentSubActionSheet('${type}',${targetArg},'${action}','${commandSource}')", 'Corpse utility popup should not be able to branch into primary sub-action sheets');
   assertEqual(App.showRadialIntentMenu('creature', 'enemy-radial'), false, 'Radial living creature menus should stay suppressed in favor of marked-target actions');
   assertNotContains(body.innerHTML, 'intent-menu-radial', 'Suppressed living radial menu should not render duplicate primary actions');
   App.showRadialIntentMenu('creature', 'corpse-radial');

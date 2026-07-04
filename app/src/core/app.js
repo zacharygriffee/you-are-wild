@@ -6107,107 +6107,27 @@
             },
 
             _questProgressText(quest) {
-                return (quest.objectives || []).map(objective => {
-                    const done = objective.complete ? '✓' : '•';
-                    const checkpoint = this._nextQuestCheckpoint(objective);
-                    const next = checkpoint ? ` → ${checkpoint.label} (${checkpoint.x}, ${checkpoint.y})` : '';
-                    return `${done} ${this._escapeHtml(objective.label || this._questObjectiveLabel(objective))} (${objective.progress || 0}/${objective.required || 1})${this._escapeHtml(next)}`;
-                }).join('<br>');
+                return YAW_QUEST_PANEL.progressText(this, quest);
             },
 
             _questRoutePreviewText(objective) {
-                if (!Array.isArray(objective?.checkpoints) || objective.checkpoints.length === 0) return '';
-                const next = this._nextQuestCheckpoint(objective);
-                return objective.checkpoints.map((checkpoint, index) => {
-                    const state = checkpoint.complete ? 'complete' : (next === checkpoint ? 'current' : 'pending');
-                    const marker = state === 'complete' ? '✓' : (state === 'current' ? '→' : '•');
-                    const label = checkpoint.label || this._label('quest.checkpoint', 'Checkpoint');
-                    const stateLabel = this._questCheckpointStateLabel(state);
-                    const bg = state === 'current' ? 'var(--bg-elevated)' : 'transparent';
-                    const border = state === 'current' ? 'var(--accent-primary)' : (state === 'complete' ? 'var(--accent-success)' : 'var(--border-subtle)');
-                    const color = state === 'complete' ? 'var(--accent-success)' : (state === 'current' ? 'var(--text-primary)' : 'var(--text-muted)');
-                    const guidance = state === 'current' ? this._questCheckpointGuidance(checkpoint) : '';
-                    const guidanceHtml = guidance ? `<span style="color:var(--accent-primary);font-size:10px;">${this._escapeHtml(guidance)}</span>` : '';
-                    const ariaGuidance = guidance ? `, ${guidance}` : '';
-                    const ariaLabel = this._label('quest.checkpointAria', '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', {
-                        state: stateLabel,
-                        index: index + 1,
-                        label,
-                        x: checkpoint.x,
-                        y: checkpoint.y,
-                        guidance: ariaGuidance
-                    });
-                    return `<div class="quest-route-step ${state}" aria-label="${this._escapeHtml(ariaLabel)}" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid ${border};border-radius:var(--radius-sm);background:${bg};color:${color};"><span aria-hidden="true">${marker}</span><span>${this._escapeHtml(label)}</span>${guidanceHtml}<span style="margin-left:auto;color:var(--text-muted);">(${checkpoint.x}, ${checkpoint.y})</span></div>`;
-                }).join('');
+                return YAW_QUEST_PANEL.routePreviewText(this, objective);
             },
 
             _questCheckpointStateLabel(state) {
-                if (state === 'complete') return this._label('quest.checkpoint.complete', 'Complete');
-                if (state === 'current') return this._label('quest.checkpoint.current', 'Current');
-                return this._label('quest.checkpoint.pending', 'Pending');
+                return YAW_QUEST_PANEL.checkpointStateLabel(this, state);
             },
 
             _questCheckpointGuidance(checkpoint) {
-                const dx = Number(checkpoint?.x ?? 0) - Number(this.location?.x ?? 0);
-                const dy = Number(checkpoint?.y ?? 0) - Number(this.location?.y ?? 0);
-                const distance = Math.abs(dx) + Math.abs(dy);
-                if (distance === 0) return this._label('quest.youAreHere', 'You are here');
-                const directions = [];
-                if (dy < 0) directions.push(this._label('quest.direction.north', '{count} north', { count: Math.abs(dy) }));
-                if (dy > 0) directions.push(this._label('quest.direction.south', '{count} south', { count: Math.abs(dy) }));
-                if (dx > 0) directions.push(this._label('quest.direction.east', '{count} east', { count: Math.abs(dx) }));
-                if (dx < 0) directions.push(this._label('quest.direction.west', '{count} west', { count: Math.abs(dx) }));
-                const terrain = this._questRouteTerrainHint(checkpoint);
-                const stepLabel = this._label(distance === 1 ? 'quest.step.singular' : 'quest.step.plural', distance === 1 ? 'step' : 'steps');
-                const guidance = this._label('quest.guidance', '{distance} {stepLabel} {directions}', {
-                    distance,
-                    stepLabel,
-                    directions: directions.join(', ')
-                });
-                return `${guidance}${terrain ? `; ${terrain}` : ''}`;
+                return YAW_QUEST_PANEL.checkpointGuidance(this, checkpoint);
             },
 
             _questRouteKnownTiles(checkpoint) {
-                const targetX = Number(checkpoint?.x ?? 0);
-                const targetY = Number(checkpoint?.y ?? 0);
-                let x = Number(this.location?.x ?? 0);
-                let y = Number(this.location?.y ?? 0);
-                const tiles = [];
-                const stepX = targetX === x ? 0 : (targetX > x ? 1 : -1);
-                while (x !== targetX) {
-                    x += stepX;
-                    const tile = this.worldMap?.get(this._tileKey(x, y));
-                    if (tile) tiles.push(tile);
-                }
-                const stepY = targetY === y ? 0 : (targetY > y ? 1 : -1);
-                while (y !== targetY) {
-                    y += stepY;
-                    const tile = this.worldMap?.get(this._tileKey(x, y));
-                    if (tile) tiles.push(tile);
-                }
-                return tiles;
+                return YAW_QUEST_PANEL.routeKnownTiles(this, checkpoint);
             },
 
             _questRouteTerrainHint(checkpoint) {
-                const knownTiles = this._questRouteKnownTiles(checkpoint);
-                if (!knownTiles.length) return '';
-                const counts = knownTiles.reduce((acc, tile) => {
-                    const biomeId = tile?.biome;
-                    const role = this.biomes[biomeId]?.role || 'region';
-                    if (role === 'route' || biomeId === 'road') acc.road += 1;
-                    if (biomeId === 'bridge') acc.bridge += 1;
-                    if (['water', 'swamp', 'cave'].includes(biomeId)) acc.rough += 1;
-                    return acc;
-                }, { road: 0, bridge: 0, rough: 0 });
-                const notes = [];
-                if (counts.road || counts.bridge) {
-                    const routeParts = [];
-                    if (counts.road) routeParts.push(this._label('quest.terrainRoad', '{count} road', { count: counts.road }));
-                    if (counts.bridge) routeParts.push(this._label('quest.terrainBridge', '{count} bridge', { count: counts.bridge }));
-                    notes.push(this._label('quest.terrainKnownRoute', 'known route crosses {parts}', { parts: routeParts.join(', ') }));
-                }
-                if (counts.rough) notes.push(this._label('quest.terrainRough', '{count} rough terrain', { count: counts.rough }));
-                return notes.join('; ');
+                return YAW_QUEST_PANEL.routeTerrainHint(this, checkpoint);
             },
 
             focusQuestOnMap(questId, objectiveId) {
@@ -6273,46 +6193,19 @@
             },
 
             _questLogControls() {
-                const statusLabel = this._escapeHtml(this._label('quest.status', 'Status'));
-                const sortLabel = this._escapeHtml(this._label('quest.sort', 'Sort'));
-                const filterOptions = [
-                    ['all', this._label('quest.filter.all', 'All')],
-                    ['active', this._label('quest.filter.active', 'Active')],
-                    ['turn-in', this._label('quest.filter.turnIn', 'Turn In')],
-                    ['completed', this._label('quest.filter.completed', 'Completed')]
-                ];
-                const sortOptions = [
-                    ['status', this._label('quest.sort.status', 'Status')],
-                    ['title', this._label('quest.sort.title', 'Title')]
-                ];
-                return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${statusLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${statusLabel}" aria-label="${statusLabel}" onchange="App.setQuestFilter(this.value)">
-                            ${filterOptions.map(([value, label]) => `<option value="${value}" ${this.questFilter === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('')}
-                        </select>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${sortLabel}" aria-label="${sortLabel}" onchange="App.setQuestSort(this.value)">
-                            ${sortOptions.map(([value, label]) => `<option value="${value}" ${this.questSort === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('')}
-                        </select>
-                    </label>
-                </div>`;
+                return YAW_QUEST_PANEL.logControls(this);
             },
 
             _questStatusLabel(quest) {
-                const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
-                if (needsTurnIn) return this._label('quest.status.turnIn', 'Turn In');
-                if (quest.status === 'completed') return this._label('quest.status.completed', 'Completed');
-                return this._label('quest.status.active', 'Active');
+                return YAW_QUEST_PANEL.statusLabel(this, quest);
             },
 
             _questMarkerPreview(marker, objective) {
-                const label = marker.label || objective.label || this._questObjectiveLabel(objective);
-                return this._label('quest.markerPreview', 'Marker: {label} ({x}, {y})', { label, x: marker.x, y: marker.y });
+                return YAW_QUEST_PANEL.markerPreview(this, marker, objective);
             },
 
             _questTurnInPreview(marker) {
-                return this._label('quest.turnInPreview', 'Turn in with {label} ({x}, {y})', { label: marker.label, x: marker.x, y: marker.y });
+                return YAW_QUEST_PANEL.turnInPreview(this, marker);
             },
 
             setQuestFilter(filter) {
@@ -6326,56 +6219,7 @@
             },
 
             showQuestLog() {
-                const quests = this.quests || [];
-                const titleLabel = this._escapeHtml(this._label('quest.title', 'Quests'));
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
-                if (quests.length === 0) {
-                    document.getElementById('scene-description').innerHTML = `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${this._escapeHtml(this._label('quest.noneActive', 'No active quests.'))}</p>${backButton}`;
-                    return;
-                }
-                const visibleQuests = this._filteredQuestEntries();
-                let html = `<h3>${titleLabel}</h3>${this._questLogControls()}`;
-                if (visibleQuests.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('quest.noneMatchFilter', 'No quests match the current filter.'))}</p>${backButton}`;
-                    document.getElementById('scene-description').innerHTML = html;
-                    return;
-                }
-                html += `<div style="display:grid;gap:12px;margin-top:12px;">`;
-                visibleQuests.forEach(quest => {
-                    const needsTurnIn = quest.status === 'completed' && quest.turnInRequired && !quest.rewardClaimed;
-                    const status = this._escapeHtml(this._questStatusLabel(quest));
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="font-weight:700;color:var(--text-primary)">${this._escapeHtml(quest.title)} <span style="font-size:11px;color:var(--text-muted)">[${status}]</span></div>`;
-                    if (quest.description) html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${this._escapeHtml(quest.description)}</div>`;
-                    html += `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;line-height:1.6">${this._questProgressText(quest)}</div>`;
-                    for (const objective of quest.objectives || []) {
-                        const routePreview = this._questRoutePreviewText(objective);
-                        const marker = this._nextQuestObjectiveMarker(objective);
-                        if (!routePreview && !marker) continue;
-                        html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${routePreview || this._escapeHtml(this._questMarkerPreview(marker, objective))}</div>`;
-                        if (marker && quest.status === 'active') {
-                            const showMapLabel = this._escapeHtml(this._label('quest.showOnMap', 'Show On Map'));
-                            const showMapTitle = this._escapeHtml(this._label('quest.showOnMapFor', 'Show {name} on map', { name: quest.title }));
-                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showMapTitle}" aria-label="${showMapTitle}" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showMapLabel}</button>`;
-                        }
-                    }
-                    if (needsTurnIn) {
-                        const turnInMarker = this._questTurnInMarker(quest);
-                        if (turnInMarker) {
-                            const guidance = this._questCheckpointGuidance(turnInMarker);
-                            html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${this._escapeHtml(this._questTurnInPreview(turnInMarker))}${guidance ? ` · ${this._escapeHtml(guidance)}` : ''}</div>`;
-                            const showTurnInLabel = this._escapeHtml(this._label('quest.showTurnIn', 'Show Turn-In'));
-                            const showTurnInTitle = this._escapeHtml(this._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: quest.title }));
-                            html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
-                        }
-                        const turnInLabel = this._escapeHtml(this._label('quest.turnIn', 'Turn In'));
-                        const turnInTitle = this._escapeHtml(this._label('quest.turnInQuest', 'Turn in {name}', { name: quest.title }));
-                        html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
-                    }
-                    html += `</div>`;
-                });
-                html += `</div>${backButton}`;
-                document.getElementById('scene-description').innerHTML = html;
+                return YAW_QUEST_PANEL.showLog(this);
             },
 
             // ===== EQUIPMENT =====

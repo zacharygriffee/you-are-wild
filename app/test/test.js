@@ -145,6 +145,7 @@ const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js
 const equipmentSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'equipment-system.js'), 'utf8');
 const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inventory-panel.js'), 'utf8');
 const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-panel.js'), 'utf8');
+const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const panelRenderingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-rendering.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
@@ -1702,6 +1703,19 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_STATS_PANEL.showPerkSelection(this)', 'App perk selection wrapper should delegate to the helper');
 });
 
+test('Quest panel helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/quest-panel.js'", 'Quest panel helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/quest-panel.js'") < buildContent.indexOf("'src/core/app.js'"), 'Quest panel helper should load before app.js');
+  assertContains(questPanelContent, 'const YAW_QUEST_PANEL = {', 'Quest panel helper should expose the quest panel service');
+  assertContains(questPanelContent, 'progressText(app, quest)', 'Quest panel helper should own quest progress rendering');
+  assertContains(questPanelContent, 'routePreviewText(app, objective)', 'Quest panel helper should own quest route preview rendering');
+  assertContains(questPanelContent, 'showLog(app)', 'Quest panel helper should own quest log presentation');
+  assertContains(questPanelContent, "document.getElementById('scene-description')", 'Quest log should remain an explicit center-context view');
+  assertContains(appContent, 'YAW_QUEST_PANEL.progressText(this, quest)', 'App quest progress wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_PANEL.routePreviewText(this, objective)', 'App quest route wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_QUEST_PANEL.showLog(this)', 'App quest log wrapper should delegate to the helper');
+});
+
 test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-unit-strips.js'", 'Mobile unit strip helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-unit-strips.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile unit strip helper should load before app.js');
@@ -3146,7 +3160,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

@@ -1214,6 +1214,15 @@ test('Storage helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_STORAGE.readCombatRefreshSnapshot(this, slotName)', 'App combat refresh read should delegate to storage helper');
 });
 
+test('App-emitted module hooks are declared by the module registry', () => {
+  const emittedHookNames = [...appContent.matchAll(/MODULE_SYSTEM\.executeHook\('([^']+)'/g)].map(match => match[1]);
+  const declaredHookNames = [...moduleSystemContent.matchAll(/^\s+(on[A-Za-z0-9_]+): \[\]/gm)].map(match => match[1]);
+  assert(emittedHookNames.length > 0, 'App should emit module hooks through MODULE_SYSTEM.executeHook');
+  for (const hookName of emittedHookNames) {
+    assert(declaredHookNames.includes(hookName), `Module hook ${hookName} should be declared before App emits it`);
+  }
+});
+
 test('Game mode constants exist', () => {
   assertContains(appContent, 'GAME_MODE:', 'GAME_MODE constant missing');
   assertContains(appContent, 'NORMAL', 'NORMAL mode missing');

@@ -21,6 +21,8 @@ const MODULE_SYSTEM = {
         onMapGenerate: [],
         onEncounterStart: [],
         onCombatAction: [],
+        onDigestionTick: [],
+        onSubActionExecute: [],
         onPlayerMove: [],
         onGameLoad: [],
         onGameSave: [],

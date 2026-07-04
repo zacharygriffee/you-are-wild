@@ -34,6 +34,7 @@ const SCRIPT_ORDER = [
   'src/core/combat-actions.js',
   'src/core/combat-targeting.js',
   'src/core/combat-sync.js',
+  'src/core/combat-mobility.js',
   'src/core/combat-intents.js',
   'src/core/mobile-combat-toolbelt.js',
   'src/core/mobile-unit-chip.js',

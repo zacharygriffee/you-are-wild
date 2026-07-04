@@ -2890,18 +2890,7 @@
             },
 
             moveCombatRow() {
-                const actor = this.activeActor || this.player;
-                if (!this.combatState.active || !actor || actor.CPun <= 0) return;
-                this._clearTransientInteractionState();
-                actor.combatRow = actor.combatRow === 'back' ? 'front' : 'back';
-                this._pushLog(this._label('combat.moveRowLog', '{name} moves to the {row} row.', {
-                    name: actor.name,
-                    row: this._combatRowLabel(actor.combatRow)
-                }), 'combat', { actor, phase: 'position' });
-                this.renderLog();
-                this.renderParty();
-                this.renderCreatures();
-                this.nextTurn();
+                return YAW_COMBAT_MOBILITY.moveRow(this);
             },
 
             processTurn() {
@@ -5402,26 +5391,7 @@
 
             // ===== FLEE =====
             attemptFlee() {
-                const enemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const enemy = enemies[0];
-                if (!enemy) {
-                    this.log.push({ text: this._label('combat.flee.noEnemies', 'No enemies to flee from!'), type: 'combat' });
-                    this.renderLog(); return;
-                }
-                const fleeChance = 0.6 + (this.player.Flee - enemy.spd) * 0.02;
-                const fleeRoll = this._combatStateRoll('combat-player-flee', this.player, this._unitSelectionId(enemy));
-	                if (fleeRoll < Math.max(0.1, Math.min(0.95, fleeChance))) {
-	                    this.log.push({ text: this._label('combat.flee.success', 'You flee successfully!'), type: 'combat' });
-	                    this.creatures = this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY);
-	                    this._emitCombatAction('flee', this.player, enemy, 'success');
-	                    this.endCombat('flee');
-	                } else {
-	                    this.log.push({ text: this._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name }), type: 'combat' });
-	                    this._emitCombatAction('flee', this.player, enemy, 'failed');
-	                    this._clearTransientInteractionState();
-	                    this.renderLog();
-                    this.nextTurn();
-                }
+                return YAW_COMBAT_MOBILITY.attemptFlee(this);
             },
 
             // ===== FEED ACTION =====

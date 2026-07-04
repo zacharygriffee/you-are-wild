@@ -157,6 +157,33 @@ const YAW_WORLD_STATE = {
         }
     },
 
+    restoreWorldState(app, loaded) {
+        app.worldMap = new Map();
+        app.tileDeltas = new Map();
+        app.exploredTiles = new Set(loaded.exploredTiles || []);
+        app.worldMeta = app._normalizeWorldMeta(loaded.worldMeta, app.worldMeta || app._defaultWorldMeta());
+        app.superPatchMap = new Map();
+        if (loaded.worldMap) {
+            for (const [key, tile] of Object.entries(loaded.worldMap)) {
+                const [kx, ky] = key.split(',').map(Number);
+                if (typeof tile.x !== 'number') tile.x = Number.isFinite(kx) ? kx : 0;
+                if (typeof tile.y !== 'number') tile.y = Number.isFinite(ky) ? ky : 0;
+                if (Array.isArray(tile.creatures)) {
+                    tile.creatures = tile.creatures.map(unit => app._normalizeUnit(unit, {}));
+                }
+                const effective = app.applyTileDelta(app.getBaseTile(tile.x, tile.y), tile);
+                const effectiveKey = app._tileKey(effective.x, effective.y);
+                app.worldMap.set(effectiveKey, effective);
+                app.persistTileDelta(effective.x, effective.y, effective);
+                if (effective.explored) app.exploredTiles.add(effectiveKey);
+            }
+        }
+        app._rebuildSuperPatchMap();
+        const currentTile = app.getTile(app.location.x, app.location.y);
+        app.currentBiome = currentTile.biome;
+        app.creatures = app._tileCreatures(currentTile.creatures || []);
+    },
+
     getTile(app, x, y) {
         const key = app._tileKey(x, y);
         if (app.worldMap.has(key)) return app.worldMap.get(key);

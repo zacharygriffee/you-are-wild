@@ -1398,9 +1398,13 @@ test('World state helper module is registered before app code', () => {
   assertContains(worldStateContent, 'WorldGen.generateBaseTile(app.worldMeta, x, y, app._regionBiomeKeys())', 'Base tile reconstruction should live in the world state helper');
   assertContains(worldStateContent, "const fields = ['biome', 'explored', 'description'", 'Sparse tile delta field contract should live in the world state helper');
   assertContains(worldStateContent, 'app._syncCurrentTileCreatures()', 'World state helper should synchronize current creatures before delta persistence');
+  assertContains(worldStateContent, 'restoreWorldState(app, loaded)', 'World state helper should own restored world reconstruction');
+  assertContains(worldStateContent, 'app.worldMeta = app._normalizeWorldMeta(loaded.worldMeta', 'World restore should normalize loaded metadata in the helper');
+  assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective)', 'World restore should rebuild sparse tile deltas in the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.getBaseTile(this, x, y)', 'App base tile wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile)', 'App tile delta wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.applyTileDeltaRecords(this, records)', 'App sparse record wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STATE.restoreWorldState(this, loaded)', 'App world restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.getTile(this, x, y)', 'App tile cache wrapper should delegate to the helper');
 });
 

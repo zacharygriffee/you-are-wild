@@ -6018,30 +6018,7 @@
                 return YAW_SAVE_LOAD_FLOW.loadFromSlot(this, slotName);
             },
             _restoreWorldState(loaded) {
-                this.worldMap = new Map();
-                this.tileDeltas = new Map();
-                this.exploredTiles = new Set(loaded.exploredTiles || []);
-                this.worldMeta = this._normalizeWorldMeta(loaded.worldMeta, this.worldMeta || this._defaultWorldMeta());
-                this.superPatchMap = new Map();
-                if (loaded.worldMap) {
-                    for (const [key, tile] of Object.entries(loaded.worldMap)) {
-                        const [kx, ky] = key.split(',').map(Number);
-                        if (typeof tile.x !== 'number') tile.x = Number.isFinite(kx) ? kx : 0;
-                        if (typeof tile.y !== 'number') tile.y = Number.isFinite(ky) ? ky : 0;
-                        if (Array.isArray(tile.creatures)) {
-                            tile.creatures = tile.creatures.map(unit => this._normalizeUnit(unit, {}));
-                        }
-                        const effective = this.applyTileDelta(this.getBaseTile(tile.x, tile.y), tile);
-                        const effectiveKey = this._tileKey(effective.x, effective.y);
-                        this.worldMap.set(effectiveKey, effective);
-                        this.persistTileDelta(effective.x, effective.y, effective);
-                        if (effective.explored) this.exploredTiles.add(effectiveKey);
-                    }
-                }
-                this._rebuildSuperPatchMap();
-                const currentTile = this.getTile(this.location.x, this.location.y);
-                this.currentBiome = currentTile.biome;
-                this.creatures = this._tileCreatures(currentTile.creatures || []);
+                return YAW_WORLD_STATE.restoreWorldState(this, loaded);
             },
             _restoreCombatState(savedCombat) {
                 const livingEnemies = this._livingEnemies(this.creatures);

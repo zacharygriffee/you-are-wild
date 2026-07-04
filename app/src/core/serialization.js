@@ -114,6 +114,18 @@
   };
 
   const unitRef = unit => unit ? String(unit.id || unit.name || '') : '';
+  const logEntry = entry => {
+    if (typeof entry === 'string') return { text: entry, type: 'discovery' };
+    if (!entry || typeof entry !== 'object') return null;
+    return {
+      text: String(entry.text || ''),
+      type: String(entry.type || 'discovery'),
+      round: Number.isFinite(entry.round) ? entry.round : null,
+      turnIndex: Number.isFinite(entry.turnIndex) ? entry.turnIndex : null,
+      actor: entry.actor ? String(entry.actor) : '',
+      phase: entry.phase ? String(entry.phase) : ''
+    };
+  };
 
   // Save codecs
   Binary.codecs = {
@@ -252,6 +264,11 @@
     const exploredArray = appState.exploredTiles ? Array.from(appState.exploredTiles) : [];
     const partyRoles = {};
     const partyAIOrders = {};
+    const partyUnitRefs = (appState.party || []).map(unit => ({
+      id: unit?.id ? String(unit.id) : null,
+      name: unit?.name || '',
+      species: unit?.species || ''
+    }));
     for (const unit of appState.party || []) {
       const keys = [unit?.id, unit?.name].filter(Boolean).map(String);
       for (const key of keys) {
@@ -265,6 +282,9 @@
     const explorationPartyTargetIds = (appState.explorationTargetIds || [])
       .filter(key => String(key).startsWith('party:'))
       .map(String);
+    const logEntries = (appState.log || [])
+      .map(logEntry)
+      .filter(entry => entry && entry.text);
 
     const combatState = appState.combatState?.active ? {
       active: true,
@@ -298,7 +318,7 @@
       playerStats: liveStats(appState.player),
       playerLevel: appState.player?.level || 1,
       party: appState.party || [],
-      log: appState.log?.map(e => e.text) || [],
+      log: logEntries.map(entry => entry.text),
       currentBiome: appState.currentBiome || 'forest',
       worldMeta: appState.worldMeta || { worldId: 'world_default', seed: 'default', generatorVersion: 2, mapModsHash: 'core' },
       worldMap: worldMapObj,
@@ -314,8 +334,10 @@
         playerPerks: appState.player?.perks || [],
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
         partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null,
+        partyUnitRefs,
         partyRoles,
         partyAIOrders,
+        logEntries,
         explorationActorIds,
         explorationPartyTargetIds,
         encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null,

@@ -19,6 +19,7 @@ const SCRIPT_ORDER = [
   'src/core/serialization.js',
   'src/core/world-generation.js',
   'src/core/asset-manifest.js',
+  'src/core/storage-system.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',
   'src/core/module-system.js',

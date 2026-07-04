@@ -1503,6 +1503,29 @@
             flex-direction: column;
         }
 
+        .menu-shell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 32px;
+            gap: 16px;
+        }
+
+        .menu-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .menu-actions .action-btn {
+            font-size: 16px;
+            padding: 16px;
+        }
+
         /* Overlay screens (settings, mods, market) */
         .screen-overlay {
             position: fixed !important;
@@ -2653,12 +2676,12 @@
 <body>
 <!-- MAIN MENU SCREEN -->
     <div id="screen-menu" class="screen screen-menu active">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
+        <div class="menu-shell" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px; gap: 16px;">
             <div style="font-size: 48px; margin-bottom: 8px;">🐺</div>
             <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">You Are Wild</h1>
             <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;" data-i18n="ui.tagline">Explore. Change. Survive.</p>
 
-            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
+            <div class="menu-actions" style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
                 <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
                     ▶ <span data-i18n="ui.menu.continue">Continue Last Game</span>
                 </button>
@@ -3313,14 +3336,14 @@
     <div id="screen-market" class="screen screen-overlay">
         <div id="market-content" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
-                <h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>
-                <button class="nav-btn" title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
+                <h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Samples</span></h1>
+                <button class="nav-btn" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
-            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Discover community-made biomes, species, and features</p>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Preview local sample module fixtures and modding workflows</p>
             <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
-                <button class="nav-btn" title="Browse marketplace" aria-label="Browse marketplace" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
+                <button class="nav-btn" title="Browse sample catalog" aria-label="Browse sample catalog" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
                 <button class="nav-btn" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
-                <button class="nav-btn" title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>

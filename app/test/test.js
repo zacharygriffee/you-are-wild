@@ -18,13 +18,28 @@ let currentSection = 'all';
 let totalTests = 0;
 let passedTests = 0;
 let failedTests = 0;
+const asyncTests = [];
 
 function test(name, fn) {
   if (activeFilter !== 'all' && currentSection !== activeFilter) return;
 
   totalTests++;
   try {
-    fn();
+    if (fn.constructor && fn.constructor.name === 'AsyncFunction') {
+      asyncTests.push({ name, fn });
+      return;
+    }
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      asyncTests.push({
+        name,
+        promise: result.then(
+          () => ({ error: null }),
+          error => ({ error })
+        )
+      });
+      return;
+    }
     passedTests++;
     console.log(`  ✓ ${name}`);
   } catch (e) {
@@ -34,13 +49,20 @@ function test(name, fn) {
   }
 }
 
+function asyncTest(name, fn) {
+  if (activeFilter !== 'all' && currentSection !== activeFilter) return;
+  totalTests++;
+  asyncTests.push({ name, fn });
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message || 'Assertion failed');
 }
 
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {
-    throw new Error(message || `Expected ${expected}, got ${actual}`);
+    const details = `Expected ${expected}, got ${actual}`;
+    throw new Error(message ? `${message}. ${details}` : details);
   }
 }
 
@@ -100,12 +122,15 @@ section('Structure Tests', 'core');
 
 const appPath = path.join(SRC_DIR, 'core', 'app.js');
 const appContent = fs.readFileSync(appPath, 'utf8');
+const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
 const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
+const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
+const marketplaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marketplace.js'), 'utf8');
 const settingsNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'settings-nav.js'), 'utf8');
 const globalNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'global-nav.js'), 'utf8');
 const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js'), 'utf8');
@@ -122,25 +147,822 @@ function loadAssetManifestForTest() {
   return new Function('globalThis', 'window', `${assetManifestContent}\nreturn globalThis.AssetManifest;`)(g, g);
 }
 
-function loadContentSystemForTest() {
-  const storage = new Map();
+function loadContentSystemForTest(initialStorage = {}) {
+  const storage = new Map(Object.entries(initialStorage).map(([key, value]) => [key, String(value)]));
   const localStorage = {
     getItem: key => storage.has(key) ? storage.get(key) : null,
     setItem: (key, value) => storage.set(key, String(value)),
     removeItem: key => storage.delete(key)
   };
   const window = { localStorage };
-  return new Function('window', 'localStorage', `${contentSystemContent}\nreturn window.CONTENT;`)(window, localStorage);
+  const console = { log() {}, warn() {}, error() {} };
+  const CONTENT = new Function('window', 'localStorage', 'console', `${contentSystemContent}\nreturn window.CONTENT;`)(window, localStorage, console);
+  CONTENT.__testStorage = storage;
+  return CONTENT;
+}
+
+function loadContentPacksForTest(CONTENT) {
+  const window = {};
+  const console = { log() {}, warn() {}, error() {} };
+  new Function('window', 'CONTENT', 'console', `${marketplaceContent}\nreturn window.CONTENT_PACKS;`)(window, CONTENT, console);
+  return window.CONTENT_PACKS;
+}
+
+function createFakeIndexedDb() {
+  const data = {
+    modules: new Map(),
+    assets: new Map(),
+    settings: new Map()
+  };
+
+  function clone(value) {
+    if (value === undefined || value === null) return value;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function createRequest(tx, operation) {
+    const request = { result: undefined, error: null, onsuccess: null, onerror: null };
+    tx._pending++;
+    setTimeout(() => {
+      try {
+        request.result = operation();
+        tx._pending--;
+        if (request.onsuccess) request.onsuccess({ target: request });
+        tx._scheduleComplete();
+      } catch (error) {
+        request.error = error;
+        tx.error = error;
+        tx._pending--;
+        if (request.onerror) request.onerror({ target: request });
+        if (tx.onerror) tx.onerror({ target: tx });
+      }
+    }, 0);
+    return request;
+  }
+
+  function createStore(name, tx) {
+    const store = data[name];
+    return {
+      get(key) {
+        return createRequest(tx, () => clone(store.get(key)));
+      },
+      getAll(query) {
+        return createRequest(tx, () => {
+          const values = Array.from(store.values());
+          if (name === 'assets' && query !== undefined) {
+            return clone(values.filter(value => value.moduleId === query));
+          }
+          return clone(values);
+        });
+      },
+      put(value) {
+        return createRequest(tx, () => {
+          const key = value.id !== undefined ? value.id : value.key;
+          store.set(key, clone(value));
+          return key;
+        });
+      },
+      delete(key) {
+        return createRequest(tx, () => {
+          store.delete(key);
+          return undefined;
+        });
+      },
+      index(indexName) {
+        assertEqual(indexName, 'moduleId', 'Fake IndexedDB only supports the moduleId asset index');
+        return {
+          getAll(query) {
+            return createRequest(tx, () => clone(Array.from(store.values()).filter(value => value.moduleId === query)));
+          }
+        };
+      }
+    };
+  }
+
+  return {
+    data,
+    db: {
+      transaction(storeNames) {
+        const tx = {
+          error: null,
+          oncomplete: null,
+          onerror: null,
+          onabort: null,
+          _pending: 0,
+          _completed: false,
+          _scheduleComplete() {
+            if (this._completed) return;
+            setTimeout(() => {
+              if (this._pending === 0 && !this._completed) {
+                this._completed = true;
+                if (this.oncomplete) this.oncomplete({ target: this });
+              }
+            }, 0);
+          },
+          objectStore(name) {
+            assert(Array.isArray(storeNames) ? storeNames.includes(name) : storeNames === name, `Store ${name} not in transaction`);
+            return createStore(name, tx);
+          }
+        };
+        return tx;
+      }
+    }
+  };
+}
+
+function loadModuleSystemForTest(options = {}) {
+  const window = {
+    console: { log() {}, warn() {}, error() {} },
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+    JSON,
+    Math,
+    Date,
+    Object,
+    Array,
+    String,
+    Number,
+    Boolean
+  };
+  const indexedDB = { open() { return {}; } };
+  const App = {
+    biomes: {},
+    species: [],
+    items: [],
+    log: [],
+    renderLog() {}
+  };
+  const CONTENT = options.CONTENT || { preferences: { maxTier: 0, explicitDescriptions: false } };
+  const MODULE_SYSTEM = new Function('window', 'indexedDB', 'App', 'CONTENT', `${moduleSystemContent}\nreturn MODULE_SYSTEM;`)(window, indexedDB, App, CONTENT);
+  MODULE_SYSTEM._testApp = App;
+  return MODULE_SYSTEM;
 }
 
 test('App object is defined', () => {
   assertContains(appContent, 'const App = {', 'App object declaration missing');
 });
 
+asyncTest('Module system persists modules and settings through IndexedDB request callbacks', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  const installed = await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'test-module',
+      name: 'Test Module',
+      version: '1.0.0',
+      contentRating: ' SAFE ',
+      permissions: ['world:add_biome', 'world:add_biome', 'ui.read'],
+      dependencies: ['core-api'],
+      gameVersion: 'v0.10.0'
+    },
+    code: '',
+    assets: {}
+  });
+  assertEqual(installed.id, 'test-module', 'Installed module should return normalized module data');
+  assertEqual(installed.manifest.contentRating, 'safe', 'Installed module should default to safe content rating');
+  assertEqual(installed.manifest.trustBoundary, 'trusted-local', 'Installed module should record the local trust boundary');
+  assertEqual(installed.manifest.permissions.join(','), 'world:add_biome,ui.read', 'Installed module permissions should normalize and dedupe token strings');
+  assertEqual(installed.manifest.dependencies.join(','), 'core-api', 'Installed module dependencies should normalize token strings');
+  assertEqual(installed.manifest.minGameVersion, '0.10.0', 'Installed module should normalize gameVersion as minGameVersion compatibility metadata');
+
+  const modules = await MODULE_SYSTEM.getAllModules();
+  assertEqual(modules.length, 1, 'Installed module should be returned by getAllModules');
+  assertEqual(modules[0].enabled, false, 'Installed module should start disabled');
+
+  await MODULE_SYSTEM.setModuleSetting('test-module', 'volume', 7);
+  assertEqual(await MODULE_SYSTEM.getModuleSetting('test-module', 'volume', 0), 7, 'Module setting should round-trip through IndexedDB');
+  const structuredSetting = { nested: { level: 2 }, flags: ['quiet', 'local'] };
+  await MODULE_SYSTEM.setModuleSetting('test-module', 'ui.preferences', structuredSetting);
+  structuredSetting.nested.level = 99;
+  const storedStructuredSetting = await MODULE_SYSTEM.getModuleSetting('test-module', 'ui.preferences', {});
+  assertEqual(storedStructuredSetting.nested.level, 2, 'Module setting values should be stored as serializable data copies');
+  assertEqual(storedStructuredSetting.flags.join(','), 'quiet,local', 'Module setting arrays should round-trip as serializable data');
+
+  let rejectedSetting = false;
+  try {
+    await MODULE_SYSTEM.setModuleSetting('test-module', 'bad key', 1);
+  } catch (e) {
+    rejectedSetting = true;
+    assertContains(e.message, 'Module setting key', 'Invalid module setting keys should report key validation');
+  }
+  assertEqual(rejectedSetting, true, 'Invalid module setting keys should reject before storage');
+
+  rejectedSetting = false;
+  try {
+    await MODULE_SYSTEM.setModuleSetting('test-module', 'bad-value', { handler() {} });
+  } catch (e) {
+    rejectedSetting = true;
+    assertContains(e.message, 'serializable data', 'Invalid module setting values should report data validation');
+  }
+  assertEqual(rejectedSetting, true, 'Non-serializable module setting values should reject before storage');
+  assertEqual(fakeDb.data.settings.size, 2, 'Rejected module settings should not be written');
+
+  await MODULE_SYSTEM.deleteModule('test-module');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Deleted module should be removed from storage');
+  assertEqual(await MODULE_SYSTEM.getModuleSetting('test-module', 'volume', 'missing'), 'missing', 'Deleting a module should remove its settings');
+});
+
+asyncTest('Module system rejects malformed manifests before storage', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad module id', name: 'Bad Module', version: '1.0.0' },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'manifest id', 'Invalid module id should report a manifest id validation error');
+  }
+  assertEqual(rejected, true, 'Invalid module id should reject before install');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Rejected module should not be stored');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-rating', name: 'Bad Rating', version: '1.0.0', contentRating: 'unknown' },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'contentRating', 'Invalid content rating should report contentRating validation');
+  }
+  assertEqual(rejected, true, 'Invalid content rating should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-code', name: 'Bad Code', version: '1.0.0' },
+      code: 'if ('
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'code failed syntax validation', 'Invalid module code should report syntax validation');
+  }
+  assertEqual(rejected, true, 'Syntax-invalid module code should reject before install');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Rejected code package should not be stored');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-assets', name: 'Bad Assets', version: '1.0.0' },
+      code: '',
+      assets: { preview: () => 'not data' }
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Module assets', 'Invalid module assets should report asset validation');
+  }
+  assertEqual(rejected, true, 'Non-serializable module assets should reject before install');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Rejected asset package should not be stored');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'remote-boundary', name: 'Remote Boundary', version: '1.0.0', trustBoundary: 'remote' },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'trustBoundary', 'Invalid trust boundary should report trustBoundary validation');
+  }
+  assertEqual(rejected, true, 'Non-local trust boundaries should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-permission', name: 'Bad Permission', version: '1.0.0', permissions: ['world:add_biome', 'bad permission'] },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'permissions', 'Invalid permission token should report permissions validation');
+  }
+  assertEqual(rejected, true, 'Invalid permission tokens should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-dependency', name: 'Bad Dependency', version: '1.0.0', dependencies: ['core-api', 42] },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'dependencies', 'Invalid dependency entry should report dependencies validation');
+  }
+  assertEqual(rejected, true, 'Non-string dependency entries should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'self-dependent', name: 'Self Dependent', version: '1.0.0', dependencies: ['self-dependent'] },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'dependencies', 'Self dependency should report dependency validation');
+  }
+  assertEqual(rejected, true, 'Modules should not be able to depend on themselves');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-game-version', name: 'Bad Game Version', version: '1.0.0', minGameVersion: 'soon' },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'minGameVersion', 'Invalid game version metadata should report minGameVersion validation');
+  }
+  assertEqual(rejected, true, 'Invalid minGameVersion metadata should reject before install');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'future-game-version', name: 'Future Game Version', version: '1.0.0', minGameVersion: '99.0.0' },
+      code: ''
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'requires game version 99.0.0 or newer', 'Future game-version requirement should report compatibility failure');
+  }
+  assertEqual(rejected, true, 'Modules requiring a newer game version should reject before install');
+});
+
+asyncTest('Module enablement respects game version compatibility', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'versioned-module', name: 'Versioned Module', version: '1.0.0', minGameVersion: '0.10.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  MODULE_SYSTEM.GAME_VERSION = '0.9.0';
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('versioned-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'requires game version 0.10.0 or newer', 'Enable should report game-version compatibility failure');
+  }
+  assertEqual(rejected, true, 'Stored modules requiring a newer game version should not enable');
+  const stored = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'versioned-module');
+  assertEqual(stored.enabled, false, 'Rejected game-version enablement should leave module disabled in storage');
+  assertEqual(MODULE_SYSTEM.activeModules.has('versioned-module'), false, 'Rejected game-version enablement should not load runtime code');
+
+  MODULE_SYSTEM.GAME_VERSION = '0.10.0';
+  await MODULE_SYSTEM.setModuleEnabled('versioned-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('versioned-module'), true, 'Compatible game version should allow enablement');
+});
+
+asyncTest('Stored malformed module packages fail safely on enable', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  fakeDb.data.modules.set('corrupt-code', {
+    id: 'corrupt-code',
+    manifest: { id: 'corrupt-code', name: 'Corrupt Code', version: '1.0.0' },
+    code: { source: 'not a string' },
+    assets: {},
+    enabled: false
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('corrupt-code', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Module code must be a string', 'Corrupt stored code should be rejected before runtime load');
+  }
+  assertEqual(rejected, true, 'Corrupt stored module package should reject on enable');
+  const stored = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'corrupt-code');
+  assertEqual(stored.enabled, false, 'Corrupt stored module should remain disabled');
+  assertEqual(MODULE_SYSTEM.activeModules.has('corrupt-code'), false, 'Corrupt stored module should not enter active runtime modules');
+});
+
+asyncTest('Module enablement respects content rating policy', async () => {
+  const CONTENT = { preferences: { maxTier: 0, explicitDescriptions: false } };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'mature-module', name: 'Mature Module', version: '1.0.0', contentRating: 'mature' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('mature-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'higher content tier', 'Mature module should report content tier gating');
+  }
+  assertEqual(rejected, true, 'Mature module should not enable while content policy is safe');
+  assertEqual((await MODULE_SYSTEM.getAllModules())[0].enabled, false, 'Rejected mature module should remain disabled in storage');
+  assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), false, 'Rejected mature module should not load');
+
+  CONTENT.preferences.maxTier = 1;
+  await MODULE_SYSTEM.setModuleEnabled('mature-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), true, 'Mature module should enable when mature tier is active');
+  const payload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', payload);
+  assertEqual(payload.calls.join(','), 'mature-module', 'Enabled mature module should register hooks after policy allows it');
+  await MODULE_SYSTEM.setModuleEnabled('mature-module', false);
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'adult-module', name: 'Adult Module', version: '1.0.0', contentRating: 'adult' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  CONTENT.preferences.maxTier = 2;
+  CONTENT.preferences.explicitDescriptions = false;
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('adult-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'explicit descriptions', 'Adult module should report explicit-description gating');
+  }
+  assertEqual(rejected, true, 'Adult module should not enable without explicit descriptions');
+  assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), false, 'Rejected adult module should not load');
+
+  CONTENT.preferences.explicitDescriptions = true;
+  await MODULE_SYSTEM.setModuleEnabled('adult-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('adult-module'), true, 'Adult module should enable only after adult policy is fully active');
+});
+
+asyncTest('Enabled modules are disabled when content policy is lowered', async () => {
+  const CONTENT = { preferences: { maxTier: 1, explicitDescriptions: false } };
+  const MODULE_SYSTEM = loadModuleSystemForTest({ CONTENT });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'safe-module', name: 'Safe Module', version: '1.0.0', contentRating: 'safe' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'mature-module', name: 'Mature Module', version: '1.0.0', contentRating: 'mature' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('safe-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('mature-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('safe-module'), true, 'Safe module should be active before policy downgrade');
+  assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), true, 'Mature module should be active before policy downgrade');
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 2, 'Both enabled modules should own hooks before policy downgrade');
+
+  CONTENT.preferences.maxTier = 0;
+  const disabled = await MODULE_SYSTEM.enforceContentPolicy();
+  assertEqual(disabled.length, 1, 'Policy downgrade should disable exactly the blocked module');
+  assertEqual(disabled[0].id, 'mature-module', 'Policy downgrade should report the disabled module id');
+  assertContains(disabled[0].disabledReason, 'higher content tier', 'Disabled module should include a content policy reason');
+
+  const stored = await MODULE_SYSTEM.getAllModules();
+  const safe = stored.find(mod => mod.id === 'safe-module');
+  const mature = stored.find(mod => mod.id === 'mature-module');
+  assertEqual(safe.enabled, true, 'Allowed safe module should remain enabled in storage');
+  assertEqual(mature.enabled, false, 'Blocked mature module should be disabled in storage');
+  assertEqual(MODULE_SYSTEM.activeModules.has('safe-module'), true, 'Allowed safe module should remain active');
+  assertEqual(MODULE_SYSTEM.activeModules.has('mature-module'), false, 'Blocked mature module should unload from active modules');
+
+  const payload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', payload);
+  assertEqual(payload.calls.join(','), 'safe-module', 'Blocked module hooks should be removed after policy downgrade');
+});
+
+asyncTest('Module hooks are owned by module ID and removed on disable before reload', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'hook-module', name: 'Hook Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id), 10);"
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('hook-module', true);
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 1, 'Enabling a module should register one owned hook');
+  assertEqual(MODULE_SYSTEM.hooks.onTick[0].moduleId, 'hook-module', 'Registered hook should record its owning module');
+
+  const firstPayload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', firstPayload);
+  assertEqual(firstPayload.calls.join(','), 'hook-module', 'Enabled module hook should execute once');
+
+  await MODULE_SYSTEM.setModuleEnabled('hook-module', false);
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 0, 'Disabling a module should unload its hooks');
+
+  await MODULE_SYSTEM.setModuleEnabled('hook-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('hook-module', true);
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 1, 'Reloading an enabled module should not duplicate hooks');
+
+  const secondPayload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', secondPayload);
+  assertEqual(secondPayload.calls.join(','), 'hook-module', 'Reloaded module hook should still execute once');
+});
+
+asyncTest('Module hook registration rejects unknown events and invalid priorities', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'unknown-hook-module', name: 'Unknown Hook Module', version: '1.0.0' },
+    code: "MODS.registerHook('onCustomEvent', () => {});"
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('unknown-hook-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Unknown module hook event', 'Unknown hook event should be reported during module enable');
+  }
+  assertEqual(rejected, true, 'Module with unknown hook event should reject enable');
+  assertEqual(MODULE_SYSTEM.hooks.onCustomEvent, undefined, 'Unknown hook registration should not create a new hook bucket');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-priority-module', name: 'Bad Priority Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', () => {}, Number.POSITIVE_INFINITY);"
+  });
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-priority-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'finite number', 'Invalid hook priority should be reported during module enable');
+  }
+  assertEqual(rejected, true, 'Module with invalid hook priority should reject enable');
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 0, 'Invalid priority should not leave a registered hook behind');
+
+  const stored = await MODULE_SYSTEM.getAllModules();
+  assertEqual(stored.find(mod => mod.id === 'unknown-hook-module').enabled, false, 'Unknown hook module should remain disabled in storage');
+  assertEqual(stored.find(mod => mod.id === 'bad-priority-module').enabled, false, 'Bad priority module should remain disabled in storage');
+});
+
+asyncTest('Module dependencies gate enablement and disable dependents', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'addon-module', name: 'Addon Module', version: '1.0.0', dependencies: ['base-module'] },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('addon-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'missing dependency base-module', 'Missing dependency should be reported on enable');
+  }
+  assertEqual(rejected, true, 'Module with missing dependency should not enable');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'base-module', name: 'Base Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('addon-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'dependency base-module to be enabled', 'Disabled dependency should be reported on enable');
+  }
+  assertEqual(rejected, true, 'Module with disabled dependency should not enable');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'child-module', name: 'Child Module', version: '1.0.0', dependencies: ['addon-module'] },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push(MODS.id));"
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('base-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('addon-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('child-module', true);
+  assertEqual(MODULE_SYSTEM.activeModules.has('base-module'), true, 'Base dependency should be active after enable');
+  assertEqual(MODULE_SYSTEM.activeModules.has('addon-module'), true, 'Addon should be active when dependency is enabled');
+  assertEqual(MODULE_SYSTEM.activeModules.has('child-module'), true, 'Child should be active when dependency chain is enabled');
+
+  const disabledBase = await MODULE_SYSTEM.setModuleEnabled('base-module', false);
+  assertEqual(disabledBase.disabledDependents.length, 1, 'Disabling base should report direct disabled dependent');
+  const modulesAfterDisable = await MODULE_SYSTEM.getAllModules();
+  assertEqual(modulesAfterDisable.find(mod => mod.id === 'base-module').enabled, false, 'Disabled base should be disabled in storage');
+  assertEqual(modulesAfterDisable.find(mod => mod.id === 'addon-module').enabled, false, 'Dependent addon should be disabled in storage');
+  assertEqual(modulesAfterDisable.find(mod => mod.id === 'child-module').enabled, false, 'Transitive child should be disabled in storage');
+  assertEqual(MODULE_SYSTEM.activeModules.has('addon-module'), false, 'Dependent addon should unload when dependency is disabled');
+  assertEqual(MODULE_SYSTEM.activeModules.has('child-module'), false, 'Transitive child should unload when dependency is disabled');
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 0, 'Dependency disable should remove all dependent hooks');
+
+  await MODULE_SYSTEM.setModuleEnabled('base-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('addon-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('child-module', true);
+  await MODULE_SYSTEM.deleteModule('base-module');
+  const modulesAfterDelete = await MODULE_SYSTEM.getAllModules();
+  assertEqual(modulesAfterDelete.some(mod => mod.id === 'base-module'), false, 'Deleted dependency should be removed from storage');
+  assertEqual(modulesAfterDelete.find(mod => mod.id === 'addon-module').enabled, false, 'Deleting dependency should disable direct dependent');
+  assertEqual(modulesAfterDelete.find(mod => mod.id === 'child-module').enabled, false, 'Deleting dependency should disable transitive dependent');
+});
+
+asyncTest('Reinstalling an enabled module unloads stale runtime and disables dependents', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'base-module', name: 'Base Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('old-base'));"
+  });
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'addon-module', name: 'Addon Module', version: '1.0.0', dependencies: ['base-module'] },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('addon'));"
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('base-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('addon-module', true);
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 2, 'Enabled base and dependent should both register hooks before reinstall');
+
+  const reinstalled = await MODULE_SYSTEM.installModule({
+    manifest: { id: 'base-module', name: 'Base Module Replacement', version: '1.1.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('new-base'));"
+  });
+  assertEqual(reinstalled.enabled, false, 'Reinstalled module package should remain disabled until explicitly enabled');
+  assertEqual(reinstalled.disabledDependents.length, 1, 'Reinstalling an enabled dependency should report disabled direct dependents');
+
+  const modulesAfterReinstall = await MODULE_SYSTEM.getAllModules();
+  assertEqual(modulesAfterReinstall.find(mod => mod.id === 'base-module').enabled, false, 'Replacement module should be disabled in storage');
+  assertEqual(modulesAfterReinstall.find(mod => mod.id === 'addon-module').enabled, false, 'Dependent should be disabled when its enabled dependency is replaced');
+  assertEqual(MODULE_SYSTEM.activeModules.has('base-module'), false, 'Old enabled module runtime should unload after reinstall');
+  assertEqual(MODULE_SYSTEM.activeModules.has('addon-module'), false, 'Dependent runtime should unload after dependency reinstall');
+  assertEqual(MODULE_SYSTEM.hooks.onTick.length, 0, 'Reinstall should remove stale hooks from replaced module and dependents');
+
+  const payload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', payload);
+  assertEqual(payload.calls.length, 0, 'Stale hooks from the replaced module should not run after reinstall');
+
+  await MODULE_SYSTEM.setModuleEnabled('base-module', true);
+  const replacementPayload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', replacementPayload);
+  assertEqual(replacementPayload.calls.join(','), 'new-base', 'Explicitly re-enabled replacement should load the new module code only');
+});
+
+asyncTest('Module data contributions are owned and removed on disable before reload', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+  const App = MODULE_SYSTEM._testApp;
+  App.biomes.grove = { id: 'grove', name: 'Original Grove' };
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'data-module', name: 'Data Module', version: '1.0.0', permissions: ['world:add_biome', 'content:add_species', 'content:add_item'] },
+    code: `
+      MODS.addBiome({ id: 'grove', name: 'Mod Grove' });
+      MODS.addBiome({ id: 'mod_bog', name: 'Mod Bog' });
+      MODS.addSpecies({ id: 'mod_species', name: 'Mod Species' });
+      MODS.addItem({ id: 'mod_item', name: 'Mod Item' });
+    `
+  });
+
+  await MODULE_SYSTEM.setModuleEnabled('data-module', true);
+  assertEqual(App.biomes.grove.name, 'Mod Grove', 'Module biome contribution should be visible while enabled');
+  assertEqual(App.biomes.mod_bog.name, 'Mod Bog', 'Module-added biome should be visible while enabled');
+  assertEqual(App.species.length, 1, 'Module-added species should be appended while enabled');
+  assertEqual(App.items.length, 1, 'Module-added item should be appended while enabled');
+
+  await MODULE_SYSTEM.setModuleEnabled('data-module', false);
+  assertEqual(App.biomes.grove.name, 'Original Grove', 'Disabling module should restore overwritten biome');
+  assertEqual(App.biomes.mod_bog, undefined, 'Disabling module should remove module-added biome');
+  assertEqual(App.species.length, 0, 'Disabling module should remove module-added species');
+  assertEqual(App.items.length, 0, 'Disabling module should remove module-added item');
+  assertEqual(MODULE_SYSTEM.ownedContributions.has('data-module'), false, 'Disabling module should clear owned contribution records');
+
+  await MODULE_SYSTEM.setModuleEnabled('data-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('data-module', true);
+  assertEqual(App.species.length, 1, 'Reloading an enabled module should not duplicate module-added species');
+  assertEqual(App.items.length, 1, 'Reloading an enabled module should not duplicate module-added items');
+  assertEqual(App.biomes.mod_bog.name, 'Mod Bog', 'Reloaded module-added biome should remain visible once');
+
+  await MODULE_SYSTEM.deleteModule('data-module');
+  assertEqual(App.biomes.grove.name, 'Original Grove', 'Deleting module should restore overwritten biome');
+  assertEqual(App.biomes.mod_bog, undefined, 'Deleting module should remove module-added biome');
+  assertEqual(App.species.length, 0, 'Deleting module should remove module-added species');
+  assertEqual(App.items.length, 0, 'Deleting module should remove module-added item');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'failing-data-module', name: 'Failing Data Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "MODS.addItem({ id: 'partial_item', name: 'Partial Item' }); throw new Error('load failed');"
+  });
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('failing-data-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'load failed', 'Failing data module should surface load failure');
+  }
+  assertEqual(rejected, true, 'Module load failure should reject enable');
+  assertEqual(App.items.length, 0, 'Module load failure should clean partial item contributions');
+  assertEqual(MODULE_SYSTEM.activeModules.has('failing-data-module'), false, 'Failed module should not remain active');
+  const failedStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'failing-data-module');
+  assertEqual(failedStoredModule.enabled, false, 'Failed module enable should roll storage back to disabled');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'denied-data-module', name: 'Denied Data Module', version: '1.0.0' },
+    code: "MODS.addItem({ id: 'denied_item', name: 'Denied Item' });"
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('denied-data-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'content:add_item', 'Denied data module should report missing item permission');
+  }
+  assertEqual(rejected, true, 'Module without declared item permission should reject item mutation');
+  assertEqual(App.items.length, 0, 'Permission rejection should not add item contributions');
+  const deniedStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'denied-data-module');
+  assertEqual(deniedStoredModule.enabled, false, 'Permission rejection should leave module disabled in storage');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-species-module', name: 'Bad Species Module', version: '1.0.0', permissions: ['content:add_species'] },
+    code: "MODS.addSpecies({ name: 'Nameless Species' });"
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-species-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Species definition id is required', 'Invalid species contribution should report missing id');
+  }
+  assertEqual(rejected, true, 'Species contribution without id should reject module enable');
+  assertEqual(App.species.length, 0, 'Invalid species contribution should not add live species data');
+  const badSpeciesStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'bad-species-module');
+  assertEqual(badSpeciesStoredModule.enabled, false, 'Invalid species contribution should leave module disabled in storage');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'function-item-module', name: 'Function Item Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "MODS.addItem({ id: 'function_item', name: 'Function Item', use() { return true; } });"
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('function-item-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Item definition must be serializable data', 'Function-backed item contribution should report data validation');
+  }
+  assertEqual(rejected, true, 'Function-backed item contribution should reject module enable instead of silently dropping the function');
+  assertEqual(App.items.length, 0, 'Function-backed item contribution should not add live item data');
+  const functionItemStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'function-item-module');
+  assertEqual(functionItemStoredModule.enabled, false, 'Function-backed item contribution should leave module disabled in storage');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'bad-item-module', name: 'Bad Item Module', version: '1.0.0', permissions: ['content:add_item'] },
+    code: "const item = { id: 'loop_item', name: 'Loop Item' }; item.self = item; MODS.addItem(item);"
+  });
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('bad-item-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Item definition must be serializable data', 'Non-serializable item contribution should report data validation');
+  }
+  assertEqual(rejected, true, 'Non-serializable item contribution should reject module enable');
+  assertEqual(App.items.length, 0, 'Non-serializable item contribution should not add live item data');
+  const badItemStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'bad-item-module');
+  assertEqual(badItemStoredModule.enabled, false, 'Invalid item contribution should leave module disabled in storage');
+});
+
 test('Asset manifest module is registered before app code', () => {
   assertContains(buildContent, "'src/core/asset-manifest.js'", 'Asset manifest should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/asset-manifest.js'") < buildContent.indexOf("'src/core/app.js'"), 'Asset manifest should load before app.js');
   assertContains(appContent, 'globalThis.AssetManifest', 'App should read asset manifest through global registry');
+});
+
+test('Storage helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/storage-system.js'", 'Storage helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/storage-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Storage helper should load before app.js');
+  assertContains(storageSystemContent, 'const YAW_STORAGE = {', 'Storage helper should expose the storage service');
+  assertContains(appContent, 'YAW_STORAGE.dbGet(this, store, key)', 'App save DB wrapper should delegate to storage helper');
+  assertContains(storageSystemContent, 'combatRefreshKey(app', 'Storage helper should own combat refresh keys');
+  assertContains(storageSystemContent, 'readCombatRefreshSnapshot(app', 'Storage helper should read combat refresh snapshots');
+  assertContains(storageSystemContent, 'JSON.parse(raw)', 'Storage helper should parse combat refresh snapshots defensively');
+  assertContains(storageSystemContent, 'validBytes', 'Storage helper should validate combat refresh snapshot byte payloads');
+  assertContains(storageSystemContent, 'databaseExists(dbName)', 'Storage helper should inspect legacy IndexedDB names without opening them');
+  assertContains(storageSystemContent, 'deleteDatabaseIfExists(dbName)', 'Storage helper should delete legacy IndexedDB names only when present');
+  assertNotContains(storageSystemContent, 'readFrom(app.LEGACY_SAVE_DB_NAME)', 'Save loads should not open the legacy FFF_Saves namespace');
+  assertNotContains(storageSystemContent, 'deleteFrom(app.LEGACY_SAVE_DB_NAME)', 'Save deletes should not open the legacy FFF_Saves namespace');
+  assertContains(appContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName)', 'App combat refresh write should delegate to storage helper with the requested slot');
+  assertContains(appContent, 'YAW_STORAGE.readCombatRefreshSnapshot(this, slotName)', 'App combat refresh read should delegate to storage helper');
 });
 
 test('Game mode constants exist', () => {
@@ -203,6 +1025,8 @@ test('Save/load system present', () => {
   assertContains(appContent, 'loadLastPlayed()', 'loadLastPlayed method missing');
   assertContains(appContent, 'showNewGameManager()', 'New game slot manager method missing');
   assertContains(appContent, 'beginNewGameInSlot(', 'New game slot selection method missing');
+  assertContains(appContent, '_normalizeSaveSlotName(', 'Save-slot name normalization missing');
+  assertContains(appContent, '_normalizeSaveTimestamp(', 'Save timestamp normalization missing');
 });
 
 test('Cheat system present', () => {
@@ -420,6 +1244,41 @@ test('Binary load tolerates old saves without world data', () => {
   assertEqual(loaded.timeHour, 8, 'Old save without time should default to morning');
 });
 
+test('Binary save/load preserves structured log metadata when available', async () => {
+  const Binary = loadBinaryForTest();
+  const player = makeSerializableUnit('Tester', { id: 'log-player' });
+  const saveData = Binary.saveGame({
+    player,
+    party: [player],
+    location: { x: 0, y: 0 },
+    currentBiome: 'forest',
+    worldMeta: { worldId: 'log-world', seed: 'log-seed', generatorVersion: 2, mapModsHash: 'core' },
+    worldMap: new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], items: [] }]]),
+    exploredTiles: new Set(['0,0']),
+    inventory: [],
+    log: [
+      { text: 'Combat event', type: 'combat', round: 2, turnIndex: 1, actor: 'Tester', phase: 'attack' },
+      { text: 'Discovery event', type: 'discovery' }
+    ]
+  });
+  const loaded = Binary.loadGame(saveData);
+  assertEqual(loaded.log.join('|'), 'Combat event|Discovery event', 'Legacy text log should remain available');
+  assertEqual(loaded.questState.logEntries[0].type, 'combat', 'Structured log should preserve type');
+  assertEqual(loaded.questState.logEntries[0].round, 2, 'Structured log should preserve round');
+  assertEqual(loaded.questState.logEntries[0].turnIndex, 1, 'Structured log should preserve turn index');
+  assertEqual(loaded.questState.logEntries[0].actor, 'Tester', 'Structured log should preserve actor');
+  assertEqual(loaded.questState.logEntries[0].phase, 'attack', 'Structured log should preserve phase');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  loadedApp.App._dbGet = async () => saveData;
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Structured-log save should load');
+  assertEqual(loadedApp.App.log[0].type, 'combat', 'Loaded app log should preserve entry type');
+  assertEqual(loadedApp.App.log[0].round, 2, 'Loaded app log should preserve round metadata');
+  assertEqual(loadedApp.App.log[0].actor, 'Tester', 'Loaded app log should preserve actor metadata');
+});
+
 // === CONTENT SYSTEM TESTS ===
 section('Content System Tests', 'core');
 
@@ -450,6 +1309,167 @@ test('Biome intro content covers grove and safe unknown fallbacks', () => {
   assertContains(unknown, 'Crystal Bog', 'Unknown biome fallback should render a readable biome label');
   assertNotContains(unknown, '[Missing content', 'Unknown biome fallback should not leak missing content markers');
   assertContains(CONTENT.getContent('quest.missing'), '[Missing content: quest.missing]', 'Non-biome missing content should remain visible for development');
+});
+
+test('Content resolver falls back when higher tier templates are gated or unavailable', () => {
+  const CONTENT = loadContentSystemForTest();
+  CONTENT.registerTemplate('test', 'rating', 'default', {
+    safe: () => 'safe text',
+    mature: () => 'mature text',
+    adult: () => null
+  });
+
+  CONTENT.setMaxTier(CONTENT.TIERS.ADULT);
+  CONTENT.setPreference('explicitDescriptions', true);
+  assertEqual(CONTENT.getContent('test.rating'), 'mature text', 'Null adult template should fall back to mature text');
+
+  CONTENT.registerTemplate('test', 'explicitGate', 'default', {
+    safe: () => 'safe text',
+    mature: () => 'mature text',
+    adult: () => 'adult text'
+  });
+  CONTENT.setPreference('explicitDescriptions', false);
+  assertEqual(CONTENT.getContent('test.explicitGate'), 'mature text', 'Adult tier should be skipped when explicit descriptions are disabled');
+
+  CONTENT.setPreference('voreEnabled', false);
+  assertEqual(CONTENT.getContent('test.explicitGate', { voreEnabled: true }), 'safe text', 'Vore-gated context should fall back to safe text when vore is disabled');
+});
+
+test('Content preference loading normalizes stored policy values', () => {
+  const CONTENT = loadContentSystemForTest({
+    'yaw-content-prefs': JSON.stringify({
+      maxTier: '99',
+      voreEnabled: 'true',
+      explicitDescriptions: 'true',
+      filterTags: ['safe_tag', 'bad tag', 'safe_tag', 'mature:tag'],
+      language: 'missing',
+      unexpected: 'kept'
+    })
+  });
+  assertEqual(CONTENT.preferences.maxTier, CONTENT.TIERS.ADULT, 'Stored max tier should clamp to the highest known tier');
+  assertEqual(CONTENT.preferences.voreEnabled, false, 'String truthy values should not enable gated content flags');
+  assertEqual(CONTENT.preferences.explicitDescriptions, false, 'String truthy values should not enable explicit descriptions');
+  assertEqual(CONTENT.preferences.filterTags.join(','), 'safe_tag,mature:tag', 'Filter tags should keep only valid unique token tags');
+  assertEqual(CONTENT.preferences.language, 'en', 'Unknown language should fall back to English');
+  assertEqual(CONTENT.preferences.unexpected, undefined, 'Unknown preference keys should be dropped');
+
+  const stored = JSON.parse(CONTENT.__testStorage.get('yaw-content-prefs'));
+  assertEqual(stored.unexpected, undefined, 'Normalized preferences should be written back without unknown keys');
+  assertEqual(stored.voreEnabled, false, 'Normalized preferences should persist sanitized booleans');
+
+  const malformed = loadContentSystemForTest({ 'yaw-content-prefs': '{bad json' });
+  assertEqual(malformed.preferences.maxTier, malformed.TIERS.SAFE, 'Malformed preference JSON should reset to safe defaults');
+  assertEqual(JSON.parse(malformed.__testStorage.get('yaw-content-prefs')).maxTier, malformed.TIERS.SAFE, 'Malformed preference JSON should be overwritten with safe defaults');
+});
+
+test('Content template registration rejects malformed template definitions', () => {
+  const CONTENT = loadContentSystemForTest();
+
+  let rejected = false;
+  try {
+    CONTENT.registerTemplate('bad category', 'type', 'default', {
+      safe: () => 'bad'
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'category', 'Invalid template category should report category validation');
+  }
+  assertEqual(rejected, true, 'Invalid template category should reject');
+  assertEqual(CONTENT.templates['bad category'], undefined, 'Rejected category should not mutate the template registry');
+
+  rejected = false;
+  try {
+    CONTENT.registerTemplate('test', 'badTier', 'default', {
+      safe: () => 'safe',
+      unsafe: () => 'bad'
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'safe, mature, adult', 'Unknown template tiers should report allowed tiers');
+  }
+  assertEqual(rejected, true, 'Unknown template tier should reject');
+  assertEqual(CONTENT.templates.test?.badTier, undefined, 'Rejected tier set should not mutate the template registry');
+
+  rejected = false;
+  try {
+    CONTENT.registerTemplate('test', 'badValue', 'default', {
+      safe: 'plain text'
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'function or null', 'Non-function template tiers should report type validation');
+  }
+  assertEqual(rejected, true, 'Non-function template tier should reject');
+  assertEqual(CONTENT.templates.test?.badValue, undefined, 'Rejected template value should not mutate the template registry');
+
+  rejected = false;
+  try {
+    CONTENT.registerTemplate('test', 'empty', 'default', {
+      safe: null,
+      mature: null,
+      adult: null
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'at least one renderable tier', 'All-null template registration should report missing renderable tier');
+  }
+  assertEqual(rejected, true, 'All-null template registration should reject');
+  assertEqual(CONTENT.templates.test?.empty, undefined, 'Rejected all-null template should not mutate the registry');
+});
+
+test('Built-in content pack handles respect active content policy', () => {
+  const registered = [];
+  const CONTENT = {
+    preferences: { maxTier: 0, explicitDescriptions: false },
+    registerTemplate(category, type, variant, templates) {
+      registered.push({ category, type, variant, templates });
+    }
+  };
+  const packs = loadContentPacksForTest(CONTENT);
+  const baseRegistrations = registered.length;
+
+  assert(baseRegistrations > 0, 'Core content pack should still install automatically');
+  assertEqual(packs.species.canInstall(), false, 'Mature optional content pack should not install while policy is safe');
+  assertContains(packs.species.blockReason(), 'higher content tier', 'Blocked mature content pack should report tier policy');
+
+  let rejected = false;
+  try {
+    packs.species.install();
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'higher content tier', 'Mature content pack install should report tier policy');
+  }
+  assertEqual(rejected, true, 'Safe policy should reject mature optional content pack install');
+  assertEqual(registered.length, baseRegistrations, 'Rejected content pack should not register templates');
+
+  CONTENT.preferences.maxTier = 1;
+  packs.species.install();
+  assert(registered.length > baseRegistrations, 'Mature policy should allow mature optional content pack install');
+  const matureRegistrations = registered.length;
+
+  CONTENT.preferences.maxTier = 2;
+  CONTENT.preferences.explicitDescriptions = false;
+  rejected = false;
+  try {
+    packs.adult.install();
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'explicit descriptions', 'Adult content pack should report explicit-description policy');
+  }
+  assertEqual(rejected, true, 'Adult policy without explicit descriptions should reject adult optional content pack install');
+  assertEqual(registered.length, matureRegistrations, 'Explicit-description rejection should not register templates');
+
+  CONTENT.preferences.explicitDescriptions = true;
+  packs.adult.install();
+  assert(registered.length > matureRegistrations, 'Adult policy with explicit descriptions should allow adult optional content pack install');
+});
+
+test('Built-in content pack source is separate from sample module catalog', () => {
+  assertContains(marketplaceContent, 'BUILT-IN CONTENT PACK HANDLES', 'Core marketplace module should describe built-in content pack handles');
+  assertContains(marketplaceContent, 'The sample module catalog lives in src/ui/market-screen.js.', 'Core marketplace module should point sample catalog work at the UI catalog');
+  assertNotContains(marketplaceContent, 'EXAMPLE CONTENT PACKS', 'Built-in content packs should not be labeled as example marketplace content');
+  assertNotContains(marketplaceContent, "author: 'Community'", 'Built-in optional packs should not imply remote community authorship');
+  assertContains(marketScreenContent, 'sampleModules: [', 'Sample module catalog should live in market-screen UI source');
 });
 
 test('Asset manifest supports tileset provenance and fallback metadata', () => {
@@ -519,6 +1539,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.'", 'Spanish mod manager empty-state label missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Delete this module? This cannot be undone.'", 'English mod manager delete warning missing');
   assertContains(contentContent, "'mod.confirmDelete': 'Borrar este modulo? Esta accion no se puede deshacer.'", 'Spanish mod manager delete warning missing');
+  assertContains(contentContent, "'mod.enableFailed': 'Could not enable {name}: {message}'", 'English mod enable failure label missing');
+  assertContains(contentContent, "'mod.enableFailed': 'No se pudo activar {name}: {message}'", 'Spanish mod enable failure label missing');
+  assertContains(contentContent, "'mod.disabledByContentPolicy': 'Disabled {count} module(s) blocked by current content settings: {names}'", 'English module policy-disable label missing');
+  assertContains(contentContent, "'mod.disabledByContentPolicy': 'Se desactivaron {count} modulo(s) bloqueados por la configuracion de contenido actual: {names}'", 'Spanish module policy-disable label missing');
   assertContains(contentContent, "'combat.instantWin': 'Instant Win'", 'English instant-win label missing');
   assertContains(contentContent, "'combat.instantWin': 'Victoria instantanea'", 'Spanish instant-win label missing');
   assertContains(contentContent, "'cheat.overpoweredMaxed': 'Overpowered! All stats maxed.'", 'English overpowered cheat log missing');
@@ -527,10 +1551,20 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'combat.allyHolds': '{name} mantiene la posicion.'", 'Spanish ally hold log missing');
   assertContains(contentContent, "'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.'", 'English reinforcement log missing');
   assertContains(contentContent, "'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.'", 'Spanish reinforcement log missing');
-  assertContains(contentContent, "'market.title': 'Module Marketplace'", 'English marketplace title missing');
-  assertContains(contentContent, "'market.title': 'Mercado de modulos'", 'Spanish marketplace title missing');
-  assertContains(contentContent, "'market.installModule': 'Install {name}'", 'English marketplace install action missing');
-  assertContains(contentContent, "'market.installModule': 'Instalar {name}'", 'Spanish marketplace install action missing');
+  assertContains(contentContent, "'market.title': 'Module Samples'", 'English marketplace sample title missing');
+  assertContains(contentContent, "'market.title': 'Ejemplos de modulos'", 'Spanish marketplace sample title missing');
+  assertContains(contentContent, "'market.subtitle': 'Preview local sample module fixtures and modding workflows'", 'English marketplace fixture subtitle missing');
+  assertContains(contentContent, "'market.sampleCatalog': 'Sample Catalog'", 'English marketplace sample-catalog label missing');
+  assertContains(contentContent, "'market.installSampleModule': 'Install fixture {name}'", 'English marketplace fixture install action missing');
+  assertContains(contentContent, "'market.installSampleModule': 'Instalar fixture {name}'", 'Spanish marketplace fixture install action missing');
+  assertContains(contentContent, "'market.contentRatingTitle': 'Content rating: {rating}'", 'English marketplace content rating title missing');
+  assertContains(contentContent, "'market.contentRatingTitle': 'Clasificacion de contenido: {rating}'", 'Spanish marketplace content rating title missing');
+  assertContains(contentContent, "'market.rating.safe': 'Safe'", 'English safe marketplace rating missing');
+  assertContains(contentContent, "'market.rating.safe': 'Seguro'", 'Spanish safe marketplace rating missing');
+  assertContains(contentContent, "'market.installedNotEnabled': 'Installed {name}, but it could not be enabled: {message}'", 'English marketplace partial install label missing');
+  assertContains(contentContent, "'market.installedNotEnabled': '{name} fue instalado, pero no se pudo activar: {message}'", 'Spanish marketplace partial install label missing');
+  assertContains(contentContent, "'market.openedModTools': 'Opened local module tools.'", 'English marketplace local-tools feedback missing');
+  assertContains(contentContent, "'market.openedModTools': 'Herramientas locales de modulos abiertas.'", 'Spanish marketplace local-tools feedback missing');
   assertContains(contentContent, "'create.namePlaceholder': 'Enter your name...'", 'English create name placeholder missing');
   assertContains(contentContent, "'create.namePlaceholder': 'Ingresa tu nombre...'", 'Spanish create name placeholder missing');
   assertContains(contentContent, "'ui.expandCards': 'Expand'", 'English expand-card label missing');
@@ -589,12 +1623,14 @@ test('Scene description supports rich bounded content', () => {
 test('Settings clear saves button is wired to an implemented handler', () => {
   assertContains(template, 'App.deleteAllSaves()', 'settings clear saves button should call deleteAllSaves');
   assertContains(appContent, 'async deleteAllSaves()', 'deleteAllSaves handler missing');
-  assertContains(appContent, 'location.reload()', 'deleteAllSaves should refresh UI after clearing saves');
+  assertContains(appContent, 'this._reloadPage()', 'deleteAllSaves should refresh UI after clearing saves');
+  assertContains(storageSystemContent, 'location.reload()', 'storage helper should perform page reload');
   assertContains(appContent, "this._label('save.confirmDeleteAll'", 'deleteAllSaves warning should come from localized copy');
   assertContains(appContent, "this._label('save.success.deletedAll'", 'deleteAllSaves success alert should come from localized copy');
   assertContains(appContent, "this._label('save.error.deleteAllFailed'", 'deleteAllSaves failure alert should come from localized copy');
   assertContains(appContent, "this._label('settings.confirmClearAllData'", 'clearAllData warning should come from localized copy');
   assertContains(appContent, "this._label('settings.clearAllDataDone'", 'clearAllData success alert should come from localized copy');
+  assertContains(appContent, "this._label('settings.clearAllDataFailed'", 'clearAllData failure alert should come from localized copy');
 });
 
 test('Mod manager UI uses localized safe rendering for module metadata', () => {
@@ -613,6 +1649,14 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
   assertContains(modUiContent, "this.label('mod.confirmDelete'", 'Mod delete confirmation should localize');
   assertContains(modUiContent, "this.label('mod.noneInstalled'", 'Mod empty state should localize');
   assertContains(modUiContent, "this.label('mod.noDescription'", 'Mod missing-description fallback should localize');
+  assertContains(modUiContent, "this.label(key, fallback, { name, message })", 'Mod enable or disable failures should localize and include the policy error');
+  assertContains(modUiContent, 'await this.refreshModList();', 'Mod enable failures should refresh list state after rejection');
+  assertContains(modUiContent, 'alert(text);', 'Mod enable failures should surface a user-facing alert');
+  assertContains(moduleSystemContent, '_requirePermission(moduleId, manifest', 'Module API mutations should enforce declared permissions');
+  assertContains(moduleSystemContent, "'world:add_biome'", 'Module biome mutation permission should be explicit');
+  assertContains(moduleSystemContent, "'content:add_species'", 'Module species mutation permission should be explicit');
+  assertContains(moduleSystemContent, "'content:add_item'", 'Module item mutation permission should be explicit');
+  assertContains(modUiContent, "permissions: ['world:add_biome', 'content:add_species']", 'Example biome module should declare required mutation permissions');
   assertContains(modUiContent, "this.escapeHtml(manifest.name", 'Mod names should be escaped before rendering');
   assertContains(modUiContent, "this.escapeHtml(manifest.description", 'Mod descriptions should be escaped before rendering');
   assertContains(modUiContent, 'aria-label="${enableTitle}"', 'Mod enable button should expose accessible localized title');
@@ -624,32 +1668,107 @@ test('Mod manager UI uses localized safe rendering for module metadata', () => {
 test('Marketplace UI uses localized safe rendering for catalog metadata', () => {
   assertContains(template, 'data-i18n="market.title"', 'Marketplace fallback title should opt into static localization');
   assertContains(template, 'data-i18n="market.subtitle"', 'Marketplace fallback subtitle should opt into static localization');
-  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Marketplace</span></h1>', 'Marketplace header should leave room for a persistent close button');
-  assertContains(template, 'title="Close marketplace" aria-label="Close marketplace" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Marketplace should expose a persistent localized close button');
+  assertContains(template, 'Preview local sample module fixtures and modding workflows', 'Marketplace fallback subtitle should clarify entries are local fixtures');
+  assertContains(template, '<h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Samples</span></h1>', 'Marketplace header should describe sample fixtures and leave room for a persistent close button');
+  assertContains(template, 'title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle"', 'Marketplace should expose a persistent localized close button');
   assertContains(template, 'data-i18n="market.browse"', 'Marketplace fallback browse button should localize');
   assertContains(marketScreenContent, "label(key, fallback, vars = {})", 'Marketplace localization helper missing');
   assertContains(marketScreenContent, "escapeHtml(value)", 'Marketplace HTML escaping helper missing');
   assertContains(marketScreenContent, "this.label('market.title'", 'Marketplace title should localize');
+  assertContains(marketScreenContent, "this.label('market.title', 'Module Samples')", 'Marketplace dynamic title should describe sample fixtures');
+  assertContains(marketScreenContent, "this.label('market.subtitle', 'Preview local sample module fixtures and modding workflows')", 'Marketplace dynamic subtitle should clarify sample fixture catalog status');
+  assertContains(marketScreenContent, "sampleModules: [", 'Marketplace should name its in-code entries as samples');
+  assertContains(marketScreenContent, 'Sample local catalog fixtures. This is not a remote marketplace feed.', 'Marketplace should document that catalog data is sample-only fixtures');
+  assertContains(marketScreenContent, "name: 'Safe Biome Fixture'", 'Marketplace sample entries should use explicit fixture names');
+  assertContains(marketScreenContent, "description: 'Fixture stub for the safe biome-pack install path'", 'Marketplace sample entries should use explicit fixture descriptions');
+  assertContains(marketScreenContent, "this.label('market.sampleCatalog', 'Sample Catalog')", 'Marketplace section should be labeled as a sample catalog');
+  assertContains(marketScreenContent, 'Local fixture entry for testing install, enable, filter, and sorting flows. Installed samples are stubs, not full gameplay packs.', 'Marketplace sample fallback should describe fixtures and stubs instead of real staff picks');
   assertContains(marketScreenContent, "this.label('market.search'", 'Marketplace search placeholder should localize');
-  assertContains(marketScreenContent, "this.label('market.installModule'", 'Marketplace install button title should localize');
+  assertContains(marketScreenContent, "this.label('market.installSampleModule'", 'Marketplace sample install button title should localize');
   assertContains(marketScreenContent, "this.label('market.closeTitle'", 'Marketplace dynamic close title should localize');
   assertContains(marketScreenContent, 'onclick="returnToGame()"', 'Marketplace dynamic view should keep a close button after rerender');
-  assertContains(marketScreenContent, "this.label('market.downloading'", 'Marketplace download log should localize');
-  assertContains(marketScreenContent, "this.label('market.createWizardPlaceholder'", 'Marketplace create placeholder should localize');
-  assertContains(marketScreenContent, 'const featured = MODULE_MARKETPLACE.featuredModules[0] || {}', 'Marketplace staff pick should read root featured module data');
-  assertContains(marketScreenContent, 'MODULE_MARKETPLACE.featuredModules.find', 'Marketplace install should read root featured module data');
+  assertContains(marketScreenContent, "this.label('market.preparingSample'", 'Marketplace sample preparation log should localize without implying download');
+  assertContains(marketScreenContent, "this.label('market.installedNotEnabled'", 'Marketplace should localize installed-but-not-enabled policy failures');
+  assertContains(marketScreenContent, "this.label('market.installFailed'", 'Marketplace should localize install failures');
+  assertContains(marketScreenContent, "this.label('market.create', 'Module Tools')", 'Marketplace create affordance should point at local module tools');
+  assertContains(marketScreenContent, "ModUI.showModScreen();", 'Marketplace create affordance should open the implemented local module manager');
+  assertContains(marketScreenContent, "this.label('market.openedModTools'", 'Marketplace local module tools feedback should localize');
+  assertContains(marketScreenContent, "this.label('market.modToolsUnavailable'", 'Marketplace unavailable local-tools fallback should localize');
+  assertContains(marketScreenContent, "contentRating: 'safe'", 'Marketplace catalog entries should declare safe content ratings explicitly');
+  assertContains(marketScreenContent, "contentRating: 'mature'", 'Marketplace catalog entries should declare mature content ratings explicitly');
+  assertContains(marketScreenContent, 'normalizeContentRating(value)', 'Marketplace should normalize content rating metadata before rendering');
+  assertContains(marketScreenContent, 'renderContentRatingBadge(value)', 'Marketplace cards should render visible content rating badges');
+  assertContains(marketScreenContent, 'data-content-rating="${this.escapeHtml(rating)}"', 'Marketplace rating badges should expose machine-readable content rating metadata');
+  assertContains(marketScreenContent, "this.label('market.contentRatingTitle'", 'Marketplace content rating badge title should localize');
+  assertContains(marketScreenContent, "mod.contentRating || 'safe'", 'Marketplace install manifest should preserve catalog content ratings');
+  assertContains(marketScreenContent, 'catch (enableError)', 'Marketplace install should handle module enable rejection separately');
+  assertContains(marketScreenContent, 'await ModUI.refreshModList();', 'Marketplace policy failure should refresh installed module list');
+  assertContains(marketScreenContent, 'filteredModules() {', 'Marketplace filters should be implemented instead of console-only placeholders');
+  assertContains(marketScreenContent, 'renderGrid() {', 'Marketplace should rerender the grid after filter and sort changes');
+  assertContains(marketScreenContent, "this.label('market.noMatches'", 'Marketplace no-match state should localize');
+  assertNotContains(marketScreenContent, "console.log('Filter:", 'Marketplace filter should not be a console-only placeholder');
+  assertNotContains(marketScreenContent, "console.log('Sort by:", 'Marketplace sort should not be a console-only placeholder');
+  assertContains(marketScreenContent, 'const sample = MODULE_MARKETPLACE.sampleModules[0] || {}', 'Marketplace sample callout should read root sample module data');
+  assertContains(marketScreenContent, 'MODULE_MARKETPLACE.sampleModules.find', 'Marketplace install should read root sample module data');
   assertContains(marketScreenContent, "this.escapeHtml(mod.name)", 'Marketplace module names should be escaped before rendering');
   assertContains(marketScreenContent, "this.escapeHtml(mod.description)", 'Marketplace descriptions should be escaped before rendering');
   assertContains(marketScreenContent, 'aria-label="${installTitle}"', 'Marketplace install buttons should expose accessible localized titles');
   assertNotContains(marketScreenContent, '${mod.name}</h3>', 'Marketplace module names should not be inserted directly into HTML');
   assertNotContains(marketScreenContent, '${mod.description}', 'Marketplace descriptions should not be inserted directly into HTML');
+  assertNotContains(template, 'Discover community-made biomes, species, and features', 'Marketplace fallback should not imply a live community catalog');
+  assertNotContains(template, 'Module Marketplace</span>', 'Marketplace fallback title should not present fixture samples as a live marketplace');
+  assertNotContains(template, 'Browse marketplace', 'Marketplace fallback buttons should not imply a live marketplace feed');
+  assertNotContains(marketScreenContent, 'Our most popular biome expansion', 'Marketplace featured fallback should not imply real staff-picked catalog content');
+  assertNotContains(marketScreenContent, 'downloads:', 'Marketplace sample entries should not use fake download counts');
+  assertNotContains(marketScreenContent, 'rating: 4', 'Marketplace sample entries should not use fake rating scores');
+  assertNotContains(marketScreenContent, "size: '", 'Marketplace sample entries should not use fake package sizes');
+  assertNotContains(marketScreenContent, 'Desert of Whispers', 'Marketplace sample entries should not look like real named content packs');
+  assertNotContains(marketScreenContent, 'Neon District', 'Marketplace sample entries should not look like real named content packs');
+  assertNotContains(marketScreenContent, 'Dragon Compendium', 'Marketplace sample entries should not look like real named content packs');
+  assertNotContains(marketScreenContent, "'market.sort.downloads'", 'Marketplace sort should not imply real download metrics');
+  assertNotContains(marketScreenContent, "'market.sort.rating'", 'Marketplace sort should not imply real rating metrics');
+  assertNotContains(marketScreenContent, "'market.downloading'", 'Marketplace install workflow should not imply a real remote download');
+  assertNotContains(marketScreenContent, 'would open here', 'Marketplace should not keep placeholder-only create workflows');
 });
 
 test('Overlay close controls clear active overlay state', () => {
   assertContains(template, 'onclick="returnToGame()"', 'overlay close buttons should use shared close helper');
+  assertContains(template, 'class="menu-shell"', 'Main menu should have a stable centered shell class');
+  assertContains(template, 'class="menu-actions"', 'Main menu actions should have a stable width-bounded container class');
+  assertContains(template, '.menu-actions .action-btn', 'Main menu buttons should have a stable scoped sizing rule');
   assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
   assertContains(appContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
+  assertContains(appContent, "document.getElementById('screen-menu').classList.add('active');", 'App returnToGame should restore active menu state when no game is running');
+  assertContains(appContent, "this.screen = 'menu';", 'App returnToGame should restore menu screen state when no game is running');
+});
+
+test('Settings overlay returns to a centered active main menu when no game is running', () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+  const appShell = document.getElementById('app');
+  const menu = document.getElementById('screen-menu');
+  const settings = document.getElementById('screen-settings');
+  App.player = null;
+  App.showScreen('settings');
+  assertEqual(App.screen, 'settings', 'Settings should become the active screen');
+  assertEqual(menu.style.display, 'none', 'Menu should be hidden while settings is open');
+  assertEqual(menu.classList.contains('active'), false, 'Menu should not stay active behind settings');
+
+  App.returnToGame();
+  assertEqual(App.screen, 'menu', 'Closing settings without a living player should restore menu screen state');
+  assertEqual(appShell.style.display, 'none', 'Game app shell should remain hidden on menu return');
+  assertEqual(menu.style.display, 'flex', 'Menu should become visible after closing settings');
+  assertEqual(menu.classList.contains('active'), true, 'Menu should regain active class after closing settings');
+  assertEqual(settings.classList.contains('active'), false, 'Settings overlay active class should be cleared on close');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
@@ -769,8 +1888,12 @@ test('Settings default safe and reveal controls by content maturity', () => {
   assertContains(template, "App.setContentTier('safe')", 'safe content button should use App content-tier helper');
   assertContains(template, "App.setContentTier('mature')", 'mature content button should use App content-tier helper');
   assertContains(template, "App.setContentTier('adult')", 'adult content button should use App content-tier helper');
+  assertContains(appContent, 'CONTENT.applyPreferences(savedPrefs', 'App startup should normalize stored content preferences through CONTENT');
   assertContains(appContent, 'syncSettingVisibility()', 'settings tier visibility helper missing');
   assertContains(appContent, 'enforceContentTierSettings()', 'settings should enforce hidden-tier toggles when content level changes');
+  assertContains(appContent, 'enforceModuleContentPolicy()', 'settings should enforce active module content policy when content level changes');
+  assertContains(appContent, 'MODULE_SYSTEM.enforceContentPolicy()', 'App module policy helper should delegate to module system enforcement');
+  assertContains(appContent, "this._label('mod.disabledByContentPolicy'", 'App should localize module content-policy disable logs');
   assertContains(appContent, "CONTENT.setPreference('explicitDescriptions', false)", 'lowering tier should disable explicit descriptions');
   assertContains(appContent, "CONTENT.setPreference('voreEnabled', false)", 'lowering to safe should disable mature mechanics');
   assertContains(contentContent, "'ui.menu.contentDefault': 'Safe content is enabled by default'", 'menu should describe safe default');
@@ -1080,7 +2203,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     },
     createElement() { return makeElement(); }
   };
-  const storage = new Map();
+  const storage = new Map(Object.entries(options.storage || {}).map(([key, value]) => [key, String(value)]));
   const localStorage = {
     getItem: key => storage.has(key) ? storage.get(key) : null,
     setItem: (key, value) => storage.set(key, String(value)),
@@ -1101,8 +2224,18 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${appContent}\nreturn window.App;`
   );
+  const indexedDb = options.indexedDB || {
+    open() { return {}; },
+    deleteDatabase() {
+      const request = { onsuccess: null, onerror: null, onblocked: null, error: null };
+      setTimeout(() => {
+        if (request.onsuccess) request.onsuccess({ target: request });
+      }, 0);
+      return request;
+    }
+  };
   const App = appFactory(
     {},
     document,
@@ -1117,15 +2250,15 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'trade.title': '{name} Trade', 'trade.gold': 'Gold: {gold}', 'trade.buy': 'Buy', 'trade.sell': 'Sell', 'trade.buyItem': 'Buy {name}', 'trade.sellItem': 'Sell {name}', 'trade.needGold': 'You need {price} gold to buy {name}.', 'trade.confirmBuy': 'Buy {name} for {price} gold?', 'trade.purchaseCancelled': 'Purchase cancelled: {name}.', 'trade.bought': 'Bought {name} for {price} gold.', 'trade.sold': 'Sold {name} for {price} gold.', 'trade.noStockMatches': 'No stock matches the current filter.', 'trade.noItemsToSell': 'No items to sell.', 'trade.noInventoryMatches': 'No inventory items match the current filter.',
           'quest.title': 'Quests', 'quest.status': 'Status', 'quest.sort': 'Sort', 'quest.filter.all': 'All', 'quest.filter.active': 'Active', 'quest.filter.turnIn': 'Turn In', 'quest.filter.completed': 'Completed', 'quest.sort.status': 'Status', 'quest.sort.title': 'Title', 'quest.showOnMap': 'Show On Map', 'quest.showTurnIn': 'Show Turn-In', 'quest.turnIn': 'Turn In', 'quest.showOnMapFor': 'Show {name} on map', 'quest.showTurnInFor': 'Show turn-in for {name}', 'quest.turnInQuest': 'Turn in {name}', 'quest.status.active': 'Active', 'quest.status.completed': 'Completed', 'quest.status.turnIn': 'Turn In', 'quest.noneActive': 'No active quests.', 'quest.noneMatchFilter': 'No quests match the current filter.', 'quest.alreadyInLog': '{title} is already in your quest log.', 'quest.accepted': 'Quest accepted: {title}.', 'quest.completed': 'Quest completed: {title}.', 'quest.completedTurnIn': 'Quest completed: {title}. Return to {giver} for your reward.', 'quest.defaultGiver': 'the quest giver', 'quest.notReadyTurnIn': 'That quest is not ready to turn in.', 'quest.alreadyTurnedIn': '{title} has already been turned in.', 'quest.turnedIn': 'Quest turned in: {title}.', 'quest.noObjectiveMarker': 'No map marker is available for that quest objective.', 'quest.mapFocusedObjective': 'Map focused on {title}: {label}.', 'quest.noTurnInLocation': 'No turn-in location is available for that quest.', 'quest.mapFocusedTurnIn': 'Map focused on {title} turn-in: {label}.', 'quest.checkpoint': 'Checkpoint', 'quest.checkpoint.complete': 'Complete', 'quest.checkpoint.current': 'Current', 'quest.checkpoint.pending': 'Pending', 'quest.checkpointAria': '{state} checkpoint {index}: {label} at {x}, {y}{guidance}', 'quest.youAreHere': 'You are here', 'quest.direction.north': '{count} north', 'quest.direction.south': '{count} south', 'quest.direction.east': '{count} east', 'quest.direction.west': '{count} west', 'quest.step.singular': 'step', 'quest.step.plural': 'steps', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'known route crosses {parts}', 'quest.terrainRoad': '{count} road', 'quest.terrainBridge': '{count} bridge', 'quest.terrainRough': '{count} rough terrain', 'quest.markerPreview': 'Marker: {label} ({x}, {y})', 'quest.turnInPreview': 'Turn in with {label} ({x}, {y})',
           'perk.choose': 'Choose Perk', 'perk.chooseCount': 'Choose Perk ({count})', 'perk.pending': 'Pending choices: {count}', 'perk.trees': 'Perk trees', 'perk.filter.all': 'All', 'perk.chooseNamed': 'Choose {name}', 'perk.back': 'Back', 'perk.respec': 'Respec Perks', 'perk.debugGrant': 'Debug +1 Perk Choice', 'perk.closeStats': 'Close', 'perk.levelUp': 'Level up! You are now level {level}. All stats increased!', 'perk.chooseNew': 'Choose a new perk from the perk tree.', 'perk.notAvailable': 'That perk is not available yet.', 'perk.chosen': 'Perk chosen: {name}. {description}', 'perk.noneToRespec': 'No perks selected to respec.', 'perk.confirmRespec': 'Reset selected perks and refund their choices?', 'perk.respecDoneOne': 'Perks reset. Refunded {count} choice.', 'perk.respecDoneMany': 'Perks reset. Refunded {count} choices.',
-          'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.actionLegend': 'Action legend', 'ui.menu.newGame': 'New Game', 'ui.menu.newGameTitle': 'Start a new game', 'ui.returnToMenu': 'Return to Menu', 'ui.menu.tutorialTitle': 'Open tutorial', 'ui.tutorial.skip': 'Skip Tutorial', 'ui.tutorial.next': 'Next ->', 'ui.tutorial.welcome.title': 'Welcome', 'ui.tutorial.welcome.content': 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.', 'ui.tutorial.combat.title': 'Combat', 'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.', 'ui.tutorial.feast.title': 'Feast', 'ui.tutorial.feast.content': 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.', 'ui.tutorial.party.title': 'Party', 'ui.tutorial.party.content': 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.', 'ui.tutorial.ready.title': 'Ready', 'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.', 'ui.log.search': 'Search log', 'settings.title': 'Settings', 'settings.interfaceLanguage': 'Interface Language', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.tacticalStatus': 'Tactical status', 'ui.unitTraits': 'Unit traits', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.actorActing': '{name} is acting...', 'mobile.combat.actor': '{name} to act', 'mobile.combat.chooseAction': 'Choose an action, then tap a target.', 'mobile.combat.enemyTurn': '{name} is acting.', 'mobile.combat.pickTarget': 'Pick a target in the enemy strip for {action}.', 'mobile.combat.status': 'Round {round} · Turn {turn}/{total}', 'mobile.combat.targeting': 'Targeting: {action}', 'ui.welcomeLog': 'Welcome to You Are Wild', 'ui.scene.wildernessTitle': 'The Wilderness', 'ui.scene.wildernessIntro': 'You find yourself in an untamed land where predators roam and only the strong survive.', 'ui.scene.wildernessAmbient': 'The air is thick with the scent of pine and the distant calls of creatures unknown.', 'ui.log.createdCharacter': 'Created your character. The journey begins...', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here', 'target.chooseFromPanel': 'Select a target from the creature panel.', 'target.cancelAction': 'Cancel {action}', 'log.movedTo': 'Moved to {x}, {y} ({biome})', 'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.', 'log.discoveredLandmark': 'Discovered {name}!', 'log.restUnavailable': 'There is no safe place to rest here.', 'log.rested': 'Rested and recovered.', 'log.noEntriesMatchFilter': 'No log entries match the current filter.', 'recruit.partyFull': 'Party is full! Cannot recruit {name}', 'recruit.notReady': '{name} is not ready to join the party.', 'recruit.joined': '{name} joins your party!', 'recruit.confirmSubmissive': '{name} is submissive. Recruit them to your party?', 'feed.optionsTitle': 'Feed Options', 'feed.noOptions': 'No feed options available right now.', 'feed.noWoundedAllies': 'No wounded allies to feed.', 'feed.noWillingLivestock': 'No willing livestock to sacrifice.', 'feed.noForceFeedEnemies': 'No enemies to force-feed.', 'feed.noValidTarget': 'No valid target for this feed action.',
+          'ui.close': 'Close', 'ui.cancel': 'Cancel', 'ui.actionLegend': 'Action legend', 'ui.menu.newGame': 'New Game', 'ui.menu.newGameTitle': 'Start a new game', 'ui.returnToMenu': 'Return to Menu', 'ui.menu.tutorialTitle': 'Open tutorial', 'ui.tutorial.skip': 'Skip Tutorial', 'ui.tutorial.next': 'Next ->', 'ui.tutorial.welcome.title': 'Welcome', 'ui.tutorial.welcome.content': 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.', 'ui.tutorial.combat.title': 'Combat', 'ui.tutorial.combat.content': 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.', 'ui.tutorial.feast.title': 'Feast', 'ui.tutorial.feast.content': 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.', 'ui.tutorial.party.title': 'Party', 'ui.tutorial.party.content': 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.', 'ui.tutorial.ready.title': 'Ready', 'ui.tutorial.ready.content': 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.', 'ui.log.search': 'Search log', 'settings.title': 'Settings', 'settings.interfaceLanguage': 'Interface Language', 'ui.creatureActions': 'Creature actions', 'ui.partyActions': 'Party actions', 'ui.tacticalStatus': 'Tactical status', 'ui.unitTraits': 'Unit traits', 'unit.cardFocus': 'Focus {name} card', 'ui.exploration': 'Exploration', 'ui.chooseAction': 'Choose your next action.', 'ui.actorActing': '{name} is acting...', 'mobile.combat.actor': '{name} to act', 'mobile.combat.chooseAction': 'Choose an action, then tap a target.', 'mobile.combat.enemyTurn': '{name} is acting.', 'mobile.combat.pickTarget': 'Pick a target in the enemy strip for {action}.', 'mobile.combat.status': 'Round {round} · Turn {turn}/{total}', 'mobile.combat.targeting': 'Targeting: {action}', 'ui.welcomeLog': 'Welcome to You Are Wild', 'ui.scene.wildernessTitle': 'The Wilderness', 'ui.scene.wildernessIntro': 'You find yourself in an untamed land where predators roam and only the strong survive.', 'ui.scene.wildernessAmbient': 'The air is thick with the scent of pine and the distant calls of creatures unknown.', 'ui.log.createdCharacter': 'Created your character. The journey begins...', 'ui.area': 'Area', 'ui.enemies': 'Enemies', 'ui.creatures': 'Creatures', 'ui.noCreaturesPresent': 'No creatures present', 'ui.noCreaturesHere': 'No creatures here', 'target.chooseFromPanel': 'Select a target from the creature panel.', 'target.cancelAction': 'Cancel {action}', 'log.movedTo': 'Moved to {x}, {y} ({biome})', 'log.inCombatCannotMove': 'You are in combat! Use Flee to escape.', 'log.discoveredLandmark': 'Discovered {name}!', 'log.restUnavailable': 'There is no safe place to rest here.', 'log.rested': 'Rested and recovered.', 'log.noEntriesMatchFilter': 'No log entries match the current filter.', 'recruit.partyFull': 'Party is full! Cannot recruit {name}', 'recruit.notReady': '{name} is not ready to join the party.', 'recruit.joined': '{name} joins your party!', 'recruit.confirmSubmissive': '{name} is submissive. Recruit them to your party?', 'feed.optionsTitle': 'Feed Options', 'feed.noOptions': 'No feed options available right now.', 'feed.noWoundedAllies': 'No wounded allies to feed.', 'feed.noWillingLivestock': 'No willing livestock to sacrifice.', 'feed.noForceFeedEnemies': 'No enemies to force-feed.', 'feed.noValidTarget': 'No valid target for this feed action.',
           'disposition.hostile': 'Hostile', 'disposition.friendly': 'Friendly', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Quest', 'disposition.merchant': 'Merchant', 'disposition.remains': 'Remains', 'unit.trait.asleep': 'Asleep', 'unit.trait.poisoned': 'Poison', 'unit.trait.burning': 'Burning', 'unit.trait.bleeding': 'Bleeding', 'unit.trait.stunned': 'Stunned', 'unit.trait.frozen': 'Frozen', 'unit.trait.fear': 'Fear', 'unit.trait.restrained': 'Restrained', 'unit.trait.wounded': 'Wounded', 'unit.trait.hungry': 'Hungry', 'unit.trait.flying': 'Flying', 'unit.trait.darkvision': 'Darkvision', 'combat.row': 'Row', 'combat.row.front': 'Front', 'combat.row.back': 'Back', 'combat.group': 'Group', 'combat.turnOrder': 'Turn order', 'combat.status.current': '{name} is the current combat actor at turn {order}.', 'combat.status.queued': '{name} is queued at turn {order}.', 'combat.status.queuedActed': '{name} is queued at turn {order} and has already acted this round.', 'combat.panelActions': 'Combat actions', 'combat.panelFirstStatus': 'Combat controls', 'combat.panelFirstPrompt': 'Use the active actor card for combat intent, then pick a target in the enemy panel.', 'combat.panelFirstTargeting': 'Targeting: {action}. Pick a valid target in the enemy panel.', 'combat.panelFirstEnemyTurn': '{name} is acting. Combat controls stay in the party and creature panels.', 'combat.status.syncParticipant': '{name} is participant in queued group {action} resolving at turn {order}.', 'combat.status.syncTarget': '{name} is target of queued group {action} resolving at turn {order}.', 'combat.status.canTarget': '{name} can be selected as the {action} target.', 'combat.status.cannotTarget': '{name} cannot be selected as the {action} target.', 'combat.status.choosingTarget': '{name} is choosing a {action} target.', 'combat.moveRowLog': '{name} moves to the {row} row.', 'combat.cannotReachTarget': '{actor} cannot reach {target} from here.', 'combat.flee.noEnemies': 'No enemies to flee from!', 'combat.flee.success': 'You flee successfully!', 'combat.flee.failed': 'Flee failed! {name} intercepts you!', 'combat.godModeSaved': 'God Mode saved you from death!', 'combat.playerFallen': 'You have fallen! Game Over!', 'combat.hardcoreSaveDeleted': 'HARDCORE MODE: Your save has been deleted.', 'combat.playerKnockedOut': 'You have been knocked out! Your party must finish the fight...', 'combat.partyWipedOut': 'Your party has been wiped out!', 'combat.alliesContinue': 'Your allies continue the fight...', 'combat.playerComesTo': '{name} comes to after the fight.', 'combat.victory': 'Victory! Enemies defeated or subdued.', 'combat.escapedEncounter': 'You escaped the encounter.', 'combat.defeat': 'Defeat...', 'combat.confirmReturnToMenu': 'Defeat! Return to menu?', 'combat.notInCombat': 'Not in combat!', 'combat.instantWin': 'Instant Win', 'combat.instantWinTitle': 'Instantly defeat all enemies', 'combat.instantWinNotInCombat': 'Not in combat! Instant Win only works during combat.', 'combat.instantWinRequiresOverpowered': 'Instant Win requires Overpowered mode.', 'combat.instantWinSuccess': 'Instant Win! All enemies are defeated.', 'combat.allyScavenges': "{ally} scavenges {target}'s remains after the fight.", 'combat.allyHolds': '{name} holds position.', 'combat.allyCannotReach': '{name} cannot reach any target.', 'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.', 'combat.enemyRage': '{name} enters a rage!', 'combat.enemyFlees': '{name} flees in terror!', 'combat.status.poisoned': '{name} is poisoned!', 'combat.status.constricted': '{actor} constricts {target}! They are restrained.', 'combat.status.enveloped': '{actor} envelops {target}!', 'combat.status.stunned': '{name} is stunned and loses their turn!', 'combat.status.frozen': '{name} is frozen in place and loses their turn!', 'combat.status.asleep': '{name} is asleep and cannot act!', 'combat.status.fearFlee': '{name} panics and flees from fear!', 'combat.status.fearFrozen': '{name} freezes in fear and loses their turn!', 'combat.status.recovering': '{name} is recovering and skips their turn.', 'combat.status.restrainedSkip': '{name} is restrained and cannot act!', 'combat.status.stuck': '{name} is stuck in the terrain and loses their turn!', 'combat.allyFlees': '{name} loses their nerve and flees from the fight!', 'combat.allyFleeFailed': '{name} tries to flee but cannot get away!', 'combat.allyTooAroused': '{name} is too aroused to obey!', 'combat.enemyCannotReach': '{enemy} cannot reach {target}.', 'cheat.toggled': 'Cheat {name}: {state}', 'cheat.state.on': 'ON', 'cheat.state.off': 'OFF', 'cheat.overpoweredMaxed': 'Overpowered! All stats maxed.', 'combat.waitForTurn': 'Wait for your turn!', 'combat.notYourTurn': 'Not your turn!', 'combat.sync.chooseAction': 'Choose Sync Action', 'combat.sync.noAllies': 'No allies available for sync.', 'combat.sync.action.fuck': 'Group Seduce', 'combat.sync.action.flirt': 'Group Flirt', 'combat.sync.action.fight': 'Group Fight', 'combat.sync.action.feed': 'Group Feed', 'combat.sync.selectParticipants': 'Select participants for sync', 'combat.sync.selectParticipantFor': 'Select {name} for sync', 'combat.sync.confirmParticipants': 'Confirm Participants', 'combat.sync.needParticipants': 'Need at least 2 participants for a sync action.', 'combat.sync.selectTarget': 'Select sync target', 'combat.sync.selectTargetFor': 'Select {name} as sync target', 'combat.sync.failedNoQueue': 'Sync failed! Participants are no longer in the turn queue.', 'combat.sync.failedIncapacitated': 'Sync failed! {names} cannot participate.', 'capacity.stomach': 'Stomach', 'capacity.womb': 'Womb', 'capacity.balls': 'Balls', 'capacity.owner.your': 'Your', 'capacity.owner.named': "{name}'s", 'capacity.tooFull': '{owner} {container} is too full for {target}!', 'structure.noStructure': 'There is no structure to enter here.', 'structure.entered': 'Entered {name}.', 'structure.exited': 'Exited {name}.', 'structure.movedInside': 'Moved inside {name} to {x}, {y}.', 'structure.fallbackName': 'the structure', 'structure.wallBlocked': 'A wall blocks the way.',
           'party.stats': 'Stats', 'party.you': 'You', 'party.ally': 'Ally', 'party.leader': 'Leader', 'party.levelSpecies': 'Level {level} {species}', 'party.punishment': 'Punishment', 'party.pleasure': 'Pleasure', 'party.hunger': 'Hunger', 'party.combat': 'Combat', 'party.attributes': 'Attributes', 'party.capacity': 'Capacity', 'party.equipment': 'Equipment', 'party.perks': 'Perks', 'party.none': 'None', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Combat Stats', 'character.body': 'Body', 'character.size': 'Size', 'character.appetite': 'Appetite', 'character.parts': 'Parts', 'character.chest': 'Chest', 'character.bodyParts': 'Body', 'character.perkTools': 'Perk Tools', 'character.perkToolsHelp': 'Balance/debug controls.', 'party.makeLeader': 'Make Leader', 'party.role': 'Role', 'party.aiOrder': 'AI Order', 'party.role.companion': 'Companion', 'party.role.scout': 'Scout', 'party.role.guard': 'Guard', 'party.role.support': 'Support', 'party.role.gatherer': 'Gatherer', 'party.roleDescription.companion': 'No special exploration role.', 'party.roleDescription.scout': 'Improves night visibility and route awareness.', 'party.roleDescription.guard': 'Reduces ambush advantage and helps protect camp.', 'party.roleDescription.support': 'Improves recovery when resting somewhere safe.', 'party.roleDescription.gatherer': 'Improves search and foraging results.', 'party.aiOrder.aggressive': 'Aggressive', 'party.aiOrder.defensive': 'Defensive', 'party.aiOrder.healer': 'Healer', 'party.aiOrder.scavenger': 'Scavenger', 'party.aiOrder.passive': 'Passive', 'party.aiOrderDescription.aggressive': 'Prioritizes attacking reachable threats.', 'party.aiOrderDescription.defensive': 'Favors safer positioning and protecting allies.', 'party.aiOrderDescription.healer': 'Feeds the most wounded ally first.', 'party.aiOrderDescription.scavenger': 'Looks for corpse-feast opportunities after victory.', 'party.aiOrderDescription.passive': 'Avoids acting unless wounded or pressured.', 'party.dismiss': 'Dismiss', 'party.statsFor': 'Show stats for {name}', 'party.makeLeaderFor': 'Make {name} party leader', 'party.dragToReorder': 'Drag {name} to reorder', 'party.moveUp': 'Move {name} up', 'party.moveDown': 'Move {name} down', 'party.dismissFor': 'Dismiss {name}', 'party.confirmDismiss': 'Dismiss {name} from the party?', 'party.dismissed': '{name} leaves the party.', 'party.dismissedNearby': '{name} leaves the party and remains nearby.', 'party.roleSet': '{name} is assigned as {role}.', 'party.aiOrderSet': '{name} will act {order}.', 'party.leaderSet': '{name} is now party leader.', 'party.positionChanged': '{name} changes party position.', 'party.roleFor': 'Party role for {name}', 'party.aiOrderFor': 'AI order for {name}',
           'save.title': 'Save Slots', 'save.loadTitle': 'Load Game', 'save.saveTitle': 'Save Game', 'save.newTitle': 'Choose New Game Slot', 'save.description': 'Auto-save is always on. Empty slots start a new game; occupied slots can load, start a new run, save over, or delete only that slot.', 'save.loadDescription': 'Choose a save to load, start a new run in a slot, or delete one slot.', 'save.saveDescription': 'Choose where to save the current game. Occupied slots warn before overwrite.', 'save.newDescription': 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.',
           'save.toolbarNew': 'New Game', 'save.toolbarHint': 'Choose a slot next; occupied slots warn before overwrite.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Saved game', 'save.openSlot': 'Open slot', 'save.empty': 'Empty', 'save.slotHint.emptyLoad': 'Empty slot: start a new game here.', 'save.slotHint.occupiedLoad': 'Saved slot: load, start a new run, or delete this slot only.', 'save.slotHint.emptySave': 'Empty slot: save the current game here.', 'save.slotHint.occupiedSave': 'Occupied slot: saving here may require overwrite confirmation.', 'save.slotHint.emptyNew': 'Empty slot: ready for a new run.', 'save.slotHint.occupiedNew': 'Occupied slot: overwriting requires confirmation.', 'save.slotActions.label': 'Available slot actions', 'save.slotActions.emptyLoad': 'Actions: New Game', 'save.slotActions.occupiedLoad': 'Actions: Load, New Run, Delete', 'save.slotActions.emptySave': 'Actions: Save', 'save.slotActions.occupiedSave': 'Actions: Save, Delete', 'save.slotActions.emptyNew': 'Actions: Use Empty Slot', 'save.slotActions.occupiedNew': 'Actions: Overwrite, Delete', 'save.useEmpty': 'Use Empty Slot', 'save.overwriteSlot': 'Overwrite Slot',
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save current game to {slot}', 'save.action.delete': 'Delete {slot}',
-          'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.',
+          'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.', 'settings.clearAllDataFailed': 'Failed to clear all data: {message}',
           'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.confirmDeleteAll': 'Delete ALL save data? This cannot be undone!', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}!', 'save.success.deletedAll': 'All saves deleted.', 'save.recoveredOnLoad': 'You were revived from the brink of defeat. Welcome back, {name}.', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.error.deleteAllFailed': 'Delete saves failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
-          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Target', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} pleasures {target}. Their arousal rises to {current}/{max}.', 'explore.fuck.devoted': '{target} orgasms and is completely devoted.', 'explore.fuck.recover': '{target} needs a moment to recover...', 'explore.fuck.resists': '{target} is not in the mood.', 'explore.feast.swallow': '{actor} swallows {target} whole. They settle in {owner} stomach.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} flirts with {target}. Their guard lowers. Pleasure rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is utterly charmed and becomes friendly!', 'explore.flirt.rebuff': '{target} rebuffs the flirtation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their stomach.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot feast on themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Pleasure rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be split without helpers.', 'group.feast.split': '{actors} split {target} into chewable portions.', 'group.feast.selfBlocked': '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to consume.', 'group.feast.swallow': '{helpers} help {primary} swallow {target}.', 'group.social.share': '{actors} share {action} with {target}. Pleasure spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Pleasure rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
+          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Act', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Select {name} to act', 'target.markFor': 'Mark {name} as target', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} pleasures {target}. Their arousal rises to {current}/{max}.', 'explore.fuck.devoted': '{target} orgasms and is completely devoted.', 'explore.fuck.recover': '{target} needs a moment to recover...', 'explore.fuck.resists': '{target} is not in the mood.', 'explore.feast.swallow': '{actor} swallows {target} whole. They settle in {owner} stomach.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} flirts with {target}. Their guard lowers. Pleasure rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is utterly charmed and becomes friendly!', 'explore.flirt.rebuff': '{target} rebuffs the flirtation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their stomach.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot feast on themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Pleasure rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be split without helpers.', 'group.feast.split': '{actors} split {target} into chewable portions.', 'group.feast.selfBlocked': '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to consume.', 'group.feast.swallow': '{helpers} help {primary} swallow {target}.', 'group.social.share': '{actors} share {action} with {target}. Pleasure spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Pleasure rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Coquetear', 'action.fuck': 'Seducir', 'action.feast': 'Devorar', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar',
@@ -1134,20 +2267,21 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'trade.title': 'Comercio con {name}', 'trade.gold': 'Oro: {gold}', 'trade.buy': 'Comprar', 'trade.sell': 'Vender', 'trade.buyItem': 'Comprar {name}', 'trade.sellItem': 'Vender {name}', 'trade.needGold': 'Necesitas {price} de oro para comprar {name}.', 'trade.confirmBuy': 'Comprar {name} por {price} de oro?', 'trade.purchaseCancelled': 'Compra cancelada: {name}.', 'trade.bought': 'Compraste {name} por {price} de oro.', 'trade.sold': 'Vendiste {name} por {price} de oro.', 'trade.noStockMatches': 'No hay existencias que coincidan con el filtro actual.', 'trade.noItemsToSell': 'No hay articulos para vender.', 'trade.noInventoryMatches': 'No hay articulos de inventario que coincidan con el filtro actual.',
           'quest.title': 'Misiones', 'quest.status': 'Estado', 'quest.sort': 'Ordenar', 'quest.filter.all': 'Todas', 'quest.filter.active': 'Activas', 'quest.filter.turnIn': 'Entregar', 'quest.filter.completed': 'Completadas', 'quest.sort.status': 'Estado', 'quest.sort.title': 'Titulo', 'quest.showOnMap': 'Mostrar en mapa', 'quest.showTurnIn': 'Mostrar entrega', 'quest.turnIn': 'Entregar', 'quest.showOnMapFor': 'Mostrar {name} en mapa', 'quest.showTurnInFor': 'Mostrar entrega de {name}', 'quest.turnInQuest': 'Entregar {name}', 'quest.status.active': 'Activa', 'quest.status.completed': 'Completada', 'quest.status.turnIn': 'Entregar', 'quest.noneActive': 'No hay misiones activas.', 'quest.noneMatchFilter': 'No hay misiones que coincidan con el filtro actual.', 'quest.alreadyInLog': '{title} ya esta en tu registro de misiones.', 'quest.accepted': 'Mision aceptada: {title}.', 'quest.completed': 'Mision completada: {title}.', 'quest.completedTurnIn': 'Mision completada: {title}. Vuelve con {giver} para recibir tu recompensa.', 'quest.defaultGiver': 'quien dio la mision', 'quest.notReadyTurnIn': 'Esa mision aun no esta lista para entregar.', 'quest.alreadyTurnedIn': '{title} ya fue entregada.', 'quest.turnedIn': 'Mision entregada: {title}.', 'quest.noObjectiveMarker': 'No hay marcador de mapa disponible para ese objetivo de mision.', 'quest.mapFocusedObjective': 'Mapa enfocado en {title}: {label}.', 'quest.noTurnInLocation': 'No hay ubicacion de entrega disponible para esa mision.', 'quest.mapFocusedTurnIn': 'Mapa enfocado en entrega de {title}: {label}.', 'quest.checkpoint': 'Punto de ruta', 'quest.checkpoint.complete': 'Completado', 'quest.checkpoint.current': 'Actual', 'quest.checkpoint.pending': 'Pendiente', 'quest.checkpointAria': '{state} punto de ruta {index}: {label} en {x}, {y}{guidance}', 'quest.youAreHere': 'Estas aqui', 'quest.direction.north': '{count} norte', 'quest.direction.south': '{count} sur', 'quest.direction.east': '{count} este', 'quest.direction.west': '{count} oeste', 'quest.step.singular': 'paso', 'quest.step.plural': 'pasos', 'quest.guidance': '{distance} {stepLabel} {directions}', 'quest.terrainKnownRoute': 'la ruta conocida cruza {parts}', 'quest.terrainRoad': '{count} camino', 'quest.terrainBridge': '{count} puente', 'quest.terrainRough': '{count} terreno dificil', 'quest.markerPreview': 'Marcador: {label} ({x}, {y})', 'quest.turnInPreview': 'Entregar con {label} ({x}, {y})',
           'perk.choose': 'Elegir mejora', 'perk.chooseCount': 'Elegir mejora ({count})', 'perk.pending': 'Opciones pendientes: {count}', 'perk.trees': 'Arboles de mejoras', 'perk.filter.all': 'Todas', 'perk.chooseNamed': 'Elegir {name}', 'perk.back': 'Volver', 'perk.respec': 'Reiniciar mejoras', 'perk.debugGrant': 'Debug +1 opcion de mejora', 'perk.closeStats': 'Cerrar', 'perk.levelUp': 'Subiste de nivel! Ahora eres nivel {level}. Todas las estadisticas aumentaron!', 'perk.chooseNew': 'Elige una nueva mejora del arbol de mejoras.', 'perk.notAvailable': 'Esa mejora aun no esta disponible.', 'perk.chosen': 'Mejora elegida: {name}. {description}', 'perk.noneToRespec': 'No hay mejoras seleccionadas para reiniciar.', 'perk.confirmRespec': 'Reiniciar mejoras seleccionadas y reembolsar sus opciones?', 'perk.respecDoneOne': 'Mejoras reiniciadas. Se reembolso {count} opcion.', 'perk.respecDoneMany': 'Mejoras reiniciadas. Se reembolsaron {count} opciones.',
-          'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.actionLegend': 'Leyenda de acciones', 'ui.menu.newGame': 'Nueva partida', 'ui.menu.newGameTitle': 'Iniciar una partida nueva', 'ui.returnToMenu': 'Volver al menu', 'ui.menu.tutorialTitle': 'Abrir tutorial', 'ui.tutorial.skip': 'Saltar tutorial', 'ui.tutorial.next': 'Siguiente ->', 'ui.tutorial.welcome.title': 'Bienvenida', 'ui.tutorial.welcome.content': 'Eres salvaje en un mundo vivo y extrano. Explora, aprende tus limites y hazte mas fuerte. Elige tus riesgos con cuidado.', 'ui.tutorial.combat.title': 'Combate', 'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Coquetear, Seducir, Devorar, Alimentar o Huir. Las acciones sincronizadas permiten que varios aliados actuen juntos.', 'ui.tutorial.feast.title': 'Devorar', 'ui.tutorial.feast.content': 'Devora objetivos debilitados para contenerlos. La capacidad importa, y algunos ajustes cambian si los resultados son seguros o mas duros.', 'ui.tutorial.party.title': 'Grupo', 'ui.tutorial.party.content': 'Recluta criaturas dispuestas, asigna roles, elige ordenes de IA y gestiona quien actua durante exploracion o combate.', 'ui.tutorial.ready.title': 'Listo', 'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.', 'ui.log.search': 'Buscar registro', 'settings.title': 'Ajustes', 'settings.interfaceLanguage': 'Idioma de interfaz', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.tacticalStatus': 'Estado tactico', 'ui.unitTraits': 'Rasgos de unidad', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.actorActing': '{name} esta actuando...', 'mobile.combat.actor': '{name} actua', 'mobile.combat.chooseAction': 'Elige una accion y luego toca un objetivo.', 'mobile.combat.enemyTurn': '{name} esta actuando.', 'mobile.combat.pickTarget': 'Elige un objetivo en la fila enemiga para {action}.', 'mobile.combat.status': 'Ronda {round} · Turno {turn}/{total}', 'mobile.combat.targeting': 'Objetivo: {action}', 'ui.welcomeLog': 'Bienvenido a You Are Wild', 'ui.scene.wildernessTitle': 'La Naturaleza', 'ui.scene.wildernessIntro': 'Te encuentras en una tierra indomita donde acechan depredadores y solo sobreviven los fuertes.', 'ui.scene.wildernessAmbient': 'El aire esta cargado de aroma a pino y llamadas lejanas de criaturas desconocidas.', 'ui.log.createdCharacter': 'Creaste tu personaje. El viaje comienza...', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui', 'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.', 'target.cancelAction': 'Cancelar {action}', 'log.movedTo': 'Movimiento a {x}, {y} ({biome})', 'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.', 'log.discoveredLandmark': 'Descubriste {name}!', 'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.', 'log.rested': 'Descansaste y te recuperaste.', 'log.noEntriesMatchFilter': 'No hay entradas de registro que coincidan con el filtro actual.', 'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}', 'recruit.notReady': '{name} aun no esta listo para unirse al grupo.', 'recruit.joined': '{name} se une a tu grupo!', 'recruit.confirmSubmissive': '{name} esta sumiso. Reclutarlo para tu grupo?', 'feed.optionsTitle': 'Opciones de alimentacion', 'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.', 'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.', 'feed.noWillingLivestock': 'No hay ganado dispuesto para sacrificar.', 'feed.noForceFeedEnemies': 'No hay enemigos para forzar alimentacion.', 'feed.noValidTarget': 'No hay objetivo valido para esta accion de alimentar.',
+          'ui.close': 'Cerrar', 'ui.cancel': 'Cancelar', 'ui.actionLegend': 'Leyenda de acciones', 'ui.menu.newGame': 'Nueva partida', 'ui.menu.newGameTitle': 'Iniciar una partida nueva', 'ui.returnToMenu': 'Volver al menu', 'ui.menu.tutorialTitle': 'Abrir tutorial', 'ui.tutorial.skip': 'Saltar tutorial', 'ui.tutorial.next': 'Siguiente ->', 'ui.tutorial.welcome.title': 'Bienvenida', 'ui.tutorial.welcome.content': 'Eres salvaje en un mundo vivo y extrano. Explora, aprende tus limites y hazte mas fuerte. Elige tus riesgos con cuidado.', 'ui.tutorial.combat.title': 'Combate', 'ui.tutorial.combat.content': 'En combate, tomas turnos con enemigos y aliados. Usa Luchar, Coquetear, Seducir, Devorar, Alimentar o Huir. Las acciones sincronizadas permiten que varios aliados actuen juntos.', 'ui.tutorial.feast.title': 'Devorar', 'ui.tutorial.feast.content': 'Devora objetivos debilitados para contenerlos. La capacidad importa, y algunos ajustes cambian si los resultados son seguros o mas duros.', 'ui.tutorial.party.title': 'Grupo', 'ui.tutorial.party.content': 'Recluta criaturas dispuestas, asigna roles, elige ordenes de IA y gestiona quien actua durante exploracion o combate.', 'ui.tutorial.ready.title': 'Listo', 'ui.tutorial.ready.content': 'Empieza a explorar cuando estes listo. Usa los paneles de mapa, grupo y criaturas para mantener el flujo manejable.', 'ui.log.search': 'Buscar registro', 'settings.title': 'Ajustes', 'settings.interfaceLanguage': 'Idioma de interfaz', 'ui.creatureActions': 'Acciones de criatura', 'ui.partyActions': 'Acciones del grupo', 'ui.tacticalStatus': 'Estado tactico', 'ui.unitTraits': 'Rasgos de unidad', 'unit.cardFocus': 'Enfocar carta de {name}', 'ui.exploration': 'Exploracion', 'ui.chooseAction': 'Elige tu proxima accion.', 'ui.actorActing': '{name} esta actuando...', 'mobile.combat.actor': '{name} actua', 'mobile.combat.chooseAction': 'Elige una accion y luego toca un objetivo.', 'mobile.combat.enemyTurn': '{name} esta actuando.', 'mobile.combat.pickTarget': 'Elige un objetivo en la fila enemiga para {action}.', 'mobile.combat.status': 'Ronda {round} · Turno {turn}/{total}', 'mobile.combat.targeting': 'Objetivo: {action}', 'ui.welcomeLog': 'Bienvenido a You Are Wild', 'ui.scene.wildernessTitle': 'La Naturaleza', 'ui.scene.wildernessIntro': 'Te encuentras en una tierra indomita donde acechan depredadores y solo sobreviven los fuertes.', 'ui.scene.wildernessAmbient': 'El aire esta cargado de aroma a pino y llamadas lejanas de criaturas desconocidas.', 'ui.log.createdCharacter': 'Creaste tu personaje. El viaje comienza...', 'ui.area': 'Area', 'ui.enemies': 'Enemigos', 'ui.creatures': 'Criaturas', 'ui.noCreaturesPresent': 'No hay criaturas presentes', 'ui.noCreaturesHere': 'No hay criaturas aqui', 'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.', 'target.cancelAction': 'Cancelar {action}', 'log.movedTo': 'Movimiento a {x}, {y} ({biome})', 'log.inCombatCannotMove': 'Estas en combate! Usa Huir para escapar.', 'log.discoveredLandmark': 'Descubriste {name}!', 'log.restUnavailable': 'No hay un lugar seguro para descansar aqui.', 'log.rested': 'Descansaste y te recuperaste.', 'log.noEntriesMatchFilter': 'No hay entradas de registro que coincidan con el filtro actual.', 'recruit.partyFull': 'El grupo esta lleno! No se puede reclutar a {name}', 'recruit.notReady': '{name} aun no esta listo para unirse al grupo.', 'recruit.joined': '{name} se une a tu grupo!', 'recruit.confirmSubmissive': '{name} esta sumiso. Reclutarlo para tu grupo?', 'feed.optionsTitle': 'Opciones de alimentacion', 'feed.noOptions': 'No hay opciones de alimentacion disponibles ahora.', 'feed.noWoundedAllies': 'No hay aliados heridos para alimentar.', 'feed.noWillingLivestock': 'No hay ganado dispuesto para sacrificar.', 'feed.noForceFeedEnemies': 'No hay enemigos para forzar alimentacion.', 'feed.noValidTarget': 'No hay objetivo valido para esta accion de alimentar.',
           'disposition.hostile': 'Hostil', 'disposition.friendly': 'Amistoso', 'disposition.neutral': 'Neutral', 'disposition.quest': 'Mision', 'disposition.merchant': 'Mercader', 'disposition.remains': 'Restos', 'unit.trait.asleep': 'Dormido', 'unit.trait.poisoned': 'Veneno', 'unit.trait.burning': 'Ardiendo', 'unit.trait.bleeding': 'Sangrando', 'unit.trait.stunned': 'Aturdido', 'unit.trait.frozen': 'Congelado', 'unit.trait.fear': 'Miedo', 'unit.trait.restrained': 'Inmovilizado', 'unit.trait.wounded': 'Herido', 'unit.trait.hungry': 'Hambriento', 'unit.trait.flying': 'Volador', 'unit.trait.darkvision': 'Vision nocturna', 'combat.row': 'Fila', 'combat.row.front': 'Frente', 'combat.row.back': 'Retaguardia', 'combat.group': 'Grupo', 'combat.turnOrder': 'Orden de turno', 'combat.status.current': '{name} es el actor de combate actual en el turno {order}.', 'combat.status.queued': '{name} esta en cola para el turno {order}.', 'combat.status.queuedActed': '{name} esta en cola para el turno {order} y ya actuo esta ronda.', 'combat.panelActions': 'Acciones de combate', 'combat.panelFirstStatus': 'Controles de combate', 'combat.panelFirstPrompt': 'Usa la carta del actor activo para elegir la intencion, luego elige un objetivo en el panel enemigo.', 'combat.panelFirstTargeting': 'Objetivo de {action}. Elige un objetivo valido en el panel enemigo.', 'combat.panelFirstEnemyTurn': '{name} esta actuando. Los controles de combate permanecen en los paneles de grupo y criaturas.', 'combat.status.syncParticipant': '{name} participa en el grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.syncTarget': '{name} es objetivo del grupo {action} en cola que se resolvera en el turno {order}.', 'combat.status.canTarget': '{name} puede seleccionarse como objetivo de {action}.', 'combat.status.cannotTarget': '{name} no puede seleccionarse como objetivo de {action}.', 'combat.status.choosingTarget': '{name} esta eligiendo un objetivo de {action}.', 'combat.moveRowLog': '{name} se mueve a la fila {row}.', 'combat.cannotReachTarget': '{actor} no puede alcanzar a {target} desde aqui.', 'combat.flee.noEnemies': 'No hay enemigos de los que huir!', 'combat.flee.success': 'Huyes con exito!', 'combat.flee.failed': 'Huida fallida! {name} te intercepta!', 'combat.godModeSaved': 'El modo dios te salvo de la derrota!', 'combat.playerFallen': 'Has caido! Fin de la partida!', 'combat.hardcoreSaveDeleted': 'MODO EXTREMO: Tu partida guardada fue borrada.', 'combat.playerKnockedOut': 'Has quedado fuera de combate! Tu grupo debe terminar la pelea...', 'combat.partyWipedOut': 'Tu grupo fue derrotado por completo!', 'combat.alliesContinue': 'Tus aliados continuan la pelea...', 'combat.playerComesTo': '{name} despierta despues de la pelea.', 'combat.victory': 'Victoria! Los enemigos fueron derrotados o sometidos.', 'combat.escapedEncounter': 'Escapaste del encuentro.', 'combat.defeat': 'Derrota...', 'combat.confirmReturnToMenu': 'Derrota! Volver al menu?', 'combat.notInCombat': 'No estas en combate!', 'combat.instantWin': 'Victoria instantanea', 'combat.instantWinTitle': 'Derrotar al instante a todos los enemigos', 'combat.instantWinNotInCombat': 'No estas en combate! Victoria instantanea solo funciona durante combate.', 'combat.instantWinRequiresOverpowered': 'Victoria instantanea requiere modo Sobrepotenciado.', 'combat.instantWinSuccess': 'Victoria instantanea! Todos los enemigos fueron derrotados.', 'combat.allyScavenges': '{ally} rebusca los restos de {target} despues del combate.', 'combat.allyHolds': '{name} mantiene la posicion.', 'combat.allyCannotReach': '{name} no puede alcanzar ningun objetivo.', 'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.', 'combat.enemyRage': '{name} entra en furia!', 'combat.enemyFlees': '{name} huye aterrorizado!', 'combat.status.poisoned': '{name} queda envenenado!', 'combat.status.constricted': '{actor} constrine a {target}! Queda inmovilizado.', 'combat.status.enveloped': '{actor} envuelve a {target}!', 'combat.status.stunned': '{name} queda aturdido y pierde su turno!', 'combat.status.frozen': '{name} queda congelado y pierde su turno!', 'combat.status.asleep': '{name} esta dormido y no puede actuar!', 'combat.status.fearFlee': '{name} entra en panico y huye por miedo!', 'combat.status.fearFrozen': '{name} se paraliza de miedo y pierde su turno!', 'combat.status.recovering': '{name} se esta recuperando y pierde su turno.', 'combat.status.restrainedSkip': '{name} esta inmovilizado y no puede actuar!', 'combat.status.stuck': '{name} queda atrapado en el terreno y pierde su turno!', 'combat.allyFlees': '{name} pierde el valor y huye del combate!', 'combat.allyFleeFailed': '{name} intenta huir pero no logra escapar!', 'combat.allyTooAroused': '{name} esta demasiado excitado para obedecer!', 'combat.enemyCannotReach': '{enemy} no puede alcanzar a {target}.', 'cheat.toggled': 'Truco {name}: {state}', 'cheat.state.on': 'ACTIVADO', 'cheat.state.off': 'DESACTIVADO', 'cheat.overpoweredMaxed': 'Sobrepotenciado! Todas las estadisticas al maximo.', 'combat.waitForTurn': 'Espera tu turno!', 'combat.notYourTurn': 'No es tu turno!', 'combat.sync.chooseAction': 'Elegir accion sincronizada', 'combat.sync.noAllies': 'No hay aliados disponibles para sincronizar.', 'combat.sync.action.fuck': 'Seduccion grupal', 'combat.sync.action.flirt': 'Coqueteo grupal', 'combat.sync.action.fight': 'Ataque grupal', 'combat.sync.action.feed': 'Alimentacion grupal', 'combat.sync.selectParticipants': 'Seleccionar participantes para sincronizar', 'combat.sync.selectParticipantFor': 'Seleccionar {name} para sincronizar', 'combat.sync.confirmParticipants': 'Confirmar participantes', 'combat.sync.needParticipants': 'Necesitas al menos 2 participantes para una accion sincronizada.', 'combat.sync.selectTarget': 'Seleccionar objetivo sincronizado', 'combat.sync.selectTargetFor': 'Seleccionar {name} como objetivo sincronizado', 'combat.sync.failedNoQueue': 'Sincronizacion fallida! Los participantes ya no estan en la cola de turnos.', 'combat.sync.failedIncapacitated': 'Sincronizacion fallida! {names} no puede participar.', 'capacity.stomach': 'Estomago', 'capacity.womb': 'Vientre', 'capacity.balls': 'Bolas', 'capacity.owner.your': 'Tu', 'capacity.owner.named': 'De {name}', 'capacity.tooFull': '{owner} {container} esta demasiado lleno para {target}!', 'structure.noStructure': 'No hay una estructura para entrar aqui.', 'structure.entered': 'Entraste en {name}.', 'structure.exited': 'Saliste de {name}.', 'structure.movedInside': 'Movimiento dentro de {name} a {x}, {y}.', 'structure.fallbackName': 'la estructura', 'structure.wallBlocked': 'Una pared bloquea el camino.',
           'party.stats': 'Estadisticas', 'party.you': 'Tu', 'party.ally': 'Aliado', 'party.leader': 'Lider', 'party.levelSpecies': 'Nivel {level} {species}', 'party.punishment': 'Castigo', 'party.pleasure': 'Placer', 'party.hunger': 'Hambre', 'party.combat': 'Combate', 'party.attributes': 'Atributos', 'party.capacity': 'Capacidad', 'party.equipment': 'Equipo', 'party.perks': 'Mejoras', 'party.none': 'Ninguno', 'character.xp': 'XP: {xp}/{xpToNext}', 'character.combatStats': 'Estadisticas de combate', 'character.body': 'Cuerpo', 'character.size': 'Tamano', 'character.appetite': 'Apetito', 'character.parts': 'Partes', 'character.chest': 'Pecho', 'character.bodyParts': 'Cuerpo', 'character.perkTools': 'Herramientas de mejoras', 'character.perkToolsHelp': 'Controles de balance/debug.', 'party.makeLeader': 'Hacer lider', 'party.role': 'Rol', 'party.aiOrder': 'Orden IA', 'party.role.companion': 'Companero', 'party.role.scout': 'Explorador', 'party.role.guard': 'Guardia', 'party.role.support': 'Apoyo', 'party.role.gatherer': 'Recolector', 'party.roleDescription.companion': 'Sin rol especial de exploracion.', 'party.roleDescription.scout': 'Mejora la visibilidad nocturna y la lectura de rutas.', 'party.roleDescription.guard': 'Reduce la ventaja de emboscadas y ayuda a proteger el campamento.', 'party.roleDescription.support': 'Mejora la recuperacion al descansar en un lugar seguro.', 'party.roleDescription.gatherer': 'Mejora resultados de busqueda y recoleccion.', 'party.aiOrder.aggressive': 'Agresivo', 'party.aiOrder.defensive': 'Defensivo', 'party.aiOrder.healer': 'Sanador', 'party.aiOrder.scavenger': 'Carronero', 'party.aiOrder.passive': 'Pasivo', 'party.aiOrderDescription.aggressive': 'Prioriza atacar amenazas alcanzables.', 'party.aiOrderDescription.defensive': 'Prefiere posicionarse con cuidado y proteger aliados.', 'party.aiOrderDescription.healer': 'Alimenta primero al aliado mas herido.', 'party.aiOrderDescription.scavenger': 'Busca oportunidades con restos despues de la victoria.', 'party.aiOrderDescription.passive': 'Evita actuar salvo si esta herido o bajo presion.', 'party.dismiss': 'Despedir', 'party.statsFor': 'Mostrar estadisticas de {name}', 'party.makeLeaderFor': 'Hacer lider a {name}', 'party.dragToReorder': 'Arrastrar {name} para reordenar', 'party.moveUp': 'Mover {name} arriba', 'party.moveDown': 'Mover {name} abajo', 'party.dismissFor': 'Despedir a {name}', 'party.confirmDismiss': 'Despedir a {name} del grupo?', 'party.dismissed': '{name} deja el grupo.', 'party.dismissedNearby': '{name} deja el grupo y permanece cerca.', 'party.roleSet': '{name} queda asignado como {role}.', 'party.aiOrderSet': '{name} actuara en modo {order}.', 'party.leaderSet': '{name} ahora lidera el grupo.', 'party.positionChanged': '{name} cambia de posicion en el grupo.', 'party.roleFor': 'Rol de grupo para {name}', 'party.aiOrderFor': 'Orden IA para {name}',
           'save.title': 'Partidas', 'save.loadTitle': 'Cargar partida', 'save.saveTitle': 'Guardar partida', 'save.newTitle': 'Elegir slot de partida nueva', 'save.description': 'El autoguardado siempre esta activo. Los slots vacios empiezan una partida nueva; los ocupados pueden cargar, iniciar una nueva partida, guardar encima o borrar solo ese slot.', 'save.loadDescription': 'Elige una partida para cargar, inicia una nueva partida en un slot, o borra un solo slot.', 'save.saveDescription': 'Elige donde guardar la partida actual. Los slots ocupados avisan antes de sobrescribir.', 'save.newDescription': 'Elige un slot vacio para la nueva partida, o sobrescribe deliberadamente un slot ocupado.',
           'save.toolbarNew': 'Nueva partida', 'save.toolbarHint': 'Elige un slot despues; los slots ocupados avisan antes de sobrescribir.', 'save.slotLabel': 'Slot {number}', 'save.savedGame': 'Partida guardada', 'save.openSlot': 'Slot abierto', 'save.empty': 'Vacio', 'save.slotHint.emptyLoad': 'Slot vacio: inicia una partida nueva aqui.', 'save.slotHint.occupiedLoad': 'Slot guardado: carga, inicia una nueva partida o borra solo este slot.', 'save.slotHint.emptySave': 'Slot vacio: guarda la partida actual aqui.', 'save.slotHint.occupiedSave': 'Slot ocupado: guardar aqui puede requerir confirmacion para sobrescribir.', 'save.slotHint.emptyNew': 'Slot vacio: listo para una nueva partida.', 'save.slotHint.occupiedNew': 'Slot ocupado: sobrescribir requiere confirmacion.', 'save.slotActions.label': 'Acciones disponibles del slot', 'save.slotActions.emptyLoad': 'Acciones: Nueva partida', 'save.slotActions.occupiedLoad': 'Acciones: Cargar, Nueva partida, Borrar', 'save.slotActions.emptySave': 'Acciones: Guardar', 'save.slotActions.occupiedSave': 'Acciones: Guardar, Borrar', 'save.slotActions.emptyNew': 'Acciones: Usar slot vacio', 'save.slotActions.occupiedNew': 'Acciones: Sobrescribir, Borrar', 'save.useEmpty': 'Usar slot vacio', 'save.overwriteSlot': 'Sobrescribir slot',
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar partida actual en {slot}', 'save.action.delete': 'Borrar {slot}',
-          'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.',
+          'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.', 'settings.clearAllDataFailed': 'Error al borrar todos los datos: {message}',
           'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.confirmDeleteAll': 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}!', 'save.success.deletedAll': 'Todas las partidas fueron borradas.', 'save.recoveredOnLoad': 'Te recuperaste al borde de la derrota. Bienvenido de vuelta, {name}.', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}', 'save.error.deleteAllFailed': 'Error al borrar partidas: {message}', 'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'save.recovery.deleted': 'Partida borrada.', 'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
-          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Objetivo', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} complace a {target}. Su placer sube a {current}/{max}.', 'explore.fuck.devoted': '{target} llega al climax y queda completamente entregado.', 'explore.fuck.recover': '{target} necesita un momento para recuperarse...', 'explore.fuck.resists': '{target} no esta de humor.', 'explore.feast.swallow': '{actor} traga a {target} entero. Queda en el estomago de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} coquetea con {target}. Baja la guardia. El placer sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda totalmente encantado y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza el coqueteo!', 'explore.feed.success': '{actor} alimenta a {target}, restaurando {amount} de castigo y saciando su hambre.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su estomago.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden devorarse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El placer sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede dividirse sin ayudantes.', 'group.feast.split': '{actors} dividen a {target} en porciones masticables.', 'group.feast.selfBlocked': '{target} no puede devorarse a si mismo. Selecciona otros miembros del grupo como actores para consumir este objetivo, o selecciona solo a {target} para devorar otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo consuman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a tragar a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El placer se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El placer sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
+          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actuar', 'target.mark': 'Marcar', 'target.pick': 'Elegir', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.markedRole': 'Marcado', 'target.selectActorFor': 'Seleccionar {name} para actuar', 'target.markFor': 'Marcar {name} como objetivo', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} complace a {target}. Su placer sube a {current}/{max}.', 'explore.fuck.devoted': '{target} llega al climax y queda completamente entregado.', 'explore.fuck.recover': '{target} necesita un momento para recuperarse...', 'explore.fuck.resists': '{target} no esta de humor.', 'explore.feast.swallow': '{actor} traga a {target} entero. Queda en el estomago de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} coquetea con {target}. Baja la guardia. El placer sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda totalmente encantado y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza el coqueteo!', 'explore.feed.success': '{actor} alimenta a {target}, restaurando {amount} de castigo y saciando su hambre.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su estomago.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden devorarse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El placer sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede dividirse sin ayudantes.', 'group.feast.split': '{actors} dividen a {target} en porciones masticables.', 'group.feast.selfBlocked': '{target} no puede devorarse a si mismo. Selecciona otros miembros del grupo como actores para consumir este objetivo, o selecciona solo a {target} para devorar otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo consuman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a tragar a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El placer se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El placer sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
         }
       },
       setPreference(key, value) { this.preferences[key] = value; },
       setMaxTier(value) { this.preferences.maxTier = value; },
       setLanguage(value) { this.preferences.language = this.locales[value] ? value : 'en'; },
+      applyPreferences(preferences) { this.preferences = { ...this.preferences, ...preferences }; return this.preferences; },
       t(key, vars = {}) {
         const table = this.locales[this.preferences.language] || this.locales.en;
         let text = table[key] || this.locales.en[key] || key;
@@ -1159,7 +2293,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     },
     options.binary || { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
-    { open() {}, deleteDatabase() { return {}; } },
+    indexedDb,
     message => { confirmations.push(message); return Boolean(options.confirm); },
     message => { prompts.push(message); return options.prompt ?? null; },
     message => alerts.push(message),
@@ -2021,13 +3155,13 @@ test('Active tile creature damage and combat state survive save and load', async
   App.combatState = {
     active: true,
     round: 2,
-    currentTurn: 1,
+    currentTurn: 0,
     processing: false,
     xpEarned: 15,
     turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
     syncActions: []
   };
-  App.activeActor = enemy;
+  App.activeActor = player;
   App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
   App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
 
@@ -2037,7 +3171,7 @@ test('Active tile creature damage and combat state survive save and load', async
   assertEqual(loaded.worldMap['0,0'].creatures[0].CPun, 17, 'Saved current tile creature should keep damaged punishment');
   assertEqual(loaded.worldMap['0,0'].creatures[0].MPun, 43, 'Saved current tile creature should keep max punishment');
   assertEqual(loaded.questState.combatState.active, true, 'Save metadata should preserve active combat');
-  assertEqual(loaded.questState.combatState.currentTurn, 1, 'Save metadata should preserve current turn index');
+  assertEqual(loaded.questState.combatState.currentTurn, 0, 'Save metadata should preserve current turn index');
 
   const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
   loadedApp.App._dbGet = async () => savedBuffers[0];
@@ -2101,7 +3235,7 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
   assertEqual(restored, true, 'Enemy-turn combat slot should load');
   assertEqual(resumedEnemyId, 'enemy-load-resume', 'Load should process the restored enemy turn');
   assertEqual(loadedApp.App.combatState.active, true, 'Combat should remain active after resuming the enemy turn');
-  assertEqual(loadedApp.App.combatState.currentTurn, 0, 'Enemy turn should advance into the next round/player turn');
+  assertEqual(loadedApp.App.combatState.turnQueue[loadedApp.App.combatState.currentTurn]?.unit?.id, 'player-load-resume', 'Enemy turn should advance to a usable player turn');
   assertContains(elements.get('scene-title').textContent, "You's turn", 'Loaded combat should render a usable player turn after enemy resumes');
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Loaded combat should restore player card actions');
   assertNotContains(elements.get('scene-title').textContent, 'Loaded', 'Loaded combat should not remain on the generic loaded scene');
@@ -2221,8 +3355,9 @@ test('Queued sync combat actions survive save load and resolve with restored uni
   assertEqual(sync.participants[0], loadedApp.App.party[0], 'Loaded sync participant should reference restored player object');
   assertEqual(sync.participants[1], loadedApp.App.party[1], 'Loaded sync participant should reference restored ally object');
   assertEqual(sync.target, loadedApp.App.creatures[0], 'Loaded sync target should reference restored enemy object');
+  const enemyPunishmentBeforeSync = loadedApp.App.creatures[0].CPun;
   loadedApp.App.processTurn();
-  assertEqual(sync.resolved, true, 'Loaded sync action should resolve at the restored slowest participant turn');
+  assert(loadedApp.App.creatures[0].CPun < enemyPunishmentBeforeSync, 'Loaded sync action should resolve at the restored slowest participant turn');
   assert(loadedApp.App.creatures[0].CPun < 90 || loadedApp.App.creatures[0].disposition === loadedApp.App.DISPOSITION.CORPSE, 'Resolved sync fight should affect the restored enemy');
 });
 
@@ -2375,6 +3510,74 @@ test('Expired combat refresh snapshots are ignored and cleared', () => {
   storage.set(key, JSON.stringify(parsed));
   assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Expired combat refresh snapshot should be ignored');
   assertEqual(storage.has(key), false, 'Expired combat refresh snapshot should be cleared');
+});
+
+test('Malformed combat refresh snapshots are ignored and cleared', () => {
+  const Binary = loadBinaryForTest();
+  const { App, storage } = loadAppForCombat(() => 0.5, { binary: Binary });
+  App.activeSlot = 'slot1';
+  const key = App._combatRefreshKey('slot1');
+
+  storage.set(key, '{broken json');
+  assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Malformed combat refresh JSON should be ignored');
+  assertEqual(storage.has(key), false, 'Malformed combat refresh JSON should be cleared');
+
+  storage.set(key, JSON.stringify({
+    slot: 'slot1',
+    savedAt: Date.now(),
+    data: [0, 255, 300]
+  }));
+  assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Invalid combat refresh byte payload should be ignored');
+  assertEqual(storage.has(key), false, 'Invalid combat refresh byte payload should be cleared');
+
+  storage.set(key, JSON.stringify({
+    slot: 'slot2',
+    savedAt: Date.now(),
+    data: [0, 1, 2]
+  }));
+  assertEqual(App._readCombatRefreshSnapshot('slot1'), null, 'Wrong-slot combat refresh payload should be ignored');
+  assertEqual(storage.has(key), false, 'Wrong-slot combat refresh payload should be cleared');
+});
+
+test('Manual non-combat saves clear stale combat refresh snapshots for the saved slot', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = [];
+  const first = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, storage } = first;
+  const oldPlayer = makeUnit('Old Fighter', { id: 'old-player' });
+  const oldEnemy = makeUnit('Old Enemy', { id: 'old-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = oldPlayer;
+  App.party = [oldPlayer];
+  App.creatures = [oldEnemy];
+  App.activeSlot = 'slot1';
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [oldEnemy], items: [] }]]);
+  App.combatState = { active: true, round: 3, currentTurn: 1, processing: false, xpEarned: 0, turnQueue: [{ unit: oldPlayer, initiative: 20 }, { unit: oldEnemy, initiative: 10 }], syncActions: [] };
+  assertEqual(App._writeCombatRefreshSnapshot('slot1'), true, 'Test should create a stale combat refresh snapshot first');
+  assertEqual(storage.has(App._combatRefreshKey('slot1')), true, 'Combat refresh snapshot should exist before manual save');
+
+  const newPlayer = makeSerializableUnit('Peaceful Save', { id: 'peaceful-player', CPun: 50, MPun: 100 });
+  App.mode = App.GAME_MODE.NORMAL;
+  App.player = newPlayer;
+  App.party = [newPlayer];
+  App.creatures = [];
+  App.combatState = { active: false, round: 1, currentTurn: 0, turnQueue: [], syncActions: [], processing: false, xpEarned: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'forest', creatures: [], items: [] }]]);
+  App.persistWorldStateToMapStore = async () => {};
+  App._dbPut = async (_store, _key, value) => { savedBuffers.push(value); };
+
+  const saved = await App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Manual non-combat save should succeed');
+  assertEqual(storage.has(App._combatRefreshKey('slot1')), false, 'Manual non-combat save should clear stale combat refresh snapshot for that slot');
+
+  const loadedApp = loadAppForCombat(() => 0.5, { binary: Binary });
+  for (const [key, value] of storage.entries()) loadedApp.storage.set(key, value);
+  loadedApp.App._dbGet = async () => savedBuffers[0];
+  loadedApp.App.loadWorldStateFromMapStore = async () => {};
+  const restored = await loadedApp.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Manual save should load after stale refresh was cleared');
+  assertEqual(loadedApp.App.player.name, 'Peaceful Save', 'Load should use the newer manual save instead of stale combat refresh data');
+  assertEqual(loadedApp.App.combatState.active, false, 'Load should not resume stale combat after a non-combat manual save');
 });
 
 test('Combat swallow removes contained creature from area panel', () => {
@@ -3905,15 +5108,20 @@ test('Panel wrappers use one command dispatcher for adventure interactions', () 
   };
   assertEqual(App.outsideActionForParty('flirt', 1), true, 'Party wrapper should resolve through shared panel dispatch');
   assertEqual(App.outsideActionForCreature('flirt', 'creature-panel-dispatch'), true, 'Creature wrapper should resolve through shared panel dispatch');
+  assertEqual(App.outsideAction('flirt', 'party', 0), true, 'Filtered-index party compatibility wrapper should still resolve');
+  assertEqual(App.outsideAction('flirt', 'creature', 0), true, 'Filtered-index creature compatibility wrapper should still resolve');
   App.toggleExplorationTarget('party', 'party-panel-dispatch');
   assertEqual(App.resolveExplorationTargetAction('feed', 'heal', 'panel-tray'), true, 'Marked-target tray should resolve through shared panel dispatch');
-  assertEqual(seen.length, 3, 'Each panel interaction route should hit the same dispatcher once');
+  assertEqual(seen.length, 5, 'Each panel interaction route should hit the same dispatcher once');
   assertEqual(seen[0].source, 'party-wrapper', 'Party wrapper should keep source metadata');
   assertEqual(seen[0].targetType, 'party', 'Party wrapper should preserve target type');
   assertEqual(seen[1].source, 'creature-wrapper', 'Creature wrapper should keep source metadata');
   assertEqual(seen[1].targetIds[0], 'creature-panel-dispatch', 'Creature wrapper should resolve target id through command metadata');
-  assertEqual(seen[2].source, 'panel-tray', 'Marked target tray should keep source metadata');
-  assertEqual(seen[2].targetType, 'marked', 'Marked target tray should preserve marked target type');
+  assertEqual(seen[2].source, 'party-wrapper', 'Filtered-index party compatibility wrapper should delegate to the canonical party wrapper');
+  assertEqual(seen[3].source, 'creature-wrapper', 'Filtered-index creature compatibility wrapper should delegate to the canonical creature wrapper');
+  assertNotContains(seen.map(entry => entry.source).join(','), 'legacy-wrapper', 'Filtered-index compatibility wrappers should not emit a legacy command source');
+  assertEqual(seen[4].source, 'panel-tray', 'Marked target tray should keep source metadata');
+  assertEqual(seen[4].targetType, 'marked', 'Marked target tray should preserve marked target type');
 });
 
 test('Panel wrappers use one command dispatcher for combat target clicks', () => {
@@ -3953,6 +5161,15 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(seen[0].source, 'panel-card', 'Combat target click should keep panel-card source metadata');
   assertEqual(seen[0].actorIds[0], 'player-combat-panel-dispatch', 'Combat command should record active actor id');
   assertEqual(seen[0].targetIds[0], 'enemy-combat-panel-dispatch', 'Combat command should record clicked target id');
+
+  enemy.CPun = 80;
+  App.combatState.processing = false;
+  App.combatState.currentTurn = 0;
+  App.targetSelection = null;
+  assertEqual(App.executeAction('fight', 0), true, 'Legacy filtered-index combat wrapper should still resolve');
+  assertEqual(seen.length, 2, 'Legacy combat wrapper should delegate through the same dispatcher once');
+  assertEqual(seen[1].source, 'panel-card', 'Legacy combat wrapper should not keep a separate legacy command source');
+  assertEqual(seen[1].targetIds[0], 'enemy-combat-panel-dispatch', 'Legacy combat wrapper should resolve the same target id before dispatch');
 });
 
 test('Exploration cards expose multi-target selection and context actions', () => {
@@ -3984,8 +5201,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(allyTargetCard, 'selected selected-target', 'Selected party target card should expose selected target class');
   assertContains(creatureTargetCard, 'class="unit-card selected selected-target"', 'Selected creature target card should expose selected target class');
   assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="actor" title="Actor">Actor</span>', 'Selected party actor should render a localized card chip');
-  assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected party target should render a localized card chip');
-  assertContains(creatureHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected creature target should render a localized card chip');
+  assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Marcado">Marcado</span>', 'Selected party target should render a localized card chip');
+  assertContains(creatureHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Marcado">Marcado</span>', 'Selected creature target should render a localized card chip');
   const mobileActorChip = App.renderMobileUnitChip(actor, 0, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creatureTarget, 0, 'creature');
   assertContains(mobileActorChip, 'class="mobile-unit-chip selected selected-actor"', 'Mobile selected actor chip should expose selected actor class');
@@ -4031,7 +5248,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   const actorTargetChip = App.renderMobileUnitChip(actor, 0, 'party');
   assertContains(actorTargetCard, 'class="unit-card selected selected-actor selected-target"', 'Actor can also be visibly marked as a target');
   assertContains(actorTargetCard, 'data-selection-role="actor" title="Actor">Actor</span>', 'Actor-target card should keep the actor role chip');
-  assertContains(actorTargetCard, 'data-selection-role="target" title="Objetivo">Objetivo</span>', 'Actor-target card should add the target role chip');
+  assertContains(actorTargetCard, 'data-selection-role="target" title="Marcado">Marcado</span>', 'Actor-target card should add the target role chip');
   assertContains(actorTargetChip, 'class="mobile-unit-chip selected selected-actor selected-target"', 'Mobile actor-target chip should expose combined selection classes');
 });
 
@@ -4047,7 +5264,7 @@ test('Desktop creature card action labels localize', () => {
   App.renderCreatures();
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Marcar Friendly como objetivo"', 'Creature target button should localize accessible label');
-  assertContains(html, '>Objetivo<', 'Creature target visible label should localize');
+  assertContains(html, '>Marcar<', 'Creature target visible label should localize');
   assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
   assertContains(html, "showIntentMenu('creature','friendly-1','desktop')", 'Creature card should expose compact action menu');
   assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Creature card should support desktop secondary-click radial intent menu');
@@ -5665,7 +6882,7 @@ test('Combat creature target button localizes visible and accessible labels', ()
   assertNotContains(elements.get('scene-actions').innerHTML, 'Objetivo de Luchar. Elige un objetivo valido en el panel enemigo.', 'Center should not duplicate panel targeting guidance');
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
-  assertContains(html, '>Objetivo<', 'Combat target button visible label should localize');
+  assertContains(html, '>Elegir<', 'Combat target button visible label should localize');
 });
 
 test('Combat unit cards show turn order and current focus badges', () => {
@@ -6068,7 +7285,7 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, 'aria-label="Seleccionar Ally B para actuar"', 'Actor selection control should expose localized accessible label');
   assertContains(html, '>Actuar<', 'Actor selection visible label should localize');
   assertContains(html, 'aria-label="Marcar Ally B como objetivo"', 'Target mark control should expose localized accessible label');
-  assertContains(html, '>Objetivo<', 'Target mark visible label should localize');
+  assertContains(html, '>Marcar<', 'Target mark visible label should localize');
   assertContains(html, 'aria-label="Acciones del grupo: Ally B"', 'Party action menu should expose localized accessible label');
   assertContains(html, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',2,'secondary-click')", 'Party card should support desktop secondary-click radial intent menu');
   assertNotContains(html, 'aria-label="Luchar Ally B"', 'Party card should not show primary action spam by default');
@@ -7529,6 +8746,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(creatureCard, 'aria-label="Hunger: 100%"', 'Hunger bar should clamp overfilled values');
   assertContains(partyCard, 'showPartyMemberStats(0)', 'Stats action should remain available from party card');
   assertContains(partyCard, 'role="button" tabindex="0"', 'Desktop unit cards should be keyboard focusable');
+  assertContains(partyCard, 'aria-label="Focus You card"', 'Desktop card click should describe focus rather than actor selection');
+  assertContains(partyCard, 'aria-expanded="false"', 'Desktop cards should expose their detail toggle state');
   assertContains(partyCard, "event.key==='Enter'||event.key===' '", 'Desktop unit cards should activate with Enter or Space');
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
@@ -7540,6 +8759,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(creatureCard, "outsideActionForCreature('fight'", 'Default creature card should not show primary action spam');
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
+  assertContains(mobilePartyChip, 'aria-label="Focus You card"', 'Mobile chip click should describe focus rather than actor selection');
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
@@ -7548,6 +8768,47 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should keep secondary-click radial intent fallback');
   assertContains(mobileCreatureChip, "oncontextmenu=\"event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should keep secondary-click radial intent fallback');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
+});
+
+test('Unit selection controls distinguish focus actor target and combat pick semantics', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const creature = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [creature, enemy];
+  App.explorationActorIds = ['ally-1'];
+  App.explorationTargetIds = ['party:player-1', 'creature:guide-1'];
+
+  const playerCard = App.renderUnitCard(player, 0, 'party');
+  const allyCard = App.renderUnitCard(ally, 1, 'party');
+  const creatureCard = App.renderUnitCard(creature, 0, 'creature');
+  const mobilePlayerChip = App.renderMobileUnitChip(player, 0, 'party');
+  const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
+
+  assertContains(playerCard, 'data-card-purpose="focus-toggle"', 'Desktop card container should identify click/keyboard behavior as focus/detail toggling');
+  assertContains(playerCard, 'aria-label="Focus You card"', 'Desktop card container should keep focus copy separate from actor selection');
+  assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Unselected party actor control should expose false pressed state');
+  assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
+  assertContains(allyCard, 'data-selection-control="actor" aria-pressed="true"', 'Selected party actor control should expose true pressed state');
+  assertContains(allyCard, 'data-selection-control="target" aria-pressed="false"', 'Unmarked party target control should expose false pressed state');
+  assertContains(creatureCard, 'data-card-purpose="focus-toggle"', 'Creature card container should identify focus/detail behavior');
+  assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
+  assertContains(mobilePlayerChip, 'data-card-purpose="focus-toggle"', 'Mobile chip container should identify click/keyboard behavior as focus/detail toggling');
+  assertContains(mobilePlayerChip, 'data-selection-control="actor" aria-pressed="false"', 'Mobile Act control should expose actor pressed state');
+  assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
+  assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
+
+  App.combatState.active = true;
+  App.activeActor = player;
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+  const enemyCard = App.renderUnitCard(enemy, 1, 'creature');
+  const mobileEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');
+  assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat Pick button should identify combat target selection separately from exploration marking');
+  assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat Pick button should identify combat target selection separately from exploration marking');
+  assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
 });
 
 test('Unit cards and mobile chips render capped localized trait chips', () => {
@@ -8089,10 +9350,39 @@ test('Combat log filter and search preferences persist', () => {
   assertEqual(App.logFilter, 'loot', 'Stored log filter should reload');
   assertEqual(App.logSearch, 'coin', 'Stored log search should reload');
   storage.delete('yaw-log-view');
-  storage.set('fff-log-view', JSON.stringify({ filter: 'invalid', search: 7 }));
+  storage.set('fff-log-view', JSON.stringify({
+    filter: 'invalid',
+    search: 7,
+    collapsed: 'true',
+    expanded: true,
+    injected: 'bad'
+  }));
   App.loadLogViewPreferences();
   assertEqual(App.logFilter, 'all', 'Invalid stored filter should fall back to all');
   assertEqual(App.logSearch, '', 'Invalid stored search should fall back to empty');
+  assertEqual(App.logCollapsed, false, 'String truthy collapsed state should not collapse the log');
+  assertEqual(App.logExpanded, true, 'Real expanded state should survive when collapsed is invalid');
+  let normalized = JSON.parse(storage.get('yaw-log-view'));
+  assertEqual(normalized.injected, undefined, 'Normalized log view preferences should drop unknown keys');
+  assertEqual(normalized.expanded, true, 'Normalized log view preferences should persist sanitized expanded state');
+
+  storage.set('yaw-log-view', '{bad json');
+  App.loadLogViewPreferences();
+  assertEqual(App.logFilter, 'all', 'Malformed log preferences should reset the filter');
+  assertEqual(App.logSearch, '', 'Malformed log preferences should reset search');
+  normalized = JSON.parse(storage.get('yaw-log-view'));
+  assertEqual(normalized.filter, 'all', 'Malformed log preferences should be overwritten with defaults');
+
+  App.logFilter = 'unsafe';
+  App.logSearch = 'x'.repeat(150);
+  App.logCollapsed = true;
+  App.logExpanded = true;
+  App.saveLogViewPreferences();
+  normalized = JSON.parse(storage.get('yaw-log-view'));
+  assertEqual(normalized.filter, 'all', 'Saving log preferences should sanitize invalid filters');
+  assertEqual(normalized.search.length, 120, 'Saving log preferences should clamp search text length');
+  assertEqual(normalized.collapsed, true, 'Saving log preferences should preserve real collapsed state');
+  assertEqual(normalized.expanded, false, 'Saving log preferences should keep collapsed and expanded exclusive');
 });
 
 test('Combat log expand and minimize states persist and stay exclusive', () => {
@@ -8190,6 +9480,61 @@ test('Accessibility settings apply, sync, and persist', () => {
   assertEqual(saved.highContrast, true, 'High contrast setting should persist');
   assertEqual(saved.reducedMotion, true, 'Reduced motion setting should persist');
   assertEqual(saved.fontSize, 20, 'Font size setting should persist');
+});
+
+test('Persisted app settings normalize before use and save', () => {
+  const { App, storage } = loadAppForCombat(() => 0.5, {
+    storage: {
+      'yaw-settings': JSON.stringify({
+        fatalVore: 'true',
+        statAbsorption: false,
+        highContrast: true,
+        reducedMotion: 'yes',
+        fontSize: 99,
+        partyPlayFightMode: 'unsafe',
+        injected: true
+      }),
+      'yaw-content-prefs': JSON.stringify({ maxTier: 2, explicitDescriptions: true, voreEnabled: true, language: 'en' })
+    }
+  });
+
+  const originalLog = console.log;
+  console.log = () => {};
+  try {
+    App.init();
+  } finally {
+    console.log = originalLog;
+  }
+  assertEqual(App.settings.fatalVore, false, 'String truthy values should not enable boolean settings on startup');
+  assertEqual(App.settings.statAbsorption, false, 'Stored false should remain false for known boolean settings');
+  assertEqual(App.settings.highContrast, true, 'Stored boolean true should remain true for known settings');
+  assertEqual(App.settings.reducedMotion, false, 'String truthy accessibility values should not enable settings');
+  assertEqual(App.settings.fontSize, 20, 'Stored font size should clamp on startup');
+  assertEqual(App.settings.partyPlayFightMode, 'nonlethal', 'Unknown play-fight mode should reset to the safe default');
+  assertEqual(App.settings.injected, undefined, 'Unknown stored setting keys should be dropped from runtime state');
+
+  const normalized = JSON.parse(storage.get('yaw-settings'));
+  assertEqual(normalized.injected, undefined, 'Unknown stored setting keys should be dropped from persisted state');
+  assertEqual(normalized.fatalVore, false, 'Normalized settings should persist sanitized booleans');
+  assertEqual(normalized.fontSize, 20, 'Normalized settings should persist clamped font size');
+
+  App.settings = {
+    cockVoreEnabled: true,
+    unbirthEnabled: true,
+    forcedFeeding: 'true',
+    highContrast: 'true',
+    fontSize: 12.6,
+    partyPlayFightMode: 'lethal',
+    injected: 'bad'
+  };
+  App.saveSettings();
+  const saved = JSON.parse(storage.get('yaw-settings'));
+  assertEqual(saved.cockVoreEnabled, true, 'Real boolean true settings should persist');
+  assertEqual(saved.forcedFeeding, false, 'String truthy values should not persist as enabled booleans');
+  assertEqual(saved.highContrast, false, 'String truthy accessibility settings should not persist as enabled');
+  assertEqual(saved.fontSize, 13, 'Saved font size should round and clamp');
+  assertEqual(saved.partyPlayFightMode, 'lethal', 'Known play-fight mode should persist');
+  assertEqual(saved.injected, undefined, 'Unknown settings should not persist');
 });
 
 test('Overlays trap focus and restore the opener on close', () => {
@@ -8420,6 +9765,88 @@ test('Settings destructive confirmations localize', async () => {
   clearAll.App.resolveConfirmDialog(false);
   assertEqual(clearAll.storage.get('yaw-last-slot'), 'slot3', 'Cancelled clear-all data should not remove saved state');
 
+  const deletedDatabases = [];
+  const deleteRequests = [];
+  const confirmedClearAll = loadAppForCombat(() => 0.5, {
+    indexedDB: {
+      open() { return {}; },
+      deleteDatabase(name) {
+        deletedDatabases.push(name);
+        const request = { onsuccess: null, onerror: null, onblocked: null, error: null };
+        deleteRequests.push(request);
+        return request;
+      }
+    }
+  });
+  const deletedSlotsForClearAll = [];
+  let clearAllReloaded = false;
+  confirmedClearAll.storage.set('yaw-last-slot', 'slot4');
+  confirmedClearAll.storage.set('yaw-has-played', 'true');
+  confirmedClearAll.App._dbDelete = async (_store, key) => { deletedSlotsForClearAll.push(key); };
+  confirmedClearAll.App.refreshContinueButton = async () => true;
+  confirmedClearAll.App._reloadPage = () => { clearAllReloaded = true; };
+  confirmedClearAll.App.clearAllData();
+  const clearAllPromise = confirmedClearAll.App.resolveConfirmDialog(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assertEqual(clearAllReloaded, false, 'Confirmed clear-all should wait for database deletion before reload');
+  assertEqual(deletedSlotsForClearAll.join(','), 'slot1,slot2,slot3,slot4,slot5', 'Confirmed clear-all should delete every save slot first');
+  assertEqual(deletedDatabases.join(','), 'YAW_Modules,YAW_Saves,YAW_Worlds', 'Confirmed clear-all should request active YAW database deletion without opening legacy namespaces');
+  for (const request of deleteRequests) request.onsuccess({ target: request });
+  assertEqual(await clearAllPromise, true, 'Confirmed clear-all should resolve true after database deletion succeeds');
+  assertEqual(clearAllReloaded, true, 'Confirmed clear-all should reload only after database deletion succeeds');
+  assertEqual(confirmedClearAll.alerts[0], 'All data cleared. Refresh the page to start fresh.', 'Confirmed clear-all should show success after deletes finish');
+
+  const legacyDeletes = [];
+  const legacyDeleteRequests = [];
+  const legacyClearAll = loadAppForCombat(() => 0.5, {
+    indexedDB: {
+      open() { return {}; },
+      databases: async () => [
+        { name: 'YAW_Modules' },
+        { name: 'YAW_Saves' },
+        { name: 'YAW_Worlds' },
+        { name: 'FFFme_Modules' },
+        { name: 'FFF_Saves' }
+      ],
+      deleteDatabase(name) {
+        legacyDeletes.push(name);
+        const request = { onsuccess: null, onerror: null, onblocked: null, error: null };
+        legacyDeleteRequests.push(request);
+        setTimeout(() => {
+          if (request.onsuccess) request.onsuccess({ target: request });
+        }, 0);
+        return request;
+      }
+    }
+  });
+  legacyClearAll.App._dbDelete = async () => {};
+  legacyClearAll.App.refreshContinueButton = async () => true;
+  legacyClearAll.App._reloadPage = () => {};
+  legacyClearAll.App.clearAllData();
+  assertEqual(await legacyClearAll.App.resolveConfirmDialog(true), true, 'Clear-all should still resolve when legacy databases are detected and deleted');
+  assertEqual(legacyDeletes.join(','), 'YAW_Modules,YAW_Saves,YAW_Worlds,FFFme_Modules,FFF_Saves', 'Clear-all should delete detected legacy databases after active YAW databases');
+
+  const blockedClearAll = loadAppForCombat(() => 0.5, {
+    indexedDB: {
+      open() { return {}; },
+      deleteDatabase(name) {
+        const request = { onsuccess: null, onerror: null, onblocked: null, error: null, name };
+        setTimeout(() => {
+          if (request.onblocked) request.onblocked({ target: request });
+        }, 0);
+        return request;
+      }
+    }
+  });
+  let blockedReloaded = false;
+  blockedClearAll.App._dbDelete = async () => {};
+  blockedClearAll.App.refreshContinueButton = async () => true;
+  blockedClearAll.App._reloadPage = () => { blockedReloaded = true; };
+  blockedClearAll.App.clearAllData();
+  assertEqual(await blockedClearAll.App.resolveConfirmDialog(true), false, 'Blocked clear-all should resolve false');
+  assertEqual(blockedReloaded, false, 'Blocked clear-all should not reload');
+  assertContains(blockedClearAll.alerts[0], 'Failed to clear all data:', 'Blocked clear-all should show a failure alert');
+
   const deleteAll = loadAppForCombat(() => 0.5, { confirm: false });
   deleteAll.storage.set('yaw-last-slot', 'slot2');
   deleteAll.App.updateLanguage('es');
@@ -8435,7 +9862,7 @@ test('Settings destructive confirmations localize', async () => {
   confirmedDeleteAll.storage.set('yaw-last-save-time', '1720000000000');
   confirmedDeleteAll.storage.set('yaw-has-played', 'true');
   confirmedDeleteAll.storage.set('yaw-save-time-slot2', '1720000000000');
-  confirmedDeleteAll.elements.get('menu-continue').style.display = 'block';
+  confirmedDeleteAll.document.getElementById('menu-continue').style.display = 'block';
   confirmedDeleteAll.App._dbDelete = async (_store, key) => { deleted.push(key); };
   confirmedDeleteAll.App._dbGet = async () => undefined;
   confirmedDeleteAll.App.deleteAllSaves();
@@ -8501,6 +9928,7 @@ test('Delete save slot is scoped to one selected slot', async () => {
   const { App, elements, storage } = loadAppForCombat(() => 0.5, { confirm: true });
   const deleted = [];
   App._dbDelete = async (_store, key) => { deleted.push(key); };
+  App._dbGet = async () => undefined;
   storage.set('yaw-save-time-slot2', '1710000000000');
   storage.set('yaw-save-time-slot3', '1720000000000');
   App.activeSlot = 'slot2';
@@ -8514,10 +9942,53 @@ test('Delete save slot is scoped to one selected slot', async () => {
   assertContains(elements.get('save-manager').innerHTML, 'Open slot', 'Deleted slot should render as open after refresh');
 });
 
+test('Save slot metadata normalizes stored and requested slot names', async () => {
+  const syncCase = loadAppForCombat(() => 0.5);
+  const dbGets = [];
+  syncCase.App._dbGet = async (_store, key) => {
+    dbGets.push(key);
+    return key === 'slot2' ? new Uint8Array([1]) : undefined;
+  };
+  syncCase.storage.set('yaw-last-slot', '../bad');
+  syncCase.storage.set('yaw-last-save-time', '999');
+  syncCase.storage.set('yaw-save-time-slot2', '1700000000000');
+  const synced = await syncCase.App._syncLastSaveSlot();
+  assertEqual(synced, 'slot2', 'Invalid last-slot metadata should fall back to the latest valid save slot');
+  assertEqual(dbGets.includes('../bad'), false, 'Invalid last-slot metadata should never be used as an IndexedDB key');
+  assertEqual(syncCase.storage.get('yaw-last-slot'), 'slot2', 'Fallback slot should replace invalid last-slot metadata');
+  assertEqual(syncCase.storage.get('yaw-last-save-time'), '1700000000000', 'Fallback slot timestamp should replace stale last-save metadata');
+
+  const saveCase = loadAppForCombat(() => 0.5);
+  const putKeys = [];
+  saveCase.App.player = makeUnit('You');
+  saveCase.App.party = [saveCase.App.player];
+  saveCase.App.screen = 'game';
+  saveCase.App.activeSlot = '../../bad';
+  saveCase.App._prepareSaveSnapshot = () => {};
+  saveCase.App.persistWorldStateToMapStore = async () => {};
+  saveCase.App._dbPut = async (_store, key) => { putKeys.push(key); };
+  await saveCase.App.saveToSlot('../bad');
+  assertEqual(putKeys.join(','), 'slot1', 'Invalid requested save slot should fall back before IndexedDB writes');
+  assertEqual(saveCase.App.activeSlot, 'slot1', 'Invalid requested save slot should normalize activeSlot after save');
+  assertEqual(saveCase.storage.get('yaw-last-slot'), 'slot1', 'Invalid requested save slot should persist only a valid last slot');
+  assertEqual(saveCase.storage.has('yaw-save-time-../bad'), false, 'Invalid requested save slot should not create malformed timestamp keys');
+
+  const loadCase = loadAppForCombat(() => 0.5);
+  let loadCalled = false;
+  loadCase.storage.set('yaw-last-slot', '../bad');
+  loadCase.App.loadFromSlot = async () => { loadCalled = true; return true; };
+  const loaded = await loadCase.App.loadLastPlayed();
+  assertEqual(loaded, false, 'Invalid last-slot metadata should not continue into load');
+  assertEqual(loadCalled, false, 'Invalid last-slot metadata should not call loadFromSlot');
+  assertEqual(loadCase.storage.has('yaw-last-slot'), false, 'Invalid last-slot metadata should be cleared');
+  assertEqual(loadCase.storage.has('yaw-last-save-time'), false, 'Invalid last-save metadata should be cleared with invalid lastSlot');
+});
+
 test('Deleting from new-game slot mode keeps the new-run flow active', async () => {
   const { App, elements, storage } = loadAppForCombat(() => 0.5, { confirm: true });
   const deleted = [];
   App._dbDelete = async (_store, key) => { deleted.push(key); };
+  App._dbGet = async () => undefined;
   storage.set('yaw-save-time-slot2', '1710000000000');
   App.showNewGameManager();
   await App.deleteSlot('slot2');
@@ -8581,7 +10052,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party action menu button should localize accessible label');
   assertContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile party stats button should localize accessible label');
   assertContains(partyHtml, '>Actuar<', 'Mobile party actor button text should localize');
-  assertContains(partyHtml, '>Objetivo<', 'Mobile party target button text should localize');
+  assertContains(partyHtml, '>Marcar<', 'Mobile party target button text should localize');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');
   assertContains(creatureHtml, 'Amistoso', 'Mobile creature disposition should localize');
   assertContains(creatureHtml, 'aria-label="Castigo: 100%"', 'Mobile creature health bar should localize accessible label');
@@ -8901,12 +10372,31 @@ test('Mobile gesture helpers include haptic feedback hooks', () => {
 });
 
 // === SUMMARY ===
-console.log('\n' + '='.repeat(50));
-console.log(`Results: ${passedTests}/${totalTests} passed`);
-if (failedTests > 0) {
-  console.log(`         ${failedTests} failed`);
-  process.exit(1);
-} else {
-  console.log('All tests passed! ✓');
-  process.exit(0);
-}
+(async () => {
+  for (const { name, fn, promise } of asyncTests) {
+    try {
+      if (promise) {
+        const result = await promise;
+        if (result && result.error) throw result.error;
+      } else {
+        await fn();
+      }
+      passedTests++;
+      console.log(`  ✓ ${name}`);
+    } catch (e) {
+      failedTests++;
+      console.log(`  ✗ ${name}`);
+      console.log(`    ${e.message}`);
+    }
+  }
+
+  console.log('\n' + '='.repeat(50));
+  console.log(`Results: ${passedTests}/${totalTests} passed`);
+  if (failedTests > 0) {
+    console.log(`         ${failedTests} failed`);
+    process.exit(1);
+  } else {
+    console.log('All tests passed! ✓');
+    process.exit(0);
+  }
+})();

@@ -1369,36 +1369,21 @@
                 lastSaveTime: 'fff-last-save-time',
                 saveTimePrefix: 'fff-save-time-'
             },
-	            SAVE_DB_NAME: 'YAW_Saves',
-	            LEGACY_SAVE_DB_NAME: 'FFF_Saves',
-	            WORLD_DB_NAME: 'YAW_Worlds',
-	            WORLD_DB_VERSION: 1,
-	            COMBAT_REFRESH_TTL_MS: 2 * 60 * 60 * 1000,
-            _saveTimeKey(slotName) { return this.storageKeys.saveTimePrefix + slotName; },
-            _legacySaveTimeKey(slotName) { return this.legacyStorageKeys.saveTimePrefix + slotName; },
-            _getStoredValue(keyName) {
-                return localStorage.getItem(this.storageKeys[keyName]) ?? localStorage.getItem(this.legacyStorageKeys[keyName]);
-            },
-            _setStoredValue(keyName, value) {
-                localStorage.setItem(this.storageKeys[keyName], value);
-            },
-            _removeStoredValue(keyName) {
-                localStorage.removeItem(this.storageKeys[keyName]);
-                localStorage.removeItem(this.legacyStorageKeys[keyName]);
-            },
-            _getSaveTime(slotName) {
-                return localStorage.getItem(this._saveTimeKey(slotName)) || localStorage.getItem(this._legacySaveTimeKey(slotName)) || '0';
-            },
-            _setSaveTime(slotName, value) {
-                localStorage.setItem(this._saveTimeKey(slotName), value);
-            },
-            _removeSaveTime(slotName) {
-                localStorage.removeItem(this._saveTimeKey(slotName));
-                localStorage.removeItem(this._legacySaveTimeKey(slotName));
-            },
-            _reloadPage() {
-                if (typeof location !== 'undefined' && location.reload) location.reload();
-            },
+            SAVE_DB_NAME: 'YAW_Saves',
+            LEGACY_SAVE_DB_NAME: 'FFF_Saves',
+            WORLD_DB_NAME: 'YAW_Worlds',
+            WORLD_DB_VERSION: 1,
+            COMBAT_REFRESH_TTL_MS: 2 * 60 * 60 * 1000,
+            _saveTimeKey(slotName) { return YAW_STORAGE.saveTimeKey(this, this._normalizeSaveSlotName(slotName)); },
+            _legacySaveTimeKey(slotName) { return YAW_STORAGE.legacySaveTimeKey(this, this._normalizeSaveSlotName(slotName)); },
+            _getStoredValue(keyName) { return YAW_STORAGE.getStoredValue(this, keyName); },
+            _setStoredValue(keyName, value) { return YAW_STORAGE.setStoredValue(this, keyName, value); },
+            _removeStoredValue(keyName) { return YAW_STORAGE.removeStoredValue(this, keyName); },
+            _getSaveTime(slotName) { return this._normalizeSaveTimestamp(YAW_STORAGE.getSaveTime(this, this._normalizeSaveSlotName(slotName))); },
+            _setSaveTime(slotName, value) { return YAW_STORAGE.setSaveTime(this, this._normalizeSaveSlotName(slotName), this._normalizeSaveTimestamp(value)); },
+            _removeSaveTime(slotName) { return YAW_STORAGE.removeSaveTime(this, this._normalizeSaveSlotName(slotName)); },
+            _combatRefreshKey(slotName = this.activeSlot) { return YAW_STORAGE.combatRefreshKey(this, this._normalizeSaveSlotName(slotName)); },
+            _reloadPage() { return YAW_STORAGE.reloadPage(); },
 
             init() {
                 console.log('App.init() - Mechanics Overhaul');
@@ -1411,12 +1396,23 @@
                 // Load saved settings
                 try {
                     const savedSettings = JSON.parse(this._getStoredValue('settings') || '{}');
-                    for (const k of Object.keys(savedSettings)) { this.settings[k] = savedSettings[k]; }
+                    this.settings = this._normalizeSettings(savedSettings, this._defaultSettings());
+                    this._setStoredValue('settings', JSON.stringify(this._settingsForStorage()));
+                } catch(e) {
+                    console.warn('Settings load failed', e);
+                    this.settings = this._normalizeSettings({}, this._defaultSettings());
+                    this._setStoredValue('settings', JSON.stringify(this._settingsForStorage()));
+                }
+                try {
                     const savedPrefs = JSON.parse(this._getStoredValue('contentPrefs') || '{}');
-                    for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
-                    CONTENT.preferences.maxTier = this._tierValue(CONTENT.preferences.maxTier);
+                    if (CONTENT?.applyPreferences) {
+                        CONTENT.applyPreferences(savedPrefs, { persist: true });
+                    } else {
+                        for (const k of Object.keys(savedPrefs)) { CONTENT.preferences[k] = savedPrefs[k]; }
+                        CONTENT.preferences.maxTier = this._tierValue(CONTENT.preferences.maxTier);
+                    }
                     this.enforceContentTierSettings();
-                } catch(e) { console.warn('Settings load failed', e); }
+                } catch(e) { console.warn('Content preferences load failed', e); }
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
@@ -3401,15 +3397,8 @@
 
             executeAction(action, creatureIndex) {
                 const target = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[creatureIndex];
-                const actor = this.activeActor || this.player;
-                return this._dispatchPanelInteraction({
-                    mode: 'combat',
-                    actors: [actor],
-                    targets: [target].filter(Boolean),
-                    action,
-                    source: 'legacy-wrapper',
-                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
-                });
+                if (!target) return false;
+                return this.executeActionOnTarget(action, target.id || target.name);
             },
 
             _resolveCombatAction(command) {
@@ -4907,13 +4896,8 @@
             outsideAction(action, type, index) {
                 const target = type === 'party' ? this.party.filter(p => p.name !== this.player.name)[index] : this.creatures.filter(c => c.disposition !== this.DISPOSITION.ENEMY)[index];
                 if (!target) return false;
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    action,
-                    targets: [target],
-                    source: 'legacy-wrapper',
-                    targetType: type
-                });
+                if (type === 'party') return this.outsideActionForParty(action, this.party.indexOf(target));
+                return this.outsideActionForCreature(action, target.id || target.name);
             },
 
             outsideActionForParty(action, targetIndex, actorId = null, options = {}) {
@@ -7383,13 +7367,24 @@
                 const roles = this._unitSelectionRoles(unit, type);
                 return roles.length ? ` selected ${roles.map(role => `selected-${role}`).join(' ')}` : '';
             },
+            _targetMarkLabel() {
+                return this._label('target.mark', 'Mark');
+            },
+            _combatTargetPickLabel() {
+                return this._label('target.pick', 'Pick');
+            },
+            _unitSelectionRoleLabel(role) {
+                if (role === 'actor') return this._label('target.actorRole', 'Actor');
+                if (role === 'target' && this.combatState?.active) return this._label('target.targetRole', 'Target');
+                if (role === 'target') return this._label('target.markedRole', 'Marked');
+                return role;
+            },
+            _unitCardFocusLabel(unit) {
+                return this._label('unit.cardFocus', 'Focus {name} card', { name: unit?.name || 'unit' });
+            },
             _unitSelectionChips(unit, type) {
-                const labels = {
-                    actor: this._label('target.actorRole', 'Actor'),
-                    target: this._label('target.targetRole', 'Target')
-                };
                 const chips = this._unitSelectionRoles(unit, type).map(role => {
-                    const safeLabel = this._escapeHtml(labels[role] || role);
+                    const safeLabel = this._escapeHtml(this._unitSelectionRoleLabel(role));
                     return `<span class="unit-trait-chip selection" data-selection-role="${this._escapeHtml(role)}" title="${safeLabel}">${safeLabel}</span>`;
                 });
                 if (chips.length === 0) return '';
@@ -7412,7 +7407,9 @@
                     const selectedActors = this._getExplorationActors();
                     const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
                     const targetClass = targetSelected ? ' primary' : '';
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`)}${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+                    const actorPressed = selectedActors.includes(unit);
+                    const targetPressed = targetSelected;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, this._label('target.act', 'Act'), this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, `data-selection-control="actor" aria-pressed="${actorPressed}"`)}${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, `data-selection-control="target" aria-pressed="${targetPressed}"`)}${chipButton('action-btn', '⋯', `${this._label('ui.partyActions', 'Party actions')}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('party',${index})`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}${chipButton('action-btn', this._label('party.stats', 'Stats'), this._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
                 } else if (isParty && this.combatState.active) {
                     if (this.syncSelection?.active && this.syncSelection.phase === 'participants') {
                         actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${this._syncParticipantButton(unit, true)}</div>`;
@@ -7430,17 +7427,19 @@
                         const disabledAttr = isTargetable ? '' : 'aria-disabled="true"';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, disabledAttr)}</div>`;
+                        const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}data-selection-control="combat-target"`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const isTargetable = this.canSelectCreatureTarget(unit);
                         const disabled = isTargetable ? '' : ' disabled';
                         const targetHint = this._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: this._label('action.sync', 'Sync') });
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._label('target.mark', 'Target'), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')`, disabled.trim())}</div>`;
+                        const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}data-selection-control="combat-target"`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', this._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
                         const inspectLabel = this._uiLabel('inspect');
                         const menuLabel = this._label('ui.creatureActions', 'Creature actions');
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._label('target.mark', 'Target'), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`)}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, `data-selection-control="target" aria-pressed="${targetSelected}"`)}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, `event.stopPropagation();App.recruitCreatureById('${targetKey}')`);
                         }
@@ -7472,7 +7471,8 @@
                     : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
                 const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${this._unitSelectionClass(unit, type)}`;
                 const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
-                return `<div class="${chipClass}" role="button" tabindex="0" onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
+                const focusTitle = this._escapeHtml(this._unitCardFocusLabel(unit));
+                return `<div class="${chipClass}" role="button" tabindex="0" data-card-purpose="focus-toggle" title="${focusTitle}" aria-label="${focusTitle}" onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
                     <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${this._escapeHtml(status)}${rowText}</div>
@@ -7504,9 +7504,11 @@
                     const targetKey = this._unitKey(unit);
                     const actorLabel = this._escapeHtml(this._label('target.act', 'Act'));
                     const actorTitle = this._escapeHtml(this._label('target.selectActorFor', 'Select {name} to act', { name: unitName }));
-                    const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
+                    const targetLabel = this._escapeHtml(this._targetMarkLabel());
                     const targetTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: unitName }));
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
+                    const actorPressed = selectedActors.includes(unit);
+                    const targetPressed = this._isExplorationTarget('party', this._unitSelectionId(unit));
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" data-selection-control="actor" aria-pressed="${actorPressed}" title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" data-selection-control="target" aria-pressed="${targetPressed}" title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
                     actionButtons += `<button class="action-btn" title="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-label="${this._escapeHtml(this._label('ui.partyActions', 'Party actions'))}: ${this._escapeHtml(unitName)}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('party',${index},'desktop')">⋯</button>`;
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
@@ -7571,24 +7573,25 @@
                         const targetName = unit.name || 'creature';
                         const actionLabel = this._uiLabel(this.targetSelection.action || 'action');
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
-                        const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
+                        const targetLabel = this._escapeHtml(this._combatTargetPickLabel());
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-selection-control="combat-target" title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${this.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabled = canTarget ? '' : ' disabled';
                         const targetName = unit.name || 'creature';
                         const targetHint = this._escapeHtml(this._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: this._label('action.sync', 'Sync') }));
-                        const targetLabel = this._escapeHtml(this._label('target.mark', 'Target'));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
+                        const targetLabel = this._escapeHtml(this._combatTargetPickLabel());
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" data-selection-control="combat-target" title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${this.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetName = unit.name || 'creature';
                         const targetLabel = this._escapeHtml(targetName);
                         const targetClass = this._isExplorationTarget('creature', String(unit.id || unit.name)) ? ' primary' : '';
                         const actionTitle = action => this._escapeHtml(`${this._uiLabel(action)} ${targetName}`);
-                        const markLabel = this._escapeHtml(this._label('target.mark', 'Target'));
+                        const markLabel = this._escapeHtml(this._targetMarkLabel());
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                         const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${targetName}`);
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
+                        const targetPressed = this._isExplorationTarget('creature', String(unit.id || unit.name));
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-selection-control="target" aria-pressed="${targetPressed}" title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
                             actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
@@ -7633,7 +7636,8 @@
                 const cardContextMenuAttr = cardCanOpenIntentMenu
                     ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${this._unitKey(unit)}'`},'secondary-click')"`
                     : '';
-                return `<div class="${cardClass}" role="button" tabindex="0" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+                const focusTitle = this._escapeHtml(this._unitCardFocusLabel(unit));
+                return `<div class="${cardClass}" role="button" tabindex="0" data-card-purpose="focus-toggle" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${isExpanded ? 'true' : 'false'}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
 	                    <div class="unit-header">
 	                        <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
@@ -8436,28 +8440,45 @@
                     return true;
                 });
             },
+            _allowedLogFilters() {
+                return ['all', 'combat', 'discovery', 'loot', 'heal'];
+            },
+            _normalizeLogViewPreferences(input = {}) {
+                const prefs = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+                const filter = this._allowedLogFilters().includes(prefs.filter) ? prefs.filter : 'all';
+                const search = typeof prefs.search === 'string' ? prefs.search.slice(0, 120) : '';
+                const collapsed = prefs.collapsed === true;
+                const expanded = prefs.expanded === true && !collapsed;
+                return { filter, search, collapsed, expanded };
+            },
+            _applyLogViewPreferences(preferences = {}) {
+                const normalized = this._normalizeLogViewPreferences(preferences);
+                this.logFilter = normalized.filter;
+                this.logSearch = normalized.search;
+                this.logCollapsed = normalized.collapsed;
+                this.logExpanded = normalized.expanded;
+                return normalized;
+            },
+            _logViewPreferencesForStorage() {
+                return this._applyLogViewPreferences({
+                    filter: this.logFilter,
+                    search: this.logSearch,
+                    collapsed: this.logCollapsed,
+                    expanded: this.logExpanded
+                });
+            },
             loadLogViewPreferences() {
                 try {
                     const prefs = JSON.parse(this._getStoredValue('logView') || '{}');
-                    const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
-                    this.logFilter = allowed.includes(prefs.filter) ? prefs.filter : 'all';
-                    this.logSearch = typeof prefs.search === 'string' ? prefs.search : '';
-                    this.logCollapsed = Boolean(prefs.collapsed);
-                    this.logExpanded = Boolean(prefs.expanded) && !this.logCollapsed;
+                    const normalized = this._applyLogViewPreferences(prefs);
+                    this._setStoredValue('logView', JSON.stringify(normalized));
                 } catch(e) {
-                    this.logFilter = 'all';
-                    this.logSearch = '';
-                    this.logCollapsed = false;
-                    this.logExpanded = false;
+                    const normalized = this._applyLogViewPreferences({});
+                    this._setStoredValue('logView', JSON.stringify(normalized));
                 }
             },
             saveLogViewPreferences() {
-                this._setStoredValue('logView', JSON.stringify({
-                    filter: this.logFilter || 'all',
-                    search: this.logSearch || '',
-                    collapsed: Boolean(this.logCollapsed),
-                    expanded: Boolean(this.logExpanded)
-                }));
+                this._setStoredValue('logView', JSON.stringify(this._logViewPreferencesForStorage()));
             },
             _applyLogLayoutState() {
                 const root = document.getElementById('app');
@@ -8497,13 +8518,12 @@
                 this.renderLog();
             },
             setLogFilter(filter = 'all') {
-                const allowed = ['all', 'combat', 'discovery', 'loot', 'heal'];
-                this.logFilter = allowed.includes(filter) ? filter : 'all';
+                this.logFilter = this._allowedLogFilters().includes(filter) ? filter : 'all';
                 this.saveLogViewPreferences();
                 this.renderLog();
             },
             setLogSearch(value = '') {
-                this.logSearch = value;
+                this.logSearch = typeof value === 'string' ? value : '';
                 this.saveLogViewPreferences();
                 this.renderLog();
             },
@@ -8740,9 +8760,13 @@
                     document.getElementById('screen-menu').style.display = 'none';
                     document.getElementById('app').style.display = 'grid';
                     document.getElementById('screen-game').style.display = 'flex';
+                    document.getElementById('screen-game').classList.add('active');
+                    this.screen = 'game';
                 } else {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-menu').style.display = 'flex';
+                    document.getElementById('screen-menu').classList.add('active');
+                    this.screen = 'menu';
                     this.refreshContinueButton();
                 }
             },
@@ -8849,38 +8873,50 @@
                     onConfirm: () => this._clearAllDataConfirmed()
                 });
             },
-            _clearAllDataConfirmed() {
-                // Delete all saves from IndexedDB
-	                for (let i = 1; i <= 5; i++) {
-	                    this._dbDelete('saves', 'slot' + i).catch(() => {});
-	                    this._removeSaveTime('slot' + i);
-	                    this._clearCombatRefreshSnapshot('slot' + i);
-	                }
-                this._removeStoredValue('lastSlot');
-                this._removeStoredValue('lastSaveTime');
-                this._removeStoredValue('hasPlayed');
-                this._removeStoredValue('tutorialComplete');
-                this._removeStoredValue('settings');
-                this._removeStoredValue('contentPrefs');
-                this._removeStoredValue('logView');
-                // Delete module DB
-                const req = indexedDB.deleteDatabase('YAW_Modules');
-                req.onsuccess = () => console.log('Module DB deleted');
-                req.onerror = () => console.error('Failed to delete module DB');
-                const legacyReq = indexedDB.deleteDatabase('FFFme_Modules');
-                legacyReq.onerror = () => console.error('Failed to delete legacy module DB');
-                // Delete saves DB
-                const req2 = indexedDB.deleteDatabase(this.SAVE_DB_NAME);
-                req2.onsuccess = () => console.log('Saves DB deleted');
-                req2.onerror = () => console.error('Failed to delete saves DB');
-                const legacyReq2 = indexedDB.deleteDatabase(this.LEGACY_SAVE_DB_NAME);
-                legacyReq2.onerror = () => console.error('Failed to delete legacy saves DB');
-                const worldReq = indexedDB.deleteDatabase(this.WORLD_DB_NAME);
-                worldReq.onsuccess = () => console.log('World DB deleted');
-                worldReq.onerror = () => console.error('Failed to delete world DB');
-                this.refreshContinueButton();
-                alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
-                this._reloadPage();
+            _deleteDatabase(dbName) {
+                return YAW_STORAGE.deleteDatabase(dbName);
+            },
+            _deleteLegacyDatabase(dbName) {
+                return YAW_STORAGE.deleteDatabaseIfExists(dbName);
+            },
+            async _clearAllDataConfirmed() {
+                try {
+                    for (let i = 1; i <= 5; i++) {
+                        const slotName = 'slot' + i;
+                        await this._dbDelete('saves', slotName).catch(e => console.warn(`Failed to delete ${slotName}`, e));
+                        this._removeSaveTime(slotName);
+                        this._clearCombatRefreshSnapshot(slotName);
+                    }
+                    this._removeStoredValue('lastSlot');
+                    this._removeStoredValue('lastSaveTime');
+                    this._removeStoredValue('hasPlayed');
+                    this._removeStoredValue('tutorialComplete');
+                    this._removeStoredValue('settings');
+                    this._removeStoredValue('contentPrefs');
+                    this._removeStoredValue('logView');
+
+                    const currentDbNames = [
+                        'YAW_Modules',
+                        this.SAVE_DB_NAME,
+                        this.WORLD_DB_NAME
+                    ];
+                    const legacyDbNames = [
+                        'FFFme_Modules',
+                        this.LEGACY_SAVE_DB_NAME
+                    ];
+                    await Promise.all([
+                        ...currentDbNames.map(dbName => this._deleteDatabase(dbName)),
+                        ...legacyDbNames.map(dbName => this._deleteLegacyDatabase(dbName))
+                    ]);
+                    await this.refreshContinueButton();
+                    alert(this._label('settings.clearAllDataDone', 'All data cleared. Refresh the page to start fresh.'));
+                    this._reloadPage();
+                    return true;
+                } catch (e) {
+                    console.error('Clear all data failed:', e);
+                    alert(this._label('settings.clearAllDataFailed', 'Failed to clear all data: {message}', { message: e.message || e }));
+                    return false;
+                }
             },
             async deleteAllSaves() {
                 return this.showConfirmDialog({
@@ -8938,10 +8974,55 @@
                 if (tier >= 1) return 'mature';
                 return 'safe';
             },
+            _defaultSettings() {
+                return {
+                    powerDynamics: false, endoMode: false, slowDigestion: false,
+                    fatalVore: false, chewing: false, allTheWayThrough: false,
+                    hardcore: false, scat: false, watersports: false,
+                    boneCrushing: false, unwillingWarnings: false,
+                    statAbsorption: true, refractoryPeriod: false,
+                    sameSpeciesBonus: false, fluidEnabled: false,
+                    cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
+                    partyPlayFightMode: 'nonlethal',
+                    highContrast: false, reducedMotion: false, fontSize: 14
+                };
+            },
+            _settingsBooleanKeys() {
+                return [
+                    'powerDynamics', 'endoMode', 'slowDigestion', 'fatalVore', 'chewing',
+                    'allTheWayThrough', 'hardcore', 'scat', 'watersports', 'boneCrushing',
+                    'unwillingWarnings', 'statAbsorption', 'refractoryPeriod', 'sameSpeciesBonus',
+                    'fluidEnabled', 'cockVoreEnabled', 'unbirthEnabled', 'forcedFeeding',
+                    'highContrast', 'reducedMotion'
+                ];
+            },
+            _normalizeSettings(input = {}, base = this.settings) {
+                const defaults = this._defaultSettings();
+                const source = {
+                    ...defaults,
+                    ...(base && typeof base === 'object' && !Array.isArray(base) ? base : {}),
+                    ...(input && typeof input === 'object' && !Array.isArray(input) ? input : {})
+                };
+                const normalized = {};
+                for (const key of this._settingsBooleanKeys()) {
+                    normalized[key] = source[key] === true;
+                }
+                normalized.partyPlayFightMode = ['nonlethal', 'lethal'].includes(source.partyPlayFightMode)
+                    ? source.partyPlayFightMode
+                    : defaults.partyPlayFightMode;
+                const parsedFontSize = Number(source.fontSize);
+                normalized.fontSize = Math.max(12, Math.min(20, Number.isFinite(parsedFontSize) ? Math.round(parsedFontSize) : defaults.fontSize));
+                return normalized;
+            },
+            _settingsForStorage() {
+                this.settings = this._normalizeSettings(this.settings, this._defaultSettings());
+                return { ...this.settings };
+            },
             setContentTier(tier) {
                 const nextTier = this._tierValue(tier);
                 CONTENT.setMaxTier(nextTier);
                 this.enforceContentTierSettings();
+                this.enforceModuleContentPolicy();
                 this.syncSettingVisibility();
                 this.syncCreateContentLevel();
                 this.saveSettings();
@@ -8958,6 +9039,20 @@
                     CONTENT.setPreference('voreEnabled', false);
                     matureSettings.forEach(key => { this.settings[key] = false; });
                 }
+            },
+            enforceModuleContentPolicy() {
+                if (typeof MODULE_SYSTEM === 'undefined' || typeof MODULE_SYSTEM.enforceContentPolicy !== 'function') return;
+                MODULE_SYSTEM.enforceContentPolicy().then(disabled => {
+                    if (!disabled || disabled.length === 0) return;
+                    const names = disabled.map(mod => mod?.manifest?.name || mod?.id).filter(Boolean).join(', ');
+                    this.log.push({ text: this._label('mod.disabledByContentPolicy', 'Disabled {count} module(s) blocked by current content settings: {names}', { count: disabled.length, names }), type: 'mod' });
+                    this.renderLog();
+                    if (typeof ModUI !== 'undefined' && typeof ModUI.refreshModList === 'function') {
+                        ModUI.refreshModList();
+                    }
+                }).catch(e => {
+                    console.error('Failed to enforce module content policy:', e);
+                });
             },
             syncSettingVisibility() {
                 const current = this._tierValue(CONTENT?.preferences?.maxTier);
@@ -9000,30 +9095,7 @@
                 this._settingsFocusTimer = setTimeout(() => target.classList.remove('settings-focus'), 1600);
             },
             saveSettings() {
-                this._setStoredValue('settings', JSON.stringify({
-                    endoMode: this.settings.endoMode,
-                    fatalVore: this.settings.fatalVore,
-                    slowDigestion: this.settings.slowDigestion,
-                    statAbsorption: this.settings.statAbsorption,
-                    chewing: this.settings.chewing,
-                    allTheWayThrough: this.settings.allTheWayThrough,
-                    powerDynamics: this.settings.powerDynamics,
-                    refractoryPeriod: this.settings.refractoryPeriod,
-                    sameSpeciesBonus: this.settings.sameSpeciesBonus,
-                    fluidEnabled: this.settings.fluidEnabled,
-                    scat: this.settings.scat,
-                    watersports: this.settings.watersports,
-                    cockVoreEnabled: this.settings.cockVoreEnabled,
-                    unbirthEnabled: this.settings.unbirthEnabled,
-                    forcedFeeding: this.settings.forcedFeeding,
-                    boneCrushing: this.settings.boneCrushing,
-                    unwillingWarnings: this.settings.unwillingWarnings,
-                    hardcore: this.settings.hardcore,
-                    partyPlayFightMode: this.settings.partyPlayFightMode,
-                    highContrast: this.settings.highContrast,
-                    reducedMotion: this.settings.reducedMotion,
-                    fontSize: this.settings.fontSize,
-                }));
+                this._setStoredValue('settings', JSON.stringify(this._settingsForStorage()));
                 if (CONTENT?.preferences) {
                     this._setStoredValue('contentPrefs', JSON.stringify(CONTENT.preferences));
                 }
@@ -9123,6 +9195,7 @@
                 return match ? this._label('save.slotLabel', 'Slot {number}', { number: match[1] }) : String(slotName || '');
             },
             beginNewGameInSlot(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 const saveTime = this._getSaveTime(slotName);
                 const hasData = parseInt(saveTime) > 0;
                 const slotLabel = this._slotDisplayLabel(slotName);
@@ -9139,13 +9212,14 @@
                 return this._startNewGameInSlot(slotName);
             },
             _startNewGameInSlot(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 this.activeSlot = slotName;
                 this._setStoredValue('lastSlot', slotName);
                 this.showScreen('create');
                 return true;
             },
             renderSaveManager(mode = this.saveManagerMode || 'load') {
-                const lastSlot = this._getStoredValue('lastSlot') || 'slot1';
+                const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), 'slot1');
                 const isNewMode = mode === 'new';
                 const isSaveMode = mode === 'save';
                 const titleKey = isNewMode ? 'save.newTitle' : (isSaveMode ? 'save.saveTitle' : 'save.loadTitle');
@@ -9227,7 +9301,7 @@
                 this.tutorialStep++;
             },
             skipTutorial() { this.closeTutorial(); },
-            continueLastGame() { this.loadLastPlayed(); },
+            continueLastGame() { return this.loadLastPlayed(); },
             executeCombatIntent(action, actor = this.activeActor || this._currentCombatActor()) {
                 if (!this.combatState.active) {
                     this.log.push({ text: this._label('combat.notInCombat', 'Not in combat!'), type: 'combat' });
@@ -9633,7 +9707,7 @@
             },
             async resolveSaveRecoveryDialog(action, fallbackSlotName = null, fallbackSaveData = null) {
                 const pending = this.pendingSaveRecovery || {};
-                const slotName = fallbackSlotName || pending.slotName;
+                const slotName = this._normalizeSaveSlotName(fallbackSlotName || pending.slotName, null);
                 const saveData = fallbackSaveData || pending.saveData;
                 this.closeSaveRecoveryDialog();
 	                if (action === 'delete' && slotName) {
@@ -9776,6 +9850,16 @@
             _saveSlotNames() {
                 return Array.from({ length: 5 }, (_, index) => 'slot' + (index + 1));
             },
+            _normalizeSaveSlotName(slotName, fallback = 'slot1') {
+                const value = String(slotName ?? '').trim();
+                if (this._saveSlotNames().includes(value)) return value;
+                return fallback;
+            },
+            _normalizeSaveTimestamp(value) {
+                const parsed = Number.parseInt(value, 10);
+                if (!Number.isFinite(parsed) || parsed <= 0) return '0';
+                return String(parsed);
+            },
             async _findLatestExistingSaveSlot() {
                 const slots = [];
                 for (const slotName of this._saveSlotNames()) {
@@ -9789,10 +9873,21 @@
                 return slots[0]?.slotName || null;
             },
             async _syncLastSaveSlot() {
-                const lastSlot = this._getStoredValue('lastSlot');
+                const rawLastSlot = this._getStoredValue('lastSlot');
+                const lastSlot = rawLastSlot ? this._normalizeSaveSlotName(rawLastSlot, null) : null;
+                if (rawLastSlot && !lastSlot) {
+                    this._removeStoredValue('lastSlot');
+                    this._removeStoredValue('lastSaveTime');
+                }
                 if (lastSlot) {
                     const saveData = await this._dbGet('saves', lastSlot);
-                    if (saveData) return lastSlot;
+                    if (saveData) {
+                        if (rawLastSlot !== lastSlot) this._setStoredValue('lastSlot', lastSlot);
+                        const saveTime = this._getSaveTime(lastSlot);
+                        if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
+                        else this._removeStoredValue('lastSaveTime');
+                        return lastSlot;
+                    }
                 }
                 const fallbackSlot = await this._findLatestExistingSaveSlot();
                 if (fallbackSlot) {
@@ -9816,44 +9911,30 @@
             async checkLastPlayed() {
                 return !!(await this._syncLastSaveSlot());
             },
-            _combatRefreshKey(slotName = this.activeSlot) {
-                return `${this.storageKeys.combatRefreshPrefix}${slotName || 'slot1'}`;
-            },
-            _writeCombatRefreshSnapshot() {
-                if (!this.combatState?.active || !this.player || typeof localStorage === 'undefined' || typeof Binary === 'undefined') return false;
+            _writeCombatRefreshSnapshot(slotName = this.activeSlot) {
+                slotName = this._normalizeSaveSlotName(slotName);
+                if (!this.combatState?.active || !this.player || typeof Binary === 'undefined') return false;
                 try {
                     this._prepareSaveSnapshot();
                     const saveData = Binary.saveGame(this, { omitWorldMap: false });
-                    localStorage.setItem(this._combatRefreshKey(this.activeSlot), JSON.stringify({
-                        slot: this.activeSlot,
-                        savedAt: Date.now(),
-                        data: Array.from(saveData)
-                    }));
-                    return true;
+                    return YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName);
                 } catch (e) {
                     console.warn('Combat refresh snapshot failed', e);
                     return false;
                 }
             },
             _readCombatRefreshSnapshot(slotName = this.activeSlot) {
-                if (typeof localStorage === 'undefined' || typeof Binary === 'undefined') return null;
+                slotName = this._normalizeSaveSlotName(slotName);
+                if (typeof Binary === 'undefined') return null;
                 try {
-                    const raw = localStorage.getItem(this._combatRefreshKey(slotName));
-                    if (!raw) return null;
-                    const parsed = JSON.parse(raw);
-                    if (!parsed || parsed.slot !== slotName || !Array.isArray(parsed.data)) return null;
-                    const savedAt = Number(parsed.savedAt || 0);
-                    if (!savedAt || Date.now() - savedAt > this.COMBAT_REFRESH_TTL_MS) {
-                        this._clearCombatRefreshSnapshot(slotName);
-                        return null;
-                    }
-                    const bytes = new Uint8Array(parsed.data);
-                    const loaded = Binary.loadGame(bytes);
+                    const snapshot = YAW_STORAGE.readCombatRefreshSnapshot(this, slotName);
+                    if (!snapshot) return null;
+                    const loaded = Binary.loadGame(snapshot.saveData);
                     if (!loaded?.questState?.combatState?.active) {
                         this._clearCombatRefreshSnapshot(slotName);
                         return null;
                     }
-                    return { saveData: bytes, savedAt };
+                    return snapshot;
                 } catch (e) {
                     console.warn('Combat refresh snapshot load failed', e);
                     this._clearCombatRefreshSnapshot(slotName);
@@ -9861,11 +9942,12 @@
                 }
             },
             _clearCombatRefreshSnapshot(slotName = this.activeSlot) {
-                if (typeof localStorage === 'undefined') return;
-                try { localStorage.removeItem(this._combatRefreshKey(slotName)); } catch (e) {}
+                slotName = this._normalizeSaveSlotName(slotName);
+                try { YAW_STORAGE.clearCombatRefreshSnapshot(this, slotName); } catch (e) {}
             },
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
+                this.activeSlot = this._normalizeSaveSlotName(this.activeSlot);
                 try {
                     this._prepareSaveSnapshot();
                     let worldStoreSaved = false;
@@ -9886,6 +9968,7 @@
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
             async saveToSlot(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 if (!this.player) { alert(this._label('save.error.noGame', 'No game to save!')); return; }
                 const saveTime = this._getSaveTime(slotName);
                 const slotLabel = this._slotDisplayLabel(slotName);
@@ -9902,6 +9985,7 @@
                 return this._saveToSlotConfirmed(slotName);
             },
             async _saveToSlotConfirmed(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 const slotLabel = this._slotDisplayLabel(slotName);
                 try {
                     this._prepareSaveSnapshot();
@@ -9918,12 +10002,15 @@
                     this._setStoredValue('lastSlot', slotName);
                     this._setStoredValue('lastSaveTime', Date.now().toString());
                     this._setSaveTime(slotName, Date.now().toString());
+                    if (this.combatState?.active) this._writeCombatRefreshSnapshot(slotName);
+                    else this._clearCombatRefreshSnapshot(slotName);
                     alert(this._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
                     return true;
                 } catch (e) { alert(this._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
                 return false;
             },
             async loadFromSlot(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 try {
                     const slotLabel = this._slotDisplayLabel(slotName);
                     let saveData = await this._dbGet('saves', slotName);
@@ -9959,6 +10046,17 @@
 	                        mc: index === 0,
 	                        obedient: true
 	                    }));
+                    const partyUnitRefs = Array.isArray(loaded.questState?.partyUnitRefs) ? loaded.questState.partyUnitRefs : [];
+                    for (let index = 0; index < this.party.length; index++) {
+                        const ref = partyUnitRefs[index];
+                        if (!ref?.id) continue;
+                        const unit = this.party[index];
+                        const refName = String(ref.name || '');
+                        const refSpecies = String(ref.species || '');
+                        const matchesName = !refName || String(unit.name || '') === refName;
+                        const matchesSpecies = !refSpecies || String(unit.species || '') === refSpecies;
+                        if (matchesName && matchesSpecies) unit.id = String(ref.id);
+                    }
 	                    const playerIndex = this.party.findIndex(p => p.name === this.player.name && p.species === this.player.species);
 	                    if (playerIndex >= 0) {
 	                        this.player = this.party[playerIndex];
@@ -9982,7 +10080,17 @@
                     this.currentBiome = loaded.currentBiome || 'forest';
                     this.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;
                     this.dayCount = loaded.questState?.dayCount || 0;
-                    this.log = (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
+                    const structuredLog = Array.isArray(loaded.questState?.logEntries) ? loaded.questState.logEntries : null;
+                    this.log = structuredLog
+                        ? structuredLog.map(entry => ({
+                            text: String(entry?.text || ''),
+                            type: String(entry?.type || 'discovery'),
+                            ...(Number.isFinite(entry?.round) ? { round: entry.round } : {}),
+                            ...(Number.isFinite(entry?.turnIndex) ? { turnIndex: entry.turnIndex } : {}),
+                            ...(entry?.actor ? { actor: String(entry.actor) } : {}),
+                            ...(entry?.phase ? { phase: String(entry.phase) } : {})
+                        })).filter(entry => entry.text)
+                        : (loaded.log || []).map(t => ({ text: t, type: 'discovery' }));
                     this.creatures = [];
                     this.inventory = loaded.inventory || [];
                     this.quests = loaded.questState?.quests || [];
@@ -10008,6 +10116,8 @@
                     this._restoreCombatState(loaded.questState?.combatState);
                     this._normalizeExplorationSelections();
                     this._setStoredValue('lastSlot', slotName);
+                    const saveTime = this._getSaveTime(slotName);
+                    if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
                     // Revive any dead party members on load (softcore)
                     let revived = false;
                     if (this.player && this.player.CPun <= 0) {
@@ -10134,11 +10244,16 @@
                 return true;
             },
             async loadLastPlayed() {
-                const lastSlot = this._getStoredValue('lastSlot');
-                if (!lastSlot) return false;
+                const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), null);
+                if (!lastSlot) {
+                    this._removeStoredValue('lastSlot');
+                    this._removeStoredValue('lastSaveTime');
+                    return false;
+                }
                 return await this.loadFromSlot(lastSlot);
             },
             async deleteSlot(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 const slotLabel = this._slotDisplayLabel(slotName);
                 return this.showConfirmDialog({
                     title: this._label('save.delete', 'Delete'),
@@ -10150,63 +10265,27 @@
                 });
             },
             async _deleteSlotConfirmed(slotName) {
+                slotName = this._normalizeSaveSlotName(slotName);
                 try {
                     await this._dbDelete('saves', slotName);
                     this._removeSaveTime(slotName);
                     this._clearCombatRefreshSnapshot(slotName);
-                    if (this.activeSlot === slotName) this.activeSlot = 'slot1';
+                    const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), null);
+                    if (lastSlot === slotName) {
+                        this._removeStoredValue('lastSlot');
+                        this._removeStoredValue('lastSaveTime');
+                    }
+                    if (this._normalizeSaveSlotName(this.activeSlot) === slotName) this.activeSlot = 'slot1';
                     await this.refreshContinueButton();
                     this.showSaveManager(this.saveManagerMode || 'load');
                     return true;
                 } catch (e) { alert(this._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
                 return false;
             },
-            async _dbOpen(dbName = this.SAVE_DB_NAME) {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open(dbName, 1);
-                    req.onupgradeneeded = e => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains('saves')) db.createObjectStore('saves');
-                    };
-                    req.onsuccess = e => resolve(e.target.result);
-                    req.onerror = () => reject(req.error);
-                });
-            },
-            async _dbPut(store, key, value) {
-                return new Promise((resolve, reject) => {
-                    this._dbOpen(this.SAVE_DB_NAME).then(db => {
-                        const tx = db.transaction('saves', 'readwrite');
-                        tx.objectStore('saves').put(value, key);
-                        tx.oncomplete = () => { db.close(); resolve(); };
-                        tx.onerror = () => { db.close(); reject(tx.error); };
-                    }).catch(reject);
-                });
-            },
-            async _dbGet(store, key) {
-                const readFrom = dbName => new Promise((resolve, reject) => {
-                    this._dbOpen(dbName).then(db => {
-                        const tx = db.transaction('saves', 'readonly');
-                        const getReq = tx.objectStore('saves').get(key);
-                        getReq.onsuccess = () => { db.close(); resolve(getReq.result); };
-                        getReq.onerror = () => { db.close(); reject(getReq.error); };
-                    }).catch(reject);
-                });
-                const current = await readFrom(this.SAVE_DB_NAME);
-                if (current !== undefined) return current;
-                return await readFrom(this.LEGACY_SAVE_DB_NAME).catch(() => undefined);
-            },
-            async _dbDelete(store, key) {
-                const deleteFrom = dbName => new Promise((resolve, reject) => {
-                    this._dbOpen(dbName).then(db => {
-                        const tx = db.transaction('saves', 'readwrite');
-                        tx.objectStore('saves').delete(key);
-                        tx.oncomplete = () => { db.close(); resolve(); };
-                        tx.onerror = () => { db.close(); reject(tx.error); };
-                    }).catch(reject);
-                });
-                await deleteFrom(this.SAVE_DB_NAME);
-                await deleteFrom(this.LEGACY_SAVE_DB_NAME).catch(() => {});
-            },
+            async _dbOpen(dbName = this.SAVE_DB_NAME) { return YAW_STORAGE.dbOpen(this, dbName); },
+            async _dbPut(store, key, value) { return YAW_STORAGE.dbPut(this, store, key, value); },
+            async _dbGet(store, key) { return YAW_STORAGE.dbGet(this, store, key); },
+            async _dbDelete(store, key) { return YAW_STORAGE.dbDelete(this, store, key); },
             async _worldDbOpen() {
                 return new Promise((resolve, reject) => {
                     if (!indexedDB || typeof indexedDB.open !== 'function') {

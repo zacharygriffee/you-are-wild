@@ -20,13 +20,16 @@ app/
 
 The project still emits a single HTML file for distribution. Build order is explicit in `app/build.js` so browser globals are initialized predictably.
 
+Do not hand-edit `dist/you-are-wild.html`. It is generated from `app/template.html` and `app/src/` by `npm run build`.
+
 Core modules live in `src/core/`:
 
 - `serialization.js`: save/load codec
+- `storage-system.js`: localStorage, combat refresh snapshot, and save-slot IndexedDB helpers
 - `app.js`: main tactical app state and gameplay loop
 - `module-system.js`: optional content/module loader
 - `content-system.js`: content preference and template handling
-- `marketplace.js`: built-in content pack metadata
+- `marketplace.js`: built-in content pack handles and policy checks
 
 UI modules live in `src/ui/`:
 
@@ -47,3 +50,13 @@ The current overworld uses lazy deterministic super-patch biome generation. The 
 - `dist/` contains generated release output.
 
 Agents should default to `app/src/`, `app/template.html`, tests, and docs unless a task explicitly targets legacy code.
+
+## Persistence Boundary
+
+Stored settings, content preferences, UI view preferences, and save-slot metadata are not trusted as runtime state. App settings normalize through `App._normalizeSettings()` on startup and before save. Content preferences normalize through `CONTENT.applyPreferences()` / `CONTENT.savePreferences()`. Combat log view state normalizes through `App._normalizeLogViewPreferences()`. Save-slot names normalize through `App._normalizeSaveSlotName()` before IndexedDB/localStorage key use, and save timestamps normalize through `App._normalizeSaveTimestamp()`. Content policy, module enablement policy, accessibility controls, mature/adult setting visibility, log layout controls, and save/load entry points should read normalized runtime values instead of raw storage.
+
+Current IndexedDB namespaces are `YAW_Saves`, `YAW_Modules`, and `YAW_Worlds`. `FFF_Saves` and `FFFme_Modules` are legacy cleanup targets only: normal save/module operations should not open or write those databases, and destructive cleanup should delete them only when `indexedDB.databases()` reports that they already exist.
+
+## Modding Boundary
+
+The current mod lane is trusted-local. Module manifests are validated before IndexedDB storage, hooks are owned by module ID for unload/reload cleanup, and runtime data contributions are module-owned. The marketplace UI uses a local sample-fixture catalog only; built-in content packs are separate handles in `src/core/marketplace.js`. See `docs/modding.md` before changing package install, trust, content rating, or marketplace behavior.

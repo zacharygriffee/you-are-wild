@@ -45,7 +45,10 @@ const ModUI = {
                         id: 'mod_' + Date.now(),
                         name: file.name.replace('.js', ''),
                         version: '1.0.0',
-                        type: 'feature_pack'
+                        type: 'feature_pack',
+                        contentRating: 'safe',
+                        permissions: [],
+                        dependencies: []
                     },
                     code: content
                 };
@@ -78,14 +81,27 @@ const ModUI = {
         if (!mod) return;
         
         const newState = !mod.enabled;
-        await MODULE_SYSTEM.setModuleEnabled(moduleId, newState);
-        this.refreshModList();
-        
-        App.log.push({ 
-            text: this.label(newState ? 'mod.enabledLog' : 'mod.disabledLog', newState ? 'Enabled module: {name}' : 'Disabled module: {name}', { name: mod.manifest.name }), 
-            type: 'discovery' 
-        });
-        App.renderLog();
+        const name = mod.manifest?.name || mod.id || 'Module';
+        try {
+            await MODULE_SYSTEM.setModuleEnabled(moduleId, newState);
+            await this.refreshModList();
+
+            App.log.push({
+                text: this.label(newState ? 'mod.enabledLog' : 'mod.disabledLog', newState ? 'Enabled module: {name}' : 'Disabled module: {name}', { name }),
+                type: 'discovery'
+            });
+            App.renderLog();
+        } catch (e) {
+            await this.refreshModList();
+            const message = e?.message || e;
+            const key = newState ? 'mod.enableFailed' : 'mod.disableFailed';
+            const fallback = newState ? 'Could not enable {name}: {message}' : 'Could not disable {name}: {message}';
+            const text = this.label(key, fallback, { name, message });
+            App.log.push({ text, type: 'discovery' });
+            App.renderLog();
+            alert(text);
+            console.error(e);
+        }
     },
     
     async deleteModule(moduleId) {
@@ -178,6 +194,7 @@ const ModUI = {
                 author: 'Example Author',
                 description: 'Adds shimmering crystal cave biomes with gem-themed creatures',
                 type: 'biome_pack',
+                permissions: ['world:add_biome', 'content:add_species'],
                 dependencies: [],
                 minGameVersion: '0.10.0'
             },

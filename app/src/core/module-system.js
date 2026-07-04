@@ -8,6 +8,9 @@ const MODULE_SYSTEM = {
     DB_NAME: 'YAW_Modules',
     LEGACY_DB_NAME: 'FFFme_Modules',
     DB_VERSION: 1,
+    GAME_VERSION: '0.10.0',
+    TRUST_BOUNDARY: 'trusted-local',
+    CONTENT_RATINGS: ['safe', 'mature', 'adult'],
     db: null,
     
     // Hooks registry
@@ -23,6 +26,250 @@ const MODULE_SYSTEM = {
     
     // Active modules
     activeModules: new Map(),
+    ownedContributions: new Map(),
+    loadingModuleId: null,
+
+    _request(request) {
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
+        });
+    },
+
+    _transactionDone(tx) {
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+        });
+    },
+
+    _requireDb() {
+        if (!this.db) {
+            throw new Error('Module DB not initialized');
+        }
+        return this.db;
+    },
+
+    _normalizeStringList(value, fieldName) {
+        if (value === undefined) return [];
+        if (!Array.isArray(value)) {
+            throw new Error(`Module manifest ${fieldName} must be an array`);
+        }
+        const normalized = [];
+        for (const item of value) {
+            if (typeof item !== 'string') {
+                throw new Error(`Module manifest ${fieldName} entries must be strings`);
+            }
+            const token = item.trim();
+            if (!token) continue;
+            if (!/^[a-zA-Z0-9_.:-]+$/.test(token)) {
+                throw new Error(`Module manifest ${fieldName} entries must use letters, numbers, underscores, hyphens, dots, or colons`);
+            }
+            if (!normalized.includes(token)) normalized.push(token);
+        }
+        return normalized;
+    },
+
+    _normalizeGameVersion(value, fieldName = 'minGameVersion') {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        const normalized = text.replace(/^v/i, '');
+        if (!/^\d+(?:\.\d+){0,2}$/.test(normalized)) {
+            throw new Error(`Module manifest ${fieldName} must be a numeric version like 0.10.0`);
+        }
+        return normalized;
+    },
+
+    _versionParts(version) {
+        const normalized = this._normalizeGameVersion(version, 'gameVersion');
+        return normalized.split('.').map(part => Number(part || 0)).concat([0, 0, 0]).slice(0, 3);
+    },
+
+    _compareVersions(left, right) {
+        const a = this._versionParts(left);
+        const b = this._versionParts(right);
+        for (let i = 0; i < 3; i++) {
+            if (a[i] > b[i]) return 1;
+            if (a[i] < b[i]) return -1;
+        }
+        return 0;
+    },
+
+    _currentGameVersion() {
+        return String(this.GAME_VERSION || '0.0.0').trim();
+    },
+
+    _normalizeManifest(manifest) {
+        if (!manifest || typeof manifest !== 'object') {
+            throw new Error('Module manifest is required');
+        }
+        const id = String(manifest.id || '').trim();
+        const name = String(manifest.name || '').trim();
+        const version = String(manifest.version || '').trim();
+        if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+            throw new Error('Module manifest id must use letters, numbers, underscores, or hyphens');
+        }
+        if (!name) throw new Error('Module manifest name is required');
+        if (!version) throw new Error('Module manifest version is required');
+
+        const contentRating = String(manifest.contentRating || 'safe').trim().toLowerCase();
+        if (!this.CONTENT_RATINGS.includes(contentRating)) {
+            throw new Error(`Module manifest contentRating must be one of: ${this.CONTENT_RATINGS.join(', ')}`);
+        }
+        const trustBoundary = String(manifest.trustBoundary || this.TRUST_BOUNDARY).trim();
+        if (trustBoundary !== this.TRUST_BOUNDARY) {
+            throw new Error(`Module manifest trustBoundary must be ${this.TRUST_BOUNDARY}`);
+        }
+
+        const dependencies = this._normalizeStringList(manifest.dependencies, 'dependencies');
+        if (dependencies.includes(id)) {
+            throw new Error('Module manifest dependencies cannot include the module id');
+        }
+        const minGameVersion = this._normalizeGameVersion(manifest.minGameVersion || manifest.gameVersion || '', manifest.minGameVersion ? 'minGameVersion' : 'gameVersion');
+
+        return {
+            ...manifest,
+            id,
+            name,
+            version,
+            type: String(manifest.type || 'feature_pack').trim() || 'feature_pack',
+            contentRating,
+            trustBoundary,
+            permissions: this._normalizeStringList(manifest.permissions, 'permissions'),
+            dependencies,
+            minGameVersion
+        };
+    },
+
+    _validateModuleData(moduleData) {
+        if (!moduleData || typeof moduleData !== 'object') {
+            throw new Error('Module data is required');
+        }
+        const manifest = this._normalizeManifest(moduleData.manifest);
+        const code = moduleData.code === undefined ? '' : String(moduleData.code);
+        if (moduleData.code !== undefined && typeof moduleData.code !== 'string') {
+            throw new Error('Module code must be a string');
+        }
+        this._assertModuleCodeSyntax(code, manifest.id);
+        const assets = this._normalizeAssets(moduleData.assets);
+        return {
+            manifest,
+            code,
+            assets
+        };
+    },
+
+    _assertModuleCodeSyntax(code, moduleId = 'module') {
+        try {
+            new Function('sandbox', `
+                with(sandbox) {
+                    ${code}
+                }
+            `);
+        } catch (e) {
+            throw new Error(`Module ${moduleId} code failed syntax validation: ${e.message || e}`);
+        }
+    },
+
+    _normalizeAssets(assets) {
+        if (assets === undefined) return {};
+        if (!assets || typeof assets !== 'object' || Array.isArray(assets)) {
+            throw new Error('Module assets must be a serializable object');
+        }
+        this._assertSerializableData(assets, 'Module assets');
+        return JSON.parse(JSON.stringify(assets));
+    },
+
+    _normalizeSettingKey(key) {
+        const normalized = String(key || '').trim();
+        if (!normalized || !/^[a-zA-Z0-9_.:-]+$/.test(normalized)) {
+            throw new Error('Module setting key must use letters, numbers, underscores, hyphens, dots, or colons');
+        }
+        return normalized;
+    },
+
+    _normalizeSettingValue(value) {
+        try {
+            this._assertSerializableData(value, 'Module setting value');
+            return JSON.parse(JSON.stringify(value));
+        } catch (e) {
+            throw new Error('Module setting value must be serializable data');
+        }
+    },
+
+    _gameVersionBlockReason(manifest) {
+        const minGameVersion = String(manifest?.minGameVersion || '').trim();
+        if (!minGameVersion) return null;
+        const current = this._currentGameVersion();
+        if (this._compareVersions(current, minGameVersion) < 0) {
+            return `Module ${manifest.id || 'module'} requires game version ${minGameVersion} or newer`;
+        }
+        return null;
+    },
+
+    _assertGameVersionCompatible(manifest) {
+        const reason = this._gameVersionBlockReason(manifest);
+        if (reason) throw new Error(reason);
+    },
+
+    _contentRatingTier(contentRating) {
+        return { safe: 0, mature: 1, adult: 2 }[String(contentRating || 'safe').trim().toLowerCase()] ?? 0;
+    },
+
+    _currentContentPolicy() {
+        if (typeof CONTENT === 'undefined' || !CONTENT?.preferences) {
+            return { maxTier: 0, explicitDescriptions: false };
+        }
+        return {
+            maxTier: Math.max(0, Math.min(2, Number(CONTENT.preferences.maxTier) || 0)),
+            explicitDescriptions: !!CONTENT.preferences.explicitDescriptions
+        };
+    },
+
+    _contentRatingBlockReason(manifest) {
+        const rating = String(manifest?.contentRating || 'safe').trim().toLowerCase();
+        const requiredTier = this._contentRatingTier(rating);
+        const policy = this._currentContentPolicy();
+        if (requiredTier > policy.maxTier) {
+            return `Module contentRating ${rating} requires a higher content tier`;
+        }
+        if (rating === 'adult' && !policy.explicitDescriptions) {
+            return 'Module contentRating adult requires explicit descriptions to be enabled';
+        }
+        return null;
+    },
+
+    _assertContentRatingEnabled(manifest) {
+        const reason = this._contentRatingBlockReason(manifest);
+        if (reason) throw new Error(reason);
+    },
+
+    async _assertDependenciesEnabled(moduleId, manifest, store) {
+        for (const dependencyId of manifest.dependencies || []) {
+            const dependency = await this._request(store.get(dependencyId));
+            if (!dependency) {
+                throw new Error(`Module ${moduleId} requires missing dependency ${dependencyId}`);
+            }
+            if (!dependency.enabled) {
+                throw new Error(`Module ${moduleId} requires dependency ${dependencyId} to be enabled`);
+            }
+        }
+    },
+
+    _assertKnownHookEvent(event) {
+        if (!Object.prototype.hasOwnProperty.call(this.hooks, event)) {
+            throw new Error(`Unknown module hook event: ${event}`);
+        }
+    },
+
+    _normalizeHookPriority(priority) {
+        const normalized = Number(priority || 0);
+        if (!Number.isFinite(normalized)) {
+            throw new Error('Hook priority must be a finite number');
+        }
+        return normalized;
+    },
     
     // Initialize database
     async init() {
@@ -61,17 +308,23 @@ const MODULE_SYSTEM = {
     },
     
     // Register a hook
-    registerHook(event, callback, priority = 0) {
-        if (!this.hooks[event]) {
-            this.hooks[event] = [];
+    registerHook(event, callback, priority = 0, moduleId = null) {
+        this._assertKnownHookEvent(event);
+        if (typeof callback !== 'function') {
+            throw new Error(`Hook callback for ${event} must be a function`);
         }
-        this.hooks[event].push({ callback, priority });
+        const normalizedPriority = this._normalizeHookPriority(priority);
+        this.hooks[event].push({
+            callback,
+            priority: normalizedPriority,
+            moduleId: moduleId || this.loadingModuleId || null
+        });
         this.hooks[event].sort((a, b) => b.priority - a.priority);
     },
     
     // Execute hooks
     async executeHook(event, ...args) {
-        const hooks = this.hooks[event] || [];
+        const hooks = [...(this.hooks[event] || [])];
         for (const hook of hooks) {
             try {
                 await hook.callback(...args);
@@ -83,18 +336,28 @@ const MODULE_SYSTEM = {
     
     // Install module from file
     async installModule(moduleData) {
+        const validated = this._validateModuleData(moduleData);
+        this._assertGameVersionCompatible(validated.manifest);
         const module = {
-            id: moduleData.manifest.id,
-            manifest: moduleData.manifest,
-            code: moduleData.code,
-            assets: moduleData.assets || {},
+            id: validated.manifest.id,
+            manifest: validated.manifest,
+            code: validated.code,
+            assets: validated.assets,
             enabled: false,
             installedAt: Date.now()
         };
         
-        const tx = this.db.transaction(['modules'], 'readwrite');
+        const db = this._requireDb();
+        const tx = db.transaction(['modules'], 'readwrite');
         const store = tx.objectStore('modules');
-        await store.put(module);
+        const previous = await this._request(store.get(module.id));
+        await this._request(store.put(module));
+        await this._transactionDone(tx);
+
+        if (previous?.enabled || this.activeModules.has(module.id)) {
+            this.unloadModule(module.id);
+            module.disabledDependents = await this._disableDependentsOf(module.id);
+        }
         
         console.log(`Module installed: ${module.manifest.name}`);
         return module;
@@ -102,30 +365,101 @@ const MODULE_SYSTEM = {
     
     // Enable/disable module
     async setModuleEnabled(moduleId, enabled) {
-        const tx = this.db.transaction(['modules'], 'readwrite');
+        const db = this._requireDb();
+        const tx = db.transaction(['modules'], 'readwrite');
         const store = tx.objectStore('modules');
         
-        const module = await store.get(moduleId);
+        const module = await this._request(store.get(moduleId));
         if (!module) throw new Error('Module not found');
+
+        if (enabled) {
+            const validated = this._validateModuleData(module);
+            module.manifest = validated.manifest;
+            module.code = validated.code;
+            module.assets = validated.assets;
+            this._assertGameVersionCompatible(module.manifest);
+            this._assertContentRatingEnabled(module.manifest);
+            await this._assertDependenciesEnabled(moduleId, module.manifest, store);
+        }
         
         module.enabled = enabled;
-        await store.put(module);
+        await this._request(store.put(module));
+        await this._transactionDone(tx);
         
         if (enabled) {
-            await this.loadModule(module);
+            try {
+                await this.loadModule(module);
+            } catch (e) {
+                await this._markModuleDisabled(moduleId);
+                throw e;
+            }
         } else {
             this.unloadModule(moduleId);
+            module.disabledDependents = await this._disableDependentsOf(moduleId);
         }
         
         return module;
+    },
+
+    async _markModuleDisabled(moduleId) {
+        this.unloadModule(moduleId);
+        const db = this._requireDb();
+        const tx = db.transaction(['modules'], 'readwrite');
+        const store = tx.objectStore('modules');
+        const module = await this._request(store.get(moduleId));
+        if (module) {
+            module.enabled = false;
+            await this._request(store.put(module));
+        }
+        await this._transactionDone(tx);
+        return module;
+    },
+
+    async _disableDependentsOf(moduleId) {
+        const modules = await this.getAllModules();
+        const disabled = [];
+        for (const module of modules) {
+            if (!module.enabled || module.id === moduleId) continue;
+            const manifest = this._normalizeManifest(module.manifest);
+            if (!manifest.dependencies.includes(moduleId)) continue;
+            const disabledModule = await this.setModuleEnabled(module.id, false);
+            disabled.push(disabledModule);
+        }
+        return disabled;
+    },
+
+    async enforceContentPolicy() {
+        const modules = await this.getAllModules();
+        const disabled = [];
+
+        for (const module of modules) {
+            if (!module.enabled) continue;
+
+            const manifest = this._normalizeManifest(module.manifest);
+            const reason = this._contentRatingBlockReason(manifest);
+            if (!reason) continue;
+
+            const disabledModule = await this.setModuleEnabled(module.id, false);
+            disabled.push({
+                ...disabledModule,
+                manifest,
+                disabledReason: reason
+            });
+        }
+
+        return disabled;
     },
     
     // Load module into game
     async loadModule(module) {
         try {
+            if (this.activeModules.has(module.id)) {
+                this.unloadModule(module.id);
+            }
+
             // Create sandboxed context
             const sandbox = {
-                MODS: this.createModAPI(module.id),
+                MODS: this.createModAPI(module.id, module.manifest),
                 console: window.console,
                 setTimeout: window.setTimeout,
                 clearTimeout: window.clearTimeout,
@@ -148,6 +482,7 @@ const MODULE_SYSTEM = {
                 }
             `);
             
+            this.loadingModuleId = module.id;
             fn(sandbox);
             
             this.activeModules.set(module.id, {
@@ -157,8 +492,119 @@ const MODULE_SYSTEM = {
             
             console.log(`Module loaded: ${module.manifest.name}`);
         } catch (e) {
+            this.unloadModule(module.id);
             console.error(`Failed to load module ${module.id}:`, e);
             throw e;
+        } finally {
+            this.loadingModuleId = null;
+        }
+    },
+
+    _contributionRecord(moduleId) {
+        if (!this.ownedContributions.has(moduleId)) {
+            this.ownedContributions.set(moduleId, {
+                biomes: new Map(),
+                species: new Set(),
+                items: new Set()
+            });
+        }
+        return this.ownedContributions.get(moduleId);
+    },
+
+    _addOwnedBiome(moduleId, biomeDef) {
+        if (!biomeDef || typeof biomeDef !== 'object') {
+            throw new Error('Biome definition must be an object');
+        }
+        const id = String(biomeDef.id || '').trim();
+        if (!id) throw new Error('Biome definition id is required');
+
+        App.biomes = App.biomes || {};
+        const record = this._contributionRecord(moduleId);
+        if (!record.biomes.has(id)) {
+            record.biomes.set(id, {
+                existed: Object.prototype.hasOwnProperty.call(App.biomes, id),
+                value: App.biomes[id]
+            });
+        }
+        App.biomes[id] = { ...biomeDef, id };
+    },
+
+    _normalizeDataContribution(value, label) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error(`${label} definition must be an object`);
+        }
+        const id = String(value.id || '').trim();
+        if (!id) throw new Error(`${label} definition id is required`);
+
+        try {
+            this._assertSerializableData(value, label);
+            return { ...JSON.parse(JSON.stringify(value)), id };
+        } catch (e) {
+            throw new Error(`${label} definition must be serializable data`);
+        }
+    },
+
+    _assertSerializableData(value, label, stack = new Set()) {
+        if (value === null) return;
+        const type = typeof value;
+        if (type === 'string' || type === 'boolean') return;
+        if (type === 'number') {
+            if (!Number.isFinite(value)) throw new Error(`${label} definition contains a non-finite number`);
+            return;
+        }
+        if (type !== 'object') {
+            throw new Error(`${label} definition contains unsupported data`);
+        }
+        if (stack.has(value)) {
+            throw new Error(`${label} definition contains a circular reference`);
+        }
+        if (Object.getOwnPropertySymbols(value).length > 0) {
+            throw new Error(`${label} definition contains symbol keys`);
+        }
+        stack.add(value);
+        const entries = Array.isArray(value) ? value.entries() : Object.entries(value);
+        for (const [, child] of entries) {
+            this._assertSerializableData(child, label, stack);
+        }
+        stack.delete(value);
+    },
+
+    _addOwnedArrayEntry(moduleId, collectionName, value) {
+        const labels = { species: 'Species', items: 'Item' };
+        const entry = this._normalizeDataContribution(value, labels[collectionName] || collectionName);
+        App[collectionName] = App[collectionName] || [];
+        App[collectionName].push(entry);
+        this._contributionRecord(moduleId)[collectionName].add(entry);
+    },
+
+    _removeModuleContributions(moduleId) {
+        const record = this.ownedContributions.get(moduleId);
+        if (!record) return;
+
+        if (App.biomes) {
+            for (const [id, previous] of record.biomes.entries()) {
+                if (previous.existed) App.biomes[id] = previous.value;
+                else delete App.biomes[id];
+            }
+        }
+
+        if (Array.isArray(App.species)) {
+            App.species = App.species.filter(entry => !record.species.has(entry));
+        }
+        if (Array.isArray(App.items)) {
+            App.items = App.items.filter(entry => !record.items.has(entry));
+        }
+
+        this.ownedContributions.delete(moduleId);
+    },
+
+    _hasPermission(manifest, permission) {
+        return Array.isArray(manifest?.permissions) && manifest.permissions.includes(permission);
+    },
+
+    _requirePermission(moduleId, manifest, permission) {
+        if (!this._hasPermission(manifest, permission)) {
+            throw new Error(`Module ${moduleId} requires permission ${permission}`);
         }
     },
     
@@ -170,19 +616,20 @@ const MODULE_SYSTEM = {
                 h => h.moduleId !== moduleId
             );
         }
+        this._removeModuleContributions(moduleId);
         
         this.activeModules.delete(moduleId);
         console.log(`Module unloaded: ${moduleId}`);
     },
     
     // Create API for mods
-    createModAPI(moduleId) {
+    createModAPI(moduleId, manifest = null) {
         const self = this;
         return {
             id: moduleId,
             
             registerHook(event, callback, priority = 0) {
-                self.registerHook(event, callback, priority);
+                self.registerHook(event, callback, priority, moduleId);
             },
             
             executeHook(event, ...args) {
@@ -190,17 +637,18 @@ const MODULE_SYSTEM = {
             },
             
             addBiome(biomeDef) {
-                App.biomes = App.biomes || {};
-                App.biomes[biomeDef.id] = biomeDef;
+                self._requirePermission(moduleId, manifest, 'world:add_biome');
+                self._addOwnedBiome(moduleId, biomeDef);
             },
             
             addSpecies(speciesDef) {
-                App.species.push(speciesDef);
+                self._requirePermission(moduleId, manifest, 'content:add_species');
+                self._addOwnedArrayEntry(moduleId, 'species', speciesDef);
             },
             
             addItem(itemDef) {
-                App.items = App.items || [];
-                App.items.push(itemDef);
+                self._requirePermission(moduleId, manifest, 'content:add_item');
+                self._addOwnedArrayEntry(moduleId, 'items', itemDef);
             },
             
             log(message) {
@@ -224,44 +672,65 @@ const MODULE_SYSTEM = {
             console.warn('Module DB not initialized yet');
             return [];
         }
-        const tx = this.db.transaction(['modules'], 'readonly');
+        const db = this._requireDb();
+        const tx = db.transaction(['modules'], 'readonly');
         const store = tx.objectStore('modules');
-        return await store.getAll();
+        const modules = await this._request(store.getAll());
+        await this._transactionDone(tx);
+        return modules;
     },
     
     // Get module settings
     async getModuleSetting(moduleId, key, defaultValue = null) {
-        const tx = this.db.transaction(['settings'], 'readonly');
+        const settingKey = this._normalizeSettingKey(key);
+        const db = this._requireDb();
+        const tx = db.transaction(['settings'], 'readonly');
         const store = tx.objectStore('settings');
-        const setting = await store.get(`${moduleId}:${key}`);
+        const setting = await this._request(store.get(`${moduleId}:${settingKey}`));
+        await this._transactionDone(tx);
         return setting ? setting.value : defaultValue;
     },
     
     // Set module setting
     async setModuleSetting(moduleId, key, value) {
-        const tx = this.db.transaction(['settings'], 'readwrite');
+        const settingKey = this._normalizeSettingKey(key);
+        const settingValue = this._normalizeSettingValue(value);
+        const db = this._requireDb();
+        const tx = db.transaction(['settings'], 'readwrite');
         const store = tx.objectStore('settings');
-        await store.put({
-            key: `${moduleId}:${key}`,
-            value: value
-        });
+        await this._request(store.put({
+            key: `${moduleId}:${settingKey}`,
+            value: settingValue
+        }));
+        await this._transactionDone(tx);
     },
     
     // Delete module
     async deleteModule(moduleId) {
+        await this._disableDependentsOf(moduleId);
         this.unloadModule(moduleId);
         
-        const tx = this.db.transaction(['modules', 'assets', 'settings'], 'readwrite');
+        const db = this._requireDb();
+        const tx = db.transaction(['modules', 'assets', 'settings'], 'readwrite');
         
-        await tx.objectStore('modules').delete(moduleId);
+        await this._request(tx.objectStore('modules').delete(moduleId));
         
         // Delete associated assets
         const assetStore = tx.objectStore('assets');
         const assetIndex = assetStore.index('moduleId');
-        const assets = await assetIndex.getAll(moduleId);
+        const assets = await this._request(assetIndex.getAll(moduleId));
         for (const asset of assets) {
-            await assetStore.delete(asset.id);
+            await this._request(assetStore.delete(asset.id));
         }
+
+        const settingsStore = tx.objectStore('settings');
+        const settings = await this._request(settingsStore.getAll());
+        for (const setting of settings) {
+            if (setting.key && setting.key.startsWith(`${moduleId}:`)) {
+                await this._request(settingsStore.delete(setting.key));
+            }
+        }
+        await this._transactionDone(tx);
         
         console.log(`Module deleted: ${moduleId}`);
     }

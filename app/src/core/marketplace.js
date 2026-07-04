@@ -1,7 +1,8 @@
 
 /**
- * EXAMPLE CONTENT PACKS
- * Demonstrating tiered content system
+ * BUILT-IN CONTENT PACK HANDLES
+ * Registers baseline content and optional local packs behind content-policy checks.
+ * The sample module catalog lives in src/ui/market-screen.js.
  */
 
 // Base Game Content Pack (included by default)
@@ -55,8 +56,8 @@ const ADULT_CONTENT_PACK = {
         id: 'content_adult_extended',
         name: 'Extended Descriptions',
         version: '1.0.0',
-        author: 'Community',
-        description: 'Additional explicit content for adult players',
+        author: 'You Are Wild Team',
+        description: 'Optional higher-tier descriptions for opted-in adult players',
         type: 'content_pack',
         contentRating: 'ADULT',
         requiresOptIn: ['explicitDescriptions', 'voreEnabled']
@@ -96,8 +97,8 @@ const SPECIES_FLAVOR_PACK = {
         id: 'content_species_flavor',
         name: 'Species Flavor Text',
         version: '1.0.0',
-        author: 'Community',
-        description: 'Unique descriptions for each species type',
+        author: 'You Are Wild Team',
+        description: 'Optional species-specific encounter descriptions',
         type: 'content_pack',
         contentRating: 'MATURE'
     },
@@ -128,12 +129,73 @@ const SPECIES_FLAVOR_PACK = {
     }
 };
 
+function contentPackRatingTier(contentRating) {
+    return { safe: 0, mature: 1, adult: 2 }[String(contentRating || 'safe').trim().toLowerCase()] ?? 0;
+}
+
+function currentContentPackPolicy() {
+    if (typeof CONTENT === 'undefined' || !CONTENT?.preferences) {
+        return { maxTier: 0, explicitDescriptions: false };
+    }
+    return {
+        maxTier: Math.max(0, Math.min(2, Number(CONTENT.preferences.maxTier) || 0)),
+        explicitDescriptions: !!CONTENT.preferences.explicitDescriptions
+    };
+}
+
+function contentPackBlockReason(pack) {
+    const manifest = pack?.manifest || {};
+    if (manifest.isCore) return null;
+
+    const rating = String(manifest.contentRating || 'safe').trim().toLowerCase();
+    const requiredTier = contentPackRatingTier(rating);
+    const policy = currentContentPackPolicy();
+    if (requiredTier > policy.maxTier) {
+        return `Content pack rating ${rating} requires a higher content tier`;
+    }
+    if (rating === 'adult' && !policy.explicitDescriptions) {
+        return 'Content pack rating adult requires explicit descriptions to be enabled';
+    }
+    return null;
+}
+
+function installContentPack(pack) {
+    const reason = contentPackBlockReason(pack);
+    if (reason) throw new Error(reason);
+    pack.install();
+    return { ...pack.manifest };
+}
+
+function contentPackHandle(pack) {
+    return {
+        manifest: { ...pack.manifest },
+        canInstall() {
+            return contentPackBlockReason(pack) === null;
+        },
+        blockReason() {
+            return contentPackBlockReason(pack);
+        },
+        install() {
+            return installContentPack(pack);
+        }
+    };
+}
+
 // Install base content automatically
-BASE_CONTENT_PACK.install();
+installContentPack(BASE_CONTENT_PACK);
 
 // Make packs available for manual install
 window.CONTENT_PACKS = {
-    base: BASE_CONTENT_PACK,
-    adult: ADULT_CONTENT_PACK,
-    species: SPECIES_FLAVOR_PACK
+    base: contentPackHandle(BASE_CONTENT_PACK),
+    adult: contentPackHandle(ADULT_CONTENT_PACK),
+    species: contentPackHandle(SPECIES_FLAVOR_PACK),
+    install(packId) {
+        const pack = {
+            base: BASE_CONTENT_PACK,
+            adult: ADULT_CONTENT_PACK,
+            species: SPECIES_FLAVOR_PACK
+        }[packId];
+        if (!pack) throw new Error(`Unknown content pack: ${packId}`);
+        return installContentPack(pack);
+    }
 };

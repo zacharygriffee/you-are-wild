@@ -31,6 +31,7 @@ const CONTENT_SYSTEM = {
             'settings.language.es': 'Spanish',
             'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?',
             'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.',
+            'settings.clearAllDataFailed': 'Failed to clear all data: {message}',
             'action.fight': 'Fight',
             'action.flirt': 'Flirt',
             'action.fuck': 'Fuck',
@@ -231,6 +232,7 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Party actions',
             'ui.tacticalStatus': 'Tactical status',
             'ui.unitTraits': 'Unit traits',
+            'unit.cardFocus': 'Focus {name} card',
             'ui.exploration': 'Exploration',
             'ui.chooseAction': 'Choose your next action.',
             'ui.actorActing': '{name} is acting...',
@@ -332,6 +334,9 @@ const CONTENT_SYSTEM = {
             'mod.installFailed': 'Failed to install module: {message}',
             'mod.enabledLog': 'Enabled module: {name}',
             'mod.disabledLog': 'Disabled module: {name}',
+            'mod.enableFailed': 'Could not enable {name}: {message}',
+            'mod.disableFailed': 'Could not disable {name}: {message}',
+            'mod.disabledByContentPolicy': 'Disabled {count} module(s) blocked by current content settings: {names}',
             'mod.confirmDelete': 'Delete this module? This cannot be undone.',
             'mod.storageNotReady': 'Module storage not ready. Try again in a moment.',
             'mod.noneInstalled': 'No modules installed. Install one above or create an example.',
@@ -346,15 +351,15 @@ const CONTENT_SYSTEM = {
             'mod.disableModule': 'Disable {name}',
             'mod.deleteModule': 'Delete {name}',
             'mod.createdExample': 'Created example module: Crystal Caverns',
-            'market.title': 'Module Marketplace',
-            'market.subtitle': 'Discover community-made biomes, species, and features',
+            'market.title': 'Module Samples',
+            'market.subtitle': 'Preview local sample module fixtures and modding workflows',
             'market.myModules': 'My Modules',
             'market.myModulesTitle': 'Open installed modules',
-            'market.create': 'Create',
+            'market.create': 'Module Tools',
             'market.browse': 'Browse',
-            'market.browseTitle': 'Browse marketplace',
-            'market.closeTitle': 'Close marketplace',
-            'market.search': 'Search modules...',
+            'market.browseTitle': 'Browse sample catalog',
+            'market.closeTitle': 'Close module samples',
+            'market.search': 'Search samples...',
             'market.typeFilter': 'Module type',
             'market.sort': 'Sort modules',
             'market.type.all': 'All Types',
@@ -362,21 +367,31 @@ const CONTENT_SYSTEM = {
             'market.type.species_pack': 'Species',
             'market.type.feature_pack': 'Features',
             'market.type.content_pack': 'Content',
-            'market.sort.featured': 'Featured',
-            'market.sort.downloads': 'Most Downloaded',
-            'market.sort.rating': 'Highest Rated',
-            'market.sort.newest': 'Newest',
-            'market.staffPicks': 'Staff Picks',
-            'market.staffPickDescription': 'Our most popular biome expansion. Navigate scorching sands, discover hidden oases, and survive encounters with legendary sand-wyrms.',
-            'market.install': 'Install',
-            'market.installModule': 'Install {name}',
-            'market.downloadsCount': '{count} downloads',
-            'market.ratingCount': '{rating} rating',
-            'market.byline': 'by {author} • v{version} • {size}',
-            'market.downloading': 'Downloading {name}...',
+            'market.sort.catalog': 'Catalog Order',
+            'market.sort.name': 'Name',
+            'market.sort.type': 'Type',
+            'market.sort.version': 'Version',
+            'market.noMatches': 'No modules match the current filters.',
+            'market.contentRatingTitle': 'Content rating: {rating}',
+            'market.rating.safe': 'Safe',
+            'market.rating.mature': 'Mature',
+            'market.rating.adult': 'Adult',
+            'market.sampleCatalog': 'Sample Catalog',
+            'market.sampleDescription': 'Local fixture entry for testing install, enable, filter, and sorting flows. Installed samples are stubs, not full gameplay packs.',
+            'market.sampleBadge': 'Fixture sample',
+            'market.samplePurposeFallback': 'Workflow test',
+            'market.installSample': 'Install Fixture',
+            'market.installSampleModule': 'Install fixture {name}',
+            'market.sampleByline': 'local sample - v{version}',
+            'market.preparingSample': 'Preparing local fixture {name}...',
+            'market.sampleAuthor': 'Local sample catalog',
+            'market.sampleManifestDescription': 'Sample stub: {description}',
             'market.installedEnabled': 'Installed and enabled {name}!',
             'market.installSuccess': 'Successfully installed {name}!',
-            'market.createWizardPlaceholder': 'Module creation wizard would open here!\n\nThis would guide you through:\n- Creating a manifest\n- Writing content templates\n- Testing in sandbox\n- Packaging for upload',
+            'market.installFailed': 'Could not install {name}: {message}',
+            'market.installedNotEnabled': 'Installed {name}, but it could not be enabled: {message}',
+            'market.openedModTools': 'Opened local module tools.',
+            'market.modToolsUnavailable': 'Local module tools are unavailable right now.',
             'target.chooseFromPanel': 'Select a target from the creature panel.',
             'target.cancelAction': 'Cancel {action}',
             'log.movedTo': 'Moved to {x}, {y} ({biome})',
@@ -637,9 +652,11 @@ const CONTENT_SYSTEM = {
             'target.helpers': 'Helpers',
             'target.targets': 'Targets',
             'target.act': 'Act',
-            'target.mark': 'Target',
+            'target.mark': 'Mark',
+            'target.pick': 'Pick',
             'target.actorRole': 'Actor',
             'target.targetRole': 'Target',
+            'target.markedRole': 'Marked',
             'target.selectActorFor': 'Select {name} to act',
             'target.markFor': 'Mark {name} as target',
             'target.selectAs': 'Select {name} as {action} target',
@@ -699,6 +716,7 @@ const CONTENT_SYSTEM = {
             'settings.language.es': 'Espanol',
             'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?',
             'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.',
+            'settings.clearAllDataFailed': 'Error al borrar todos los datos: {message}',
             'action.fight': 'Luchar',
             'action.flirt': 'Coquetear',
             'action.fuck': 'Seducir',
@@ -899,6 +917,7 @@ const CONTENT_SYSTEM = {
             'ui.partyActions': 'Acciones del grupo',
             'ui.tacticalStatus': 'Estado tactico',
             'ui.unitTraits': 'Rasgos de unidad',
+            'unit.cardFocus': 'Enfocar carta de {name}',
             'ui.exploration': 'Exploracion',
             'ui.chooseAction': 'Elige tu proxima accion.',
             'ui.actorActing': '{name} esta actuando...',
@@ -1000,6 +1019,9 @@ const CONTENT_SYSTEM = {
             'mod.installFailed': 'Error al instalar modulo: {message}',
             'mod.enabledLog': 'Modulo activado: {name}',
             'mod.disabledLog': 'Modulo desactivado: {name}',
+            'mod.enableFailed': 'No se pudo activar {name}: {message}',
+            'mod.disableFailed': 'No se pudo desactivar {name}: {message}',
+            'mod.disabledByContentPolicy': 'Se desactivaron {count} modulo(s) bloqueados por la configuracion de contenido actual: {names}',
             'mod.confirmDelete': 'Borrar este modulo? Esta accion no se puede deshacer.',
             'mod.storageNotReady': 'El almacenamiento de modulos no esta listo. Intentalo de nuevo en un momento.',
             'mod.noneInstalled': 'No hay modulos instalados. Instala uno arriba o crea un ejemplo.',
@@ -1014,15 +1036,15 @@ const CONTENT_SYSTEM = {
             'mod.disableModule': 'Desactivar {name}',
             'mod.deleteModule': 'Borrar {name}',
             'mod.createdExample': 'Modulo de ejemplo creado: Crystal Caverns',
-            'market.title': 'Mercado de modulos',
-            'market.subtitle': 'Descubre biomas, especies y funciones creadas por la comunidad',
+            'market.title': 'Ejemplos de modulos',
+            'market.subtitle': 'Previsualiza fixtures locales de modulos de ejemplo y flujos de modding',
             'market.myModules': 'Mis modulos',
             'market.myModulesTitle': 'Abrir modulos instalados',
-            'market.create': 'Crear',
+            'market.create': 'Herramientas',
             'market.browse': 'Explorar',
-            'market.browseTitle': 'Explorar mercado',
-            'market.closeTitle': 'Cerrar mercado',
-            'market.search': 'Buscar modulos...',
+            'market.browseTitle': 'Explorar catalogo de ejemplos',
+            'market.closeTitle': 'Cerrar ejemplos de modulos',
+            'market.search': 'Buscar ejemplos...',
             'market.typeFilter': 'Tipo de modulo',
             'market.sort': 'Ordenar modulos',
             'market.type.all': 'Todos los tipos',
@@ -1030,21 +1052,31 @@ const CONTENT_SYSTEM = {
             'market.type.species_pack': 'Especies',
             'market.type.feature_pack': 'Funciones',
             'market.type.content_pack': 'Contenido',
-            'market.sort.featured': 'Destacados',
-            'market.sort.downloads': 'Mas descargados',
-            'market.sort.rating': 'Mejor valorados',
-            'market.sort.newest': 'Mas nuevos',
-            'market.staffPicks': 'Selecciones del equipo',
-            'market.staffPickDescription': 'Nuestra expansion de bioma mas popular. Recorre arenas ardientes, descubre oasis ocultos y sobrevive encuentros con legendarios gusanos de arena.',
-            'market.install': 'Instalar',
-            'market.installModule': 'Instalar {name}',
-            'market.downloadsCount': '{count} descargas',
-            'market.ratingCount': 'Valoracion {rating}',
-            'market.byline': 'por {author} • v{version} • {size}',
-            'market.downloading': 'Descargando {name}...',
+            'market.sort.catalog': 'Orden del catalogo',
+            'market.sort.name': 'Nombre',
+            'market.sort.type': 'Tipo',
+            'market.sort.version': 'Version',
+            'market.noMatches': 'No hay modulos que coincidan con los filtros actuales.',
+            'market.contentRatingTitle': 'Clasificacion de contenido: {rating}',
+            'market.rating.safe': 'Seguro',
+            'market.rating.mature': 'Maduro',
+            'market.rating.adult': 'Adulto',
+            'market.sampleCatalog': 'Catalogo de ejemplo',
+            'market.sampleDescription': 'Entrada fixture local para probar instalacion, activacion, filtros y ordenamiento. Los ejemplos instalados son stubs, no paquetes completos de juego.',
+            'market.sampleBadge': 'Fixture de ejemplo',
+            'market.samplePurposeFallback': 'Prueba de flujo',
+            'market.installSample': 'Instalar fixture',
+            'market.installSampleModule': 'Instalar fixture {name}',
+            'market.sampleByline': 'ejemplo local - v{version}',
+            'market.preparingSample': 'Preparando fixture local {name}...',
+            'market.sampleAuthor': 'Catalogo local de ejemplo',
+            'market.sampleManifestDescription': 'Stub de ejemplo: {description}',
             'market.installedEnabled': '{name} instalado y activado!',
             'market.installSuccess': '{name} instalado correctamente!',
-            'market.createWizardPlaceholder': 'El asistente de creacion de modulos se abriria aqui!\n\nTe guiaria para:\n- Crear un manifiesto\n- Escribir plantillas de contenido\n- Probar en sandbox\n- Empaquetar para subir',
+            'market.installFailed': 'No se pudo instalar {name}: {message}',
+            'market.installedNotEnabled': '{name} fue instalado, pero no se pudo activar: {message}',
+            'market.openedModTools': 'Herramientas locales de modulos abiertas.',
+            'market.modToolsUnavailable': 'Las herramientas locales de modulos no estan disponibles en este momento.',
             'target.chooseFromPanel': 'Selecciona un objetivo desde el panel de criaturas.',
             'target.cancelAction': 'Cancelar {action}',
             'log.movedTo': 'Movimiento a {x}, {y} ({biome})',
@@ -1305,9 +1337,11 @@ const CONTENT_SYSTEM = {
             'target.helpers': 'Ayudantes',
             'target.targets': 'Objetivos',
             'target.act': 'Actuar',
-            'target.mark': 'Objetivo',
+            'target.mark': 'Marcar',
+            'target.pick': 'Elegir',
             'target.actorRole': 'Actor',
             'target.targetRole': 'Objetivo',
+            'target.markedRole': 'Marcado',
             'target.selectActorFor': 'Seleccionar {name} para actuar',
             'target.markFor': 'Marcar {name} como objetivo',
             'target.selectAs': 'Seleccionar {name} como objetivo de {action}',
@@ -1587,29 +1621,78 @@ const CONTENT_SYSTEM = {
         const saved = localStorage.getItem(this.STORAGE_KEY) || localStorage.getItem(this.LEGACY_STORAGE_KEY);
         if (saved) {
             try {
-                this.preferences = { ...this.preferences, ...JSON.parse(saved) };
-                this.preferences.maxTier = Math.max(this.TIERS.SAFE, Math.min(this.TIERS.ADULT, Number(this.preferences.maxTier) || this.TIERS.SAFE));
+                this.preferences = this._normalizePreferences(JSON.parse(saved), this._defaultPreferences());
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
             } catch (e) {
                 console.error('Failed to load content preferences:', e);
+                this.preferences = this._normalizePreferences({}, this._defaultPreferences());
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
             }
         }
+    },
+
+    _defaultPreferences() {
+        return {
+            maxTier: this.TIERS.SAFE,
+            voreEnabled: false,
+            explicitDescriptions: false,
+            filterTags: [],
+            language: 'en'
+        };
+    },
+
+    _normalizeTierValue(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return this.TIERS.SAFE;
+        return Math.max(this.TIERS.SAFE, Math.min(this.TIERS.ADULT, Math.trunc(numeric)));
+    },
+
+    _normalizeFilterTags(tags) {
+        if (!Array.isArray(tags)) return [];
+        const normalized = [];
+        const seen = new Set();
+        for (const tag of tags) {
+            const key = String(tag || '').trim();
+            if (!key || key.length > 64 || !/^[a-zA-Z0-9_.:-]+$/.test(key) || seen.has(key)) continue;
+            seen.add(key);
+            normalized.push(key);
+        }
+        return normalized;
+    },
+
+    _normalizePreferences(input = {}, base = this.preferences) {
+        const defaults = this._defaultPreferences();
+        const basePrefs = base && typeof base === 'object' && !Array.isArray(base) ? base : {};
+        const inputPrefs = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+        const source = { ...defaults, ...basePrefs, ...inputPrefs };
+        return {
+            maxTier: this._normalizeTierValue(source.maxTier),
+            voreEnabled: source.voreEnabled === true,
+            explicitDescriptions: source.explicitDescriptions === true,
+            filterTags: this._normalizeFilterTags(source.filterTags),
+            language: this.locales[source.language] ? source.language : defaults.language
+        };
+    },
+
+    applyPreferences(preferences = {}, options = {}) {
+        this.preferences = this._normalizePreferences(preferences, this.preferences);
+        if (options.persist) this.savePreferences();
+        return this.preferences;
     },
     
     // Save preferences
     savePreferences() {
+        this.preferences = this._normalizePreferences(this.preferences, this._defaultPreferences());
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.preferences));
     },
     
     // Set max content tier
     setMaxTier(tier) {
-        this.preferences.maxTier = Math.max(this.TIERS.SAFE, Math.min(this.TIERS.ADULT, Number(tier) || this.TIERS.SAFE));
-        this.savePreferences();
+        this.applyPreferences({ maxTier: tier }, { persist: true });
     },
 
     setLanguage(language) {
-        this.preferences.language = this.locales[language] ? language : 'en';
-        this.savePreferences();
+        this.applyPreferences({ language }, { persist: true });
         return this.preferences.language;
     },
 
@@ -1621,18 +1704,74 @@ const CONTENT_SYSTEM = {
     },
 
     setPreference(setting, value) {
-        if (setting in this.preferences) {
-            this.preferences[setting] = value;
-            this.savePreferences();
+        if (setting in this._defaultPreferences()) {
+            this.applyPreferences({ [setting]: value }, { persist: true });
         }
     },
     
     // Toggle specific content
     toggleSetting(setting, value) {
-        if (setting in this.preferences) {
-            this.preferences[setting] = value !== undefined ? value : !this.preferences[setting];
-            this.savePreferences();
+        if (setting in this._defaultPreferences()) {
+            this.setPreference(setting, value !== undefined ? value : !this.preferences[setting]);
         }
+    },
+
+    _isTierAllowed(tierName, context = {}) {
+        const tier = this.TIERS[tierName.toUpperCase()];
+        if (tier === undefined || tier > this.preferences.maxTier) return false;
+        if (context.voreEnabled && !this.preferences.voreEnabled) return false;
+        if (tier === this.TIERS.ADULT) {
+            if (!this.preferences.explicitDescriptions) return false;
+            if (context.explicit && !this.preferences.explicitDescriptions) return false;
+        }
+        return true;
+    },
+
+    _renderTemplate(template, context, templatePath, tierName) {
+        if (typeof template !== 'function') return null;
+        try {
+            const result = template(context);
+            if (result === null || result === undefined || result === '') return null;
+            return result;
+        } catch (e) {
+            console.error(`Template error ${templatePath} (${tierName}):`, e);
+            return null;
+        }
+    },
+
+    _normalizeTemplateKey(value, fieldName) {
+        const normalized = String(value || '').trim();
+        if (!normalized || !/^[a-zA-Z0-9_.:-]+$/.test(normalized)) {
+            throw new Error(`Content template ${fieldName} must use letters, numbers, underscores, hyphens, dots, or colons`);
+        }
+        return normalized;
+    },
+
+    _normalizeTemplateSet(templates) {
+        if (!templates || typeof templates !== 'object' || Array.isArray(templates)) {
+            throw new Error('Content template tiers must be an object');
+        }
+        const allowedTiers = ['safe', 'mature', 'adult'];
+        const normalized = {};
+        let hasRenderableTier = false;
+        for (const [tier, template] of Object.entries(templates)) {
+            if (!allowedTiers.includes(tier)) {
+                throw new Error(`Content template tier must be one of: ${allowedTiers.join(', ')}`);
+            }
+            if (template === null || template === undefined) {
+                normalized[tier] = null;
+                continue;
+            }
+            if (typeof template !== 'function') {
+                throw new Error(`Content template ${tier} tier must be a function or null`);
+            }
+            normalized[tier] = template;
+            hasRenderableTier = true;
+        }
+        if (!hasRenderableTier) {
+            throw new Error('Content template registration requires at least one renderable tier');
+        }
+        return normalized;
     },
     
     // Get content at appropriate tier
@@ -1664,48 +1803,18 @@ const CONTENT_SYSTEM = {
             return `[Missing content: ${templatePath}]`;
         }
         
-        // Try tiers - adult first (default), then fallbacks
+        // Try tiers - highest allowed first, then fallbacks
         const tiers = ['adult', 'mature', 'safe'];
-        const maxTier = this.preferences.maxTier;
-        
-        // If user has explicit enabled and adult exists, prefer it
-        if (maxTier >= 2 && this.preferences.explicitDescriptions) {
-            const adultTemplate = templates.adult;
-            if (adultTemplate && typeof adultTemplate === 'function') {
-                return adultTemplate(context);
-            }
-        }
         
         for (const tierName of tiers) {
-            const tier = this.TIERS[tierName.toUpperCase()];
-            
-            // Skip if above max tier
-            if (tier > maxTier) continue;
-            
-            // Skip if gated content not enabled
-            if (tier === this.TIERS.ADULT) {
-                if (templates === null) continue;
-                if (context.voreEnabled && !this.preferences.voreEnabled) continue;
-                if (context.explicit && !this.preferences.explicitDescriptions) continue;
-            }
-            
-            // Get template function
-            const template = templates[tierName];
-            if (typeof template === 'function') {
-                try {
-                    return template(context);
-                } catch (e) {
-                    console.error(`Template error ${templatePath}:`, e);
-                    continue;
-                }
-            }
+            if (!this._isTierAllowed(tierName, context)) continue;
+            const rendered = this._renderTemplate(templates[tierName], context, templatePath, tierName);
+            if (rendered !== null) return rendered;
         }
         
         // Fallback to safe
-        const safeTemplate = templates.safe;
-        if (typeof safeTemplate === 'function') {
-            return safeTemplate(context);
-        }
+        const renderedSafe = this._renderTemplate(templates.safe, context, templatePath, 'safe');
+        if (renderedSafe !== null) return renderedSafe;
         
         return '[Content unavailable]';
     },
@@ -1737,13 +1846,18 @@ const CONTENT_SYSTEM = {
     
     // Add custom templates from modules
     registerTemplate(category, type, variant, templates) {
-        if (!this.templates[category]) {
-            this.templates[category] = {};
+        const normalizedCategory = this._normalizeTemplateKey(category, 'category');
+        const normalizedType = this._normalizeTemplateKey(type, 'type');
+        const normalizedVariant = this._normalizeTemplateKey(variant || 'default', 'variant');
+        const normalizedTemplates = this._normalizeTemplateSet(templates);
+
+        if (!this.templates[normalizedCategory]) {
+            this.templates[normalizedCategory] = {};
         }
-        if (!this.templates[category][type]) {
-            this.templates[category][type] = {};
+        if (!this.templates[normalizedCategory][normalizedType]) {
+            this.templates[normalizedCategory][normalizedType] = {};
         }
-        this.templates[category][type][variant] = templates;
+        this.templates[normalizedCategory][normalizedType][normalizedVariant] = normalizedTemplates;
     }
 };
 

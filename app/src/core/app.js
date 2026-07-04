@@ -7318,7 +7318,24 @@
                 this.showInventory();
             },
             useItem(itemId) { /* simplified */ },
-            dropItem(itemId) { this.inventory = this.inventory.filter(i => i.id !== itemId); this.showInventory(); this.autoSave(); },
+            dropItem(itemId) {
+                const index = this.inventory.findIndex(item => String(item?.id) === String(itemId));
+                if (index === -1) return false;
+                const tile = this._currentExplorationTile();
+                if (!tile) return false;
+                const [item] = this.inventory.splice(index, 1);
+                if (!Array.isArray(tile.items)) tile.items = [];
+                tile.items.push(this._cloneTileValue(item));
+                this._persistCurrentExplorationTile(tile);
+                const droppedText = this._label('log.droppedTileItem', 'Dropped {item}.', { item: this._tileItemLabel(item) });
+                this.log.push({ text: droppedText, type: 'loot' });
+                this._addTileEvent(droppedText, 'loot');
+                this.showInventory();
+                this.renderExplorationActions();
+                this.renderLog();
+                this.autoSave();
+                return true;
+            },
 
             // ===== RENDERING =====
             renderParty() {

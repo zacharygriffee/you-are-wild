@@ -6526,6 +6526,29 @@ test('Center tile exposes only tile-local item pickup', () => {
   assertEqual(autoSaveCalls, 1, 'Tile-local pickup should autosave changed world and inventory state');
 });
 
+test('Dropping carried inventory creates tile-local pickup state', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const player = makeUnit('You');
+  let autoSaveCalls = 0;
+  App.player = player;
+  App.party = [player];
+  App.inventory = [{ id: 'pack-coin', name: 'Old Coin' }];
+  App.autoSave = () => { autoSaveCalls += 1; };
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'forest';
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'A saved clearing.', creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }] }]]);
+
+  assertEqual(App.dropItem('pack-coin'), true, 'Dropping carried inventory should report a handled action');
+  assertEqual(App.inventory.length, 0, 'Dropping should remove only the carried item from inventory');
+  assertEqual(App.worldMap.get('0,0').items.length, 2, 'Dropping should append to tile-local ground items');
+  assertEqual(App.worldMap.get('0,0').items[1].name, 'Old Coin', 'Dropped item should keep its item identity on the tile');
+  assertEqual(App.getTileDelta(0, 0).items[1].name, 'Old Coin', 'Dropped item should persist through sparse tile deltas');
+  assertContains(App._centerTileContext().description, 'Items here: Healing Herb, Old Coin.', 'Center context should summarize dropped tile-local items');
+  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the center');
+  assertContains(App.log[App.log.length - 1].text, 'Dropped Old Coin.', 'Dropping should log the item transfer');
+  assertEqual(autoSaveCalls, 1, 'Dropping should autosave changed world and inventory state');
+});
+
 test('Interior movement persists room creatures and exits to overworld', () => {
   const { App } = loadAppForCombat(() => 1);
   const player = makeUnit('You');

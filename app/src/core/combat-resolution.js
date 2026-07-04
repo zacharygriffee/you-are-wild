@@ -52,21 +52,21 @@ const YAW_COMBAT_RESOLUTION = {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                     target.charmed = (target.charmed || 0) + 1;
                     target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                    result = `${actorName} flirt${actorVerb} with ${target.name}! Their guard lowers. Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                    result = `${actorName} talk${actorVerb} with ${target.name}! Their guard lowers. Spirit rises to ${target.CPle}/${target.MPle}.`;
                     if (target.charmed >= 3) {
                         result += ` ${target.name} is utterly charmed and becomes friendly!`;
                         target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     } else if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += ` ${target.name} is aroused and submits!`;
+                        result += ` ${target.name} relaxes and becomes friendly!`;
                         target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
                         app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
                     }
                 } else {
-                    result = `${target.name} rebuffs ${actorName}'s flirtation!`;
+                    result = `${target.name} rejects the conversation with ${actorName}!`;
                 }
                 break;
             }
@@ -79,16 +79,16 @@ const YAW_COMBAT_RESOLUTION = {
                 if (charm > resist) {
                     const oldPle = target.CPle;
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                    result = `${actorName} seduce${actorVerb} ${target.name}! Pleasure rises to ${target.CPle}/${target.MPle}.`;
+                    result = `${actorName} play${actorVerb} with ${target.name}! Spirit rises to ${target.CPle}/${target.MPle}.`;
                     if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
-                        result += ` ${target.name} orgasms, becoming dazed and submissive!`;
+                        result += ` ${target.name} relaxes, becoming dazed and friendly!`;
                         target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         target.orgasmed = true;
                         app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
                         if (app.settings.refractoryPeriod) {
                             target.refractory = true;
-                            result += ` They need a moment to recover...`;
+                            result += ` They need a moment to catch their breath...`;
                         }
                         if (actor.name === app.player?.name) {
                             setTimeout(() => {
@@ -97,7 +97,7 @@ const YAW_COMBAT_RESOLUTION = {
                         }
                     }
                 } else {
-                    result = `${target.name} resists your advances!`;
+                    result = `${target.name} does not want to play!`;
                 }
                 break;
             }

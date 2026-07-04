@@ -142,9 +142,9 @@ const YAW_UNIT_CARD = {
         const ballsUsed = app._containerUsed(unit, 'balls');
         const hasContained = stomachUsed > 0 || wombUsed > 0 || ballsUsed > 0;
         const capacitySummary = [
-            `${app._label('capacity.stomach', 'Stomach')}: ${app._containerSummary(unit, 'stomach')}`,
-            `${app._label('capacity.womb', 'Womb')}: ${app._containerSummary(unit, 'womb')}`,
-            `${app._label('capacity.balls', 'Balls')}: ${app._containerSummary(unit, 'balls')}`
+            `${app._label('capacity.stomach', 'Belly')}: ${app._containerSummary(unit, 'stomach')}`,
+            `${app._label('capacity.womb', 'Inner')}: ${app._containerSummary(unit, 'womb')}`,
+            `${app._label('capacity.balls', 'Reserve')}: ${app._containerSummary(unit, 'balls')}`
         ].join(' | ');
         const equipmentSummary = app._equipmentCompactSummary(unit);
         const rowLabel = app.combatState.active && unit.combatRow ? ` ${app._label('combat.row', 'Row')}:${app._combatRowLabel(unit.combatRow)}` : '';

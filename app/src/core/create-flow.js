@@ -18,7 +18,7 @@ const YAW_CREATE_FLOW = {
         const defaults = app.SPECIES_DEFAULT_PARTS[id] || [];
         app.selectedBodyParts = [...defaults];
         const info = document.getElementById('species-info');
-        if (info) info.innerHTML = `<div style="font-size:48px;margin-bottom:8px">${species.icon}</div><h3>${species.name}</h3><p>${species.desc}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">Default parts: ${defaults.length ? defaults.map(p => app.BODY_PARTS[p]?.label || p).join(', ') : 'None'}</p>`;
+        if (info) info.innerHTML = `<div style="font-size:48px;margin-bottom:8px">${species.icon}</div><h3>${species.name}</h3><p>${species.desc}</p><p style="color:var(--text-muted);font-size:12px;margin-top:8px">Default traits: ${defaults.length ? defaults.map(p => app.BODY_PARTS[p]?.label || p).join(', ') : 'None'}</p>`;
         document.querySelectorAll('#body-parts-grid .option-card').forEach(c => {
             c.classList.toggle('selected', app.selectedBodyParts.includes(c.dataset.part));
         });

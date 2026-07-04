@@ -6,8 +6,8 @@
 const YAW_SUB_ACTIONS = {
     definitions: {
         feast: {
-            swallow: { label: 'Swallow', sfwLabel: 'Consume', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
-            chew: { label: 'Chew', sfwLabel: 'Mangle', icon: '🦷', validate: () => App.settings.chewing, execute: 'chewPrey', setting: 'chewing' },
+            swallow: { label: 'Swallow', sfwLabel: 'Eat', icon: '🍽️', validate: (a, t) => App._canFitPrey(a, t, 'stomach') && (t.CPun <= t.MPun * 0.3 || (a.Feas > t.Flee && a.size >= t.size - 2)), execute: 'swallowWhole', setting: null },
+            chew: { label: 'Chew', sfwLabel: 'Break Down', icon: '🦷', validate: () => App.settings.chewing, execute: 'chewPrey', setting: 'chewing' },
             cockVore: { label: 'Cock Vore', sfwLabel: 'Capture', icon: '🍆', validate: (a, t) => App.settings.cockVoreEnabled && a.parts === 'cock' && App._canFitPrey(a, t, 'balls'), execute: 'cockVore', setting: 'cockVoreEnabled' },
             unbirth: { label: 'Unbirth', sfwLabel: 'Engulf', icon: '🔮', validate: (a, t) => App.settings.unbirthEnabled && a.parts === 'clit' && App._canFitPrey(a, t, 'womb'), execute: 'unbirth', setting: 'unbirthEnabled' },
             digest: { label: 'Digest', sfwLabel: 'Break Down', icon: '💀', validate: (a) => a.stomach && a.stomach.some(p => p.alive && p.inStomach), execute: 'digestPrey', setting: null },
@@ -27,12 +27,12 @@ const YAW_SUB_ACTIONS = {
             grapple: { label: 'Grapple', sfwLabel: 'Grapple', icon: '🤼', validate: (a, t) => a.str > t.spd, execute: 'grapple', setting: null }
         },
         fuck: {
-            seduce: { label: 'Seduce', sfwLabel: 'Charm', icon: '💕', validate: () => true, execute: 'seduce', setting: null },
+            seduce: { label: 'Seduce', sfwLabel: 'Play', icon: '💕', validate: () => true, execute: 'seduce', setting: null },
             dominate: { label: 'Dominate', sfwLabel: 'Overpower', icon: '⛓️', validate: (a, t) => App.settings.powerDynamics && a.Fuck > t.Fuck, execute: 'dominate', setting: 'powerDynamics' },
             submit: { label: 'Submit', sfwLabel: 'Yield', icon: '🙇', validate: (a, t) => App.settings.powerDynamics && a.Fuck < t.Fuck, execute: 'submit', setting: 'powerDynamics' }
         },
         flirt: {
-            tease: { label: 'Tease', sfwLabel: 'Tease', icon: '😘', validate: () => true, execute: 'tease', setting: null },
+            tease: { label: 'Tease', sfwLabel: 'Talk', icon: '😘', validate: () => true, execute: 'tease', setting: null },
             gift: { label: 'Gift', sfwLabel: 'Gift', icon: '🎁', validate: (a) => a.inventory && a.inventory.length > 0, execute: 'gift', setting: null },
             dance: { label: 'Dance', sfwLabel: 'Dance', icon: '💃', validate: () => true, execute: 'dance', setting: null }
         },

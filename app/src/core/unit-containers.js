@@ -26,7 +26,7 @@ const YAW_UNIT_CONTAINERS = {
 
     failureMessage(app, actor, target, container = 'stomach') {
         const containerKey = container === 'womb' ? 'capacity.womb' : container === 'balls' ? 'capacity.balls' : 'capacity.stomach';
-        const fallbackContainer = container === 'womb' ? 'womb' : container === 'balls' ? 'balls' : 'stomach';
+        const fallbackContainer = container === 'womb' ? 'inner' : container === 'balls' ? 'reserve' : 'belly';
         const owner = actor === app.player
             ? app._label('capacity.owner.your', 'Your')
             : app._label('capacity.owner.named', "{name}'s", { name: actor?.name || 'Someone' });

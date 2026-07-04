@@ -70,7 +70,7 @@ const YAW_COMBAT_LIFECYCLE = {
             const texts = [
                 'The battlefield falls silent.',
                 'Your enemies lie defeated.',
-                'Another victory, another feast.',
+                'Another victory, another meal.',
                 'You emerge from the chaos unscathed.'
             ];
             const roll = app._combatStateRoll('combat-victory-scene', app.player, 'victory-text');
@@ -79,7 +79,7 @@ const YAW_COMBAT_LIFECYCLE = {
             app.gainXP(app.combatState.xpEarned || app.XP_REWARDS.defeatEnemy);
             for (const c of app.creatures) {
                 if (c.disposition === app.DISPOSITION.FRIENDLY && c.CPun > 0) {
-                    app.log.push({ text: `${c.name} looks at you with submissive eyes...`, type: 'discovery' });
+                    app.log.push({ text: `${c.name} looks ready to follow you...`, type: 'discovery' });
                 }
             }
             app._runPostCombatScavengers();

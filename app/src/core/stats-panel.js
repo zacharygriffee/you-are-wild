@@ -8,6 +8,10 @@ const YAW_STATS_PANEL = {
         return `<div class="option-card"><strong>${app._escapeHtml(app._label(labelKey, fallback))}</strong><br>${body}</div>`;
     },
 
+    bodyTypeLabel(value) {
+        return { clit: 'Body Type A', cock: 'Body Type B', tits: 'Chest Type A', pecs: 'Chest Type B' }[value] || value;
+    },
+
     showPartyMember(app, index) {
         const unit = app.party[index];
         if (!unit) return;
@@ -25,10 +29,10 @@ const YAW_STATS_PANEL = {
             </div>
             <div class="party-stats-grid">
                 ${this.statCard(app, 'party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
-                ${this.statCard(app, 'party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
+                ${this.statCard(app, 'party.pleasure', 'Spirit', `${stats.CPle}/${stats.MPle}`)}
                 ${this.statCard(app, 'party.combat', 'Combat', `Figh ${stats.Figh} | Feas ${stats.Feas}<br>Flir ${stats.Flir} | ${app._escapeHtml(app._uiLabel('fuck'))} ${stats.Fuck}<br>Flee ${stats.Flee} | Feed ${stats.Feed}`)}
                 ${this.statCard(app, 'party.attributes', 'Attributes', `STR ${stats.str} | CON ${stats.con} | SPD ${stats.spd}<br>INT ${stats.int} | WIS ${stats.wis} | CHA ${stats.cha}`)}
-                ${this.statCard(app, 'party.capacity', 'Capacity', `${app._containerSummary(unit, 'stomach')} stomach<br>${app._containerSummary(unit, 'womb')} womb<br>${app._containerSummary(unit, 'balls')} balls`)}
+                ${this.statCard(app, 'party.capacity', 'Capacity', `${app._containerSummary(unit, 'stomach')} ${app._escapeHtml(app._label('capacity.stomach', 'Belly'))}<br>${app._containerSummary(unit, 'womb')} ${app._escapeHtml(app._label('capacity.womb', 'Inner'))}<br>${app._containerSummary(unit, 'balls')} ${app._escapeHtml(app._label('capacity.balls', 'Reserve'))}`)}
                 ${this.statCard(app, 'party.equipment', 'Equipment', app._equipmentCompactSummary(unit))}
                 ${this.statCard(app, 'party.perks', 'Perks', perks)}
             </div>
@@ -50,8 +54,8 @@ const YAW_STATS_PANEL = {
         const levelText = app._escapeHtml(app._label('party.levelSpecies', 'Level {level} {species}', { level: stats.level, species: p.species }));
         const xpText = app._escapeHtml(app._label('character.xp', 'XP: {xp}/{xpToNext}', { xp: p.xp, xpToNext: p.xpToNext }));
         const noneText = app._escapeHtml(app._label('party.none', 'None'));
-        const parts = app._escapeHtml(p.parts || app._label('party.none', 'None'));
-        const chest = app._escapeHtml(p.chest || app._label('party.none', 'None'));
+        const parts = app._escapeHtml(this.bodyTypeLabel(p.parts) || app._label('party.none', 'None'));
+        const chest = app._escapeHtml(this.bodyTypeLabel(p.chest) || app._label('party.none', 'None'));
         const bodyParts = (p.bodyParts || []).map(b => app._escapeHtml(app.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
         const perks = (p.perks || []).map(pk => app._escapeHtml(pk.name)).join(', ') || noneText;
         const html = `<div class="party-stats-view character-stats-view" role="region" aria-label="${closeLabel}">
@@ -61,7 +65,7 @@ const YAW_STATS_PANEL = {
             </div>
             <div class="party-stats-grid">
                 ${this.statCard(app, 'party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
-                ${this.statCard(app, 'party.pleasure', 'Pleasure', `${stats.CPle}/${stats.MPle}`)}
+                ${this.statCard(app, 'party.pleasure', 'Spirit', `${stats.CPle}/${stats.MPle}`)}
                 ${this.statCard(app, 'character.combatStats', 'Combat Stats', `Figh: ${stats.Figh} | Feas: ${stats.Feas} | Flir: ${stats.Flir}<br>${app._escapeHtml(app._uiLabel('fuck'))}: ${stats.Fuck} | Flee: ${stats.Flee} | Feed: ${stats.Feed}`)}
                 ${this.statCard(app, 'party.attributes', 'Attributes', `STR: ${stats.str} | CON: ${stats.con} | SPD: ${stats.spd}<br>INT: ${stats.int} | WIS: ${stats.wis} | CHA: ${stats.cha}`)}
                 ${this.statCard(app, 'character.body', 'Body', `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${parts} | ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${chest}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`)}

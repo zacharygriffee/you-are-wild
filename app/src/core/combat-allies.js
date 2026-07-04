@@ -81,24 +81,24 @@ const YAW_COMBAT_ALLIES = {
                         ally.hunger = Math.max(0, ally.hunger - 50);
                         ally.obedient = true;
                         app._awardCombatXP(app.XP_REWARDS.consumeEnemy);
-                        app.log.push({ text: `${ally.name} is starving and devours ${weakest.name} whole! Loyalty restored.`, type: 'combat' });
+                        app.log.push({ text: `${ally.name} is starving and eats ${weakest.name}! Loyalty restored.`, type: 'combat' });
                         app._emitCombatAction('ally_feast', ally, weakest, 'consumed');
                         app.renderLog(); app.renderCreatures(); app.renderParty(); app.nextTurn(); return;
                     }
                 }
             }
             if (ally.CPle >= ally.MPle * 0.8) {
-                const target = enemies[Math.floor(app._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-target') * enemies.length) % enemies.length];
-                let charm = ally.Fuck + ally.Flir + app._combatStateRoll('combat-ally-dumb-ai', ally, 'arousal-charm') * 10;
+                const target = enemies[Math.floor(app._combatStateRoll('combat-ally-dumb-ai', ally, 'spirit-target') * enemies.length) % enemies.length];
+                let charm = ally.Fuck + ally.Flir + app._combatStateRoll('combat-ally-dumb-ai', ally, 'spirit-charm') * 10;
                 const resist = (target.wis || 10) + (app._safeRatio(target.CPle, target.MPle) * 10);
                 if (charm > resist) {
                     target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                    app.log.push({ text: `${ally.name} is aroused and seduces ${target.name}! Pleasure rises to ${target.CPle}/${target.MPle}.`, type: 'combat' });
+                    app.log.push({ text: `${ally.name} gets restless and plays with ${target.name}! Spirit rises to ${target.CPle}/${target.MPle}.`, type: 'combat' });
                     if (target.CPle >= target.MPle * 0.8) {
                         target.disposition = app.DISPOSITION.FRIENDLY;
                         target.willing = true;
                         app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
-                        app.log.push({ text: `${target.name} submits to ${ally.name}!`, type: 'combat' });
+                        app.log.push({ text: `${target.name} relaxes around ${ally.name}!`, type: 'combat' });
                         app._emitCombatAction('ally_fuck', ally, target, 'submitted');
                     }
                     app.renderLog(); app.renderCreatures(); app.nextTurn(); return;

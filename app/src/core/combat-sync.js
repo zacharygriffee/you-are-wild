@@ -142,24 +142,24 @@ const YAW_COMBAT_SYNC = {
                     sync.target.willing = true;
                     sync.target.orgasmed = true;
                     app._awardCombatXP(app.XP_REWARDS.seduceEnemy);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} overwhelm ${sync.target.name} with pleasure! They submit completely.`;
+                    result = `${sync.participants.map(p => p.name).join(' and ')} play with ${sync.target.name}! They relax completely.`;
                     if (app.settings.refractoryPeriod) {
                         sync.target.refractory = true;
-                        result += ` They are spent and need recovery...`;
+                        result += ` They need a moment to catch their breath...`;
                     }
                     setTimeout(() => {
                         app._confirmRecruitCreature(sync.target);
                     }, 100);
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
-                    result = `${sync.participants.map(p => p.name).join(' and ')} pleasure ${sync.target.name}! They are dazed but not fully broken.`;
+                    result = `${sync.participants.map(p => p.name).join(' and ')} play with ${sync.target.name}! They are dazed but not fully relaxed.`;
                     if (sync.target.CPle >= sync.target.MPle * 0.8 && oldPle < sync.target.MPle * 0.8) {
-                        result += ` ${sync.target.name} orgasms!`;
+                        result += ` ${sync.target.name} needs a moment to catch their breath!`;
                         sync.target.orgasmed = true;
                         if (app.settings.refractoryPeriod) sync.target.refractory = true;
                     }
                 } else {
-                    result = `${sync.target.name} resists the combined advances!`;
+                    result = `${sync.target.name} does not want to play with the group!`;
                 }
                 break;
             }
@@ -177,12 +177,12 @@ const YAW_COMBAT_SYNC = {
                     sync.target.disposition = app.DISPOSITION.FRIENDLY;
                     sync.target.willing = true;
                     app._awardCombatXP(app.XP_REWARDS.flirtEnemy);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} charm ${sync.target.name} into submission! They are utterly captivated.`;
+                    result = `${sync.participants.map(p => p.name).join(' and ')} talk ${sync.target.name} into standing down! They are convinced.`;
                 } else if (totalCharm > resist) {
                     sync.target.CPle = Math.min(sync.target.MPle, sync.target.CPle + Math.floor(totalCharm * 0.3));
                     sync.target.charmed = (sync.target.charmed || 0) + 1;
                     sync.target.Figh = Math.max(1, (sync.target.Figh || 10) - 1);
-                    result = `${sync.participants.map(p => p.name).join(' and ')} flirt with ${sync.target.name}, softening their guard. Pleasure rises to ${sync.target.CPle}/${sync.target.MPle}.`;
+                    result = `${sync.participants.map(p => p.name).join(' and ')} talk with ${sync.target.name}, softening their guard. Spirit rises to ${sync.target.CPle}/${sync.target.MPle}.`;
                 } else {
                     result = `${sync.target.name} resists the group's combined charm!`;
                 }

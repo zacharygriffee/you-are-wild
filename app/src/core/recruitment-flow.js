@@ -40,7 +40,7 @@ const YAW_RECRUITMENT_FLOW = {
         if (!target) return false;
         return app.showConfirmDialog({
             title: app._label('action.recruit', 'Recruit'),
-            message: app._label('recruit.confirmSubmissive', '{name} is submissive. Recruit them to your party?', { name: target.name }),
+            message: app._label('recruit.confirmSubmissive', '{name} is ready to follow. Recruit them to your party?', { name: target.name }),
             confirmLabel: app._label('action.recruit', 'Recruit'),
             cancelLabel: app._label('ui.cancel', 'Cancel'),
             onConfirm: () => app.recruitCreature(target)

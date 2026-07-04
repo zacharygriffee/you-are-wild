@@ -35,8 +35,8 @@ const YAW_UNIT_CONTAINMENT = {
                 fastRate: 3,
                 slowRate: 1,
                 stats: ['cha', 'Flir', 'Fuck'],
-                fatalLog: (prey, unit) => `${prey.name} perishes in ${unit.name}'s womb.`,
-                softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s womb.`
+                fatalLog: (prey, unit) => `${prey.name} perishes in ${unit.name}'s inner reserve.`,
+                softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s inner reserve.`
             },
             {
                 key: 'balls',
@@ -44,8 +44,8 @@ const YAW_UNIT_CONTAINMENT = {
                 fastRate: 3,
                 slowRate: 1,
                 stats: ['Feas', 'Fuck'],
-                fatalLog: (prey, unit) => `${prey.name} dissolves in ${unit.name}'s balls.`,
-                softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s balls.`
+                fatalLog: (prey, unit) => `${prey.name} dissolves in ${unit.name}'s reserve.`,
+                softLog: (prey, unit) => `${prey.name} is fully softened in ${unit.name}'s reserve.`
             }
         ];
     },

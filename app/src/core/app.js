@@ -1,6 +1,6 @@
 
         // =============================================
-        // FIGHT FUCK FEED - MECHANICS OVERHAUL
+        // CORE ACTION MECHANICS
         // =============================================
 
         const App = {
@@ -10,9 +10,9 @@
             ACTION: { FIGHT: 'fight', FLIRT: 'flirt', FEAST: 'feast', FUCK: 'fuck', FEED: 'feed', FLEE: 'flee', SYNC_FIGHT: 'sync_fight', SYNC_FUCK: 'sync_fuck', SYNC_FEED: 'sync_feed', PROTECT: 'protect', RETREAT_COVER: 'retreat_cover' },
             UI_LABELS: {
                 fight: 'Fight',
-                flirt: 'Flirt',
-                feast: 'Feast',
-                fuck: 'Fuck',
+                flirt: 'Talk',
+                feast: 'Eat',
+                fuck: 'Play',
                 feed: 'Feed',
                 flee: 'Flee',
                 search: 'Search',
@@ -591,7 +591,7 @@
                     perks: [
                         { id: 'soft_approach', name: 'Soft Approach', stat: 'Flir', val: 2, desc: 'Flir +2.' },
                         { id: 'seductive_aura', name: 'Seductive Aura', stat: 'cha', val: 2, desc: 'CHA +2.', requires: { tree: 'seducer', count: 1 } },
-                        { id: 'devoted_attention', name: 'Devoted Attention', stat: 'Fuck', val: 3, desc: 'Fuck +3.', requires: { tree: 'seducer', count: 2 } }
+                        { id: 'devoted_attention', name: 'Devoted Attention', stat: 'Fuck', val: 3, desc: 'Play +3.', requires: { tree: 'seducer', count: 2 } }
                     ]
                 },
                 survivor: {
@@ -2074,7 +2074,7 @@
                         actor.Feas += 1;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        result = `${actorName} devour${actorVerb} ${target.name}! They settle in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} stomach.`;
+                        result = `${actorName} eat${actorVerb} ${target.name}! They are held in ${actor.name === this.player?.name ? 'your' : actor.name + "'s"} belly.`;
                         break;
                     }
                     case 'feast.chew': {
@@ -2113,7 +2113,7 @@
                     }
                     case 'feast.digest': {
                         const livingStomach = (actor.stomach || []).filter(p => p.alive && p.inStomach);
-                        if (livingStomach.length === 0) { result = `${actorName} have no living prey in their stomach.`; break; }
+                        if (livingStomach.length === 0) { result = `${actorName} have no one held in their belly.`; break; }
                         const prey = livingStomach[0];
                         prey.digestionProgress = 100; prey.alive = false;
                         this._absorbStats(actor, 10, ['str', 'con', 'Figh']);
@@ -2131,7 +2131,7 @@
                         prey.CPle = 0;
                         prey.status = prey.status || {};
                         if (this.creatures.indexOf(prey) === -1) this.creatures.push(prey);
-                        result = `${actorName} release ${prey.name} from their stomach, weak and dazed but alive.`;
+                        result = `${actorName} release ${prey.name} from their belly, weak and dazed but alive.`;
                         break;
                     }
                     case 'feed.heal': {
@@ -2160,7 +2160,7 @@
                     case 'feed.sacrifice': {
                         const isWilling = target.livestock || target.willingPrey;
                         if (!isWilling && !this.cheats.canEatAnything) { result = `${target.name} refuses to be fed to ${actorName}.`; break; }
-                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
+                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to hold ${target.name}.`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach', { willingSacrifice: true });
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
@@ -2173,13 +2173,13 @@
                             result = `No one available to hold ${target.name} down.`; break;
                         }
                         const holder = holders[0] || this.creatures.filter(c => c.CPun > 0 && c !== target && c !== actor)[0];
-                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to swallow ${target.name}.`; break; }
+                        if (actor.size < target.size - 2) { result = `${actor.name} is too small to hold ${target.name}.`; break; }
                         if (!this._canFitPrey(actor, target, 'stomach')) { result = this._capacityFailureMessage(actor, target, 'stomach'); break; }
                         this._containTargetIn(actor, target, 'stomach', { forcedFed: true, by: actor.name });
                         target.forcedFed = true;
                         actor.forcedFed = true;
                         this._awardCombatXP(this.XP_REWARDS.feedEnemy);
-                        result = `${holder.name} holds ${target.name} down while ${actorName} force-feeds them, stuffing them into their stomach against their will.`;
+                        result = `${holder.name} restrains ${target.name} while ${actorName} forces the handoff, placing them in their belly against their will.`;
                         break;
                     }
                     case 'feed.slurp': {
@@ -2512,7 +2512,7 @@
                 if (!this._canFitPrey(consumer, prey, 'stomach')) return this._capacityFailureMessage(consumer, prey, 'stomach');
                 this._containTargetIn(consumer, prey, 'stomach', { willingSacrifice: true });
                 consumer.hunger = Math.max(0, (consumer.hunger || 0) - 40);
-                return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their stomach.', { prey: prey.name, consumer: consumer.name });
+                return this._label('group.feed.partyToConsumer', '{prey} is fed to {consumer} and settles in their belly.', { prey: prey.name, consumer: consumer.name });
             },
 
             registerPlayFightResolver(resolver) {
@@ -2788,7 +2788,7 @@
                         living.forEach(unit => {
                             unit.CPle = Math.min(unit.MPle, (unit.CPle || 0) + gain);
                         });
-                        result = this._label('group.mutual.social', '{actors} share {action} as a mutual group. Pleasure rises for everyone involved.', {
+                        result = this._label('group.mutual.social', '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', {
                             actors: names,
                             action: this._uiLabel(action).toLowerCase()
                         });
@@ -2966,7 +2966,7 @@
                     }
                     case 'feast': {
                         if (this.party.includes(target) && livingActors.includes(target)) {
-                            result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
+                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', { target: target.name });
                             break;
                         }
                         const shouldChew = selectedSubAction === 'chew' || (!selectedSubAction && this.settings.chewing);
@@ -2976,7 +2976,7 @@
                         }
                         const selection = this._selectGroupFeastPrimary(livingActors, target);
                         if (!selection.canOverpower) {
-                            result = this._label('group.feast.tooStrong', '{target} is too large or strong for {actors} to consume.', { target: target.name, actors: names });
+                            result = this._label('group.feast.tooStrong', '{target} is too large or strong for {actors} to eat.', { target: target.name, actors: names });
                             break;
                         }
                         const primary = selection.primary;
@@ -2988,7 +2988,7 @@
                         }
                         this._containTargetIn(primary, target, 'stomach');
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        result = this._label('group.feast.swallow', '{helpers} help {primary} swallow {target}.', {
+                        result = this._label('group.feast.swallow', '{helpers} help {primary} eat {target}.', {
                             helpers: helpers.map(actor => actor.name).join(', ') || primary.name,
                             primary: primary.name,
                             target: target.name
@@ -3008,7 +3008,7 @@
                                 livingActors.filter(actor => actor !== target).forEach(actor => {
                                     actor.CPle = Math.min(actor.MPle, (actor.CPle || 0) + sharedGain);
                                 });
-                                result = this._label('group.social.share', '{actors} share {action} with {target}. Pleasure spreads through the group; {target} rises to {current}/{max}.', {
+                                result = this._label('group.social.share', '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', {
                                     actors: names,
                                     action: this._uiLabel(action).toLowerCase(),
                                     target: target.name,
@@ -3016,7 +3016,7 @@
                                     max: target.MPle
                                 });
                             } else {
-                                result = this._label('group.social.focus', '{actors} focus on {target}. Pleasure rises to {current}/{max}.', {
+                                result = this._label('group.social.focus', '{actors} focus on {target}. Spirit rises to {current}/{max}.', {
                                     actors: names,
                                     target: target.name,
                                     current: target.CPle,
@@ -3087,7 +3087,7 @@
                         const oldPle = target.CPle;
                         if (charm > resist) {
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.5));
-                            result = this._label('explore.fuck.success', '{actor} pleasures {target}. Their arousal rises to {current}/{max}.', {
+                            result = this._label('explore.fuck.success', '{actor} plays with {target}. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
                                 target: target.name,
                                 current: target.CPle,
@@ -3096,18 +3096,18 @@
                             if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
                                 target.willing = true;
                                 target.orgasmed = true;
-                                result += ` ${this._label('explore.fuck.devoted', '{target} orgasms and is completely devoted.', { target: target.name })}`;
+                                result += ` ${this._label('explore.fuck.devoted', '{target} relaxes and becomes completely friendly.', { target: target.name })}`;
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                                 if (this.settings.refractoryPeriod) {
                                     target.refractory = true;
-                                    result += ` ${this._label('explore.fuck.recover', '{target} needs a moment to recover...', { target: target.name })}`;
+                                    result += ` ${this._label('explore.fuck.recover', '{target} needs a moment to catch their breath...', { target: target.name })}`;
                                 }
                             }
                             if (!this.party.includes(target) && this._canRecruit(actor, target)) {
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = this._label('explore.fuck.resists', '{target} is not in the mood.', { target: target.name });
+                            result = this._label('explore.fuck.resists', '{target} does not want to play.', { target: target.name });
                             affected = false;
                         }
                         break;
@@ -3119,7 +3119,7 @@
                             break;
                         }
                         if (actor === target) {
-                            result = this._label('group.feast.selfBlocked', '{target} cannot feast on themself. Select other party members as actors to consume this target, or select {target} alone to feast on another target.', { target: target.name });
+                            result = this._label('group.feast.selfBlocked', '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', { target: target.name });
                             affected = false;
                             break;
                         }
@@ -3132,7 +3132,7 @@
                             this._containTargetIn(actor, target, 'stomach');
                             this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                             const owner = actor === this.player || actor.name === this.player?.name ? this._label('party.you', 'You') : actor.name;
-                            result = this._label('explore.feast.swallow', '{actor} swallows {target} whole. They settle in {owner} stomach.', {
+                            result = this._label('explore.feast.swallow', '{actor} eats {target}. They are held in {owner} belly.', {
                                 actor: actorName,
                                 target: target.name,
                                 owner
@@ -3153,7 +3153,7 @@
                             target.CPle = Math.min(target.MPle, target.CPle + Math.floor(charm * 0.3));
                             target.charmed = (target.charmed || 0) + 1;
                             target.Figh = Math.max(1, (target.Figh || 10) - 1);
-                            result = this._label('explore.flirt.success', '{actor} flirts with {target}. Their guard lowers. Pleasure rises to {current}/{max}.', {
+                            result = this._label('explore.flirt.success', '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', {
                                 actor: actorName,
                                 target: target.name,
                                 current: target.CPle,
@@ -3168,7 +3168,7 @@
                                 result += ` ${this._label('explore.recruit.possible', '{target} may be willing to join the party.', { target: target.name })}`;
                             }
                         } else {
-                            result = this._label('explore.flirt.rebuff', '{target} rebuffs the flirtation!', { target: target.name });
+                            result = this._label('explore.flirt.rebuff', '{target} rejects the conversation!', { target: target.name });
                             affected = false;
                         }
                         break;
@@ -3197,7 +3197,8 @@
                         break;
                     }
                     case 'inspect': {
-                        result = `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Pleasure ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Parts: ${target.parts || 'none'}, Chest: ${target.chest || 'none'}`;
+                        const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value) : value;
+                        result = `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
                         break;
                     }
                 }
@@ -4264,8 +4265,8 @@
             nextTutorial() {
                 const steps = [
                     { titleKey: 'ui.tutorial.welcome.title', contentKey: 'ui.tutorial.welcome.content', title: 'Welcome', content: 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.' },
-                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Flirt, Fuck, Feast, Feed, or Flee. Sync actions let multiple allies act together.' },
-                    { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Feast', content: 'Feast on weakened targets to contain them. Capacity matters, and some settings change whether outcomes are safe or harsher.' },
+                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Sync actions let multiple allies act together.' },
+                    { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Eat', content: 'Eat weakened targets to hold them safely. Capacity matters, and mods can add alternate outcomes.' },
                     { titleKey: 'ui.tutorial.party.title', contentKey: 'ui.tutorial.party.content', title: 'Party', content: 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.' },
                     { titleKey: 'ui.tutorial.ready.title', contentKey: 'ui.tutorial.ready.content', title: 'Ready', content: 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.' }
                 ];

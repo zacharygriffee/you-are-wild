@@ -509,7 +509,7 @@ async function runStaleMarkedActorFlow(page) {
   assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor rejection should preserve actor selection for correction');
   assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor rejection should preserve marked target for correction');
   assert.strictEqual(state.lastCommand, null, 'Stale actor rejection should not record a resolved intent command');
-  assert(state.lastLog.includes('Select a living actor before using flirt on marked targets.'), 'Stale actor rejection should log correction guidance');
+  assert(state.lastLog.includes('Select a living actor before using talk on marked targets.'), 'Stale actor rejection should log correction guidance');
   assert.strictEqual(state.trayVisible, true, 'Stale actor rejection should keep the tray visible for correction');
   assert.strictEqual(state.centerHasActorControls, false, 'Stale actor rejection should keep center free of actor controls');
 }

@@ -146,6 +146,7 @@ const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'pan
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const combatRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-rules.js'), 'utf8');
 const combatStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-status.js'), 'utf8');
+const combatTurnsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-turns.js'), 'utf8');
 const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
 const combatTargetingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-targeting.js'), 'utf8');
 const combatSyncContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-sync.js'), 'utf8');
@@ -1680,6 +1681,16 @@ test('Combat action helper module is registered before app code', () => {
   assertNotContains(combatStatusContent, 'Math.random', 'Combat status helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_STATUS.skipTurnFromStatus(this, unit)', 'App status skip wrapper should delegate to combat status');
   assertContains(appContent, 'YAW_COMBAT_STATUS.processStatusEffects(this)', 'App status processing wrapper should delegate to combat status');
+  assertContains(buildContent, "'src/core/combat-turns.js'", 'Combat turns helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-turns.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Combat turns should load before combat action helpers');
+  assert(buildContent.indexOf("'src/core/combat-turns.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat turns should load before app.js');
+  assertContains(combatTurnsContent, 'const YAW_COMBAT_TURNS = {', 'Combat turns helper should expose the combat turns service');
+  assertContains(combatTurnsContent, 'processTurn(app)', 'Combat turns helper should own turn processing');
+  assertContains(combatTurnsContent, 'newRound(app)', 'Combat turns helper should own round advancement');
+  assertContains(combatTurnsContent, 'app._writeCombatRefreshSnapshot()', 'Combat turns helper should preserve combat refresh snapshots before player action');
+  assertNotContains(combatTurnsContent, 'Math.random', 'Combat turns helper should not use ambient randomness');
+  assertContains(appContent, 'YAW_COMBAT_TURNS.processTurn(this)', 'App processTurn wrapper should delegate to combat turns');
+  assertContains(appContent, 'YAW_COMBAT_TURNS.newRound(this)', 'App new round wrapper should delegate to combat turns');
   assertContains(buildContent, "'src/core/combat-actions.js'", 'Combat action helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat action helper should load before app.js');
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Combat action helper should load before mobile chips that reuse combat action wrappers');
@@ -3556,7 +3567,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

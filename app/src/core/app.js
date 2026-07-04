@@ -2385,106 +2385,11 @@
             },
 
             processTurn() {
-                if (!this.combatState.active) return;
-                this._sanitizeCombatState({ preserveTurn: true });
-                const livingEnemiesNow = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const livingPartyNow = this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
-                if (livingEnemiesNow.length === 0) { this.endCombat(true); return; }
-                if (livingPartyNow.length === 0) { this.endCombat(false); return; }
-                const queue = this.combatState.turnQueue;
-                if (this.combatState.currentTurn >= queue.length) {
-                    this._newRound(); return;
-                }
-                const entry = queue[this.combatState.currentTurn];
-                if (!entry) { this.nextTurn(); return; }
-                const currentUnit = entry.unit || entry.unit;
-                if (!currentUnit || currentUnit.CPun <= 0 || currentUnit.knockedOut || currentUnit.fledCombat) { this.nextTurn(); return; }
-                // Refractory period: skip turn if recovering from orgasm
-                if (currentUnit.refractory) {
-                    currentUnit.refractory = false;
-                    this._pushLog(this._label('combat.status.recovering', '{name} is recovering and skips their turn.', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'skip' });
-                    this.renderLog();
-                    this.nextTurn();
-                    return;
-                }
-                // Check sync actions - if this unit is part of a sync action that resolves now, handle it
-                const activeSync = this.combatState.syncActions.find(s =>
-                    !s.resolved &&
-                    s.round === this.combatState.round &&
-                    s.resolveAtIndex === this.combatState.currentTurn &&
-                    s.participants.includes(currentUnit)
-                );
-                if (activeSync) {
-                    this._resolveSyncAction(activeSync);
-                    return;
-                }
-                // Check victory/defeat
-                const livingEnemies = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0);
-                const livingParty = this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
-                if (livingEnemies.length === 0) { this.endCombat(true); return; }
-                if (livingParty.length === 0) { this.endCombat(false); return; }
-                // Check if unit already acted in a sync this round
-                if (entry.actedThisRound) { this.nextTurn(); return; }
-                const statusSkip = this._skipTurnFromStatus(currentUnit);
-                if (statusSkip) {
-                    this._pushLog(statusSkip, 'combat', { actor: currentUnit, phase: 'status' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                // Check if restrained (skip turn)
-                if (currentUnit.status?.restrained && currentUnit.status.restrained.turns > 0) {
-                    this._pushLog(this._label('combat.status.restrainedSkip', '{name} is restrained and cannot act!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'status' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                if (currentUnit.status?.stuck && currentUnit.status.stuck.turns > 0) {
-                    currentUnit.status.stuck.turns--;
-                    if (currentUnit.status.stuck.turns <= 0) delete currentUnit.status.stuck;
-                    this._pushLog(this._label('combat.status.stuck', '{name} is stuck in the terrain and loses their turn!', { name: currentUnit.name }), 'combat', { actor: currentUnit, phase: 'terrain' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                // Check if enveloped (skip turn, take damage)
-                if (currentUnit.status?.enveloped && currentUnit.status.enveloped.turns > 0) {
-                    currentUnit.CPun -= 4;
-                    this._pushLog(`${currentUnit.name} is enveloped by ${currentUnit.status.enveloped.by}!`, 'combat', { actor: currentUnit, phase: 'status' });
-                    if (currentUnit.CPun <= 0) { this._pushLog(`${currentUnit.name} succumbs to the envelopment!`, 'combat', { actor: currentUnit, phase: 'status' }); }
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                this.renderCombatSceneForTurn(currentUnit);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
-                this._writeCombatRefreshSnapshot();
-                const isParty = this.party.includes(currentUnit);
-                if (isParty && (currentUnit.name === this.player.name || currentUnit.obedient !== false)) {
-                    this.showActorActions(currentUnit);
-                } else if (isParty) {
-                    this.allyTurn(currentUnit);
-                } else {
-                    this.enemyTurn(currentUnit);
-                }
+                return YAW_COMBAT_TURNS.processTurn(this);
             },
 
             _newRound() {
-                const living = [...this.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat), ...this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)];
-                this._assignCombatRows(living);
-                this.combatState.turnQueue = living.map(c => ({ unit: c, initiative: this._calcInitiative(c), actedThisRound: false })).sort((a, b) => b.initiative - a.initiative);
-                this.combatState.currentTurn = 0;
-                this.combatState.round++;
-                this._pushLog(`--- Round ${this.combatState.round} ---`, 'combat', { phase: 'round' });
-                this.renderMobileCombatToolbelt();
-                // Increase hunger for all combatants each round (unless Never Hungry cheat)
-                for (const c of living) {
-                    if (!this.cheats.neverHungry) {
-                        c.hunger = Math.min(100, (c.hunger || 0) + 3);
-                    }
-                }
-                // Process status effects first
-                this._processStatusEffects();
-                this._applyTerrainRoundEffects(living);
-                // Per-turn digestion
-                this._processDigestion();
-                this._processCorpseDecay();
-                this._sanitizeCombatState({ preserveTurn: false });
-                this.processTurn();
+                return YAW_COMBAT_TURNS.newRound(this);
             },
 
             _processStatusEffects() {

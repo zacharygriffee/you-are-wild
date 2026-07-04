@@ -24,6 +24,47 @@ const YAW_INTERACTION_DISPATCH = {
         };
     },
 
+    selectIntent(app, type, targetRef, action, source = 'sheet', subAction = null) {
+        app._haptic(8);
+        if (subAction && app.SUB_ACTIONS[action]?.[subAction]) app.defaultSubActions[action] = subAction;
+        const command = this.intentCommand(app, type, targetRef, action, subAction, source);
+        app.closeIntentMenu();
+        if (action === 'close') return false;
+        const target = this.intentTarget(app, type, targetRef);
+        if (!target) return false;
+        app.lastIntentCommand = {
+            ...command,
+            mode: 'adventure',
+            timing: 'immediate'
+        };
+        if (type === 'party') {
+            return this.dispatchPanel(app, {
+                mode: 'adventure',
+                actors: app._getExplorationActors(),
+                targets: [target],
+                action,
+                subAction,
+                source,
+                targetType: 'party'
+            });
+        }
+        const targetId = String(targetRef);
+        if (action === 'loot') return Boolean(app.lootCorpse(targetId));
+        if (action === 'scavenge') return Boolean(app.scavengeCorpse(targetId));
+        if (action === 'recruit') return Boolean(app.recruitCreatureById(targetId));
+        if (action === 'quest') return Boolean(app.previewQuestFromUnit(targetId));
+        if (action === 'trade') return Boolean(app.showTrade(targetId));
+        return this.dispatchPanel(app, {
+            mode: 'adventure',
+            actors: app._getExplorationActors(),
+            targets: [target],
+            action,
+            subAction,
+            source,
+            targetType: 'creature'
+        });
+    },
+
     buildCommand(app, context = {}) {
         const mode = context.mode || (app.combatState?.active ? 'combat' : 'adventure');
         const actors = context.actors || (mode === 'combat'

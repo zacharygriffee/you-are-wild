@@ -1400,6 +1400,7 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
   assertContains(interactionDispatchContent, 'intentCommand(app, type, targetRef, action', 'Interaction dispatch helper should own intent command building');
   assertContains(interactionDispatchContent, 'intentTarget(app, type, targetRef)', 'Interaction dispatch helper should own intent target resolution');
+  assertContains(interactionDispatchContent, 'selectIntent(app, type, targetRef, action', 'Interaction dispatch helper should own intent selection routing');
   assertContains(interactionDispatchContent, 'buildCommand(app, context = {})', 'Interaction dispatch helper should own generic command building');
   assertContains(interactionDispatchContent, 'buildPanelCommand(app, context = {})', 'Interaction dispatch helper should own panel command building');
   assertContains(interactionDispatchContent, 'dispatch(app, command)', 'Interaction dispatch helper should own shared command routing');
@@ -1407,6 +1408,7 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(interactionDispatchContent, 'dispatchAdventure(app, command)', 'Interaction dispatch helper should own adventure command routing');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildCommand(this, context)', 'App generic command wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildPanelCommand(this, context)', 'App panel command wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_DISPATCH.selectIntent(this, type, targetRef, action, source, subAction)', 'App intent selection wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatch(this, command)', 'App dispatch wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatchCombat(this, command)', 'App combat dispatch wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatchAdventure(this, command)', 'App adventure dispatch wrapper should delegate to the helper');

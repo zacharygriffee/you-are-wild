@@ -8501,44 +8501,7 @@
                 return YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source);
             },
             selectIntent(type, targetRef, action, source = 'sheet', subAction = null) {
-                this._haptic(8);
-                if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
-                const command = this._intentCommand(type, targetRef, action, subAction, source);
-                this.closeIntentMenu();
-                if (action === 'close') return false;
-                const target = this._intentTarget(type, targetRef);
-                if (!target) return false;
-                this.lastIntentCommand = {
-                    ...command,
-                    mode: 'adventure',
-                    timing: 'immediate'
-                };
-                if (type === 'party') {
-                    return this._dispatchPanelInteraction({
-                        mode: 'adventure',
-                        actors: this._getExplorationActors(),
-                        targets: [target],
-                        action,
-                        subAction,
-                        source,
-                        targetType: 'party'
-                    });
-                }
-                const targetId = String(targetRef);
-                if (action === 'loot') return Boolean(this.lootCorpse(targetId));
-                if (action === 'scavenge') return Boolean(this.scavengeCorpse(targetId));
-                if (action === 'recruit') return Boolean(this.recruitCreatureById(targetId));
-                if (action === 'quest') return Boolean(this.previewQuestFromUnit(targetId));
-                if (action === 'trade') return Boolean(this.showTrade(targetId));
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    actors: this._getExplorationActors(),
-                    targets: [target],
-                    action,
-                    subAction,
-                    source,
-                    targetType: 'creature'
-                });
+                return YAW_INTERACTION_DISPATCH.selectIntent(this, type, targetRef, action, source, subAction);
             },
             closeIntentMenu() {
                 return YAW_INTENT_MENU.close(this);

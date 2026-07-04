@@ -2343,31 +2343,25 @@
                 return YAW_COMBAT_RULES.physicalDamageMultiplier(this, actor, target);
             },
             _actionRatingFromRoll(entry, roll) {
-                if (entry > 55) return Math.round(entry + (roll * 21 - 10));
-                if (entry > 45) return Math.round(entry + (roll * 17 - 8));
-                if (entry > 35) return Math.round(entry + (roll * 13 - 6));
-                if (entry > 25) return Math.round(entry + (roll * 9 - 4));
-                return Math.max(1, Math.round(entry + (roll * 5 - 2)));
+                return YAW_ACTION_RULES.actionRatingFromRoll(entry, roll);
             },
             _combatActionRating(entry, actor, target = null, purpose = 'rating') {
-                return this._actionRatingFromRoll(entry, this._combatStateRoll('combat-action-rating', actor, `${this._unitSelectionId(target || {})}:${purpose}`));
+                return YAW_ACTION_RULES.combatActionRating(this, entry, actor, target, purpose);
             },
             _combatDamageVariance(actor, target, purpose = 'fight', scale = 6) {
-                return this._combatStateRoll('combat-damage-variance', actor, `${this._unitSelectionId(target || {})}:${purpose}`) * scale;
+                return YAW_ACTION_RULES.combatDamageVariance(this, actor, target, purpose, scale);
             },
             _explorationActionRoll(namespace, actor, target = null, purpose = 'roll') {
-                const x = Number(this.location?.x ?? 0);
-                const y = Number(this.location?.y ?? 0);
-                return this._worldRoll(namespace, x, y, this._unitSelectionId(actor || {}), this._unitSelectionId(target || {}), this.dayCount || 0, this.timeHour || 0, purpose);
+                return YAW_ACTION_RULES.explorationActionRoll(this, namespace, actor, target, purpose);
             },
             _explorationActionRating(entry, actor, target = null, purpose = 'rating') {
-                return this._actionRatingFromRoll(entry, this._explorationActionRoll('exploration-action-rating', actor, target, purpose));
+                return YAW_ACTION_RULES.explorationActionRating(this, entry, actor, target, purpose);
             },
             _explorationDamageVariance(actor, target = null, purpose = 'fight', scale = 6) {
-                return this._explorationActionRoll('exploration-damage-variance', actor, target, purpose) * scale;
+                return YAW_ACTION_RULES.explorationDamageVariance(this, actor, target, purpose, scale);
             },
             _targetDodgeRoll(actor, target, action = 'fight') {
-                return this._combatStateRoll('combat-target-dodge', actor, `${this._unitSelectionId(target)}:${action}`);
+                return YAW_ACTION_RULES.targetDodgeRoll(this, actor, target, action);
             },
 
             _wakeOnDamage(unit) {

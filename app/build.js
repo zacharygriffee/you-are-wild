@@ -36,6 +36,7 @@ const SCRIPT_ORDER = [
   'src/core/sub-actions.js',
   'src/core/ui-text.js',
   'src/core/action-ui.js',
+  'src/core/action-rules.js',
   'src/core/species-system.js',
   'src/core/time-system.js',
   'src/core/interaction-dispatch.js',

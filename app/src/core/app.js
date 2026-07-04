@@ -4973,7 +4973,7 @@
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
                 const surface = this._intentMenuSurface(source);
-                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -9948,11 +9948,12 @@
                 const subActions = this._getAvailableSubActions(action, actor, target);
                 const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
                 const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
-                const surface = this._intentMenuSurface(source);
+                const sourcePresentation = String(source || 'sheet') === 'radial' ? 'radial' : undefined;
+                const surface = this._intentMenuSurface(source, sourcePresentation);
                 const title = `${this._uiLabel(action)} ${target.name || ''}`.trim();
                 const defaultSub = this._getDefaultSubAction(action);
                 const defaultLabel = this._getActionLabel(action, defaultSub);
-                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
+                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
                 html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${this._escapeHtml(defaultLabel)}</button>`;
                 subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
                     const label = this._escapeHtml(sub.label);
@@ -9962,7 +9963,7 @@
                 });
                 const backLabel = this._escapeHtml(this._label('ui.back', 'Back'));
                 const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                html += `<button class="action-btn" role="menuitem" title="${backLabel}" aria-label="${backLabel}" onclick="App.showIntentMenu('${type}',${targetArg},'${commandSource}')">${backLabel}</button>`;
+                html += `<button class="action-btn" role="menuitem" title="${backLabel}" aria-label="${backLabel}" onclick="App.showIntentMenu('${type}',${targetArg},'${commandSource}','${surface.presentation}')">${backLabel}</button>`;
                 html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeMobileContextMenu()">${closeLabel}</button>`;
                 html += '</div></div>';
                 document.body.insertAdjacentHTML('beforeend', html);

@@ -11561,6 +11561,11 @@ test('Radial intent menu remains an accelerator over shared dispatch', () => {
   assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Radial helper should use its visible title as dialog label');
   assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','enemy-radial','fight','radial')", 'Radial primary actions should still route through the shared sub-action sheet');
+  App.openIntentSubActionSheet('creature', 'enemy-radial', 'fight', 'radial');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Radial sub-action sheet should preserve radial presentation');
+  assertContains(body.innerHTML, "App.showIntentMenu('creature','enemy-radial','radial','radial')", 'Radial sub-action Back should restore the radial menu presentation');
+  App.showIntentMenu('creature', 'enemy-radial', 'radial', 'radial');
+  assertContains(body.innerHTML, 'intent-menu-radial', 'Back from radial sub-actions should return to a radial menu');
   App.selectIntent('creature', 'enemy-radial', 'fight', 'radial', 'attack');
   assertEqual(App.lastIntentCommand.source, 'radial', 'Radial accelerator should record its command source');
   assertEqual(App.lastIntentCommand.subAction, 'attack', 'Radial accelerator should preserve selected sub-action');

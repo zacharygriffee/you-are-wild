@@ -790,6 +790,49 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop sub-action resolution should keep center free of actor controls');
 }
 
+async function runRadialIntentSubActionPresentationFlow(page) {
+  await setupAdventure(page);
+  await page.evaluate(() => App.showRadialIntentMenu('creature', 'friendly-1'));
+  let state = await page.evaluate(() => {
+    const menu = document.querySelector('#mobile-context-menu');
+    return {
+      presentation: menu?.getAttribute('data-intent-presentation') || '',
+      radialClass: menu?.classList.contains('intent-menu-radial') || false,
+      fightButton: (menu?.innerHTML || '').includes("openIntentSubActionSheet('creature','friendly-1','fight','radial')")
+    };
+  });
+  assert.strictEqual(state.presentation, 'radial', 'Radial intent menu should declare radial presentation');
+  assert.strictEqual(state.radialClass, true, 'Radial intent menu should use radial class in the built app');
+  assert.strictEqual(state.fightButton, true, 'Radial intent menu should preserve radial source for sub-actions');
+
+  await page.locator(`#mobile-context-menu button[onclick*="openIntentSubActionSheet('creature','friendly-1','fight','radial')"]`).first().click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#mobile-context-menu');
+    return {
+      presentation: menu?.getAttribute('data-intent-presentation') || '',
+      radialClass: menu?.classList.contains('intent-menu-radial') || false,
+      backButton: (menu?.innerHTML || '').includes("showIntentMenu('creature','friendly-1','radial','radial')")
+    };
+  });
+  assert.strictEqual(state.presentation, 'radial', 'Radial sub-action sheet should keep radial presentation in the built app');
+  assert.strictEqual(state.radialClass, true, 'Radial sub-action sheet should keep radial class');
+  assert.strictEqual(state.backButton, true, 'Radial sub-action Back should restore radial presentation');
+
+  await page.locator(`#mobile-context-menu button[onclick*="showIntentMenu('creature','friendly-1','radial','radial')"]`).first().click();
+  state = await page.evaluate(() => {
+    const menu = document.querySelector('#mobile-context-menu');
+    return {
+      presentation: menu?.getAttribute('data-intent-presentation') || '',
+      radialClass: menu?.classList.contains('intent-menu-radial') || false,
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.presentation, 'radial', 'Back from radial sub-actions should return to radial presentation');
+  assert.strictEqual(state.radialClass, true, 'Back from radial sub-actions should keep radial class');
+  assert.strictEqual(state.centerHasActorControls, false, 'Radial menu round trip should keep center free of actor controls');
+  await page.evaluate(() => App.closeMobileContextMenu());
+}
+
 async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
@@ -1054,6 +1097,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runCenterResourceSearchFlow(page);
     await runContextualCardIntentSourceFlow(page);
     await runDesktopIntentSubActionSheetFlow(page);
+    await runRadialIntentSubActionPresentationFlow(page);
     await runMobileSelectionAndCombatFlow(page);
     await runMalformedSaveMetadataBrowserFlow(page);
     await runClearAllBrowserStorageFlow(page);

@@ -17,8 +17,10 @@ const YAW_UNIT_SELECTION = {
         if (type === 'party' && app._getExplorationActors().includes(unit)) {
             roles.push('actor');
         }
-        const id = type === 'creature' ? String(unit.id || unit.name || '') : app._unitSelectionId(unit);
-        if (app._isExplorationTarget(type, id)) {
+        const marked = type === 'creature'
+            ? app._isExplorationTargetUnit(type, unit)
+            : app._isExplorationTarget(type, app._unitSelectionId(unit));
+        if (marked) {
             roles.push('target');
         }
         return roles;

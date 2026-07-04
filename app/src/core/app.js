@@ -154,8 +154,11 @@
             _uiLabel(key) {
                 return YAW_UI_TEXT.uiLabel(this, key);
             },
+            _escapeJsString(value) {
+                return String(value ?? '').replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+            },
             _unitKey(unit) {
-                return String(unit?.id || unit?.name || '').replace(/'/g, "\\'");
+                return this._escapeJsString(unit?.id || unit?.name || '');
             },
             _actorNameAndVerb(actor) {
                 const isPlayer = actor && actor.name === this.player?.name;
@@ -2434,8 +2437,20 @@
                 return YAW_EXPLORATION_SELECTION.targetKey(type, id);
             },
 
+            _explorationTargetUnitId(type, unit) {
+                return YAW_EXPLORATION_SELECTION.targetIdForUnit(this, type, unit);
+            },
+
             _isExplorationTarget(type, id) {
                 return YAW_EXPLORATION_SELECTION.isTarget(this, type, id);
+            },
+
+            _isExplorationTargetUnit(type, unit) {
+                return YAW_EXPLORATION_SELECTION.isTargetUnit(this, type, unit);
+            },
+
+            _resolveCreatureRef(ref) {
+                return YAW_EXPLORATION_SELECTION.resolveCreatureRef(this, ref);
             },
 
             _explorationTargetFromKey(key) {

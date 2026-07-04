@@ -9,14 +9,15 @@ const YAW_MOBILE_UNIT_CHIP = {
         const isExpanded = unit.expanded || false;
         const isParty = type === 'party';
         const isCorpse = !isParty && app._isCorpse(unit);
-        const targetKey = String(unit.id || unit.name).replace(/'/g, "\\'");
+        const targetKey = app._unitKey(unit);
+        const explorationTargetKey = isParty ? targetKey : app._escapeJsString(app._explorationTargetUnitId('creature', unit));
         const rawTargetId = app._unitSelectionId(unit);
-        const targetSelected = app._isExplorationTarget(type, rawTargetId);
+        const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
         const unitName = unit.name || (isParty ? 'party member' : 'creature');
         const unitLabel = app._escapeHtml(unitName);
         const chipButton = (classes, label, title, onclick, attrs = '') => `<button class="${classes}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}"${attrs ? ' ' + attrs : ''} onclick="${onclick}">${app._escapeHtml(label)}</button>`;
-        const mobileIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','mobile-chip')`;
+        const mobileIntent = action => `event.stopPropagation();App.selectIntent('creature','${explorationTargetKey}','${action}','mobile-chip')`;
         let actionButtons = '';
         if (isParty && !app.combatState.active) {
             const selectedActors = app._getExplorationActors();
@@ -52,7 +53,7 @@ const YAW_MOBILE_UNIT_CHIP = {
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = targetSelected ? ' primary' : '';
                 const inspectLabel = app._uiLabel('inspect');
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, app._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, app._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
                 if (app._canRecruit(app._getExplorationActor(), unit)) {
                     actionButtons += chipButton('action-btn primary', '💕', `${app._uiLabel('recruit')} ${unitName}`, mobileIntent('recruit'));
                 }
@@ -77,9 +78,10 @@ const YAW_MOBILE_UNIT_CHIP = {
         const rowText = app.combatState.active && unit.combatRow ? ` | ${app._combatRowLabel(unit.combatRow)}` : '';
         const turnBadge = app._turnOrderBadge(unit);
         const combatStatus = app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"');
+        const pressTargetKey = !isParty && !isCorpse ? explorationTargetKey : targetKey;
         const pressHandlers = isParty
             ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
-            : ` ontouchstart="App.startMobileCreaturePress(event,'${targetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
+            : ` ontouchstart="App.startMobileCreaturePress(event,'${pressTargetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
         const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${app._unitSelectionClass(unit, type)}`;
         const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
         return `<div class="${chipClass}" ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>

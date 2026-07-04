@@ -18,7 +18,7 @@ const YAW_PANEL_COMMANDS = {
             ? app.party.filter(p => p.name !== app.player.name)[index]
             : app.creatures.filter(c => c.disposition !== app.DISPOSITION.ENEMY)[index];
         if (!target) return false;
-        const id = type === 'party' ? app._unitSelectionId(target) : String(target.id || target.name);
+        const id = type === 'party' ? app._unitSelectionId(target) : app._explorationTargetUnitId('creature', target);
         app.toggleExplorationTarget(type, id);
         return false;
     },
@@ -29,7 +29,7 @@ const YAW_PANEL_COMMANDS = {
             : app.creatures.filter(c => c.disposition !== app.DISPOSITION.ENEMY)[index];
         if (!target) return false;
         if (type === 'party') return this.outsideActionForParty(app, action, app.party.indexOf(target));
-        return this.outsideActionForCreature(app, action, target.id || target.name);
+        return this.outsideActionForCreature(app, action, app._explorationTargetUnitId('creature', target));
     },
 
     outsideActionForParty(app, action, targetIndex, actorId = null, options = {}) {
@@ -60,7 +60,7 @@ const YAW_PANEL_COMMANDS = {
     },
 
     outsideActionForCreatureAs(app, actorId, action, targetId, options = {}) {
-        const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
+        const target = app._resolveCreatureRef(targetId);
         if (!target) return false;
         const actors = app._explorationActorsForOptionalId(actorId);
         if (actorId && actors.length === 0) return false;
@@ -91,8 +91,14 @@ const YAW_PANEL_COMMANDS = {
     },
 
     outsideActionForCreatureTargets(app, action, targetIds, actorId = null, options = {}) {
-        const ids = new Set((targetIds || []).map(id => String(id)));
-        const targets = app.creatures.filter(c => ids.has(String(c.id || c.name)));
+        const seen = new Set();
+        const targets = (targetIds || [])
+            .map(id => app._resolveCreatureRef(id))
+            .filter(target => {
+                if (!target || seen.has(target)) return false;
+                seen.add(target);
+                return true;
+            });
         const actors = app._explorationActorsForOptionalId(actorId);
         if (actorId && actors.length === 0) return false;
         return app._dispatchPanelInteraction({

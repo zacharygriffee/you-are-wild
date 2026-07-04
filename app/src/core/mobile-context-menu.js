@@ -61,11 +61,11 @@ const YAW_MOBILE_CONTEXT_MENU = {
     }
   },
   showCreature(app, targetId) {
-    const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
+    const target = app._resolveCreatureRef(targetId);
     if (!target) return;
     if (!app._isCorpse(target)) {
       if (app.combatState?.active) return false;
-      app.toggleExplorationTarget('creature', String(target.id || target.name));
+      app.toggleExplorationTarget('creature', app._explorationTargetUnitId('creature', target));
       return false;
     }
     return app.showRadialIntentMenu('creature', targetId, 'longpress');

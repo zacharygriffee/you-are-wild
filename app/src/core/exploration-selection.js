@@ -113,8 +113,47 @@ const YAW_EXPLORATION_SELECTION = {
         return `${type}:${String(id || '')}`;
     },
 
+    rawCreatureId(unit) {
+        return String(unit?.id || unit?.name || '');
+    },
+
+    targetIdForUnit(app, type, unit) {
+        if (type !== 'creature') return app._unitSelectionId(unit);
+        const raw = this.rawCreatureId(unit);
+        const creatures = app.creatures || [];
+        const index = creatures.indexOf(unit);
+        if (index < 0) return raw;
+        const matches = creatures.filter(candidate => this.rawCreatureId(candidate) === raw);
+        if (raw && matches.length === 1) return raw;
+        return `@creature:${index}:${raw}`;
+    },
+
     isTarget(app, type, id) {
         return (app.explorationTargetIds || []).includes(this.targetKey(type, id));
+    },
+
+    isTargetUnit(app, type, unit) {
+        if (!unit) return false;
+        const id = this.targetIdForUnit(app, type, unit);
+        if (this.isTarget(app, type, id)) return true;
+        return (app.explorationTargetIds || []).some(key => this.targetFromKey(app, key) === unit);
+    },
+
+    resolveCreatureRef(app, ref) {
+        const key = String(ref || '');
+        if (key.startsWith('@creature:')) {
+            const [, indexText, ...rawParts] = key.split(':');
+            const index = Number(indexText);
+            const raw = rawParts.join(':');
+            const candidate = Number.isInteger(index) ? (app.creatures || [])[index] : null;
+            if (candidate && (!raw || this.rawCreatureId(candidate) === raw)) return candidate;
+            if (raw) {
+                const matches = (app.creatures || []).filter(unit => this.rawCreatureId(unit) === raw);
+                if (matches.length === 1) return matches[0];
+            }
+            return null;
+        }
+        return (app.creatures || []).find(unit => this.rawCreatureId(unit) === key) || null;
     },
 
     targetFromKey(app, key) {
@@ -122,7 +161,7 @@ const YAW_EXPLORATION_SELECTION = {
         const id = rest.join(':');
         let target = null;
         if (type === 'party') target = app.party.find(unit => app._unitSelectionId(unit) === id);
-        if (type === 'creature') target = app.creatures.find(unit => String(unit.id || unit.name) === id);
+        if (type === 'creature') target = this.resolveCreatureRef(app, id);
         return target && app._isLivingCreature(target) ? target : null;
     },
 

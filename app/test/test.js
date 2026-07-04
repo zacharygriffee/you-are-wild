@@ -2053,9 +2053,9 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
-  assertContains(mobileUnitChipContent, "App.selectIntent('creature','${targetKey}','${action}','mobile-chip')", 'Mobile creature chip actions should keep routing through shared intent selection');
+  assertContains(mobileUnitChipContent, "App.selectIntent('creature','${explorationTargetKey}','${action}','mobile-chip')", 'Mobile creature chip actions should keep routing through shared intent selection');
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
-  assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${targetKey}')", 'Mobile creature chip should keep target marking on the Mark control');
+  assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection-utility', unit)", 'Mobile creature chip should label target/utility row semantics');
   assertContains(mobileUnitChipContent, "App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')", 'Mobile corpse chips should keep secondary-click intent acceleration');
@@ -2068,8 +2068,8 @@ test('Unit card helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/unit-card.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Unit card helper should load before later panel render helpers');
   assertContains(unitCardContent, 'const YAW_UNIT_CARD = {', 'Unit card helper should expose a renderer service');
   assertContains(unitCardContent, 'render(app, unit, index, type)', 'Unit card helper should own desktop card rendering');
-  assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${targetKey}')", 'Unit card helper should retain creature target marking');
-  assertContains(unitCardContent, "App.selectIntent('creature','${targetKey}','${action}','panel-card')", 'Unit card helper should retain panel intent dispatch');
+  assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Unit card helper should retain exact creature target marking');
+  assertContains(unitCardContent, "App.selectIntent('creature','${explorationTargetKey}','${action}','panel-card')", 'Unit card helper should retain panel intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
   assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection-utility', unit)", 'Unit card helper should label creature target/utility row semantics');
   assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
@@ -7363,6 +7363,35 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actorTargetCard, 'data-selection-role="actor" title="Actor">Actor</span>', 'Actor-target card should keep the actor role chip');
   assertContains(actorTargetCard, 'data-selection-role="target" title="Marcado">Marcado</span>', 'Actor-target card should add the target role chip');
   assertContains(actorTargetChip, 'class="mobile-unit-chip selected selected-actor selected-target"', 'Mobile actor-target chip should expose combined selection classes');
+});
+
+test('Exploration creature marks stay scoped to the selected card when ids collide', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const frog = makeUnit('Frogfolk', { id: 'shared-creature', disposition: App.DISPOSITION.FRIENDLY });
+  const plant = makeUnit('Plantfolk', { id: 'shared-creature', disposition: App.DISPOSITION.NEUTRAL });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [frog, plant];
+
+  const frogRef = App._explorationTargetUnitId('creature', frog);
+  const plantRef = App._explorationTargetUnitId('creature', plant);
+  assertEqual(frogRef, '@creature:0:shared-creature', 'Duplicate creature refs should include the card index');
+  assertEqual(plantRef, '@creature:1:shared-creature', 'Duplicate creature refs should distinguish each card');
+
+  App.toggleExplorationTarget('creature', plantRef);
+  assertEqual(App.explorationTargetIds.join(','), 'creature:@creature:1:shared-creature', 'Marked target state should store the exact creature ref');
+  assertEqual(App._getExplorationTargets()[0], plant, 'Marked target resolution should return the exact creature');
+  assertEqual(App._isExplorationTargetUnit('creature', frog), false, 'Unmarked duplicate-id creature should not be selected');
+  assertEqual(App._isExplorationTargetUnit('creature', plant), true, 'Marked duplicate-id creature should be selected');
+
+  const frogCard = App.renderUnitCard(frog, 0, 'creature');
+  const plantCard = App.renderUnitCard(plant, 1, 'creature');
+  const plantChip = App.renderMobileUnitChip(plant, 1, 'creature');
+  assertNotContains(frogCard, 'selected selected-target', 'Unmarked duplicate-id creature card should not render marked state');
+  assertContains(plantCard, 'selected selected-target', 'Marked duplicate-id creature card should render marked state');
+  assertContains(plantCard, "toggleExplorationTarget('creature','@creature:1:shared-creature')", 'Desktop Mark control should target the exact duplicate creature ref');
+  assertContains(plantChip, "toggleExplorationTarget('creature','@creature:1:shared-creature')", 'Mobile Mark control should target the exact duplicate creature ref');
 });
 
 test('Desktop creature card action labels localize', () => {

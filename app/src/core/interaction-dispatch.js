@@ -7,7 +7,7 @@ const YAW_INTERACTION_DISPATCH = {
     intentTarget(app, type, targetRef) {
         return type === 'party'
             ? app.party[Number(targetRef)]
-            : app.creatures.find(c => String(c.id || c.name) === String(targetRef));
+            : app._resolveCreatureRef(targetRef);
     },
 
     intentCommand(app, type, targetRef, action, subAction = null, source = 'sheet') {
@@ -48,7 +48,7 @@ const YAW_INTERACTION_DISPATCH = {
                 targetType: 'party'
             });
         }
-        const targetId = String(targetRef);
+        const targetId = app._unitSelectionId(target);
         if (action === 'loot') return Boolean(app.lootCorpse(targetId));
         if (action === 'scavenge') return Boolean(app.scavengeCorpse(targetId));
         if (action === 'recruit') return Boolean(app.recruitCreatureById(targetId));
@@ -98,7 +98,7 @@ const YAW_INTERACTION_DISPATCH = {
         const key = String(ref);
         const byKey = unit => app._unitSelectionId(unit) === key || String(unit?.id || unit?.name) === key;
         if (type === 'party') return app.party.find(byKey) || app.party[Number(ref)] || null;
-        if (type === 'creature' || type === 'enemy') return app.creatures.find(byKey) || app.creatures[Number(ref)] || null;
+        if (type === 'creature' || type === 'enemy') return app._resolveCreatureRef(ref) || app.creatures.find(byKey) || app.creatures[Number(ref)] || null;
         return app.party.find(byKey) || app.creatures.find(byKey) || null;
     },
 

@@ -3797,7 +3797,7 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertContains(html, '[Remains]', 'Corpse card should label remains');
   assertContains(html, "lootCorpse('fallen-1')", 'Corpse card should expose loot action');
   assertContains(html, "scavengeCorpse('fallen-1')", 'Corpse card should expose scavenge action');
-  assertContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should expose contextual action menu');
+  assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
   assertContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Corpse card should support secondary-click contextual menu');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
@@ -3815,7 +3815,7 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   assertEqual(card.style.display, 'block', 'Corpse-only mobile creature panel should remain visible');
   assertContains(html, "lootCorpse('fallen-mobile')", 'Mobile corpse chip should expose loot');
   assertContains(html, "scavengeCorpse('fallen-mobile')", 'Mobile corpse chip should expose scavenge');
-  assertContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should expose shared intent menu');
+  assertNotContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should not duplicate loot/scavenge behind a visible action menu');
   assertContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should expose secondary-click radial menu');
   App.showMobileCreatureContext('fallen-mobile');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should open the radial intent presentation');

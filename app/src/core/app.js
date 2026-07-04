@@ -7482,8 +7482,7 @@
                     }
                 }
                 if (isCorpse) {
-                    const menuLabel = this._label('ui.creatureActions', 'Creature actions');
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', this._uiLabel('loot'), `${this._uiLabel('loot')} ${unitName}`, `event.stopPropagation();App.lootCorpse('${targetKey}')`)}${chipButton('action-btn', this._uiLabel('scavenge'), `${this._uiLabel('scavenge')} ${unitName}`, `event.stopPropagation();App.scavengeCorpse('${targetKey}')`)}${chipButton('action-btn', '⋯', `${menuLabel}: ${unitName}`, `event.stopPropagation();App.showIntentMenu('creature','${targetKey}')`, 'aria-haspopup="dialog" aria-controls="mobile-context-menu"')}</div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', this._uiLabel('loot'), `${this._uiLabel('loot')} ${unitName}`, `event.stopPropagation();App.lootCorpse('${targetKey}')`)}${chipButton('action-btn', this._uiLabel('scavenge'), `${this._uiLabel('scavenge')} ${unitName}`, `event.stopPropagation();App.scavengeCorpse('${targetKey}')`)}</div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
@@ -7628,8 +7627,7 @@
                     const corpseLabel = this._escapeHtml(unit.corpseName || unit.name || 'remains');
                     const lootLabel = this._escapeHtml(this._uiLabel('loot'));
                     const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
-                    const menuTitle = this._escapeHtml(`${this._label('ui.creatureActions', 'Creature actions')}: ${unit.name || 'remains'}`);
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button><button class="action-btn" title="${menuTitle}" aria-label="${menuTitle}" aria-haspopup="dialog" aria-controls="desktop-intent-menu" onclick="event.stopPropagation();App.showIntentMenu('creature','${targetKey}','desktop')">⋯</button></div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);

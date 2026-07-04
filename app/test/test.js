@@ -175,6 +175,7 @@ const settingsDataFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sett
 const mobileGesturesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-gestures.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
+const saveMetadataContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-metadata.js'), 'utf8');
 const savePersistenceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-persistence.js'), 'utf8');
 const saveSlotFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-slot-flow.js'), 'utf8');
 const saveLoadFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-load-flow.js'), 'utf8');
@@ -2043,6 +2044,22 @@ test('Save manager helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SAVE_MANAGER.render(this, mode)', 'App save manager renderer should delegate to the helper');
 });
 
+test('Save metadata helper module is registered before save flows and app code', () => {
+  assertContains(buildContent, "'src/core/save-metadata.js'", 'Save metadata helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/save-metadata.js'") < buildContent.indexOf("'src/core/save-persistence.js'"), 'Save metadata helper should load before persistence helpers');
+  assert(buildContent.indexOf("'src/core/save-metadata.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save metadata helper should load before app.js');
+  assertContains(saveMetadataContent, 'const YAW_SAVE_METADATA = {', 'Save metadata helper should expose the save metadata service');
+  assertContains(saveMetadataContent, 'normalizeSlotName(slotName, fallback =', 'Save metadata helper should own slot name normalization');
+  assertContains(saveMetadataContent, 'normalizeTimestamp(value)', 'Save metadata helper should own save timestamp normalization');
+  assertContains(saveMetadataContent, 'async findLatestExistingSlot(app)', 'Save metadata helper should own latest save lookup');
+  assertContains(saveMetadataContent, 'async syncLastSlot(app)', 'Save metadata helper should own last-slot synchronization');
+  assertContains(saveMetadataContent, 'async refreshContinueButton(app)', 'Save metadata helper should own continue-button sync');
+  assertNotContains(saveMetadataContent, 'FFF', 'Save metadata helper should only use active save accessors, not legacy database names');
+  assertContains(appContent, 'YAW_SAVE_METADATA.normalizeSlotName(slotName, fallback)', 'App save slot wrapper should delegate to save metadata');
+  assertContains(appContent, 'YAW_SAVE_METADATA.syncLastSlot(this)', 'App last-slot wrapper should delegate to save metadata');
+  assertContains(appContent, 'YAW_SAVE_METADATA.refreshContinueButton(this)', 'App continue-button wrapper should delegate to save metadata');
+});
+
 test('Save persistence helper module is registered before save flows and app code', () => {
   assertContains(buildContent, "'src/core/save-persistence.js'", 'Save persistence helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/save-persistence.js'") < buildContent.indexOf("'src/core/save-slot-flow.js'"), 'Save persistence helper should load before save slot flow');
@@ -3567,7 +3584,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

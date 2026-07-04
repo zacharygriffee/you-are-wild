@@ -76,6 +76,7 @@ const SCRIPT_ORDER = [
   'src/core/mobile-gestures.js',
   'src/core/mobile-context-menu.js',
   'src/core/save-manager.js',
+  'src/core/save-metadata.js',
   'src/core/save-persistence.js',
   'src/core/save-slot-flow.js',
   'src/core/save-load-flow.js',

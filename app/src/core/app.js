@@ -5976,68 +5976,25 @@
 
             // ===== SAVE / LOAD =====
             _saveSlotNames() {
-                return Array.from({ length: 5 }, (_, index) => 'slot' + (index + 1));
+                return YAW_SAVE_METADATA.slotNames();
             },
             _normalizeSaveSlotName(slotName, fallback = 'slot1') {
-                const value = String(slotName ?? '').trim();
-                if (this._saveSlotNames().includes(value)) return value;
-                return fallback;
+                return YAW_SAVE_METADATA.normalizeSlotName(slotName, fallback);
             },
             _normalizeSaveTimestamp(value) {
-                const parsed = Number.parseInt(value, 10);
-                if (!Number.isFinite(parsed) || parsed <= 0) return '0';
-                return String(parsed);
+                return YAW_SAVE_METADATA.normalizeTimestamp(value);
             },
             async _findLatestExistingSaveSlot() {
-                const slots = [];
-                for (const slotName of this._saveSlotNames()) {
-                    const saveData = await this._dbGet('saves', slotName);
-                    if (saveData) {
-                        const time = parseInt(this._getSaveTime(slotName), 10) || 0;
-                        slots.push({ slotName, time });
-                    }
-                }
-                slots.sort((a, b) => b.time - a.time || a.slotName.localeCompare(b.slotName));
-                return slots[0]?.slotName || null;
+                return YAW_SAVE_METADATA.findLatestExistingSlot(this);
             },
             async _syncLastSaveSlot() {
-                const rawLastSlot = this._getStoredValue('lastSlot');
-                const lastSlot = rawLastSlot ? this._normalizeSaveSlotName(rawLastSlot, null) : null;
-                if (rawLastSlot && !lastSlot) {
-                    this._removeStoredValue('lastSlot');
-                    this._removeStoredValue('lastSaveTime');
-                }
-                if (lastSlot) {
-                    const saveData = await this._dbGet('saves', lastSlot);
-                    if (saveData) {
-                        if (rawLastSlot !== lastSlot) this._setStoredValue('lastSlot', lastSlot);
-                        const saveTime = this._getSaveTime(lastSlot);
-                        if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
-                        else this._removeStoredValue('lastSaveTime');
-                        return lastSlot;
-                    }
-                }
-                const fallbackSlot = await this._findLatestExistingSaveSlot();
-                if (fallbackSlot) {
-                    this._setStoredValue('lastSlot', fallbackSlot);
-                    const saveTime = this._getSaveTime(fallbackSlot);
-                    if (parseInt(saveTime, 10) > 0) this._setStoredValue('lastSaveTime', saveTime);
-                    return fallbackSlot;
-                }
-                this._removeStoredValue('lastSlot');
-                this._removeStoredValue('lastSaveTime');
-                return null;
+                return YAW_SAVE_METADATA.syncLastSlot(this);
             },
             async refreshContinueButton() {
-                const button = document.getElementById('menu-continue');
-                if (!button) return false;
-                button.style.display = 'none';
-                const hasSave = await this.checkLastPlayed().catch(() => false);
-                button.style.display = hasSave ? 'block' : 'none';
-                return hasSave;
+                return YAW_SAVE_METADATA.refreshContinueButton(this);
             },
             async checkLastPlayed() {
-                return !!(await this._syncLastSaveSlot());
+                return YAW_SAVE_METADATA.checkLastPlayed(this);
             },
             _writeCombatRefreshSnapshot(slotName = this.activeSlot) {
                 return YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName);

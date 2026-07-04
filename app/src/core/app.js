@@ -7503,6 +7503,7 @@
                 const unitName = unit.name || (isParty ? 'party member' : 'creature');
                 const unitLabel = this._escapeHtml(unitName);
                 const chipButton = (classes, label, title, onclick, attrs = '') => `<button class="${classes}" title="${this._escapeHtml(title)}" aria-label="${this._escapeHtml(title)}"${attrs ? ' ' + attrs : ''} onclick="${onclick}">${this._escapeHtml(label)}</button>`;
+                const mobileIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','mobile-chip')`;
                 let actionButtons = '';
                 if (isParty && !this.combatState.active) {
                     const selectedActors = this._getExplorationActors();
@@ -7519,7 +7520,7 @@
                     }
                 }
                 if (isCorpse) {
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', this._uiLabel('loot'), `${this._uiLabel('loot')} ${unitName}`, `event.stopPropagation();App.lootCorpse('${targetKey}')`)}${chipButton('action-btn', this._uiLabel('scavenge'), `${this._uiLabel('scavenge')} ${unitName}`, `event.stopPropagation();App.scavengeCorpse('${targetKey}')`)}</div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', this._uiLabel('loot'), `${this._uiLabel('loot')} ${unitName}`, mobileIntent('loot'))}${chipButton('action-btn', this._uiLabel('scavenge'), `${this._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'))}</div>`;
                 }
                 if (!isParty && unit.CPun > 0) {
                     if (this.targetSelection) {
@@ -7538,16 +7539,16 @@
                     } else if (!this.combatState.active || unit.disposition !== this.DISPOSITION.ENEMY) {
                         const targetClass = targetSelected ? ' primary' : '';
                         const inspectLabel = this._uiLabel('inspect');
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, this._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, `event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')`)}`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, this._targetMarkLabel(), this._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, this._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
-                            actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, `event.stopPropagation();App.recruitCreatureById('${targetKey}')`);
+                            actionButtons += chipButton('action-btn primary', '💕', `${this._uiLabel('recruit')} ${unitName}`, mobileIntent('recruit'));
                         }
                         if (unit.quest) {
                             const questLabel = this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest');
-                            actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, `event.stopPropagation();App.previewQuestFromUnit('${targetKey}')`);
+                            actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, mobileIntent('quest'));
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
-                            actionButtons += chipButton('action-btn primary', '🪙', `${this._uiLabel('trade')} ${unitName}`, `event.stopPropagation();App.showTrade('${targetKey}')`);
+                            actionButtons += chipButton('action-btn primary', '🪙', `${this._uiLabel('trade')} ${unitName}`, mobileIntent('trade'));
                         }
                         actionButtons += '</div>';
                     }
@@ -7659,13 +7660,15 @@
                 }
                 if (!isParty && isCorpse) {
                     const targetKey = this._unitKey(unit);
+                    const panelIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','panel-card')`;
                     const corpseLabel = this._escapeHtml(unit.corpseName || unit.name || 'remains');
                     const lootLabel = this._escapeHtml(this._uiLabel('loot'));
                     const scavengeLabel = this._escapeHtml(this._uiLabel('scavenge'));
-                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="event.stopPropagation();App.lootCorpse('${targetKey}')">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="event.stopPropagation();App.scavengeCorpse('${targetKey}')">${scavengeLabel}</button></div>`;
+                    actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button></div>`;
                 }
                 if (!isParty && unit.CPun > 0 && !isCorpse) {
                     const targetKey = this._unitKey(unit);
+                    const panelIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','panel-card')`;
                     if (this.targetSelection) {
                         const canTarget = this.canSelectCreatureTarget(unit);
                         const disabledClass = canTarget ? '' : ' disabled';
@@ -7690,20 +7693,20 @@
                         const markLabel = this._escapeHtml(this._targetMarkLabel());
                         const markTitle = this._escapeHtml(this._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                         const targetPressed = this._isExplorationTarget('creature', String(unit.id || unit.name));
-                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${this._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="event.stopPropagation();App.outsideActionForCreature('inspect','${targetKey}')">👁️</button>`;
+                        actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${this._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="${panelIntent('inspect')}">👁️</button>`;
                         if (this._canRecruit(this._getExplorationActor(), unit)) {
                             const recruitTitle = this._escapeHtml(`${this._uiLabel('recruit')} ${targetName}`);
-                            actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="event.stopPropagation();App.recruitCreatureById('${targetKey}')">💕</button>`;
+                            actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="${panelIntent('recruit')}">💕</button>`;
                         }
                         if (unit.quest) {
                             const questLabel = this._escapeHtml(this._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'));
                             const questTitle = this._escapeHtml(this._label(unit.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', unit.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName }));
-                            actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="event.stopPropagation();App.previewQuestFromUnit('${targetKey}')">📜 ${questLabel}</button>`;
+                            actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="${panelIntent('quest')}">📜 ${questLabel}</button>`;
                         }
                         if (unit.disposition === this.DISPOSITION.MERCHANT) {
                             const tradeLabel = this._escapeHtml(this._uiLabel('trade'));
                             const tradeTitle = this._escapeHtml(this._label('action.tradeWith', 'Trade with {name}', { name: targetName }));
-                            actionButtons += `<button class="action-btn primary" title="${tradeTitle}" aria-label="${tradeTitle}" onclick="event.stopPropagation();App.showTrade('${targetKey}')">🪙 ${tradeLabel}</button>`;
+                            actionButtons += `<button class="action-btn primary" title="${tradeTitle}" aria-label="${tradeTitle}" onclick="${panelIntent('trade')}">🪙 ${tradeLabel}</button>`;
                         }
                         actionButtons += `</div>`;
                     }

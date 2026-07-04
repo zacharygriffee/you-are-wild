@@ -231,21 +231,13 @@
                 return { actorName: isPlayer ? this._label('party.you', 'You') : actor?.name || 'Someone', actorVerb: isPlayer ? '' : 's' };
             },
             _iconActionButton(key, icon, onclick, extraClass = '') {
-                const label = this._uiLabel(key);
-                const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
-                return `<button class="${className}" title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
+                return YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass);
             },
             _combatIntentButton(key, actor, extraClass = '') {
-                const actorId = actor ? this._unitSelectionId(actor) : '';
-                const isSelected = this.targetSelection?.source === 'combat'
-                    && this.targetSelection.action === key
-                    && (!this.targetSelection.actorId || this.targetSelection.actorId === actorId || this.targetSelection.actorId === actor?.id || this.targetSelection.actorId === actor?.name);
-                const classes = [extraClass, isSelected ? 'selected' : ''].filter(Boolean).join(' ');
-                return this._iconActionButton(key, this._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes);
+                return YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass);
             },
             _actionLegend(keys) {
-                if (keys.length <= 1) return '';
-                return `<div class="action-legend" aria-label="${this._escapeHtml(this._label('ui.actionLegend', 'Action legend'))}">${keys.map(key => `<span><span aria-hidden="true">${this._actionIcon(key)}</span> ${this._uiLabel(key)}</span>`).join('')}</div>`;
+                return YAW_ACTION_UI.legend(this, keys);
             },
             applyStaticLocalization(root = document) {
                 if (!root || !root.querySelectorAll) return;
@@ -271,7 +263,7 @@
                 });
             },
             _actionIcon(key) {
-                return { fight: '⚔️', flirt: '😘', feast: '🍽️', fuck: '🔥', feed: '🍲', flee: '🏃', search: '🔍', rest: '🏕️', inventory: '🎒', takeItems: '🎒', stats: '📊', quests: '📜', interact: '💋', inspect: '👁️', recruit: '💕', close: '', enter: '🚪', exit: '↩️', map: '🗺️', party: '👥', enemies: '⚔️' }[key] || '';
+                return YAW_ACTION_UI.icon(key);
             },
             _isNight(hour = this.timeHour) {
                 const normalized = ((hour % 24) + 24) % 24;

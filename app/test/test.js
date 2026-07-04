@@ -126,6 +126,7 @@ const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
@@ -1370,6 +1371,21 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
+});
+
+test('Action UI helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/action-ui.js'", 'Action UI helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action UI helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Action UI helper should load before combat actions that reuse action wrappers');
+  assertContains(actionUiContent, 'const YAW_ACTION_UI = {', 'Action UI helper should expose the action UI service');
+  assertContains(actionUiContent, 'iconButton(app, key, icon, onclick, extraClass = \'\')', 'Action UI helper should own icon action buttons');
+  assertContains(actionUiContent, 'combatIntentButton(app, key, actor, extraClass = \'\')', 'Action UI helper should own combat intent button selected-state rendering');
+  assertContains(actionUiContent, 'legend(app, keys)', 'Action UI helper should own action legends');
+  assertContains(actionUiContent, 'icon(key)', 'Action UI helper should own action icons');
+  assertContains(appContent, 'YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass)', 'App icon action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass)', 'App combat intent button wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ACTION_UI.legend(this, keys)', 'App action legend wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ACTION_UI.icon(key)', 'App action icon wrapper should delegate to the helper');
 });
 
 test('Unit card status helper module is registered before app code', () => {
@@ -2790,7 +2806,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${actionUiContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

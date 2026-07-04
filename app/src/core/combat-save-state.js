@@ -41,6 +41,58 @@ const YAW_COMBAT_SAVE_STATE = {
         try { YAW_STORAGE.clearCombatRefreshSnapshot(app, slotName); } catch (e) {}
     },
 
+    restoreCombatState(app, savedCombat) {
+        const livingEnemies = app._livingEnemies(app.creatures);
+        if (!savedCombat?.active || livingEnemies.length === 0) {
+            app.mode = app.GAME_MODE.NORMAL;
+            app.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
+            app.activeActor = null;
+            app.targetSelection = null;
+            return false;
+        }
+        const resolve = ref => app._findUnitBySaveRef(ref);
+        let turnQueue = (savedCombat.turnQueue || [])
+            .map(entry => {
+                const unit = resolve(entry.unitId);
+                if (!unit || unit.CPun <= 0 || unit.knockedOut) return null;
+                return {
+                    unit,
+                    initiative: entry.initiative || app._calcInitiative(unit),
+                    actedThisRound: Boolean(entry.actedThisRound)
+                };
+            })
+            .filter(Boolean);
+        if (turnQueue.length === 0) {
+            turnQueue = [...app.party, ...livingEnemies]
+                .filter(unit => unit.CPun > 0 && !unit.knockedOut)
+                .map(unit => ({ unit, initiative: app._calcInitiative(unit), actedThisRound: false }))
+                .sort((a, b) => b.initiative - a.initiative);
+        }
+        const maxTurn = Math.max(0, turnQueue.length - 1);
+        app.mode = app.GAME_MODE.COMBAT;
+        app.combatState = {
+            active: true,
+            round: Math.max(1, savedCombat.round || 1),
+            currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
+            turnQueue,
+            syncActions: (savedCombat.syncActions || []).map(sync => ({
+                type: sync.type,
+                participants: (sync.participantIds || []).map(resolve).filter(Boolean),
+                target: resolve(sync.targetId),
+                resolveAtIndex: sync.resolveAtIndex || 0,
+                round: sync.round || savedCombat.round || 1,
+                resolved: Boolean(sync.resolved)
+            })).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
+            processing: false,
+            xpEarned: savedCombat.xpEarned || 0
+        };
+        app.activeActor = resolve(savedCombat.activeActorId) || app.combatState.turnQueue[app.combatState.currentTurn]?.unit || app.player;
+        app.targetSelection = null;
+        app._normalizeExplorationSelections({ resetTargets: true });
+        app._sanitizeCombatState({ preserveTurn: true });
+        return true;
+    },
+
     resumeLoadedCombat(app) {
         if (!app.combatState?.active) return false;
         app._clearTransientInteractionState();

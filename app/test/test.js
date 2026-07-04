@@ -1488,6 +1488,10 @@ test('Combat save state helper module is registered before app code', () => {
   assertContains(combatSaveStateContent, 'writeRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot writes');
   assertContains(combatSaveStateContent, 'readRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot reads');
   assertContains(combatSaveStateContent, 'clearRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot cleanup');
+  assertContains(combatSaveStateContent, 'restoreCombatState(app, savedCombat)', 'Combat save state helper should own loaded combat restoration');
+  assertContains(combatSaveStateContent, 'turnQueue = (savedCombat.turnQueue || [])', 'Combat restore should rebuild the saved turn queue in the helper');
+  assertContains(combatSaveStateContent, 'syncActions: (savedCombat.syncActions || []).map', 'Combat restore should rebuild saved sync actions in the helper');
+  assertContains(combatSaveStateContent, 'app._sanitizeCombatState({ preserveTurn: true })', 'Combat restore should sanitize restored combat state in the helper');
   assertContains(combatSaveStateContent, 'resumeLoadedCombat(app)', 'Combat save state helper should own loaded combat resume');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Refresh writes should keep using active YAW storage helpers');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Refresh reads should keep using active YAW storage helpers');
@@ -1496,6 +1500,7 @@ test('Combat save state helper module is registered before app code', () => {
   assertContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should restore actor actions through party cards');
   assertContains(combatSaveStateContent, 'app.processTurn()', 'Loaded enemy turns should resume the combat loop');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName)', 'App refresh write wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.restoreCombatState(this, savedCombat)', 'App combat restore wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.readRefreshSnapshot(this, slotName)', 'App refresh read wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.clearRefreshSnapshot(this, slotName)', 'App refresh clear wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.resumeLoadedCombat(this)', 'App loaded combat wrapper should delegate to the helper');

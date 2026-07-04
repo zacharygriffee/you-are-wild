@@ -5531,6 +5531,9 @@
             _unitCardFocusAttrs(unit, expanded = false) {
                 return YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded);
             },
+            _unitActionRowAttrs(scope, unit = null) {
+                return YAW_UNIT_SELECTION.actionRowAttrs(this, scope, unit);
+            },
             _unitSelectionChips(unit, type) {
                 return YAW_UNIT_SELECTION.chips(this, unit, type);
             },

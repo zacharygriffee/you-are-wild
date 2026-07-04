@@ -69,9 +69,9 @@ const YAW_COMBAT_ACTIONS = {
             buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')"));
         }
         if (buttons.length === 0) return '';
-        const label = app._escapeHtml(app._label('combat.panelActions', 'Combat actions'));
+        const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);
         const compactClass = compact ? ' compact' : '';
-        return `<div class="unit-actions unit-combat-actions${compactClass}" aria-label="${label}">${buttons.join('')}</div>`;
+        return `<div class="unit-actions unit-combat-actions${compactClass}" ${rowAttrs}>${buttons.join('')}</div>`;
     }
 };
 

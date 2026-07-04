@@ -24,16 +24,16 @@ const YAW_MOBILE_UNIT_CHIP = {
             const targetClass = targetSelected ? ' primary' : '';
             const actorPressed = selectedActors.includes(unit);
             const targetPressed = targetSelected;
-            actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, app._label('target.act', 'Actor'), app._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, app._selectionControlAttrs('actor', actorPressed))}${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, app._selectionControlAttrs('target', targetPressed))}${chipButton('action-btn', app._label('party.stats', 'Stats'), app._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, app._label('target.act', 'Actor'), app._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }), `event.stopPropagation();App.selectExplorationActor(${index})`, app._selectionControlAttrs('actor', actorPressed))}${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, app._selectionControlAttrs('target', targetPressed))}${chipButton('action-btn', app._label('party.stats', 'Stats'), app._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`)}</div>`;
         } else if (isParty && app.combatState.active) {
             if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
-                actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${app._syncParticipantButton(unit, true)}</div>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('sync-participants', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${app._syncParticipantButton(unit, true)}</div>`;
             } else {
                 actionButtons = app._combatActionButtons(unit, { compact: true });
             }
         }
         if (isCorpse) {
-            actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', app._uiLabel('loot'), `${app._uiLabel('loot')} ${unitName}`, mobileIntent('loot'))}${chipButton('action-btn', app._uiLabel('scavenge'), `${app._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'))}</div>`;
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', app._uiLabel('loot'), `${app._uiLabel('loot')} ${unitName}`, mobileIntent('loot'))}${chipButton('action-btn', app._uiLabel('scavenge'), `${app._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'))}</div>`;
         }
         if (!isParty && unit.CPun > 0) {
             if (app.targetSelection) {
@@ -42,17 +42,17 @@ const YAW_MOBILE_UNIT_CHIP = {
                 const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
                 const targetHint = app._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
                 const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', isTargetable)}`;
-                actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const isSyncTargetable = app.canSelectCreatureTarget(unit);
                 const disabled = isSyncTargetable ? '' : 'disabled aria-disabled="true"';
                 const targetHint = app._label(isSyncTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isSyncTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: app._label('action.sync', 'Sync') });
                 const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}${app._selectionControlAttrs('combat-target', isSyncTargetable)}`;
-                actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = targetSelected ? ' primary' : '';
                 const inspectLabel = app._uiLabel('inspect');
-                actionButtons = `<div class="unit-actions" style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, app._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')`, app._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
                 if (app._canRecruit(app._getExplorationActor(), unit)) {
                     actionButtons += chipButton('action-btn primary', '💕', `${app._uiLabel('recruit')} ${unitName}`, mobileIntent('recruit'));
                 }

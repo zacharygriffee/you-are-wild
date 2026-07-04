@@ -67,6 +67,22 @@ const YAW_UNIT_SELECTION = {
         return `role="button" tabindex="0" data-card-purpose="focus-toggle" data-card-state="${state}" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${expanded ? 'true' : 'false'}"`;
     },
 
+    actionRowAttrs(app, scope, unit = null) {
+        const safeScope = app._escapeHtml(String(scope || 'unknown'));
+        const name = unit?.name || app._label('unit.generic', 'unit');
+        const labels = {
+            'party-selection': app._label('unit.row.partySelection', 'Actor and target controls for {name}', { name }),
+            'party-management': app._label('unit.row.partyManagement', 'Party management controls for {name}', { name }),
+            'sync-participants': app._label('unit.row.syncParticipants', 'Sync participant controls for {name}', { name }),
+            'combat-actions': app._label('unit.row.combatActions', 'Combat intent controls for {name}', { name }),
+            'corpse-utility': app._label('unit.row.corpseUtility', 'Corpse utility actions for {name}', { name }),
+            'combat-target': app._label('unit.row.combatTarget', 'Combat target controls for {name}', { name }),
+            'creature-selection-utility': app._label('unit.row.creatureSelectionUtility', 'Target and utility controls for {name}', { name })
+        };
+        const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
+        return `data-action-scope="${safeScope}" aria-label="${label}"`;
+    },
+
     chips(app, unit, type) {
         const chips = this.roles(app, unit, type).map(role => {
             const safeLabel = app._escapeHtml(this.roleLabel(app, role));

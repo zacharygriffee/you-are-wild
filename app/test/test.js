@@ -129,6 +129,7 @@ const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
+const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
@@ -1387,6 +1388,19 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'render(app)', 'Mobile combat toolbelt helper should own DOM rendering');
   assertContains(appContent, 'YAW_MOBILE_COMBAT_TOOLBELT.prompt(this, actor)', 'App mobile combat prompt wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_COMBAT_TOOLBELT.render(this)', 'App mobile combat toolbelt wrapper should delegate to the helper');
+});
+
+test('Mobile unit strip helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/mobile-unit-strips.js'", 'Mobile unit strip helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/mobile-unit-strips.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile unit strip helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/mobile-combat-toolbelt.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit strip helper should load after the mobile combat toolbelt helper');
+  assertContains(mobileUnitStripsContent, 'const YAW_MOBILE_UNIT_STRIPS = {', 'Mobile unit strip helper should expose the strip service');
+  assertContains(mobileUnitStripsContent, 'party(app)', 'Mobile unit strip helper should own party strip rendering');
+  assertContains(mobileUnitStripsContent, 'creatures(app)', 'Mobile unit strip helper should own creature strip rendering');
+  assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
+  assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
+  assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.creatures(this)', 'App mobile creature strip wrapper should delegate to the helper');
 });
 
 test('Intent menu helper module is registered before app code', () => {
@@ -2747,7 +2761,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${mobileCombatToolbeltContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${mobileCombatToolbeltContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

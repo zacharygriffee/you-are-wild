@@ -7419,21 +7419,10 @@
                 }
             },
             renderMobilePartyStrip() {
-                const strip = document.getElementById('mobile-party-strip');
-                if (!strip) return;
-                strip.innerHTML = `${this._renderPanelInteractionTray()}${this.party.map((unit, i) => this.renderMobileUnitChip(unit, i, 'party')).join('')}`;
+                return YAW_MOBILE_UNIT_STRIPS.party(this);
             },
             renderMobileCreatureStrip() {
-                const strip = document.getElementById('mobile-creature-strip');
-                const card = document.getElementById('mobile-creature-card');
-                if (!strip) return;
-                const living = this.creatures.filter(c => c.CPun > 0 && !this._isCorpse(c));
-                const corpses = this.creatures.filter(c => this._isCorpse(c));
-                const visible = [...living, ...corpses];
-                if (card) card.style.display = visible.length > 0 || this.combatState.active ? 'block' : 'none';
-                strip.innerHTML = visible.length > 0
-                    ? visible.map(unit => this.renderMobileUnitChip(unit, this.creatures.indexOf(unit), 'creature')).join('')
-                    : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${this._escapeHtml(this._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
+                return YAW_MOBILE_UNIT_STRIPS.creatures(this);
             },
             _currentCombatActor() {
                 if (!this.combatState?.active) return null;

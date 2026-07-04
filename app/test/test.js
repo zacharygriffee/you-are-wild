@@ -4456,6 +4456,25 @@ test('Traversal and encounter start emit module hook payloads', () => {
   assertEqual(encounterHook.payload.round, 1, 'Encounter hook should include the starting round');
 });
 
+test('Time advancement emits module tick hook payloads', () => {
+  const { App, hooks } = loadAppForCombat(() => 0);
+  App.timeHour = 23;
+  App.dayCount = 4;
+  App._advanceTime(2);
+  const tickHook = hooks.find(hook => hook.event === 'onTick');
+  assert(tickHook, 'Positive time advancement should emit onTick');
+  assertEqual(tickHook.payload.hours, 2, 'Tick hook should include elapsed hours');
+  assertEqual(tickHook.payload.previousHour, 23, 'Tick hook should include the previous hour');
+  assertEqual(tickHook.payload.currentHour, 1, 'Tick hook should include the wrapped current hour');
+  assertEqual(tickHook.payload.previousDay, 4, 'Tick hook should include the previous day');
+  assertEqual(tickHook.payload.currentDay, 5, 'Tick hook should include the current day after wrap');
+  assertEqual(tickHook.payload.app, App, 'Tick hook should include the live app reference');
+
+  hooks.length = 0;
+  App._advanceTime(0);
+  assertEqual(hooks.length, 0, 'Non-advancing time updates should not emit onTick');
+});
+
 test('Exploration context keeps creature interaction in panels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You');

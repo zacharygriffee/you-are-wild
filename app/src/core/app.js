@@ -289,10 +289,20 @@
             },
             _advanceTime(hours = 1) {
                 const current = ((this.timeHour || 0) % 24 + 24) % 24;
+                const previousDay = this.dayCount || 0;
                 const nextTotal = current + hours;
                 this.timeHour = ((nextTotal % 24) + 24) % 24;
                 if (hours > 0) this.dayCount = (this.dayCount || 0) + Math.floor(nextTotal / 24);
                 this._renderTime();
+                if (hours > 0) {
+                    this._emitModuleHook('onTick', {
+                        hours,
+                        previousHour: current,
+                        currentHour: this.timeHour,
+                        previousDay,
+                        currentDay: this.dayCount || 0
+                    });
+                }
             },
             _partyHasDarkvision() {
                 return this.party.some(unit => unit && unit.CPun > 0 && unit.darkvision);

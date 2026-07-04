@@ -73,6 +73,37 @@ const YAW_PANEL_COMMANDS = {
             source: 'creature-wrapper',
             targetType: 'creature'
         });
+    },
+
+    outsideActionForPartyTargets(app, action, targetIndexes, actorId = null, options = {}) {
+        const targets = (targetIndexes || []).map(index => app.party[index]).filter(Boolean);
+        const actors = app._explorationActorsForOptionalId(actorId);
+        if (actorId && actors.length === 0) return false;
+        return app._dispatchPanelInteraction({
+            mode: 'adventure',
+            actors,
+            targets,
+            action,
+            subAction: options.subAction || null,
+            source: 'party-target-wrapper',
+            targetType: 'party'
+        });
+    },
+
+    outsideActionForCreatureTargets(app, action, targetIds, actorId = null, options = {}) {
+        const ids = new Set((targetIds || []).map(id => String(id)));
+        const targets = app.creatures.filter(c => ids.has(String(c.id || c.name)));
+        const actors = app._explorationActorsForOptionalId(actorId);
+        if (actorId && actors.length === 0) return false;
+        return app._dispatchPanelInteraction({
+            mode: 'adventure',
+            actors,
+            targets,
+            action,
+            subAction: options.subAction || null,
+            source: 'creature-target-wrapper',
+            targetType: 'creature'
+        });
     }
 };
 

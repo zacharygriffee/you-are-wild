@@ -1576,9 +1576,13 @@ test('Panel command helper module is registered before app code', () => {
   assertContains(panelCommandsContent, 'showInteractMenu(app)', 'Panel command helper should own legacy target prompt routing');
   assertContains(panelCommandsContent, 'outsideActionForParty(app, action, targetIndex, actorId = null, options = {})', 'Panel command helper should own party action compatibility routing');
   assertContains(panelCommandsContent, 'outsideActionForCreature(app, action, targetId, options = {})', 'Panel command helper should own creature action compatibility routing');
+  assertContains(panelCommandsContent, 'outsideActionForPartyTargets(app, action, targetIndexes, actorId = null, options = {})', 'Panel command helper should own party multi-target compatibility routing');
+  assertContains(panelCommandsContent, 'outsideActionForCreatureTargets(app, action, targetIds, actorId = null, options = {})', 'Panel command helper should own creature multi-target compatibility routing');
   assertContains(panelCommandsContent, "mode: 'adventure'", 'Panel command helper should keep compatibility routes in adventure mode');
   assertContains(panelCommandsContent, "source: 'party-wrapper'", 'Panel command helper should preserve party wrapper command provenance');
   assertContains(panelCommandsContent, "source: 'creature-wrapper'", 'Panel command helper should preserve creature wrapper command provenance');
+  assertContains(panelCommandsContent, "source: 'party-target-wrapper'", 'Panel command helper should preserve party multi-target command provenance');
+  assertContains(panelCommandsContent, "source: 'creature-target-wrapper'", 'Panel command helper should preserve creature multi-target command provenance');
   assertContains(panelCommandsContent, 'app._dispatchPanelInteraction({', 'Panel command helper should route through the shared panel dispatcher');
   assertContains(appContent, 'YAW_PANEL_COMMANDS.showInteractMenu(this)', 'App target prompt wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_COMMANDS.showCreatureInteract(this, type, index)', 'App creature interact wrapper should delegate to the helper');
@@ -1586,6 +1590,8 @@ test('Panel command helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_PANEL_COMMANDS.outsideActionForParty(this, action, targetIndex, actorId, options)', 'App party action wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_COMMANDS.outsideActionForCreature(this, action, targetId, options)', 'App creature action wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_COMMANDS.outsideActionForCreatureAs(this, actorId, action, targetId, options)', 'App actor-specific creature action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_COMMANDS.outsideActionForPartyTargets(this, action, targetIndexes, actorId, options)', 'App party multi-target action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_COMMANDS.outsideActionForCreatureTargets(this, action, targetIds, actorId, options)', 'App creature multi-target action wrapper should delegate to the helper');
 });
 
 test('Unit stats helper module is registered before app code', () => {

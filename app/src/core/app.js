@@ -2983,34 +2983,11 @@
             },
 
             outsideActionForPartyTargets(action, targetIndexes, actorId = null, options = {}) {
-                const targets = (targetIndexes || []).map(index => this.party[index]).filter(Boolean);
-                const actors = this._explorationActorsForOptionalId(actorId);
-                if (actorId && actors.length === 0) return false;
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    actors,
-                    targets,
-                    action,
-                    subAction: options.subAction || null,
-                    source: 'party-target-wrapper',
-                    targetType: 'party'
-                });
+                return YAW_PANEL_COMMANDS.outsideActionForPartyTargets(this, action, targetIndexes, actorId, options);
             },
 
             outsideActionForCreatureTargets(action, targetIds, actorId = null, options = {}) {
-                const ids = new Set((targetIds || []).map(id => String(id)));
-                const targets = this.creatures.filter(c => ids.has(String(c.id || c.name)));
-                const actors = this._explorationActorsForOptionalId(actorId);
-                if (actorId && actors.length === 0) return false;
-                return this._dispatchPanelInteraction({
-                    mode: 'adventure',
-                    actors,
-                    targets,
-                    action,
-                    subAction: options.subAction || null,
-                    source: 'creature-target-wrapper',
-                    targetType: 'creature'
-                });
+                return YAW_PANEL_COMMANDS.outsideActionForCreatureTargets(this, action, targetIds, actorId, options);
             },
 
             outsideGroupActionOnTarget(action, target, actors = this._getExplorationActors(), options = {}) {

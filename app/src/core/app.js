@@ -2425,13 +2425,7 @@
 
             // ===== ENEMY TURN AI =====
             _enemyShouldFlee(enemy, targets) {
-                const enemyCount = this._livingEnemies(this.creatures).length;
-                const partyCount = targets.filter(t => t.CPun > 0 && !t.knockedOut).length;
-                if (enemyCount < partyCount && enemy.CPun < enemy.MPun * 0.5) {
-                    return this._combatStateRoll('combat-enemy-flee', enemy, 'outnumbered') < 0.5;
-                }
-                return enemy.CPun > 0 && enemy.CPun < enemy.MPun * 0.3
-                    && this._combatStateRoll('combat-enemy-flee', enemy, 'wounded') < 0.3;
+                return YAW_COMBAT_ENEMIES.shouldFlee(this, enemy, targets);
             },
             _combatStateRoll(namespace, unit = null, purpose = 'roll') {
                 const x = Number(this.location?.x ?? 0);
@@ -2440,182 +2434,13 @@
                 return this._worldRoll(namespace, x, y, unitId, this.combatState.round || 0, this.combatState.currentTurn || 0, this.dayCount || 0, this.timeHour || 0, purpose);
             },
             _enemyCallReinforcement(enemy) {
-                const temp = this._getSpeciesTemperament(enemy.species);
-                if (!temp.pack || enemy.CPun >= enemy.MPun * 0.5 || enemy.calledReinforcement || this._combatStateRoll('combat-reinforcement', enemy, 'call') >= 0.3) return false;
-                const sp = this.species.find(s => s.id === enemy.species) || { name: enemy.species || 'Creature', icon: enemy.icon || '❓' };
-                const base = this._getSpeciesBaseStats(enemy.species);
-                const enemyId = this._unitSelectionId(enemy);
-                const reinforcement = this._normalizeUnit({
-                    id: `reinforce_${enemyId}_${this.combatState.round || 0}_${this.combatState.currentTurn || 0}`,
-                    name: sp.name + ' Reinforcement',
-                    species: enemy.species,
-                    icon: sp.icon,
-                    level: enemy.level || 1,
-                    MPun: Math.floor((base.MPun || 100) * 0.8),
-                    CPun: Math.floor((base.MPun || 100) * 0.8),
-                    MPle: base.MPle || 100,
-                    CPle: 0,
-                    disposition: this.DISPOSITION.ENEMY,
-                    status: {}
-                }, { disposition: this.DISPOSITION.ENEMY });
-                enemy.calledReinforcement = true;
-                this.creatures.push(reinforcement);
-                this._assignCombatRows([reinforcement]);
-                const insertAt = Math.min(this.combatState.turnQueue.length, this.combatState.currentTurn + 1);
-                this.combatState.turnQueue.splice(insertAt, 0, { unit: reinforcement, initiative: this._calcInitiative(reinforcement) });
-                this.log.push({ text: this._label('combat.enemyReinforces', '{enemy} calls for help! {reinforcement} joins the fight.', {
-                    enemy: enemy.name,
-                    reinforcement: reinforcement.name
-                }), type: 'combat' });
-                this._syncCurrentTileCreatures();
-                this.renderCreatures();
-                return true;
+                return YAW_COMBAT_ENEMIES.callReinforcement(this, enemy);
             },
             _selectEnemyTarget(enemy, targets) {
-                const preyTargets = targets.filter(t => t.livestock || t.willingPrey || this._isPredatorOf(enemy.species, t.species));
-                if (preyTargets.length > 0) {
-                    return preyTargets.reduce((best, t) => (t.CPun / t.MPun < best.CPun / best.MPun) ? t : best, preyTargets[0]);
-                }
-                const tastyTargets = targets.filter(t => t.tasty);
-                if (tastyTargets.length > 0) {
-                    const index = Math.floor(this._combatStateRoll('combat-target-tasty', enemy, 'choice') * tastyTargets.length) % tastyTargets.length;
-                    return tastyTargets[index];
-                }
-                const leader = this.partyLeaderId ? this.party.find(p => this._unitSelectionId(p) === String(this.partyLeaderId)) : null;
-                if (leader && targets.includes(leader)) return leader;
-                return targets.reduce((weakest, t) => (t.CPun / t.MPun < weakest.CPun / weakest.MPun) ? t : weakest, targets[0]);
+                return YAW_COMBAT_ENEMIES.selectTarget(this, enemy, targets);
             },
             enemyTurn(enemy) {
-                const charmedTargets = this._charmedTargetsFor(enemy);
-                const targets = charmedTargets || this.party.filter(p => p.CPun > 0);
-                if (targets.length === 0) return;
-                const target = this._selectEnemyTarget(enemy, targets);
-                // Menacing enemies may scare weak targets
-                if (enemy.menacing && target.CPun / target.MPun < 0.4
-                    && this._combatStateRoll('combat-menacing-fear', enemy, this._unitSelectionId(target)) < 0.3) {
-                    this.log.push({ text: `${enemy.name} is terrifying! ${target.name} cowers in fear.`, type: 'combat' });
-                    target.status.frightened = true;
-                    this.renderLog();
-                }
-                // Rage at low HP
-                if (enemy.rage && enemy.CPun < enemy.MPun * 0.5) {
-                    this.log.push({ text: this._label('combat.enemyRage', '{name} enters a rage!', { name: enemy.name }), type: 'combat' });
-                }
-                this._enemyCallReinforcement(enemy);
-                if (this._enemyShouldFlee(enemy, targets)) {
-                    this.log.push({ text: this._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
-                    enemy.fledCombat = true;
-                    this._emitCombatAction('enemy_flee', enemy, null, 'fled');
-                    this._removeCreatureFromArea(enemy);
-                    this.renderCreatures();
-                    this.renderLog();
-                    if (this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0).length === 0) {
-                        this.endCombat('disengage');
-                    } else {
-                        this.nextTurn();
-                    }
-                    return;
-                }
-                if (!this._canReachCombatTarget(enemy, target, 'fight')) {
-                    this.log.push({ text: this._label('combat.enemyCannotReach', '{enemy} cannot reach {target}.', { enemy: enemy.name, target: target.name }), type: 'combat' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                if (this._terrainCausesMiss(enemy, target, 'fight')) {
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                // Flying/swimming/floopy dodge check
-                const isRanged = enemy.ranged || enemy.antiflying;
-                const targetDodge = target.flying && !isRanged && !enemy.ranged ? 0.5 : (target.swimming && !enemy.antiswimming ? 0.3 : (target.floopy ? 0.3 : 0));
-                if (this._targetDodgeRoll(enemy, target, 'fight') < targetDodge) {
-                    this.log.push({ text: `${target.name} dodges ${enemy.name}'s attack! (${target.flying ? 'flying' : target.swimming ? 'swimming' : 'floopy'})`, type: 'combat' });
-                    this.renderLog(); this.nextTurn(); return;
-                }
-                const ar = this._combatActionRating(enemy.Figh, enemy, target, 'enemy-fight') * (enemy.rage && enemy.CPun < enemy.MPun * 0.5 ? 1.5 : 1);
-                const def = this._effectiveCon(target);
-                const baseDmg = Math.max(1, ar - def * 0.3 + this._combatDamageVariance(enemy, target, 'enemy-fight'));
-                let dmg = Math.max(1, Math.floor(baseDmg * this._physicalDamageMultiplier(enemy, target)));
-                // Bloodsucker heals on hit
-                if (enemy.bloodsuck) { enemy.CPun = Math.min(enemy.MPun, enemy.CPun + Math.floor(dmg * 0.3)); }
-                target.CPun -= dmg;
-                this._wakeOnDamage(target);
-                this._applyAttackStatus(enemy, target, dmg);
-                // Poisonous/venom applies DOT
-                if (enemy.poisonous || enemy.venom) {
-                    target.status.poisoned = { dmg: 3, turns: 3 };
-                    this.log.push({ text: this._label('combat.status.poisoned', '{name} is poisoned!', { name: target.name }), type: 'combat' });
-                }
-                // Constrictor restrains small targets
-                if (enemy.constrictor && target.size <= 4 && !target.status.restrained) {
-                    target.status.restrained = { turns: 2, by: enemy.name };
-                    this.log.push({ text: this._label('combat.status.constricted', '{actor} constricts {target}! They are restrained.', {
-                        actor: enemy.name,
-                        target: target.name
-                    }), type: 'combat' });
-                }
-                // Enveloped by slime/plant
-                if (enemy.enveloped && target.size <= enemy.size + 2) {
-                    target.status.enveloped = { turns: 2, by: enemy.name };
-                    this.log.push({ text: this._label('combat.status.enveloped', '{actor} envelops {target}!', {
-                        actor: enemy.name,
-                        target: target.name
-                    }), type: 'combat' });
-                }
-                let result = `${enemy.name} hits ${target.name} for ${dmg} punishment!`;
-                if (enemy.bloodsuck) result += ` ${enemy.name} heals!`;
-                if (target.CPun <= 0) {
-                    result += ` ${target.name} falls!`;
-                    if (target.name === this.player.name) {
-                        if (this.cheats.godMode) {
-                            target.CPun = Math.max(1, target.CPun);
-                            this.log.push({ text: this._label('combat.godModeSaved', 'God Mode saved you from death!'), type: 'combat' });
-                            this.renderLog(); this.nextTurn(); return;
-                        }
-                        this.log.push({ text: this._label('combat.playerFallen', 'You have fallen! Game Over!'), type: 'combat' });
-                        this.renderLog();
-                        if (this.settings.hardcore) {
-                            this.log.push({ text: this._label('combat.hardcoreSaveDeleted', 'HARDCORE MODE: Your save has been deleted.'), type: 'combat' });
-                            this.renderLog();
-                            this._removeStoredValue('lastSlot');
-                            this._removeStoredValue('lastSaveTime');
-                            for (let i = 1; i <= 5; i++) {
-                                this._removeSaveTime('slot' + i);
-                            }
-                            this._dbDelete('saves', this.activeSlot).catch(() => {});
-                            setTimeout(() => { App.showScreen('menu'); }, 2000);
-                        } else {
-                            // Softcore: player is knocked out for this combat, party can continue.
-                            target.CPun = 0;
-                            target.CPle = 0;
-                            target.knockedOut = true;
-                            this.log.push({ text: this._label('combat.playerKnockedOut', 'You have been knocked out! Your party must finish the fight...'), type: 'combat' });
-                            this.renderLog(); this.renderParty();
-                            // If no other living party members, defeat
-                            const livingAllies = this.party.filter(p => p.CPun > 0 && !p.knockedOut && p.name !== this.player.name);
-                            if (livingAllies.length === 0) {
-                                this.log.push({ text: this._label('combat.partyWipedOut', 'Your party has been wiped out!'), type: 'combat' });
-                                this.renderLog();
-                                setTimeout(() => { App.showScreen('menu'); }, 2000);
-                                this.endCombat('defeat');
-                                return;
-                            }
-                            // Otherwise continue combat with player as KO'd
-                            this.log.push({ text: this._label('combat.alliesContinue', 'Your allies continue the fight...'), type: 'combat' });
-                            this.renderLog();
-                            this.nextTurn(); return;
-                        }
-	                        this.combatState.active = false;
-	                        return;
-	                    }
-	                    if (this._dropPartyCorpse(target, 'fight')) {
-	                        this.nextTurn();
-	                        return;
-	                    }
-	                }
-	                this.log.push({ text: result, type: 'combat' });
-                this._emitCombatAction('enemy_fight', enemy, target, result);
-                this.renderLog();
-                this.renderParty();
-                this.nextTurn();
+                return YAW_COMBAT_ENEMIES.takeTurn(this, enemy);
             },
 
             nextTurn() {

@@ -8626,38 +8626,13 @@
                 return !!(await this._syncLastSaveSlot());
             },
             _writeCombatRefreshSnapshot(slotName = this.activeSlot) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                if (!this.combatState?.active || !this.player || typeof Binary === 'undefined') return false;
-                try {
-                    this._prepareSaveSnapshot();
-                    const saveData = Binary.saveGame(this, { omitWorldMap: false });
-                    return YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName);
-                } catch (e) {
-                    console.warn('Combat refresh snapshot failed', e);
-                    return false;
-                }
+                return YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName);
             },
             _readCombatRefreshSnapshot(slotName = this.activeSlot) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                if (typeof Binary === 'undefined') return null;
-                try {
-                    const snapshot = YAW_STORAGE.readCombatRefreshSnapshot(this, slotName);
-                    if (!snapshot) return null;
-                    const loaded = Binary.loadGame(snapshot.saveData);
-                    if (!loaded?.questState?.combatState?.active) {
-                        this._clearCombatRefreshSnapshot(slotName);
-                        return null;
-                    }
-                    return snapshot;
-                } catch (e) {
-                    console.warn('Combat refresh snapshot load failed', e);
-                    this._clearCombatRefreshSnapshot(slotName);
-                    return null;
-                }
+                return YAW_COMBAT_SAVE_STATE.readRefreshSnapshot(this, slotName);
             },
             _clearCombatRefreshSnapshot(slotName = this.activeSlot) {
-                slotName = this._normalizeSaveSlotName(slotName);
-                try { YAW_STORAGE.clearCombatRefreshSnapshot(this, slotName); } catch (e) {}
+                return YAW_COMBAT_SAVE_STATE.clearRefreshSnapshot(this, slotName);
             },
             async autoSave() {
                 if (!this.player || this.screen !== 'game') return;
@@ -8949,27 +8924,7 @@
                 return true;
             },
             _resumeLoadedCombat() {
-                if (!this.combatState?.active) return false;
-                this._clearTransientInteractionState();
-                const entry = this.combatState.turnQueue?.[this.combatState.currentTurn];
-                const unit = entry?.unit;
-                if (!unit || unit.CPun <= 0 || unit.knockedOut || unit.fledCombat) {
-                    this.processTurn();
-                    return true;
-                }
-                this.activeActor = unit;
-                const isPartyTurn = unit === this.player || this.party.includes(unit);
-                this.renderCombatSceneForTurn(unit);
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
-                if (isPartyTurn) {
-                    this.showActorActions(unit);
-                } else {
-                    this.processTurn();
-                    this.autoSave();
-                }
-                return true;
+                return YAW_COMBAT_SAVE_STATE.resumeLoadedCombat(this);
             },
             async loadLastPlayed() {
                 const lastSlot = this._normalizeSaveSlotName(this._getStoredValue('lastSlot'), null);

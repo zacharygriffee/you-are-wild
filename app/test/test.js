@@ -150,6 +150,7 @@ const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mob
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const sceneShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'scene-shell.js'), 'utf8');
+const combatSaveStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-save-state.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
@@ -1351,8 +1352,8 @@ test('Storage helper module is registered before app code', () => {
   assertNotContains(storageSystemContent, 'deleteFrom(app.LEGACY_SAVE_DB_NAME)', 'Save deletes should not open the legacy FFF_Saves namespace');
   assertContains(moduleSystemContent, 'closeDatabase()', 'Module system should expose a way to close IndexedDB before destructive deletion');
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
-  assertContains(appContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(this, saveData, slotName)', 'App combat refresh write should delegate to storage helper with the requested slot');
-  assertContains(appContent, 'YAW_STORAGE.readCombatRefreshSnapshot(this, slotName)', 'App combat refresh read should delegate to storage helper');
+  assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Combat refresh writes should delegate to storage helper with the requested slot');
+  assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Combat refresh reads should delegate to storage helper');
 });
 
 test('Combat scene helper module is registered before app code', () => {
@@ -1378,6 +1379,26 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.update(this, title, description, inCombat)', 'App scene update wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.closeDetails(this)', 'App close-scene wrapper should delegate to the helper');
+});
+
+test('Combat save state helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-save-state.js'", 'Combat save state helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-save-state.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat save state helper should load before app.js');
+  assertContains(combatSaveStateContent, 'const YAW_COMBAT_SAVE_STATE = {', 'Combat save state helper should expose the combat save service');
+  assertContains(combatSaveStateContent, 'writeRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot writes');
+  assertContains(combatSaveStateContent, 'readRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot reads');
+  assertContains(combatSaveStateContent, 'clearRefreshSnapshot(app, slotName = app.activeSlot)', 'Combat save state helper should own refresh snapshot cleanup');
+  assertContains(combatSaveStateContent, 'resumeLoadedCombat(app)', 'Combat save state helper should own loaded combat resume');
+  assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Refresh writes should keep using active YAW storage helpers');
+  assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Refresh reads should keep using active YAW storage helpers');
+  assertContains(combatSaveStateContent, 'loaded?.questState?.combatState?.active', 'Refresh reads should reject non-combat snapshots');
+  assertContains(combatSaveStateContent, 'app._clearCombatRefreshSnapshot(slotName)', 'Invalid refresh snapshots should clean themselves up');
+  assertContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should restore actor actions through party cards');
+  assertContains(combatSaveStateContent, 'app.processTurn()', 'Loaded enemy turns should resume the combat loop');
+  assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName)', 'App refresh write wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.readRefreshSnapshot(this, slotName)', 'App refresh read wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.clearRefreshSnapshot(this, slotName)', 'App refresh clear wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.resumeLoadedCombat(this)', 'App loaded combat wrapper should delegate to the helper');
 });
 
 test('Unit selection helper module is registered before app code', () => {
@@ -2980,7 +3001,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${sceneShellContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

@@ -359,10 +359,7 @@
                 return actor === unit || this._unitSelectionId(actor) === this._unitSelectionId(unit);
             },
             _clearCenterActionsForCombat() {
-                const actions = document.getElementById('scene-actions');
-                if (!actions) return;
-                actions.innerHTML = '';
-                actions.classList?.remove('center-tile-actions');
+                return YAW_SCENE_SHELL.clearCenterActionsForCombat(this);
             },
             _combatActionButtons(actor, options = {}) {
                 return YAW_COMBAT_ACTIONS.actionButtons(this, actor, options);
@@ -7284,66 +7281,12 @@
 
             // ===== SCENE / LOG =====
             _setRichSceneContent(title, html) {
-                const titleEl = document.getElementById('scene-title');
-                const descEl = document.getElementById('scene-description');
-                const actions = document.getElementById('scene-actions');
-                if (titleEl) titleEl.textContent = title || '';
-                if (descEl) descEl.innerHTML = html || '';
-                if (actions) {
-                    actions.dataset.richHidden = 'true';
-                    actions.style.display = 'none';
-                }
-                const mobileTitle = document.getElementById('mobile-scene-title');
-                const mobileDesc = document.getElementById('mobile-scene-description');
-                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
-                if (mobileTitle) mobileTitle.textContent = title || '';
-                if (mobileDesc) mobileDesc.innerHTML = html || '';
-                if (mobileSheet) mobileSheet.classList.add('rich-content');
-                this.renderTileEvents();
+                return YAW_SCENE_SHELL.setRichContent(this, title, html);
             },
 
             updateScene(title, description, inCombat) {
-		                const titleEl = document.getElementById('scene-title');
-	                const descEl = document.getElementById('scene-description');
-	                if (titleEl) titleEl.textContent = title || '';
-	                if (descEl) {
-	                    descEl.innerHTML = '';
-	                    descEl.textContent = description || '';
-	                }
-	                const mobileTitle = document.getElementById('mobile-scene-title');
-	                const mobileDesc = document.getElementById('mobile-scene-description');
-	                const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
-	                if (mobileTitle) mobileTitle.textContent = title || '';
-	                if (mobileDesc) {
-	                    mobileDesc.innerHTML = '';
-	                    mobileDesc.textContent = description || '';
-	                }
-	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
-                    this.renderTileEvents();
-	                const actions = document.getElementById('scene-actions');
-	                if (actions?.dataset?.richHidden) {
-	                    delete actions.dataset.richHidden;
-	                    actions.style.display = '';
-	                }
-	                const mobileActions = document.getElementById('mobile-actions');
-		                const mobileCombat = document.getElementById('mobile-combat-actions');
-		                const mobileExplore = document.getElementById('mobile-explore-actions');
-	                if (inCombat) {
-                        this.renderCombatSceneForTurn(this.activeActor || this._currentCombatActor());
-	                    this._clearCenterActionsForCombat();
-                    if (mobileCombat) {
-                        mobileCombat.innerHTML = '';
-                        mobileCombat.style.display = 'none';
-                    }
-                    if (mobileActions) mobileActions.style.display = 'block';
-                    if (mobileExplore) mobileExplore.style.display = 'none';
-			                } else {
-			                    this.renderCenterTileActions();
-		                    if (mobileActions) mobileActions.style.display = 'block';
-		                    if (mobileCombat) mobileCombat.style.display = 'none';
-		                    if (mobileExplore) mobileExplore.style.display = 'flex';
-			                }
-			            },
+                return YAW_SCENE_SHELL.update(this, title, description, inCombat);
+            },
             renderCenterTileActions() {
                 return YAW_CENTER_CONTEXT.renderCenterActions(this);
             },
@@ -7354,32 +7297,7 @@
                 return YAW_CENTER_CONTEXT.showExplorationActions(this);
             },
             closeSceneDetails() {
-                try {
-                    if (this.combatState?.active) {
-                        const entry = this.combatState.turnQueue?.[this.combatState.currentTurn];
-                        const unit = entry?.unit;
-                        if (unit) {
-                            const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
-                            const actions = document.getElementById('scene-actions');
-                            if (mobileSheet) mobileSheet.classList.remove('rich-content');
-                            this.renderCombatSceneForTurn(unit);
-                            if (actions?.dataset?.richHidden) {
-                                delete actions.dataset.richHidden;
-                                actions.style.display = '';
-                            }
-                            if (unit === this.player || this.party.includes(unit)) {
-                                this.showActorActions(unit);
-                            } else if (actions) {
-                                actions.innerHTML = '';
-                            }
-                            return;
-                        }
-                    }
-                    this.showExplorationActions();
-                } catch (err) {
-                    this.updateScene(this._label('ui.exploration', 'Exploration'), this._label('ui.chooseAction', 'Choose your next action.'), false);
-                    this.renderExplorationActions();
-                }
+                return YAW_SCENE_SHELL.closeDetails(this);
             },
             _escapeHtml(value) {
                 return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));

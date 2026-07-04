@@ -149,6 +149,7 @@ const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-men
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const saveManagerContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'save-manager.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
+const sceneShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'scene-shell.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
@@ -1360,6 +1361,23 @@ test('Combat scene helper module is registered before app code', () => {
   assertContains(combatSceneContent, 'const YAW_COMBAT_SCENE = {', 'Combat scene helper should expose the combat scene service');
   assertContains(appContent, 'YAW_COMBAT_SCENE.renderForTurn(this, unit)', 'App combat scene wrapper should delegate rendering to the helper');
   assertContains(appContent, 'YAW_COMBAT_SCENE.sceneHtml(this, unit)', 'App combat scene HTML wrapper should delegate to the helper');
+});
+
+test('Scene shell helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/scene-shell.js'", 'Scene shell helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/scene-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Scene shell helper should load before app.js');
+  assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
+  assertContains(sceneShellContent, 'clearCenterActionsForCombat(app)', 'Scene shell helper should own combat center action clearing');
+  assertContains(sceneShellContent, 'setRichContent(app, title, html)', 'Scene shell helper should own rich scene display state');
+  assertContains(sceneShellContent, 'update(app, title, description, inCombat)', 'Scene shell helper should own desktop/mobile scene shell updates');
+  assertContains(sceneShellContent, 'closeDetails(app)', 'Scene shell helper should own scene detail closing behavior');
+  assertContains(sceneShellContent, 'app.renderCombatSceneForTurn(app.activeActor || app._currentCombatActor())', 'Combat scene updates should keep rendering the combat summary');
+  assertContains(sceneShellContent, 'this.clearCenterActionsForCombat(app)', 'Combat scene updates should keep center actions empty');
+  assertContains(sceneShellContent, 'app.renderCenterTileActions()', 'Exploration scene updates should restore center tile actions');
+  assertContains(appContent, 'YAW_SCENE_SHELL.clearCenterActionsForCombat(this)', 'App center-action clearing wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SCENE_SHELL.update(this, title, description, inCombat)', 'App scene update wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_SCENE_SHELL.closeDetails(this)', 'App close-scene wrapper should delegate to the helper');
 });
 
 test('Unit selection helper module is registered before app code', () => {
@@ -2962,7 +2980,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${sceneShellContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

@@ -46,6 +46,7 @@ const SCRIPT_ORDER = [
   'src/core/mobile-context-menu.js',
   'src/core/save-manager.js',
   'src/core/combat-scene.js',
+  'src/core/scene-shell.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',
   'src/core/module-system.js',

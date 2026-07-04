@@ -4800,66 +4800,11 @@
             },
 
             _renderExplorationTargetActions(source = 'sheet') {
-                const targets = this._getExplorationTargets();
-                if (targets.length === 0 || this.combatState.active) return '';
-                const actorState = this._selectedExplorationActorState();
-                const actors = actorState.valid ? actorState.actors : [];
-                const label = this._escapeHtml(this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
-                const actorNames = actorState.valid
-                    ? (actors.map(actor => actor.name).join(', ') || 'You')
-                    : this._label('target.invalidActorSummary', 'Select a living actor');
-                const targetNames = targets.map(target => target.name).join(', ');
-                const summary = {
-                    primaryActor: actorState.valid ? (actors[0] || this.player) : null,
-                    helperNames: actorState.valid ? actors.slice(1).map(actor => actor.name) : []
-                };
-                const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
-                const buttons = keys.map(key => {
-                    const title = this._escapeHtml(`${this._uiLabel(key)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`);
-                    const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' ? 'panel-tray' : 'target-bar');
-                    const defaultSubAction = this.SUB_ACTIONS[key] ? this._getDefaultSubAction(key) : null;
-                    const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
-                    const handler = defaultSubAction
-                        ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
-                        : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
-                    return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${this._actionIcon(key)}</span><span class="action-caption">${this._uiLabel(key)}</span></button>`;
-                }).join('');
-                const clearLabel = this._escapeHtml(this._t('target.clear'));
-                const clearTitle = this._escapeHtml(this._t('target.clearSelected'));
-                const primaryLine = summary.primaryActor ? `<span class="selected-target-primary">${this._escapeHtml(this._label('target.primaryActor', 'Primary'))}: ${this._escapeHtml(summary.primaryActor.name || 'You')}</span>` : '';
-                const helperLine = summary.helperNames?.length ? `<span class="selected-target-helpers">${this._escapeHtml(this._label('target.helpers', 'Helpers'))}: ${this._escapeHtml(summary.helperNames.join(', '))}</span>` : '';
-                const content = `<div class="action-legend selected-target-summary" aria-label="${this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${this._t('target.actors')}: ${this._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${this._t('target.targets')}: ${this._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
-                return source === 'panel-tray'
-                    ? `<div class="panel-interaction-tray adventure-interaction-tray">${content}</div>`
-                    : content;
+                return YAW_MARKED_TARGET_ACTIONS.render(this, source);
             },
 
             openExplorationTargetSubActionSheet(action, source = 'target-bar') {
-                const targets = this._getExplorationTargets();
-                if (targets.length === 0 || !this.SUB_ACTIONS[action]) return this.resolveExplorationTargetAction(action, null, source);
-                this.closeIntentMenu();
-                const actor = this._getExplorationActor();
-                const subActions = this._getAvailableSubActions(action, actor, targets[0]);
-                const commandSource = String(source || 'target-bar').replace(/'/g, "\\'");
-                const title = `${this._uiLabel(action)} ${this._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length })}`.trim();
-                const defaultSub = this._getDefaultSubAction(action);
-                const defaultLabel = this._getActionLabel(action, defaultSub);
-                const surface = this._intentMenuSurface(source);
-                let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${this._actionIcon(action)} ${this._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
-                html += `<button class="action-btn primary" role="menuitem" title="${this._escapeHtml(defaultLabel)}" aria-label="${this._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${this._escapeHtml(defaultLabel)}</button>`;
-                subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
-                    const label = this._escapeHtml(sub.label);
-                    const disabled = sub.available ? '' : ' disabled';
-                    const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
-                    html += `<button class="action-btn" role="menuitem" title="${label}${this._escapeHtml(settingHint)}" aria-label="${label}${this._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
-                });
-                const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
-                html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
-                html += '</div></div>';
-                document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById(surface.id);
-                this._activateFocusTrap(menu, { close: () => this.closeIntentMenu() });
-                this._activateOutsideContextDismiss(menu);
+                return YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source);
             },
 
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {

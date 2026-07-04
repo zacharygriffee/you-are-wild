@@ -143,6 +143,7 @@ const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inte
 const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
 const markedTargetActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marked-target-actions.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
+const unitStatsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-stats.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const combatRulesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-rules.js'), 'utf8');
 const combatStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-status.js'), 'utf8');
@@ -1527,6 +1528,19 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
+});
+
+test('Unit stats helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/unit-stats.js'", 'Unit stats helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/unit-stats.js'") < buildContent.indexOf("'src/core/unit-card-status.js'"), 'Unit stats helper should load before unit card status');
+  assert(buildContent.indexOf("'src/core/unit-stats.js'") < buildContent.indexOf("'src/core/stats-panel.js'"), 'Unit stats helper should load before stats panel rendering');
+  assert(buildContent.indexOf("'src/core/unit-stats.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit stats helper should load before app.js');
+  assertContains(unitStatsContent, 'const YAW_UNIT_STATS = {', 'Unit stats helper should expose the unit stats service');
+  assertContains(unitStatsContent, 'coreStats(unit)', 'Unit stats helper should own core stat normalization');
+  assertContains(unitStatsContent, 'displayStats(app, unit)', 'Unit stats helper should own display stat normalization');
+  assertContains(unitStatsContent, "app._getSpeciesBaseStats(source.species || 'human')", 'Display stats should use species base fallbacks');
+  assertContains(appContent, 'YAW_UNIT_STATS.coreStats(unit)', 'App core stats wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_UNIT_STATS.displayStats(this, unit)', 'App display stats wrapper should delegate to the helper');
 });
 
 test('Marked target action helper module is registered before app code', () => {
@@ -3593,7 +3607,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

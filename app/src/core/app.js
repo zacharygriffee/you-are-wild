@@ -8389,64 +8389,7 @@
             skipTutorial() { this.closeTutorial(); },
             continueLastGame() { return this.loadLastPlayed(); },
             executeCombatIntent(action, actor = this.activeActor || this._currentCombatActor()) {
-                if (!this.combatState.active) {
-                    this.log.push({ text: this._label('combat.notInCombat', 'Not in combat!'), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                if (this.combatState.processing) {
-                    this.log.push({ text: this._label('combat.waitForTurn', 'Wait for your turn!'), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                const currentEntry = this.combatState.turnQueue[this.combatState.currentTurn];
-                const current = currentEntry ? (currentEntry.unit || currentEntry) : null;
-                const isCurrentActor = current && actor && this._unitSelectionId(current) === this._unitSelectionId(actor);
-                const isControllable = current && this.party.includes(current) && (current.name === this.player?.name || current.obedient !== false);
-                if (!isCurrentActor || !isControllable) {
-                    this.log.push({ text: this._label('combat.notYourTurn', 'Not your turn!'), type: 'combat' });
-                    this.renderLog();
-                    return false;
-                }
-                this.activeActor = current;
-                if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast') {
-                    const currentActorId = this._unitSelectionId(current);
-                    if (this.targetSelection?.source === 'combat'
-                        && this.targetSelection.action === action
-                        && (!this.targetSelection.actorId || this.targetSelection.actorId === currentActorId || this.targetSelection.actorId === current.id || this.targetSelection.actorId === current.name)) {
-                        this.cancelTargetSelection();
-                        return true;
-                    }
-                    this.selectTarget(action);
-                    return true;
-                }
-                if (action === 'feed') {
-                    return this._dispatchPanelInteraction({
-                        mode: 'combat',
-                        actors: [current],
-                        targets: [],
-                        action: 'feed',
-                        source: 'panel-card',
-                        targetType: 'party'
-                    });
-                }
-                if (action === 'sync') {
-                    this.showSyncMenu();
-                    return true;
-                }
-                if (action === 'moveRow') {
-                    this.moveCombatRow();
-                    return true;
-                }
-                if (action === 'flee' && current.name === this.player?.name) {
-                    this.attemptFlee();
-                    return true;
-                }
-                if (action === 'skip') {
-                    this.nextTurn();
-                    return true;
-                }
-                return false;
+                return YAW_COMBAT_INTENTS.execute(this, action, actor);
             },
             combatAction(action) {
                 return this.executeCombatIntent(action, this.activeActor || this.player);

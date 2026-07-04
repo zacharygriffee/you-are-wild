@@ -467,6 +467,7 @@ const MODULE_SYSTEM = {
     
     // Execute hooks
     async executeHook(event, ...args) {
+        this._assertKnownHookEvent(event);
         const hooks = [...(this.hooks[event] || [])];
         for (const hook of hooks) {
             try {

@@ -846,6 +846,29 @@ asyncTest('Module hooks are owned by module ID and removed on disable before rel
   const secondPayload = { calls: [] };
   await MODULE_SYSTEM.executeHook('onTick', secondPayload);
   assertEqual(secondPayload.calls.join(','), 'hook-module', 'Reloaded module hook should still execute once');
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.executeHook('onMissingHook', { calls: [] });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'Unknown module hook event', 'Unknown hook execution should report the invalid event');
+  }
+  assertEqual(rejected, true, 'Unknown hook execution should reject instead of silently succeeding');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'throwing-hook-module', name: 'Throwing Hook Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => { payload.calls.push('before-throw'); throw new Error('hook failed'); }, 20);"
+  });
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'later-hook-module', name: 'Later Hook Module', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('after-throw'), 0);"
+  });
+  await MODULE_SYSTEM.setModuleEnabled('throwing-hook-module', true);
+  await MODULE_SYSTEM.setModuleEnabled('later-hook-module', true);
+  const resilientPayload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', resilientPayload);
+  assertEqual(resilientPayload.calls.join(','), 'before-throw,hook-module,after-throw', 'Hook execution should continue after one owned hook throws');
 });
 
 asyncTest('Module hook registration rejects unknown events and invalid priorities', async () => {

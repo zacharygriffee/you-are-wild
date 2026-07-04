@@ -455,6 +455,101 @@ async function runSelectionSemanticsFlow(page) {
   assert.strictEqual(state.hasAdventureMark, false, 'Combat target picking should not render adventure Mark controls');
 }
 
+async function runMobileSelectionAndCombatFlow(page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupAdventure(page);
+
+  let state = await page.evaluate(() => ({
+    mobileSurfaceVisible: getComputedStyle(document.querySelector('#mobile-play-surface')).display !== 'none',
+    partyChipCount: document.querySelectorAll('#mobile-party-strip .mobile-unit-chip').length,
+    creatureChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip').length,
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.mobileSurfaceVisible, true, 'Mobile play surface should be visible at mobile viewport');
+  assert.strictEqual(state.partyChipCount, 2, 'Mobile party strip should render player and ally chips');
+  assert.strictEqual(state.creatureChipCount, 1, 'Mobile creature strip should render the area creature chip');
+  assert.strictEqual(state.centerHasActorControls, false, 'Center tile should not expose actor controls at mobile viewport');
+
+  await page.locator(`#mobile-party-strip button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
+  await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+  const mobileTray = page.locator('#mobile-party-strip .panel-interaction-tray').first();
+  await assert.doesNotReject(() => mobileTray.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray should render above party chips');
+
+  state = await page.evaluate(() => {
+    const trayEl = document.querySelector('#mobile-party-strip .panel-interaction-tray');
+    const partyStrip = document.querySelector('#mobile-party-strip');
+    const allyChip = Array.from(document.querySelectorAll('#mobile-party-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Ally'));
+    const creatureChip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
+    return {
+      isFirstChild: partyStrip?.firstElementChild === trayEl,
+      actors: App._getExplorationActors().map(unit => unit.id || unit.name),
+      targets: [...App.explorationTargetIds],
+      allySelectedActor: allyChip?.classList.contains('selected-actor') || false,
+      creatureSelectedTarget: creatureChip?.classList.contains('selected-target') || false,
+      hasPanelSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','panel-tray')") || false,
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.isFirstChild, true, 'Mobile marked-target tray should sit above party chips');
+  assert.deepStrictEqual(state.actors, ['ally-1'], 'Mobile Act should select the ally as the adventure actor');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Mobile Mark should select the creature as an adventure target');
+  assert.strictEqual(state.allySelectedActor, true, 'Mobile Act-selected chip should expose actor state');
+  assert.strictEqual(state.creatureSelectedTarget, true, 'Mobile marked creature chip should expose target state');
+  assert.strictEqual(state.hasPanelSource, true, 'Mobile tray should dispatch through the shared panel-tray command source');
+  assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls while mobile target tray is active');
+
+  await page.locator(`#mobile-party-strip .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  state = await page.evaluate(() => ({
+    targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
+    targetsRemaining: App.explorationTargetIds.length,
+    commandSource: App.lastIntentCommand?.source || '',
+    trayVisible: Boolean(document.querySelector('#mobile-party-strip .panel-interaction-tray')),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(state.targetPle > 0, 'Mobile panel-tray action should resolve against the marked creature');
+  assert.strictEqual(state.targetsRemaining, 0, 'Mobile marked-target action should clear target marks');
+  assert.strictEqual(state.commandSource, 'panel-tray', 'Mobile marked-target action should preserve shared command source metadata');
+  assert.strictEqual(state.trayVisible, false, 'Mobile marked-target tray should disappear after resolution');
+  assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile resolution');
+
+  await setupCombat(page);
+  await page.locator(`#mobile-party-strip button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  const mobilePick = page.locator('#mobile-creature-strip button[data-selection-mode="combat-pick"]').first();
+  await assert.doesNotReject(() => mobilePick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat pick should render in creature strip');
+  state = await page.evaluate(() => {
+    const pick = document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]');
+    const enemyChip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
+    return {
+      combatActive: document.querySelector('#mobile-play-surface')?.classList.contains('combat-active') || false,
+      targetSelection: App.targetSelection?.action || null,
+      pickControl: pick?.getAttribute('data-selection-control') || '',
+      pickState: pick?.getAttribute('data-selection-state') || '',
+      enemySelectedTarget: enemyChip?.classList.contains('selected-target') || false,
+      hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'")
+    };
+  });
+  assert.strictEqual(state.combatActive, true, 'Mobile play surface should switch into combat layout');
+  assert.strictEqual(state.targetSelection, 'fight', 'Mobile combat Fight should enter target-pick state');
+  assert.strictEqual(state.pickControl, 'combat-target', 'Mobile combat pick should use combat-target semantics');
+  assert.strictEqual(state.pickState, 'pickable', 'Mobile combat pick should expose pickable state');
+  assert.strictEqual(state.enemySelectedTarget, true, 'Mobile combat pickable enemy should expose selected-target state');
+  assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat target picking should not render adventure Mark controls');
+
+  await mobilePick.click();
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(state.enemyPun < 100, 'Mobile combat pick should resolve the selected fight target');
+  assert.strictEqual(state.targetSelection, null, 'Mobile combat pick should clear target selection after resolving');
+  assert.strictEqual(state.commandSource, 'panel-card', 'Mobile combat pick should preserve panel-card command source metadata');
+  assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile combat resolution');
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runClearAllBrowserStorageFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
@@ -515,6 +610,7 @@ async function runClearAllBrowserStorageFlow(page) {
     await runReachabilityMatrix(page);
     await runAdventureMarkedTargetFlow(page);
     await runSelectionSemanticsFlow(page);
+    await runMobileSelectionAndCombatFlow(page);
     await runClearAllBrowserStorageFlow(page);
     await page.close();
   } finally {

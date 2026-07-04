@@ -6837,6 +6837,35 @@ test('Sparse map tile delta records round-trip through store shape', () => {
   assertEqual(App.exploredTiles.has('-2,7'), true, 'Stored explored delta should repopulate explored set');
 });
 
+test('Sparse map store skips malformed tile delta records', () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-store-safe', seed: 'store-safe-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App._applyTileDeltaRecords([
+    null,
+    { worldId: 'other-world', x: 0, y: 0, delta: { explored: true, description: 'wrong world' } },
+    { worldId: 'world-store-safe', x: 'bad', y: 0, delta: { explored: true, description: 'bad x' } },
+    { worldId: 'world-store-safe', x: 1, y: NaN, delta: { explored: true, description: 'bad y' } },
+    { worldId: 'world-store-safe', x: 2.5, y: 0, delta: { explored: true, description: 'fractional x' } },
+    { worldId: 'world-store-safe', x: 3, y: 0, delta: 'not object' },
+    { worldId: 'world-store-safe', x: 4, y: 0, delta: [] },
+    { worldId: 'world-store-safe', x: 5, y: 0, delta: {} },
+    { worldId: 'world-store-safe', x: -3, y: 4, delta: { explored: true, description: 'Valid stored tile.', creatures: 'bad creatures', items: 'bad items' } }
+  ]);
+  assertEqual(App.worldMap.size, 1, 'Malformed records should not materialize world tiles');
+  assertEqual(App.tileDeltas.size, 1, 'Malformed records should not populate tile delta state');
+  assertEqual(App.worldMap.has('NaN,0'), false, 'Malformed coordinates should not create NaN map keys');
+  assertEqual(App.worldMap.has('2.5,0'), false, 'Fractional coordinates should not create invalid map keys');
+  const restored = App.worldMap.get('-3,4');
+  assert(restored, 'Valid sparse record should still restore');
+  assertEqual(restored.description, 'Valid stored tile.', 'Valid sparse record should preserve description');
+  assertEqual(Array.isArray(restored.creatures), true, 'Malformed creature payload should normalize to an array');
+  assertEqual(Array.isArray(restored.items), true, 'Malformed item payload should normalize to an array');
+  assertEqual(App.exploredTiles.has('-3,4'), true, 'Valid explored sparse record should repopulate explored set');
+});
+
 test('Large map renders discovered tiles without materializing unknown tiles', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.worldMeta = { worldId: 'world-large-map', seed: 'large-map-seed', generatorVersion: 1, mapModsHash: 'core' };

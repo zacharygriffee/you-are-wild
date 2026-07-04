@@ -2294,13 +2294,25 @@
                     updatedAt: Date.now()
                 };
             },
+            _normalizeTileDeltaRecord(record) {
+                if (!record || record.worldId !== this.worldMeta?.worldId) return null;
+                const x = Number(record.x);
+                const y = Number(record.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y) || Math.floor(x) !== x || Math.floor(y) !== y) return null;
+                const delta = record.delta;
+                if (!delta || typeof delta !== 'object' || Array.isArray(delta)) return null;
+                const cloned = this._cloneTileValue(delta);
+                if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned) || Object.keys(cloned).length === 0) return null;
+                return { x, y, delta: cloned };
+            },
             _applyTileDeltaRecords(records = []) {
                 if (!this.tileDeltas) this.tileDeltas = new Map();
                 for (const record of records) {
-                    if (!record || record.worldId !== this.worldMeta?.worldId) continue;
-                    const key = this._tileKey(record.x, record.y);
-                    this.tileDeltas.set(key, this._cloneTileValue(record.delta || {}));
-                    const effective = this.applyTileDelta(this.getBaseTile(record.x, record.y), record.delta || {});
+                    const normalized = this._normalizeTileDeltaRecord(record);
+                    if (!normalized) continue;
+                    const key = this._tileKey(normalized.x, normalized.y);
+                    this.tileDeltas.set(key, normalized.delta);
+                    const effective = this.applyTileDelta(this.getBaseTile(normalized.x, normalized.y), normalized.delta);
                     this.worldMap.set(key, effective);
                     if (effective.explored) this.exploredTiles.add(key);
                 }

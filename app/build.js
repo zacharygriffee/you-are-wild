@@ -20,6 +20,7 @@ const SCRIPT_ORDER = [
   'src/core/world-generation.js',
   'src/core/asset-manifest.js',
   'src/core/storage-system.js',
+  'src/core/world-state.js',
   'src/core/world-store.js',
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',

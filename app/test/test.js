@@ -320,7 +320,10 @@ asyncTest('Module system persists modules and settings through IndexedDB request
       gameVersion: 'v0.10.0'
     },
     code: '',
-    assets: {}
+    assets: {
+      preview: { type: 'image', path: 'assets/preview.png' },
+      'tileset:terrain-forest': { type: 'tile', path: 'tiles/forest.png' }
+    }
   });
   assertEqual(installed.id, 'test-module', 'Installed module should return normalized module data');
   assertEqual(installed.manifest.contentRating, 'safe', 'Installed module should default to safe content rating');
@@ -332,6 +335,27 @@ asyncTest('Module system persists modules and settings through IndexedDB request
   const modules = await MODULE_SYSTEM.getAllModules();
   assertEqual(modules.length, 1, 'Installed module should be returned by getAllModules');
   assertEqual(modules[0].enabled, false, 'Installed module should start disabled');
+  assertEqual(fakeDb.data.assets.size, 2, 'Installed module assets should be written as module-owned asset records');
+  const previewAsset = fakeDb.data.assets.get('test-module:preview');
+  assertEqual(previewAsset.moduleId, 'test-module', 'Stored asset record should retain owning module id');
+  assertEqual(previewAsset.key, 'preview', 'Stored asset record should retain normalized asset key');
+  assertEqual(previewAsset.value.path, 'assets/preview.png', 'Stored asset record should retain serializable asset metadata');
+  assertEqual(fakeDb.data.assets.get('test-module:tileset:terrain-forest').value.path, 'tiles/forest.png', 'Asset keys should support token namespaces');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: {
+      id: 'test-module',
+      name: 'Test Module Replacement',
+      version: '1.1.0'
+    },
+    code: '',
+    assets: {
+      preview: { type: 'image', path: 'assets/replacement-preview.png' }
+    }
+  });
+  assertEqual(fakeDb.data.assets.size, 1, 'Reinstall should replace stale module asset records');
+  assertEqual(fakeDb.data.assets.get('test-module:preview').value.path, 'assets/replacement-preview.png', 'Reinstall should write replacement asset metadata');
+  assertEqual(fakeDb.data.assets.has('test-module:tileset:terrain-forest'), false, 'Reinstall should remove asset records no longer present in the package');
 
   await MODULE_SYSTEM.setModuleSetting('test-module', 'volume', 7);
   assertEqual(await MODULE_SYSTEM.getModuleSetting('test-module', 'volume', 0), 7, 'Module setting should round-trip through IndexedDB');
@@ -363,6 +387,7 @@ asyncTest('Module system persists modules and settings through IndexedDB request
 
   await MODULE_SYSTEM.deleteModule('test-module');
   assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Deleted module should be removed from storage');
+  assertEqual(fakeDb.data.assets.size, 0, 'Deleting a module should remove its asset records');
   assertEqual(await MODULE_SYSTEM.getModuleSetting('test-module', 'volume', 'missing'), 'missing', 'Deleting a module should remove its settings');
 });
 
@@ -422,6 +447,20 @@ asyncTest('Module system rejects malformed manifests before storage', async () =
   }
   assertEqual(rejected, true, 'Non-serializable module assets should reject before install');
   assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Rejected asset package should not be stored');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'bad-asset-key', name: 'Bad Asset Key', version: '1.0.0' },
+      code: '',
+      assets: { 'bad asset key': { path: 'asset.png' } }
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'asset keys', 'Invalid asset keys should report asset key validation');
+  }
+  assertEqual(rejected, true, 'Invalid module asset keys should reject before install');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 0, 'Rejected asset-key package should not be stored');
 
   rejected = false;
   try {

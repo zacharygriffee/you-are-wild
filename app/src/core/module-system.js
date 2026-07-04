@@ -178,7 +178,40 @@ const MODULE_SYSTEM = {
             throw new Error('Module assets must be a serializable object');
         }
         this._assertSerializableData(assets, 'Module assets');
-        return JSON.parse(JSON.stringify(assets));
+        const copied = JSON.parse(JSON.stringify(assets));
+        const normalized = {};
+        for (const [key, value] of Object.entries(copied)) {
+            const assetKey = this._normalizeAssetKey(key);
+            if (Object.prototype.hasOwnProperty.call(normalized, assetKey)) {
+                throw new Error(`Duplicate module asset key: ${assetKey}`);
+            }
+            normalized[assetKey] = value;
+        }
+        return normalized;
+    },
+
+    _normalizeAssetKey(key) {
+        const normalized = String(key || '').trim();
+        if (!normalized || !/^[a-zA-Z0-9_.:-]+$/.test(normalized)) {
+            throw new Error('Module asset keys must use letters, numbers, underscores, hyphens, dots, or colons');
+        }
+        return normalized;
+    },
+
+    _assetRecordId(moduleId, key) {
+        return `${moduleId}:${key}`;
+    },
+
+    _assetRecordsForModule(moduleId, assets = {}) {
+        return Object.entries(assets).map(([key, value]) => {
+            const assetKey = this._normalizeAssetKey(key);
+            return {
+                id: this._assetRecordId(moduleId, assetKey),
+                moduleId,
+                key: assetKey,
+                value: JSON.parse(JSON.stringify(value))
+            };
+        });
     },
 
     _normalizeSettingKey(key) {
@@ -391,10 +424,18 @@ const MODULE_SYSTEM = {
         };
         
         const db = this._requireDb();
-        const tx = db.transaction(['modules'], 'readwrite');
+        const tx = db.transaction(['modules', 'assets'], 'readwrite');
         const store = tx.objectStore('modules');
+        const assetStore = tx.objectStore('assets');
         const previous = await this._request(store.get(module.id));
         await this._assertNoDependencyCycle(module.id, module.manifest.dependencies, store);
+        const previousAssets = await this._request(assetStore.index('moduleId').getAll(module.id));
+        for (const asset of previousAssets) {
+            await this._request(assetStore.delete(asset.id));
+        }
+        for (const asset of this._assetRecordsForModule(module.id, module.assets)) {
+            await this._request(assetStore.put(asset));
+        }
         await this._request(store.put(module));
         await this._transactionDone(tx);
 

@@ -4419,6 +4419,51 @@ test('Species canon gates baseline social and recruit eligibility', () => {
   assertNotContains(body.innerHTML, 'aria-label="Recruit Wolf"', 'Animal metadata should hide recruitment');
 });
 
+test('Default encounter species canon stays person-like for sensitive interactions', () => {
+  const { App } = loadAppForCombat();
+  const knownSpeciesIds = new Set(App.species.map(species => species.id));
+  const referencedSpeciesIds = new Set();
+
+  Object.values(App.biomes).forEach(biome => {
+    [...(biome.encounterTable || []), ...(biome.friendlyTable || [])].forEach(entry => {
+      if (entry?.id) referencedSpeciesIds.add(entry.id);
+    });
+  });
+
+  referencedSpeciesIds.forEach(id => {
+    assert(knownSpeciesIds.has(id), `Encounter table species ${id} should be in the default species registry`);
+  });
+
+  App.species.forEach(species => {
+    const unit = App._normalizeUnit(makeUnit(species.name || species.id, {
+      id: `canon-${species.id}`,
+      species: species.id
+    }));
+    const personLike = unit.baselineInteraction === 'sapient'
+      || unit.sapience === 'person'
+      || unit.sapience === 'spirit'
+      || (unit.speciesTraits || []).includes('person');
+
+    assert(unit.modOnlyAnimal !== true, `Default species ${species.id} should not be marked mod-only animal`);
+    assert(unit.sapience !== 'animal', `Default species ${species.id} should not use animal sapience`);
+    assert(unit.bodyPlan !== 'animal', `Default species ${species.id} should not use animal bodyPlan`);
+    assert(personLike, `Default species ${species.id} should resolve person-like canon metadata`);
+    assertEqual(App._hasBaselineInteractionEligibility(unit, 'sensitiveSocial'), true, `Default species ${species.id} should keep sensitive social eligibility only through person-like canon`);
+  });
+
+  const plainAnimal = App._normalizeUnit(makeUnit('Plain Wolf', {
+    id: 'plain-wolf',
+    species: 'plain_wolf',
+    sapience: 'animal',
+    bodyPlan: 'animal',
+    baselineInteraction: 'animal',
+    modOnlyAnimal: true,
+    interactionEligibility: { sensitiveSocial: true, recruit: true }
+  }));
+
+  assertEqual(App._hasBaselineInteractionEligibility(plainAnimal, 'sensitiveSocial'), false, 'Explicit animal metadata should block sensitive social eligibility even when a mod requests it');
+});
+
 test('Desktop action bars do not duplicate large buttons with tiny legends', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You');

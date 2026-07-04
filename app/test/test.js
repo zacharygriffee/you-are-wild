@@ -4978,10 +4978,10 @@ test('Species canon gates baseline social and recruit eligibility', () => {
   assertEqual(App._hasBaselineInteractionEligibility(animal, 'sensitiveSocial'), false, 'Animal metadata should block baseline social eligibility');
   assertEqual(App._canRecruit(player, folk), true, 'Sapient folk canon should allow high-score recruitment');
   assertEqual(App._canRecruit(player, animal), false, 'Animal metadata should block recruitment even with high score');
-  App.showIntentMenu('creature', 'animal-1');
-  assertContains(body.innerHTML, 'aria-label="Fight Wolf"', 'Animal metadata should not block general creature actions');
-  assertNotContains(body.innerHTML, 'aria-label="Flirt Wolf"', 'Animal metadata should hide baseline social actions');
-  assertNotContains(body.innerHTML, 'aria-label="Recruit Wolf"', 'Animal metadata should hide recruitment');
+  assertEqual(App.showIntentMenu('creature', 'animal-1'), false, 'Living creature intent menus should not duplicate marked-target panel actions');
+  assertNotContains(body.innerHTML, 'aria-label="Fight Wolf"', 'Living creature menu suppression should remove general action duplication');
+  assertNotContains(body.innerHTML, 'aria-label="Flirt Wolf"', 'Animal metadata should not leak social actions through a duplicate menu');
+  assertNotContains(body.innerHTML, 'aria-label="Recruit Wolf"', 'Animal metadata should not leak recruitment through a duplicate menu');
 });
 
 test('Default encounter species canon stays person-like for sensitive interactions', () => {
@@ -6287,11 +6287,9 @@ test('Desktop creature card action labels localize', () => {
   assertContains(html, '>📜 Aceptar mision<', 'Quest visible label should localize');
   assertContains(html, 'aria-label="Comerciar con Merchant"', 'Merchant trade action should localize accessible label');
   assertContains(html, '>🪙 Comerciar<', 'Merchant trade visible label should localize');
-  App.showIntentMenu('creature', 'friendly-1');
-  assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Creature action menu should localize fight accessible label');
-  assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Creature action menu should localize pleasure accessible label');
-  assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Creature action menu should localize inspect accessible label');
-  App.closeIntentMenu();
+  assertEqual(App.showIntentMenu('creature', 'friendly-1'), false, 'Living creature action menu should stay suppressed in favor of marked-target actions');
+  assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed creature menu should not duplicate primary actions');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed creature menu should not open a mobile context menu');
 });
 
 test('Exploration target summary escapes actor and target names', () => {
@@ -8846,12 +8844,9 @@ test('Desktop party card management labels localize', () => {
   assertContains(html, 'aria-label="Despedir a Ally B"', 'Dismiss control should expose localized accessible label');
   assertContains(html, '>Despedir<', 'Dismiss visible label should localize');
   App.selectExplorationActor(1);
-  App.showIntentMenu('party', 2);
-  assertContains(body.innerHTML, 'aria-label="Luchar Ally B"', 'Party action menu should localize fight accessible label');
-  assertContains(body.innerHTML, 'aria-label="Seducir Ally B"', 'Party action menu should localize pleasure accessible label');
-  assertContains(body.innerHTML, 'aria-label="Inspeccionar Ally B"', 'Party action menu should localize inspect accessible label');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',2,'fight','sheet')", 'Party action menu should open sub-action sheet for registered primary actions');
-  App.closeIntentMenu();
+  assertEqual(App.showIntentMenu('party', 2), false, 'Party action menu should stay suppressed in favor of actor and target selection controls');
+  assertNotContains(body.innerHTML, 'aria-label="Luchar Ally B"', 'Suppressed party menu should not duplicate primary actions');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed party menu should not open a context menu');
 });
 
 test('Desktop creature card status and detail labels localize', () => {
@@ -11173,8 +11168,8 @@ test('Mobile context menus dismiss on outside pointer only', () => {
   document.activeElement = opener;
   App.player = makeUnit('You');
   App.party = [App.player];
-  App.creatures = [makeUnit('Friendly', { id: 'friendly-outside', disposition: App.DISPOSITION.FRIENDLY })];
-  App.showIntentMenu('creature', 'friendly-outside');
+  App.creatures = [makeUnit('Remains', { id: 'corpse-outside', disposition: App.DISPOSITION.CORPSE, CPun: 0 })];
+  App.showIntentMenu('creature', 'corpse-outside');
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Mobile context dialog should reference its visible title');
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Mobile context dialog title should be addressable');
   const menu = elements.get('mobile-context-menu');
@@ -11729,11 +11724,9 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertNotContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile creature chip should not show primary action spam by default');
   assertContains(creatureHtml, 'aria-label="Reclutar Friendly"', 'Mobile recruit icon should expose localized accessible label');
   assertContains(creatureHtml, 'aria-label="Aceptar mision Friendly"', 'Mobile quest icon should expose localized accessible label');
-  App.showIntentMenu('creature', 'friendly-1');
-  assertContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Mobile intent menu should localize fight accessible label');
-  assertContains(body.innerHTML, 'aria-label="Seducir Friendly"', 'Mobile intent menu should localize pleasure accessible label');
-  assertContains(body.innerHTML, 'aria-label="Inspeccionar Friendly"', 'Mobile intent menu should localize inspect accessible label');
-  App.closeIntentMenu();
+  assertEqual(App.showIntentMenu('creature', 'friendly-1'), false, 'Living mobile creature menus should stay suppressed in favor of target marking');
+  assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed mobile creature menu should not duplicate primary actions');
+  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed mobile creature menu should not open a context menu');
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
   assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
   assertContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile trade icon should expose localized accessible label');
@@ -11745,10 +11738,11 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });
   const ally = makeUnit('Ally', { id: 'ally-desktop' });
   const friendly = makeUnit('Friendly', { id: 'friendly-desktop', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, willing: true });
+  const remains = makeUnit('Remains', { id: 'remains-desktop', disposition: App.DISPOSITION.CORPSE, CPun: 0 });
   document.activeElement = opener;
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [friendly];
+  App.creatures = [friendly, remains];
 
   const partyHtml = App.renderUnitCard(ally, 1, 'party');
   assertNotContains(partyHtml, 'aria-controls="desktop-intent-menu"', 'Desktop party card should not expose a duplicate visible desktop intent menu');
@@ -11757,15 +11751,17 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertNotContains(creatureHtml, 'aria-controls="desktop-intent-menu"', 'Living creature card should not expose a duplicate visible desktop intent menu');
   assertNotContains(creatureHtml, "App.showIntentMenu('creature','friendly-desktop','desktop')", 'Living creature card should use marking/inspect instead of visible desktop intent source');
 
-  App.showIntentMenu('party', 1, 'desktop');
-  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop party intent menu should still use the desktop-specific dialog when invoked directly');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('party',1,'fight','desktop')", 'Desktop party primary actions should keep the desktop source when invoked directly');
+  assertEqual(App.showIntentMenu('party', 1, 'desktop'), false, 'Desktop party intent menu should stay suppressed in favor of actor and target controls');
+  assertNotContains(body.innerHTML, 'id="desktop-intent-menu"', 'Suppressed desktop party intent should not render a duplicate dialog');
+  assertEqual(App.showIntentMenu('creature', 'friendly-desktop', 'desktop'), false, 'Desktop living creature intent menu should stay suppressed in favor of marked-target controls');
+  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Suppressed living creature intent should not expose primary action popups');
 
-  App.showIntentMenu('creature', 'friendly-desktop', 'desktop');
+  App.showIntentMenu('creature', 'remains-desktop', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');
   assertContains(body.innerHTML, 'class="desktop-intent-menu intent-menu intent-menu-desktop"', 'Desktop intent menu should use desktop-specific classes');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop intent menu should not reuse the mobile bottom-sheet id');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Desktop primary actions should keep the desktop source');
+  assertContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop')", 'Desktop corpse menu should keep contextual utility actions');
+  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','remains-desktop','fight','desktop')", 'Desktop corpse menu should not expose living primary actions');
   assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop intent menu should use the shared intent close handler');
   assertNotContains(body.innerHTML, 'App.closeMobileContextMenu()', 'Desktop intent menu should not emit the mobile-specific close handler');
   assert(App._mobileContextOutsideHandler, 'Desktop intent menu should register outside pointer dismissal');
@@ -11780,11 +11776,7 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(opener.focused, true, 'Outside dismissal should restore focus to the desktop opener');
 
   document.activeElement = opener;
-  App.showIntentMenu('creature', 'friendly-desktop', 'desktop');
-  App.openIntentSubActionSheet('creature', 'friendly-desktop', 'fight', 'desktop');
-  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop sub-action picker should remain on the desktop surface');
-  assertContains(body.innerHTML, "App.selectIntent('creature','friendly-desktop','fight','desktop','attack')", 'Desktop sub-action selection should dispatch through shared intent selection');
-  assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop sub-action picker should use the shared intent close handler');
+  App.showIntentMenu('creature', 'remains-desktop', 'desktop');
   assertContains(appContent, 'closeMobileContextMenu() {\n                return this.closeIntentMenu();', 'Legacy mobile context close method should delegate to the shared intent close handler');
   assert(App._focusTrap, 'Desktop intent menus should activate the shared focus trap');
   assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');
@@ -11794,9 +11786,9 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(prevented, true, 'Escape should be consumed by the desktop intent focus trap');
   assertEqual(desktopMenu.removed, true, 'Escape should close the desktop intent menu');
   assertEqual(opener.focused, true, 'Closing desktop intent menu should restore focus to the opener');
-  App.selectIntent('creature', 'friendly-desktop', 'fight', 'desktop', 'attack');
+  App.selectIntent('creature', 'remains-desktop', 'loot', 'desktop');
   assertEqual(App.lastIntentCommand.source, 'desktop', 'Desktop menu selection should record its command source');
-  assertEqual(App.lastIntentCommand.subAction, 'attack', 'Desktop menu selection should record the chosen sub-action');
+  assertEqual(App.lastIntentCommand.action, 'loot', 'Desktop menu selection should record contextual utility action');
 });
 
 test('Desktop marked-target actions stay bounded and dispatch default actions directly', () => {
@@ -11984,26 +11976,25 @@ test('Mobile creature context actions route through shared intent dispatch', () 
   assertEqual(App.mobileCreatureContextAction('close', 'inspect-mobile-context'), false, 'Mobile creature context close should remain a canceled action');
 });
 
-test('Radial intent menu remains an accelerator over shared dispatch', () => {
+test('Radial intent menu remains a corpse utility accelerator over shared dispatch', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });
   const enemy = makeUnit('Enemy', { id: 'enemy-radial', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
+  const remains = makeUnit('Remains', { id: 'corpse-radial', disposition: App.DISPOSITION.CORPSE, CPun: 0 });
   App.player = player;
   App.party = [player];
-  App.creatures = [enemy];
-  App.showRadialIntentMenu('creature', 'enemy-radial');
+  App.creatures = [enemy, remains];
+  assertEqual(App.showRadialIntentMenu('creature', 'enemy-radial'), false, 'Radial living creature menus should stay suppressed in favor of marked-target actions');
+  assertNotContains(body.innerHTML, 'intent-menu-radial', 'Suppressed living radial menu should not render duplicate primary actions');
+  App.showRadialIntentMenu('creature', 'corpse-radial');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Radial helper should use its visible title as dialog label');
-  assertContains(body.innerHTML, "App.openIntentSubActionSheet('creature','enemy-radial','fight','radial')", 'Radial primary actions should still route through the shared sub-action sheet');
-  App.openIntentSubActionSheet('creature', 'enemy-radial', 'fight', 'radial');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Radial sub-action sheet should preserve radial presentation');
-  assertContains(body.innerHTML, "App.showIntentMenu('creature','enemy-radial','radial','radial')", 'Radial sub-action Back should restore the radial menu presentation');
-  App.showIntentMenu('creature', 'enemy-radial', 'radial', 'radial');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Back from radial sub-actions should return to a radial menu');
-  App.selectIntent('creature', 'enemy-radial', 'fight', 'radial', 'attack');
+  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-radial','loot','radial')", 'Radial corpse menu should route loot through shared intent selection');
+  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','corpse-radial','fight','radial')", 'Radial corpse menu should not expose living primary actions');
+  App.selectIntent('creature', 'corpse-radial', 'loot', 'radial');
   assertEqual(App.lastIntentCommand.source, 'radial', 'Radial accelerator should record its command source');
-  assertEqual(App.lastIntentCommand.subAction, 'attack', 'Radial accelerator should preserve selected sub-action');
-  assert(enemy.CPun < 100, 'Radial accelerator should reuse existing outside-combat dispatch');
+  assertEqual(App.lastIntentCommand.action, 'loot', 'Radial accelerator should preserve selected utility action');
+  assertEqual(remains.looted, true, 'Radial accelerator should reuse existing contextual dispatch');
 });
 
 test('Mobile creature long-press target marking is mode-safe and repeatable', () => {

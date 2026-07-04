@@ -742,7 +742,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.creatureHasDuplicateMenu, false, 'Desktop living creature cards should not expose duplicate visible intent menus');
   assert.strictEqual(state.centerHasActorControls, false, 'Desktop intent sheet flow should start with center free of actor controls');
 
-  await page.evaluate(() => {
+  state = await page.evaluate(() => {
     const oldProbe = document.getElementById('desktop-intent-focus-probe');
     if (oldProbe) oldProbe.remove();
     const opener = document.createElement('button');
@@ -750,10 +750,17 @@ async function runDesktopIntentSubActionSheetFlow(page) {
     opener.textContent = 'Open intent probe';
     document.body.appendChild(opener);
     opener.focus();
-    App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop');
+    const suppressed = App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop') === false && !document.querySelector('#desktop-intent-menu');
+    App.openIntentSubActionSheet('creature', 'friendly-1', 'fight', 'desktop');
+    return {
+      suppressed,
+      activeId: document.activeElement?.id || ''
+    };
   });
   let menu = page.locator('#desktop-intent-menu');
-  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop intent menu should render from a focused opener');
+  assert.strictEqual(state.suppressed, true, 'Desktop living intent menu should stay suppressed in favor of marked-target actions');
+  assert.strictEqual(state.activeId, 'desktop-intent-focus-probe', 'Suppressed desktop living menu should not steal opener focus');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop sub-action sheet should render from a focused opener when invoked directly');
   await page.keyboard.press('Escape');
   await assert.doesNotReject(() => menu.waitFor({ state: 'detached', timeout: 1000 }), 'Escape should close the generated desktop intent menu');
   state = await page.evaluate(() => ({
@@ -765,9 +772,9 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.focusTrapActive, false, 'Generated desktop intent menu should clear the focus trap after Escape');
   assert.strictEqual(state.outsideDismissActive, false, 'Generated desktop intent menu should clear outside dismissal after Escape');
 
-  await page.evaluate(() => App.showIntentMenu('creature', 'friendly-1', 'desktop', 'desktop'));
+  await page.evaluate(() => App.openIntentSubActionSheet('creature', 'friendly-1', 'fight', 'desktop'));
   menu = page.locator('#desktop-intent-menu');
-  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop intent menu should render when invoked');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop sub-action sheet should render when invoked directly');
 
   state = await page.evaluate(() => {
     const menuEl = document.querySelector('#desktop-intent-menu');
@@ -775,18 +782,15 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       presentation: menuEl?.getAttribute('data-intent-presentation') || '',
       hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
       hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
-      hasFightSheetButton: (menuEl?.innerHTML || '').includes("openIntentSubActionSheet('creature','friendly-1','fight','desktop')"),
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert.strictEqual(state.presentation, 'desktop', 'Desktop intent menu should declare desktop presentation');
-  assert.strictEqual(state.hasDesktopClass, true, 'Desktop intent menu should use desktop layout class');
-  assert.strictEqual(state.hasMobileMenu, false, 'Desktop intent menu should not reuse the mobile context sheet');
-  assert.strictEqual(state.hasFightSheetButton, true, 'Desktop Fight action should open the shared sub-action sheet');
-  assert.strictEqual(state.centerHasActorControls, false, 'Opening the desktop intent menu should not move actor controls into center');
-
-  await page.locator(`#desktop-intent-menu button[onclick*="openIntentSubActionSheet('creature','friendly-1','fight','desktop')"]`).first().click();
-  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop sub-action sheet should render on the desktop surface');
+  assert.strictEqual(state.presentation, 'desktop', 'Desktop sub-action sheet should declare desktop presentation');
+  assert.strictEqual(state.hasDesktopClass, true, 'Desktop sub-action sheet should use desktop layout class');
+  assert.strictEqual(state.hasMobileMenu, false, 'Desktop sub-action sheet should not reuse the mobile context sheet');
+  assert.strictEqual(state.hasAttackButton, true, 'Desktop sub-action sheet should dispatch through selectIntent with a sub-action');
+  assert.strictEqual(state.centerHasActorControls, false, 'Opening the desktop sub-action sheet should not move actor controls into center');
 
   state = await page.evaluate(() => {
     const menuEl = document.querySelector('#desktop-intent-menu');
@@ -830,38 +834,42 @@ async function runRadialIntentSubActionPresentationFlow(page) {
     return {
       presentation: menu?.getAttribute('data-intent-presentation') || '',
       radialClass: menu?.classList.contains('intent-menu-radial') || false,
-      fightButton: (menu?.innerHTML || '').includes("openIntentSubActionSheet('creature','friendly-1','fight','radial')")
+      menuVisible: Boolean(menu)
     };
   });
-  assert.strictEqual(state.presentation, 'radial', 'Radial intent menu should declare radial presentation');
-  assert.strictEqual(state.radialClass, true, 'Radial intent menu should use radial class in the built app');
-  assert.strictEqual(state.fightButton, true, 'Radial intent menu should preserve radial source for sub-actions');
+  assert.strictEqual(state.menuVisible, false, 'Radial living intent menu should stay suppressed in favor of marked-target actions');
+  assert.strictEqual(state.presentation, '', 'Suppressed radial living menu should not declare a presentation');
+  assert.strictEqual(state.radialClass, false, 'Suppressed radial living menu should not render radial classes');
 
-  await page.locator(`#mobile-context-menu button[onclick*="openIntentSubActionSheet('creature','friendly-1','fight','radial')"]`).first().click();
+  await page.evaluate(() => App.openIntentSubActionSheet('creature', 'friendly-1', 'fight', 'radial'));
   state = await page.evaluate(() => {
     const menu = document.querySelector('#mobile-context-menu');
     return {
       presentation: menu?.getAttribute('data-intent-presentation') || '',
       radialClass: menu?.classList.contains('intent-menu-radial') || false,
-      backButton: (menu?.innerHTML || '').includes("showIntentMenu('creature','friendly-1','radial','radial')")
+      attackButton: (menu?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','radial','attack')"),
+      deadBackButton: (menu?.innerHTML || '').includes("showIntentMenu('creature','friendly-1','radial','radial')")
     };
   });
   assert.strictEqual(state.presentation, 'radial', 'Radial sub-action sheet should keep radial presentation in the built app');
   assert.strictEqual(state.radialClass, true, 'Radial sub-action sheet should keep radial class');
-  assert.strictEqual(state.backButton, true, 'Radial sub-action Back should restore radial presentation');
+  assert.strictEqual(state.attackButton, true, 'Radial sub-action sheet should preserve radial source for selectIntent');
+  assert.strictEqual(state.deadBackButton, false, 'Radial sub-action sheet should not include a Back path to suppressed living menus');
 
-  await page.locator(`#mobile-context-menu button[onclick*="showIntentMenu('creature','friendly-1','radial','radial')"]`).first().click();
+  await page.locator(`#mobile-context-menu button[onclick*="selectIntent('creature','friendly-1','fight','radial','attack')"]`).first().click();
   state = await page.evaluate(() => {
     const menu = document.querySelector('#mobile-context-menu');
     return {
-      presentation: menu?.getAttribute('data-intent-presentation') || '',
-      radialClass: menu?.classList.contains('intent-menu-radial') || false,
+      menuVisible: Boolean(menu),
+      source: App.lastIntentCommand?.source || '',
+      subAction: App.lastIntentCommand?.subAction || '',
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert.strictEqual(state.presentation, 'radial', 'Back from radial sub-actions should return to radial presentation');
-  assert.strictEqual(state.radialClass, true, 'Back from radial sub-actions should keep radial class');
-  assert.strictEqual(state.centerHasActorControls, false, 'Radial menu round trip should keep center free of actor controls');
+  assert.strictEqual(state.menuVisible, false, 'Selecting a radial sub-action should close the sheet');
+  assert.strictEqual(state.source, 'radial', 'Radial sub-action selection should preserve radial command source');
+  assert.strictEqual(state.subAction, 'attack', 'Radial sub-action selection should record the chosen sub-action');
+  assert.strictEqual(state.centerHasActorControls, false, 'Radial sub-action flow should keep center free of actor controls');
   await page.evaluate(() => App.closeMobileContextMenu());
 }
 

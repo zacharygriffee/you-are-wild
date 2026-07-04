@@ -36,7 +36,10 @@ function makeUnitScript() {
     App.player = make('You', 'player-1');
     App.player.mc = true;
     App.party = [App.player, make('Ally', 'ally-1')];
-    App.creatures = [Object.assign(make('Creature', 'creature-1'), { disposition: App.DISPOSITION.FRIENDLY })];
+    App.creatures = [
+      Object.assign(make('Creature', 'creature-1'), { disposition: App.DISPOSITION.FRIENDLY }),
+      Object.assign(make('Remains', 'corpse-1'), { disposition: App.DISPOSITION.CORPSE, CPun: 0 })
+    ];
     App.combatState.active = false;
     App.location = { x: 0, y: 0 };
     App.renderParty();
@@ -281,7 +284,9 @@ async function checkViewport(browser, name, width, height) {
       };
     }, label);
 
-    await page.evaluate(() => App.showIntentMenu('creature', 'creature-1', 'desktop', 'desktop'));
+    const livingIntentSuppressed = await page.evaluate(() => App.showIntentMenu('creature', 'creature-1', 'desktop', 'desktop') === false && !document.getElementById('desktop-intent-menu'));
+    assert(livingIntentSuppressed, `${name}: living desktop intent menu should stay suppressed in favor of marked-target actions`);
+    await page.evaluate(() => App.showIntentMenu('creature', 'corpse-1', 'desktop', 'desktop'));
     await page.waitForTimeout(50);
     const desktopIntentMenu = await readDesktopIntentBounds('desktop intent menu');
     assert(desktopIntentMenu.exists, `${name}: desktop intent menu should render`);
@@ -294,7 +299,7 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopIntentMenu.left >= -1, `${name}: desktop intent menu should not clip left`);
     assert(desktopIntentMenu.right <= desktopIntentMenu.viewportWidth + 1, `${name}: desktop intent menu should not clip right`);
     assert(desktopIntentMenu.bottom <= desktopIntentMenu.viewportHeight + 1, `${name}: desktop intent menu should not clip below viewport`);
-    assert(desktopIntentMenu.visibleButtons >= 4, `${name}: desktop intent menu should expose reachable action buttons`);
+    assert(desktopIntentMenu.visibleButtons >= 3, `${name}: desktop intent menu should expose reachable utility buttons`);
     assert.deepStrictEqual(desktopIntentMenu.clippedButtons, [], `${name}: desktop intent menu buttons should not clip`);
 
     await page.evaluate(() => App.openIntentSubActionSheet('creature', 'creature-1', 'fight', 'desktop'));

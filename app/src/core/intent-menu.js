@@ -24,6 +24,7 @@ const YAW_INTENT_MENU = {
         if (!target) return;
         const isCorpse = app._isCorpse(target);
         app.closeIntentMenu();
+        if (!isCorpse) return false;
         const targetName = target.name || (isParty ? 'party member' : 'creature');
         const menuLabel = app._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
         const targetLabel = app._escapeHtml(targetName);
@@ -103,9 +104,7 @@ const YAW_INTENT_MENU = {
             const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
             html += `<button class="action-btn" role="menuitem" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
         });
-        const backLabel = app._escapeHtml(app._label('ui.back', 'Back'));
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" title="${backLabel}" aria-label="${backLabel}" onclick="App.showIntentMenu('${type}',${targetArg},'${commandSource}','${surface.presentation}')">${backLabel}</button>`;
         html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);

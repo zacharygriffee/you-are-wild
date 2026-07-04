@@ -281,9 +281,7 @@ const WorldGen = (() => {
         let safeTiles = 0;
         let blockedAdjacent = 0;
         let lowDangerResource = false;
-        let resourceSite = false;
         let routeAccess = false;
-        let restCandidate = false;
         let poiCandidate = false;
         const tileCache = new Map();
         const tileAt = (x, y) => {
@@ -291,14 +289,30 @@ const WorldGen = (() => {
             if (!tileCache.has(key)) tileCache.set(key, generateBaseTile(worldMeta, x, y, regionBiomes));
             return tileCache.get(key);
         };
+        const parentByKey = new Map();
+        const pathTo = (x, y) => {
+            const path = [];
+            let key = `${x},${y}`;
+            const guardLimit = Math.max(1, restRadius * restRadius * 4);
+            let guard = 0;
+            while (key && guard < guardLimit) {
+                const [px, py] = key.split(',').map(Number);
+                path.push({ x: px, y: py });
+                key = parentByKey.get(key);
+                guard++;
+            }
+            return path.reverse();
+        };
         for (const [x, y] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
             if (!tileAt(x, y).traversal.passable) blockedAdjacent++;
         }
         const reachable = [];
         const start = tileAt(0, 0);
         if (start.traversal.passable) {
-            const seen = new Set(['0,0']);
-            const queue = [{ x: 0, y: 0, distance: 0 }];
+            const startKey = '0,0';
+            const seen = new Set([startKey]);
+            parentByKey.set(startKey, null);
+            const queue = [{ x: 0, y: 0, distance: 0, key: startKey }];
             while (queue.length) {
                 const node = queue.shift();
                 const tile = tileAt(node.x, node.y);
@@ -314,33 +328,55 @@ const WorldGen = (() => {
                     const nextTile = tileAt(nx, ny);
                     if (!nextTile.traversal.passable) continue;
                     seen.add(key);
-                    queue.push({ x: nx, y: ny, distance });
+                    parentByKey.set(key, node.key);
+                    queue.push({ x: nx, y: ny, distance, key });
                 }
             }
         }
-        for (const { distance, tile } of reachable) {
+        let nearestResourceSite = null;
+        let nearestRestCandidate = null;
+        let nearestRouteTile = null;
+        let nearestPoi = null;
+        for (const { x, y, distance, tile } of reachable) {
             if (distance <= radius && tile.dangerPressure <= 0.36 && ['grove', 'plains', 'forest', 'beach'].includes(tile.baseBiome)) safeTiles++;
             if (distance <= radius && tile.dangerPressure <= 0.32 && ['grove', 'plains', 'forest'].includes(tile.baseBiome)) lowDangerResource = true;
-            if (distance <= radius && tile.overlays?.poi?.category === 'resourceSite') resourceSite = true;
-            if (distance <= routeRadius && tile.overlays?.road) routeAccess = true;
-            if (distance <= restRadius && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) restCandidate = true;
-            if (distance <= restRadius && tile.overlays?.poi) poiCandidate = true;
+            if (distance <= radius && tile.overlays?.poi?.category === 'resourceSite') {
+                if (!nearestResourceSite || distance < nearestResourceSite.distance) nearestResourceSite = { x, y, distance, category: tile.overlays.poi.category };
+            }
+            if (distance <= routeRadius && tile.overlays?.road) {
+                routeAccess = true;
+                if (!nearestRouteTile || distance < nearestRouteTile.distance) nearestRouteTile = { x, y, distance };
+            }
+            if (distance <= restRadius && tile.overlays?.poi && ['restSite', 'settlement'].includes(tile.overlays.poi.category)) {
+                if (!nearestRestCandidate || distance < nearestRestCandidate.distance) nearestRestCandidate = { x, y, distance, category: tile.overlays.poi.category };
+            }
+            if (distance <= restRadius && tile.overlays?.poi) {
+                poiCandidate = true;
+                if (!nearestPoi || distance < nearestPoi.distance) nearestPoi = { x, y, distance, category: tile.overlays.poi.category };
+            }
         }
         const minSafeTiles = options.minSafeTiles ?? Math.max(12, Math.floor(radius * radius * 0.3));
+        const paths = {
+            resourceSite: nearestResourceSite ? pathTo(nearestResourceSite.x, nearestResourceSite.y) : [],
+            restCandidate: nearestRestCandidate ? pathTo(nearestRestCandidate.x, nearestRestCandidate.y) : [],
+            routeAccess: nearestRouteTile ? pathTo(nearestRouteTile.x, nearestRouteTile.y) : [],
+            earlyPoi: nearestPoi ? pathTo(nearestPoi.x, nearestPoi.y) : []
+        };
         const checks = {
             safeBiomeRadius: safeTiles >= minSafeTiles,
             noHardLockout: blockedAdjacent < 4,
             lowDangerResource,
-            resourceSite,
+            resourceSite: paths.resourceSite.length > 0,
             routeAccess,
-            restCandidate,
-            connectedRestRoute: routeAccess && restCandidate,
-            earlyPoi: poiCandidate
+            restCandidate: paths.restCandidate.length > 0,
+            connectedRestRoute: routeAccess && paths.restCandidate.length > 0,
+            earlyPoi: poiCandidate && paths.earlyPoi.length > 0
         };
         return {
             ok: Object.values(checks).every(Boolean),
             checks,
-            metrics: { safeTiles, blockedAdjacent, reachableTiles: reachable.length, radius, routeRadius, restRadius }
+            paths,
+            metrics: { safeTiles, blockedAdjacent, reachableTiles: reachable.length, radius, routeRadius, restRadius, nearestResourceSite, nearestRestCandidate, nearestRouteTile, nearestPoi }
         };
     }
 

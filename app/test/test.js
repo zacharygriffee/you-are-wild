@@ -6705,6 +6705,15 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(result.checks.connectedRestRoute, true, `Start should have a reachable route to rest for seed ${seed}`);
     assertEqual(result.checks.earlyPoi, true, `Start should have early POI availability for seed ${seed}`);
     assert(result.metrics.reachableTiles >= result.metrics.safeTiles, `Start validation should count safe terrain from reachable tiles for seed ${seed}`);
+    assertEqual(result.metrics.nearestResourceSite?.x, -2, `Start validation should identify the deterministic resource-site x for seed ${seed}`);
+    assertEqual(result.metrics.nearestResourceSite?.y, 0, `Start validation should identify the deterministic resource-site y for seed ${seed}`);
+    assertEqual(result.metrics.nearestRestCandidate?.x, 4, `Start validation should identify the deterministic rest-site x for seed ${seed}`);
+    assertEqual(result.metrics.nearestRestCandidate?.y, 0, `Start validation should identify the deterministic rest-site y for seed ${seed}`);
+    assertEqual(JSON.stringify(result.paths.resourceSite.map(({ x, y }) => [x, y])), JSON.stringify([[0, 0], [-1, 0], [-2, 0]]), `Start validation should expose a concrete route to the resource site for seed ${seed}`);
+    assertEqual(JSON.stringify(result.paths.restCandidate.map(({ x, y }) => [x, y])), JSON.stringify([[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]), `Start validation should expose a concrete route to the rest site for seed ${seed}`);
+    [...result.paths.resourceSite, ...result.paths.restCandidate].forEach(({ x, y }) => {
+      assertEqual(App.getBaseTile(x, y).traversal.passable, true, `Start validation path tile ${x},${y} should be passable for seed ${seed}`);
+    });
 
     const startBase = App.getBaseTile(0, 0);
     assertEqual(startBase.traversal.passable, true, `Start tile should be passable for seed ${seed}`);

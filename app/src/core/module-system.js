@@ -615,14 +615,41 @@ const MODULE_SYSTEM = {
                 this.unloadModule(module.id);
             }
 
+            const runtimeTimers = { timeouts: new Set(), intervals: new Set() };
+            const setTrackedTimeout = (callback, delay, ...args) => {
+                let timerId = null;
+                const wrapped = typeof callback === 'function'
+                    ? (...callbackArgs) => {
+                        runtimeTimers.timeouts.delete(timerId);
+                        return callback(...callbackArgs);
+                    }
+                    : callback;
+                timerId = window.setTimeout(wrapped, delay, ...args);
+                runtimeTimers.timeouts.add(timerId);
+                return timerId;
+            };
+            const clearTrackedTimeout = (timerId) => {
+                runtimeTimers.timeouts.delete(timerId);
+                return window.clearTimeout(timerId);
+            };
+            const setTrackedInterval = (callback, delay, ...args) => {
+                const timerId = window.setInterval(callback, delay, ...args);
+                runtimeTimers.intervals.add(timerId);
+                return timerId;
+            };
+            const clearTrackedInterval = (timerId) => {
+                runtimeTimers.intervals.delete(timerId);
+                return window.clearInterval(timerId);
+            };
+
             // Create the trusted-local module runtime context. This is not a security boundary.
             const runtimeContext = {
                 MODS: this.createModAPI(module.id, module.manifest),
                 console: window.console,
-                setTimeout: window.setTimeout,
-                clearTimeout: window.clearTimeout,
-                setInterval: window.setInterval,
-                clearInterval: window.clearInterval,
+                setTimeout: setTrackedTimeout,
+                clearTimeout: clearTrackedTimeout,
+                setInterval: setTrackedInterval,
+                clearInterval: clearTrackedInterval,
                 JSON: window.JSON,
                 Math: window.Math,
                 Date: window.Date,
@@ -641,11 +668,19 @@ const MODULE_SYSTEM = {
             `);
             
             this.loadingModuleId = module.id;
-            fn(runtimeContext);
-            
             this.activeModules.set(module.id, {
                 ...module,
-                runtimeContext
+                runtimeContext,
+                runtimeTimers,
+                loading: true
+            });
+            fn(runtimeContext);
+
+            this.activeModules.set(module.id, {
+                ...module,
+                runtimeContext,
+                runtimeTimers,
+                loading: false
             });
             
             console.log(`Module loaded: ${module.manifest.name}`);
@@ -768,6 +803,18 @@ const MODULE_SYSTEM = {
     
     // Unload module
     unloadModule(moduleId) {
+        const activeModule = this.activeModules.get(moduleId);
+        if (activeModule?.runtimeTimers) {
+            for (const timerId of activeModule.runtimeTimers.timeouts || []) {
+                try { window.clearTimeout(timerId); } catch (e) {}
+            }
+            for (const timerId of activeModule.runtimeTimers.intervals || []) {
+                try { window.clearInterval(timerId); } catch (e) {}
+            }
+            activeModule.runtimeTimers.timeouts?.clear();
+            activeModule.runtimeTimers.intervals?.clear();
+        }
+
         // Remove hooks registered by this module
         for (const event in this.hooks) {
             this.hooks[event] = this.hooks[event].filter(

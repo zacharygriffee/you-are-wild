@@ -272,12 +272,13 @@ function createFakeIndexedDb(options = {}) {
 }
 
 function loadModuleSystemForTest(options = {}) {
+  const windowOverrides = options.window || {};
   const window = {
     console: { log() {}, warn() {}, error() {} },
-    setTimeout,
-    clearTimeout,
-    setInterval,
-    clearInterval,
+    setTimeout: windowOverrides.setTimeout || setTimeout,
+    clearTimeout: windowOverrides.clearTimeout || clearTimeout,
+    setInterval: windowOverrides.setInterval || setInterval,
+    clearInterval: windowOverrides.clearInterval || clearInterval,
     JSON,
     Math,
     Date,
@@ -1194,6 +1195,78 @@ asyncTest('Module data contributions are owned and removed on disable before rel
   assertEqual(App.items.length, 0, 'Non-serializable item contribution should not add live item data');
   const badItemStoredModule = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'bad-item-module');
   assertEqual(badItemStoredModule.enabled, false, 'Invalid item contribution should leave module disabled in storage');
+});
+
+asyncTest('Module unload clears trusted-local runtime timers', async () => {
+  const scheduledTimeouts = new Set();
+  const scheduledIntervals = new Set();
+  const clearedTimeouts = [];
+  const clearedIntervals = [];
+  let nextTimerId = 1;
+  const MODULE_SYSTEM = loadModuleSystemForTest({
+    window: {
+      setTimeout() {
+        const id = `timeout-${nextTimerId++}`;
+        scheduledTimeouts.add(id);
+        return id;
+      },
+      clearTimeout(id) {
+        clearedTimeouts.push(id);
+        scheduledTimeouts.delete(id);
+      },
+      setInterval() {
+        const id = `interval-${nextTimerId++}`;
+        scheduledIntervals.add(id);
+        return id;
+      },
+      clearInterval(id) {
+        clearedIntervals.push(id);
+        scheduledIntervals.delete(id);
+      }
+    }
+  });
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'timer-module', name: 'Timer Module', version: '1.0.0' },
+    code: `
+      const timeoutId = setTimeout(() => MODS.log('timeout'), 1000);
+      const intervalId = setInterval(() => MODS.log('interval'), 1000);
+      clearTimeout(timeoutId);
+      setTimeout(() => MODS.log('second timeout'), 1000);
+    `
+  });
+  await MODULE_SYSTEM.setModuleEnabled('timer-module', true);
+  assertEqual(scheduledTimeouts.size, 1, 'Enabled module should track uncleared runtime timeouts');
+  assertEqual(scheduledIntervals.size, 1, 'Enabled module should track runtime intervals');
+  assertEqual(clearedTimeouts.length, 1, 'Module clearTimeout should delegate to the host clearTimeout');
+
+  await MODULE_SYSTEM.setModuleEnabled('timer-module', false);
+  assertEqual(scheduledTimeouts.size, 0, 'Disabling module should clear remaining runtime timeouts');
+  assertEqual(scheduledIntervals.size, 0, 'Disabling module should clear runtime intervals');
+  assertEqual(clearedTimeouts.length, 2, 'Disabling module should clear tracked timeout handles');
+  assertEqual(clearedIntervals.length, 1, 'Disabling module should clear tracked interval handles');
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'failing-timer-module', name: 'Failing Timer Module', version: '1.0.0' },
+    code: `
+      setTimeout(() => MODS.log('leaked timeout'), 1000);
+      setInterval(() => MODS.log('leaked interval'), 1000);
+      throw new Error('timer load failed');
+    `
+  });
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('failing-timer-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'timer load failed', 'Failing timer module should surface load failure');
+  }
+  assertEqual(rejected, true, 'Failing timer module should reject enable');
+  assertEqual(scheduledTimeouts.size, 0, 'Failed module load should clear partial timeout handles');
+  assertEqual(scheduledIntervals.size, 0, 'Failed module load should clear partial interval handles');
+  assertEqual(MODULE_SYSTEM.activeModules.has('failing-timer-module'), false, 'Failed timer module should not remain active');
 });
 
 test('Asset manifest module is registered before app code', () => {

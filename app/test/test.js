@@ -151,6 +151,7 @@ const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', '
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
 const equipmentSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'equipment-system.js'), 'utf8');
+const merchantSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'merchant-system.js'), 'utf8');
 const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inventory-panel.js'), 'utf8');
 const tradeFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'trade-flow.js'), 'utf8');
 const perkFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-flow.js'), 'utf8');
@@ -1701,6 +1702,28 @@ test('Equipment system helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.recalculate(this, unit, { inferBase })', 'App equipment recalculation wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.compactSummary(this, unit)', 'App compact equipment summary wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EQUIPMENT_SYSTEM.bonusText(this, item)', 'App equipment bonus text wrapper should delegate to the helper');
+});
+
+test('Merchant system helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/merchant-system.js'", 'Merchant system helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/merchant-system.js'") < buildContent.indexOf("'src/core/inventory-panel.js'"), 'Merchant helper should load before inventory panel helper');
+  assert(buildContent.indexOf("'src/core/merchant-system.js'") < buildContent.indexOf("'src/core/trade-flow.js'"), 'Merchant helper should load before trade flow helper');
+  assert(buildContent.indexOf("'src/core/merchant-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Merchant helper should load before app.js');
+  assertContains(merchantSystemContent, 'const YAW_MERCHANT_SYSTEM = {', 'Merchant system helper should expose the merchant service');
+  assertContains(merchantSystemContent, 'normalizeStock(app, stock = [])', 'Merchant helper should own stock normalization');
+  assertContains(merchantSystemContent, 'stockFromTable(app, tableId = ', 'Merchant helper should own table-backed stock');
+  assertContains(merchantSystemContent, 'createStructureMerchant(app, structureId', 'Merchant helper should own structure merchant creation');
+  assertContains(merchantSystemContent, 'maybeSpawnStructureMerchant(app, tile)', 'Merchant helper should own deterministic structure merchant placement');
+  assertContains(merchantSystemContent, 'filterAndSortItemEntries(app, entries', 'Merchant helper should own shared inventory/trade filtering');
+  assertContains(merchantSystemContent, 'stockQuantity(app, merchant, itemName, index, day)', 'Merchant helper should own deterministic stock quantities');
+  assertContains(merchantSystemContent, 'WorldGen.hash01', 'Merchant stock quantities should be seed-derived when worldgen is available');
+  assertNotContains(merchantSystemContent, 'Math.random', 'Merchant helper should not use raw randomness');
+  assertNotContains(merchantSystemContent, 'Date.now', 'Merchant helper should keep stock IDs deterministic');
+  assertNotContains(merchantSystemContent, "document.getElementById('scene-description')", 'Merchant helper should not render into center tile content');
+  assertContains(appContent, 'YAW_MERCHANT_SYSTEM.normalizeStock(this, stock)', 'App merchant stock wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MERCHANT_SYSTEM.maybeSpawnStructureMerchant(this, tile)', 'App merchant placement wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MERCHANT_SYSTEM.itemListOptions(this, prefix, targetId)', 'App item list option wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MERCHANT_SYSTEM.findById(this, targetId)', 'App merchant lookup wrapper should delegate to the helper');
 });
 
 test('Inventory panel helper module is registered before app code', () => {
@@ -3437,7 +3460,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

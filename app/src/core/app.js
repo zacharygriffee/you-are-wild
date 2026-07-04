@@ -5111,69 +5111,19 @@
 
             // ===== MERCHANTS / TRADE =====
             _normalizeMerchantStock(stock = []) {
-                return stock.map((entry, index) => {
-                    const itemName = typeof entry === 'string' ? entry : entry.name;
-                    const def = this.ITEMS[itemName] || {};
-                    return {
-                        id: entry.id || `stock_${itemName || 'item'}_${index}`,
-                        name: itemName || 'Unknown Item',
-                        price: entry.price || def.value || 10,
-                        qty: entry.qty ?? 1
-                    };
-                });
+                return YAW_MERCHANT_SYSTEM.normalizeStock(this, stock);
             },
 
             _merchantStockFromTable(tableId = 'general') {
-                const table = this.MERCHANT_STOCK_TABLES[tableId] || this.MERCHANT_STOCK_TABLES.general || [];
-                return this._normalizeMerchantStock(table).map((entry, index) => ({
-                    ...entry,
-                    id: `${tableId}_stock_${index}_${entry.name.replace(/\s+/g, '_').toLowerCase()}`
-                }));
+                return YAW_MERCHANT_SYSTEM.stockFromTable(this, tableId);
             },
 
             _createStructureMerchant(structureId, biomeId = this.currentBiome || 'forest', tile = null) {
-                const struct = this.STRUCTURES[structureId];
-                if (!struct?.merchant) return null;
-                const merchantConfig = struct.merchant;
-                const speciesPool = merchantConfig.species || ['human'];
-                const x = tile?.x ?? 0;
-                const y = tile?.y ?? 0;
-                const sid = typeof WorldGen !== 'undefined'
-                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-merchant-species', x, y, speciesPool) || 'human')
-                    : speciesPool[0] || 'human';
-                const sp = this.species.find(s => s.id === sid) || this.species.find(s => s.id === 'human');
-                const stockTable = merchantConfig.stockTable || 'general';
-                return this._normalizeUnit({
-                    id: `merchant_${structureId}_${x}_${y}`,
-                    name: `${sp?.name || 'Traveling'} Merchant`,
-                    species: sid,
-                    icon: sp?.icon || '👤',
-                    disposition: this.DISPOSITION.MERCHANT,
-                    level: Math.max(1, this.player?.level || 1),
-                    bodyParts: this.SPECIES_DEFAULT_PARTS[sid] || [],
-                    stockTable,
-                    stock: this._merchantStockFromTable(stockTable),
-                    stockLastRefreshDay: this.dayCount || 0,
-                    tags: [sp?.name || sid, 'Merchant', this.biomes[biomeId]?.name || biomeId],
-                    expanded: false,
-                    hero: false,
-                    ally: false,
-                    mc: false,
-                    obedient: false,
-                    willing: true
-                });
+                return YAW_MERCHANT_SYSTEM.createStructureMerchant(this, structureId, biomeId, tile);
             },
 
             _maybeSpawnStructureMerchant(tile) {
-                if (!tile?.structure || !this.STRUCTURES[tile.structure]?.merchant) return null;
-                const config = this.STRUCTURES[tile.structure].merchant;
-                if (typeof WorldGen !== 'undefined' && !WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'structure-merchant', tile.x, tile.y, config.chance ?? 0)) return null;
-                if (typeof WorldGen === 'undefined' && (config.chance ?? 0) <= 0) return null;
-                const merchant = this._createStructureMerchant(tile.structure, tile.biome, tile);
-                if (!merchant) return null;
-                this.creatures = this._tileCreatures([...(this.creatures || []), merchant]);
-                tile.creatures = this._tileCreatures(this.creatures);
-                return merchant;
+                return YAW_MERCHANT_SYSTEM.maybeSpawnStructureMerchant(this, tile);
             },
 
             _questTemplateForStructure(structureId, tile = null) {
@@ -5240,93 +5190,35 @@
             },
 
             _itemCategory(item) {
-                return this._getItemDef(item).type || 'misc';
+                return YAW_MERCHANT_SYSTEM.itemCategory(this, item);
             },
 
             _itemValue(item) {
-                return this._getItemDef(item).value || item?.price || 0;
+                return YAW_MERCHANT_SYSTEM.itemValue(this, item);
             },
 
             _itemListOptions(prefix, targetId = null) {
-                const targetArg = targetId ? `,'${String(targetId).replace(/'/g, "\\'")}'` : '';
-                const categoryLabel = this._escapeHtml(this._label('item.category', 'Category'));
-                const sortLabel = this._escapeHtml(this._label('item.sort', 'Sort'));
-                const filterOptions = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].map(type => {
-                    const label = this._escapeHtml(this._label(`item.category.${type}`, type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)));
-                    return `<option value="${type}" ${this[`${prefix.toLowerCase()}Filter`] === type ? 'selected' : ''}>${label}</option>`;
-                }).join('');
-                const sortOptions = [
-                    ['name', this._label('item.sort.name', 'Name')],
-                    ['type', this._label('item.sort.type', 'Type')],
-                    ['value-desc', this._label('item.sort.valueDesc', 'Value ↓')],
-                    ['value-asc', this._label('item.sort.valueAsc', 'Value ↑')]
-                ].map(([value, label]) => `<option value="${value}" ${this[`${prefix.toLowerCase()}Sort`] === value ? 'selected' : ''}>${this._escapeHtml(label)}</option>`).join('');
-                return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${categoryLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Filter(this.value${targetArg})">
-                            ${filterOptions}
-                        </select>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Sort(this.value${targetArg})">
-                            ${sortOptions}
-                        </select>
-                    </label>
-                </div>`;
+                return YAW_MERCHANT_SYSTEM.itemListOptions(this, prefix, targetId);
             },
 
             _filterAndSortItemEntries(entries, filter = 'all', sort = 'name') {
-                const filtered = entries.filter(entry => filter === 'all' || this._itemCategory(entry.item) === filter);
-                return filtered.sort((a, b) => {
-                    const aDef = this._getItemDef(a.item);
-                    const bDef = this._getItemDef(b.item);
-                    if (sort === 'value-desc') return this._itemValue(b.item) - this._itemValue(a.item) || a.item.name.localeCompare(b.item.name);
-                    if (sort === 'value-asc') return this._itemValue(a.item) - this._itemValue(b.item) || a.item.name.localeCompare(b.item.name);
-                    if (sort === 'type') return (aDef.type || 'misc').localeCompare(bDef.type || 'misc') || a.item.name.localeCompare(b.item.name);
-                    return a.item.name.localeCompare(b.item.name);
-                });
+                return YAW_MERCHANT_SYSTEM.filterAndSortItemEntries(this, entries, filter, sort);
             },
 
             _merchantStockQuantity(merchant, itemName, index, day) {
-                const merchantId = String(merchant?.id || merchant?.name || merchant?.stockTable || 'default');
-                const stockDay = Number.isFinite(Number(day)) ? Number(day) : 0;
-                if (typeof WorldGen !== 'undefined') {
-                    const roll = WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'merchant-default-stock-qty', merchantId, itemName, index, stockDay);
-                    return 1 + Math.floor(roll * 2);
-                }
-                const key = `${this.worldMeta?.seed || 'yaw'}|${this.worldMeta?.generatorVersion || 1}|${merchantId}|${itemName}|${index}|${stockDay}`;
-                let hash = 2166136261;
-                for (let i = 0; i < key.length; i++) {
-                    hash ^= key.charCodeAt(i);
-                    hash = Math.imul(hash, 16777619);
-                }
-                return 1 + ((hash >>> 0) % 2);
+                return YAW_MERCHANT_SYSTEM.stockQuantity(this, merchant, itemName, index, day);
             },
 
             _defaultMerchantStock(merchant = null, day = this.dayCount || 0) {
-                return ['Healing Herb', 'Old Coin', 'Monster Fang'].map((name, index) => {
-                    const def = this.ITEMS[name] || {};
-                    return { id: `default_stock_${index}`, name, price: def.value || 10, qty: this._merchantStockQuantity(merchant, name, index, day) };
-                });
+                return YAW_MERCHANT_SYSTEM.defaultStock(this, merchant, day);
             },
 
             _refreshMerchantStock(merchant, force = false) {
-                if (!merchant || merchant.disposition !== this.DISPOSITION.MERCHANT) return merchant;
-                const currentDay = this.dayCount || 0;
-                const needsStock = !merchant.stock || merchant.stock.length === 0;
-                const stale = currentDay - (merchant.stockLastRefreshDay ?? currentDay) >= 3;
-                if (force || needsStock || stale) {
-                    merchant.stock = merchant.stockTable ? this._merchantStockFromTable(merchant.stockTable) : this._defaultMerchantStock(merchant, currentDay);
-                    merchant.stockLastRefreshDay = currentDay;
-                } else {
-                    merchant.stock = this._normalizeMerchantStock(merchant.stock);
-                }
-                return merchant;
+                return YAW_MERCHANT_SYSTEM.refreshStock(this, merchant, force);
             },
 
             _findMerchantById(targetId) {
-                const merchant = this.creatures.find(c => c.disposition === this.DISPOSITION.MERCHANT && String(c.id || c.name) === String(targetId));
-                return this._refreshMerchantStock(merchant);
+                return YAW_MERCHANT_SYSTEM.findById(this, targetId);
             },
 
             showTrade(targetId) {

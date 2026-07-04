@@ -3018,8 +3018,9 @@ test('Sync failure and submissive recruit prompts localize', () => {
   syncCase.App._syncParticipants = [player, ally];
   syncCase.App.nextTurn = function() { this._syncFailedAdvanced = true; };
   syncCase.App.updateLanguage('es');
-  syncCase.App.queueSyncAction('sync_fight', 0);
-  assertEqual(syncCase.App._syncFailedAdvanced, true, 'Missing participant queue should still advance turn');
+  assertEqual(syncCase.App.queueSyncAction('sync_fight', 0), false, 'Missing participant queue should reject before queueing');
+  assertEqual(syncCase.App.combatState.syncActions.length, 0, 'Missing participant queue should not create a queued sync action');
+  assertEqual(syncCase.App._syncFailedAdvanced, undefined, 'Missing participant queue should preserve the active turn for correction');
   assertContains(syncCase.App.log[syncCase.App.log.length - 1].text, 'Sincronizacion fallida! Los participantes ya no estan en la cola de turnos.', 'Missing queue sync failure should localize');
 
   const downed = loadAppForCombat(() => 0);
@@ -8125,6 +8126,37 @@ test('Sync combat target selection respects participant reach', () => {
   App.renderCreatures();
   assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow a target at least one selected participant can reach');
   assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Reachable sync target should render as pickable');
+});
+
+test('Sync queue rejects stale participants without consuming the active turn', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-sync-stale', Figh: 30, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'ally-sync-stale', Figh: 30, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-sync-stale', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-stale', participantIds: ['player-sync-stale', 'ally-sync-stale'] };
+  App._syncParticipants = [player, ally];
+  App.nextTurn = function() { this._staleSyncConsumedTurn = true; };
+
+  assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Stale sync participants should not queue');
+  assertEqual(App.combatState.syncActions.length, 0, 'Rejected stale sync should not create a queued action');
+  assertEqual(App.combatState.turnQueue[0].actedThisRound || false, false, 'Rejected stale sync should not mark the current actor acted');
+  assertEqual(App._staleSyncConsumedTurn, undefined, 'Rejected stale sync should not advance the active turn');
+  assertEqual(App.syncSelection.phase, 'target', 'Rejected stale sync should preserve target-pick state for correction');
+  assertEqual(App._syncParticipants.map(unit => unit.id).join(','), 'player-sync-stale,ally-sync-stale', 'Rejected stale sync should preserve selected participants for correction');
+  assertContains(App.log[App.log.length - 1].text, 'Participants are no longer in the turn queue', 'Rejected stale sync should explain the correction');
 });
 
 test('Combat move action swaps row and costs the active turn', () => {

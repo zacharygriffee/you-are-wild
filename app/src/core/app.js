@@ -3964,22 +3964,26 @@
                     this.renderCreatures();
                     return false;
                 }
-                // Find the slowest participant's turn position
+                const queueEntries = participants.map(p => {
+                    const index = this.combatState.turnQueue.findIndex(q => q.unit === p);
+                    return index >= 0 ? { index, entry: this.combatState.turnQueue[index] } : null;
+                });
+                if (queueEntries.some(entry => !entry)) {
+                    this.log.push({ text: this._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
+                    this.renderLog();
+                    this.renderParty();
+                    this.renderCreatures();
+                    return false;
+                }
+                // Find the slowest participant's turn position.
                 let slowestIdx = -1, slowestInit = Infinity;
-	                for (const p of participants) {
-	                    const qIdx = this.combatState.turnQueue.findIndex(q => q.unit === p);
-	                    if (qIdx !== -1 && this.combatState.turnQueue[qIdx].initiative < slowestInit) {
-	                        slowestInit = this.combatState.turnQueue[qIdx].initiative;
-	                        slowestIdx = qIdx;
-	                    }
-	                }
-	                this._syncCurrentTileCreatures();
-	                if (slowestIdx === -1) {
-	                    this.log.push({ text: this._label('combat.sync.failedNoQueue', 'Sync failed! Participants are no longer in the turn queue.'), type: 'combat' });
-	                    this.renderLog();
-	                    this.nextTurn();
-	                    return;
-	                }
+                for (const { index, entry } of queueEntries) {
+                    if (entry.initiative < slowestInit) {
+                        slowestInit = entry.initiative;
+                        slowestIdx = index;
+                    }
+                }
+                this._syncCurrentTileCreatures();
                 this.combatState.syncActions.push({
                     type: syncType, participants: participants, target: target,
                     resolveAtIndex: slowestIdx, resolved: false, round: this.combatState.round

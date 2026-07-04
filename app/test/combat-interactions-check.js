@@ -311,6 +311,40 @@ async function runReachabilityMatrix(page) {
   assert(state.enemyPle > 0, 'Social combat action should still target flying back-row enemies because it is not physical reach');
 }
 
+async function runStaleSyncParticipantFlow(page) {
+  await setupCombat(page, { withAlly: true, allyOverrides: { combatRow: 'front' }, enemyOverrides: { combatRow: 'front' } });
+  const state = await page.evaluate(() => {
+    const ally = App.party.find(unit => unit.id === 'ally-1');
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    App.syncSelection = {
+      active: true,
+      phase: 'target',
+      type: 'sync_fight',
+      actorId: App._unitSelectionId(App.player),
+      participantIds: [App._unitSelectionId(App.player), App._unitSelectionId(ally)]
+    };
+    App._syncParticipants = [App.player, ally];
+    App._advancedTurn = false;
+    const queued = App.queueSyncAction('sync_fight', enemy);
+    return {
+      queued,
+      syncCount: App.combatState.syncActions.length,
+      advanced: App._advancedTurn,
+      currentActed: Boolean(App.combatState.turnQueue[0]?.actedThisRound),
+      phase: App.syncSelection?.phase || null,
+      participantIds: (App._syncParticipants || []).map(unit => unit.id || unit.name),
+      lastLog: App.log[App.log.length - 1]?.text || ''
+    };
+  });
+  assert.strictEqual(state.queued, false, 'Stale sync participants should be rejected before queueing');
+  assert.strictEqual(state.syncCount, 0, 'Rejected stale sync should not create a queued action');
+  assert.strictEqual(state.advanced, false, 'Rejected stale sync should not advance the active turn');
+  assert.strictEqual(state.currentActed, false, 'Rejected stale sync should not mark the active actor as acted');
+  assert.strictEqual(state.phase, 'target', 'Rejected stale sync should preserve target-pick state for correction');
+  assert.deepStrictEqual(state.participantIds, ['player-1', 'ally-1'], 'Rejected stale sync should preserve selected participants for correction');
+  assert(state.lastLog.includes('Participants are no longer in the turn queue'), 'Rejected stale sync should explain the correction');
+}
+
 async function runAdventureMarkedTargetFlow(page) {
   await setupAdventure(page);
   let center = await page.evaluate(() => document.querySelector('#desktop-play-cell-center')?.innerHTML || '');
@@ -965,6 +999,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
+    await runStaleSyncParticipantFlow(page);
     await runAdventureMarkedTargetFlow(page);
     await runStaleMarkedActorFlow(page);
     await runSelectionSemanticsFlow(page);

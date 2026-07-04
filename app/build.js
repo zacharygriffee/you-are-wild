@@ -23,6 +23,7 @@ const SCRIPT_ORDER = [
   'src/core/world-state.js',
   'src/core/world-store.js',
   'src/core/world-random.js',
+  'src/core/encounter-preferences.js',
   'src/core/map-visuals.js',
   'src/core/large-map.js',
   'src/core/desktop-play-surface.js',

@@ -183,6 +183,7 @@ const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
 const worldStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-state.js'), 'utf8');
 const worldStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-store.js'), 'utf8');
 const worldRandomContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-random.js'), 'utf8');
+const encounterPreferencesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'encounter-preferences.js'), 'utf8');
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
@@ -1427,6 +1428,22 @@ test('World random helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_WORLD_RANDOM.roll(this, namespace, x, y, ...parts)', 'App world roll wrapper should delegate to world random helper');
   assertContains(appContent, 'YAW_WORLD_RANDOM.weightedPickWorld(this, table, namespace, x, y, ...parts)', 'App weighted world pick wrapper should delegate to world random helper');
   assertContains(appContent, 'YAW_WORLD_RANDOM.stableIdPart(value, fallback)', 'App stable id wrapper should delegate to world random helper');
+});
+
+test('Encounter preference helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/encounter-preferences.js'", 'Encounter preference helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/world-random.js'") < buildContent.indexOf("'src/core/encounter-preferences.js'"), 'Encounter preferences should load after world random helpers');
+  assert(buildContent.indexOf("'src/core/encounter-preferences.js'") < buildContent.indexOf("'src/core/save-load-flow.js'"), 'Encounter preferences should load before save-load flows normalize encounter metadata');
+  assert(buildContent.indexOf("'src/core/encounter-preferences.js'") < buildContent.indexOf("'src/core/app.js'"), 'Encounter preferences should load before app.js');
+  assertContains(encounterPreferencesContent, 'const YAW_ENCOUNTER_PREFERENCES = {', 'Encounter helper should expose the preference service');
+  assertContains(encounterPreferencesContent, 'normalize(weights = null)', 'Encounter helper should own weight normalization');
+  assertContains(encounterPreferencesContent, 'preset(value)', 'Encounter helper should own preset weights');
+  assertContains(encounterPreferencesContent, 'syncUI(app)', 'Encounter helper should own create-screen UI synchronization');
+  assertContains(encounterPreferencesContent, 'pickIdentity(rollValue, weights)', 'Encounter helper should own identity roll resolution');
+  assertContains(encounterPreferencesContent, 'anatomyForIdentity(identity, rollValue)', 'Encounter helper should own identity anatomy mapping');
+  assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.normalize(weights)', 'App encounter weight wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.updateWeight(this, key, value)', 'App encounter weight update wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ENCOUNTER_PREFERENCES.pickIdentity(rollValue, weights)', 'App encounter identity wrapper should delegate to the helper');
 });
 
 test('Combat scene helper module is registered before app code', () => {
@@ -3234,9 +3251,9 @@ test('Create screen encounter preferences use dynamic identity percentages', () 
   assertContains(template, 'data-value="any" onclick="App.selectEncounterPreference(\'any\')"', 'Any preset should route through the preference helper');
   assertContains(template, '<div class="option-card selected" data-value="any"', 'Any should be the default preferred-encounter preset');
   assertContains(appContent, 'selectedEncounterWeights: { female: 34, male: 33, nonbinary: 33 }', 'default encounter weights should be explicit');
-  assertContains(appContent, "_encounterPresetWeights(value)", 'encounter preset helper missing');
-  assertContains(appContent, "_pickEncounterIdentity(rollValue", 'encounter identity picker missing');
-  assertContains(appContent, "updateEncounterWeight(key, value)", 'encounter percentage update helper missing');
+  assertContains(encounterPreferencesContent, "preset(value)", 'encounter preset helper missing');
+  assertContains(encounterPreferencesContent, "pickIdentity(rollValue", 'encounter identity picker missing');
+  assertContains(encounterPreferencesContent, "updateWeight(app, key, value)", 'encounter percentage update helper missing');
   assertContains(appContent, "this.encounterWeights = this._normalizeEncounterWeights(this.selectedEncounterWeights)", 'created character should persist selected encounter weights');
   assertContains(serContent, 'encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null', 'encounter weights should persist in save metadata');
 });
@@ -3483,7 +3500,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -3566,6 +3583,39 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   App.autoSave = async function() {};
   return { App, elements, hooks, storage, alerts, confirmations, prompts, body, document, listeners, moduleSystem, window: appWindow };
 }
+
+test('Encounter preference helper normalizes weights and syncs create UI', () => {
+  const optionCards = ['female', 'male', 'nonbinary', 'any'].map(value => {
+    const card = makeElement();
+    card.dataset.value = value;
+    return card;
+  });
+  const { App, elements } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector) {
+      return selector === '#preference-grid .option-card' ? optionCards : [];
+    }
+  });
+
+  assertEqual(JSON.stringify(App._normalizeEncounterWeights({ female: 2, male: 1, nonbinary: 1 })), JSON.stringify({ female: 50, male: 25, nonbinary: 25 }), 'Encounter weights should normalize proportionally');
+  assertEqual(App._encounterPreferenceFromWeights({ female: 69, male: 31, nonbinary: 0 }), 'any', 'Preference should stay neutral below the preset threshold');
+  assertEqual(App._encounterPreferenceFromWeights({ female: 70, male: 30, nonbinary: 0 }), 'female', 'Preference should identify strong preset-like weights');
+
+  App.setEncounterPreferencePreset('nonbinary');
+  assertEqual(App.selectedEncounterPreference, 'nonbinary', 'Preset should update selected encounter preference');
+  assertEqual(App.selectedEncounterWeights.nonbinary, 75, 'Preset should update selected encounter weight');
+  assertEqual(elements.get('encounter-weight-nonbinary').value, '75', 'Preset should sync range input value');
+  assertEqual(elements.get('encounter-weight-nonbinary-value').textContent, '75%', 'Preset should sync range output text');
+  assertEqual(optionCards.find(card => card.dataset.value === 'nonbinary').classList.contains('selected'), true, 'Preset card should be selected');
+  assertEqual(optionCards.find(card => card.dataset.value === 'any').classList.contains('selected'), false, 'Non-preset card should not be selected');
+
+  App.updateEncounterWeight('female', 80);
+  assertEqual(App.selectedEncounterWeights.female, 80, 'Manual weight update should set the requested key');
+  assertEqual(App.selectedEncounterWeights.male + App.selectedEncounterWeights.nonbinary, 20, 'Manual weight update should rebalance the remaining keys');
+  assertEqual(App.selectedEncounterPreference, 'female', 'Manual weight update should refresh the selected preference summary');
+  assertEqual(App._pickEncounterIdentity(0.79, App.selectedEncounterWeights), 'female', 'Identity picker should respect the first weighted range');
+  assertEqual(App._pickEncounterIdentity(0.81, App.selectedEncounterWeights), 'male', 'Identity picker should respect the second weighted range');
+  assertEqual(App._pickEncounterIdentity(0.99, App.selectedEncounterWeights), 'nonbinary', 'Identity picker should respect the final weighted range');
+});
 
 function makeUnit(name, overrides = {}) {
   return {

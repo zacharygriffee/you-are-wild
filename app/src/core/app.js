@@ -1995,88 +1995,34 @@
                 return YAW_WORLD_RANDOM.stableIdPart(value, fallback);
             },
             _normalizeEncounterWeights(weights = null) {
-                const source = weights && typeof weights === 'object' ? weights : {};
-                const normalized = {
-                    female: Math.max(0, Math.min(100, Math.round(Number(source.female) || 0))),
-                    male: Math.max(0, Math.min(100, Math.round(Number(source.male) || 0))),
-                    nonbinary: Math.max(0, Math.min(100, Math.round(Number(source.nonbinary) || 0)))
-                };
-                const total = normalized.female + normalized.male + normalized.nonbinary;
-                if (total <= 0) return { female: 34, male: 33, nonbinary: 33 };
-                if (total === 100) return normalized;
-                const scaled = {
-                    female: Math.round((normalized.female / total) * 100),
-                    male: Math.round((normalized.male / total) * 100),
-                    nonbinary: Math.round((normalized.nonbinary / total) * 100)
-                };
-                const delta = 100 - (scaled.female + scaled.male + scaled.nonbinary);
-                const topKey = Object.entries(scaled).sort((a, b) => b[1] - a[1])[0][0];
-                scaled[topKey] += delta;
-                return scaled;
+                return YAW_ENCOUNTER_PREFERENCES.normalize(weights);
             },
             _encounterPresetWeights(value) {
-                if (value === 'female') return { female: 75, male: 13, nonbinary: 12 };
-                if (value === 'male') return { female: 13, male: 75, nonbinary: 12 };
-                if (value === 'nonbinary') return { female: 13, male: 12, nonbinary: 75 };
-                return { female: 34, male: 33, nonbinary: 33 };
+                return YAW_ENCOUNTER_PREFERENCES.preset(value);
             },
             _encounterPreferenceFromWeights(weights = this.selectedEncounterWeights) {
-                const w = this._normalizeEncounterWeights(weights);
-                const values = Object.entries(w);
-                const [topKey, topValue] = values.sort((a, b) => b[1] - a[1])[0];
-                return topValue >= 70 ? topKey : 'any';
+                return YAW_ENCOUNTER_PREFERENCES.preferenceFromWeights(weights);
             },
             _setEncounterWeights(weights, preset = null) {
-                this.selectedEncounterWeights = this._normalizeEncounterWeights(weights);
-                this.selectedEncounterPreference = preset || this._encounterPreferenceFromWeights(this.selectedEncounterWeights);
-                this._syncEncounterPreferenceUI();
+                return YAW_ENCOUNTER_PREFERENCES.setWeights(this, weights, preset);
             },
             _syncEncounterPreferenceUI() {
-                const weights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
-                for (const key of ['female', 'male', 'nonbinary']) {
-                    const input = document.getElementById(`encounter-weight-${key}`);
-                    const output = document.getElementById(`encounter-weight-${key}-value`);
-                    if (input) input.value = String(weights[key]);
-                    if (output) output.textContent = `${weights[key]}%`;
-                }
-                document.querySelectorAll('#preference-grid .option-card').forEach(c => {
-                    c.classList.toggle('selected', c.dataset.value === this.selectedEncounterPreference);
-                });
+                return YAW_ENCOUNTER_PREFERENCES.syncUI(this);
             },
             setEncounterPreferencePreset(value) {
-                this._setEncounterWeights(this._encounterPresetWeights(value), value);
+                return YAW_ENCOUNTER_PREFERENCES.setPreset(this, value);
             },
             updateEncounterWeight(key, value) {
-                const weights = this._normalizeEncounterWeights(this.selectedEncounterWeights);
-                const nextValue = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-                const others = ['female', 'male', 'nonbinary'].filter(k => k !== key);
-                const remaining = 100 - nextValue;
-                const otherTotal = others.reduce((sum, k) => sum + weights[k], 0);
-                weights[key] = nextValue;
-                if (otherTotal <= 0) {
-                    weights[others[0]] = Math.ceil(remaining / 2);
-                    weights[others[1]] = Math.floor(remaining / 2);
-                } else {
-                    weights[others[0]] = Math.round((weights[others[0]] / otherTotal) * remaining);
-                    weights[others[1]] = remaining - weights[others[0]];
-                }
-                this._setEncounterWeights(weights);
+                return YAW_ENCOUNTER_PREFERENCES.updateWeight(this, key, value);
             },
             _legacyEncounterWeights(preference = 'any') {
                 return this._encounterPresetWeights(preference);
             },
             _pickEncounterIdentity(rollValue, weights = this.encounterWeights || this.selectedEncounterWeights) {
-                const w = this._normalizeEncounterWeights(weights);
-                const total = w.female + w.male + w.nonbinary;
-                const pick = Math.max(0, Math.min(0.999999, rollValue)) * total;
-                if (pick < w.female) return 'female';
-                if (pick < w.female + w.male) return 'male';
-                return 'nonbinary';
+                return YAW_ENCOUNTER_PREFERENCES.pickIdentity(rollValue, weights);
             },
             _anatomyForIdentity(identity, rollValue) {
-                if (identity === 'male') return { parts: 'cock', chest: 'pecs' };
-                if (identity === 'female') return { parts: 'clit', chest: 'tits' };
-                return rollValue < 0.5 ? { parts: 'cock', chest: 'pecs' } : { parts: 'clit', chest: 'tits' };
+                return YAW_ENCOUNTER_PREFERENCES.anatomyForIdentity(identity, rollValue);
             },
             spawnWildEncounter(tile, isBoss = false, firstEntry = false) {
                 const biome = this.biomes[tile.biome];

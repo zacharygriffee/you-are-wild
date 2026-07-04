@@ -6375,8 +6375,8 @@
                         html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button></div>`;
                     });
                 }
-                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
+                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('creature')">${backLabel}</button>`;
+                this.showCreaturePanelDetail(title, html);
                 return true;
             },
 
@@ -6581,9 +6581,7 @@
                 html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${this._escapeHtml(this._label('quest.rewards', 'Rewards'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this._questRewardPreviewText(normalized.reward)}</div></div>`;
                 html += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="nav-btn primary" title="${acceptTitle}" aria-label="${acceptTitle}" onclick="App.acceptQuestFromUnit('${targetKey}')">📜 ${acceptLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.renderCreatures();App.renderExplorationActions();">${closeLabel}</button></div>`;
                 html += `</div>`;
-                document.getElementById('scene-title').textContent = normalized.title;
-                document.getElementById('scene-description').innerHTML = html;
-                document.getElementById('scene-actions').innerHTML = '';
+                this.showCreaturePanelDetail(normalized.title, html);
                 return true;
             },
 
@@ -6604,9 +6602,17 @@
                     if (giver.quest) giver.quest.status = 'active';
                 }
                 this.log.push({ text: this._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
-                this.showQuestLog();
                 this.renderLog();
                 this.renderCreatures();
+                if (giver) {
+                    const title = this._escapeHtml(normalized.title);
+                    const closeLabel = this._escapeHtml(this._label('ui.close', 'Close'));
+                    const questLogLabel = this._escapeHtml(this._label('quest.title', 'Quests'));
+                    const accepted = this._escapeHtml(this._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }));
+                    this.showCreaturePanelDetail(title, `<h3>${title}</h3><p style="color:var(--text-muted);margin-top:8px;">${accepted}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="nav-btn primary" title="${questLogLabel}" aria-label="${questLogLabel}" onclick="App.showQuestLog()">${questLogLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('creature')">${closeLabel}</button></div>`);
+                } else {
+                    this.showQuestLog();
+                }
                 this.autoSave();
                 return normalized;
             },
@@ -7216,6 +7222,7 @@
             },
             closePanelDetails(panel = 'party') {
                 if (panel === 'party') this.renderParty();
+                if (panel === 'creature') this.renderCreatures();
             },
             renderCreatures() {
                 const container = document.getElementById('enemies-content');
@@ -7243,6 +7250,27 @@
                     container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${this._escapeHtml(this._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;
                 }
                 this.renderMobileCreatureStrip();
+            },
+            showCreaturePanelDetail(title, html) {
+                const label = this._escapeHtml(title || this._label('ui.creatures', 'Creatures'));
+                const detail = `<div class="party-panel-detail creature-panel-detail" role="region" aria-label="${label}">${html || ''}</div>`;
+                const container = document.getElementById('enemies-content');
+                const mobileStrip = document.getElementById('mobile-creature-strip');
+                const mobileCard = document.getElementById('mobile-creature-card');
+                if (container) container.innerHTML = detail;
+                if (mobileStrip) mobileStrip.innerHTML = detail;
+                if (mobileCard) mobileCard.style.display = 'block';
+                const panel = document.getElementById('panel-enemies');
+                const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
+                if (isMobile && panel) {
+                    document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('active'));
+                    panel.classList.add('active');
+                    this.syncPanelBackdrop();
+                } else if (panel) {
+                    panel.classList.add('nav-focus');
+                    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+                    try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
+                }
             },
             renderMobilePartyStrip() {
                 const strip = document.getElementById('mobile-party-strip');

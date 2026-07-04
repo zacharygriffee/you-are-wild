@@ -4437,13 +4437,15 @@ test('Contextual intent dispatch reports recruit quest and trade outcomes', () =
   assertEqual(App.selectIntent('creature', 'recruit-1', 'recruit'), false, 'Recruit intent should report missing/non-recruitable target after recruitment');
   assertEqual(App.selectIntent('creature', 'guide-1', 'quest'), true, 'Quest intent should report successful quest preview');
   assertEqual(App.quests.length, 0, 'Quest intent should preview before accepting');
-  assertContains(elements.get('scene-description').innerHTML, 'Quest Preview: Guide Task', 'Quest intent should render a quest preview');
-  assertContains(elements.get('scene-description').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should expose an explicit accept action');
+  assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest intent should render a quest preview in the creature panel');
+  assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should expose an explicit accept action');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 1, 'Explicit preview accept should add the quest to the log');
   assertEqual(App.selectIntent('creature', 'missing-guide', 'quest'), false, 'Quest intent should report missing giver failure');
   assertEqual(App.selectIntent('creature', 'trader-1', 'trade'), true, 'Trade intent should report successful trade screen rendering');
-  assertContains(elements.get('scene-description').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen');
+  assertContains(elements.get('enemies-content').innerHTML, 'Trader Trade', 'Trade intent should render the trade screen in the creature panel');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Trader Trade', 'Trade intent should not replace center tile content');
   assertEqual(App.selectIntent('creature', 'missing-trader', 'trade'), false, 'Trade intent should report missing merchant failure');
 });
 
@@ -8129,15 +8131,17 @@ test('Quest system exposes quest giver actions and quest log', () => {
   assertContains(elements.get('enemies-content').innerHTML, "previewQuestFromUnit('guide-1')", 'Quest giver card should preview before accepting');
   App.previewQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 0, 'Quest preview should not immediately accept the quest');
-  assertContains(elements.get('scene-description').innerHTML, 'Quest Preview: Guide Task', 'Quest preview should show the quest title before acceptance');
-  assertContains(elements.get('scene-description').innerHTML, 'Objectives', 'Quest preview should show objectives');
-  assertContains(elements.get('scene-description').innerHTML, '10 XP', 'Quest preview should show XP reward');
-  assertContains(elements.get('scene-description').innerHTML, '5 gold', 'Quest preview should show gold reward');
-  assertContains(elements.get('scene-description').innerHTML, 'Old Coin', 'Quest preview should show item reward');
-  assertContains(elements.get('scene-description').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
+  assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest preview should show the quest title before acceptance in the creature panel');
+  assertContains(elements.get('enemies-content').innerHTML, 'Objectives', 'Quest preview should show objectives');
+  assertContains(elements.get('enemies-content').innerHTML, '10 XP', 'Quest preview should show XP reward');
+  assertContains(elements.get('enemies-content').innerHTML, '5 gold', 'Quest preview should show gold reward');
+  assertContains(elements.get('enemies-content').innerHTML, 'Old Coin', 'Quest preview should show item reward');
+  assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 1, 'Accepted quest should enter quest log');
-  assertContains(elements.get('scene-description').innerHTML, 'Guide Task', 'Quest log should render accepted quest');
+  assertContains(elements.get('enemies-content').innerHTML, 'Quest accepted: Guide Task.', 'Quest acceptance should remain in the creature panel');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest accepted: Guide Task.', 'Quest acceptance should not replace center tile content');
 });
 
 test('Quest progress completes defeat objectives and grants rewards', () => {
@@ -8545,12 +8549,13 @@ test('Merchant trade supports item categories and sorted stock without index dri
   });
   App.creatures = [merchant];
   App.setTradeFilter('equipment', 'trader-1');
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'Hide Armor', 'Equipment filter should show equipment stock');
   assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumable stock');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Hide Armor', 'Trade filter should not replace center tile content');
   App.setTradeFilter('all', 'trader-1');
   App.setTradeSort('value-desc', 'trader-1');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('enemies-content').innerHTML;
   assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
   App.buyFromMerchant('trader-1', 2);
   assert(App.pendingConfirm, 'Buying expensive sorted stock should open confirmation before purchase');
@@ -8571,7 +8576,7 @@ test('Merchant trade action labels localize with accessible names', () => {
   App.creatures = [merchant];
   App.updateLanguage('es');
   App.showTrade('trader-1');
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Comprar Healing Herb"', 'Buy control should expose localized accessible label');
   assertContains(html, '>Comprar<', 'Buy visible label should localize');
   assertContains(html, 'aria-label="Vender Old Coin"', 'Sell control should expose localized accessible label');
@@ -8583,6 +8588,7 @@ test('Merchant trade action labels localize with accessible names', () => {
   assertContains(html, '<option value="equipment" >Equipo</option>', 'Trade category option should localize');
   assertContains(html, 'Ordenar', 'Trade sort control should localize');
   assertContains(html, '<option value="value-desc" >Valor ↓</option>', 'Trade sort option should localize');
+  assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Comercio con Trader', 'Trade should not replace center tile content');
 });
 
 test('Merchant trade empty states localize', () => {
@@ -8599,7 +8605,7 @@ test('Merchant trade empty states localize', () => {
   App.updateLanguage('es');
   App.setTradeFilter('equipment', 'trader-1');
   App.showTrade('trader-1');
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'No hay existencias que coincidan con el filtro actual.', 'Empty merchant stock message should localize');
   assertContains(html, 'No hay articulos para vender.', 'Empty sell inventory message should localize');
 });

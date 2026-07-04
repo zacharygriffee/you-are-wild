@@ -238,12 +238,14 @@ async function runActionMatrix(page) {
     enemyPun: App.creatures[0]?.CPun,
     targetSelection: App.targetSelection,
     centerSummary: Boolean(document.querySelector('#desktop-play-cell-center .combat-scene-summary')),
+    turnOrder: document.querySelector('#desktop-play-cell-center .combat-turn-order')?.textContent || '',
     recentExchange: document.querySelector('#desktop-play-cell-center .combat-recent-exchange')?.textContent || '',
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.enemyPun < 100, 'Fight should damage a reachable enemy through panel clicks');
   assert.strictEqual(state.targetSelection, null, 'Fight should clear target selection after resolving');
   assert.strictEqual(state.centerSummary, true, 'Combat center should render current-exchange feedback after a panel action');
+  assert(state.turnOrder.includes('Current') && state.turnOrder.includes('Next'), 'Combat center should surface passive current and next turn context');
   assert(state.recentExchange.includes('hit') || state.recentExchange.includes('miss'), 'Combat center should surface the resolved exchange text');
   assert.strictEqual(state.centerHasActorControls, false, 'Combat center feedback should not duplicate actor or target controls');
 

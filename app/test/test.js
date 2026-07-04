@@ -2434,6 +2434,12 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Party actions'", 'English party action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
+  assertContains(contentContent, "'combat.exchange.turnOrder': 'Turn order'", 'English turn order summary label missing');
+  assertContains(contentContent, "'combat.exchange.turnOrder': 'Orden de turnos'", 'Spanish turn order summary label missing');
+  assertContains(contentContent, "'combat.exchange.currentActor': 'Current'", 'English current actor label missing');
+  assertContains(contentContent, "'combat.exchange.currentActor': 'Actual'", 'Spanish current actor label missing');
+  assertContains(contentContent, "'combat.exchange.nextActor': 'Next'", 'English next actor label missing');
+  assertContains(contentContent, "'combat.exchange.nextActor': 'Siguiente'", 'Spanish next actor label missing');
   assertContains(contentContent, "'combat.exchange.pendingTitle': 'Queued groups'", 'English queued group summary label missing');
   assertContains(contentContent, "'combat.exchange.pendingTitle': 'Grupos en cola'", 'Spanish queued group summary label missing');
   assertContains(contentContent, "'combat.exchange.selectedTitle': 'Selected intent'", 'English selected intent summary label missing');
@@ -2948,6 +2954,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
   assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
   assertContains(template, '.intent-menu-radial .mobile-context-menu-actions', 'radial intent menus should have dedicated mobile layout hooks');
+  assertContains(template, '.combat-turn-order', 'combat center should style passive turn order feedback');
   assertContains(template, '.combat-pending-groups', 'combat center should style queued group feedback');
   assertContains(template, '.combat-selected-intent', 'combat center should style selected intent feedback');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
@@ -8481,10 +8488,17 @@ test('Combat target selection is rendered on creature panel cards', () => {
   App.party = [player];
   App.creatures = [enemy];
   App.combatState.active = true;
+  App.combatState.currentTurn = 0;
+  App.combatState.turnQueue = [{ unit: player, initiative: 30 }, { unit: enemy, initiative: 10 }];
   App.nextTurn = function() {};
   App.selectTarget('fight');
   let centerHtml = elements.get('scene-description')?.innerHTML || '';
   assertNotContains(centerHtml, 'creature panel', 'Target picker should not replace center with target guidance');
+  assertContains(centerHtml, 'combat-turn-order', 'Combat center should surface passive turn order context');
+  assertContains(centerHtml, 'Turn order', 'Combat center should label passive turn order context');
+  assertContains(centerHtml, 'Current', 'Combat center should label the current actor');
+  assertContains(centerHtml, 'Next', 'Combat center should label the next actor');
+  assertContains(centerHtml, 'Enemy', 'Combat center should name the next actor from the queue');
   assertContains(centerHtml, 'combat-selected-intent', 'Target picker should surface selected combat intent as passive center context');
   assertContains(centerHtml, 'Selected intent', 'Target picker should label the selected intent summary');
   assertContains(centerHtml, 'You selected Fight.', 'Target picker should summarize selected actor and action');

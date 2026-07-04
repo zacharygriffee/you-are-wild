@@ -8483,22 +8483,10 @@
                 this._mobilePartyPressTimer = null;
             },
             _intentCommand(type, targetRef, action, subAction = null, source = 'sheet') {
-                const actorIds = this._getExplorationActors().map(actor => actor.id || actor.name);
-                const target = this._intentTarget(type, targetRef);
-                return {
-                    actorIds,
-                    action,
-                    subAction,
-                    targetId: target?.id || target?.name || String(targetRef),
-                    targetIds: [target?.id || target?.name || String(targetRef)],
-                    targetType: type,
-                    source
-                };
+                return YAW_INTERACTION_DISPATCH.intentCommand(this, type, targetRef, action, subAction, source);
             },
             _intentTarget(type, targetRef) {
-                return type === 'party'
-                    ? this.party[Number(targetRef)]
-                    : this.creatures.find(c => String(c.id || c.name) === String(targetRef));
+                return YAW_INTERACTION_DISPATCH.intentTarget(this, type, targetRef);
             },
             _intentMenuSurface(source = 'sheet', presentation = 'sheet') {
                 return YAW_INTENT_MENU.surface(source, presentation);

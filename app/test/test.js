@@ -1398,6 +1398,8 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/interaction-dispatch.js'", 'Interaction dispatch helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/interaction-dispatch.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction dispatch helper should load before app.js');
   assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
+  assertContains(interactionDispatchContent, 'intentCommand(app, type, targetRef, action', 'Interaction dispatch helper should own intent command building');
+  assertContains(interactionDispatchContent, 'intentTarget(app, type, targetRef)', 'Interaction dispatch helper should own intent target resolution');
   assertContains(interactionDispatchContent, 'buildCommand(app, context = {})', 'Interaction dispatch helper should own generic command building');
   assertContains(interactionDispatchContent, 'buildPanelCommand(app, context = {})', 'Interaction dispatch helper should own panel command building');
   assertContains(interactionDispatchContent, 'dispatch(app, command)', 'Interaction dispatch helper should own shared command routing');

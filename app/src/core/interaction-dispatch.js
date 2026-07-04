@@ -4,6 +4,26 @@
  */
 
 const YAW_INTERACTION_DISPATCH = {
+    intentTarget(app, type, targetRef) {
+        return type === 'party'
+            ? app.party[Number(targetRef)]
+            : app.creatures.find(c => String(c.id || c.name) === String(targetRef));
+    },
+
+    intentCommand(app, type, targetRef, action, subAction = null, source = 'sheet') {
+        const actorIds = app._getExplorationActors().map(actor => actor.id || actor.name);
+        const target = this.intentTarget(app, type, targetRef);
+        return {
+            actorIds,
+            action,
+            subAction,
+            targetId: target?.id || target?.name || String(targetRef),
+            targetIds: [target?.id || target?.name || String(targetRef)],
+            targetType: type,
+            source
+        };
+    },
+
     buildCommand(app, context = {}) {
         const mode = context.mode || (app.combatState?.active ? 'combat' : 'adventure');
         const actors = context.actors || (mode === 'combat'

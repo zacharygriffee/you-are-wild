@@ -1572,31 +1572,13 @@
                 return YAW_WORLD_STATE.cloneTileValue(value);
             },
             _regionBiomeKeys() {
-                return Object.entries(this.biomes)
-                    .filter(([, biome]) => (biome.role || 'region') === 'region')
-                    .map(([id]) => id);
+                return YAW_WORLD_STATE.regionBiomeKeys(this);
             },
             _getSuperPatchBiome(spx, spy) {
-                const key = `${spx},${spy}`;
-                if (this.superPatchMap.has(key)) return this.superPatchMap.get(key);
-                const biomeKeys = this._regionBiomeKeys();
-                const biomeId = typeof WorldGen !== 'undefined'
-                    ? (WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'legacy-super-patch-biome', spx, spy, biomeKeys.map(id => ({ id, weight: id === 'grove' ? 2 : 1 }))) || 'plains')
-                    : biomeKeys[Math.floor(this._patchNoise(spx, spy) * biomeKeys.length) % biomeKeys.length];
-                this.superPatchMap.set(key, biomeId);
-                return biomeId;
+                return YAW_WORLD_STATE.getSuperPatchBiome(this, spx, spy);
             },
             _rebuildSuperPatchMap() {
-                this.superPatchMap = new Map();
-                for (const [key, tile] of this.worldMap) {
-                    if (tile.baseBiome || tile.biomeDelta) continue;
-                    const spx = Math.floor(Math.floor(tile.x / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
-                    const spy = Math.floor(Math.floor(tile.y / this.PATCH_SIZE) / this.SUPER_PATCH_SIZE);
-                    const skey = `${spx},${spy}`;
-                    if (!this.superPatchMap.has(skey)) {
-                        this.superPatchMap.set(skey, tile.biome);
-                    }
-                }
+                return YAW_WORLD_STATE.rebuildSuperPatchMap(this);
             },
             getBaseTile(x, y) {
                 return YAW_WORLD_STATE.getBaseTile(this, x, y);
@@ -1634,37 +1616,11 @@
             getTile(x, y) {
                 return YAW_WORLD_STATE.getTile(this, x, y);
             },
-            isExplored(x, y) { return this.exploredTiles.has(this._tileKey(x, y)); },
+            isExplored(x, y) {
+                return YAW_WORLD_STATE.isExplored(this, x, y);
+            },
             exploreTile(x, y) {
-                const key = this._tileKey(x, y);
-                const tile = this.getTile(x, y);
-                if (!tile.explored) {
-                    tile.explored = true;
-                    this.exploredTiles.add(key);
-                    const biome = this.biomes[tile.biome];
-                    const descriptions = biome.descriptions || [''];
-                    const descIndex = typeof WorldGen !== 'undefined'
-                        ? Math.floor(WorldGen.hash01(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-description', x, y) * descriptions.length) % descriptions.length
-                        : Math.abs(x * 31 + y * 17) % descriptions.length;
-                    tile.description = descriptions[descIndex];
-                    if (typeof WorldGen !== 'undefined' && WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-landmark', x, y, 0.1)) {
-                        const landmarks = { grove: ['Sacred Spring','Old Bench','Butterfly Garden'], forest: ['Ancient Tree','Fairy Ring','Hunter\'s Camp'], swamp: ['Sunken Shrine','Witch\'s Hut','Bone Pile'], plains: ['Lone Tree','Abandoned Wagon','Stone Circle'], cave: ['Crystal Chamber','Underground Lake','Collapsed Tunnel'], jungle: ['Waterfall','Hidden Pool','Rope Bridge'], beach: ['Tide Pool','Shell Ring','Wreck Marker'], cliff: ['High Overlook','Goat Trail','Wind Carved Arch'], water: ['Quiet Inlet','River Bend','Blue Spring'], dungeon: ['Sealed Door','Old Watchpost','Broken Obelisk'], manor: ['Garden Gate','Fountain Court','Old Conservatory'] };
-                        const list = landmarks[tile.biome] || ['Mysterious Structure'];
-                        tile.hasLandmark = true;
-                        tile.landmarkName = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-landmark-name', x, y, list) || list[0];
-                    }
-                    if (!tile.structure && tile.overlays?.poi?.category === 'restSite') {
-                        tile.structure = 'camp';
-                    }
-                    if (!tile.structure && typeof WorldGen !== 'undefined' && WorldGen.chance(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure', x, y, biome.structureChance || 0)) {
-                        const table = biome.structureTable || [];
-                        tile.structure = WorldGen.pickWeighted(this._mapSeed(), this.worldMeta?.generatorVersion || 1, 'tile-structure-kind', x, y, table) || null;
-                    }
-                    this._emitMapGenerate(tile, x, y);
-                    this.currentBiome = tile.biome;
-                    this.persistTileDelta(x, y, tile);
-                }
-                return tile;
+                return YAW_WORLD_STATE.exploreTile(this, x, y);
             },
 
             enterStructure() {

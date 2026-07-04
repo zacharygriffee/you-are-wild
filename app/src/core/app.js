@@ -143,33 +143,16 @@
                 return YAW_SUB_ACTIONS.label(this, action, subAction);
             },
             _getPrimaryLabel(action) {
-                const isSFW = CONTENT.preferences.maxTier < 2;
-                if (isSFW) {
-                    const safeKey = `action.${action}.sfw`;
-                    const safeLabel = this._t(safeKey);
-                    if (safeLabel !== safeKey) return safeLabel;
-                }
-                const labelKey = `action.${action}`;
-                const label = this._t(labelKey);
-                return label === labelKey ? action : label;
+                return YAW_UI_TEXT.primaryActionLabel(this, action);
             },
             _t(key, vars = {}) {
-                return CONTENT?.t ? CONTENT.t(key, vars) : key;
+                return YAW_UI_TEXT.t(key, vars);
             },
             _label(key, fallback, vars = {}) {
-                const label = this._t(key, vars);
-                return label === key ? String(fallback ?? '').replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '') : label;
+                return YAW_UI_TEXT.label(this, key, fallback, vars);
             },
             _uiLabel(key) {
-                const isSFW = CONTENT.preferences.maxTier < 2;
-                if (isSFW) {
-                    const safeKey = `action.${key}.sfw`;
-                    const safeLabel = this._t(safeKey);
-                    if (safeLabel !== safeKey) return safeLabel;
-                }
-                const labelKey = `action.${key}`;
-                const label = this._t(labelKey);
-                return label === labelKey ? (this.UI_LABELS[key] || key) : label;
+                return YAW_UI_TEXT.uiLabel(this, key);
             },
             _unitKey(unit) {
                 return String(unit?.id || unit?.name || '').replace(/'/g, "\\'");
@@ -188,27 +171,7 @@
                 return YAW_ACTION_UI.legend(this, keys);
             },
             applyStaticLocalization(root = document) {
-                if (!root || !root.querySelectorAll) return;
-                root.querySelectorAll('[data-i18n]').forEach(el => {
-                    const key = el.getAttribute('data-i18n');
-                    if (!key) return;
-                    el.textContent = this._label(key, el.textContent || '');
-                });
-                root.querySelectorAll('[data-i18n-title]').forEach(el => {
-                    const key = el.getAttribute('data-i18n-title');
-                    if (!key) return;
-                    el.setAttribute('title', this._label(key, el.getAttribute('title') || ''));
-                });
-                root.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
-                    const key = el.getAttribute('data-i18n-aria-label');
-                    if (!key) return;
-                    el.setAttribute('aria-label', this._label(key, el.getAttribute('aria-label') || ''));
-                });
-                root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-                    const key = el.getAttribute('data-i18n-placeholder');
-                    if (!key) return;
-                    el.setAttribute('placeholder', this._label(key, el.getAttribute('placeholder') || ''));
-                });
+                return YAW_UI_TEXT.applyStaticLocalization(this, root);
             },
             _actionIcon(key) {
                 return YAW_ACTION_UI.icon(key);
@@ -2287,8 +2250,7 @@
             },
 
             _srOnly(text, attrs = '') {
-                if (!text) return '';
-                return `<span ${attrs} style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${this._escapeHtml(text)}</span>`;
+                return YAW_UI_TEXT.srOnly(this, text, attrs);
             },
 
             _combatStatusText(unit) {
@@ -5585,7 +5547,7 @@
                 return YAW_SCENE_SHELL.closeDetails(this);
             },
             _escapeHtml(value) {
-                return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+                return YAW_UI_TEXT.escapeHtml(value);
             },
             _currentCombatLogMeta(extra = {}) {
                 if (!this.combatState?.active) return {};

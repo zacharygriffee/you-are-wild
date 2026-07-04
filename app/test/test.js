@@ -133,6 +133,7 @@ const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js')
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
+const uiTextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'ui-text.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species-system.js'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
@@ -1573,6 +1574,18 @@ test('Exploration selection helper module is registered before app code', () => 
 });
 
 test('Action UI helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/ui-text.js'", 'UI text helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/ui-text.js'") < buildContent.indexOf("'src/core/action-ui.js'"), 'UI text helper should load before action UI helpers');
+  assert(buildContent.indexOf("'src/core/ui-text.js'") < buildContent.indexOf("'src/core/app.js'"), 'UI text helper should load before app.js');
+  assertContains(uiTextContent, 'const YAW_UI_TEXT = {', 'UI text helper should expose the text service');
+  assertContains(uiTextContent, 'primaryActionLabel(app, action)', 'UI text helper should own primary action labels');
+  assertContains(uiTextContent, 'uiLabel(app, key)', 'UI text helper should own UI action labels');
+  assertContains(uiTextContent, 'applyStaticLocalization(app, root = document)', 'UI text helper should own static localization sync');
+  assertContains(uiTextContent, 'escapeHtml(value)', 'UI text helper should own HTML escaping');
+  assertContains(uiTextContent, 'srOnly(app, text, attrs = \'\')', 'UI text helper should own screen-reader-only markup');
+  assertContains(appContent, 'YAW_UI_TEXT.primaryActionLabel(this, action)', 'App primary label wrapper should delegate to UI text helper');
+  assertContains(appContent, 'YAW_UI_TEXT.applyStaticLocalization(this, root)', 'App static localization wrapper should delegate to UI text helper');
+  assertContains(appContent, 'YAW_UI_TEXT.escapeHtml(value)', 'App escape wrapper should delegate to UI text helper');
   assertContains(buildContent, "'src/core/action-ui.js'", 'Action UI helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action UI helper should load before app.js');
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Action UI helper should load before combat actions that reuse action wrappers');
@@ -3151,7 +3164,7 @@ test('Settings default safe and reveal controls by content maturity', () => {
 
 test('Persistent shell controls opt into localization', () => {
   assertContains(appContent, 'applyStaticLocalization(root = document)', 'Static shell localization helper missing');
-  assertContains(appContent, 'data-i18n-placeholder', 'Static localization should support placeholders');
+  assertContains(uiTextContent, 'data-i18n-placeholder', 'Static localization should support placeholders');
   assertContains(template, 'data-i18n="ui.menu.newGame"', 'Main menu new-game text should opt into localization');
   assertContains(template, 'data-i18n-title="ui.menu.newGameTitle"', 'Main menu new-game title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.nav.mapTitle"', 'Map nav accessible label should opt into localization');
@@ -3500,7 +3513,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

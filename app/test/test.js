@@ -3416,7 +3416,7 @@ test('Core gameplay loop can move fight loot save and reload state', () => {
 test('Active tile creature damage and combat state survive save and load', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];
-  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+  const { App, hooks } = loadAppForCombat(() => 0.5, { binary: Binary });
   const player = makeUnit('You', { id: 'player-save-combat', Figh: 20 });
   const enemy = makeUnit('Ratfolk', {
     id: 'enemy-save-combat',
@@ -3449,6 +3449,11 @@ test('Active tile creature damage and combat state survive save and load', async
 
   const saved = await App._saveToSlotConfirmed('slot1');
   assertEqual(saved, true, 'Manual save should complete');
+  const saveHook = hooks.find(hook => hook.event === 'onGameSave');
+  assert(saveHook, 'Manual save should emit onGameSave');
+  assertEqual(saveHook.payload.slotName, 'slot1', 'Save hook should include the saved slot');
+  assertEqual(saveHook.payload.auto, false, 'Manual save hook should distinguish non-auto saves');
+  assertEqual(saveHook.payload.combatActive, true, 'Save hook should report active combat state');
   const loaded = Binary.loadGame(savedBuffers[0]);
   assertEqual(loaded.worldMap['0,0'].creatures[0].CPun, 17, 'Saved current tile creature should keep damaged punishment');
   assertEqual(loaded.worldMap['0,0'].creatures[0].MPun, 43, 'Saved current tile creature should keep max punishment');
@@ -3460,6 +3465,11 @@ test('Active tile creature damage and combat state survive save and load', async
   loadedApp.App.loadWorldStateFromMapStore = async () => {};
   const restored = await loadedApp.App.loadFromSlot('slot1');
   assertEqual(restored, true, 'Saved combat slot should load');
+  const loadHook = loadedApp.hooks.find(hook => hook.event === 'onGameLoad');
+  assert(loadHook, 'Successful load should emit onGameLoad');
+  assertEqual(loadHook.payload.slotName, 'slot1', 'Load hook should include the loaded slot');
+  assertEqual(loadHook.payload.combatActive, true, 'Load hook should report restored combat state');
+  assertEqual(loadHook.payload.location.x, 0, 'Load hook should include restored location metadata');
   assertEqual(loadedApp.App.creatures[0].CPun, 17, 'Loaded active tile enemy should keep damaged punishment');
   assertEqual(loadedApp.App.combatState.active, true, 'Loaded active combat should remain in combat mode');
   assertEqual(loadedApp.App.mode, loadedApp.App.GAME_MODE.COMBAT, 'Loaded active combat should restore combat game mode');
@@ -4405,6 +4415,45 @@ test('Combat actions emit module hook payloads', () => {
   assertEqual(hooks.length, 1, 'Combat action should emit one module hook');
   assertEqual(hooks[0].event, 'onCombatAction');
   assertEqual(hooks[0].payload.action, 'fight');
+});
+
+test('Traversal and encounter start emit module hook payloads', () => {
+  const { App, hooks } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.currentBiome = 'grove';
+  App.timeHour = 8;
+  App.dayCount = 0;
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: [], items: [] }],
+    ['1,0', { ...App.getBaseTile(1, 0), explored: true, biome: 'grove', creatures: [], items: [] }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.tileDeltas = new Map();
+
+  App.move(1, 0);
+  const moveHook = hooks.find(hook => hook.event === 'onPlayerMove');
+  assert(moveHook, 'Successful movement should emit onPlayerMove');
+  assertEqual(moveHook.payload.from.x, 0, 'Move hook should include origin x');
+  assertEqual(moveHook.payload.to.x, 1, 'Move hook should include destination x');
+  assertEqual(moveHook.payload.dx, 1, 'Move hook should include movement delta');
+  assertEqual(moveHook.payload.interior, false, 'Overworld move hook should identify overworld movement');
+  assertEqual(moveHook.payload.tile.x, 1, 'Move hook should include destination tile');
+  assertEqual(moveHook.payload.app, App, 'Move hook should include the live app reference');
+
+  hooks.length = 0;
+  const enemy = makeUnit('Enemy', { id: 'enemy-hook', disposition: App.DISPOSITION.ENEMY });
+  App.creatures = [enemy];
+  App.processTurn = function() {};
+  App.startCombat([enemy]);
+  const encounterHook = hooks.find(hook => hook.event === 'onEncounterStart');
+  assert(encounterHook, 'Starting combat should emit onEncounterStart');
+  assertEqual(encounterHook.payload.enemies[0], enemy, 'Encounter hook should include the hostile units');
+  assertEqual(encounterHook.payload.party[0], player, 'Encounter hook should include the active party');
+  assertEqual(encounterHook.payload.round, 1, 'Encounter hook should include the starting round');
 });
 
 test('Exploration context keeps creature interaction in panels', () => {

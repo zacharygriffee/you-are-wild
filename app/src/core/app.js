@@ -2159,10 +2159,14 @@
                 return '';
             },
 
-            _emitCombatAction(action, actor, target, result) {
+            _emitModuleHook(event, payload = {}) {
                 if (typeof MODULE_SYSTEM !== 'undefined' && MODULE_SYSTEM.executeHook) {
-                    MODULE_SYSTEM.executeHook('onCombatAction', { action, actor, target, result, app: this }).catch(() => {});
+                    MODULE_SYSTEM.executeHook(event, { ...payload, app: this }).catch(() => {});
                 }
+            },
+
+            _emitCombatAction(action, actor, target, result) {
+                this._emitModuleHook('onCombatAction', { action, actor, target, result });
             },
 
             _awardCombatXP(amount) {
@@ -2439,6 +2443,7 @@
 
             moveInterior(dx, dy) {
                 if (!this.activeInterior) return;
+                const from = { x: this.interiorLocation.x, y: this.interiorLocation.y, interior: true };
                 const nx = this.interiorLocation.x + dx;
                 const ny = this.interiorLocation.y + dy;
                 if (Math.abs(nx) > 2 || Math.abs(ny) > 2) {
@@ -2473,6 +2478,14 @@
                 this.renderCreatures();
                 this.renderLog();
                 if (!this.combatState.active) this.showExplorationActions();
+                this._emitModuleHook('onPlayerMove', {
+                    from,
+                    to: { x: nx, y: ny, interior: true },
+                    dx,
+                    dy,
+                    tile: room,
+                    interior: true
+                });
                 this.autoSave();
             },
 
@@ -2488,6 +2501,7 @@
                     this.renderLog();
                     return;
                 }
+                const from = { x: this.location.x, y: this.location.y, interior: false };
                 // Save current tile state before moving
                 const oldKey = `${this.location.x},${this.location.y}`;
                 const oldTile = this.worldMap.get(oldKey);
@@ -2560,6 +2574,14 @@
                 if (!this.combatState.active) this.showExplorationActions();
                 this.renderCreatures();
                 this.renderLog();
+                this._emitModuleHook('onPlayerMove', {
+                    from,
+                    to: { x: this.location.x, y: this.location.y, interior: false },
+                    dx,
+                    dy,
+                    tile,
+                    interior: false
+                });
                 this.autoSave();
             },
 
@@ -2873,6 +2895,12 @@
                 if (ambushers.length > 0) this._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
                 this._pushLog(`Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
                 this.updateScene(`Round 1`, `Combat started!`, true);
+                this._emitModuleHook('onEncounterStart', {
+                    enemies,
+                    party: this.party,
+                    round: this.combatState.round,
+                    tile: this._currentExplorationTile()
+                });
                 this.renderParty();
                 this.renderCreatures();
                 this.renderMobileCombatToolbelt();
@@ -10179,6 +10207,12 @@
                     this._setSaveTime(this.activeSlot, Date.now().toString());
                     if (this.combatState?.active) this._writeCombatRefreshSnapshot();
                     else this._clearCombatRefreshSnapshot(this.activeSlot);
+                    this._emitModuleHook('onGameSave', {
+                        slotName: this.activeSlot,
+                        auto: true,
+                        worldStoreSaved,
+                        combatActive: Boolean(this.combatState?.active)
+                    });
                     console.log('Auto-saved to', this.activeSlot);
                 } catch (e) { console.error('Auto-save failed:', e); }
             },
@@ -10219,6 +10253,12 @@
                     this._setSaveTime(slotName, Date.now().toString());
                     if (this.combatState?.active) this._writeCombatRefreshSnapshot(slotName);
                     else this._clearCombatRefreshSnapshot(slotName);
+                    this._emitModuleHook('onGameSave', {
+                        slotName,
+                        auto: false,
+                        worldStoreSaved,
+                        combatActive: Boolean(this.combatState?.active)
+                    });
                     alert(this._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
                     return true;
                 } catch (e) { alert(this._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
@@ -10352,6 +10392,11 @@
                     if (!this._resumeLoadedCombat()) {
                         this.showExplorationActions();
                     }
+                    this._emitModuleHook('onGameLoad', {
+                        slotName,
+                        combatActive: Boolean(this.combatState?.active),
+                        location: { ...this.location }
+                    });
                     return true;
                 } catch (e) { console.error('Load failed:', e); alert(this._label('save.error.loadFailed', 'Load failed: {message}', { message: e.message })); return false; }
             },

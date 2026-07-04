@@ -6468,75 +6468,22 @@
                 return full;
             },
             _clearTileEvents() {
-                this.tileEvents = [];
-                this.renderTileEvents();
+                return YAW_TILE_EVENT_FEED.clear(this);
             },
             _tileEventTimestamp() {
-                try {
-                    return `${this._timeLabel()} ${this._isNight() ? this._label('ui.tileInfo.night', 'Night') : this._label('ui.tileInfo.day', 'Day')}`;
-                } catch(e) {
-                    return '';
-                }
+                return YAW_TILE_EVENT_FEED.timestamp(this);
             },
             _normalizeTileEventMeta(type = 'discovery', meta = {}) {
-                const logMeta = this._logCategoryMeta(type);
-                const actorName = meta.actorName || meta.speakerName || meta.actor?.name || null;
-                const semanticKind = meta.semanticKind || meta.kind || (actorName ? 'action' : type);
-                return {
-                    icon: meta.icon || logMeta.icon,
-                    label: meta.label || logMeta.label,
-                    actorName,
-                    speakerName: meta.speakerName || null,
-                    intent: meta.intent || null,
-                    semanticKind,
-                    summary: meta.summary || null
-                };
+                return YAW_TILE_EVENT_FEED.normalizeMeta(this, type, meta);
             },
             _addTileEvent(text, type = 'discovery', meta = {}) {
-                const message = String(text || '').trim();
-                if (!message) return null;
-                const presentation = this._normalizeTileEventMeta(type, meta);
-                const event = {
-                    text: message,
-                    type: type || 'discovery',
-                    x: this.inInterior ? this.interiorLocation?.x : this.location?.x,
-                    y: this.inInterior ? this.interiorLocation?.y : this.location?.y,
-                    time: this._tileEventTimestamp(),
-                    ...meta,
-                    ...presentation
-                };
-                if (!Array.isArray(this.tileEvents)) this.tileEvents = [];
-                this.tileEvents.push(event);
-                if (this.tileEvents.length > 12) this.tileEvents = this.tileEvents.slice(-12);
-                this.renderTileEvents();
-                return event;
+                return YAW_TILE_EVENT_FEED.add(this, text, type, meta);
             },
             _tileEventFeedHtml() {
-                const events = Array.isArray(this.tileEvents) ? this.tileEvents.slice(-6) : [];
-                if (!events.length) return '';
-                const title = this._escapeHtml(this._label('ui.tileEvents.title', 'Here now'));
-                const items = events.map(event => {
-                    const type = event.type || 'discovery';
-                    const meta = this._normalizeTileEventMeta(type, event);
-                    const kind = this._escapeHtml(meta.semanticKind || type);
-                    const actor = meta.actorName ? `<span class="tile-event-actor">${this._escapeHtml(meta.actorName)}</span>` : '';
-                    const intent = meta.intent ? `<span class="tile-event-intent">${this._escapeHtml(meta.intent)}</span>` : '';
-                    const time = event.time ? `<span class="tile-event-time">${this._escapeHtml(event.time)}</span>` : '';
-                    return `<div class="tile-event-item ${this._escapeHtml(type)}" data-event-kind="${kind}" role="listitem">` +
-                        `<span class="tile-event-icon" aria-label="${this._escapeHtml(meta.label)}">${this._escapeHtml(meta.icon)}</span>` +
-                        `<span class="tile-event-body">${actor}${intent}<span class="tile-event-text">${this._escapeHtml(event.text)}</span></span>` +
-                        time +
-                    `</div>`;
-                }).join('');
-                return `<section class="tile-event-feed" aria-label="${title}"><div class="tile-event-title">${title}</div><div class="tile-event-list" role="list">${items}</div></section>`;
+                return YAW_TILE_EVENT_FEED.html(this);
             },
             renderTileEvents() {
-                const html = this._tileEventFeedHtml();
-                ['tile-event-feed', 'mobile-tile-event-feed'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = html;
-                });
-                return html;
+                return YAW_TILE_EVENT_FEED.render(this);
             },
             _logTimestamp(entry, indexFromEnd = 0) {
                 if (entry?.round && entry?.turnIndex) {

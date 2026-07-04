@@ -4153,6 +4153,7 @@ test('Authored loot tables can place equipment on corpses and structures', () =>
   App.search();
   assertEqual(App.inventory[0].name, 'Hide Armor', 'Structure loot table should grant authored equipment through search');
   assertEqual(tile.structureLooted, true, 'Structure loot should be marked consumed after search');
+  assertEqual(App.getTileDelta(0, 0).structureLooted, true, 'Structure loot consumed state should persist as a tile delta');
 });
 
 test('Resource-site search is deterministic visible and one-time', () => {

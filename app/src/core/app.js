@@ -8818,7 +8818,10 @@
                     const authoredLoot = struct?.lootTable && !tile.structureLooted ? this._lootItemNameFromTable(struct.lootTable, 'structure-search-loot', tileX, tileY, searchDay, searchHour) : null;
                     const items = Object.keys(this.ITEMS);
                     const iname = authoredLoot || this._pickWorldList(items, 'search-item-name', tileX, tileY, searchDay, searchHour);
-                    if (authoredLoot) tile.structureLooted = true;
+                    if (authoredLoot) {
+                        tile.structureLooted = true;
+                        this.persistTileDelta(tileX, tileY, tile);
+                    }
                     const iid = `item_${tileX}_${tileY}_${searchDay}_${searchHour}`;
                     this.inventory.push({ id: iid, name: iname });
                     this._updateQuestProgress('find', { item: iname, name: iname });

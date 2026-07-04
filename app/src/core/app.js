@@ -358,7 +358,6 @@
                 const handlers = {
                     rest: 'App.rest()',
                     search: 'App.search()',
-                    inventory: 'App.showInventory()',
                     quests: 'App.showQuestLog()',
                     stats: 'App.showCharacterStats()',
                     enter: 'App.enterStructure()',

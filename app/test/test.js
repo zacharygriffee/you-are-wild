@@ -5831,6 +5831,52 @@ test('Moving tiles clears tile-bound creature targets but keeps party selections
   assertEqual(App.explorationTargetIds.includes('creature:creature-1'), false, 'Selected creature target should clear when leaving its tile');
 });
 
+test('Starting and restoring combat clear adventure target marks', () => {
+  const fresh = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: fresh.App.DISPOSITION.ENEMY });
+  fresh.App.player = player;
+  fresh.App.party = [player, ally];
+  fresh.App.creatures = [enemy];
+  fresh.App.explorationActorIds = ['ally-1'];
+  fresh.App.explorationTargetIds = ['party:ally-1', 'creature:enemy-1'];
+  fresh.App.targetSelection = { action: 'flirt', source: 'adventure' };
+  fresh.App.syncSelection = { active: true };
+  fresh.App.feedSelection = { active: true };
+  fresh.App.processTurn = () => {};
+  fresh.App.startCombat([enemy]);
+  assertEqual(fresh.App.combatState.active, true, 'Combat should start');
+  assertEqual(fresh.App.explorationActorIds.includes('ally-1'), true, 'Selected adventure actor can survive combat entry as separate state');
+  assertEqual(fresh.App.explorationTargetIds.length, 0, 'Combat entry should clear stale adventure target marks');
+  assertEqual(fresh.App.targetSelection, null, 'Combat entry should clear stale non-combat target selection');
+  assertEqual(fresh.App.syncSelection, null, 'Combat entry should clear stale sync selection');
+  assertEqual(fresh.App.feedSelection, null, 'Combat entry should clear stale feed selection');
+
+  const restored = loadAppForCombat(() => 0);
+  const restoredPlayer = makeUnit('You', { id: 'player-restore' });
+  const restoredEnemy = makeUnit('Enemy', { id: 'enemy-restore', disposition: restored.App.DISPOSITION.ENEMY });
+  restored.App.player = restoredPlayer;
+  restored.App.party = [restoredPlayer];
+  restored.App.creatures = [restoredEnemy];
+  restored.App.explorationActorIds = ['player-restore'];
+  restored.App.explorationTargetIds = ['party:player-restore', 'creature:enemy-restore'];
+  const restoredActive = restored.App._restoreCombatState({
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    activeActorId: 'player-restore',
+    turnQueue: [
+      { unitId: 'player-restore', initiative: 20 },
+      { unitId: 'enemy-restore', initiative: 10 }
+    ],
+    syncActions: []
+  });
+  assertEqual(restoredActive, true, 'Active combat should restore');
+  assertEqual(restored.App.combatState.active, true, 'Restored combat should stay active');
+  assertEqual(restored.App.explorationTargetIds.length, 0, 'Restoring active combat should clear stale adventure target marks');
+});
+
 test('Moving tiles clears current tile event feed but keeps durable log', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   const player = makeUnit('You', { id: 'player-1' });

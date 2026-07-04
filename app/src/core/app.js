@@ -2816,6 +2816,8 @@
 
             // ===== COMBAT SYSTEM =====
             startCombat(enemies) {
+                this._clearTransientInteractionState();
+                this._normalizeExplorationSelections({ resetTargets: true });
                 this.mode = this.GAME_MODE.COMBAT;
                 this.combatState.active = true;
                 this.combatState.round = 1;
@@ -10286,22 +10288,23 @@
                     round: Math.max(1, savedCombat.round || 1),
                     currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
                     turnQueue,
-	                    syncActions: (savedCombat.syncActions || []).map(sync => ({
-	                        type: sync.type,
-	                        participants: (sync.participantIds || []).map(resolve).filter(Boolean),
-	                        target: resolve(sync.targetId),
-	                        resolveAtIndex: sync.resolveAtIndex || 0,
-	                        round: sync.round || savedCombat.round || 1,
-	                        resolved: Boolean(sync.resolved)
-	                    })).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
-	                    processing: false,
-	                    xpEarned: savedCombat.xpEarned || 0
-	                };
-	                this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
-	                this.targetSelection = null;
-	                this._sanitizeCombatState({ preserveTurn: true });
-	                return true;
-	            },
+                    syncActions: (savedCombat.syncActions || []).map(sync => ({
+                        type: sync.type,
+                        participants: (sync.participantIds || []).map(resolve).filter(Boolean),
+                        target: resolve(sync.targetId),
+                        resolveAtIndex: sync.resolveAtIndex || 0,
+                        round: sync.round || savedCombat.round || 1,
+                        resolved: Boolean(sync.resolved)
+                    })).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
+                    processing: false,
+                    xpEarned: savedCombat.xpEarned || 0
+                };
+                this.activeActor = resolve(savedCombat.activeActorId) || this.combatState.turnQueue[this.combatState.currentTurn]?.unit || this.player;
+                this.targetSelection = null;
+                this._normalizeExplorationSelections({ resetTargets: true });
+                this._sanitizeCombatState({ preserveTurn: true });
+                return true;
+            },
             _resumeLoadedCombat() {
                 if (!this.combatState?.active) return false;
                 this._clearTransientInteractionState();

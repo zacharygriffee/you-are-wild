@@ -126,6 +126,7 @@ const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
+const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
@@ -1354,6 +1355,16 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded)', 'App unit focus wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.controlAttrs(this, kind, active)', 'App selection control wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.chips(this, unit, type)', 'App selection chip wrapper should delegate to the helper');
+});
+
+test('Panel interaction tray helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/panel-interactions.js'", 'Panel interaction helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/panel-interactions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel interaction helper should load before app.js');
+  assertContains(panelInteractionsContent, 'const YAW_PANEL_INTERACTIONS = {', 'Panel interaction helper should expose the tray service');
+  assertContains(panelInteractionsContent, "return app._renderExplorationTargetActions('panel-tray')", 'Adventure panel tray should keep using marked target actions');
+  assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
+  assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
 });
 
 test('Intent menu helper module is registered before app code', () => {
@@ -2714,7 +2725,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

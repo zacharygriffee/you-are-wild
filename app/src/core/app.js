@@ -547,48 +547,13 @@
                 if (includeToolbelt) this.renderMobileCombatToolbelt();
             },
             _panelInteractionTrayTitle(mode) {
-                return mode === 'combat'
-                    ? this._label('combat.panelActions', 'Combat actions')
-                    : this._label('target.selectedSummary', 'Selected exploration targets');
+                return YAW_PANEL_INTERACTIONS.title(this, mode);
             },
             _renderPanelInteractionTray(mode = this.combatState?.active ? 'combat' : 'adventure') {
-                if (mode === 'combat') return this._renderCombatPanelTray();
-                return this._renderExplorationTargetActions('panel-tray');
+                return YAW_PANEL_INTERACTIONS.render(this, mode);
             },
             _renderCombatPanelTray() {
-                if (!this.combatState?.active) return '';
-                const actor = this.activeActor || this._currentCombatActor();
-                const label = this._escapeHtml(this._panelInteractionTrayTitle('combat'));
-                if (this.feedSelection?.active) {
-                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                    const title = this._escapeHtml(this._label('feed.optionsTitle', 'Feed Options'));
-                    const buttons = (this.feedSelection.subIds || []).map(subId => {
-                        const subDef = this.SUB_ACTIONS.feed?.[subId] || {};
-                        const subLabel = this._escapeHtml(this._getActionLabel('feed', subId));
-                        const icon = subDef.icon || '';
-                        return `<button class="action-btn" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${subId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
-                    }).join('');
-                    return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${this._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
-                }
-                if (this.syncSelection?.active) {
-                    const clearLabel = this._escapeHtml(this._label('ui.cancel', 'Cancel'));
-                    if (this.syncSelection.phase === 'choose') {
-                        const title = this._escapeHtml(this._label('combat.sync.chooseAction', 'Choose Sync Action'));
-                        const syncButton = (type, icon, key, fallback) => {
-                            const buttonLabel = this._escapeHtml(this._label(key, fallback));
-                            return `<button class="action-btn" title="${buttonLabel}" aria-label="${buttonLabel}" onclick="App.selectSyncParticipants('${type}')">${icon} ${buttonLabel}</button>`;
-                        };
-                        return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${this._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Flirt')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Seduce')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
-                    }
-                    const participants = this._syncSelectedParticipants();
-                    const names = participants.map(unit => unit.name).join(', ') || (actor?.name || '');
-                    const needMore = participants.length < 2;
-                    const message = needMore
-                        ? this._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.')
-                        : this._label('combat.sync.selectTarget', 'Select sync target');
-                    return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${this._escapeHtml(this._label('target.actors', 'Actors'))}: ${this._escapeHtml(names)}</span><span>${this._escapeHtml(message)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
-                }
-                return '';
+                return YAW_PANEL_INTERACTIONS.combat(this);
             },
             _syncSelectedParticipants() {
                 if (!this.syncSelection?.active) return [];

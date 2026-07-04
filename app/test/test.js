@@ -12438,7 +12438,7 @@ test('Save slot destructive confirmations localize', async () => {
   assertEqual(deleteAttempts.length, 0, 'Cancelled slot delete should not remove the selected slot');
 });
 
-test('Save slot status alerts use display slot labels', async () => {
+test('Save slot status feedback uses display slot labels', async () => {
   const noSave = loadAppForCombat(() => 0.5);
   noSave.App.updateLanguage('es');
   noSave.App._dbGet = async () => null;
@@ -12452,8 +12452,13 @@ test('Save slot status alerts use display slot labels', async () => {
   saved.App.party = [saved.App.player];
   saved.App.persistWorldStateToMapStore = async () => {};
   saved.App._dbPut = async () => {};
+  saved.App.showSaveManager('save');
   await saved.App.saveToSlot('slot2');
-  assertEqual(saved.alerts[0], 'Partida guardada en Slot 2!', 'Save success alert should use localized display slot label');
+  assertEqual(saved.alerts.length, 0, 'Save success should stay in the app UI instead of using a native alert');
+  assertEqual(saved.App.saveManagerStatus.message, 'Partida guardada en Slot 2!', 'Save success status should use localized display slot label');
+  assertContains(saved.elements.get('save-manager').innerHTML, 'Partida guardada en Slot 2!', 'Save manager should show the successful save status');
+  assertContains(saved.elements.get('save-manager').innerHTML, '▶ Slot 2', 'Saved slot should become the active slot in the refreshed manager');
+  assertContains(saved.elements.get('save-manager').innerHTML, 'Partida guardada', 'Saved slot should render as occupied after refresh');
 
   const Binary = loadBinaryForTest();
   const recovery = loadAppForCombat(() => 0.5, { binary: Binary });

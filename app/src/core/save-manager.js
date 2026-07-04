@@ -16,6 +16,10 @@ const YAW_SAVE_MANAGER = {
         const descriptionKey = isNewMode ? 'save.newDescription' : (isSaveMode ? 'save.saveDescription' : 'save.loadDescription');
         const description = app._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose where to save the current game. Occupied slots warn before overwrite.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
         let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + app._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + app._escapeHtml(description) + '</p>';
+        if (app.saveManagerStatus) {
+            const statusClass = app.saveManagerStatus.kind === 'error' ? ' error' : '';
+            html += '<div class="save-manager-status' + statusClass + '" role="status" aria-live="polite">' + app._escapeHtml(app.saveManagerStatus.message) + '</div>';
+        }
         if (!isNewMode && !isSaveMode) {
             html += '<div class="save-manager-toolbar">' + saveButton('nav-btn primary', '🆕 ' + app._label('save.toolbarNew', 'New Game'), app._label('save.action.newGame', 'Choose a slot for a new game'), 'App.showNewGameManager()') + '<span>' + app._escapeHtml(app._label('save.toolbarHint', 'Choose a slot next; occupied slots warn before overwrite.')) + '</span></div>';
         }

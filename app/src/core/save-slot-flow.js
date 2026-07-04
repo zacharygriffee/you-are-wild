@@ -11,6 +11,7 @@ const YAW_SAVE_SLOT_FLOW = {
     showManager(app, mode = 'load') {
         const safeMode = ['load', 'save', 'new'].includes(mode) ? mode : 'load';
         app.saveManagerMode = safeMode;
+        app.saveManagerStatus = null;
         app.showScreen('save-manager');
         app.renderSaveManager(safeMode);
     },
@@ -71,9 +72,19 @@ const YAW_SAVE_SLOT_FLOW = {
         const slotLabel = app._slotDisplayLabel(slotName);
         try {
             await YAW_SAVE_PERSISTENCE.writeSlot(app, slotName, { auto: false });
-            alert(app._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel }));
+            app.saveManagerStatus = {
+                kind: 'success',
+                message: app._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel })
+            };
+            app.renderSaveManager(app.saveManagerMode || 'save');
             return true;
-        } catch (e) { alert(app._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })); }
+        } catch (e) {
+            app.saveManagerStatus = {
+                kind: 'error',
+                message: app._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })
+            };
+            app.renderSaveManager(app.saveManagerMode || 'save');
+        }
         return false;
     },
 

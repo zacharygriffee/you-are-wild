@@ -158,6 +158,7 @@ const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
 const assetManifestPath = path.join(SRC_DIR, 'core', 'asset-manifest.js');
 const assetManifestContent = fs.readFileSync(assetManifestPath, 'utf8');
+const worldStoreContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'world-store.js'), 'utf8');
 const contentSystemPath = path.join(SRC_DIR, 'core', 'content-system.js');
 const contentSystemContent = fs.readFileSync(contentSystemPath, 'utf8');
 const moduleSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'module-system.js'), 'utf8');
@@ -1357,6 +1358,22 @@ test('Storage helper module is registered before app code', () => {
   assertContains(appContent, 'MODULE_SYSTEM.closeDatabase()', 'Clear-all should close the module database before deleting IndexedDB namespaces');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.writeCombatRefreshSnapshot(app, saveData, slotName)', 'Combat refresh writes should delegate to storage helper with the requested slot');
   assertContains(combatSaveStateContent, 'YAW_STORAGE.readCombatRefreshSnapshot(app, slotName)', 'Combat refresh reads should delegate to storage helper');
+});
+
+test('World store helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/world-store.js'", 'World store helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/world-store.js'") < buildContent.indexOf("'src/core/app.js'"), 'World store helper should load before app.js');
+  assertContains(worldStoreContent, 'const YAW_WORLD_STORE = {', 'World store helper should expose the sparse world store service');
+  assertContains(worldStoreContent, 'indexedDB.open(app.WORLD_DB_NAME, app.WORLD_DB_VERSION)', 'World store helper should open the YAW world database');
+  assertContains(worldStoreContent, "createObjectStore('worlds'", 'World store helper should create the world metadata store');
+  assertContains(worldStoreContent, "createObjectStore('tileDeltas'", 'World store helper should create the tile delta store');
+  assertContains(worldStoreContent, "createObjectStore('chunkDeltas'", 'World store helper should reserve chunk delta storage');
+  assertContains(worldStoreContent, "createObjectStore('entityIndex'", 'World store helper should reserve entity index storage');
+  assertContains(worldStoreContent, 'app.persistAllTileDeltas()', 'World store persistence should flush tile deltas before writing');
+  assertContains(worldStoreContent, 'app._applyTileDeltaRecords(records)', 'World store loading should apply normalized tile delta records');
+  assertContains(appContent, 'YAW_WORLD_STORE.dbOpen(this)', 'App world DB wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STORE.persist(this)', 'App world persistence wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STORE.load(this)', 'App world load wrapper should delegate to the helper');
 });
 
 test('Combat scene helper module is registered before app code', () => {
@@ -3053,7 +3070,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -8101,10 +8118,10 @@ asyncTest('World store load ignores malformed metadata but applies valid tile de
 
 test('Sparse map IndexedDB store contract is present', () => {
   assertContains(appContent, "WORLD_DB_NAME: 'YAW_Worlds'", 'World map DB name should be declared');
-  assertContains(appContent, "createObjectStore('worlds'", 'World metadata store should be created');
-  assertContains(appContent, "createObjectStore('tileDeltas'", 'Tile delta store should be created');
-  assertContains(appContent, "createObjectStore('chunkDeltas'", 'Chunk delta store should be reserved');
-  assertContains(appContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
+  assertContains(worldStoreContent, "createObjectStore('worlds'", 'World metadata store should be created');
+  assertContains(worldStoreContent, "createObjectStore('tileDeltas'", 'Tile delta store should be created');
+  assertContains(worldStoreContent, "createObjectStore('chunkDeltas'", 'Chunk delta store should be reserved');
+  assertContains(worldStoreContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
   assertContains(appContent, 'persistWorldStateToMapStore()', 'World map persistence helper should exist');
   assertContains(appContent, 'loadWorldStateFromMapStore()', 'World map load helper should exist');
   assertContains(savePersistenceContent, 'omitWorldMap: worldStoreSaved', 'Slot saves should omit full worldMap only after world-store persistence succeeds');

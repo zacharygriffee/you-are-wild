@@ -8716,84 +8716,13 @@
             async _dbGet(store, key) { return YAW_STORAGE.dbGet(this, store, key); },
             async _dbDelete(store, key) { return YAW_STORAGE.dbDelete(this, store, key); },
             async _worldDbOpen() {
-                return new Promise((resolve, reject) => {
-                    if (!indexedDB || typeof indexedDB.open !== 'function') {
-                        reject(new Error('IndexedDB unavailable'));
-                        return;
-                    }
-                    const req = indexedDB.open(this.WORLD_DB_NAME, this.WORLD_DB_VERSION);
-                    req.onupgradeneeded = e => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains('worlds')) db.createObjectStore('worlds', { keyPath: 'worldId' });
-                        if (!db.objectStoreNames.contains('tileDeltas')) db.createObjectStore('tileDeltas', { keyPath: 'key' });
-                        if (!db.objectStoreNames.contains('chunkDeltas')) db.createObjectStore('chunkDeltas', { keyPath: 'key' });
-                        if (!db.objectStoreNames.contains('entityIndex')) db.createObjectStore('entityIndex', { keyPath: 'key' });
-                    };
-                    req.onsuccess = e => resolve(e.target.result);
-                    req.onerror = () => reject(req.error);
-                });
+                return YAW_WORLD_STORE.dbOpen(this);
             },
             async persistWorldStateToMapStore() {
-                this.persistAllTileDeltas();
-                this.worldMeta = this._normalizeWorldMeta(this.worldMeta, this._defaultWorldMeta());
-                const worldId = this.worldMeta.worldId || 'world_default';
-                const db = await this._worldDbOpen();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
-                    const worlds = tx.objectStore('worlds');
-                    const tileDeltas = tx.objectStore('tileDeltas');
-                    const records = Array.from(this.tileDeltas.entries()).map(([key, delta]) => this._tileDeltaRecordFromEntry(key, delta));
-                    worlds.put({ ...this.worldMeta, worldId, updatedAt: Date.now() });
-                    const cursorReq = tileDeltas.openCursor();
-                    cursorReq.onsuccess = e => {
-                        const cursor = e.target.result;
-                        if (!cursor) {
-                            for (const record of records) tileDeltas.put(record);
-                            return;
-                        }
-                        if (cursor.value?.worldId === worldId) cursor.delete();
-                        cursor.continue();
-                    };
-                    cursorReq.onerror = () => reject(cursorReq.error);
-                    tx.oncomplete = () => { db.close(); resolve(records.length); };
-                    tx.onerror = () => { db.close(); reject(tx.error); };
-                });
+                return YAW_WORLD_STORE.persist(this);
             },
             async loadWorldStateFromMapStore() {
-                this.worldMeta = this._normalizeWorldMeta(this.worldMeta, this._defaultWorldMeta());
-                const worldId = this.worldMeta.worldId;
-                if (!worldId) return 0;
-                const db = await this._worldDbOpen();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(['worlds', 'tileDeltas'], 'readonly');
-                    const worlds = tx.objectStore('worlds');
-                    const tileDeltas = tx.objectStore('tileDeltas');
-                    const records = [];
-                    const worldReq = worlds.get(worldId);
-                    worldReq.onsuccess = () => {
-                        if (worldReq.result) {
-                            const loadedMeta = this._normalizeWorldMeta(worldReq.result, this.worldMeta);
-                            if (loadedMeta.worldId === worldId) this.worldMeta = loadedMeta;
-                        }
-                    };
-                    const cursorReq = tileDeltas.openCursor();
-                    cursorReq.onsuccess = e => {
-                        const cursor = e.target.result;
-                        if (!cursor) return;
-                        if (cursor.value?.worldId === worldId) records.push(cursor.value);
-                        cursor.continue();
-                    };
-                    cursorReq.onerror = () => reject(cursorReq.error);
-                    tx.oncomplete = () => {
-                        db.close();
-                        this._applyTileDeltaRecords(records);
-                        const currentTile = this.getTile(this.location.x, this.location.y);
-                        this.currentBiome = currentTile.biome;
-                        this.creatures = this._tileCreatures(currentTile.creatures || []);
-                        resolve(records.length);
-                    };
-                    tx.onerror = () => { db.close(); reject(tx.error); };
-                });
+                return YAW_WORLD_STORE.load(this);
             },
         };
 

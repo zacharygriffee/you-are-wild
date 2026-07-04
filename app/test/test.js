@@ -2155,11 +2155,15 @@ test('Log view helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/log-view.js'", 'Log view helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/log-view.js'") < buildContent.indexOf("'src/core/app.js'"), 'Log view helper should load before app.js');
   assertContains(logViewContent, 'const YAW_LOG_VIEW = {', 'Log view helper should expose the log service');
+  assertContains(logViewContent, 'currentCombatMeta(app, extra = {})', 'Log view helper should own combat log metadata stamping');
+  assertContains(logViewContent, "push(app, entry, type = 'discovery', meta = {})", 'Log view helper should own log insertion');
   assertContains(logViewContent, 'filteredEntries(app)', 'Log view helper should own filtering');
   assertContains(logViewContent, 'normalizePreferences(app, input = {})', 'Log view helper should own preference normalization');
   assertContains(logViewContent, 'applyLayoutState(app)', 'Log view helper should own layout state updates');
   assertContains(logViewContent, 'export(app)', 'Log view helper should own visible log export');
   assertContains(logViewContent, 'render(app)', 'Log view helper should own DOM rendering');
+  assertContains(appContent, 'YAW_LOG_VIEW.currentCombatMeta(this, extra)', 'App combat log meta wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_LOG_VIEW.push(this, entry, type, meta)', 'App push log wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_LOG_VIEW.timestamp(this, entry, indexFromEnd)', 'App log timestamp wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_LOG_VIEW.filteredEntries(this)', 'App log filter wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_LOG_VIEW.setFilter(this, filter)', 'App setLogFilter wrapper should delegate to the helper');

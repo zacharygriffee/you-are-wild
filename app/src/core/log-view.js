@@ -4,6 +4,28 @@
  */
 
 const YAW_LOG_VIEW = {
+    currentCombatMeta(app, extra = {}) {
+        if (!app.combatState?.active) return {};
+        const entry = app.combatState.turnQueue?.[app.combatState.currentTurn] || null;
+        const actor = extra.actor || entry?.unit || null;
+        return {
+            round: app.combatState.round || 1,
+            turnIndex: (app.combatState.currentTurn ?? 0) + 1,
+            actorId: actor ? (actor.id || actor.name || null) : null,
+            actorName: actor?.name || null,
+            phase: extra.phase || (actor ? 'turn' : 'combat')
+        };
+    },
+
+    push(app, entry, type = 'discovery', meta = {}) {
+        const next = typeof entry === 'string' ? { text: entry, type } : { ...(entry || {}) };
+        next.type = next.type || type;
+        const needsCombatMeta = next.type === 'combat' && app.combatState?.active;
+        const full = needsCombatMeta ? { ...this.currentCombatMeta(app, meta), ...next, ...meta } : { ...next, ...meta };
+        app.log.push(full);
+        return full;
+    },
+
     timestamp(app, entry, indexFromEnd = 0) {
         if (entry?.round && entry?.turnIndex) {
             const actor = entry.actorName ? ` · ${entry.actorName}` : '';

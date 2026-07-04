@@ -5550,24 +5550,10 @@
                 return YAW_UI_TEXT.escapeHtml(value);
             },
             _currentCombatLogMeta(extra = {}) {
-                if (!this.combatState?.active) return {};
-                const entry = this.combatState.turnQueue?.[this.combatState.currentTurn] || null;
-                const actor = extra.actor || entry?.unit || null;
-                return {
-                    round: this.combatState.round || 1,
-                    turnIndex: (this.combatState.currentTurn ?? 0) + 1,
-                    actorId: actor ? (actor.id || actor.name || null) : null,
-                    actorName: actor?.name || null,
-                    phase: extra.phase || (actor ? 'turn' : 'combat')
-                };
+                return YAW_LOG_VIEW.currentCombatMeta(this, extra);
             },
             _pushLog(entry, type = 'discovery', meta = {}) {
-                const next = typeof entry === 'string' ? { text: entry, type } : { ...(entry || {}) };
-                next.type = next.type || type;
-                const needsCombatMeta = next.type === 'combat' && this.combatState?.active;
-                const full = needsCombatMeta ? { ...this._currentCombatLogMeta(meta), ...next, ...meta } : { ...next, ...meta };
-                this.log.push(full);
-                return full;
+                return YAW_LOG_VIEW.push(this, entry, type, meta);
             },
             _clearTileEvents() {
                 return YAW_TILE_EVENT_FEED.clear(this);

@@ -1972,6 +1972,10 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'ui.creatureActions': 'Acciones de criatura'", 'Spanish creature action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Party actions'", 'English party action label missing');
   assertContains(contentContent, "'ui.partyActions': 'Acciones del grupo'", 'Spanish party action label missing');
+  assertContains(contentContent, "'combat.exchange.pendingTitle': 'Queued groups'", 'English queued group summary label missing');
+  assertContains(contentContent, "'combat.exchange.pendingTitle': 'Grupos en cola'", 'Spanish queued group summary label missing');
+  assertContains(contentContent, "'combat.exchange.pendingGroup': '{participants} prepare {action} against {target}. Resolves at turn {order}.'", 'English queued group summary template missing');
+  assertContains(contentContent, "'combat.exchange.pendingGroup': '{participants} preparan {action} contra {target}. Se resuelve en el turno {order}.'", 'Spanish queued group summary template missing');
   assertContains(contentContent, "'quest.previewTitle': 'Quest Preview'", 'English quest preview title missing');
   assertContains(contentContent, "'quest.previewTitle': 'Vista previa de mision'", 'Spanish quest preview title missing');
   assertContains(contentContent, "'quest.reward.gold': '{count} gold'", 'English quest reward gold label missing');
@@ -2477,6 +2481,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
   assertContains(template, '-webkit-overflow-scrolling: touch', 'mobile context menus should support momentum scrolling');
   assertContains(template, '.intent-menu-radial .mobile-context-menu-actions', 'radial intent menus should have dedicated mobile layout hooks');
+  assertContains(template, '.combat-pending-groups', 'combat center should style queued group feedback');
   assertNotContains(template, 'left: -85vw', 'mobile panels should not sit at negative viewport offsets');
   assertNotContains(template, 'right: -85vw', 'mobile panels should not sit at negative viewport offsets');
 });
@@ -8155,6 +8160,12 @@ test('Queued group actions show the slowest participant order and preserve inter
   const sync = App.combatState.syncActions[0];
   assertEqual(sync.resolveAtIndex, 2, 'Group action should resolve on slowest participant index');
   assertEqual(App.combatState.turnQueue[1].actedThisRound || false, false, 'Intervening turn before slowest participant should remain available');
+  const centerHtml = App._combatSceneHtml(player);
+  assertContains(centerHtml, 'combat-pending-groups', 'Combat center summary should surface queued group actions');
+  assertContains(centerHtml, 'Queued groups', 'Combat center summary should label queued group feedback');
+  assertContains(centerHtml, 'You, Ally prepare Fight against Enemy. Resolves at turn 3.', 'Combat center summary should explain participants target and resolution turn');
+  assertNotContains(centerHtml, 'executeActionOnTarget', 'Combat center summary should not add target controls for queued group actions');
+  assertNotContains(centerHtml, 'executeCombatIntent', 'Combat center summary should not add actor controls for queued group actions');
   App.updateLanguage('es');
   assertContains(App.renderUnitCard(player, 0, 'party'), 'Group Luchar #3', 'Participant card should show group action order');
   const playerCard = App.renderUnitCard(player, 0, 'party');

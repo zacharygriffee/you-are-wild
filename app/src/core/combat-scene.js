@@ -28,6 +28,30 @@ const YAW_COMBAT_SCENE = {
             .slice(-Math.max(1, limit));
     },
 
+    pendingGroupEntries(app) {
+        const syncActions = Array.isArray(app.combatState?.syncActions) ? app.combatState.syncActions : [];
+        return syncActions
+            .filter(sync => sync && !sync.resolved && sync.round === app.combatState?.round)
+            .map(sync => {
+                const participants = (sync.participants || []).map(unit => unit?.name).filter(Boolean).join(', ');
+                const target = sync.target?.name || app._label('ui.creatures', 'Creatures');
+                const action = app._syncActionLabel ? app._syncActionLabel(sync.type) : app._uiLabel(String(sync.type || '').replace(/^sync_/, ''));
+                const order = (sync.resolveAtIndex ?? 0) + 1;
+                return {
+                    action,
+                    participants,
+                    target,
+                    order,
+                    text: app._label('combat.exchange.pendingGroup', '{participants} prepare {action} against {target}. Resolves at turn {order}.', {
+                        participants: participants || app._label('combat.group', 'Group'),
+                        action,
+                        target,
+                        order
+                    })
+                };
+            });
+    },
+
     sceneHtml(app, unit = null) {
         const actor = this.actor(app, unit);
         const turn = (app.combatState?.currentTurn ?? 0) + 1;
@@ -39,6 +63,10 @@ const YAW_COMBAT_SCENE = {
         });
         const description = this.turnDescription(app, actor);
         const recent = this.recentExchangeEntries(app, 3);
+        const pendingGroups = this.pendingGroupEntries(app);
+        const pendingHtml = pendingGroups.length
+            ? `<div class="combat-pending-groups" aria-label="${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.pendingTitle', 'Queued groups'))}</div>${pendingGroups.map(entry => `<div class="combat-pending-group"><span class="combat-exchange-intent">${app._escapeHtml(entry.action)}</span><span class="combat-exchange-text">${app._escapeHtml(entry.text)}</span></div>`).join('')}</div>`
+            : '';
         const recentHtml = recent.length
             ? recent.map(entry => {
                 const actorName = entry.actorName ? `<span class="combat-exchange-actor">${app._escapeHtml(entry.actorName)}</span>` : '';
@@ -50,6 +78,7 @@ const YAW_COMBAT_SCENE = {
         return `<section class="combat-scene-summary" aria-label="${app._escapeHtml(app._label('combat.exchange.summary', 'Combat summary'))}">`
             + `<div class="combat-current-turn"><span>${app._escapeHtml(status)}</span><strong>${app._escapeHtml(actor?.name || app._label('ui.combat', 'Combat'))}</strong></div>`
             + `<p>${app._escapeHtml(description)}</p>`
+            + pendingHtml
             + `<div class="combat-recent-exchange"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}</div><ol>${recentHtml}</ol></div>`
             + `</section>`;
     },

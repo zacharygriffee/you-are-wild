@@ -127,6 +127,7 @@ const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
+const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
 const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
@@ -1360,6 +1361,16 @@ test('Intent menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation)', 'App intent menu renderer should delegate to the helper');
   assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source)', 'App intent sub-action sheet should delegate to the helper');
   assertContains(appContent, 'YAW_INTENT_MENU.close(this)', 'App intent menu close lifecycle should delegate to the helper');
+});
+
+test('Focus trap helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/focus-trap.js'", 'Focus trap helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/focus-trap.js'") < buildContent.indexOf("'src/core/app.js'"), 'Focus trap helper should load before app.js');
+  assertContains(focusTrapContent, 'const YAW_FOCUS_TRAP = {', 'Focus trap helper should expose the focus service');
+  assertContains(appContent, 'YAW_FOCUS_TRAP.focusableSelector()', 'App focusable selector should delegate to the helper');
+  assertContains(appContent, 'YAW_FOCUS_TRAP.activate(this, container, options)', 'App focus trap activation should delegate to the helper');
+  assertContains(appContent, 'YAW_FOCUS_TRAP.activateOutsideDismiss(this, container)', 'App outside dismiss should delegate to the helper');
+  assertContains(appContent, 'YAW_FOCUS_TRAP.restore(this, options)', 'App focus trap restore should delegate to the helper');
 });
 
 test('Mobile context menu helper module is registered before app code', () => {
@@ -2692,7 +2703,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

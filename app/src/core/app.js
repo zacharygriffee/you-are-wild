@@ -8736,82 +8736,22 @@
 
             // ===== SCREEN MANAGEMENT =====
             _focusableSelector() {
-                return 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+                return YAW_FOCUS_TRAP.focusableSelector();
             },
             _focusableChildren(container) {
-                if (!container || typeof container.querySelectorAll !== 'function') return [];
-                return Array.from(container.querySelectorAll(this._focusableSelector())).filter(el => !el.disabled && el.style?.display !== 'none');
+                return YAW_FOCUS_TRAP.focusableChildren(container);
             },
             _focusFirstIn(container) {
-                const focusables = this._focusableChildren(container);
-                const target = focusables[0] || container;
-                if (target && typeof target.focus === 'function') {
-                    try { target.focus(); } catch(e) {}
-                }
+                return YAW_FOCUS_TRAP.focusFirstIn(container);
             },
             _activateFocusTrap(container, options = {}) {
-                if (!container) return;
-                this._restoreFocusTrap({ restoreFocus: false });
-                const previous = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
-                this._focusTrap = { container, previous, close: options.close || null };
-                if (typeof container.hasAttribute === 'function' && typeof container.setAttribute === 'function' && !container.hasAttribute('tabindex')) {
-                    container.setAttribute('tabindex', '-1');
-                }
-                this._focusTrapHandler = (event) => {
-                    if (!this._focusTrap || this._focusTrap.container !== container) return;
-                    if (event.key === 'Escape' && this._focusTrap.close) {
-                        if (typeof event.preventDefault === 'function') event.preventDefault();
-                        this._focusTrap.close();
-                        return;
-                    }
-                    if (event.key !== 'Tab') return;
-                    const focusables = this._focusableChildren(container);
-                    if (focusables.length === 0) {
-                        if (typeof event.preventDefault === 'function') event.preventDefault();
-                        this._focusFirstIn(container);
-                        return;
-                    }
-                    const first = focusables[0];
-                    const last = focusables[focusables.length - 1];
-                    if (event.shiftKey && document.activeElement === first) {
-                        if (typeof event.preventDefault === 'function') event.preventDefault();
-                        last.focus();
-                    } else if (!event.shiftKey && document.activeElement === last) {
-                        if (typeof event.preventDefault === 'function') event.preventDefault();
-                        first.focus();
-                    }
-                };
-                if (typeof document.addEventListener === 'function') document.addEventListener('keydown', this._focusTrapHandler);
-                setTimeout(() => this._focusFirstIn(container), 0);
+                return YAW_FOCUS_TRAP.activate(this, container, options);
             },
             _activateOutsideContextDismiss(container) {
-                if (!container || typeof document.addEventListener !== 'function') return;
-                this._mobileContextOutsideHandler = (event) => {
-                    const target = event && event.target;
-                    const inside = target && (target === container || (typeof container.contains === 'function' && container.contains(target)));
-                    if (inside) return;
-                    this.closeIntentMenu();
-                };
-                setTimeout(() => {
-                    if (this._mobileContextOutsideHandler) {
-                        document.addEventListener('pointerdown', this._mobileContextOutsideHandler);
-                    }
-                }, 0);
+                return YAW_FOCUS_TRAP.activateOutsideDismiss(this, container);
             },
             _restoreFocusTrap(options = {}) {
-                const trap = this._focusTrap;
-                if (this._focusTrapHandler && typeof document.removeEventListener === 'function') {
-                    document.removeEventListener('keydown', this._focusTrapHandler);
-                }
-                if (this._mobileContextOutsideHandler && typeof document.removeEventListener === 'function') {
-                    document.removeEventListener('pointerdown', this._mobileContextOutsideHandler);
-                }
-                this._mobileContextOutsideHandler = null;
-                this._focusTrapHandler = null;
-                this._focusTrap = null;
-                if (options.restoreFocus !== false && trap?.previous && typeof trap.previous.focus === 'function') {
-                    try { trap.previous.focus(); } catch(e) {}
-                }
+                return YAW_FOCUS_TRAP.restore(this, options);
             },
             showScreen(name) {
                 this.screen = name;

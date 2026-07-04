@@ -4,6 +4,15 @@
  */
 
 const YAW_EXPLORATION_SELECTION = {
+    isImplicitPlayerSelection(app) {
+        const playerId = app.player ? app._unitSelectionId(app.player) : null;
+        return Boolean(playerId)
+            && Array.isArray(app.explorationActorIds)
+            && app.explorationActorIds.length === 1
+            && String(app.explorationActorIds[0]) === String(playerId)
+            && !app.explorationActorSelectionExplicit;
+    },
+
     getActors(app, actorId = null) {
         if (actorId) {
             const actor = app.party.find(p => app._unitSelectionId(p) === String(actorId) && app._isLivingCreature(p));
@@ -49,7 +58,12 @@ const YAW_EXPLORATION_SELECTION = {
     normalize(app, { resetTargets = false } = {}) {
         const livingPartyIds = new Set((app.party || []).filter(unit => app._isLivingCreature(unit)).map(unit => app._unitSelectionId(unit)));
         app.explorationActorIds = (app.explorationActorIds || []).filter(id => livingPartyIds.has(String(id)));
-        if (app.explorationActorIds.length === 0 && app.player) app.explorationActorIds = [app._unitSelectionId(app.player)];
+        if (app.explorationActorIds.length === 0 && app.player) {
+            app.explorationActorIds = [app._unitSelectionId(app.player)];
+            app.explorationActorSelectionExplicit = false;
+        } else if (app.explorationActorIds.length > 1 || !this.isImplicitPlayerSelection(app)) {
+            app.explorationActorSelectionExplicit = true;
+        }
         app.explorationActorId = app.explorationActorIds[0] || app._unitSelectionId(app.player);
         if (resetTargets) {
             app.explorationTargetIds = [];
@@ -67,10 +81,17 @@ const YAW_EXPLORATION_SELECTION = {
         if (!actor || !app._isLivingCreature(actor)) return;
         const id = app._unitSelectionId(actor);
         app.explorationActorIds = app.explorationActorIds || [];
-        const defaultPlayerOnly = app.explorationActorIds.length === 1 && app.explorationActorIds[0] === app._unitSelectionId(app.player);
+        const defaultPlayerOnly = this.isImplicitPlayerSelection(app);
+        if (defaultPlayerOnly && actor === app.player) {
+            app.explorationActorSelectionExplicit = true;
+            app.explorationActorId = id;
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            return;
+        }
         if (defaultPlayerOnly && actor !== app.player) {
             app.explorationActorIds = [id];
             app.explorationActorId = id;
+            app.explorationActorSelectionExplicit = true;
             app._renderInteractionState({ exploration: true, toolbelt: false });
             return;
         }
@@ -79,7 +100,11 @@ const YAW_EXPLORATION_SELECTION = {
         } else {
             app.explorationActorIds.push(id);
         }
-        if (app.explorationActorIds.length === 0) app.explorationActorIds = [app._unitSelectionId(app.player)];
+        app.explorationActorSelectionExplicit = true;
+        if (app.explorationActorIds.length === 0) {
+            app.explorationActorIds = [app._unitSelectionId(app.player)];
+            app.explorationActorSelectionExplicit = false;
+        }
         app.explorationActorId = app.explorationActorIds[0];
         app._renderInteractionState({ exploration: true, toolbelt: false });
     },

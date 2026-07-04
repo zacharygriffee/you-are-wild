@@ -216,6 +216,7 @@ async function setupAdventure(page, options = {}) {
     ];
     App.explorationActorIds = [App._unitSelectionId(App.player)];
     App.explorationActorId = App.explorationActorIds[0];
+    App.explorationActorSelectionExplicit = false;
     App.explorationTargetIds = [];
     App.renderDesktopPlaySurface();
     App.renderParty();

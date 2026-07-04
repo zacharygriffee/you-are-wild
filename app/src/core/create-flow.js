@@ -182,6 +182,7 @@ const YAW_CREATE_FLOW = {
         app.activeActor = null;
         app.explorationActorIds = [app._unitSelectionId(app.player)];
         app.explorationActorId = app.explorationActorIds[0];
+        app.explorationActorSelectionExplicit = false;
         app.inInterior = false;
         app.activeInterior = null;
         app.interiorLocation = { x: 0, y: 0 };

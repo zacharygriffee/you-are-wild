@@ -11,6 +11,7 @@ const YAW_COMBAT_ACTIONS = {
                 const id = app._unitSelectionId(selected);
                 app.explorationActorIds = [id];
                 app.explorationActorId = id;
+                app.explorationActorSelectionExplicit = true;
             }
             app._clearTransientInteractionState();
             app._renderInteractionState({ exploration: true, toolbelt: false });

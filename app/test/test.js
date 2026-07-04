@@ -6479,9 +6479,32 @@ test('Selecting an ally first replaces the default player actor', () => {
   App.party = [player, ally];
   App.explorationActorIds = ['player-1'];
   App.explorationActorId = 'player-1';
+  App.explorationActorSelectionExplicit = false;
   App.selectExplorationActor(1);
   assertEqual(App._getExplorationActors().length, 1, 'First ally selection should not silently keep the player selected');
   assertEqual(App._getExplorationActors()[0], ally, 'Ally should become the active actor after replacing default player');
+});
+
+test('Explicit player actor selection can remain primary in group interactions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const target = makeUnit('Target', { id: 'target-1', CPun: 100, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally, target];
+  App.explorationActorIds = ['player-1'];
+  App.explorationActorId = 'player-1';
+  App.explorationActorSelectionExplicit = false;
+
+  App.selectExplorationActor(0);
+  App.selectExplorationActor(1);
+  App.toggleExplorationTarget('party', 'target-1');
+
+  assertEqual(App.explorationActorIds.join(','), 'player-1,ally-1', 'Explicit player selection should stay first when adding a helper');
+  assertEqual(App.explorationActorSelectionExplicit, true, 'Clicking the default player actor should promote the selection to explicit');
+  const trayHtml = App._renderExplorationTargetActions('panel-tray');
+  assertContains(trayHtml, 'Primary: You', 'Marked target tray should allow the player to be primary in a group interaction');
+  assertContains(trayHtml, 'Helpers: Ally', 'Marked target tray should show later selected party members as helpers');
 });
 
 test('Multiple selected party actors can play-fight one party target nonlethally', () => {

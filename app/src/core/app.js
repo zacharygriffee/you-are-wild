@@ -699,6 +699,7 @@
             targetSelection: null,
             activeActor: null,
             explorationActorIds: [],
+            explorationActorSelectionExplicit: false,
             explorationTargetIds: [],
             inInterior: false,
             activeInterior: null,
@@ -2352,6 +2353,7 @@
                 if (!this.explorationActorIds || this.explorationActorIds.length === 0) {
                     this.explorationActorIds = [this._unitSelectionId(partyPlayer)];
                     this.explorationActorId = this.explorationActorIds[0];
+                    this.explorationActorSelectionExplicit = false;
                 }
                 return partyPlayer;
             },

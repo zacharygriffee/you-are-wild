@@ -86,6 +86,9 @@ const YAW_SAVE_LOAD_FLOW = {
             }
 
             app.explorationActorIds = Array.isArray(loaded.questState?.explorationActorIds) ? loaded.questState.explorationActorIds.map(String) : [];
+            const loadedPlayerActorId = app.player ? app._unitSelectionId(app.player) : null;
+            app.explorationActorSelectionExplicit = app.explorationActorIds.length > 1
+                || (app.explorationActorIds.length === 1 && String(app.explorationActorIds[0]) !== String(loadedPlayerActorId));
             app.explorationTargetIds = Array.isArray(loaded.questState?.explorationPartyTargetIds) ? loaded.questState.explorationPartyTargetIds.map(String) : [];
             app.currentBiome = loaded.currentBiome || 'forest';
             app.timeHour = typeof loaded.timeHour === 'number' ? loaded.timeHour : 8;

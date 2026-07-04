@@ -214,39 +214,19 @@
                 return YAW_ACTION_UI.icon(key);
             },
             _isNight(hour = this.timeHour) {
-                const normalized = ((hour % 24) + 24) % 24;
-                return normalized >= 20 || normalized < 6;
+                return YAW_TIME_SYSTEM.isNight(this, hour);
             },
             _timeLabel() {
-                const hour = ((this.timeHour % 24) + 24) % 24;
-                return `${this._isNight(hour) ? '🌙' : '☀️'} ${String(hour).padStart(2, '0')}:00`;
+                return YAW_TIME_SYSTEM.label(this);
             },
             _renderTime() {
-                const label = this._timeLabel();
-                ['time-display', 'mobile-time-display'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = label;
-                });
+                return YAW_TIME_SYSTEM.render(this);
             },
             _advanceTime(hours = 1) {
-                const current = ((this.timeHour || 0) % 24 + 24) % 24;
-                const previousDay = this.dayCount || 0;
-                const nextTotal = current + hours;
-                this.timeHour = ((nextTotal % 24) + 24) % 24;
-                if (hours > 0) this.dayCount = (this.dayCount || 0) + Math.floor(nextTotal / 24);
-                this._renderTime();
-                if (hours > 0) {
-                    this._emitModuleHook('onTick', {
-                        hours,
-                        previousHour: current,
-                        currentHour: this.timeHour,
-                        previousDay,
-                        currentDay: this.dayCount || 0
-                    });
-                }
+                return YAW_TIME_SYSTEM.advance(this, hours);
             },
             _partyHasDarkvision() {
-                return this.party.some(unit => unit && unit.CPun > 0 && unit.darkvision);
+                return YAW_TIME_SYSTEM.partyHasDarkvision(this);
             },
             _partyRoleCount(role) {
                 return YAW_PARTY_MANAGEMENT.roleCount(this, role);
@@ -255,36 +235,19 @@
                 return YAW_PARTY_MANAGEMENT.roleEffect(this, role, amount, cap);
             },
             _mapVisibilityRadius() {
-                if (!this._isNight() || this._partyHasDarkvision()) return this.DAY_VISIBILITY_RADIUS;
-                const scoutBonus = this._partyRoleEffect('scout', this.NIGHT_VISIBILITY_PENALTY, this.NIGHT_VISIBILITY_PENALTY);
-                return Math.max(1, this.DAY_VISIBILITY_RADIUS - this.NIGHT_VISIBILITY_PENALTY + scoutBonus);
+                return YAW_TIME_SYSTEM.mapVisibilityRadius(this);
             },
             _isNocturnalSpecies(sid) {
-                return this.NOCTURNAL_SPECIES.includes(sid) || Boolean(this.SPECIES_TEMPERAMENT[sid]?.nocturnal);
+                return YAW_TIME_SYSTEM.isNocturnalSpecies(this, sid);
             },
             _isDiurnalSpecies(sid) {
-                return this.DIURNAL_SPECIES.includes(sid);
+                return YAW_TIME_SYSTEM.isDiurnalSpecies(this, sid);
             },
             _timeAdjustedEncounterTable(table) {
-                if (!this._isNight() || !Array.isArray(table)) return table;
-                return table.map(entry => {
-                    if (typeof entry === 'string') {
-                        if (this._isNocturnalSpecies(entry)) return { id: entry, weight: 15 };
-                        if (this._isDiurnalSpecies(entry)) return { id: entry, weight: 2 };
-                        return { id: entry, weight: 10 };
-                    }
-                    let weight = entry.weight || 10;
-                    if (this._isNocturnalSpecies(entry.id)) weight *= 1.5;
-                    if (this._isDiurnalSpecies(entry.id)) weight *= 0.2;
-                    return { ...entry, weight: Math.max(1, Math.round(weight)) };
-                });
+                return YAW_TIME_SYSTEM.adjustedEncounterTable(this, table);
             },
             _applyTimeOfDayToCreature(creature) {
-                if (!creature || !this._isNight() || !this._isDiurnalSpecies(creature.species)) return creature;
-                creature.status = creature.status || {};
-                creature.status.sleep = creature.status.sleep || { turns: 2 };
-                creature.asleep = true;
-                return creature;
+                return YAW_TIME_SYSTEM.applyTimeOfDayToCreature(this, creature);
             },
             _contextActionKeys() {
                 return YAW_CENTER_CONTEXT.actionKeys(this);

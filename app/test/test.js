@@ -128,6 +128,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
+const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
 const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
@@ -1535,6 +1536,19 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass)', 'App combat intent button wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.legend(this, keys)', 'App action legend wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.icon(key)', 'App action icon wrapper should delegate to the helper');
+});
+
+test('Time system helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/time-system.js'", 'Time system helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/time-system.js'") < buildContent.indexOf("'src/core/app.js'"), 'Time system helper should load before app.js');
+  assertContains(timeSystemContent, 'const YAW_TIME_SYSTEM = {', 'Time system helper should expose the time system service');
+  assertContains(timeSystemContent, 'advance(app, hours = 1)', 'Time system helper should own time advancement');
+  assertContains(timeSystemContent, 'mapVisibilityRadius(app)', 'Time system helper should own map visibility radius');
+  assertContains(timeSystemContent, 'adjustedEncounterTable(app, table)', 'Time system helper should own time-adjusted encounters');
+  assertContains(timeSystemContent, 'applyTimeOfDayToCreature(app, creature)', 'Time system helper should own time-of-day creature effects');
+  assertContains(appContent, 'YAW_TIME_SYSTEM.advance(this, hours)', 'App time advancement wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TIME_SYSTEM.mapVisibilityRadius(this)', 'App map visibility wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TIME_SYSTEM.adjustedEncounterTable(this, table)', 'App encounter table wrapper should delegate to the helper');
 });
 
 test('Sub-action helper module is registered before app code', () => {
@@ -3224,7 +3238,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

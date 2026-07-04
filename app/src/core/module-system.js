@@ -257,6 +257,42 @@ const MODULE_SYSTEM = {
         }
     },
 
+    async _assertNoDependencyCycle(moduleId, dependencies, store) {
+        const rootDependencies = this._normalizeStringList(dependencies, 'dependencies');
+        const visiting = new Set();
+        const visited = new Set();
+        const dependencyCache = new Map([[moduleId, rootDependencies]]);
+
+        const getDependencies = async (id) => {
+            if (dependencyCache.has(id)) return dependencyCache.get(id);
+            const module = await this._request(store.get(id));
+            if (!module) {
+                dependencyCache.set(id, []);
+                return [];
+            }
+            const manifest = this._normalizeManifest(module.manifest);
+            dependencyCache.set(id, manifest.dependencies || []);
+            return manifest.dependencies || [];
+        };
+
+        const visit = async (id, path = []) => {
+            if (visiting.has(id)) {
+                throw new Error(`Module dependency cycle detected: ${path.concat(id).join(' -> ')}`);
+            }
+            if (visited.has(id)) return;
+
+            visiting.add(id);
+            const dependenciesForId = await getDependencies(id);
+            for (const dependencyId of dependenciesForId) {
+                await visit(dependencyId, path.concat(id));
+            }
+            visiting.delete(id);
+            visited.add(id);
+        };
+
+        await visit(moduleId);
+    },
+
     _assertKnownHookEvent(event) {
         if (!Object.prototype.hasOwnProperty.call(this.hooks, event)) {
             throw new Error(`Unknown module hook event: ${event}`);
@@ -358,6 +394,7 @@ const MODULE_SYSTEM = {
         const tx = db.transaction(['modules'], 'readwrite');
         const store = tx.objectStore('modules');
         const previous = await this._request(store.get(module.id));
+        await this._assertNoDependencyCycle(module.id, module.manifest.dependencies, store);
         await this._request(store.put(module));
         await this._transactionDone(tx);
 
@@ -386,6 +423,7 @@ const MODULE_SYSTEM = {
             module.assets = validated.assets;
             this._assertGameVersionCompatible(module.manifest);
             this._assertContentRatingEnabled(module.manifest);
+            await this._assertNoDependencyCycle(moduleId, module.manifest.dependencies, store);
             await this._assertDependenciesEnabled(moduleId, module.manifest, store);
         }
         

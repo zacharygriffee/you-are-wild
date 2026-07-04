@@ -776,6 +776,45 @@ asyncTest('Module dependencies gate enablement and disable dependents', async ()
   assertEqual(modulesAfterDelete.find(mod => mod.id === 'child-module').enabled, false, 'Deleting dependency should disable transitive dependent');
 });
 
+asyncTest('Module installs reject dependency cycles before replacing stored packages', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'cycle-a', name: 'Cycle A', version: '1.0.0', dependencies: ['cycle-b'] },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('a'));"
+  });
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'cycle-b', name: 'Cycle B', version: '1.0.0' },
+    code: "MODS.registerHook('onTick', payload => payload.calls.push('b'));"
+  });
+  await MODULE_SYSTEM.setModuleEnabled('cycle-b', true);
+  await MODULE_SYSTEM.setModuleEnabled('cycle-a', true);
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      manifest: { id: 'cycle-b', name: 'Cycle B Replacement', version: '1.1.0', dependencies: ['cycle-a'] },
+      code: "MODS.registerHook('onTick', payload => payload.calls.push('replacement-b'));"
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'dependency cycle', 'Cycle rejection should explain the dependency cycle');
+  }
+  assertEqual(rejected, true, 'Installing a package that would create a dependency cycle should reject');
+
+  const modules = await MODULE_SYSTEM.getAllModules();
+  const storedB = modules.find(mod => mod.id === 'cycle-b');
+  assertEqual(storedB.manifest.name, 'Cycle B', 'Rejected cyclic reinstall should preserve the previous package');
+  assertEqual(storedB.manifest.dependencies.length, 0, 'Rejected cyclic reinstall should not store the new cyclic dependency');
+  assertEqual(storedB.enabled, true, 'Rejected cyclic reinstall should leave the previous enabled state intact');
+
+  const payload = { calls: [] };
+  await MODULE_SYSTEM.executeHook('onTick', payload);
+  assertEqual(payload.calls.join(','), 'b,a', 'Rejected cyclic reinstall should leave the active runtime unchanged');
+});
+
 asyncTest('Reinstalling an enabled module unloads stale runtime and disables dependents', async () => {
   const MODULE_SYSTEM = loadModuleSystemForTest();
   const fakeDb = createFakeIndexedDb();

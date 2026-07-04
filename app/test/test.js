@@ -1855,15 +1855,18 @@ test('Combat action helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-turns.js'") < buildContent.indexOf("'src/core/combat-lifecycle.js'"), 'Combat lifecycle should load after combat turns');
   assert(buildContent.indexOf("'src/core/combat-lifecycle.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat lifecycle helper should load before app.js');
   assertContains(combatLifecycleContent, 'const YAW_COMBAT_LIFECYCLE = {', 'Combat lifecycle helper should expose the lifecycle service');
+  assertContains(combatLifecycleContent, 'start(app, enemies)', 'Combat lifecycle helper should own combat initialization');
   assertContains(combatLifecycleContent, 'nextTurn(app)', 'Combat lifecycle helper should own turn advancement');
   assertContains(combatLifecycleContent, 'endCombat(app, result)', 'Combat lifecycle helper should own combat completion');
   assertContains(combatLifecycleContent, 'confirmDefeatReturnToMenu(app)', 'Combat lifecycle helper should own defeat confirmation routing');
+  assertContains(combatLifecycleContent, "app._emitModuleHook('onEncounterStart'", 'Combat lifecycle should emit encounter start hooks');
   assertContains(combatLifecycleContent, "app._combatStateRoll('combat-victory-scene'", 'Combat victory scene selection should use deterministic combat rolls');
   assertContains(combatLifecycleContent, 'app._clearCombatRefreshSnapshot(app.activeSlot)', 'Combat lifecycle should clear combat refresh snapshots when combat ends');
   assertContains(combatLifecycleContent, 'app._runPostCombatScavengers()', 'Combat lifecycle should preserve post-combat ally cleanup');
   assertContains(combatLifecycleContent, 'app.showConfirmDialog({', 'Combat lifecycle should use the in-app confirmation flow for defeat');
   assertContains(combatLifecycleContent, 'app.autoSave()', 'Combat lifecycle should preserve autosave after combat ends');
   assertNotContains(combatLifecycleContent, 'Math.random', 'Combat lifecycle helper should not use ambient randomness');
+  assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.start(this, enemies)', 'App startCombat wrapper should delegate to combat lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.nextTurn(this)', 'App nextTurn wrapper should delegate to combat lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.endCombat(this, result)', 'App endCombat wrapper should delegate to combat lifecycle');
   assertContains(appContent, 'YAW_COMBAT_LIFECYCLE.confirmDefeatReturnToMenu(this)', 'App defeat confirmation wrapper should delegate to combat lifecycle');

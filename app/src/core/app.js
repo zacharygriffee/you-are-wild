@@ -1812,36 +1812,7 @@
 
             // ===== COMBAT SYSTEM =====
             startCombat(enemies) {
-                this._clearTransientInteractionState();
-                this._normalizeExplorationSelections({ resetTargets: true });
-                this.mode = this.GAME_MODE.COMBAT;
-                this.combatState.active = true;
-                this.combatState.round = 1;
-                this.combatState.syncActions = [];
-                this.combatState.xpEarned = 0;
-                this.party.forEach(p => this._normalizeUnit(p, { disposition: this.DISPOSITION.PARTY }));
-                enemies.forEach(e => this._normalizeUnit(e, { disposition: this.DISPOSITION.ENEMY }));
-                const allCombatants = [...this.party, ...enemies];
-                this._assignCombatRows(allCombatants);
-                this.combatState.turnQueue = allCombatants
-                    .filter(c => c.CPun > 0 && !c.knockedOut)
-                    .map(c => ({ unit: c, initiative: this._calcInitiative(c) + (c.ambushReady ? this._ambushInitiativeBonus() : 0) }))
-                    .sort((a, b) => b.initiative - a.initiative);
-                this.combatState.currentTurn = 0;
-                const ambushers = enemies.filter(e => e.ambushReady);
-                if (ambushers.length > 0) this._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
-                this._pushLog(`Combat! Order: ${this.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
-                this.updateScene(`Round 1`, `Combat started!`, true);
-                this._emitModuleHook('onEncounterStart', {
-                    enemies,
-                    party: this.party,
-                    round: this.combatState.round,
-                    tile: this._currentExplorationTile()
-                });
-                this.renderParty();
-                this.renderCreatures();
-                this.renderMobileCombatToolbelt();
-                this.processTurn();
+                return YAW_COMBAT_LIFECYCLE.start(this, enemies);
             },
 
             _ambushInitiativeBonus() {

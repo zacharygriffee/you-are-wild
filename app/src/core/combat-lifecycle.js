@@ -4,6 +4,39 @@
  */
 
 const YAW_COMBAT_LIFECYCLE = {
+    start(app, enemies) {
+        app._clearTransientInteractionState();
+        app._normalizeExplorationSelections({ resetTargets: true });
+        app.mode = app.GAME_MODE.COMBAT;
+        app.combatState.active = true;
+        app.combatState.round = 1;
+        app.combatState.syncActions = [];
+        app.combatState.xpEarned = 0;
+        app.party.forEach(p => app._normalizeUnit(p, { disposition: app.DISPOSITION.PARTY }));
+        enemies.forEach(e => app._normalizeUnit(e, { disposition: app.DISPOSITION.ENEMY }));
+        const allCombatants = [...app.party, ...enemies];
+        app._assignCombatRows(allCombatants);
+        app.combatState.turnQueue = allCombatants
+            .filter(c => c.CPun > 0 && !c.knockedOut)
+            .map(c => ({ unit: c, initiative: app._calcInitiative(c) + (c.ambushReady ? app._ambushInitiativeBonus() : 0) }))
+            .sort((a, b) => b.initiative - a.initiative);
+        app.combatState.currentTurn = 0;
+        const ambushers = enemies.filter(e => e.ambushReady);
+        if (ambushers.length > 0) app._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
+        app._pushLog(`Combat! Order: ${app.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
+        app.updateScene(`Round 1`, `Combat started!`, true);
+        app._emitModuleHook('onEncounterStart', {
+            enemies,
+            party: app.party,
+            round: app.combatState.round,
+            tile: app._currentExplorationTile()
+        });
+        app.renderParty();
+        app.renderCreatures();
+        app.renderMobileCombatToolbelt();
+        app.processTurn();
+    },
+
     nextTurn(app) {
         if (!app.combatState.active) return;
         app._sanitizeCombatState({ preserveTurn: false });

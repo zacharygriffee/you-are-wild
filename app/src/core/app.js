@@ -6435,81 +6435,39 @@
 
             // ===== EQUIPMENT =====
             _getItemDef(item) {
-                return this.ITEMS[item?.name] || {};
+                return YAW_EQUIPMENT_SYSTEM.itemDef(this, item);
             },
 
             _isEquippable(item) {
-                const def = this._getItemDef(item);
-                return def.type === 'equipment' && Boolean(def.slot);
+                return YAW_EQUIPMENT_SYSTEM.isEquippable(this, item);
             },
 
             _applyEquipmentBonus(unit, item, direction = 1) {
-                const bonus = this._getItemDef(item).equipBonus || {};
-                for (const [stat, amount] of Object.entries(bonus)) {
-                    unit[stat] = (unit[stat] || 0) + amount * direction;
-                }
+                return YAW_EQUIPMENT_SYSTEM.applyBonus(this, unit, item, direction);
             },
 
             _equipmentBonusTotals(unit) {
-                const totals = {};
-                for (const item of Object.values(unit?.equipment || {})) {
-                    if (!item) continue;
-                    const bonus = this._getItemDef(item).equipBonus || {};
-                    for (const [stat, amount] of Object.entries(bonus)) {
-                        totals[stat] = (totals[stat] || 0) + amount;
-                    }
-                }
-                return totals;
+                return YAW_EQUIPMENT_SYSTEM.bonusTotals(this, unit);
             },
 
             _captureEquipmentBaseStats(unit, { inferBase = false } = {}) {
-                if (!unit) return {};
-                const totals = inferBase ? this._equipmentBonusTotals(unit) : {};
-                const base = {};
-                for (const stat of this.EQUIPMENT_STAT_KEYS) {
-                    const current = unit[stat];
-                    if (typeof current === 'number') base[stat] = current - (totals[stat] || 0);
-                }
-                return base;
+                return YAW_EQUIPMENT_SYSTEM.captureBaseStats(this, unit, { inferBase });
             },
 
             _applyEquipmentEffect(unit, item, direction = 1) {
-                const effect = this._getItemDef(item).equipEffect;
-                if (!effect) return;
-                unit.equipmentEffects = unit.equipmentEffects || {};
-                const next = (unit.equipmentEffects[effect] || 0) + direction;
-                if (next > 0) unit.equipmentEffects[effect] = next;
-                else delete unit.equipmentEffects[effect];
+                return YAW_EQUIPMENT_SYSTEM.applyEffect(this, unit, item, direction);
             },
 
             _hasEquipmentEffect(unit, effect) {
-                return Boolean(unit?.equipmentEffects?.[effect]);
+                return YAW_EQUIPMENT_SYSTEM.hasEffect(unit, effect);
             },
 
             _rebuildEquipmentEffects(unit) {
-                if (!unit) return;
-                unit.equipmentEffects = {};
-                for (const item of Object.values(unit.equipment || {})) {
-                    if (item) this._applyEquipmentEffect(unit, item, 1);
-                }
+                return YAW_EQUIPMENT_SYSTEM.rebuildEffects(this, unit);
             },
 
             _recalculateEquipment(unit, { inferBase = false } = {}) {
-                if (!unit) return;
-                unit.equipment = unit.equipment || {};
-                for (const slot of Object.keys(this.EQUIPMENT_SLOTS)) {
-                    if (!(slot in unit.equipment)) unit.equipment[slot] = null;
-                }
-                if (!unit.equipmentBaseStats) {
-                    unit.equipmentBaseStats = this._captureEquipmentBaseStats(unit, { inferBase });
-                }
-                for (const [stat, value] of Object.entries(unit.equipmentBaseStats || {})) {
-                    if (typeof value === 'number') unit[stat] = value;
-                }
-                for (const item of Object.values(unit.equipment || {})) {
-                    if (item) this._applyEquipmentBonus(unit, item, 1);
-                }
-                this._rebuildEquipmentEffects(unit);
+                return YAW_EQUIPMENT_SYSTEM.recalculate(this, unit, { inferBase });
             },
 
             equipItem(itemId) {
@@ -6521,29 +6479,14 @@
             },
 
             _equipmentSummary(unit = this.player) {
-                const equipment = unit?.equipment || {};
-                return Object.entries(this.EQUIPMENT_SLOTS).map(([slot, label]) => {
-                    const item = equipment[slot];
-                    return `${this._escapeHtml(label)}: ${item ? this._escapeHtml(item.name) : this._escapeHtml(this._label('save.empty', 'Empty'))}`;
-                }).join('<br>');
+                return YAW_EQUIPMENT_SYSTEM.summary(this, unit);
             },
             _equipmentCompactSummary(unit = this.player) {
-                const equipment = unit?.equipment || {};
-                const equipped = Object.entries(this.EQUIPMENT_SLOTS)
-                    .map(([slot, label]) => {
-                        const item = equipment[slot];
-                        return item ? `${label}: ${item.name}` : '';
-                    })
-                    .filter(Boolean);
-                return equipped.length ? equipped.map(entry => this._escapeHtml(entry)).join('<br>') : this._escapeHtml(this._label('inventory.noEquipment', 'No equipment'));
+                return YAW_EQUIPMENT_SYSTEM.compactSummary(this, unit);
             },
 
             _equipmentBonusText(item) {
-                const bonus = this._getItemDef(item).equipBonus || {};
-                const entries = Object.entries(bonus).map(([stat, amount]) => `${stat.toUpperCase()} ${amount >= 0 ? '+' : ''}${amount}`);
-                const effect = this._getItemDef(item).equipEffect;
-                if (effect) entries.push(`${this._label('inventory.effect', 'Effect')}: ${effect}`);
-                return entries.length ? entries.join(', ') : this._label('inventory.noBonus', 'No bonus');
+                return YAW_EQUIPMENT_SYSTEM.bonusText(this, item);
             },
 
             // ===== INVENTORY =====

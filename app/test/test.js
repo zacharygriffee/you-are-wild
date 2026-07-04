@@ -1612,8 +1612,9 @@ test('Scene description supports rich bounded content', () => {
   assertContains(template, 'overflow-x: hidden;', 'Desktop scene action rows should not create horizontal page overflow');
   assertContains(template, '.party-stats-view', 'Party stats view should have bounded scroll styles');
   assertContains(template, '.party-stats-footer', 'Party stats view should have a sticky footer action area');
+  assertContains(template, '.party-panel-detail', 'Party panel should have a bounded detail surface');
   assertContains(template, '.mobile-scene-sheet.rich-content', 'Mobile scene sheet should have an expanded rich-content mode');
-  assertContains(template, '.mobile-scene-description .party-stats-view', 'Mobile rich stats should fit inside the visible scene sheet');
+  assertContains(template, '.party-panel-detail .party-stats-view', 'Party stats should fit inside the party detail surface');
   assertContains(template, '.app-confirm-backdrop', 'Reusable confirmation dialog backdrop should be styled');
   assertContains(template, '.app-confirm-card', 'Reusable confirmation dialog card should be styled');
   assertContains(template, 'overscroll-behavior: contain', 'Bounded stats and modal surfaces should contain scroll gestures');
@@ -4111,8 +4112,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   const actionsHtml = elements.get('scene-actions').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Main context should not duplicate panel creature interactions');
   assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden until it has stronger mechanics');
-  assertContains(actionsHtml, 'title="Items"', 'Inventory should remain in the main context');
-  assertContains(actionsHtml, 'aria-label="Items"', 'Inventory icon should expose an aria label');
+  assertNotContains(actionsHtml, 'App.showInventory()', 'Inventory should stay out of center context actions');
   assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
   assertContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Friendly card should expose creature action menu');
   assertNotContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should not spam primary actions by default');
@@ -4164,7 +4164,7 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   const exploreHtml = elements.get('scene-actions').innerHTML;
   assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop exploration should keep real Rest button');
   assertContains(exploreHtml, 'aria-label="Enter"', 'Desktop exploration should keep real Enter button');
-  assertContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should keep real Items button');
+  assertNotContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should not duplicate player inventory in center');
   assertNotContains(exploreHtml, 'action-legend', 'Desktop exploration should not render a duplicate tiny icon legend beside real buttons');
 
   App.creatures = [makeUnit('Enemy', { id: 'enemy-actions', disposition: App.DISPOSITION.ENEMY })];
@@ -5813,6 +5813,7 @@ test('Rest only appears and heals at safe structures', () => {
   App.updateLanguage('es');
   App.renderExplorationActions();
   assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should be hidden outside safe rest structures');
+  assertNotContains(elements.get('scene-actions').innerHTML, 'App.showInventory()', 'Center tile context should not expose inventory; player card owns carried items');
   App.rest();
   assertEqual(player.CPun, 50, 'Rest should not heal outside safe rest structures');
   assertContains(App.log[App.log.length - 1].text, 'No hay un lugar seguro para descansar aqui.', 'Unsafe rest log should localize');
@@ -5859,14 +5860,20 @@ test('Structures expose enter action and create persistent interiors', () => {
   App.enterStructure();
   assertEqual(App.log[App.log.length - 1].text, 'No hay una estructura para entrar aqui.', 'Missing-structure feedback should localize');
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: 'cabin', structureSpawned: true }]]);
-  App.renderExplorationActions();
-  assertContains(elements.get('scene-actions').innerHTML, 'App.enterStructure()', 'Structure tile should expose enter action');
+  const context = App._centerTileContext();
+  assertContains(context.title, 'Cabin', `Structure center context should include structure title. Got ${context.title}`);
+  assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
+  assertContains(App._renderContextActions(false), 'App.enterStructure()', 'Structure center context should generate enter action');
+  App.showExplorationActions();
+  assertNotContains(elements.get('scene-actions').innerHTML, 'App.showInventory()', 'Structure center context should not expose carried inventory');
   App.enterStructure();
   assertEqual(App.inInterior, true, 'Entering structure should switch to interior mode');
   assertEqual(App.log[App.log.length - 1].text, 'Entraste en Cabin.', 'Enter structure feedback should localize');
   assertEqual(Object.keys(App.activeInterior.tiles).length, 25, 'Structure interior should be a persistent 5x5 map');
   assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
-  assertContains(elements.get('scene-actions').innerHTML, 'App.exitStructure()', 'Interior should expose exit action');
+  assertContains(App._contextActionKeys().join(','), 'exit', 'Interior center context should include exit action key');
+  assertContains(App._renderContextActions(false), 'App.exitStructure()', 'Interior center context should generate exit action');
+  assertNotContains(App._renderContextActions(false), 'App.enterStructure()', 'Interior center context should not keep stale enter action');
 });
 
 test('Interior movement persists room creatures and exits to overworld', () => {
@@ -8603,7 +8610,7 @@ test('Accessory equipment can apply non-numeric special effects', () => {
 });
 
 test('Inventory and character stats render equipped items', () => {
-  const { App, elements } = loadAppForCombat();
+  const { App, elements, document } = loadAppForCombat();
   App.player = makeUnit('You', {
     equipment: {
       head: { id: 'cap-1', name: 'Leather Cap' },
@@ -8617,11 +8624,13 @@ test('Inventory and character stats render equipped items', () => {
   App.party = [App.player];
   App.inventory = [{ id: 'ring-1', name: 'Focus Ring' }];
   App.showInventory();
-  assertContains(elements.get('scene-description').innerHTML, 'Equipped', 'Inventory should show equipped section');
-  assertContains(elements.get('scene-description').innerHTML, 'Focus Ring', 'Inventory should show equippable item');
-  assertContains(elements.get('scene-description').innerHTML, 'Equip', 'Inventory should expose equip action');
+  assertContains(elements.get('party-content').innerHTML, 'Equipped', 'Inventory should show equipped section in the party panel');
+  assertContains(elements.get('party-content').innerHTML, 'Focus Ring', 'Inventory should show equippable item in the party panel');
+  assertContains(elements.get('party-content').innerHTML, 'Equip', 'Inventory should expose equip action in the party panel');
+  assertNotContains(document.getElementById('scene-description').innerHTML, 'Focus Ring', 'Inventory should not replace center tile content');
   App.showCharacterStats();
-  assertContains(elements.get('scene-description').innerHTML, 'Leather Cap', 'Character stats should list equipped item');
+  assertContains(elements.get('party-content').innerHTML, 'Leather Cap', 'Character stats should list equipped item in the party panel');
+  assertNotContains(document.getElementById('scene-description').innerHTML, 'Leather Cap', 'Character stats should not replace center tile content');
 });
 
 test('Inventory equipment summary labels localize', () => {
@@ -8640,7 +8649,7 @@ test('Inventory equipment summary labels localize', () => {
   App.inventory = [{ id: 'coin-1', name: 'Old Coin' }];
   App.updateLanguage('es');
   App.showInventory();
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('party-content').innerHTML;
   assertContains(html, 'Inventario (1/20)', 'Inventory title should localize with count');
   assertContains(html, 'Equipado', 'Equipped section heading should localize');
   assertContains(App._equipmentCompactSummary(App.player), 'Sin equipo', 'Compact empty equipment summary should localize');
@@ -8693,11 +8702,12 @@ test('Player card and character stats use the same live display stats', () => {
   App.party = [App.player];
   const cardHtml = App.renderUnitCard(App.player, 0, 'party');
   App.showCharacterStats();
-  const statsHtml = elements.get('scene-description').innerHTML;
+  const statsHtml = elements.get('party-content').innerHTML;
   assertContains(cardHtml, 'unit-bars', 'Player card should render compact tactical bars');
   assertContains(cardHtml, 'unit-bar-health', 'Player card should render health bar');
   assertContains(cardHtml, 'unit-bar-pleasure', 'Player card should render pleasure bar');
   assertContains(cardHtml, 'unit-bar-hunger', 'Player card should render hunger bar');
+  assertContains(cardHtml, 'App.showInventory()', 'Player card should expose inventory access outside the center tile');
   assertContains(cardHtml, 'aria-label="Punishment: 75%"', 'Player card health bar should use live top-level vitals');
   assertContains(cardHtml, 'aria-label="Pleasure: 42%"', 'Player card pleasure bar should use live top-level vitals');
   assertContains(cardHtml, 'aria-label="Hunger: 0%"', 'Player card hunger bar should safely default when hunger is missing');
@@ -8716,9 +8726,9 @@ test('Player stats view converges on party player when references drift', () => 
   App.player = stalePlayer;
   App.party = [livePartyPlayer];
   App.renderParty();
-  App.showCharacterStats();
   const cardHtml = elements.get('party-content').innerHTML;
-  const statsHtml = elements.get('scene-description').innerHTML;
+  App.showCharacterStats();
+  const statsHtml = elements.get('party-content').innerHTML;
   assertEqual(App.player, livePartyPlayer, 'Player reference should converge on the canonical party member');
   assertContains(cardHtml, 'aria-label="Punishment: 67%"', 'Party card should render the live party player stats as a tactical bar');
   assertNotContains(cardHtml, 'Pun:80/120', 'Default party card should not render dense live party player stats');
@@ -8799,8 +8809,10 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(playerCard, 'aria-label="Focus You card"', 'Desktop card container should keep focus copy separate from actor selection');
   assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Unselected party actor control should expose false pressed state');
   assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
+  assertContains(playerCard, 'App.showInventory()', 'Player card should own inventory access');
   assertContains(allyCard, 'data-selection-control="actor" aria-pressed="true"', 'Selected party actor control should expose true pressed state');
   assertContains(allyCard, 'data-selection-control="target" aria-pressed="false"', 'Unmarked party target control should expose false pressed state');
+  assertNotContains(allyCard, 'App.showInventory()', 'Non-player party cards should not duplicate inventory access');
   assertContains(creatureCard, 'data-card-purpose="focus-toggle"', 'Creature card container should identify focus/detail behavior');
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
   assertContains(mobilePlayerChip, 'data-card-purpose="focus-toggle"', 'Mobile chip container should identify click/keyboard behavior as focus/detail toggling');
@@ -8895,7 +8907,7 @@ test('Inventory action labels localize with accessible names', () => {
   ];
   App.updateLanguage('es');
   App.showInventory();
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
   assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
   assertContains(html, 'aria-label="Usar Healing Herb"', 'Use control should expose localized accessible label');
@@ -8930,16 +8942,16 @@ test('Inventory supports item categories and sorting', () => {
     { id: 'coin-1', name: 'Old Coin' }
   ];
   App.setInventoryFilter('equipment');
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'Hide Armor', 'Equipment filter should show equipment');
   assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumables');
   App.setInventoryFilter('all');
   App.setInventorySort('value-asc');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assert(html.indexOf('Old Coin') < html.indexOf('Healing Herb'), 'Value ascending sort should show cheaper items first');
   App.updateLanguage('es');
   App.showInventory();
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'Categoria', 'Inventory should expose localized category control');
   assertContains(html, '<option value="all" selected>Todos</option>', 'Inventory all-category option should localize');
   assertContains(html, 'Ordenar', 'Inventory should expose localized sort control');
@@ -8953,11 +8965,11 @@ test('Inventory empty states localize', () => {
   App.updateLanguage('es');
   App.inventory = [];
   App.showInventory();
-  assertContains(elements.get('scene-description').innerHTML, 'Vacio.', 'Empty inventory message should localize');
+  assertContains(elements.get('party-content').innerHTML, 'Vacio.', 'Empty inventory message should localize in the party panel');
 
   App.inventory = [{ id: 'herb-1', name: 'Healing Herb' }];
   App.setInventoryFilter('equipment');
-  assertContains(elements.get('scene-description').innerHTML, 'No hay articulos que coincidan con el filtro actual.', 'Filtered-empty inventory message should localize');
+  assertContains(elements.get('party-content').innerHTML, 'No hay articulos que coincidan con el filtro actual.', 'Filtered-empty inventory message should localize in the party panel');
 });
 
 test('Non-player equipment renders as read-only card metadata', () => {
@@ -8984,19 +8996,19 @@ test('Non-player equipment renders as read-only card metadata', () => {
   assertContains(elements.get('enemies-content').innerHTML, 'Equipment:', 'Expanded creature card should expose equipment metadata');
   assertContains(elements.get('enemies-content').innerHTML, 'Head: Leather Cap', 'Creature equipment should render read-only equipped item names');
   App.showPartyMemberStats(1);
-  const statsHtml = elements.get('scene-description').innerHTML;
-  assertContains(statsHtml, 'class="party-stats-view"', 'Ally stats should render in a bounded stats view');
+  const statsHtml = elements.get('party-content').innerHTML;
+  assertContains(statsHtml, 'class="party-stats-view"', 'Ally stats should render in a bounded party-panel stats view');
   assertContains(statsHtml, 'class="party-stats-footer"', 'Ally stats should keep the close action in a sticky footer');
   assertContains(statsHtml, 'aria-label="Close"', 'Ally stats should expose an immediate localized close action');
-  assertContains(statsHtml, 'App.closeSceneDetails()', 'Ally stats close action should return to the current scene details');
+  assertContains(statsHtml, "App.closePanelDetails('party')", 'Ally stats close action should return to party cards');
   assertContains(statsHtml, '<strong>Equipment</strong>', 'Ally stats should expose equipment section');
   assertContains(statsHtml, 'Body: Hide Armor', 'Ally equipment should render read-only in stats');
-  assertContains(elements.get('mobile-scene-description').innerHTML, 'class="party-stats-view"', 'Ally stats should also render in the mobile scene sheet');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'class="party-stats-view"', 'Ally stats should also render in the mobile party surface');
   assertNotContains(statsHtml, 'equipItem(', 'Non-player equipment stats should not expose player equip controls');
   assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
 });
 
-test('Rich scene details suppress stale context actions while open', () => {
+test('Party panel details preserve center context actions', () => {
   const { App, document } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
@@ -9004,12 +9016,14 @@ test('Rich scene details suppress stale context actions while open', () => {
   actions.innerHTML = '<button>Old action</button>';
   actions.style.display = 'flex';
   App.showCharacterStats();
-  assertEqual(actions.style.display, 'none', 'Rich stats should hide the main context action bar');
-  assertEqual(actions.dataset.richHidden, 'true', 'Hidden rich action state should be tracked');
+  assertEqual(actions.style.display, 'flex', 'Party stats should not hide the center context action bar');
+  assertEqual(actions.innerHTML, '<button>Old action</button>', 'Party stats should not replace center actions');
+  assertEqual(Boolean(actions.dataset.richHidden), false, 'Party stats should not mark scene actions as rich-hidden');
+  assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
 });
 
-test('Closing stats during combat restores the active party turn', () => {
-  const { App, elements } = loadAppForCombat();
+test('Closing party-panel stats during combat restores party cards without changing center', () => {
+  const { App, elements, document } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
@@ -9024,17 +9038,20 @@ test('Closing stats during combat restores the active party turn', () => {
     turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
     syncActions: []
   };
+  document.getElementById('scene-title').textContent = "Round 2 - You's turn";
+  document.getElementById('scene-actions').innerHTML = '<button>Combat center marker</button>';
   App.showCharacterStats();
-  assertEqual(elements.get('scene-actions').style.display, 'none', 'Combat stats should hide stale combat actions while open');
-  App.closeSceneDetails();
+  assertContains(elements.get('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Combat stats should render in party panel');
+  assertEqual(document.getElementById('scene-actions').innerHTML, '<button>Combat center marker</button>', 'Combat stats should not replace center actions');
+  App.closePanelDetails('party');
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
-  assertContains(elements.get('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should restore the combat turn title');
-  assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
+  assertContains(document.getElementById('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should leave the combat turn title intact');
+  assertNotContains(document.getElementById('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions on the active actor card');
-  assertEqual(elements.get('scene-actions').style.display, '', 'Closing combat stats should restore action bar display');
+  assertEqual(document.getElementById('scene-actions').innerHTML, '<button>Combat center marker</button>', 'Closing combat stats should not mutate center actions');
 });
 
-test('Closing stats during an enemy turn does not reveal stale player actions', () => {
+test('Closing party-panel stats during an enemy turn does not reveal stale player actions', () => {
   const { App, elements, document } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
@@ -9053,12 +9070,10 @@ test('Closing stats during an enemy turn does not reveal stale player actions', 
   document.getElementById('scene-actions').innerHTML = '<button>Stale player action</button>';
   App.updateLanguage('es');
   App.showCharacterStats();
-  App.closeSceneDetails();
+  App.closePanelDetails('party');
   assertEqual(App.combatState.active, true, 'Closing enemy-turn stats should keep combat mode active');
-  assertContains(elements.get('scene-title').textContent, "Round 2 - Enemy's turn", 'Closing enemy-turn stats should restore enemy turn title');
-  assertContains(elements.get('scene-description').innerHTML, 'Enemy esta actuando...', 'Closing enemy-turn stats should localize enemy acting status');
-  assertEqual(elements.get('scene-actions').innerHTML, '', 'Closing enemy-turn stats should clear stale player actions');
-  assertEqual(elements.get('scene-actions').style.display, '', 'Closing enemy-turn stats should restore action bar display state');
+  assertNotContains(elements.get('party-content').innerHTML, 'executeCombatIntent', 'Enemy-turn party cards should not expose player combat actions');
+  assertEqual(elements.get('scene-actions').innerHTML, '<button>Stale player action</button>', 'Party-panel stats close should not mutate center actions');
 });
 
 test('Party member stats labels localize and escape names', () => {
@@ -9069,7 +9084,7 @@ test('Party member stats labels localize and escape names', () => {
   App.party = [player, ally];
   App.updateLanguage('es');
   App.showPartyMemberStats(1);
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('party-content').innerHTML;
   assertContains(html, 'Ally &lt;One&gt;', 'Party stats should escape unit names');
   assertContains(html, '<strong>Equipo</strong>', 'Party stats equipment label should localize');
   assertContains(html, 'aria-label="Cerrar"', 'Party stats close action should localize');
@@ -9113,7 +9128,7 @@ test('Perk tree queues player choices on level up instead of random perks', () =
   assertEqual(App.player.Figh, 11, 'Level-up stat gain should use balance config');
   assertEqual(App.player.pendingPerkChoices, 1, 'Level up should queue a perk choice');
   assertEqual(App.player.perks.length, 0, 'Level up should not randomly assign a perk');
-  assertContains(elements.get('scene-description').innerHTML, 'Elegir mejora', 'Level up should show localized perk selection UI');
+  assertContains(elements.get('party-content').innerHTML, 'Elegir mejora', 'Level up should show localized perk selection UI in the party panel');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Subiste de nivel! Ahora eres nivel 2.', 'Level-up feedback should localize');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Elige una nueva mejora del arbol de mejoras.', 'Queued perk feedback should localize');
 });
@@ -9162,7 +9177,7 @@ test('Species-specific perk variants are available only to matching species', ()
   assert(wolfChoices.some(perk => perk.id === 'wolf_pack_instinct'), 'Wolf player should see wolf-specific perk');
   assert(!wolfChoices.some(perk => perk.id === 'bunny_quickstep'), 'Wolf player should not see bunny-specific perk');
   App.showPerkSelection();
-  assertContains(elements.get('scene-description').innerHTML, 'Wolf', 'Perk UI should render species-specific tree');
+  assertContains(elements.get('party-content').innerHTML, 'Wolf', 'Perk UI should render species-specific tree in the party panel');
   App.choosePerk('wolf_pack_instinct');
   assertEqual(App.player.Figh, 12, 'Species perk should apply its stat bonus');
   assertEqual(App.player.perks[0].species, 'wolf', 'Chosen species perk should preserve its species metadata');
@@ -9175,17 +9190,17 @@ test('Character stats expose pending perk selection', () => {
   App.player = makeUnit('You <Hero>', { perks: [], pendingPerkChoices: 2 });
   App.party = [App.player];
   App.showCharacterStats();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'class="party-stats-view character-stats-view"', 'Character stats should render in the bounded stats view');
   assertContains(html, 'class="party-stats-footer"', 'Character stats should keep close/perk actions in a sticky footer');
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
-  assertContains(html, 'App.closeSceneDetails()', 'Character stats close action should return to the current scene details');
+  assertContains(html, "App.closePanelDetails('party')", 'Character stats close action should return to party cards');
   assertContains(html, 'Choose Perk (2)', 'Character stats should show pending perk button');
-  assertContains(elements.get('mobile-scene-description').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should also render in the mobile scene sheet');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should also render in the mobile party surface');
   App.showPerkSelection();
-  assertContains(elements.get('scene-description').innerHTML, 'Predator', 'Perk selection should render predator tree');
-  assertContains(elements.get('scene-description').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
-  assertContains(elements.get('scene-description').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
+  assertContains(elements.get('party-content').innerHTML, 'Predator', 'Perk selection should render predator tree');
+  assertContains(elements.get('party-content').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
+  assertContains(elements.get('party-content').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
 });
 
 test('Perk and stat progression controls localize with accessible names', () => {
@@ -9198,7 +9213,7 @@ test('Perk and stat progression controls localize with accessible names', () => 
   App.party = [App.player];
   App.updateLanguage('es');
   App.showCharacterStats();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
   assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
   assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
@@ -9210,7 +9225,7 @@ test('Perk and stat progression controls localize with accessible names', () => 
   assertContains(html, '<strong>Herramientas de mejoras</strong>', 'Character perk tools label should localize');
 
   App.showPerkSelection();
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, '<h3>Elegir mejora</h3>', 'Perk picker title should localize');
   assertContains(html, 'Opciones pendientes: 1', 'Perk pending choice copy should localize');
   assertContains(html, 'aria-label="Arboles de mejoras"', 'Perk tree tablist should expose localized accessible label');
@@ -9224,21 +9239,21 @@ test('Perk selection filters trees without hiding available species perks', () =
   App.player = makeUnit('You', { species: 'wolf', perks: [], pendingPerkChoices: 1 });
   App.party = [App.player];
   App.showPerkSelection();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'data-perk-filter="predator"', 'Perk modal should expose archetype tree filters');
   assertContains(html, 'data-perk-filter="species:wolf"', 'Perk modal should expose matching species tree filter');
   assertContains(html, 'Predator Instinct', 'All filter should show predator perks');
   assertContains(html, 'Pack Instinct', 'All filter should show species perks');
 
   App.setPerkTreeFilter('species:wolf');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertEqual(App.perkTreeFilter, 'species:wolf', 'Species filter should become active');
   assertContains(html, 'Pack Instinct', 'Species filter should keep species perks visible');
   assertNotContains(html, 'Predator Instinct', 'Species filter should hide other trees');
 
   App.setPerkTreeFilter('not-real');
   assertEqual(App.perkTreeFilter, 'all', 'Invalid perk filter should fall back to all');
-  assertContains(elements.get('scene-description').innerHTML, 'Predator Instinct', 'Fallback should render all trees again');
+  assertContains(elements.get('party-content').innerHTML, 'Predator Instinct', 'Fallback should render all trees again');
 });
 
 test('Perk respec and debug tools refund choices and rollback bonuses', () => {
@@ -9267,7 +9282,7 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
   assertEqual(App.player.Figh, 12, 'First perk should apply before respec');
   assertEqual(App.player.Feas, 13, 'Second perk should apply before respec');
   App.showCharacterStats();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'Reiniciar mejoras', 'Character stats should expose localized perk respec tool');
   assertContains(html, 'Debug +1 opcion de mejora', 'Character stats should expose localized debug perk choice tool');
 
@@ -9285,7 +9300,7 @@ test('Perk respec and debug tools refund choices and rollback bonuses', () => {
 
   App.debugGrantPerkChoice(2);
   assertEqual(App.player.pendingPerkChoices, 4, 'Debug grant should add perk choices for balancing');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'Elegir mejora (4)', 'Debug grant should refresh character stats with localized pending count');
 });
 
@@ -10220,7 +10235,7 @@ test('Mobile party long-press menu exposes management actions', () => {
   assertEqual(App._getPartyLeader(), ally, 'Party menu leader action should update leader');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('stats', 1);
-  assertContains(document.getElementById('scene-description').innerHTML, 'Ally', 'Party menu stats action should open ally stats');
+  assertContains(document.getElementById('party-content').innerHTML, 'Ally', 'Party menu stats action should open ally stats in the party panel');
   App.showMobilePartyContext(1);
   App.mobilePartyContextAction('close', 1);
   assertEqual(opener.focused, true, 'Closing party long-press menu should restore focus to opener');

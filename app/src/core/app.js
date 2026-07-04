@@ -336,7 +336,7 @@
                 return creature;
             },
             _contextActionKeys() {
-                const keys = ['inventory'];
+                const keys = [];
                 if ((this.quests || []).length > 0) keys.push('quests');
                 if (this.inInterior) keys.unshift('exit');
                 else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
@@ -2367,11 +2367,10 @@
                 const enteredText = this._label('structure.entered', 'Entered {name}.', { name: this.activeInterior.structureName });
                 this.log.push({ text: enteredText, type: 'discovery' });
                 this._addTileEvent(enteredText, 'discovery');
-                this.updateScene(this.activeInterior.structureName, room.description, false);
                 this.renderMap();
                 this.renderCreatures();
                 this.renderLog();
-                this.renderExplorationActions();
+                this.showExplorationActions();
                 this.autoSave();
             },
 
@@ -2433,11 +2432,10 @@
                     this.spawnWildEncounter(room, false, true);
                 }
                 room.creatures = this._tileCreatures(this.creatures);
-                this.updateScene(`${this.activeInterior.structureName} Interior`, room.description, this.combatState.active);
                 this.renderMap();
                 this.renderCreatures();
                 this.renderLog();
-                this.renderExplorationActions();
+                if (!this.combatState.active) this.showExplorationActions();
                 this.autoSave();
             },
 
@@ -2522,6 +2520,7 @@
                     }
                 }
                 this.renderMap();
+                if (!this.combatState.active) this.showExplorationActions();
                 this.renderCreatures();
                 this.renderLog();
                 this.autoSave();
@@ -2810,6 +2809,7 @@
                     const descIdx = Math.abs(tile.x + tile.y) % struct.descriptions.length;
                     const structDesc = struct.descriptions[descIdx];
                     this.log.push({ text: `You found a ${struct.name}. ${structDesc} It seems empty.`, type: 'discovery' });
+                    this.showExplorationActions();
                 }
             },
 
@@ -4706,7 +4706,7 @@
                 const html = `<div class="party-stats-view" role="region" aria-label="${this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
                     <div class="party-stats-header">
                         <div><h3>${unit.icon || ''} ${this._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
-                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
+                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
                     </div>
                     <div class="party-stats-grid">
                         ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
@@ -4717,8 +4717,8 @@
                         ${statCard('party.equipment', 'Equipment', this._equipmentCompactSummary(unit))}
                         ${statCard('party.perks', 'Perks', perks)}
                     </div>
-                    <div class="party-stats-footer"><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.closeSceneDetails()">${backLabel}</button></div></div>`;
-                this._setRichSceneContent(`${unit.icon || ''} ${unit.name}`, html);
+                    <div class="party-stats-footer"><button class="nav-btn" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button></div></div>`;
+                this.showPartyPanelDetail(`${unit.icon || ''} ${unit.name}`, html);
             },
 
             selectExplorationActor(index) {
@@ -6114,7 +6114,7 @@
                     html += `</div></div>`;
                 }
                 html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button>`;
-                document.getElementById('scene-description').innerHTML = html;
+                this.showPartyPanelDetail(titleLabel, html);
             },
 
             // ===== MERCHANTS / TRADE =====
@@ -7124,7 +7124,7 @@
             // ===== INVENTORY =====
             showInventory() {
                 const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
+                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
                 const title = this._escapeHtml(this._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: this.inventory.length, max: this.MAX_INVENTORY }));
                 const equippedLabel = this._escapeHtml(this._label('inventory.equippedSection', 'Equipped'));
                 let html = `<h3>${title}</h3>`;
@@ -7140,14 +7140,14 @@
                 html += `</div></div>`;
                 if (this.inventory.length === 0) {
                     html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.empty', 'Empty.'))}</p>${backButton}`;
-                    document.getElementById('scene-description').innerHTML = html;
+                    this.showPartyPanelDetail(title, html);
                     return;
                 }
                 html += this._itemListOptions('Inventory');
                 const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
                 if (entries.length === 0) {
                     html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>${backButton}`;
-                    document.getElementById('scene-description').innerHTML = html;
+                    this.showPartyPanelDetail(title, html);
                     return;
                 }
                 html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
@@ -7170,7 +7170,7 @@
                     html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
                 });
                 html += `</div>${backButton}`;
-                document.getElementById('scene-description').innerHTML = html;
+                this.showPartyPanelDetail(title, html);
             },
             setInventoryFilter(filter) {
                 this.inventoryFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
@@ -7192,6 +7192,28 @@
                     container.innerHTML = `${tray}${this.party.map((unit, i) => this.renderUnitCard(unit, i, 'party')).join('')}`;
                 }
                 this.renderMobilePartyStrip();
+            },
+            showPartyPanelDetail(title, html) {
+                const label = this._escapeHtml(title || this._label('ui.party', 'Party'));
+                const detail = `<div class="party-panel-detail" role="region" aria-label="${label}">${html || ''}</div>`;
+                const container = document.getElementById('party-content');
+                const mobileStrip = document.getElementById('mobile-party-strip');
+                if (container) container.innerHTML = detail;
+                if (mobileStrip) mobileStrip.innerHTML = detail;
+                const panel = document.getElementById('panel-party');
+                const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
+                if (isMobile && panel) {
+                    document.querySelectorAll('.panel-map, .panel-party, .panel-enemies').forEach(panelEl => panelEl.classList.remove('active'));
+                    panel.classList.add('active');
+                    this.syncPanelBackdrop();
+                } else if (panel) {
+                    panel.classList.add('nav-focus');
+                    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+                    try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
+                }
+            },
+            closePanelDetails(panel = 'party') {
+                if (panel === 'party') this.renderParty();
             },
             renderCreatures() {
                 const container = document.getElementById('enemies-content');
@@ -7513,6 +7535,11 @@
                     const statsLabel = this._escapeHtml(this._label('party.stats', 'Stats'));
                     const statsTitle = this._escapeHtml(this._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
                     actionButtons += `<button class="action-btn" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
+                    if (isPlayer) {
+                        const inventoryLabel = this._escapeHtml(this._uiLabel('inventory'));
+                        const inventoryTitle = this._escapeHtml(this._label('action.inventory', 'Items'));
+                        actionButtons += `<button class="action-btn" title="${inventoryTitle}" aria-label="${inventoryTitle}" onclick="event.stopPropagation();App.showInventory()">${inventoryLabel}</button>`;
+                    }
                     actionButtons += `</div>`;
                     if (!isLeader) {
                         const leadLabel = this._escapeHtml(this._label('party.makeLeader', 'Make Leader'));
@@ -8013,6 +8040,32 @@
                     `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.danger', 'Danger'))}:</strong> ${this._escapeHtml(danger)} · <strong>${this._escapeHtml(this._label('ui.tileInfo.tags', 'Tags'))}:</strong> ${this._escapeHtml(tagText)}</div>` +
                     `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.structure', 'Structure'))}:</strong> ${this._escapeHtml(structure)} · <strong>${this._escapeHtml(this._label('ui.tileInfo.landmark', 'Landmark'))}:</strong> ${this._escapeHtml(landmark)}</div>`;
             },
+            _centerTileContext() {
+                if (this.inInterior && this.activeInterior) {
+                    const room = this._currentInteriorTile();
+                    const biome = this.biomes[room?.biome] || this.biomes.indoors || {};
+                    const title = room?.exit
+                        ? this._label('structure.exit', 'Exit')
+                        : (this.activeInterior.structureName || this._label('ui.largeMap.interior', 'Interior'));
+                    const description = room?.description ||
+                        `${biome.icon || ''} ${this._label('ui.largeMap.interior', 'Interior')} (${this.interiorLocation.x}, ${this.interiorLocation.y})`;
+                    return { title, description };
+                }
+                const tile = this._currentExplorationTile() || this.getTile(this.location.x, this.location.y);
+                const biome = this.biomes[tile?.displayBiome || tile?.biome] || this.biomes[tile?.biome] || this.biomes.forest || {};
+                const structure = tile?.structure ? this.STRUCTURES[tile.structure] : null;
+                const title = structure
+                    ? `${structure.name} - ${biome.name || tile.biome}`
+                    : `${biome.name || tile?.biome || this._label('ui.exploration', 'Exploration')} - ${tile?.hasLandmark && tile.landmarkName ? tile.landmarkName : this._label('ui.scene.wildernessTitle', 'The Wilderness')}`;
+                const details = [];
+                if (tile?.description) details.push(tile.description);
+                if (structure) details.push(`${structure.icon || '🚪'} ${structure.name}`);
+                if (tile?.hasLandmark && tile.landmarkName) details.push(tile.landmarkName);
+                const description = details.length
+                    ? details.join(' ')
+                    : `${biome.icon || ''} ${this._label('ui.chooseAction', 'Choose your next action.')}`;
+                return { title, description };
+            },
             renderTileInfo(tile = null) {
                 const html = this._tileInfoHtml(tile);
                 ['tile-info', 'mobile-tile-info'].forEach(id => {
@@ -8232,7 +8285,7 @@
             },
 
             updateScene(title, description, inCombat) {
-	                const titleEl = document.getElementById('scene-title');
+		                const titleEl = document.getElementById('scene-title');
 	                const descEl = document.getElementById('scene-description');
 	                if (titleEl) titleEl.textContent = title || '';
 	                if (descEl) descEl.textContent = description || '';
@@ -8244,13 +8297,13 @@
 	                if (mobileSheet) mobileSheet.classList.remove('rich-content');
                     this.renderTileEvents();
 	                const actions = document.getElementById('scene-actions');
-                if (actions?.dataset?.richHidden) {
-                    delete actions.dataset.richHidden;
-                    actions.style.display = '';
-                }
-                const mobileActions = document.getElementById('mobile-actions');
-	                const mobileCombat = document.getElementById('mobile-combat-actions');
-	                const mobileExplore = document.getElementById('mobile-explore-actions');
+	                if (actions?.dataset?.richHidden) {
+	                    delete actions.dataset.richHidden;
+	                    actions.style.display = '';
+	                }
+	                const mobileActions = document.getElementById('mobile-actions');
+		                const mobileCombat = document.getElementById('mobile-combat-actions');
+		                const mobileExplore = document.getElementById('mobile-explore-actions');
 	                if (inCombat) {
 	                    if (actions) {
 	                        actions.innerHTML = this._renderCombatPanelPrompt(this.activeActor || this._currentCombatActor());
@@ -8261,29 +8314,35 @@
                     }
                     if (mobileActions) mobileActions.style.display = 'block';
                     if (mobileExplore) mobileExplore.style.display = 'none';
-		                } else {
-		                    if (actions) {
-		                        actions.innerHTML = this._renderContextActions(false);
-		                    }
-	                    if (mobileActions) mobileActions.style.display = 'block';
-	                    if (mobileCombat) mobileCombat.style.display = 'none';
-	                    if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
-	                    if (mobileExplore) mobileExplore.style.display = 'flex';
-		                }
-		            },
-		            renderExplorationActions() {
-		                const actions = document.getElementById('scene-actions');
-		                if (!actions || this.combatState.active) return;
-		                actions.innerHTML = this._renderContextActions(false);
-	                const mobileExplore = document.getElementById('mobile-explore-actions');
-	                if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
-		            },
+			                } else {
+			                    this.renderCenterTileActions();
+		                    if (mobileActions) mobileActions.style.display = 'block';
+		                    if (mobileCombat) mobileCombat.style.display = 'none';
+		                    if (mobileExplore) mobileExplore.style.display = 'flex';
+			                }
+			            },
+            renderCenterTileActions() {
+                if (this.combatState?.active) return;
+                const actions = document.getElementById('scene-actions');
+                if (actions && !actions.dataset?.richHidden) {
+                    actions.style.display = '';
+                    actions.classList?.add('center-tile-actions');
+                    actions.innerHTML = this._renderContextActions(false);
+                }
+                const mobileExplore = document.getElementById('mobile-explore-actions');
+                if (mobileExplore) mobileExplore.innerHTML = this._renderContextActions(true);
+            },
+			            renderExplorationActions() {
+		                this.renderCenterTileActions();
+			            },
             showExplorationActions() {
-                const tile = this._currentExplorationTile();
-                const biome = this.biomes[tile.biome];
-                const title = this.inInterior && this.activeInterior ? `${this.activeInterior.structureName} Interior` : biome.name;
-                this.updateScene(title, tile.explored ? 'You are in the ' + biome.name + '. ' + tile.description : 'You stand at the edge of the unknown...', false);
-                this.renderExplorationActions();
+                const context = this._centerTileContext();
+                this.updateScene(context.title, context.description, false);
+                const titleEl = document.getElementById('scene-title');
+                const descEl = document.getElementById('scene-description');
+                if (titleEl && !titleEl.textContent) titleEl.textContent = context.title || '';
+                if (descEl && !descEl.textContent && !descEl.innerHTML) descEl.textContent = context.description || '';
+                this.renderCenterTileActions();
             },
             closeSceneDetails() {
                 try {
@@ -8792,7 +8851,7 @@
                 let html = `<div class="party-stats-view character-stats-view" role="region" aria-label="${closeLabel}">
                     <div class="party-stats-header">
                         <div><h1 style="color:var(--accent-primary)">📊 ${this._escapeHtml(p.name)}</h1><p style="color:var(--text-muted);margin-top:4px">${levelText} | ${xpText}</p></div>
-                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button>
+                        <button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
                     </div>
                     <div class="party-stats-grid">
                         ${statCard('party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
@@ -8804,8 +8863,8 @@
                         ${statCard('party.perks', 'Perks', perks)}
                         ${statCard('character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${this._escapeHtml(this._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
                     </div>
-                    <div class="party-stats-footer">${perkButton}<button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeSceneDetails()">${closeLabel}</button></div></div>`;
-                this._setRichSceneContent(`${p.name} ${this._label('party.stats', 'Stats')}`, html);
+                    <div class="party-stats-footer">${perkButton}<button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button></div></div>`;
+                this.showPartyPanelDetail(`${p.name} ${this._label('party.stats', 'Stats')}`, html);
             },
             cheats: { godMode: false, neverHungry: false, canEatAnything: false, overpowered: false },
             toggleCheat(cheat) {
@@ -10146,7 +10205,7 @@
                     this.showScreen('game');
                     this.renderMap(); this.renderParty(); this.renderCreatures(); this.renderLog();
                     if (!this._resumeLoadedCombat()) {
-                        this.updateScene('Loaded', 'Welcome back, ' + this.player.name + '!', false);
+                        this.showExplorationActions();
                     }
                     return true;
                 } catch (e) { console.error('Load failed:', e); alert(this._label('save.error.loadFailed', 'Load failed: {message}', { message: e.message })); return false; }

@@ -142,6 +142,7 @@ const combatIntentsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
+const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inventory-panel.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
@@ -1655,6 +1656,21 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
 });
 
+test('Inventory panel helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/inventory-panel.js'", 'Inventory panel helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/inventory-panel.js'") < buildContent.indexOf("'src/core/app.js'"), 'Inventory panel helper should load before app.js');
+  assertContains(inventoryPanelContent, 'const YAW_INVENTORY_PANEL = {', 'Inventory panel helper should expose the inventory panel service');
+  assertContains(inventoryPanelContent, 'show(app)', 'Inventory panel helper should own panel rendering');
+  assertContains(inventoryPanelContent, "app.showPartyPanelDetail(title, html)", 'Inventory should render through party panel details');
+  assertContains(inventoryPanelContent, 'drop(app, itemId)', 'Inventory panel helper should own direct drop-to-tile behavior');
+  assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
+  assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.show(this)', 'App showInventory wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId)', 'App equip wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot)', 'App unequip wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INVENTORY_PANEL.drop(this, itemId)', 'App drop wrapper should delegate to the helper');
+});
+
 test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-unit-strips.js'", 'Mobile unit strip helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-unit-strips.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile unit strip helper should load before app.js');
@@ -3084,7 +3100,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${inventoryPanelContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

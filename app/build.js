@@ -41,6 +41,7 @@ const SCRIPT_ORDER = [
   'src/core/mobile-combat-toolbelt.js',
   'src/core/mobile-unit-chip.js',
   'src/core/unit-card.js',
+  'src/core/inventory-panel.js',
   'src/core/mobile-unit-strips.js',
   'src/core/unit-selection.js',
   'src/core/focus-trap.js',

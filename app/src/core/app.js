@@ -6513,43 +6513,11 @@
             },
 
             equipItem(itemId) {
-                if (!this.player) return;
-                const item = this.inventory.find(i => String(i.id) === String(itemId));
-                if (!item || !this._isEquippable(item)) return;
-                const def = this._getItemDef(item);
-                const slot = def.slot;
-                this.player.equipment = this.player.equipment || {};
-                if (!this.player.equipmentBaseStats) this.player.equipmentBaseStats = this._captureEquipmentBaseStats(this.player);
-                const current = this.player.equipment[slot];
-                if (current) {
-                    this.inventory.push(current);
-                }
-                this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
-                this.player.equipment[slot] = item;
-                this._recalculateEquipment(this.player);
-                this.log.push({ text: this._label('inventory.equipped', 'Equipped {name}.', { name: item.name }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.showInventory();
-                this.autoSave();
+                return YAW_INVENTORY_PANEL.equip(this, itemId);
             },
 
             unequipItem(slot) {
-                if (!this.player?.equipment || !this.player.equipment[slot]) return;
-                if (this.inventory.length >= this.MAX_INVENTORY) {
-                    this.log.push({ text: this._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
-                    this.renderLog();
-                    return;
-                }
-                const item = this.player.equipment[slot];
-                this.player.equipment[slot] = null;
-                this._recalculateEquipment(this.player);
-                this.inventory.push(item);
-                this.log.push({ text: this._label('inventory.unequipped', 'Unequipped {name}.', { name: item.name }), type: 'discovery' });
-                this.renderLog();
-                this.renderParty();
-                this.showInventory();
-                this.autoSave();
+                return YAW_INVENTORY_PANEL.unequip(this, slot);
             },
 
             _equipmentSummary(unit = this.player) {
@@ -6580,81 +6548,17 @@
 
             // ===== INVENTORY =====
             showInventory() {
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
-                const title = this._escapeHtml(this._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: this.inventory.length, max: this.MAX_INVENTORY }));
-                const equippedLabel = this._escapeHtml(this._label('inventory.equippedSection', 'Equipped'));
-                let html = `<div class="inventory-panel-detail"><h3>${title}</h3>`;
-                html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">${equippedLabel}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${this._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
-                Object.entries(this.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
-                    const equipped = this.player?.equipment?.[slot];
-                    if (equipped) {
-                        const unequipTitle = this._escapeHtml(this._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label }));
-                        const unequipLabel = this._escapeHtml(`${this._label('inventory.unequip', 'Unequip')} ${label}`);
-                        html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${slot}')">${unequipLabel}</button>`;
-                    }
-                });
-                html += `</div></div>`;
-                if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.empty', 'Empty.'))}</p>${backButton}</div>`;
-                    this.showPartyPanelDetail(title, html);
-                    return;
-                }
-                html += this._itemListOptions('Inventory');
-                const entries = this._filterAndSortItemEntries(this.inventory.map((item, index) => ({ item, index })), this.inventoryFilter, this.inventorySort);
-                if (entries.length === 0) {
-                    html += `<p style="color:var(--text-muted);margin-top:12px;">${this._escapeHtml(this._label('inventory.noItemsMatch', 'No items match the current filter.'))}</p>${backButton}</div>`;
-                    this.showPartyPanelDetail(title, html);
-                    return;
-                }
-                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px;">`;
-                entries.forEach(({ item }) => {
-                    const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
-                    const canUse = def.effect === 'heal' || def.effect === 'buff' || def.effect === 'damage';
-                    const canEquip = this._isEquippable(item);
-                    html += `<div class="option-card" style="text-align:left;cursor:default;">`;
-                    html += `<div style="font-size:24px">${def.icon}</div><div style="font-weight:600;color:var(--text-primary)">${item.name}</div>`;
-                    html += `<div style="font-size:11px;color:var(--text-muted);margin:4px 0">${def.type || 'misc'} · ${def.desc}${canEquip ? '<br>' + this._equipmentBonusText(item) : ''}</div><div style="display:flex;gap:8px;margin-top:8px">`;
-                    const itemKey = String(item.id).replace(/'/g, "\\'");
-                    const useLabel = this._escapeHtml(this._label('inventory.use', 'Use'));
-                    const equipLabel = this._escapeHtml(this._label('inventory.equip', 'Equip'));
-                    const dropLabel = this._escapeHtml(this._label('inventory.drop', 'Drop'));
-                    const useTitle = this._escapeHtml(this._label('inventory.useItem', 'Use {name}', { name: item.name }));
-                    const equipTitle = this._escapeHtml(this._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
-                    const dropTitle = this._escapeHtml(this._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
-                    if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
-                    if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">${equipLabel}</button>`;
-                    html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
-                });
-                html += `</div>${backButton}</div>`;
-                this.showPartyPanelDetail(title, html);
+                return YAW_INVENTORY_PANEL.show(this);
             },
             setInventoryFilter(filter) {
-                this.inventoryFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
-                this.showInventory();
+                return YAW_INVENTORY_PANEL.setFilter(this, filter);
             },
             setInventorySort(sort) {
-                this.inventorySort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
-                this.showInventory();
+                return YAW_INVENTORY_PANEL.setSort(this, sort);
             },
             useItem(itemId) { /* simplified */ },
             dropItem(itemId) {
-                const index = this.inventory.findIndex(item => String(item?.id) === String(itemId));
-                if (index === -1) return false;
-                const tile = this._currentExplorationTile();
-                if (!tile) return false;
-                const [item] = this.inventory.splice(index, 1);
-                if (!Array.isArray(tile.items)) tile.items = [];
-                tile.items.push(this._cloneTileValue(item));
-                this._persistCurrentExplorationTile(tile);
-                const droppedText = this._label('log.droppedTileItem', 'Dropped {item}.', { item: this._tileItemLabel(item) });
-                this.log.push({ text: droppedText, type: 'loot' });
-                this._addTileEvent(droppedText, 'loot');
-                this.showInventory();
-                this.renderExplorationActions();
-                this.renderLog();
-                this.autoSave();
-                return true;
+                return YAW_INVENTORY_PANEL.drop(this, itemId);
             },
 
             // ===== RENDERING =====

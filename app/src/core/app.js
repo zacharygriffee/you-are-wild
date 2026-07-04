@@ -4359,58 +4359,24 @@
                 return partyPlayer;
             },
             _getExplorationActors(actorId = null) {
-                if (actorId) {
-                    const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
-                    return actor ? [actor] : [this.player].filter(Boolean);
-                }
-                const ids = this.explorationActorIds && this.explorationActorIds.length > 0
-                    ? this.explorationActorIds
-                    : (this.explorationActorId ? [this.explorationActorId] : []);
-                const actors = ids
-                    .map(id => this.party.find(p => this._unitSelectionId(p) === String(id) && this._isLivingCreature(p)))
-                    .filter(Boolean);
-                return actors.length > 0 ? actors : [this.player].filter(Boolean);
+                return YAW_EXPLORATION_SELECTION.getActors(this, actorId);
             },
             _getExplorationActor(actorId = null) {
-                return this._getExplorationActors(actorId)[0] || this.player;
+                return YAW_EXPLORATION_SELECTION.getActor(this, actorId);
             },
             _selectedExplorationActorState({ allowFallback = true } = {}) {
-                const selectedActorIds = Array.isArray(this.explorationActorIds)
-                    ? this.explorationActorIds.map(id => String(id)).filter(Boolean)
-                    : [];
-                if (selectedActorIds.length > 0) {
-                    const actors = selectedActorIds
-                        .map(id => this.party.find(unit => this._unitSelectionId(unit) === id && this._isLivingCreature(unit)))
-                        .filter(Boolean);
-                    return {
-                        actorIds: selectedActorIds,
-                        actors,
-                        valid: actors.length === selectedActorIds.length
-                    };
-                }
-                const actors = allowFallback ? this._getExplorationActors() : [];
-                return { actorIds: [], actors, valid: actors.length > 0 || !allowFallback };
+                return YAW_EXPLORATION_SELECTION.selectedActorState(this, { allowFallback });
             },
             _explorationActorsForOptionalId(actorId = null) {
-                if (!actorId) return this._getExplorationActors();
-                const actor = this.party.find(p => this._unitSelectionId(p) === String(actorId) && this._isLivingCreature(p));
-                return actor ? [actor] : [];
+                return YAW_EXPLORATION_SELECTION.actorsForOptionalId(this, actorId);
             },
 
             _normalizeExplorationSelections({ resetTargets = false } = {}) {
-                const livingPartyIds = new Set((this.party || []).filter(unit => this._isLivingCreature(unit)).map(unit => this._unitSelectionId(unit)));
-                this.explorationActorIds = (this.explorationActorIds || []).filter(id => livingPartyIds.has(String(id)));
-                if (this.explorationActorIds.length === 0 && this.player) this.explorationActorIds = [this._unitSelectionId(this.player)];
-                this.explorationActorId = this.explorationActorIds[0] || this._unitSelectionId(this.player);
-                if (resetTargets) {
-                    this.explorationTargetIds = [];
-                    return;
-                }
-                this.explorationTargetIds = (this.explorationTargetIds || []).filter(key => this._explorationTargetFromKey(key));
+                return YAW_EXPLORATION_SELECTION.normalize(this, { resetTargets });
             },
 
             clearTileBoundExplorationTargets() {
-                this.explorationTargetIds = (this.explorationTargetIds || []).filter(key => String(key).startsWith('party:'));
+                return YAW_EXPLORATION_SELECTION.clearTileBoundTargets(this);
             },
 
             _getPartyLeader() {
@@ -4557,75 +4523,35 @@
             },
 
             selectExplorationActor(index) {
-                const actor = this.party[index];
-                if (!actor || !this._isLivingCreature(actor)) return;
-                const id = this._unitSelectionId(actor);
-                this.explorationActorIds = this.explorationActorIds || [];
-                const defaultPlayerOnly = this.explorationActorIds.length === 1 && this.explorationActorIds[0] === this._unitSelectionId(this.player);
-                if (defaultPlayerOnly && actor !== this.player) {
-                    this.explorationActorIds = [id];
-                    this.explorationActorId = id;
-                    this._renderInteractionState({ exploration: true, toolbelt: false });
-                    return;
-                }
-                if (this.explorationActorIds.includes(id)) {
-                    this.explorationActorIds = this.explorationActorIds.filter(existing => existing !== id);
-                } else {
-                    this.explorationActorIds.push(id);
-                }
-                if (this.explorationActorIds.length === 0) this.explorationActorIds = [this._unitSelectionId(this.player)];
-                this.explorationActorId = this.explorationActorIds[0];
-                this._renderInteractionState({ exploration: true, toolbelt: false });
+                return YAW_EXPLORATION_SELECTION.selectActor(this, index);
             },
 
             _explorationTargetKey(type, id) {
-                return `${type}:${String(id || '')}`;
+                return YAW_EXPLORATION_SELECTION.targetKey(type, id);
             },
 
             _isExplorationTarget(type, id) {
-                return (this.explorationTargetIds || []).includes(this._explorationTargetKey(type, id));
+                return YAW_EXPLORATION_SELECTION.isTarget(this, type, id);
             },
 
             _explorationTargetFromKey(key) {
-                const [type, ...rest] = String(key).split(':');
-                const id = rest.join(':');
-                let target = null;
-                if (type === 'party') target = this.party.find(unit => this._unitSelectionId(unit) === id);
-                if (type === 'creature') target = this.creatures.find(unit => String(unit.id || unit.name) === id);
-                return target && this._isLivingCreature(target) ? target : null;
+                return YAW_EXPLORATION_SELECTION.targetFromKey(this, key);
             },
 
             _getExplorationTargets() {
-                const ids = this.explorationTargetIds || [];
-                return ids.map(key => this._explorationTargetFromKey(key)).filter(Boolean);
+                return YAW_EXPLORATION_SELECTION.getTargets(this);
             },
 
             toggleExplorationTarget(type, id) {
-                const key = this._explorationTargetKey(type, id);
-                this.explorationTargetIds = this.explorationTargetIds || [];
-                if (this.explorationTargetIds.includes(key)) {
-                    this.explorationTargetIds = this.explorationTargetIds.filter(existing => existing !== key);
-                } else {
-                    this.explorationTargetIds.push(key);
-                }
-                this._renderInteractionState({ exploration: true, toolbelt: false });
+                return YAW_EXPLORATION_SELECTION.toggleTarget(this, type, id);
             },
 
             clearExplorationTargets() {
-                this.explorationTargetIds = [];
-                this._renderInteractionState({ exploration: true, toolbelt: false });
+                return YAW_EXPLORATION_SELECTION.clearTargets(this);
             },
 
             _reportInvalidExplorationActorSelection(action) {
-                this.log.push({
-                    text: this._label('target.invalidActorSelection', 'Select a living actor before using {action} on marked targets.', {
-                        action: this._uiLabel(action).toLowerCase()
-                    }),
-                    type: 'discovery'
-                });
-                this.renderLog();
-                this._renderInteractionState({ exploration: true, toolbelt: false });
-                return false;
+                return YAW_EXPLORATION_SELECTION.reportInvalidActor(this, action);
             },
 
             _renderExplorationTargetActions(source = 'sheet') {
@@ -4637,25 +4563,7 @@
             },
 
             resolveExplorationTargetAction(action, subAction = null, source = 'target-bar') {
-                const targets = this._getExplorationTargets();
-                if (targets.length === 0) return false;
-                const actorState = this._selectedExplorationActorState();
-                const actors = actorState.actors;
-                if (!actorState.valid) {
-                    return this._reportInvalidExplorationActorSelection(action);
-                }
-                if (subAction && this.SUB_ACTIONS[action]?.[subAction]) this.defaultSubActions[action] = subAction;
-                const command = this._buildPanelInteractionCommand({
-                    mode: 'adventure',
-                    actors,
-                    targets,
-                    action,
-                    subAction,
-                    source,
-                    targetType: 'marked',
-                    clearTargets: true
-                });
-                return this._dispatchInteractionCommand(command);
+                return YAW_EXPLORATION_SELECTION.resolveTargetAction(this, action, subAction, source);
             },
 
             _getRecruitScore(actor, target) {

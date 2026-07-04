@@ -27,6 +27,7 @@ const SCRIPT_ORDER = [
   'src/core/action-ui.js',
   'src/core/interaction-dispatch.js',
   'src/core/interaction-state.js',
+  'src/core/exploration-selection.js',
   'src/core/marked-target-actions.js',
   'src/core/panel-interactions.js',
   'src/core/unit-card-status.js',

@@ -130,6 +130,7 @@ const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-action
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
+const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
 const markedTargetActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'marked-target-actions.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
@@ -1418,6 +1419,18 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTERACTION_STATE.syncSelectedParticipants(this)', 'App sync participants wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.isSyncParticipant(this, unit)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.toggleSyncParticipantById(this, id)', 'App sync toggle wrapper should delegate to the helper');
+});
+
+test('Exploration selection helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/exploration-selection.js'", 'Exploration selection helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/exploration-selection.js'") < buildContent.indexOf("'src/core/app.js'"), 'Exploration selection helper should load before app.js');
+  assertContains(explorationSelectionContent, 'const YAW_EXPLORATION_SELECTION = {', 'Exploration selection helper should expose the selection service');
+  assertContains(explorationSelectionContent, 'selectActor(app, index)', 'Exploration selection helper should own actor selection');
+  assertContains(explorationSelectionContent, 'toggleTarget(app, type, id)', 'Exploration selection helper should own target marking');
+  assertContains(explorationSelectionContent, 'resolveTargetAction(app, action, subAction = null, source =', 'Exploration selection helper should own marked target dispatch');
+  assertContains(appContent, 'YAW_EXPLORATION_SELECTION.getActors(this, actorId)', 'App exploration actor wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_EXPLORATION_SELECTION.toggleTarget(this, type, id)', 'App target toggle wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_EXPLORATION_SELECTION.resolveTargetAction(this, action, subAction, source)', 'App marked target resolver should delegate to the helper');
 });
 
 test('Action UI helper module is registered before app code', () => {
@@ -2881,7 +2894,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

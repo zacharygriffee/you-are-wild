@@ -1,0 +1,162 @@
+/**
+ * YOU ARE WILD EXPLORATION SELECTION
+ * Actor and marked-target state helpers for panel-first exploration controls.
+ */
+
+const YAW_EXPLORATION_SELECTION = {
+    getActors(app, actorId = null) {
+        if (actorId) {
+            const actor = app.party.find(p => app._unitSelectionId(p) === String(actorId) && app._isLivingCreature(p));
+            return actor ? [actor] : [app.player].filter(Boolean);
+        }
+        const ids = app.explorationActorIds && app.explorationActorIds.length > 0
+            ? app.explorationActorIds
+            : (app.explorationActorId ? [app.explorationActorId] : []);
+        const actors = ids
+            .map(id => app.party.find(p => app._unitSelectionId(p) === String(id) && app._isLivingCreature(p)))
+            .filter(Boolean);
+        return actors.length > 0 ? actors : [app.player].filter(Boolean);
+    },
+
+    getActor(app, actorId = null) {
+        return this.getActors(app, actorId)[0] || app.player;
+    },
+
+    selectedActorState(app, { allowFallback = true } = {}) {
+        const selectedActorIds = Array.isArray(app.explorationActorIds)
+            ? app.explorationActorIds.map(id => String(id)).filter(Boolean)
+            : [];
+        if (selectedActorIds.length > 0) {
+            const actors = selectedActorIds
+                .map(id => app.party.find(unit => app._unitSelectionId(unit) === id && app._isLivingCreature(unit)))
+                .filter(Boolean);
+            return {
+                actorIds: selectedActorIds,
+                actors,
+                valid: actors.length === selectedActorIds.length
+            };
+        }
+        const actors = allowFallback ? this.getActors(app) : [];
+        return { actorIds: [], actors, valid: actors.length > 0 || !allowFallback };
+    },
+
+    actorsForOptionalId(app, actorId = null) {
+        if (!actorId) return this.getActors(app);
+        const actor = app.party.find(p => app._unitSelectionId(p) === String(actorId) && app._isLivingCreature(p));
+        return actor ? [actor] : [];
+    },
+
+    normalize(app, { resetTargets = false } = {}) {
+        const livingPartyIds = new Set((app.party || []).filter(unit => app._isLivingCreature(unit)).map(unit => app._unitSelectionId(unit)));
+        app.explorationActorIds = (app.explorationActorIds || []).filter(id => livingPartyIds.has(String(id)));
+        if (app.explorationActorIds.length === 0 && app.player) app.explorationActorIds = [app._unitSelectionId(app.player)];
+        app.explorationActorId = app.explorationActorIds[0] || app._unitSelectionId(app.player);
+        if (resetTargets) {
+            app.explorationTargetIds = [];
+            return;
+        }
+        app.explorationTargetIds = (app.explorationTargetIds || []).filter(key => this.targetFromKey(app, key));
+    },
+
+    clearTileBoundTargets(app) {
+        app.explorationTargetIds = (app.explorationTargetIds || []).filter(key => String(key).startsWith('party:'));
+    },
+
+    selectActor(app, index) {
+        const actor = app.party[index];
+        if (!actor || !app._isLivingCreature(actor)) return;
+        const id = app._unitSelectionId(actor);
+        app.explorationActorIds = app.explorationActorIds || [];
+        const defaultPlayerOnly = app.explorationActorIds.length === 1 && app.explorationActorIds[0] === app._unitSelectionId(app.player);
+        if (defaultPlayerOnly && actor !== app.player) {
+            app.explorationActorIds = [id];
+            app.explorationActorId = id;
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            return;
+        }
+        if (app.explorationActorIds.includes(id)) {
+            app.explorationActorIds = app.explorationActorIds.filter(existing => existing !== id);
+        } else {
+            app.explorationActorIds.push(id);
+        }
+        if (app.explorationActorIds.length === 0) app.explorationActorIds = [app._unitSelectionId(app.player)];
+        app.explorationActorId = app.explorationActorIds[0];
+        app._renderInteractionState({ exploration: true, toolbelt: false });
+    },
+
+    targetKey(type, id) {
+        return `${type}:${String(id || '')}`;
+    },
+
+    isTarget(app, type, id) {
+        return (app.explorationTargetIds || []).includes(this.targetKey(type, id));
+    },
+
+    targetFromKey(app, key) {
+        const [type, ...rest] = String(key).split(':');
+        const id = rest.join(':');
+        let target = null;
+        if (type === 'party') target = app.party.find(unit => app._unitSelectionId(unit) === id);
+        if (type === 'creature') target = app.creatures.find(unit => String(unit.id || unit.name) === id);
+        return target && app._isLivingCreature(target) ? target : null;
+    },
+
+    getTargets(app) {
+        const ids = app.explorationTargetIds || [];
+        return ids.map(key => this.targetFromKey(app, key)).filter(Boolean);
+    },
+
+    toggleTarget(app, type, id) {
+        const key = this.targetKey(type, id);
+        app.explorationTargetIds = app.explorationTargetIds || [];
+        if (app.explorationTargetIds.includes(key)) {
+            app.explorationTargetIds = app.explorationTargetIds.filter(existing => existing !== key);
+        } else {
+            app.explorationTargetIds.push(key);
+        }
+        app._renderInteractionState({ exploration: true, toolbelt: false });
+    },
+
+    clearTargets(app) {
+        app.explorationTargetIds = [];
+        app._renderInteractionState({ exploration: true, toolbelt: false });
+    },
+
+    reportInvalidActor(app, action) {
+        app.log.push({
+            text: app._label('target.invalidActorSelection', 'Select a living actor before using {action} on marked targets.', {
+                action: app._uiLabel(action).toLowerCase()
+            }),
+            type: 'discovery'
+        });
+        app.renderLog();
+        app._renderInteractionState({ exploration: true, toolbelt: false });
+        return false;
+    },
+
+    resolveTargetAction(app, action, subAction = null, source = 'target-bar') {
+        const targets = this.getTargets(app);
+        if (targets.length === 0) return false;
+        const actorState = this.selectedActorState(app);
+        const actors = actorState.actors;
+        if (!actorState.valid) {
+            return this.reportInvalidActor(app, action);
+        }
+        if (subAction && app.SUB_ACTIONS[action]?.[subAction]) app.defaultSubActions[action] = subAction;
+        const command = app._buildPanelInteractionCommand({
+            mode: 'adventure',
+            actors,
+            targets,
+            action,
+            subAction,
+            source,
+            targetType: 'marked',
+            clearTargets: true
+        });
+        return app._dispatchInteractionCommand(command);
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.YAW_EXPLORATION_SELECTION = YAW_EXPLORATION_SELECTION;
+}

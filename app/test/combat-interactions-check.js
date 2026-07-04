@@ -921,6 +921,40 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
   assert(!state.queriedKeys.includes('../bad'), 'Browser save sync should never query IndexedDB with a malformed slot key');
   assert.strictEqual(state.lastSlot, 'slot2', 'Browser save sync should rewrite malformed last-slot metadata after recovery');
   assert.strictEqual(state.lastSaveTime, '1700000000000', 'Browser save sync should restore the valid slot timestamp after recovery');
+
+  state = await page.evaluate(async () => {
+    App.pendingConfirm = null;
+    App.activeSlot = 'slot2';
+    localStorage.setItem('yaw-last-slot', 'slot2');
+    localStorage.setItem('yaw-save-time-slot1', '1700000000001');
+    const deletedKeys = [];
+    const originalDbDelete = App._dbDelete.bind(App);
+    App._dbDelete = async (store, key) => {
+      deletedKeys.push(String(key));
+      return originalDbDelete(store, key);
+    };
+    const newGameStarted = App.beginNewGameInSlot('../bad');
+    const deleteStarted = await App.deleteSlot('../bad');
+    App._dbDelete = originalDbDelete;
+    return {
+      newGameStarted,
+      deleteStarted,
+      deletedKeys,
+      pendingConfirm: Boolean(App.pendingConfirm),
+      activeSlot: App.activeSlot,
+      lastSlot: localStorage.getItem('yaw-last-slot'),
+      slot1Time: localStorage.getItem('yaw-save-time-slot1'),
+      createVisible: getComputedStyle(document.querySelector('#screen-create')).display !== 'none'
+    };
+  });
+  assert.strictEqual(state.newGameStarted, false, 'Browser invalid new-game slot should be rejected instead of falling back');
+  assert.strictEqual(state.deleteStarted, false, 'Browser invalid delete slot should be rejected instead of falling back');
+  assert.deepStrictEqual(state.deletedKeys, [], 'Browser invalid delete slot should not delete any IndexedDB key');
+  assert.strictEqual(state.pendingConfirm, false, 'Browser invalid destructive slot requests should not open confirmations');
+  assert.strictEqual(state.activeSlot, 'slot2', 'Browser invalid destructive slot requests should preserve activeSlot');
+  assert.strictEqual(state.lastSlot, 'slot2', 'Browser invalid destructive slot requests should preserve last-slot metadata');
+  assert.strictEqual(state.slot1Time, '1700000000001', 'Browser invalid destructive slot requests should preserve unrelated save timestamps');
+  assert.strictEqual(state.createVisible, false, 'Browser invalid new-game slot should not open character creation');
 }
 
 (async () => {

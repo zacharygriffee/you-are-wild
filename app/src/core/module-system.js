@@ -541,6 +541,12 @@ const MODULE_SYSTEM = {
             try {
                 await this.loadModule(module);
             } catch (e) {
+                module.enabled = false;
+                try {
+                    await this._storeModuleRecord(module);
+                } catch (storeError) {
+                    console.error(`Failed to persist disabled state for ${moduleId}:`, storeError);
+                }
                 throw e;
             }
 

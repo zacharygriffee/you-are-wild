@@ -1269,6 +1269,40 @@ asyncTest('Module unload clears trusted-local runtime timers', async () => {
   assertEqual(MODULE_SYSTEM.activeModules.has('failing-timer-module'), false, 'Failed timer module should not remain active');
 });
 
+asyncTest('Failed enabled module reload persists disabled rollback state', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const modulePuts = [];
+  const fakeDb = createFakeIndexedDb({
+    onPut(storeName, value) {
+      if (storeName === 'modules' && value.id === 'stale-enabled-module') {
+        modulePuts.push(value.enabled);
+      }
+    }
+  });
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  await MODULE_SYSTEM.installModule({
+    manifest: { id: 'stale-enabled-module', name: 'Stale Enabled Module', version: '1.0.0' },
+    code: "throw new Error('stored runtime failed');"
+  });
+  const stored = fakeDb.data.modules.get('stale-enabled-module');
+  stored.enabled = true;
+  fakeDb.data.modules.set('stale-enabled-module', stored);
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.setModuleEnabled('stale-enabled-module', true);
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'stored runtime failed', 'Failed enabled reload should surface runtime failure');
+  }
+  assertEqual(rejected, true, 'Failed enabled reload should reject');
+  assertEqual(MODULE_SYSTEM.activeModules.has('stale-enabled-module'), false, 'Failed enabled reload should not leave runtime active');
+  assertEqual(modulePuts.includes(false), true, 'Failed enabled reload should persist disabled rollback state');
+  const reloaded = (await MODULE_SYSTEM.getAllModules()).find(mod => mod.id === 'stale-enabled-module');
+  assertEqual(reloaded.enabled, false, 'Stored module should be disabled after failed enabled reload');
+});
+
 test('Asset manifest module is registered before app code', () => {
   assertContains(buildContent, "'src/core/asset-manifest.js'", 'Asset manifest should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/asset-manifest.js'") < buildContent.indexOf("'src/core/app.js'"), 'Asset manifest should load before app.js');

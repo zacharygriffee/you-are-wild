@@ -4810,6 +4810,11 @@ test('Center tile stays traversal and context only across interaction states', (
   App.showExplorationActions();
   assertCenterOnly('exploration structure');
 
+  App.showActorActions(ally);
+  assertCenterOnly('adventure actor action legacy call');
+  assertEqual(App.explorationActorIds[0], 'ally-1', 'Non-combat actor action calls should select the party actor instead of rendering center actor controls');
+  assertContains(el('party-content').innerHTML, 'selected-actor', 'Non-combat actor action calls should keep actor selection visible in the party panel');
+
   App.inInterior = true;
   App.activeInterior = {
     structure: 'camp',

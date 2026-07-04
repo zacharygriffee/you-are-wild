@@ -7587,63 +7587,28 @@
                 return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
             },
             _unitSelectionRoles(unit, type) {
-                if (!unit) return [];
-                const roles = [];
-                if (this.combatState?.active) {
-                    if (type === 'party' && this._isCurrentCombatActor(unit)) roles.push('actor');
-                    if (type === 'party' && this._isSyncParticipant(unit) && !roles.includes('actor')) roles.push('actor');
-                    if (type === 'creature' && this.targetSelection?.source === 'combat' && this.canSelectCreatureTarget(unit)) roles.push('target');
-                    if (type === 'creature' && this.syncSelection?.active && this.syncSelection.phase === 'target' && this.canSelectCreatureTarget(unit)) roles.push('target');
-                    return roles;
-                }
-                if (type === 'party' && this._getExplorationActors().includes(unit)) {
-                    roles.push('actor');
-                }
-                const id = type === 'creature' ? String(unit.id || unit.name || '') : this._unitSelectionId(unit);
-                if (this._isExplorationTarget(type, id)) {
-                    roles.push('target');
-                }
-                return roles;
+                return YAW_UNIT_SELECTION.roles(this, unit, type);
             },
             _unitSelectionClass(unit, type) {
-                const roles = this._unitSelectionRoles(unit, type);
-                return roles.length ? ` selected ${roles.map(role => `selected-${role}`).join(' ')}` : '';
+                return YAW_UNIT_SELECTION.className(this, unit, type);
             },
             _targetMarkLabel() {
-                return this._label('target.mark', 'Mark');
+                return YAW_UNIT_SELECTION.targetMarkLabel(this);
             },
             _combatTargetPickLabel() {
-                return this._label('target.pick', 'Pick');
+                return YAW_UNIT_SELECTION.combatTargetPickLabel(this);
             },
             _selectionControlAttrs(kind, active = false) {
-                if (kind === 'actor') {
-                    return `data-selection-control="actor" aria-pressed="${Boolean(active)}" data-selection-mode="act-actor" data-selection-state="${active ? 'selected' : 'available'}"`;
-                }
-                if (kind === 'target') {
-                    return `data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? 'marked' : 'available'}"`;
-                }
-                if (kind === 'combat-target') {
-                    return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}"`;
-                }
-                return `data-selection-control="${this._escapeHtml(String(kind || 'unknown'))}"`;
+                return YAW_UNIT_SELECTION.controlAttrs(this, kind, active);
             },
             _unitSelectionRoleLabel(role) {
-                if (role === 'actor') return this._label('target.actorRole', 'Actor');
-                if (role === 'target' && this.combatState?.active) return this._label('target.targetRole', 'Target');
-                if (role === 'target') return this._label('target.markedRole', 'Marked');
-                return role;
+                return YAW_UNIT_SELECTION.roleLabel(this, role);
             },
             _unitCardFocusLabel(unit) {
-                return this._label('unit.cardFocus', 'Focus {name} card', { name: unit?.name || 'unit' });
+                return YAW_UNIT_SELECTION.focusLabel(this, unit);
             },
             _unitSelectionChips(unit, type) {
-                const chips = this._unitSelectionRoles(unit, type).map(role => {
-                    const safeLabel = this._escapeHtml(this._unitSelectionRoleLabel(role));
-                    return `<span class="unit-trait-chip selection" data-selection-role="${this._escapeHtml(role)}" title="${safeLabel}">${safeLabel}</span>`;
-                });
-                if (chips.length === 0) return '';
-                const label = this._escapeHtml(this._label('target.selectedSummary', 'Selected exploration targets'));
-                return `<div class="unit-traits unit-selection-chips" aria-label="${label}">${chips.join('')}</div>`;
+                return YAW_UNIT_SELECTION.chips(this, unit, type);
             },
             renderMobileUnitChip(unit, index, type) {
                 if (!unit) return '';

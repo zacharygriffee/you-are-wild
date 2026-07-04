@@ -6734,6 +6734,13 @@ test('Versioned start area validation guarantees early route and rest access', (
     assertEqual(restBase.overlays?.poi?.category, 'restSite', `Start rest candidate should be a deterministic rest-site POI for seed ${seed}`);
     const discovered = App.exploreTile(4, 0);
     assertEqual(discovered.structure, 'camp', `Rest-site POI should resolve to a rest-capable structure on discovery for seed ${seed}`);
+    App.player = makeUnit('You', { CPun: 30, MPun: 100 });
+    App.party = [App.player];
+    App.location = { x: 4, y: 0 };
+    App.renderExplorationActions();
+    assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', `Starter rest site should expose Rest for seed ${seed}`);
+    App.rest();
+    assert(App.player.CPun > 30, `Starter rest site should recover the player for seed ${seed}`);
 
     const resourceBase = App.getBaseTile(-2, 0);
     assertEqual(resourceBase.overlays?.poi?.category, 'resourceSite', `Start resource candidate should be a deterministic resource-site POI for seed ${seed}`);

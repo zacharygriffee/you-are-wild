@@ -128,6 +128,7 @@ const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'de
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
+const mobileContextMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-context-menu.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
 const worldGenerationContent = fs.readFileSync(worldGenerationPath, 'utf8');
@@ -1359,6 +1360,18 @@ test('Intent menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation)', 'App intent menu renderer should delegate to the helper');
   assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source)', 'App intent sub-action sheet should delegate to the helper');
   assertContains(appContent, 'YAW_INTENT_MENU.close(this)', 'App intent menu close lifecycle should delegate to the helper');
+});
+
+test('Mobile context menu helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/mobile-context-menu.js'", 'Mobile context menu helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/mobile-context-menu.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile context menu helper should load before app.js');
+  assertContains(mobileContextMenuContent, 'const YAW_MOBILE_CONTEXT_MENU = {', 'Mobile context menu helper should expose the context menu service');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.showParty(this, index)', 'App mobile party context should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.partyAction(this, action, index)', 'App mobile party context actions should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.setPartyRole(this, index, role)', 'App mobile party role changes should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.setPartyAIOrder(this, index, order)', 'App mobile party AI order changes should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.showCreature(this, targetId)', 'App mobile creature context should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId)', 'App mobile creature context actions should delegate to the helper');
 });
 
 test('Large map helper module is registered before app code', () => {
@@ -2674,7 +2687,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${intentMenuContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

@@ -25,6 +25,7 @@ const SCRIPT_ORDER = [
   'src/core/center-context.js',
   'src/core/unit-selection.js',
   'src/core/intent-menu.js',
+  'src/core/mobile-context-menu.js',
   'src/core/combat-scene.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',

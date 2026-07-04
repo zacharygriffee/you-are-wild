@@ -9782,78 +9782,22 @@
                 URL.revokeObjectURL(url);
             },
             showMobilePartyContext(index) {
-                const unit = this.party[index];
-                if (!unit) return;
-                this.closeMobileContextMenu();
-                const unitLabel = this._escapeHtml(unit.name || 'party member');
-                const role = this._getPartyRole(unit);
-                const order = this._getPartyAIOrder(unit);
-                const actionButton = (label, action, extraClass = '') => `<button class="action-btn${extraClass}" role="menuitem" title="${this._escapeHtml(label)}" aria-label="${this._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${this._escapeHtml(label)}</button>`;
-                const roleOptions = Object.keys(this.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${this._escapeHtml(this._partyRoleLabel(key))}</option>`).join('');
-                const orderOptions = Object.keys(this.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${this._escapeHtml(this._partyAIOrderLabel(key))}</option>`).join('');
-                const menuLabel = this._label('ui.partyActions', 'Party actions');
-                const roleLabel = this._label('party.role', 'Role');
-                const orderLabel = this._label('party.aiOrder', 'AI Order');
-                const roleAria = this._label('party.roleFor', 'Party role for {name}', { name: unit.name || 'party member' });
-                const orderAria = this._label('party.aiOrderFor', 'AI order for {name}', { name: unit.name || 'party member' });
-                const roleDescription = this._partyRoleDescription(role);
-                const orderDescription = this._partyAIOrderDescription(order);
-                let html = `<div class="mobile-context-menu" id="mobile-context-menu" role="dialog" aria-modal="true" aria-label="${this._escapeHtml(menuLabel)}" aria-labelledby="mobile-context-menu-title"><div class="mobile-context-menu-title" id="mobile-context-menu-title">${unit.icon || ''} ${unitLabel}</div><div class="mobile-context-menu-actions" role="menu">`;
-                html += actionButton(this._label('party.stats', 'Stats'), 'stats');
-                if (unit !== this.player && !unit.mc) {
-                    if (this._getPartyLeader() !== unit) html += actionButton(this._label('party.makeLeader', 'Make Leader'), 'lead');
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(roleLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(roleAria)}" title="${this._escapeHtml(roleDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetRole(${index},this.value)">${roleOptions}</select><small>${this._escapeHtml(roleDescription)}</small></label>`;
-                    html += `<label class="mobile-context-field" onclick="event.stopPropagation()"><span>${this._escapeHtml(orderLabel)}</span><select class="nav-btn" aria-label="${this._escapeHtml(orderAria)}" title="${this._escapeHtml(orderDescription)}" onchange="event.stopPropagation();App.mobilePartyContextSetAIOrder(${index},this.value)">${orderOptions}</select><small>${this._escapeHtml(orderDescription)}</small></label>`;
-                    html += actionButton(this._label('party.dismiss', 'Dismiss'), 'dismiss', ' danger');
-                }
-                html += actionButton(this._label('ui.close', 'Close'), 'close');
-                html += '</div></div>';
-                document.body.insertAdjacentHTML('beforeend', html);
-                const menu = document.getElementById('mobile-context-menu');
-                this._activateFocusTrap(menu, { close: () => this.closeMobileContextMenu() });
-                this._activateOutsideContextDismiss(menu);
+                return YAW_MOBILE_CONTEXT_MENU.showParty(this, index);
             },
             mobilePartyContextAction(action, index) {
-                this._haptic(8);
-                if (action === 'close') {
-                    this.closeMobileContextMenu();
-                    return;
-                }
-                this.closeMobileContextMenu();
-                if (action === 'stats') return this.showPartyMemberStats(index);
-                if (action === 'lead') return this.setPartyLeader(index);
-                if (action === 'dismiss') return this.dismissPartyMember(index);
+                return YAW_MOBILE_CONTEXT_MENU.partyAction(this, action, index);
             },
             mobilePartyContextSetRole(index, role) {
-                this._haptic(8);
-                this.setPartyRole(index, role);
-                if (this.party[index] && document.getElementById('mobile-context-menu')) {
-                    this.showMobilePartyContext(index);
-                }
+                return YAW_MOBILE_CONTEXT_MENU.setPartyRole(this, index, role);
             },
             mobilePartyContextSetAIOrder(index, order) {
-                this._haptic(8);
-                this.setPartyAIOrder(index, order);
-                if (this.party[index] && document.getElementById('mobile-context-menu')) {
-                    this.showMobilePartyContext(index);
-                }
+                return YAW_MOBILE_CONTEXT_MENU.setPartyAIOrder(this, index, order);
             },
             showMobileCreatureContext(targetId) {
-                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) return;
-                if (!this._isCorpse(target)) {
-                    if (this.combatState?.active) return false;
-                    this.toggleExplorationTarget('creature', String(target.id || target.name));
-                    return false;
-                }
-                return this.showRadialIntentMenu('creature', targetId, 'longpress');
+                return YAW_MOBILE_CONTEXT_MENU.showCreature(this, targetId);
             },
             mobileCreatureContextAction(action, targetId) {
-                if (action === 'close') {
-                    this.closeMobileContextMenu();
-                    return false;
-                }
-                return this.selectIntent('creature', targetId, action, 'mobile-context');
+                return YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId);
             },
             handleTouchStart(e) {
                 this._touchStartX = e.changedTouches[0].screenX;

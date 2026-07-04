@@ -790,10 +790,6 @@ const MODULE_SYSTEM = {
                 self.registerHook(event, callback, priority, moduleId);
             },
             
-            executeHook(event, ...args) {
-                return self.executeHook(event, ...args);
-            },
-            
             addBiome(biomeDef) {
                 self._requirePermission(moduleId, manifest, 'world:add_biome');
                 self._addOwnedBiome(moduleId, biomeDef);

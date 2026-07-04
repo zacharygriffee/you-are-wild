@@ -871,6 +871,13 @@ asyncTest('Module hooks are owned by module ID and removed on disable before rel
   assertEqual(resilientPayload.calls.join(','), 'before-throw,hook-module,after-throw', 'Hook execution should continue after one owned hook throws');
 });
 
+test('Module API can subscribe to hooks but cannot emit core hook events', () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const api = MODULE_SYSTEM.createModAPI('api-module', { id: 'api-module', permissions: [] });
+  assertEqual(typeof api.registerHook, 'function', 'Module API should expose hook registration');
+  assertEqual(api.executeHook, undefined, 'Module API should not expose core-owned hook emission');
+});
+
 asyncTest('Module hook registration rejects unknown events and invalid priorities', async () => {
   const MODULE_SYSTEM = loadModuleSystemForTest();
   const fakeDb = createFakeIndexedDb();

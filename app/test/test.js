@@ -10790,10 +10790,12 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
 });
 
 test('Desktop intent menu uses a bounded desktop surface', () => {
-  const { App, body } = loadAppForCombat();
+  const { App, body, document, listeners, elements } = loadAppForCombat();
+  const opener = makeElement();
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });
   const ally = makeUnit('Ally', { id: 'ally-desktop' });
   const friendly = makeUnit('Friendly', { id: 'friendly-desktop', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, willing: true });
+  document.activeElement = opener;
   App.player = player;
   App.party = [player, ally];
   App.creatures = [friendly];
@@ -10818,6 +10820,14 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   App.openIntentSubActionSheet('creature', 'friendly-desktop', 'fight', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop sub-action picker should remain on the desktop surface');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-desktop','fight','desktop','attack')", 'Desktop sub-action selection should dispatch through shared intent selection');
+  assert(App._focusTrap, 'Desktop intent menus should activate the shared focus trap');
+  assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');
+  const desktopMenu = elements.get('desktop-intent-menu');
+  let prevented = false;
+  listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
+  assertEqual(prevented, true, 'Escape should be consumed by the desktop intent focus trap');
+  assertEqual(desktopMenu.removed, true, 'Escape should close the desktop intent menu');
+  assertEqual(opener.focused, true, 'Closing desktop intent menu should restore focus to the opener');
   App.selectIntent('creature', 'friendly-desktop', 'fight', 'desktop', 'attack');
   assertEqual(App.lastIntentCommand.source, 'desktop', 'Desktop menu selection should record its command source');
   assertEqual(App.lastIntentCommand.subAction, 'attack', 'Desktop menu selection should record the chosen sub-action');

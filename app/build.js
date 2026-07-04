@@ -27,6 +27,7 @@ const SCRIPT_ORDER = [
   'src/core/focus-trap.js',
   'src/core/intent-menu.js',
   'src/core/mobile-context-menu.js',
+  'src/core/save-manager.js',
   'src/core/combat-scene.js',
   'src/core/app.js',
   'src/ui/settings-nav.js',

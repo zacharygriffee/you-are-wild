@@ -52,14 +52,17 @@ const ModUI = {
                     },
                     code: content
                 };
+            } else {
+                throw new Error(this.label('mod.unsupportedFile', 'Unsupported module file type'));
             }
             
-            await MODULE_SYSTEM.installModule(moduleData);
-            App.log.push({ text: this.label('mod.installedLog', 'Installed module: {name}', { name: moduleData.manifest.name }), type: 'discovery' });
+            const installed = await MODULE_SYSTEM.installModule(moduleData);
+            const moduleName = installed.manifest.name;
+            App.log.push({ text: this.label('mod.installedLog', 'Installed module: {name}', { name: moduleName }), type: 'discovery' });
             App.renderLog();
             this.refreshModList();
             
-            alert(this.label('mod.installedAlert', 'Module "{name}" installed successfully!', { name: moduleData.manifest.name }));
+            alert(this.label('mod.installedAlert', 'Module "{name}" installed successfully!', { name: moduleName }));
         } catch (e) {
             alert(this.label('mod.installFailed', 'Failed to install module: {message}', { message: e.message }));
             console.error(e);

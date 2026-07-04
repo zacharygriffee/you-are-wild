@@ -391,6 +391,101 @@ asyncTest('Module system persists modules and settings through IndexedDB request
   assertEqual(await MODULE_SYSTEM.getModuleSetting('test-module', 'volume', 'missing'), 'missing', 'Deleting a module should remove its settings');
 });
 
+asyncTest('Module system imports and exports versioned module package envelopes', async () => {
+  const MODULE_SYSTEM = loadModuleSystemForTest();
+  const fakeDb = createFakeIndexedDb();
+  MODULE_SYSTEM.db = fakeDb.db;
+
+  const envelope = {
+    packageType: 'yaw-module',
+    packageVersion: 1,
+    packageId: 'packaged-module',
+    gameVersion: '0.10.0',
+    trustBoundary: 'trusted-local',
+    module: {
+      manifest: {
+        id: 'packaged-module',
+        name: 'Packaged Module',
+        version: '1.0.0',
+        contentRating: 'safe',
+        permissions: ['world:add_biome', 'world:add_biome'],
+        dependencies: []
+      },
+      code: '',
+      assets: {
+        preview: { type: 'image', path: 'preview.png' }
+      }
+    }
+  };
+
+  const installed = await MODULE_SYSTEM.installModule(envelope);
+  assertEqual(installed.id, 'packaged-module', 'Package envelope should install the nested module payload');
+  assertEqual(installed.manifest.permissions.join(','), 'world:add_biome', 'Package envelope install should normalize nested manifest metadata');
+  assertEqual(fakeDb.data.assets.get('packaged-module:preview').value.path, 'preview.png', 'Package envelope install should persist nested module assets');
+
+  const exported = MODULE_SYSTEM.createModulePackage({
+    manifest: {
+      id: 'exported-module',
+      name: 'Exported Module',
+      version: '1.0.0',
+      contentRating: ' SAFE ',
+      permissions: ['ui.read', 'ui.read']
+    },
+    code: '',
+    assets: {
+      icon: { path: 'icon.png' }
+    }
+  });
+  assertEqual(exported.packageType, 'yaw-module', 'Exported package should declare the module package type');
+  assertEqual(exported.packageVersion, 1, 'Exported package should declare the supported package version');
+  assertEqual(exported.packageId, 'exported-module', 'Exported package should identify the nested module');
+  assertEqual(exported.trustBoundary, 'trusted-local', 'Exported package should declare the local trust boundary');
+  assertEqual(exported.module.manifest.contentRating, 'safe', 'Exported package should contain normalized manifest metadata');
+  assertEqual(exported.module.manifest.permissions.join(','), 'ui.read', 'Exported package should dedupe permissions');
+  assertEqual(exported.module.assets.icon.path, 'icon.png', 'Exported package should contain normalized assets');
+
+  let rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      packageType: 'foreign-module',
+      packageVersion: 1,
+      module: envelope.module
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'package type', 'Unsupported package types should report package type validation');
+  }
+  assertEqual(rejected, true, 'Unsupported package envelope types should reject');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      packageType: 'yaw-module',
+      packageVersion: 2,
+      module: envelope.module
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'package version', 'Unsupported package versions should report package version validation');
+  }
+  assertEqual(rejected, true, 'Unsupported package envelope versions should reject');
+
+  rejected = false;
+  try {
+    await MODULE_SYSTEM.installModule({
+      packageType: 'yaw-module',
+      packageVersion: 1,
+      packageId: 'other-module',
+      module: envelope.module
+    });
+  } catch (e) {
+    rejected = true;
+    assertContains(e.message, 'package id', 'Package id mismatch should report package id validation');
+  }
+  assertEqual(rejected, true, 'Mismatched package ids should reject');
+  assertEqual((await MODULE_SYSTEM.getAllModules()).length, 1, 'Rejected package envelopes should not add stored modules');
+});
+
 asyncTest('Module system rejects malformed manifests before storage', async () => {
   const MODULE_SYSTEM = loadModuleSystemForTest();
   const fakeDb = createFakeIndexedDb();

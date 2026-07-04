@@ -9,6 +9,8 @@ const MODULE_SYSTEM = {
     LEGACY_DB_NAME: 'FFFme_Modules',
     DB_VERSION: 1,
     GAME_VERSION: '0.10.0',
+    PACKAGE_TYPE: 'yaw-module',
+    PACKAGE_VERSION: 1,
     TRUST_BOUNDARY: 'trusted-local',
     CONTENT_RATINGS: ['safe', 'mature', 'adult'],
     db: null,
@@ -139,6 +141,51 @@ const MODULE_SYSTEM = {
             permissions: this._normalizeStringList(manifest.permissions, 'permissions'),
             dependencies,
             minGameVersion
+        };
+    },
+
+    _normalizeModulePackage(packageData) {
+        if (!packageData || typeof packageData !== 'object') {
+            throw new Error('Module package data is required');
+        }
+        if (Object.prototype.hasOwnProperty.call(packageData, 'manifest')) {
+            return packageData;
+        }
+
+        const packageType = String(packageData.packageType || '').trim();
+        if (packageType !== this.PACKAGE_TYPE) {
+            throw new Error(`Module package type must be ${this.PACKAGE_TYPE}`);
+        }
+        const packageVersion = Number(packageData.packageVersion ?? 1);
+        if (!Number.isInteger(packageVersion) || packageVersion !== this.PACKAGE_VERSION) {
+            throw new Error(`Module package version must be ${this.PACKAGE_VERSION}`);
+        }
+        if (!packageData.module || typeof packageData.module !== 'object' || Array.isArray(packageData.module)) {
+            throw new Error('Module package module payload is required');
+        }
+        if (packageData.packageId !== undefined) {
+            const packageId = String(packageData.packageId || '').trim();
+            const manifestId = String(packageData.module.manifest?.id || '').trim();
+            if (packageId && manifestId && packageId !== manifestId) {
+                throw new Error('Module package id must match manifest id');
+            }
+        }
+        return packageData.module;
+    },
+
+    createModulePackage(moduleData) {
+        const validated = this._validateModuleData(moduleData);
+        return {
+            packageType: this.PACKAGE_TYPE,
+            packageVersion: this.PACKAGE_VERSION,
+            packageId: validated.manifest.id,
+            gameVersion: this._currentGameVersion(),
+            trustBoundary: this.TRUST_BOUNDARY,
+            module: {
+                manifest: validated.manifest,
+                code: validated.code,
+                assets: validated.assets
+            }
         };
     },
 
@@ -412,7 +459,8 @@ const MODULE_SYSTEM = {
     
     // Install module from file
     async installModule(moduleData) {
-        const validated = this._validateModuleData(moduleData);
+        const packageModuleData = this._normalizeModulePackage(moduleData);
+        const validated = this._validateModuleData(packageModuleData);
         this._assertGameVersionCompatible(validated.manifest);
         const module = {
             id: validated.manifest.id,

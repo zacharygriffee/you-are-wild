@@ -347,35 +347,13 @@
                 return creature;
             },
             _contextActionKeys() {
-                const keys = [];
-                if ((this.quests || []).length > 0) keys.push('quests');
-                if (this._canTakeTileItems()) keys.unshift('takeItems');
-                if (this._canSearchHere()) keys.unshift('search');
-                if (this.inInterior) keys.unshift('exit');
-                else if (this._currentExplorationTile()?.structure) keys.unshift('enter');
-                if (this._canRestHere()) keys.unshift('rest');
-                return keys;
+                return YAW_CENTER_CONTEXT.actionKeys(this);
             },
             _contextActionButton(key) {
-                const handlers = {
-                    rest: 'App.rest()',
-                    search: 'App.search()',
-                    takeItems: 'App.takeTileItems()',
-                    quests: 'App.showQuestLog()',
-                    stats: 'App.showCharacterStats()',
-                    enter: 'App.enterStructure()',
-                    exit: 'App.exitStructure()',
-                    map: "togglePanel('map')",
-                    party: "togglePanel('party')",
-                    enemies: "togglePanel('enemies')"
-                };
-                return this._iconActionButton(key, this._actionIcon(key), handlers[key] || '');
+                return YAW_CENTER_CONTEXT.actionButton(this, key);
             },
             _renderContextActions(includePanels = false) {
-                const keys = this._contextActionKeys();
-                const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
-                const allKeys = [...keys, ...panelKeys];
-                return allKeys.map(key => this._contextActionButton(key)).join('');
+                return YAW_CENTER_CONTEXT.renderActions(this, includePanels);
             },
             _buildInteractionCommand(context = {}) {
                 const mode = context.mode || (this.combatState?.active ? 'combat' : 'adventure');
@@ -8156,35 +8134,7 @@
                     `<div><strong>${this._escapeHtml(this._label('ui.tileInfo.structure', 'Structure'))}:</strong> ${this._escapeHtml(structure)} · <strong>${this._escapeHtml(this._label('ui.tileInfo.landmark', 'Landmark'))}:</strong> ${this._escapeHtml(landmark)}</div>`;
             },
             _centerTileContext() {
-                if (this.inInterior && this.activeInterior) {
-                    const room = this._currentInteriorTile();
-                    const biome = this.biomes[room?.biome] || this.biomes.indoors || {};
-                    const title = room?.exit
-                        ? this._label('structure.exit', 'Exit')
-                        : (this.activeInterior.structureName || this._label('ui.largeMap.interior', 'Interior'));
-                    const details = [room?.description ||
-                        `${biome.icon || ''} ${this._label('ui.largeMap.interior', 'Interior')} (${this.interiorLocation.x}, ${this.interiorLocation.y})`];
-                    const itemSummary = this._tileItemSummary(room);
-                    if (itemSummary) details.push(itemSummary);
-                    const description = details.join(' ');
-                    return { title, description };
-                }
-                const tile = this._currentExplorationTile() || this.getTile(this.location.x, this.location.y);
-                const biome = this.biomes[tile?.displayBiome || tile?.biome] || this.biomes[tile?.biome] || this.biomes.forest || {};
-                const structure = tile?.structure ? this.STRUCTURES[tile.structure] : null;
-                const title = structure
-                    ? `${structure.name} - ${biome.name || tile.biome}`
-                    : `${biome.name || tile?.biome || this._label('ui.exploration', 'Exploration')} - ${tile?.hasLandmark && tile.landmarkName ? tile.landmarkName : this._label('ui.scene.wildernessTitle', 'The Wilderness')}`;
-                const details = [];
-                if (tile?.description) details.push(tile.description);
-                if (structure) details.push(`${structure.icon || '🚪'} ${structure.name}`);
-                if (tile?.hasLandmark && tile.landmarkName) details.push(tile.landmarkName);
-                const itemSummary = this._tileItemSummary(tile);
-                if (itemSummary) details.push(itemSummary);
-                const description = details.length
-                    ? details.join(' ')
-                    : `${biome.icon || ''} ${this._label('ui.chooseAction', 'Choose your next action.')}`;
-                return { title, description };
+                return YAW_CENTER_CONTEXT.context(this);
             },
             renderTileInfo(tile = null) {
                 const html = this._tileInfoHtml(tile);

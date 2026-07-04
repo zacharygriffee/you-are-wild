@@ -125,6 +125,7 @@ const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
+const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const combatSceneContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-scene.js'), 'utf8');
 const worldGenerationPath = path.join(SRC_DIR, 'core', 'world-generation.js');
@@ -1367,6 +1368,15 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
 });
 
+test('Center context helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
+  assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.actionKeys(this)', 'App center context action keys should delegate to the helper');
+});
+
 test('App-emitted module hooks are declared by the module registry', () => {
   const emittedHookNames = [...appContent.matchAll(/MODULE_SYSTEM\.executeHook\('([^']+)'/g)].map(match => match[1]);
   const declaredHookNames = [...moduleSystemContent.matchAll(/^\s+(on[A-Za-z0-9_]+): \[\]/gm)].map(match => match[1]);
@@ -2450,8 +2460,8 @@ test('Mobile game shell prevents horizontal overflow', () => {
 test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, 'transform: translateX(-110%)', 'mobile map panel should use transform overlay');
   assertContains(template, 'transform: translateX(110%)', 'mobile side panels should use transform overlay');
-  assertContains(appContent, "stats: 'App.showCharacterStats()'", 'mobile actions should expose character stats');
-  assertContains(appContent, "['stats', 'map', 'party', 'enemies']", 'mobile panel actions should include stats before map and party panels');
+  assertContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'mobile actions should expose character stats');
+  assertContains(centerContextContent, "['stats', 'map', 'party', 'enemies']", 'mobile panel actions should include stats before map and party panels');
   assertContains(template, "togglePanel('enemies')", 'mobile actions should expose enemies panel');
   assertContains(appContent, 'closeAllPanels()', 'panel backdrop close handler should exist');
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
@@ -2652,7 +2662,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${unitSelectionContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

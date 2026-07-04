@@ -4,6 +4,26 @@
  */
 
 const YAW_COMBAT_ACTIONS = {
+    showActorActions(app, actor) {
+        if (!app.combatState?.active) {
+            const selected = actor || app.player;
+            if (selected && app.party.includes(selected) && app._isLivingCreature(selected)) {
+                const id = app._unitSelectionId(selected);
+                app.explorationActorIds = [id];
+                app.explorationActorId = id;
+            }
+            app._clearTransientInteractionState();
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            app.showExplorationActions();
+            return;
+        }
+        app._clearTransientInteractionState();
+        app.activeActor = actor || app.player;
+        app.renderCombatSceneForTurn(app.activeActor);
+        app._clearCenterActionsForCombat();
+        app._renderInteractionState({ exploration: false, toolbelt: true });
+    },
+
     syncParticipantButton(app, unit, compact = false) {
         if (!app.syncSelection?.active || app.syncSelection.phase !== 'participants' || !unit || unit.CPun <= 0) return '';
         const id = app._unitSelectionId(unit);

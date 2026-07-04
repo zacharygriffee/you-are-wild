@@ -3091,23 +3091,7 @@
             },
 
             showActorActions(actor) {
-                if (!this.combatState?.active) {
-                    const selected = actor || this.player;
-                    if (selected && this.party.includes(selected) && this._isLivingCreature(selected)) {
-                        const id = this._unitSelectionId(selected);
-                        this.explorationActorIds = [id];
-                        this.explorationActorId = id;
-                    }
-                    this._clearTransientInteractionState();
-                    this._renderInteractionState({ exploration: true, toolbelt: false });
-                    this.showExplorationActions();
-                    return;
-                }
-                this._clearTransientInteractionState();
-                this.activeActor = actor || this.player;
-                this.renderCombatSceneForTurn(this.activeActor);
-                this._clearCenterActionsForCombat();
-                this._renderInteractionState({ exploration: false, toolbelt: true });
+                return YAW_COMBAT_ACTIONS.showActorActions(this, actor);
             },
 
             _combatTurnTitle(unit = null) {

@@ -1488,11 +1488,14 @@ test('Combat action helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat action helper should load before app.js');
   assert(buildContent.indexOf("'src/core/combat-actions.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Combat action helper should load before mobile chips that reuse combat action wrappers');
   assertContains(combatActionsContent, 'const YAW_COMBAT_ACTIONS = {', 'Combat action helper should expose the combat action service');
+  assertContains(combatActionsContent, 'showActorActions(app, actor)', 'Combat action helper should own actor action presentation');
   assertContains(combatActionsContent, 'syncParticipantButton(app, unit, compact = false)', 'Combat action helper should own sync participant buttons');
   assertContains(combatActionsContent, 'actionButtons(app, actor, options = {})', 'Combat action helper should own combat action buttons');
+  assertContains(combatActionsContent, 'app._clearCenterActionsForCombat()', 'Combat action helper should keep center actions cleared for combat');
   assertContains(combatActionsContent, "app._combatIntentButton('fight', actor, 'primary')", 'Combat action helper should keep fight on the shared combat intent button path');
   assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');
   assertContains(combatActionsContent, "App.executeCombatIntent('flee')", 'Combat action helper should keep flee on the shared combat dispatcher');
+  assertContains(appContent, 'YAW_COMBAT_ACTIONS.showActorActions(this, actor)', 'App actor action wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.actionButtons(this, actor, options)', 'App combat action wrapper should delegate to the helper');
 });

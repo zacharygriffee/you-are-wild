@@ -1151,35 +1151,22 @@
                 return YAW_UNIT_LIFECYCLE.findBySaveRef(this, ref);
             },
             _containerCapacity(unit, container = 'stomach') {
-                const base = Math.max(1, (unit?.size || 4) + (unit?.appetite || 0));
-                return container === 'stomach' ? base : Math.max(1, Math.floor(base / 2));
+                return YAW_UNIT_CONTAINERS.capacity(unit, container);
             },
             _containerContents(unit, container = 'stomach') {
-                if (container === 'womb') return unit?.womb || [];
-                if (container === 'balls') return unit?.balls || [];
-                return unit?.stomach || [];
+                return YAW_UNIT_CONTAINERS.contents(unit, container);
             },
             _containerUsed(unit, container = 'stomach') {
-                return this._containerContents(unit, container).reduce((sum, prey) => sum + (prey.size || 1), 0);
+                return YAW_UNIT_CONTAINERS.used(unit, container);
             },
             _canFitPrey(predator, prey, container = 'stomach') {
-                if (!predator || !prey) return false;
-                return this._containerUsed(predator, container) + (prey.size || 1) <= this._containerCapacity(predator, container);
+                return YAW_UNIT_CONTAINERS.canFit(predator, prey, container);
             },
             _capacityFailureMessage(actor, target, container = 'stomach') {
-                const containerKey = container === 'womb' ? 'capacity.womb' : container === 'balls' ? 'capacity.balls' : 'capacity.stomach';
-                const fallbackContainer = container === 'womb' ? 'womb' : container === 'balls' ? 'balls' : 'stomach';
-                const owner = actor === this.player
-                    ? this._label('capacity.owner.your', 'Your')
-                    : this._label('capacity.owner.named', "{name}'s", { name: actor?.name || 'Someone' });
-                return this._label('capacity.tooFull', '{owner} {container} is too full for {target}!', {
-                    owner,
-                    container: this._label(containerKey, fallbackContainer),
-                    target: target?.name || 'target'
-                });
+                return YAW_UNIT_CONTAINERS.failureMessage(this, actor, target, container);
             },
             _containerSummary(unit, container = 'stomach') {
-                return `${this._containerUsed(unit, container)}/${this._containerCapacity(unit, container)}`;
+                return YAW_UNIT_CONTAINERS.summary(this, unit, container);
             },
             _interiorKey(x = this.interiorLocation.x, y = this.interiorLocation.y) {
                 return YAW_STRUCTURE_NAVIGATION.interiorKey(this, x, y);

@@ -2513,6 +2513,7 @@ test('Battle mode contract keeps combat panel-first', () => {
   assertContains(appContent, 'executeCombatIntent(action', 'Combat intent should route through a shared dispatcher');
   assertContains(appContent, 'combatAction(action) {\n                return this.executeCombatIntent', 'Legacy combatAction wrapper should delegate to the shared dispatcher');
   assertContains(appContent, "_combatIntentButton('fight'", 'Panel combat buttons should dispatch through the shared combat intent path');
+  assertNotContains(contentSystemContent, 'combat.panelFirst', 'Combat should not retain obsolete center prompt locale keys');
 });
 
 test('Desktop play surface uses a 3x3 center-tile layout', () => {

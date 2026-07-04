@@ -1686,6 +1686,7 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_ACTION_RULES.combatActionRating(this, entry, actor, target, purpose)', 'App combat rating wrapper should delegate to action rules');
   assertContains(appContent, 'YAW_ACTION_RULES.explorationActionRating(this, entry, actor, target, purpose)', 'App exploration rating wrapper should delegate to action rules');
   assertContains(appContent, 'YAW_ACTION_RULES.targetDodgeRoll(this, actor, target, action)', 'App target dodge wrapper should delegate to action rules');
+  assertNotContains(appContent, '_AR(entry)', 'App should not retain the ambient-random action rating helper');
 });
 
 test('Unit lifecycle helper module is registered before app code', () => {
@@ -4115,6 +4116,29 @@ test('Player flee result is deterministic by combat state', () => {
   const lowRandom = buildCase(() => 0);
   const highRandom = buildCase(() => 0.99);
   assertEqual(JSON.stringify(lowRandom), JSON.stringify(highRandom), 'Player flee result should not depend on ambient Math.random');
+});
+
+test('Combat social action ratings are deterministic by combat state', () => {
+  const buildCase = (random, action) => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { seed: `combat-social-${action}`, generatorVersion: 2 };
+    const player = makeUnit('You', { id: 'player-social' });
+    const actor = makeUnit('Ally', { id: `actor-${action}`, Fuck: 60, Flir: 60, cha: 18 });
+    const target = makeUnit('Enemy', { id: `target-${action}`, disposition: App.DISPOSITION.ENEMY, CPle: action === 'fuck' ? 70 : 0, MPle: 100, wis: 1 });
+    App.player = player;
+    App.party = [player, actor];
+    App.creatures = [target];
+    App.location = { x: 2, y: -1 };
+    App.dayCount = 1;
+    App.timeHour = 11;
+    App.combatState = { active: true, round: 2, currentTurn: 1, processing: false, xpEarned: 0, turnQueue: [{ unit: actor, initiative: 10 }], syncActions: [] };
+    App.nextTurn = function() { this._socialAdvanced = true; };
+    App.executeActionAgainstTarget(action, actor, target);
+    return { pleasure: target.CPle, disposition: target.disposition, advanced: !!App._socialAdvanced, log: App.log.map(entry => entry.text).join('|') };
+  };
+  for (const action of ['flirt', 'fuck']) {
+    assertEqual(JSON.stringify(buildCase(() => 0, action)), JSON.stringify(buildCase(() => 0.99, action)), `Combat ${action} rating should not depend on ambient Math.random`);
+  }
 });
 
 test('Feed unavailable feedback localizes and does not throw without a selected target', () => {
@@ -9964,6 +9988,26 @@ test('Enemy tasty target tie-break is deterministic by combat state', () => {
   const lowRandom = buildCase(() => 0);
   const highRandom = buildCase(() => 0.99);
   assertEqual(lowRandom, highRandom, 'Tasty target tie-break should not depend on ambient Math.random');
+});
+
+test('Single exploration social action ratings are deterministic by world state', () => {
+  const buildCase = (random, action) => {
+    const { App } = loadAppForCombat(random);
+    App.worldMeta = { worldId: `explore-social-${action}`, seed: `explore-social-${action}`, generatorVersion: 2, mapModsHash: 'core' };
+    const actor = makeUnit('You', { id: `actor-${action}`, Fuck: 60, Flir: 60, cha: 18 });
+    const target = makeUnit('Target', { id: `target-${action}`, disposition: App.DISPOSITION.FRIENDLY, CPle: action === 'fuck' ? 70 : 0, MPle: 100, wis: 1 });
+    App.player = actor;
+    App.party = [actor];
+    App.creatures = [target];
+    App.location = { x: -4, y: 5 };
+    App.dayCount = 3;
+    App.timeHour = 9;
+    App.outsideActionOnTarget(action, target, actor);
+    return { pleasure: target.CPle, willing: !!target.willing, log: App.log.map(entry => entry.text).join('|') };
+  };
+  for (const action of ['flirt', 'fuck']) {
+    assertEqual(JSON.stringify(buildCase(() => 0, action)), JSON.stringify(buildCase(() => 0.99, action)), `Exploration ${action} rating should not depend on ambient Math.random`);
+  }
 });
 
 test('Party leader state persists through binary saves', () => {

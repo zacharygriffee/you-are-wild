@@ -3277,7 +3277,7 @@
                         break;
                     }
                     case 'fuck': {
-                        let charm = this._AR(actor.Fuck + actor.Flir);
+                        let charm = this._explorationActionRating(actor.Fuck + actor.Flir, actor, target, 'single-seduce');
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 5;
                         }
@@ -3342,7 +3342,7 @@
                         break;
                     }
                     case 'flirt': {
-                        let charm = this._AR(actor.Flir + (actor.cha || 10) * 0.5);
+                        let charm = this._explorationActionRating(actor.Flir + (actor.cha || 10) * 0.5, actor, target, 'single-flirt');
                         if (this.settings.sameSpeciesBonus && target.species === actor.species) {
                             charm += 3;
                         }
@@ -3594,15 +3594,6 @@
                 this.combatState.processing = false;
                 this._sanitizeCombatState({ preserveTurn: true });
                 this.nextTurn();
-            },
-
-            // ===== RANDOMIZER (AR) =====
-            _AR(entry) {
-                if (entry > 55) return Math.round(entry + (Math.random() * 21 - 10));
-                if (entry > 45) return Math.round(entry + (Math.random() * 17 - 8));
-                if (entry > 35) return Math.round(entry + (Math.random() * 13 - 6));
-                if (entry > 25) return Math.round(entry + (Math.random() * 9 - 4));
-                return Math.max(1, Math.round(entry + (Math.random() * 5 - 2)));
             },
 
             // ===== XP/LEVELING =====

@@ -34,7 +34,7 @@ const YAW_COMBAT_RESOLUTION = {
                 break;
             }
             case 'flirt': {
-                let charm = app._AR(actor.Flir + (actor.cha || 10) * 0.5);
+                let charm = app._combatActionRating(actor.Flir + (actor.cha || 10) * 0.5, actor, target, 'player-flirt');
                 if (app.settings.sameSpeciesBonus && target.species === actor.species) {
                     charm += 3;
                 }
@@ -63,7 +63,7 @@ const YAW_COMBAT_RESOLUTION = {
                 break;
             }
             case 'fuck': {
-                let charm = app._AR(actor.Fuck + actor.Flir);
+                let charm = app._combatActionRating(actor.Fuck + actor.Flir, actor, target, 'player-seduce');
                 if (app.settings.sameSpeciesBonus && target.species === actor.species) {
                     charm += 5;
                 }

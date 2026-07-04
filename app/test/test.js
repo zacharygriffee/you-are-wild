@@ -6929,6 +6929,129 @@ test('Loaded world state rebuilds tile deltas over deterministic base tiles', ()
   assertEqual(App.getTile(4, 5).baseBiome, App.getBaseTile(4, 5).biome, 'Restored tile should retain generated base biome metadata');
 });
 
+test('World metadata normalizes malformed save and store records', () => {
+  const { App } = loadAppForCombat(() => 1);
+  const fallback = { worldId: 'world-safe', seed: 'safe-seed', generatorVersion: 2, mapModsHash: 'core' };
+  const normalized = App._normalizeWorldMeta({
+    worldId: '../bad',
+    seed: { nested: true },
+    generatorVersion: -4,
+    mapModsHash: 'bad hash'
+  }, fallback);
+  assertEqual(normalized.worldId, 'world-safe', 'Malformed world id should fall back to a safe world id');
+  assertEqual(normalized.seed, 'safe-seed', 'Malformed seed should fall back to a safe seed');
+  assertEqual(normalized.generatorVersion, 2, 'Malformed generator version should fall back to a safe version');
+  assertEqual(normalized.mapModsHash, 'core', 'Malformed map hash should fall back to a safe hash');
+
+  App.worldMeta = App._normalizeWorldMeta({
+    worldId: 'world-load-safe',
+    seed: 'load-safe-seed',
+    generatorVersion: 2,
+    mapModsHash: 'core'
+  });
+  App.location = { x: 0, y: 0 };
+  App._restoreWorldState({
+    worldMeta: {
+      worldId: '../../bad',
+      seed: [],
+      generatorVersion: 'soon',
+      mapModsHash: 'bad hash'
+    },
+    exploredTiles: ['0,0'],
+    worldMap: {
+      '0,0': {
+        x: 0,
+        y: 0,
+        biome: 'grove',
+        explored: true,
+        description: 'Safe restored tile.',
+        creatures: 'bad creatures',
+        items: 'bad items'
+      }
+    }
+  });
+  assertEqual(App.worldMeta.worldId, 'world-load-safe', 'Malformed restored world id should not replace current safe metadata');
+  assertEqual(App.worldMeta.seed, 'load-safe-seed', 'Malformed restored seed should not replace current safe metadata');
+  assertEqual(App.worldMeta.generatorVersion, 2, 'Malformed restored version should not replace current safe metadata');
+  assertEqual(App.worldMeta.mapModsHash, 'core', 'Malformed restored map hash should not replace current safe metadata');
+  assertEqual(App.getTile(0, 0).description, 'Safe restored tile.', 'Malformed metadata should not prevent valid tile restoration');
+  assertEqual(Array.isArray(App.getTile(0, 0).creatures), true, 'Malformed creature state should still normalize during restore');
+  assertEqual(Array.isArray(App.getTile(0, 0).items), true, 'Malformed item state should still normalize during restore');
+});
+
+asyncTest('World store load ignores malformed metadata but applies valid tile deltas', async () => {
+  const { App } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-store-load-safe', seed: 'store-safe-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.location = { x: 1, y: 1 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App._worldDbOpen = async () => ({
+    close() {},
+    transaction() {
+      const tx = {
+        oncomplete: null,
+        onerror: null,
+        objectStore(name) {
+          if (name === 'worlds') {
+            return {
+              get() {
+                const request = { result: null, onsuccess: null, onerror: null };
+                setTimeout(() => {
+                  request.result = {
+                    worldId: '../../bad',
+                    seed: [],
+                    generatorVersion: 'later',
+                    mapModsHash: 'bad hash'
+                  };
+                  if (request.onsuccess) request.onsuccess({ target: request });
+                }, 0);
+                return request;
+              }
+            };
+          }
+          return {
+            openCursor() {
+              const records = [
+                { worldId: 'other-world', x: 0, y: 0, delta: { explored: true, description: 'Wrong world' } },
+                { worldId: 'world-store-load-safe', x: 1, y: 1, delta: { explored: true, description: 'Loaded sparse tile.' } }
+              ];
+              const request = { onsuccess: null, onerror: null };
+              let index = 0;
+              const step = () => {
+                if (index < records.length) {
+                  const cursor = {
+                    value: records[index++],
+                    continue() { setTimeout(step, 0); }
+                  };
+                  if (request.onsuccess) request.onsuccess({ target: { result: cursor } });
+                  return;
+                }
+                if (request.onsuccess) request.onsuccess({ target: { result: null } });
+                setTimeout(() => {
+                  if (tx.oncomplete) tx.oncomplete();
+                }, 0);
+              };
+              setTimeout(step, 0);
+              return request;
+            }
+          };
+        }
+      };
+      return tx;
+    }
+  });
+
+  const loadedCount = await App.loadWorldStateFromMapStore();
+  assertEqual(loadedCount, 1, 'World store load should count only records for the active world');
+  assertEqual(App.worldMeta.worldId, 'world-store-load-safe', 'Malformed world-store metadata should not replace active world id');
+  assertEqual(App.worldMeta.seed, 'store-safe-seed', 'Malformed world-store metadata should not replace active seed');
+  assertEqual(App.worldMeta.generatorVersion, 2, 'Malformed world-store metadata should not replace active generator version');
+  assertEqual(App.worldMeta.mapModsHash, 'core', 'Malformed world-store metadata should not replace active map hash');
+  assertEqual(App.getTile(1, 1).description, 'Loaded sparse tile.', 'Valid active-world sparse delta should still load');
+  assertEqual(App.exploredTiles.has('1,1'), true, 'Loaded sparse tile should repopulate explored state');
+});
+
 test('Sparse map IndexedDB store contract is present', () => {
   assertContains(appContent, "WORLD_DB_NAME: 'YAW_Worlds'", 'World map DB name should be declared');
   assertContains(appContent, "createObjectStore('worlds'", 'World metadata store should be created');

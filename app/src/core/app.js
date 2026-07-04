@@ -2189,6 +2189,29 @@
             _tileDeltaStoreKey(worldId, x, y) {
                 return `${worldId || this.worldMeta?.worldId || 'world_default'}:${x}:${y}`;
             },
+            _defaultWorldMeta() {
+                return { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
+            },
+            _normalizeWorldMeta(meta, fallback = null) {
+                const defaults = this._defaultWorldMeta();
+                const base = fallback && typeof fallback === 'object' ? fallback : defaults;
+                const source = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta : {};
+                const cleanToken = (value, fallbackValue) => {
+                    const text = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+                    if (text && /^[a-zA-Z0-9_.:-]+$/.test(text)) return text;
+                    const fallbackText = typeof fallbackValue === 'string' || typeof fallbackValue === 'number' ? String(fallbackValue).trim() : '';
+                    return fallbackText && /^[a-zA-Z0-9_.:-]+$/.test(fallbackText) ? fallbackText : '';
+                };
+                const worldId = cleanToken(source.worldId, base.worldId) || defaults.worldId;
+                const seed = cleanToken(source.seed, base.seed) || defaults.seed;
+                const sourceVersion = Number(source.generatorVersion);
+                const baseVersion = Number(base.generatorVersion);
+                const generatorVersion = Number.isInteger(sourceVersion) && sourceVersion > 0
+                    ? sourceVersion
+                    : (Number.isInteger(baseVersion) && baseVersion > 0 ? baseVersion : defaults.generatorVersion);
+                const mapModsHash = cleanToken(source.mapModsHash, base.mapModsHash) || defaults.mapModsHash;
+                return { worldId, seed, generatorVersion, mapModsHash };
+            },
             _cloneTileValue(value) {
                 if (value == null) return value;
                 if (Array.isArray(value) || typeof value === 'object') {
@@ -10232,12 +10255,12 @@
                     this.player.perks = loaded.questState?.playerPerks || this.player.perks || [];
                     this.player.pendingPerkChoices = loaded.questState?.pendingPerkChoices || this.player.pendingPerkChoices || 0;
                     this.partyLeaderId = loaded.questState?.partyLeaderId || this._unitSelectionId(this.player);
-                    this.worldMeta = loaded.worldMeta || {
+                    this.worldMeta = this._normalizeWorldMeta(loaded.worldMeta, {
                         worldId: 'world_legacy',
                         seed: loaded.currentBiome || 'default',
                         generatorVersion: 1,
                         mapModsHash: 'legacy'
-                    };
+                    });
                     this.inInterior = false;
                     this.activeInterior = null;
                     this.interiorLocation = { x: 0, y: 0 };
@@ -10275,7 +10298,7 @@
                 this.worldMap = new Map();
                 this.tileDeltas = new Map();
                 this.exploredTiles = new Set(loaded.exploredTiles || []);
-                this.worldMeta = loaded.worldMeta || this.worldMeta || { worldId: 'world_legacy', seed: 'default', generatorVersion: 1, mapModsHash: 'legacy' };
+                this.worldMeta = this._normalizeWorldMeta(loaded.worldMeta, this.worldMeta || this._defaultWorldMeta());
                 this.superPatchMap = new Map();
                 if (loaded.worldMap) {
                     for (const [key, tile] of Object.entries(loaded.worldMap)) {
@@ -10438,14 +10461,15 @@
             },
             async persistWorldStateToMapStore() {
                 this.persistAllTileDeltas();
-                const worldId = this.worldMeta?.worldId || 'world_default';
+                this.worldMeta = this._normalizeWorldMeta(this.worldMeta, this._defaultWorldMeta());
+                const worldId = this.worldMeta.worldId || 'world_default';
                 const db = await this._worldDbOpen();
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction(['worlds', 'tileDeltas'], 'readwrite');
                     const worlds = tx.objectStore('worlds');
                     const tileDeltas = tx.objectStore('tileDeltas');
                     const records = Array.from(this.tileDeltas.entries()).map(([key, delta]) => this._tileDeltaRecordFromEntry(key, delta));
-                    worlds.put({ ...(this.worldMeta || {}), worldId, updatedAt: Date.now() });
+                    worlds.put({ ...this.worldMeta, worldId, updatedAt: Date.now() });
                     const cursorReq = tileDeltas.openCursor();
                     cursorReq.onsuccess = e => {
                         const cursor = e.target.result;
@@ -10462,7 +10486,8 @@
                 });
             },
             async loadWorldStateFromMapStore() {
-                const worldId = this.worldMeta?.worldId;
+                this.worldMeta = this._normalizeWorldMeta(this.worldMeta, this._defaultWorldMeta());
+                const worldId = this.worldMeta.worldId;
                 if (!worldId) return 0;
                 const db = await this._worldDbOpen();
                 return new Promise((resolve, reject) => {
@@ -10473,7 +10498,8 @@
                     const worldReq = worlds.get(worldId);
                     worldReq.onsuccess = () => {
                         if (worldReq.result) {
-                            this.worldMeta = { ...this.worldMeta, ...worldReq.result };
+                            const loadedMeta = this._normalizeWorldMeta(worldReq.result, this.worldMeta);
+                            if (loadedMeta.worldId === worldId) this.worldMeta = loadedMeta;
                         }
                     };
                     const cursorReq = tileDeltas.openCursor();

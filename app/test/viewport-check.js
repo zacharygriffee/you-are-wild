@@ -247,6 +247,73 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopPanels.main.width > desktopPanels.party.width, `${name}: desktop main play area should be wider than side panels`);
     assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
 
+    const readDesktopIntentBounds = async label => page.evaluate(menuLabel => {
+      const menu = document.getElementById('desktop-intent-menu');
+      if (!menu) return { label: menuLabel, exists: false };
+      const rect = menu.getBoundingClientRect();
+      const style = getComputedStyle(menu);
+      const buttons = Array.from(menu.querySelectorAll('button')).filter(btn => {
+        const buttonRect = btn.getBoundingClientRect();
+        return buttonRect.width > 0 && buttonRect.height > 0;
+      });
+      return {
+        label: menuLabel,
+        exists: true,
+        role: menu.getAttribute('role'),
+        ariaModal: menu.getAttribute('aria-modal'),
+        presentation: menu.getAttribute('data-intent-presentation'),
+        overflowY: style.overflowY,
+        zIndex: Number.parseInt(style.zIndex, 10) || 0,
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        visibleButtons: buttons.length,
+        clippedButtons: buttons.filter(btn => {
+          const buttonRect = btn.getBoundingClientRect();
+          return buttonRect.left < rect.left - 1 ||
+            buttonRect.top < rect.top - 1 ||
+            buttonRect.right > rect.right + 1 ||
+            buttonRect.bottom > rect.bottom + 1;
+        }).map(btn => btn.textContent.trim())
+      };
+    }, label);
+
+    await page.evaluate(() => App.showIntentMenu('creature', 'creature-1', 'desktop', 'desktop'));
+    await page.waitForTimeout(50);
+    const desktopIntentMenu = await readDesktopIntentBounds('desktop intent menu');
+    assert(desktopIntentMenu.exists, `${name}: desktop intent menu should render`);
+    assert.strictEqual(desktopIntentMenu.role, 'dialog', `${name}: desktop intent menu should use dialog semantics`);
+    assert.strictEqual(desktopIntentMenu.ariaModal, 'true', `${name}: desktop intent menu should be modal`);
+    assert.strictEqual(desktopIntentMenu.presentation, 'desktop', `${name}: desktop intent menu should declare desktop presentation`);
+    assert(desktopIntentMenu.overflowY === 'auto' || desktopIntentMenu.overflowY === 'scroll', `${name}: desktop intent menu should be scrollable`);
+    assert(desktopIntentMenu.zIndex > desktopPanels.party.zIndex, `${name}: desktop intent menu should layer above side panels`);
+    assert(desktopIntentMenu.top >= -1, `${name}: desktop intent menu should not clip above viewport`);
+    assert(desktopIntentMenu.left >= -1, `${name}: desktop intent menu should not clip left`);
+    assert(desktopIntentMenu.right <= desktopIntentMenu.viewportWidth + 1, `${name}: desktop intent menu should not clip right`);
+    assert(desktopIntentMenu.bottom <= desktopIntentMenu.viewportHeight + 1, `${name}: desktop intent menu should not clip below viewport`);
+    assert(desktopIntentMenu.visibleButtons >= 4, `${name}: desktop intent menu should expose reachable action buttons`);
+    assert.deepStrictEqual(desktopIntentMenu.clippedButtons, [], `${name}: desktop intent menu buttons should not clip`);
+
+    await page.evaluate(() => App.openIntentSubActionSheet('creature', 'creature-1', 'fight', 'desktop'));
+    await page.waitForTimeout(50);
+    const desktopSubActionSheet = await readDesktopIntentBounds('desktop sub-action sheet');
+    assert(desktopSubActionSheet.exists, `${name}: desktop sub-action sheet should render`);
+    assert.strictEqual(desktopSubActionSheet.role, 'dialog', `${name}: desktop sub-action sheet should use dialog semantics`);
+    assert.strictEqual(desktopSubActionSheet.ariaModal, 'true', `${name}: desktop sub-action sheet should be modal`);
+    assert.strictEqual(desktopSubActionSheet.presentation, 'desktop', `${name}: desktop sub-action sheet should declare desktop presentation`);
+    assert(desktopSubActionSheet.overflowY === 'auto' || desktopSubActionSheet.overflowY === 'scroll', `${name}: desktop sub-action sheet should be scrollable`);
+    assert(desktopSubActionSheet.zIndex > desktopPanels.party.zIndex, `${name}: desktop sub-action sheet should layer above side panels`);
+    assert(desktopSubActionSheet.top >= -1, `${name}: desktop sub-action sheet should not clip above viewport`);
+    assert(desktopSubActionSheet.left >= -1, `${name}: desktop sub-action sheet should not clip left`);
+    assert(desktopSubActionSheet.right <= desktopSubActionSheet.viewportWidth + 1, `${name}: desktop sub-action sheet should not clip right`);
+    assert(desktopSubActionSheet.bottom <= desktopSubActionSheet.viewportHeight + 1, `${name}: desktop sub-action sheet should not clip below viewport`);
+    assert(desktopSubActionSheet.visibleButtons >= 3, `${name}: desktop sub-action sheet should expose reachable action buttons`);
+    assert.deepStrictEqual(desktopSubActionSheet.clippedButtons, [], `${name}: desktop sub-action sheet buttons should not clip`);
+    await page.evaluate(() => App.closeIntentMenu());
+
     await page.evaluate(() => togglePanel('map'));
     await page.waitForTimeout(50);
     const mapOverlay = await page.evaluate(previousCenter => {

@@ -209,6 +209,82 @@ async function checkViewport(browser, name, width, height) {
     assert(corpseMenu.right <= corpseMenu.viewportWidth + 1, `${name}: corpse long-press menu should not clip right`);
     assert(corpseMenu.bottom <= corpseMenu.viewportHeight + 1, `${name}: corpse long-press menu should not clip below viewport`);
     if (corpseMenu.toolbarVisible) assert(corpseMenu.bottom <= corpseMenu.toolbarTop + 1, `${name}: corpse long-press menu should stay above mobile toolbar`);
+  } else {
+    const desktopPanels = await page.evaluate(() => {
+      const read = id => {
+        const el = document.getElementById(id);
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          display: style.display,
+          position: style.position,
+          active: el.classList.contains('active'),
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          zIndex: Number.parseInt(style.zIndex, 10) || 0
+        };
+      };
+      const stageStyle = getComputedStyle(document.querySelector('.stage'));
+      return {
+        stageAreas: stageStyle.gridTemplateAreas,
+        stageColumns: stageStyle.gridTemplateColumns,
+        map: read('panel-map'),
+        main: read('panel-main'),
+        party: read('panel-party'),
+        enemies: read('panel-enemies'),
+        center: read('desktop-play-cell-center')
+      };
+    });
+    assert(!desktopPanels.stageAreas.includes('map'), `${name}: desktop stage should not reserve a routine map column`);
+    assert.strictEqual(desktopPanels.map.display, 'none', `${name}: desktop map panel should be hidden by default`);
+    assert.strictEqual(desktopPanels.map.active, false, `${name}: desktop map panel should not start active`);
+    assert.notStrictEqual(desktopPanels.party.display, 'none', `${name}: desktop party panel should remain a primary side panel`);
+    assert.notStrictEqual(desktopPanels.enemies.display, 'none', `${name}: desktop creatures panel should remain a primary side panel`);
+    assert(desktopPanels.main.width > desktopPanels.party.width, `${name}: desktop main play area should be wider than side panels`);
+    assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
+
+    await page.evaluate(() => togglePanel('map'));
+    await page.waitForTimeout(50);
+    const mapOverlay = await page.evaluate(previousCenter => {
+      const read = id => {
+        const el = document.getElementById(id);
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          display: style.display,
+          position: style.position,
+          active: el.classList.contains('active'),
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          zIndex: Number.parseInt(style.zIndex, 10) || 0
+        };
+      };
+      return {
+        map: read('panel-map'),
+        party: read('panel-party'),
+        enemies: read('panel-enemies'),
+        center: read('desktop-play-cell-center'),
+        previousCenter
+      };
+    }, desktopPanels.center);
+    assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the map overlay`);
+    assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop map overlay should become visible after toggling Map`);
+    assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop map should be a fixed overlay`);
+    assert(mapOverlay.map.zIndex > mapOverlay.party.zIndex, `${name}: desktop map overlay should layer above side panels`);
+    assert(mapOverlay.map.left >= -1 && mapOverlay.map.right <= width + 1, `${name}: desktop map overlay should stay inside viewport horizontally`);
+    assert(mapOverlay.map.top >= 59 && mapOverlay.map.bottom <= height + 1, `${name}: desktop map overlay should stay below the header and inside the viewport`);
+    assert.notStrictEqual(mapOverlay.party.display, 'none', `${name}: desktop party panel should remain rendered behind the map overlay`);
+    assert.notStrictEqual(mapOverlay.enemies.display, 'none', `${name}: desktop creatures panel should remain rendered behind the map overlay`);
+    assert(Math.abs(mapOverlay.center.left - mapOverlay.previousCenter.left) <= 1, `${name}: opening desktop map should not reflow center play tile horizontally`);
+    assert(Math.abs(mapOverlay.center.top - mapOverlay.previousCenter.top) <= 1, `${name}: opening desktop map should not reflow center play tile vertically`);
   }
 
   await page.close();

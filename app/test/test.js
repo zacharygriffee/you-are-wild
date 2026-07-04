@@ -125,6 +125,7 @@ const appContent = fs.readFileSync(appPath, 'utf8');
 const storageSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'storage-system.js'), 'utf8');
 const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js'), 'utf8');
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
+const localMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'local-map.js'), 'utf8');
 const tileResourcesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-resources.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
@@ -1957,6 +1958,19 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
 });
 
+test('Local map helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/local-map.js'", 'Local map helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/local-map.js'") < buildContent.indexOf("'src/core/app.js'"), 'Local map helper should load before app.js');
+  assert(buildContent.indexOf("'src/core/desktop-play-surface.js'") < buildContent.indexOf("'src/core/local-map.js'"), 'Desktop play surface helper should load before local map refresh coordination');
+  assertContains(localMapContent, 'const YAW_LOCAL_MAP = {', 'Local map helper should expose the local map service');
+  assertContains(localMapContent, 'renderInterior(app)', 'Local map helper should own interior local-map rendering');
+  assertContains(localMapContent, 'renderOverworld(app)', 'Local map helper should own overworld local-map rendering');
+  assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
+  assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
+  assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
+  assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
+});
+
 test('Tile resource helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/tile-resources.js'", 'Tile resource helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/tile-resources.js'") < buildContent.indexOf("'src/core/app.js'"), 'Tile resource helper should load before app.js');
@@ -3174,7 +3188,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');
   assertContains(appContent, 'renderMobileCombatToolbelt()', 'mobile combat toolbelt renderer missing');
-  assertContains(appContent, "document.getElementById('mobile-mini-map')", 'renderMap should target mobile map');
+  assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'local map renderer should target mobile map');
 });
 
 test('Battle mode contract keeps combat panel-first', () => {
@@ -3349,7 +3363,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

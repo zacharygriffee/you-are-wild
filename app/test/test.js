@@ -132,6 +132,7 @@ const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
+const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
 const subActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'sub-actions.js'), 'utf8');
 const uiTextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'ui-text.js'), 'utf8');
 const actionUiContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'action-ui.js'), 'utf8');
@@ -2358,6 +2359,19 @@ test('Structure navigation helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_STRUCTURE_NAVIGATION.rest(this)', 'App rest wrapper should delegate to the helper');
 });
 
+test('Movement flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/movement-flow.js'", 'Movement flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/structure-navigation.js'") < buildContent.indexOf("'src/core/movement-flow.js'"), 'Movement flow should load after structure navigation');
+  assert(buildContent.indexOf("'src/core/movement-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Movement flow helper should load before app.js');
+  assertContains(movementFlowContent, 'const YAW_MOVEMENT_FLOW = {', 'Movement flow helper should expose the movement service');
+  assertContains(movementFlowContent, 'move(app, dx, dy)', 'Movement flow helper should own overworld movement');
+  assertContains(movementFlowContent, "app._label('log.inCombatCannotMove'", 'Movement flow should localize combat movement blocks');
+  assertContains(movementFlowContent, 'app.clearTileBoundExplorationTargets()', 'Movement flow should clear tile-bound targets while moving');
+  assertContains(movementFlowContent, "app._emitModuleHook('onPlayerMove'", 'Movement flow should emit traversal module hooks');
+  assertContains(movementFlowContent, 'app.autoSave()', 'Movement flow should preserve movement autosave');
+  assertContains(appContent, 'YAW_MOVEMENT_FLOW.move(this, dx, dy)', 'App move wrapper should delegate to movement flow');
+});
+
 test('App-emitted module hooks are declared by the module registry', () => {
   const emittedHookNames = [...appContent.matchAll(/MODULE_SYSTEM\.executeHook\('([^']+)'/g)].map(match => match[1]);
   const declaredHookNames = [...moduleSystemContent.matchAll(/^\s+(on[A-Za-z0-9_]+): \[\]/gm)].map(match => match[1]);
@@ -3675,7 +3689,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

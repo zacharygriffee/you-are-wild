@@ -10260,10 +10260,12 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
   assertNotContains(partyCard, "App.showIntentMenu('party',0,'desktop')", 'Party card should not duplicate marked-target actions behind a visible action menu');
+  assertNotContains(partyCard, '>...</button>', 'Party card should not expose an ellipsis menu button that duplicates actor/target controls');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
   assertContains(creatureCard, "selectIntent('creature','fox-1','inspect','panel-card')", 'Creature inspect action should remain available from creature card through shared intent selection');
   assertNotContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Default creature card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(creatureCard, "selectIntent('creature','fox-1','fight'", 'Default creature card should not show primary action spam');
+  assertNotContains(creatureCard, '>...</button>', 'Creature card should not expose an ellipsis menu button that duplicates marked-target controls');
   assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
   assertContains(mobilePartyChip, 'aria-label="Focus You card"', 'Mobile chip click should describe focus rather than actor selection');
@@ -10271,8 +10273,10 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
+  assertNotContains(mobilePartyChip, '>...</button>', 'Mobile party chip should not expose an ellipsis menu button that duplicates actor/target controls');
   assertContains(mobileCreatureChip, "selectIntent('creature','fox-1','inspect','mobile-chip')", 'Mobile creature chip should expose inspect through shared intent selection');
   assertNotContains(mobileCreatureChip, "showIntentMenu('creature','fox-1')", 'Mobile creature chip should not duplicate marked-target actions behind a visible action menu');
+  assertNotContains(mobileCreatureChip, '>...</button>', 'Mobile creature chip should not expose an ellipsis menu button that duplicates marked-target controls');
   assertNotContains(mobilePartyChip, "showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobileCreatureChip, "showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');

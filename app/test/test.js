@@ -4180,6 +4180,97 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   assertNotContains(partyHtml, 'action-legend', 'Desktop combat should not render a duplicate tiny icon legend beside real buttons');
 });
 
+test('Center tile stays traversal and context only across interaction states', () => {
+  const { App, document } = loadAppForCombat();
+  const el = id => document.getElementById(id);
+  const forbiddenCenterMarkers = [
+    'data-card-purpose="focus-toggle"',
+    'data-selection-mode=',
+    'data-selection-control=',
+    'unit-card',
+    'mobile-unit-chip',
+    'panel-interaction-tray',
+    'unit-combat-actions',
+    'executeCombatIntent(',
+    'executeActionOnTarget(',
+    'showIntentMenu(',
+    'showRadialIntentMenu(',
+    'openIntentSubActionSheet(',
+    'selectIntent(',
+    'outsideActionForCreature(',
+    'toggleExplorationTarget(',
+    'selectExplorationActor(',
+    'showPartyMemberStats(',
+    'App.showInventory()'
+  ];
+  const assertCenterOnly = label => {
+    const html = [
+      el('scene-title').innerHTML || '',
+      el('scene-description').innerHTML || '',
+      el('tile-event-feed').innerHTML || '',
+      el('scene-actions').innerHTML || ''
+    ].join('\n');
+    forbiddenCenterMarkers.forEach(marker => {
+      assertNotContains(html, marker, `${label}: center tile should not expose actor/card action marker ${marker}`);
+    });
+  };
+
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, CPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [friendly, enemy];
+  App.location = { x: 0, y: 0 };
+  App.inInterior = false;
+  App.activeInterior = null;
+  App.interiorLocation = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', overlays: { poi: { category: 'restSite' } }, creatures: [] }]]);
+  App.combatState.active = false;
+
+  App.showExplorationActions();
+  assertCenterOnly('exploration structure');
+
+  App.inInterior = true;
+  App.activeInterior = {
+    structure: 'camp',
+    structureName: 'Camp',
+    tiles: { '0,0': { x: 0, y: 0, biome: 'cabin', explored: true, description: 'Interior room' } }
+  };
+  App.interiorLocation = { x: 0, y: 0 };
+  App.showExplorationActions();
+  assertCenterOnly('interior');
+
+  App.inInterior = false;
+  App.activeInterior = null;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.showActorActions(player);
+  assertCenterOnly('combat actor actions');
+  assertContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live on the party panel');
+
+  App.selectTarget('fight');
+  assertCenterOnly('combat target pick');
+  assertContains(el('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Combat target pick should live on creature cards');
+
+  App.combatState.active = false;
+  App.targetSelection = null;
+  App.showInteractMenu();
+  assertCenterOnly('fallback interact wrapper');
+  App.showCreatureInteract('creature', 0);
+  assertCenterOnly('creature interact wrapper');
+  assertContains(el('enemies-content').innerHTML, 'selected selected-target', 'Creature interaction wrapper should mark the panel target instead of rendering center actions');
+});
+
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });

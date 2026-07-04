@@ -3139,72 +3139,31 @@
 
             // ===== ACTION TARGETING =====
             selectTarget(action) {
-                const actor = this.activeActor || this.player;
-                this.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
-                this._clearCenterActionsForCombat();
-                this._renderInteractionState({ exploration: false, toolbelt: true });
+                return YAW_COMBAT_TARGETING.selectTarget(this, action);
             },
 
             cancelTargetSelection() {
-                this._clearTransientInteractionState();
-                if (this.combatState.active) this.showActorActions(this._currentCombatActor() || this.activeActor || this.player);
-                else {
-                    this._renderInteractionState({ exploration: true, toolbelt: false });
-                    this.showExplorationActions();
-                }
+                return YAW_COMBAT_TARGETING.cancelTargetSelection(this);
             },
 
             canSelectCreatureTarget(unit) {
-                if (!unit || unit.CPun <= 0) return false;
-                if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
-                    const participants = this._syncParticipants || this._syncSelectedParticipants();
-                    return this._canSyncTarget(participants, unit, this.syncSelection.type);
-                }
-                if (!this.targetSelection) return false;
-                if (this.targetSelection.source === 'combat') {
-                    const actor = this.activeActor || this.player;
-                    return unit.disposition === this.DISPOSITION.ENEMY && this._canReachCombatTarget(actor, unit, this.targetSelection.action);
-                }
-                return unit.disposition !== this.DISPOSITION.PARTY;
+                return YAW_COMBAT_TARGETING.canSelectCreatureTarget(this, unit);
             },
 
             _syncBaseAction(syncType) {
-                return String(syncType || 'sync_fight').replace(/^sync_/, '') || 'fight';
+                return YAW_COMBAT_TARGETING.syncBaseAction(syncType);
             },
 
             _canSyncTarget(participants, target, syncType = 'sync_fight') {
-                const livingParticipants = (participants || []).filter(unit => unit && unit.CPun > 0);
-                if (!target || target.CPun <= 0 || target.disposition !== this.DISPOSITION.ENEMY) return false;
-                if (livingParticipants.length < 2) return false;
-                const action = this._syncBaseAction(syncType);
-                return livingParticipants.some(unit => this._canReachCombatTarget(unit, target, action));
+                return YAW_COMBAT_TARGETING.canSyncTarget(this, participants, target, syncType);
             },
 
             executeActionOnTarget(action, targetId) {
-                const target = this.creatures.find(c => String(c.id || c.name) === String(targetId));
-                if (!target) {
-                    this.cancelTargetSelection();
-                    return;
-                }
-                if (this.syncSelection?.active && this.syncSelection.phase === 'target') {
-                    return this.queueSyncAction(this.syncSelection.type, target);
-                }
-                const actor = this.activeActor || this.player;
-                const command = this._buildPanelInteractionCommand({
-                    mode: 'combat',
-                    actors: [actor],
-                    targets: [target],
-                    action,
-                    source: 'panel-card',
-                    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
-                });
-                return this._dispatchInteractionCommand(command);
+                return YAW_COMBAT_TARGETING.executeActionOnTarget(this, action, targetId);
             },
 
             executeAction(action, creatureIndex) {
-                const target = this.creatures.filter(c => c.disposition === this.DISPOSITION.ENEMY && c.CPun > 0)[creatureIndex];
-                if (!target) return false;
-                return this.executeActionOnTarget(action, target.id || target.name);
+                return YAW_COMBAT_TARGETING.executeAction(this, action, creatureIndex);
             },
 
             _resolveCombatAction(command) {

@@ -135,6 +135,7 @@ const markedTargetActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'm
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
 const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const combatActionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actions.js'), 'utf8');
+const combatTargetingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-targeting.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
@@ -1487,6 +1488,19 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, "App.executeCombatIntent('flee')", 'Combat action helper should keep flee on the shared combat dispatcher');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.actionButtons(this, actor, options)', 'App combat action wrapper should delegate to the helper');
+});
+
+test('Combat targeting helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-targeting.js'", 'Combat targeting helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-targeting.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat targeting helper should load before app.js');
+  assertContains(combatTargetingContent, 'const YAW_COMBAT_TARGETING = {', 'Combat targeting helper should expose the targeting service');
+  assertContains(combatTargetingContent, 'selectTarget(app, action)', 'Combat targeting helper should own target-pick entry');
+  assertContains(combatTargetingContent, 'canSelectCreatureTarget(app, unit)', 'Combat targeting helper should own target validation');
+  assertContains(combatTargetingContent, 'executeActionOnTarget(app, action, targetId)', 'Combat targeting helper should own panel target dispatch');
+  assertContains(combatTargetingContent, 'constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }', 'Combat targeting helper should preserve combat constraints');
+  assertContains(appContent, 'YAW_COMBAT_TARGETING.selectTarget(this, action)', 'App selectTarget wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_TARGETING.canSelectCreatureTarget(this, unit)', 'App combat target validation wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_TARGETING.executeActionOnTarget(this, action, targetId)', 'App target execution wrapper should delegate to the helper');
 });
 
 test('Mobile combat toolbelt helper module is registered before app code', () => {
@@ -2894,7 +2908,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${subActionsContent}\n${actionUiContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${mobileUnitStripsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

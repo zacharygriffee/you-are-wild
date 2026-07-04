@@ -152,6 +152,7 @@ const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
 const equipmentSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'equipment-system.js'), 'utf8');
 const inventoryPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'inventory-panel.js'), 'utf8');
+const tradeFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'trade-flow.js'), 'utf8');
 const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-panel.js'), 'utf8');
 const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
@@ -1713,6 +1714,22 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INVENTORY_PANEL.equip(this, itemId)', 'App equip wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.unequip(this, slot)', 'App unequip wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INVENTORY_PANEL.drop(this, itemId)', 'App drop wrapper should delegate to the helper');
+});
+
+test('Trade flow helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/trade-flow.js'", 'Trade flow helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/trade-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Trade flow helper should load before app.js');
+  assertContains(tradeFlowContent, 'const YAW_TRADE_FLOW = {', 'Trade flow helper should expose the trade flow service');
+  assertContains(tradeFlowContent, 'show(app, targetId)', 'Trade flow helper should own merchant panel rendering');
+  assertContains(tradeFlowContent, "app.showCreaturePanelDetail(title, html)", 'Trade should render through creature panel details');
+  assertNotContains(tradeFlowContent, "document.getElementById('scene-description')", 'Trade helper should not render into center tile content');
+  assertContains(tradeFlowContent, 'buy(app, targetId, stockIndex)', 'Trade flow helper should own merchant purchase action');
+  assertContains(tradeFlowContent, 'sell(app, targetId, itemId)', 'Trade flow helper should own merchant sell action');
+  assertContains(tradeFlowContent, 'app.showConfirmDialog({', 'Expensive trade purchases should keep in-app confirmation');
+  assertNotContains(tradeFlowContent, 'Date.now', 'Trade helper should keep persistent item ids deterministic');
+  assertContains(appContent, 'YAW_TRADE_FLOW.show(this, targetId)', 'App showTrade wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TRADE_FLOW.buy(this, targetId, stockIndex)', 'App buy wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TRADE_FLOW.sell(this, targetId, itemId)', 'App sell wrapper should delegate to the helper');
 });
 
 test('Stats panel helper module is registered before app code', () => {
@@ -3380,7 +3397,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${subActionsContent}\n${actionUiContent}\n${speciesSystemContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${statsPanelContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

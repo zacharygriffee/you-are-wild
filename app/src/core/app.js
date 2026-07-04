@@ -5410,129 +5410,35 @@
             },
 
             showTrade(targetId) {
-                const merchant = this._findMerchantById(targetId);
-                if (!merchant) return false;
-                const gold = this.player.gold || 0;
-                const buyLabel = this._escapeHtml(this._label('trade.buy', 'Buy'));
-                const sellLabel = this._escapeHtml(this._label('trade.sell', 'Sell'));
-                const backLabel = this._escapeHtml(this._label('inventory.back', 'Back'));
-                const title = this._escapeHtml(this._label('trade.title', '{name} Trade', { name: merchant.name }));
-                const goldText = this._escapeHtml(this._label('trade.gold', 'Gold: {gold}', { gold }));
-                let html = `<h3>${title}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${goldText}</p>`;
-                html += this._itemListOptions('Trade', this._unitKey(merchant));
-                html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">${buyLabel}</h4><div style="display:grid;gap:8px;">`;
-                const stockEntries = this._filterAndSortItemEntries((merchant.stock || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
-                if (stockEntries.length === 0) {
-                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noStockMatches', 'No stock matches the current filter.'))}</p>`;
-                }
-                stockEntries.forEach(({ item, index }) => {
-                    const def = this.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
-                    const disabled = gold < item.price || item.qty <= 0 || this.inventory.length >= this.MAX_INVENTORY ? ' disabled' : '';
-                    const buyTitle = this._escapeHtml(this._label('trade.buyItem', 'Buy {name}', { name: item.name }));
-                    html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${buyTitle}" aria-label="${buyTitle}" ${disabled} onclick="App.buyFromMerchant('${this._unitKey(merchant)}',${index})">${buyLabel}</button></div>`;
-                });
-                html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">${sellLabel}</h4><div style="display:grid;gap:8px;">`;
-                const sellEntries = this._filterAndSortItemEntries((this.inventory || []).map((item, index) => ({ item, index })), this.tradeFilter, this.tradeSort);
-                if (this.inventory.length === 0) {
-                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noItemsToSell', 'No items to sell.'))}</p>`;
-                } else if (sellEntries.length === 0) {
-                    html += `<p style="color:var(--text-muted)">${this._escapeHtml(this._label('trade.noInventoryMatches', 'No inventory items match the current filter.'))}</p>`;
-                } else {
-                    sellEntries.forEach(({ item }) => {
-                        const def = this.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
-                        const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                        const sellTitle = this._escapeHtml(this._label('trade.sellItem', 'Sell {name}', { name: item.name }));
-                        html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${this._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button></div>`;
-                    });
-                }
-                html += `</div><button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('creature')">${backLabel}</button>`;
-                this.showCreaturePanelDetail(title, html);
-                return true;
+                return YAW_TRADE_FLOW.show(this, targetId);
             },
 
             setTradeFilter(filter, targetId) {
-                this.tradeFilter = ['all', 'consumable', 'equipment', 'valuable', 'material', 'misc'].includes(filter) ? filter : 'all';
-                if (targetId) this.showTrade(targetId);
+                return YAW_TRADE_FLOW.setFilter(this, filter, targetId);
             },
 
             setTradeSort(sort, targetId) {
-                this.tradeSort = ['name', 'type', 'value-desc', 'value-asc'].includes(sort) ? sort : 'name';
-                if (targetId) this.showTrade(targetId);
+                return YAW_TRADE_FLOW.setSort(this, sort, targetId);
             },
 
             _requiresPurchaseConfirmation(item) {
-                const def = this.ITEMS[item?.name] || {};
-                return Boolean(def.rare || item?.rare || (item?.price || 0) >= 50);
+                return YAW_TRADE_FLOW.requiresPurchaseConfirmation(this, item);
             },
 
             _cancelMerchantPurchase(targetId, itemName) {
-                this.log.push({ text: this._label('trade.purchaseCancelled', 'Purchase cancelled: {name}.', { name: itemName }), type: 'discovery' });
-                this.renderLog();
-                this.showTrade(targetId);
-                return false;
+                return YAW_TRADE_FLOW.cancelPurchase(this, targetId, itemName);
             },
 
             _completeMerchantPurchase(targetId, stockIndex) {
-                const merchant = this._findMerchantById(targetId);
-                const item = merchant?.stock?.[stockIndex];
-                if (!merchant || !item || item.qty <= 0) return;
-                if ((this.player.gold || 0) < item.price) {
-                    this.log.push({ text: this._label('trade.needGold', 'You need {price} gold to buy {name}.', { price: item.price, name: item.name }), type: 'discovery' });
-                    this.renderLog();
-                    this.showTrade(targetId);
-                    return;
-                }
-                if (this.inventory.length >= this.MAX_INVENTORY) {
-                    this.log.push({ text: this._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
-                    this.renderLog();
-                    this.showTrade(targetId);
-                    return;
-                }
-                this.player.gold -= item.price;
-                item.qty -= 1;
-                this.inventory.push({ id: `buy_${this._stableIdPart(targetId, 'merchant')}_${this._stableIdPart(item.name)}_${this.inventory.length}`, name: item.name });
-                this.log.push({ text: this._label('trade.bought', 'Bought {name} for {price} gold.', { name: item.name, price: item.price }), type: 'loot' });
-                this.renderLog();
-                this.renderParty();
-                this.showTrade(targetId);
-                this.autoSave();
+                return YAW_TRADE_FLOW.completePurchase(this, targetId, stockIndex);
             },
 
             buyFromMerchant(targetId, stockIndex) {
-                const merchant = this._findMerchantById(targetId);
-                const item = merchant?.stock?.[stockIndex];
-                if (!merchant || !item || item.qty <= 0) return;
-                if (this._requiresPurchaseConfirmation(item)) {
-                    const itemName = item.name;
-                    return this.showConfirmDialog({
-                        title: this._label('trade.buy', 'Buy'),
-                        message: this._label('trade.confirmBuy', 'Buy {name} for {price} gold?', { name: item.name, price: item.price }),
-                        confirmLabel: this._label('trade.buy', 'Buy'),
-                        cancelLabel: this._label('ui.cancel', 'Cancel'),
-                        onCancel: () => this._cancelMerchantPurchase(targetId, itemName),
-                        onConfirm: () => this._completeMerchantPurchase(targetId, stockIndex)
-                    });
-                }
-                return this._completeMerchantPurchase(targetId, stockIndex);
+                return YAW_TRADE_FLOW.buy(this, targetId, stockIndex);
             },
 
             sellToMerchant(targetId, itemId) {
-                const merchant = this._findMerchantById(targetId);
-                if (!merchant) return;
-                const item = this.inventory.find(i => String(i.id) === String(itemId));
-                if (!item) return;
-                const def = this.ITEMS[item.name] || { value: 1 };
-                const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                this.inventory = this.inventory.filter(i => String(i.id) !== String(itemId));
-                this.player.gold = (this.player.gold || 0) + price;
-                const existing = merchant.stock.find(s => s.name === item.name);
-                if (existing) existing.qty += 1;
-                else merchant.stock.push({ id: `sold_${this._stableIdPart(targetId, 'merchant')}_${this._stableIdPart(item.name)}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
-                this.log.push({ text: this._label('trade.sold', 'Sold {name} for {price} gold.', { name: item.name, price }), type: 'loot' });
-                this.renderLog();
-                this.renderParty();
-                this.showTrade(targetId);
-                this.autoSave();
+                return YAW_TRADE_FLOW.sell(this, targetId, itemId);
             },
 
             // ===== QUESTS =====

@@ -7474,73 +7474,19 @@
                 return html;
             },
             _unitBarPercent(current, max) {
-                const safeMax = Number(max);
-                if (!Number.isFinite(safeMax) || safeMax <= 0) return 0;
-                const value = Number(current);
-                if (!Number.isFinite(value)) return 0;
-                return Math.max(0, Math.min(100, Math.round((value / safeMax) * 100)));
+                return YAW_UNIT_CARD_STATUS.barPercent(current, max);
             },
             _unitTacticalBar(key, label, icon, current, max) {
-                const percent = this._unitBarPercent(current, max);
-                const title = this._escapeHtml(`${label}: ${percent}%`);
-                return `<div class="unit-bar unit-bar-${key}" title="${title}" aria-label="${title}"><span class="unit-bar-icon" aria-hidden="true">${icon}</span><span class="unit-bar-track" aria-hidden="true"><span class="unit-bar-fill" style="width:${percent}%"></span></span>${this._srOnly(title)}</div>`;
+                return YAW_UNIT_CARD_STATUS.tacticalBar(this, key, label, icon, current, max);
             },
             _unitTacticalBars(unit, options = {}) {
-                const stats = this._unitDisplayStats(unit || {});
-                const compact = Boolean(options.compact);
-                const healthLabel = this._label('party.punishment', 'Punishment');
-                const pleasureLabel = this._label('party.pleasure', 'Pleasure');
-                const hungerLabel = this._label('party.hunger', 'Hunger');
-                const maxHunger = unit?.maxHunger || 100;
-                const hunger = unit?.hunger ?? 0;
-                const bars = [
-                    this._unitTacticalBar('health', healthLabel, compact ? '❤' : '❤', stats.CPun, stats.MPun),
-                    this._unitTacticalBar('pleasure', pleasureLabel, compact ? '✦' : '✦', stats.CPle, stats.MPle),
-                    this._unitTacticalBar('hunger', hungerLabel, compact ? '🍖' : '🍖', hunger, maxHunger)
-                ].join('');
-                return `<div class="unit-bars${compact ? ' compact' : ''}" aria-label="${this._escapeHtml(this._label('ui.tacticalStatus', 'Tactical status'))}">${bars}</div>`;
+                return YAW_UNIT_CARD_STATUS.tacticalBars(this, unit, options);
             },
             _unitVisibleTraits(unit, type, limit = 3) {
-                if (!unit) return [];
-                const stats = this._unitDisplayStats(unit || {});
-                const maxHunger = unit.maxHunger || 100;
-                const hunger = unit.hunger ?? 0;
-                const status = unit.status || {};
-                const chips = [];
-                const add = (key, label, tone = 'neutral') => {
-                    if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
-                };
-                if (status.sleep || unit.asleep) add('asleep', this._label('unit.trait.asleep', 'Asleep'), 'status');
-                if (status.poisoned) add('poisoned', this._label('unit.trait.poisoned', 'Poison'), 'danger');
-                if (status.burn) add('burning', this._label('unit.trait.burning', 'Burning'), 'danger');
-                if (status.bleed) add('bleeding', this._label('unit.trait.bleeding', 'Bleeding'), 'danger');
-                if (status.stun) add('stunned', this._label('unit.trait.stunned', 'Stunned'), 'status');
-                if (status.freeze) add('frozen', this._label('unit.trait.frozen', 'Frozen'), 'status');
-                if (status.fear) add('fear', this._label('unit.trait.fear', 'Fear'), 'status');
-                if (status.restrained || status.enveloped || status.stuck) add('restrained', this._label('unit.trait.restrained', 'Restrained'), 'status');
-                if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', this._label('unit.trait.wounded', 'Wounded'), 'danger');
-                if (maxHunger > 0 && hunger >= maxHunger * 0.7) add('hungry', this._label('unit.trait.hungry', 'Hungry'), 'need');
-                if (type === 'party') {
-                    const role = this._getPartyRole(unit);
-                    if (role && role !== 'companion') add(`role-${role}`, this._partyRoleLabel(role), 'role');
-                } else {
-                    if (unit.disposition === this.DISPOSITION.MERCHANT) add('merchant', this._label('disposition.merchant', 'Merchant'), 'special');
-                    else if (unit.quest) add('quest', this._label('disposition.quest', 'Quest'), 'special');
-                    else if (unit.disposition === this.DISPOSITION.FRIENDLY) add('friendly', this._label('disposition.friendly', 'Friendly'), 'relation');
-                    else if (unit.disposition === this.DISPOSITION.NEUTRAL) add('neutral', this._label('disposition.neutral', 'Neutral'), 'relation');
-                    else if (unit.disposition === this.DISPOSITION.ENEMY) add('hostile', this._label('disposition.hostile', 'Hostile'), 'danger');
-                }
-                if (unit.flying) add('flying', this._label('unit.trait.flying', 'Flying'), 'ability');
-                if (unit.darkvision) add('darkvision', this._label('unit.trait.darkvision', 'Darkvision'), 'ability');
-                if (unit.sapience === 'person' || unit.speciesTraits?.includes('person')) add('person', this._label('unit.trait.person', 'Person'), 'special');
-                return chips.slice(0, Math.max(0, limit));
+                return YAW_UNIT_CARD_STATUS.visibleTraits(this, unit, type, limit);
             },
             _unitTraitChips(unit, type, limit = 3) {
-                const chips = this._unitVisibleTraits(unit, type, limit);
-                if (chips.length === 0) return '';
-                const label = this._escapeHtml(this._label('ui.unitTraits', 'Unit traits'));
-                const items = chips.map(chip => `<span class="unit-trait-chip ${this._escapeHtml(chip.tone)}" title="${this._escapeHtml(chip.label)}">${this._escapeHtml(chip.label)}</span>`).join('');
-                return `<div class="unit-traits" aria-label="${label}">${items}</div>`;
+                return YAW_UNIT_CARD_STATUS.traitChips(this, unit, type, limit);
             },
             _unitSelectionRoles(unit, type) {
                 return YAW_UNIT_SELECTION.roles(this, unit, type);

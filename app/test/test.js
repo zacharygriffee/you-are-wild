@@ -127,6 +127,7 @@ const largeMapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'large-map.js
 const desktopPlaySurfaceContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'desktop-play-surface.js'), 'utf8');
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const panelInteractionsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-interactions.js'), 'utf8');
+const unitCardStatusContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card-status.js'), 'utf8');
 const unitSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-selection.js'), 'utf8');
 const focusTrapContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'focus-trap.js'), 'utf8');
 const intentMenuContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'intent-menu.js'), 'utf8');
@@ -1365,6 +1366,16 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
+});
+
+test('Unit card status helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/unit-card-status.js'", 'Unit card status helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/unit-card-status.js'") < buildContent.indexOf("'src/core/app.js'"), 'Unit card status helper should load before app.js');
+  assertContains(unitCardStatusContent, 'const YAW_UNIT_CARD_STATUS = {', 'Unit card status helper should expose the status service');
+  assertContains(unitCardStatusContent, 'barPercent(current, max)', 'Unit card status helper should own bar percent clamping');
+  assertContains(unitCardStatusContent, 'visibleTraits(app, unit, type, limit = 3)', 'Unit card status helper should own visible trait selection');
+  assertContains(appContent, 'YAW_UNIT_CARD_STATUS.tacticalBars(this, unit, options)', 'App tactical bar wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_UNIT_CARD_STATUS.traitChips(this, unit, type, limit)', 'App trait chip wrapper should delegate to the helper');
 });
 
 test('Intent menu helper module is registered before app code', () => {
@@ -2725,7 +2736,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${centerContextContent}\n${panelInteractionsContent}\n${unitCardStatusContent}\n${unitSelectionContent}\n${focusTrapContent}\n${intentMenuContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${combatSceneContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

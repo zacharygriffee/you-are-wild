@@ -2083,7 +2083,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
-  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection-utility', unit)", 'Mobile creature chip should label target/utility row semantics');
+  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Mobile creature chip should label target-only row semantics');
   assertContains(mobileUnitChipContent, "App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')", 'Mobile corpse chips should keep secondary-click intent acceleration');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
 });
@@ -2095,9 +2095,9 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, 'const YAW_UNIT_CARD = {', 'Unit card helper should expose a renderer service');
   assertContains(unitCardContent, 'render(app, unit, index, type)', 'Unit card helper should own desktop card rendering');
   assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Unit card helper should retain exact creature target marking');
-  assertContains(unitCardContent, "App.selectIntent('creature','${explorationTargetKey}','${action}','panel-card')", 'Unit card helper should retain panel intent dispatch');
+  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
-  assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection-utility', unit)", 'Unit card helper should label creature target/utility row semantics');
+  assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Unit card helper should label creature target-only row semantics');
   assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
 });
 
@@ -6356,7 +6356,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   assertNotContains(actionsHtml, 'App.showInventory()', 'Inventory should stay out of center context actions');
   assertNotContains(actionsHtml, 'action-legend', 'Single-button context should not show a redundant legend');
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','friendly-1')", 'Friendly card should expose target marking');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','friendly-1','inspect','panel-card')", 'Friendly card should expose inspect through shared intent selection');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','friendly-1','inspect','panel-card')", 'Friendly card should not duplicate inspect outside the selected-target tray');
   assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','friendly-1','desktop')", 'Friendly card should not duplicate marked-target interactions behind a visible action menu');
   assertNotContains(elements.get('enemies-content').innerHTML, "outsideActionForCreature('fight','friendly-1')", 'Friendly card should not spam primary actions by default');
   App.selectExplorationActor(0);
@@ -6364,7 +6364,8 @@ test('Exploration context keeps creature interaction in panels', () => {
   const trayHtml = App._renderPanelInteractionTray();
   assertContains(trayHtml, 'aria-label="Fight 1 target"', 'Marked creature target actions should live above party cards');
   assertContains(trayHtml, 'aria-label="Talk 1 target"', 'Marked creature target actions should include baseline interactions above party cards');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','friendly-1','recruit','panel-card')", 'Friendly card should offer recruitment through shared intent selection');
+  assertContains(trayHtml, "selectIntent('creature','friendly-1','inspect','panel-tray')", 'Marked creature tray should offer inspect through shared intent selection');
+  assertContains(trayHtml, "selectIntent('creature','friendly-1','recruit','panel-tray')", 'Marked creature tray should offer recruitment through shared intent selection');
 });
 
 test('Species canon gates baseline social and recruit eligibility', () => {
@@ -6701,7 +6702,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should expose enemy action targeting');
   assertContains(elements.get('party-content').innerHTML, "App.executeCombatIntent('feed')", 'Active party card should still expose party feed action');
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','neutral-1')", 'Neutral creature card should keep target marking in panel');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','neutral-1','inspect','panel-card')", 'Neutral creature card should keep inspect in panel through shared intent selection');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','neutral-1','inspect','panel-card')", 'Neutral creature card should not duplicate inspect outside the marked-target tray');
   assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should not duplicate marked-target actions behind a visible menu');
   App.selectTarget('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
@@ -7833,15 +7834,21 @@ test('Desktop creature card action labels localize', () => {
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Marcar Friendly como objetivo"', 'Creature target button should localize accessible label');
   assertContains(html, '>Marcar<', 'Creature target visible label should localize');
-  assertContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature inspect icon should localize accessible label');
+  assertNotContains(html, 'aria-label="Inspeccionar Friendly"', 'Creature card should not duplicate inspect outside the marked-target tray');
   assertNotContains(html, "showIntentMenu('creature','friendly-1','desktop')", 'Creature card should not expose duplicate visible action menu');
   assertNotContains(html, "showRadialIntentMenu('creature','friendly-1','secondary-click')", 'Living creature card should not expose a secondary-click primary-action popup');
   assertNotContains(html, "selectIntent('creature','friendly-1','fight'", 'Creature card should not show primary action spam by default');
-  assertContains(html, 'aria-label="Reclutar Friendly"', 'Creature recruit icon should localize accessible label');
-  assertContains(html, 'aria-label="Aceptar mision de Friendly"', 'Quest action should localize accessible label');
-  assertContains(html, '>📜 Aceptar mision<', 'Quest visible label should localize');
-  assertContains(html, 'aria-label="Comerciar con Merchant"', 'Merchant trade action should localize accessible label');
-  assertContains(html, '>🪙 Comerciar<', 'Merchant trade visible label should localize');
+  App.toggleExplorationTarget('creature', 'friendly-1');
+  const friendlyTray = App._renderPanelInteractionTray();
+  assertContains(friendlyTray, 'aria-label="Inspeccionar Friendly"', 'Marked-target tray inspect button should localize accessible label');
+  assertContains(friendlyTray, 'aria-label="Reclutar Friendly"', 'Marked-target tray recruit button should localize accessible label');
+  assertContains(friendlyTray, 'aria-label="Aceptar mision Friendly"', 'Quest action should localize accessible label in the marked-target tray');
+  assertContains(friendlyTray, '<span class="action-caption">Aceptar mision</span>', 'Quest visible label should localize in the marked-target tray');
+  App.clearExplorationTargets();
+  App.toggleExplorationTarget('creature', 'merchant-1');
+  const merchantTray = App._renderPanelInteractionTray();
+  assertContains(merchantTray, 'aria-label="Comerciar Merchant"', 'Merchant trade action should localize accessible label in the marked-target tray');
+  assertContains(merchantTray, '<span class="action-caption">Comerciar</span>', 'Merchant trade visible label should localize in the marked-target tray');
   assertEqual(App.showIntentMenu('creature', 'friendly-1'), false, 'Living creature action menu should stay suppressed in favor of marked-target actions');
   assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed creature menu should not duplicate primary actions');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed creature menu should not open a mobile context menu');
@@ -8393,7 +8400,10 @@ test('Recruitment is gated by pleasure and willingness score', () => {
   App.renderCreatures();
   const html = elements.get('enemies-content').innerHTML;
   assertNotContains(html, "selectIntent('creature','reluctant-1','recruit','panel-card')", 'Low-pleasure friendly should not show recruitment');
-  assertContains(html, "selectIntent('creature','willing-1','recruit','panel-card')", 'High-pleasure willing friendly should show recruitment through shared intent selection');
+  assertNotContains(html, "selectIntent('creature','willing-1','recruit','panel-card')", 'High-pleasure willing friendly should not duplicate recruitment on the card');
+  App.toggleExplorationTarget('creature', 'willing-1');
+  assertContains(App._renderPanelInteractionTray(), "selectIntent('creature','willing-1','recruit','panel-tray')", 'High-pleasure willing friendly should show recruitment through the marked-target tray');
+  App.clearExplorationTargets();
   App.recruitCreatureById('reluctant-1');
   assert(!App.party.includes(reluctant), 'Low-score friendly should not join');
   assertContains(App.log[App.log.length - 1].text, 'Reluctant aun no esta listo para unirse al grupo.', 'Failed recruitment log should localize');
@@ -11101,8 +11111,10 @@ test('Quest system exposes quest giver actions and quest log', () => {
   App.party = [App.player];
   App.creatures = [giver];
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Quest giver card should expose accept action');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should preview through shared intent selection before accepting');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should not duplicate quest preview outside the marked-target tray');
+  App.toggleExplorationTarget('creature', 'guide-1');
+  assertContains(App._renderPanelInteractionTray(), 'Accept Quest', 'Marked quest giver tray should expose accept action');
+  assertContains(App._renderPanelInteractionTray(), "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest giver tray should preview through shared intent selection before accepting');
   App.previewQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 0, 'Quest preview should not immediately accept the quest');
   assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest preview should show the quest title before acceptance in the creature panel');
@@ -11699,7 +11711,10 @@ test('Structure encounters can place authored merchants with trade actions', () 
   assertEqual(merchant.stockTable, 'traveler', 'Camp merchant should use the authored traveler table');
   assert(merchant.stock.some(item => item.name === 'Lucky Charm'), 'Placed merchant should carry authored traveler stock');
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Trade', 'Placed merchant should expose trade action');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed merchant card should not duplicate trade directly on the card');
+  App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', merchant));
+  assertContains(App._renderPanelInteractionTray(), "selectIntent('creature'", 'Marked merchant should expose trade through the shared panel tray');
+  assertContains(App._renderPanelInteractionTray(), "'trade','panel-tray'", 'Marked merchant should expose trade action through the shared panel tray');
   assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after merchant placement');
 });
 
@@ -11719,7 +11734,10 @@ test('Structure encounters can place authored quest givers', () => {
   assertEqual(giver.quest.templateId, 'shrine_relic', 'Placed quest giver should use authored quest template');
   assertEqual(giver.quest.id, 'shrine_relic_2_0', 'Authored quest id should be stable for the structure tile');
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Placed quest giver should expose quest action');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed quest giver card should not duplicate quest directly on the card');
+  App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', giver));
+  assertContains(App._renderPanelInteractionTray(), 'Accept Quest', 'Marked quest giver should expose quest action through the shared panel tray');
+  assertContains(App._renderPanelInteractionTray(), "'quest','panel-tray'", 'Marked quest giver should dispatch quest through the shared panel tray');
   App.acceptQuestFromUnit(giver.id);
   assertEqual(App.quests.length, 1, 'Accepted authored structure quest should enter quest log');
   assertEqual(App.quests[0].title, 'Shrine Offering', 'Accepted structure quest should preserve authored title');
@@ -11981,7 +11999,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(partyCard, "App.showIntentMenu('party',0,'desktop')", 'Party card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(partyCard, '>...</button>', 'Party card should not expose an ellipsis menu button that duplicates actor/target controls');
   assertContains(creatureCard, "toggleExplorationTarget('creature'", 'Target action should remain available from creature card');
-  assertContains(creatureCard, "selectIntent('creature','fox-1','inspect','panel-card')", 'Creature inspect action should remain available from creature card through shared intent selection');
+  assertNotContains(creatureCard, "selectIntent('creature','fox-1','inspect','panel-card')", 'Creature inspect action should not be duplicated on the creature card');
   assertNotContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Default creature card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(creatureCard, "selectIntent('creature','fox-1','fight'", 'Default creature card should not show primary action spam');
   assertNotContains(creatureCard, '>...</button>', 'Creature card should not expose an ellipsis menu button that duplicates marked-target controls');
@@ -11993,12 +12011,14 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(mobilePartyChip, '>...</button>', 'Mobile party chip should not expose an ellipsis menu button that duplicates actor/target controls');
-  assertContains(mobileCreatureChip, "selectIntent('creature','fox-1','inspect','mobile-chip')", 'Mobile creature chip should expose inspect through shared intent selection');
+  assertNotContains(mobileCreatureChip, "selectIntent('creature','fox-1','inspect','mobile-chip')", 'Mobile creature chip should not duplicate inspect outside the marked-target tray');
   assertNotContains(mobileCreatureChip, "showIntentMenu('creature','fox-1')", 'Mobile creature chip should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(mobileCreatureChip, '>...</button>', 'Mobile creature chip should not expose an ellipsis menu button that duplicates marked-target controls');
   assertNotContains(mobilePartyChip, "showRadialIntentMenu('party',0,'secondary-click')", 'Mobile party chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobileCreatureChip, "showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
+  App.toggleExplorationTarget('creature', 'fox-1');
+  assertContains(App._renderPanelInteractionTray(), "selectIntent('creature','fox-1','inspect','panel-tray')", 'Marked creature tray should expose inspect through shared intent selection');
 });
 
 test('Unit card headers keep long names separate from role metadata', () => {
@@ -12051,7 +12071,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(allyCard, 'data-selection-mode="mark-target" data-selection-state="available"', 'Unmarked party target control should expose available target state');
   assertNotContains(allyCard, 'App.showInventory()', 'Non-player party cards should not duplicate inventory access');
   assertContains(creatureCard, 'data-card-purpose="focus-toggle"', 'Creature card container should identify focus/detail behavior');
-  assertContains(creatureCard, 'data-action-scope="creature-selection-utility" aria-label="Target and utility controls for Guide"', 'Desktop creature action row should identify target/utility scope');
+  assertContains(creatureCard, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Desktop creature action row should identify target-only scope');
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(mobilePlayerChip, 'data-card-purpose="focus-toggle"', 'Mobile chip container should identify click/keyboard behavior as focus/detail toggling');
@@ -12062,7 +12082,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available"', 'Mobile Act control should expose act-actor mode');
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
-  assertContains(mobileCreatureChip, 'data-action-scope="creature-selection-utility" aria-label="Target and utility controls for Guide"', 'Mobile creature action row should identify target/utility scope');
+  assertContains(mobileCreatureChip, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Mobile creature action row should identify target-only scope');
   assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
   assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature Mark control should expose mark-target mode');
 
@@ -13533,17 +13553,23 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(creatureHtml, 'Amistoso', 'Mobile creature disposition should localize');
   assertContains(creatureHtml, 'aria-label="Castigo: 100%"', 'Mobile creature health bar should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Marcar Friendly como objetivo"', 'Mobile creature target button should localize accessible label');
-  assertContains(creatureHtml, 'aria-label="Inspeccionar Friendly"', 'Mobile inspect icon should expose localized accessible label');
+  assertNotContains(creatureHtml, 'aria-label="Inspeccionar Friendly"', 'Mobile creature chip should not duplicate inspect outside the marked-target tray');
   assertNotContains(creatureHtml, 'aria-label="Acciones de criatura: Friendly"', 'Mobile creature chip should not expose a duplicate visible action menu');
   assertNotContains(creatureHtml, 'aria-label="Luchar Friendly"', 'Mobile creature chip should not show primary action spam by default');
-  assertContains(creatureHtml, 'aria-label="Reclutar Friendly"', 'Mobile recruit icon should expose localized accessible label');
-  assertContains(creatureHtml, 'aria-label="Aceptar mision Friendly"', 'Mobile quest icon should expose localized accessible label');
+  App.toggleExplorationTarget('creature', 'friendly-1');
+  const friendlyTray = App._renderPanelInteractionTray();
+  assertContains(friendlyTray, 'aria-label="Inspeccionar Friendly"', 'Marked-target tray inspect button should expose localized accessible label');
+  assertContains(friendlyTray, 'aria-label="Reclutar Friendly"', 'Marked-target tray recruit button should expose localized accessible label');
+  assertContains(friendlyTray, 'aria-label="Aceptar mision Friendly"', 'Marked-target tray quest button should expose localized accessible label');
   assertEqual(App.showIntentMenu('creature', 'friendly-1'), false, 'Living mobile creature menus should stay suppressed in favor of target marking');
   assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed mobile creature menu should not duplicate primary actions');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed mobile creature menu should not open a context menu');
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
   assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
-  assertContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile trade icon should expose localized accessible label');
+  assertNotContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile merchant chip should not duplicate trade outside the marked-target tray');
+  App.clearExplorationTargets();
+  App.toggleExplorationTarget('creature', 'merchant-1');
+  assertContains(App._renderPanelInteractionTray(), 'aria-label="Comerciar Merchant"', 'Marked-target tray trade button should expose localized accessible label');
 });
 
 test('Desktop intent menu uses a bounded desktop surface', () => {
@@ -13830,7 +13856,7 @@ test('Mobile creature long-press target marking is mode-safe and repeatable', ()
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Combat creature long-press should not open an adventure action menu');
 });
 
-test('Mobile creature long-press preserves quest and trade as visible card actions', () => {
+test('Mobile creature long-press exposes quest and trade through marked-target tray', () => {
   const { App, body } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
@@ -13840,12 +13866,17 @@ test('Mobile creature long-press preserves quest and trade as visible card actio
   ];
   App.showMobileCreatureContext('guide-1');
   assertEqual(App.explorationTargetIds.includes('creature:guide-1'), true, 'Quest creature long-press should still only mark the target');
+  let trayHtml = App._renderPanelInteractionTray();
+  assertContains(trayHtml, "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest creature tray should expose quest preview through shared intent selection');
+  App.clearExplorationTargets();
   App.showMobileCreatureContext('merchant-1');
   assertEqual(App.explorationTargetIds.includes('creature:merchant-1'), true, 'Merchant long-press should still only mark the target');
+  trayHtml = App._renderPanelInteractionTray();
+  assertContains(trayHtml, "selectIntent('creature','merchant-1','trade','panel-tray')", 'Marked merchant tray should expose trade through shared intent selection');
   const guideHtml = App.renderMobileUnitChip(App.creatures[0], 0, 'creature');
   const merchantHtml = App.renderMobileUnitChip(App.creatures[1], 1, 'creature');
-  assertContains(guideHtml, "selectIntent('creature','guide-1','quest','mobile-chip')", 'Quest action should remain visible on the creature chip through shared intent selection');
-  assertContains(merchantHtml, "selectIntent('creature','merchant-1','trade','mobile-chip')", 'Trade action should remain visible on the creature chip through shared intent selection');
+  assertNotContains(guideHtml, "selectIntent('creature','guide-1','quest','mobile-chip')", 'Quest action should not be duplicated on the creature chip');
+  assertNotContains(merchantHtml, "selectIntent('creature','merchant-1','trade','mobile-chip')", 'Trade action should not be duplicated on the creature chip');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Quest and trade long-press should not open a duplicate action menu');
 });
 

@@ -93,7 +93,6 @@ const YAW_UNIT_CARD = {
         if (!isParty && unit.CPun > 0 && !isCorpse) {
             const targetKey = app._unitKey(unit);
             const explorationTargetKey = app._escapeJsString(app._explorationTargetUnitId('creature', unit));
-            const panelIntent = action => `event.stopPropagation();App.selectIntent('creature','${explorationTargetKey}','${action}','panel-card')`;
             if (app.targetSelection) {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';
@@ -113,26 +112,10 @@ const YAW_UNIT_CARD = {
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetName = unit.name || 'creature';
                 const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';
-                const actionTitle = action => app._escapeHtml(`${app._uiLabel(action)} ${targetName}`);
                 const markLabel = app._escapeHtml(app._targetMarkLabel());
                 const markTitle = app._escapeHtml(app._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                 const targetPressed = app._isExplorationTargetUnit('creature', unit);
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')">${markLabel}</button><button class="action-btn" title="${actionTitle('inspect')}" aria-label="${actionTitle('inspect')}" onclick="${panelIntent('inspect')}">👁️</button>`;
-                if (app._canRecruit(app._getExplorationActor(), unit)) {
-                    const recruitTitle = app._escapeHtml(`${app._uiLabel('recruit')} ${targetName}`);
-                    actionButtons += `<button class="action-btn primary" title="${recruitTitle}" aria-label="${recruitTitle}" onclick="${panelIntent('recruit')}">💕</button>`;
-                }
-                if (unit.quest) {
-                    const questLabel = app._escapeHtml(app._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'));
-                    const questTitle = app._escapeHtml(app._label(unit.questAccepted ? 'action.viewQuestFrom' : 'action.acceptQuestFrom', unit.questAccepted ? 'View quest from {name}' : 'Accept quest from {name}', { name: targetName }));
-                    actionButtons += `<button class="action-btn primary" title="${questTitle}" aria-label="${questTitle}" onclick="${panelIntent('quest')}">📜 ${questLabel}</button>`;
-                }
-                if (unit.disposition === app.DISPOSITION.MERCHANT) {
-                    const tradeLabel = app._escapeHtml(app._uiLabel('trade'));
-                    const tradeTitle = app._escapeHtml(app._label('action.tradeWith', 'Trade with {name}', { name: targetName }));
-                    actionButtons += `<button class="action-btn primary" title="${tradeTitle}" aria-label="${tradeTitle}" onclick="${panelIntent('trade')}">🪙 ${tradeLabel}</button>`;
-                }
-                actionButtons += `</div>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')">${markLabel}</button></div>`;
             }
         }
         let dispLabel = '';

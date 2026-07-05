@@ -79,7 +79,7 @@ const YAW_UNIT_SELECTION = {
             'combat-actions': app._label('unit.row.combatActions', 'Combat intent controls for {name}', { name }),
             'corpse-utility': app._label('unit.row.corpseUtility', 'Corpse utility actions for {name}', { name }),
             'combat-target': app._label('unit.row.combatTarget', 'Combat target controls for {name}', { name }),
-            'creature-selection-utility': app._label('unit.row.creatureSelectionUtility', 'Target and utility controls for {name}', { name })
+            'creature-selection': app._label('unit.row.creatureSelection', 'Target controls for {name}', { name })
         };
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
         return `data-action-scope="${safeScope}" aria-label="${label}"`;

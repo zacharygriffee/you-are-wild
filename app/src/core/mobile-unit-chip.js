@@ -50,19 +50,7 @@ const YAW_MOBILE_UNIT_CHIP = {
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = targetSelected ? ' primary' : '';
-                const inspectLabel = app._uiLabel('inspect');
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, app._selectionControlAttrs('target', targetSelected))}${chipButton('action-btn', '👁️', `${inspectLabel} ${unitName}`, mobileIntent('inspect'))}`;
-                if (app._canRecruit(app._getExplorationActor(), unit)) {
-                    actionButtons += chipButton('action-btn primary', '💕', `${app._uiLabel('recruit')} ${unitName}`, mobileIntent('recruit'));
-                }
-                if (unit.quest) {
-                    const questLabel = app._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest');
-                    actionButtons += chipButton('action-btn primary', '📜', `${questLabel} ${unitName}`, mobileIntent('quest'));
-                }
-                if (unit.disposition === app.DISPOSITION.MERCHANT) {
-                    actionButtons += chipButton('action-btn primary', '🪙', `${app._uiLabel('trade')} ${unitName}`, mobileIntent('trade'));
-                }
-                actionButtons += '</div>';
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._label('target.markFor', 'Mark {name} as target', { name: unitName }), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, app._selectionControlAttrs('target', targetSelected))}</div>`;
             }
         }
         const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;

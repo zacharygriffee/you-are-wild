@@ -30,6 +30,8 @@ const YAW_DEFEAT_RECOVERY = {
 
     canSetSafeAnchor(app) {
         if (!app.player || app.combatState?.active || app.inInterior) return false;
+        const tile = app._currentExplorationTile?.() || app.getTile(app.location.x, app.location.y);
+        if (!app._isRestCapableStructure?.(tile?.structure, tile)) return false;
         return !this.hasLivingHostile(app, app.creatures);
     },
 

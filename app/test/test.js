@@ -2377,6 +2377,7 @@ test('Save persistence helper module is registered before save flows and app cod
   assertContains(savePersistenceContent, 'async writeSlot(app, slotName', 'Save persistence helper should own shared slot writes');
   assertContains(savePersistenceContent, 'app._prepareSaveSnapshot()', 'Shared save persistence should prepare the save snapshot');
   assertContains(savePersistenceContent, 'await app.persistWorldStateToMapStore()', 'Shared save persistence should attempt sparse world persistence');
+  assertContains(savePersistenceContent, 'omitWorldMap: worldStoreSaved && options.auto === true', 'Manual saves should keep inline world snapshots while auto-saves can use compact world-store references');
   assertContains(savePersistenceContent, "await app._dbPut('saves', slotName, saveData)", 'Shared save persistence should write the selected save slot');
   assertContains(savePersistenceContent, 'const savedAt = Date.now().toString()', 'Shared save persistence should stamp slot metadata once per save');
   assertContains(savePersistenceContent, "app._emitModuleHook('onGameSave'", 'Shared save persistence should emit save hooks');
@@ -2410,7 +2411,11 @@ test('Save load flow helper module is registered before app code', () => {
   assertContains(saveLoadFlowContent, 'app.showSaveRecoveryDialog(slotName, saveData)', 'Load flow should hand incompatible saves to recovery UI');
   assertContains(saveLoadFlowContent, "app._label('save.error.noSave'", 'Missing save feedback should remain localized');
   assertContains(saveLoadFlowContent, "app._label('save.error.loadFailed'", 'Load failure feedback should remain localized');
+  assertContains(saveLoadFlowContent, 'app._clearTransientInteractionState()', 'Load flow should tear down previous run interaction state before applying a slot');
+  assertContains(saveLoadFlowContent, 'app._clearTileEvents()', 'Load flow should clear stale tile-scoped center messages before applying a slot');
   assertContains(saveLoadFlowContent, 'app._sanitizeLoadedDefeatState(loaded)', 'Load flow should normalize defeated saves before rendering');
+  assertContains(saveLoadFlowContent, 'const hasInlineWorldMap = Boolean(loaded.worldMap', 'Load flow should detect inline manual world snapshots');
+  assertContains(saveLoadFlowContent, 'if (!hasInlineWorldMap)', 'Load flow should not overlay inline manual snapshots with shared world-store deltas');
   assertContains(saveLoadFlowContent, 'app.showDefeatRecovery()', 'Load flow should render defeat recovery instead of silently reviving');
   assertContains(saveLoadFlowContent, "app._emitModuleHook('onGameLoad'", 'Load flow should preserve game-load module hooks');
   assertContains(saveLoadFlowContent, "app._removeStoredValue('lastSlot')", 'Last-played load should clear malformed stored slot names');
@@ -3705,7 +3710,8 @@ test('Create screen links content level to highlighted settings control', () => 
 
 test('Settings opened from create returns to character creation with draft preserved', () => {
   const { App, elements, document } = loadAppForCombat();
-  App.player = null;
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
   App.screen = 'create';
   App.selectedSpecies = 'fox';
   App.selectedGender = 'female';
@@ -3721,6 +3727,7 @@ test('Settings opened from create returns to character creation with draft prese
   App.returnToGame();
   assertEqual(App.screen, 'create', 'Closing settings should return to character creation');
   assertEqual(elements.get('screen-create').style.display, 'flex', 'Create screen should be visible after closing settings');
+  assertEqual(elements.get('app').style.display, 'none', 'Existing game shell should not replace the create draft after closing settings');
   assertEqual(elements.get('screen-menu').style.display, 'none', 'Menu should not replace the create draft after closing settings');
   assertEqual(App.selectedSpecies, 'fox', 'Create species draft should be preserved');
   assertEqual(App.selectedGender, 'female', 'Create gender draft should be preserved');
@@ -5303,15 +5310,31 @@ test('Defeat regeneration restores the safe anchor without clearing defeated til
   assert(hooks.some(hook => hook.event === 'onRegenerate'), 'Regenerate should emit an onRegenerate module hook');
 });
 
-test('Safe place action is available only on safe overworld exploration tiles', () => {
+test('Safe place action is available only on safe overworld rest-capable structures', () => {
   const { App, window } = loadAppForCombat(() => 0.5);
   App.player = makeUnit('You');
   App.party = [App.player];
   App.location = { x: 3, y: 4 };
   App.combatState = { active: false, turnQueue: [], currentTurn: 0, round: 1, syncActions: [], processing: false, xpEarned: 0 };
   App.creatures = [];
-  assertEqual(App._canSetSafeAnchor(), true, 'Safe overworld tile should allow marking home');
-  assert(window.YAW_CENTER_CONTEXT.actionKeys(App).includes('setSafePlace'), 'Safe place action should be exposed on safe tiles');
+  App.worldMap = new Map([['3,4', { ...App.getBaseTile(3, 4), x: 3, y: 4, explored: true, biome: 'grove', creatures: [], structure: null }]]);
+  assertEqual(App._canSetSafeAnchor(), false, 'Ordinary overworld tiles should not allow marking home by default');
+  assert(!window.YAW_CENTER_CONTEXT.actionKeys(App).includes('setSafePlace'), 'Safe place action should stay hidden on ordinary tiles');
+
+  App.worldMap.get('3,4').structure = 'tree';
+  assertEqual(App._canSetSafeAnchor(), false, 'Scenic non-rest structures should not allow marking home');
+
+  App.worldMap.get('3,4').structure = 'camp';
+  App.worldMap.get('3,4').overlays = {};
+  assertEqual(App._canSetSafeAnchor(), false, 'Ordinary camps should not allow marking home unless generated as rest sites');
+
+  App.worldMap.get('3,4').overlays = { poi: { category: 'restSite' } };
+  assertEqual(App._canSetSafeAnchor(), true, 'Rest-site camps should allow marking home');
+  assert(window.YAW_CENTER_CONTEXT.actionKeys(App).includes('setSafePlace'), 'Safe place action should be exposed on safe rest sites');
+
+  App.worldMap.get('3,4').overlays = {};
+  App.worldMap.get('3,4').structure = 'cabin';
+  assertEqual(App._canSetSafeAnchor(), true, 'Rest-capable structures should allow marking home');
 
   App.creatures = [makeUnit('Hostile', { disposition: App.DISPOSITION.ENEMY })];
   assertEqual(App._canSetSafeAnchor(), false, 'Living hostile should block home marking');
@@ -9426,7 +9449,7 @@ test('Sparse map IndexedDB store contract is present', () => {
   assertContains(worldStoreContent, "createObjectStore('entityIndex'", 'Entity index store should be reserved');
   assertContains(appContent, 'persistWorldStateToMapStore()', 'World map persistence helper should exist');
   assertContains(appContent, 'loadWorldStateFromMapStore()', 'World map load helper should exist');
-  assertContains(savePersistenceContent, 'omitWorldMap: worldStoreSaved', 'Slot saves should omit full worldMap only after world-store persistence succeeds');
+  assertContains(savePersistenceContent, 'omitWorldMap: worldStoreSaved && options.auto === true', 'Only auto-saves should omit full worldMap after world-store persistence succeeds');
 });
 
 test('Sparse map tile delta records round-trip through store shape', () => {
@@ -12825,6 +12848,69 @@ test('Save slot destructive confirmations localize', async () => {
   assertEqual(deleteSlot.App.pendingConfirm.message, 'Borrar el slot Slot 4? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'Delete warning should use active locale and display slot label');
   deleteSlot.App.resolveConfirmDialog(false);
   assertEqual(deleteAttempts.length, 0, 'Cancelled slot delete should not remove the selected slot');
+});
+
+test('Manual saves keep independent world snapshots and clear stale tile events on load', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = new Map();
+  const { App } = loadAppForCombat(() => 0.5, { binary: Binary });
+
+  App.player = makeUnit('You', { id: 'player-checkpoint' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.activeSlot = 'slot1';
+  App.worldMeta = {
+    worldId: 'shared-checkpoint-world',
+    seed: 'checkpoint-seed',
+    generatorVersion: 2,
+    mapModsHash: 'core'
+  };
+  App.location = { x: 1, y: 0 };
+  App.currentBiome = 'grove';
+  App.log = [{ text: 'Slot 2 checkpoint', type: 'move' }];
+  App.worldMap = new Map([
+    ['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', creatures: [], items: [] }],
+    ['1,0', { ...App.getBaseTile(1, 0), x: 1, y: 0, explored: true, biome: 'grove', creatures: [], items: [] }]
+  ]);
+  App.exploredTiles = new Set(['0,0', '1,0']);
+  App.tileDeltas = new Map();
+  App.persistWorldStateToMapStore = async () => {
+    App.persistAllTileDeltas();
+    return App.tileDeltas.size;
+  };
+  App._dbPut = async (_store, key, value) => { savedBuffers.set(key, value); };
+
+  await App._saveToSlotConfirmed('slot2');
+
+  App.location = { x: 2, y: 0 };
+  App.log = [{ text: 'Slot 3 checkpoint', type: 'move' }];
+  App.worldMap.set('2,0', { ...App.getBaseTile(2, 0), x: 2, y: 0, explored: true, biome: 'forest', creatures: [], items: [] });
+  App.exploredTiles.add('2,0');
+  await App._saveToSlotConfirmed('slot3');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async (_store, key) => savedBuffers.get(key) || null;
+  let storeLoads = 0;
+  loaded.App.loadWorldStateFromMapStore = async () => {
+    storeLoads += 1;
+    loaded.App.worldMap.set('2,0', { ...loaded.App.getBaseTile(2, 0), x: 2, y: 0, explored: true, biome: 'forest', creatures: [], items: [] });
+    loaded.App.exploredTiles.add('2,0');
+  };
+  loaded.App.tileEvents = [{ text: 'Old tile-only event', type: 'discovery' }];
+  loaded.document.getElementById('tile-event-feed').innerHTML = 'Old tile-only event';
+  loaded.document.getElementById('mobile-tile-event-feed').innerHTML = 'Old tile-only event';
+
+  const restored = await loaded.App.loadFromSlot('slot2');
+
+  assertEqual(restored, true, 'Slot 2 checkpoint should load');
+  assertEqual(storeLoads, 0, 'Manual inline checkpoint should not overlay newer shared world-store deltas');
+  assertEqual(loaded.App.location.x, 1, 'Slot 2 should restore its saved x coordinate');
+  assertEqual(loaded.App.exploredTiles.has('2,0'), false, 'Slot 2 should not inherit Slot 3 explored tiles');
+  assertEqual(Boolean(loaded.App.worldMap.get('2,0')?.explored), false, 'Slot 2 should not restore Slot 3 as an explored map tile');
+  assertEqual(loaded.App.log[0].text, 'Slot 2 checkpoint', 'Slot 2 should restore its own log entries');
+  assertEqual(loaded.App.tileEvents.length, 0, 'Loading should clear stale tile-scoped events from the previous run');
+  assertNotContains(loaded.elements.get('tile-event-feed').innerHTML, 'Old tile-only event', 'Desktop tile feed should clear old run events on load');
+  assertNotContains(loaded.elements.get('mobile-tile-event-feed').innerHTML, 'Old tile-only event', 'Mobile tile feed should clear old run events on load');
 });
 
 test('Save slot status feedback uses display slot labels', async () => {

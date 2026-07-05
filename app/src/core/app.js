@@ -4107,7 +4107,7 @@
                     const el = document.getElementById(id);
                     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
                 });
-                if (returnScreen === 'create' && !this.player) {
+                if (returnScreen === 'create') {
                     document.getElementById('app').style.display = 'none';
                     document.getElementById('screen-menu').style.display = 'none';
                     document.getElementById('screen-create').style.display = 'flex';

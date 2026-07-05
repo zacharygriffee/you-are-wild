@@ -14,7 +14,7 @@ const YAW_SAVE_PERSISTENCE = {
         } catch (e) {
             console.warn('World map persistence failed', e);
         }
-        const saveData = Binary.saveGame(app, { omitWorldMap: worldStoreSaved });
+        const saveData = Binary.saveGame(app, { omitWorldMap: worldStoreSaved && options.auto === true });
         await app._dbPut('saves', slotName, saveData);
         app.activeSlot = slotName;
         const savedAt = Date.now().toString();

@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 628/628 tests pass, 93/93 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
+- **Build:** 629/629 tests pass, 93/93 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 93-script modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)

@@ -24,6 +24,8 @@ const YAW_SAVE_LOAD_FLOW = {
                 app.showSaveRecoveryDialog(slotName, saveData);
                 return false;
             }
+            app._clearTransientInteractionState();
+            app._clearTileEvents();
             const fallbackCompatibilityForIdentity = (identity) => {
                 if (typeof app._anatomyForIdentity === 'function') return app._anatomyForIdentity(identity, 0.75);
                 if (identity === 'male') return { parts: 'cock', chest: 'pecs' };
@@ -157,8 +159,11 @@ const YAW_SAVE_LOAD_FLOW = {
             app.activeInterior = null;
             app.interiorLocation = { x: 0, y: 0 };
             app.activeSlot = slotName;
+            const hasInlineWorldMap = Boolean(loaded.worldMap && Object.keys(loaded.worldMap).length > 0);
             app._restoreWorldState(loaded);
-            await app.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
+            if (!hasInlineWorldMap) {
+                await app.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
+            }
             const loadedDefeated = app._sanitizeLoadedDefeatState(loaded);
             if (!loadedDefeated) app._restoreCombatState(loaded.questState?.combatState);
             app._normalizeExplorationSelections();

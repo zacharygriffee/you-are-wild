@@ -4963,6 +4963,51 @@ test('Core gameplay loop can move fight loot save and reload state', () => {
   assertEqual(loaded.worldMap['1,0'].creatures[0].looted, true, 'Saved world tile should preserve corpse loot state');
 });
 
+asyncTest('Safe-created character save/load keeps compatibility fields hidden in safe tier', async () => {
+  const Binary = loadBinaryForTest();
+  const savedBuffers = new Map();
+  const created = loadAppForCombat(() => 0.5, { binary: Binary });
+  created.document.getElementById('char-name').value = 'Safe Tester';
+  created.App.setContentTier('safe');
+  created.App.selectSpecies('human');
+  created.App.selectGender('female');
+  created.App.createCharacter();
+
+  assertEqual(created.App.screen, 'game', 'Safe character creation should enter the game screen');
+  assertEqual(created.App.player.parts, 'clit', 'Safe-created player should keep hidden compatibility primary field');
+  assertEqual(created.App.player.chest, 'tits', 'Safe-created player should keep hidden compatibility chest field');
+  created.App.persistWorldStateToMapStore = async () => { throw new Error('force inline world map'); };
+  created.App._dbPut = async (_store, key, value) => { savedBuffers.set(key, value); };
+  const saved = await created.App._saveToSlotConfirmed('slot1');
+  assertEqual(saved, true, 'Safe-created character should save successfully');
+
+  const loaded = loadAppForCombat(() => 0.5, { binary: Binary });
+  loaded.App._dbGet = async (_store, key) => savedBuffers.get(key) || null;
+  loaded.App.loadWorldStateFromMapStore = async () => {};
+  loaded.App.setContentTier('safe');
+  const restored = await loaded.App.loadFromSlot('slot1');
+  assertEqual(restored, true, 'Safe-created character should load successfully');
+  assertEqual(loaded.App.player.name, 'Safe Tester', 'Loaded safe-created player should preserve name');
+  assertEqual(loaded.App.player.parts, 'clit', 'Loaded safe-created player should preserve hidden compatibility primary field');
+  assertEqual(loaded.App.player.chest, 'tits', 'Loaded safe-created player should preserve hidden compatibility chest field');
+
+  loaded.App.showCharacterStats();
+  const safeStatsHtml = loaded.elements.get('party-content').innerHTML;
+  assertNotContains(safeStatsHtml, 'Body Type:', 'Loaded safe-tier stats should not reveal compatibility body type');
+  assertNotContains(safeStatsHtml, 'Chest Type:', 'Loaded safe-tier stats should not reveal compatibility chest type');
+  const inspectTarget = makeUnit('Safe Inspect Target', { id: 'loaded-safe-inspect', disposition: loaded.App.DISPOSITION.FRIENDLY, parts: 'cock', chest: 'tits' });
+  loaded.App.creatures = [inspectTarget];
+  loaded.App.outsideActionForCreature('inspect', 'loaded-safe-inspect');
+  assertNotContains(loaded.App.log[loaded.App.log.length - 1].text, 'Body Type:', 'Loaded safe-tier inspect should not reveal compatibility body type');
+  assertNotContains(loaded.App.log[loaded.App.log.length - 1].text, 'Chest Type:', 'Loaded safe-tier inspect should not reveal compatibility chest type');
+
+  loaded.App.setContentTier('adult');
+  loaded.App.showCharacterStats();
+  assertContains(loaded.elements.get('party-content').innerHTML, 'Body Type:', 'Adult tier after load should reveal explicit body detail fields');
+  loaded.App.outsideActionForCreature('inspect', 'loaded-safe-inspect');
+  assertContains(loaded.App.log[loaded.App.log.length - 1].text, 'Body Type:', 'Adult tier after load should reveal explicit inspect fields');
+});
+
 test('Active tile creature damage and combat state survive save and load', async () => {
   const Binary = loadBinaryForTest();
   const savedBuffers = [];

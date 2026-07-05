@@ -114,6 +114,19 @@
   };
 
   const unitRef = unit => unit ? String(unit.id || unit.name || '') : '';
+  const unitCompatibility = unit => {
+    if (!unit) return null;
+    return {
+      id: unit.id ? String(unit.id) : null,
+      name: unit.name || '',
+      species: unit.species || '',
+      gender: unit.gender || unit.identity || null,
+      identity: unit.identity || unit.gender || null,
+      parts: unit.parts || null,
+      chest: unit.chest || null,
+      bothParts: Boolean(unit.bothParts)
+    };
+  };
   const logEntry = entry => {
     if (typeof entry === 'string') return { text: entry, type: 'discovery' };
     if (!entry || typeof entry !== 'object') return null;
@@ -269,6 +282,7 @@
       name: unit?.name || '',
       species: unit?.species || ''
     }));
+    const partyCompatibility = (appState.party || []).map(unitCompatibility);
     for (const unit of appState.party || []) {
       const keys = [unit?.id, unit?.name].filter(Boolean).map(String);
       for (const key of keys) {
@@ -335,6 +349,8 @@
         pendingPerkChoices: appState.player?.pendingPerkChoices || 0,
         partyLeaderId: appState.partyLeaderId || appState.player?.id || appState.player?.name || null,
         partyUnitRefs,
+        playerCompatibility: unitCompatibility(appState.player),
+        partyCompatibility,
         partyRoles,
         partyAIOrders,
         logEntries,

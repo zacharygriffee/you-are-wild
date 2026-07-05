@@ -24,16 +24,46 @@ const YAW_SAVE_LOAD_FLOW = {
                 app.showSaveRecoveryDialog(slotName, saveData);
                 return false;
             }
+            const fallbackCompatibilityForIdentity = (identity) => {
+                if (typeof app._anatomyForIdentity === 'function') return app._anatomyForIdentity(identity, 0.75);
+                if (identity === 'male') return { parts: 'cock', chest: 'pecs' };
+                if (identity === 'female') return { parts: 'clit', chest: 'tits' };
+                return { parts: 'clit', chest: 'tits' };
+            };
+            const applyCompatibility = (unit, compatibility) => {
+                if (!unit) return unit;
+                const compatible = compatibility && typeof compatibility === 'object' ? compatibility : {};
+                const identity = compatible.identity || compatible.gender || unit.identity || unit.gender;
+                if (identity) {
+                    unit.identity = unit.identity || identity;
+                    unit.gender = unit.gender || identity;
+                }
+                if (compatible.parts) unit.parts = compatible.parts;
+                if (compatible.chest) unit.chest = compatible.chest;
+                if (Object.prototype.hasOwnProperty.call(compatible, 'bothParts')) unit.bothParts = Boolean(compatible.bothParts);
+                if ((!unit.parts || !unit.chest) && identity) {
+                    const fallback = fallbackCompatibilityForIdentity(identity);
+                    unit.parts = unit.parts || fallback.parts;
+                    unit.chest = unit.chest || fallback.chest;
+                }
+                if (unit.parts && !Object.prototype.hasOwnProperty.call(unit, 'bothParts')) unit.bothParts = false;
+                return unit;
+            };
 
             app.encounterPreference = loaded.encounterPreference || 'any';
             app.encounterWeights = app._normalizeEncounterWeights(loaded.questState?.encounterWeights || app._legacyEncounterWeights(app.encounterPreference));
             app.selectedEncounterWeights = { ...app.encounterWeights };
             app.selectedEncounterPreference = app._encounterPreferenceFromWeights(app.encounterWeights);
+            const playerCompatibility = loaded.questState?.playerCompatibility || null;
             app.player = {
                 name: loaded.playerName,
                 species: loaded.playerSpecies,
                 icon: app.species.find(s => s.id === loaded.playerSpecies)?.icon || '👤',
-                gender: loaded.playerGender || 'female',
+                gender: loaded.playerGender || playerCompatibility?.gender || playerCompatibility?.identity || 'female',
+                identity: playerCompatibility?.identity || playerCompatibility?.gender || loaded.playerGender || 'female',
+                parts: playerCompatibility?.parts || null,
+                chest: playerCompatibility?.chest || null,
+                bothParts: Boolean(playerCompatibility?.bothParts),
                 level: loaded.playerLevel,
                 CPun: loaded.playerHp,
                 MPun: loaded.playerMaxHp,
@@ -42,11 +72,13 @@ const YAW_SAVE_LOAD_FLOW = {
                 stats: loaded.playerStats,
                 tags: [app.species.find(s => s.id === loaded.playerSpecies)?.name || 'Human']
             };
+            applyCompatibility(app.player, playerCompatibility);
             app._normalizeUnit(app.player, { disposition: app.DISPOSITION.PARTY, hero: true, ally: false, mc: true, obedient: true, willing: true });
             app.location = { x: loaded.locationX, y: loaded.locationY };
             app.largeMapOffset = { x: 0, y: 0 };
             app.largeMapRadius = app.largeMapRadius || 8;
             const loadedParty = loaded.party && loaded.party.length ? loaded.party : [app.player];
+            const partyCompatibility = Array.isArray(loaded.questState?.partyCompatibility) ? loaded.questState.partyCompatibility : [];
             app.party = loadedParty.map((unit, index) => app._normalizeUnit(unit, {
                 disposition: app.DISPOSITION.PARTY,
                 hero: index === 0,
@@ -54,6 +86,7 @@ const YAW_SAVE_LOAD_FLOW = {
                 mc: index === 0,
                 obedient: true
             }));
+            app.party.forEach((unit, index) => applyCompatibility(unit, partyCompatibility[index] || (index === 0 ? playerCompatibility : null)));
             const partyUnitRefs = Array.isArray(loaded.questState?.partyUnitRefs) ? loaded.questState.partyUnitRefs : [];
             for (let index = 0; index < app.party.length; index++) {
                 const ref = partyUnitRefs[index];

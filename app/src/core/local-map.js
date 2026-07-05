@@ -24,12 +24,32 @@ const YAW_LOCAL_MAP = {
         this.renderOverworld(app);
     },
 
+    centerPresenceHtml(app) {
+        const presence = typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.presenceEntries
+            ? YAW_CENTER_CONTEXT.presenceEntries(app)
+            : [];
+        if (!presence.length) return '';
+        const visible = presence.slice(0, 4);
+        const extra = presence.length - visible.length;
+        const icons = visible.map(entry => {
+            const unit = entry.unit || {};
+            const label = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
+            const tone = app._escapeHtml(entry.tone || entry.type || 'party');
+            return `<span class="mobile-play-presence-dot ${tone}" title="${label}" aria-hidden="true">${app._escapeHtml(unit.icon || '👤')}</span>`;
+        }).join('');
+        const more = extra > 0
+            ? `<span class="mobile-play-presence-more" aria-hidden="true">+${extra}</span>`
+            : '';
+        return `<span class="mobile-play-presence" aria-hidden="true">${icons}${more}</span>`;
+    },
+
     cellHtml(app, { classes, visual, title, dx, dy, key, moveable }) {
         const escapedTitle = app._escapeHtml(title);
         const movementAttrs = moveable
             ? `onclick="App.move(${dx},${dy})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}"`
             : 'tabindex="-1"';
-        return `<div class="${classes}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}>${app._escapeHtml(visual.icon)}</div>`;
+        const presence = key === 'center' ? this.centerPresenceHtml(app) : '';
+        return `<div class="${classes}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
     },
 
     renderInterior(app) {

@@ -2521,6 +2521,8 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'renderInterior(app)', 'Local map helper should own interior local-map rendering');
   assertContains(localMapContent, 'renderOverworld(app)', 'Local map helper should own overworld local-map rendering');
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
+  assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
   assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
@@ -3849,6 +3851,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
   assertContains(template, 'grid-template-columns: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should use a true 3x3 surface with a larger center');
   assertContains(template, 'grid-template-rows: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should reserve a larger center row');
+  assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
+  assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-move-pad {\n                display: grid;', 'mobile movement pad should be a bottom thumb control');
   assertContains(template, "onclick=\"App.move(-1,-1)\"", 'mobile movement pad should mirror northwest traversal');
   assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
@@ -8700,7 +8704,8 @@ test('Restored world state populates current tile creatures', () => {
 test('Mobile play surface resolves only the 3x3 traversal neighborhood without exploring it', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');
-  App.party = [App.player];
+  const ally = makeUnit('Ally', { id: 'ally-1', icon: '🧭' });
+  App.party = [App.player, ally];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map();
   App.exploredTiles = new Set(['0,0']);
@@ -8713,6 +8718,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   const html = elements.get('mobile-mini-map').innerHTML;
   assertEqual((html.match(/data-mobile-play-cell=/g) || []).length, 9, 'Mobile routine play should render exactly 9 traversal cells');
   assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
+  assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
+  assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');
   assertContains(html, 'onclick="App.move(1,0)"', 'Mobile east cell should use normal movement dispatch');
   assertContains(html, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile play surface');

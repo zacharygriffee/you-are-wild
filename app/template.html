@@ -2575,6 +2575,49 @@
 
             .mobile-map-card .map-tile.center {
                 font-size: 28px;
+                flex-direction: column;
+                gap: 3px;
+                overflow: hidden;
+            }
+
+            .mobile-play-tile-icon {
+                display: block;
+                line-height: 1;
+            }
+
+            .mobile-play-presence {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                max-width: 100%;
+                min-height: 15px;
+                overflow: hidden;
+                line-height: 1;
+            }
+
+            .mobile-play-presence-dot,
+            .mobile-play-presence-more {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 14px;
+                height: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.28);
+                border-radius: 999px;
+                background: rgba(20, 20, 40, 0.72);
+                color: var(--text-primary);
+                font-size: 9px;
+                flex: 0 0 auto;
+            }
+
+            .mobile-play-presence-dot.party,
+            .mobile-play-presence-dot.player {
+                border-color: rgba(0, 212, 170, 0.52);
+            }
+
+            .mobile-play-presence-dot.enemy {
+                border-color: rgba(255, 107, 157, 0.62);
             }
 
             .mobile-move-pad {

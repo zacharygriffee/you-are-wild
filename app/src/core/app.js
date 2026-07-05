@@ -4418,13 +4418,6 @@
             mobileCreatureContextAction(action, targetId) {
                 return YAW_MOBILE_CONTEXT_MENU.creatureAction(this, action, targetId);
             },
-            handleTouchStart(e) {
-                return YAW_MOBILE_GESTURES.handleTouchStart(this, e);
-            },
-            handleTouchEnd(e) {
-                return YAW_MOBILE_GESTURES.handleTouchEnd(this, e);
-            },
-
             // ===== SAVE / LOAD =====
             _saveSlotNames() {
                 return YAW_SAVE_METADATA.slotNames();

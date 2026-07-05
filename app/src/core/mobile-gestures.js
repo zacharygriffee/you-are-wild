@@ -17,46 +17,6 @@ const YAW_MOBILE_GESTURES = {
         return Math.sqrt(dx * dx + dy * dy);
     },
 
-    handleTouchStart(app, event) {
-        const touch = event.changedTouches && event.changedTouches[0];
-        if (!touch) return;
-        app._touchStartX = touch.screenX;
-        app._touchStartY = touch.screenY;
-    },
-
-    handleTouchEnd(app, event) {
-        const touch = event.changedTouches && event.changedTouches[0];
-        if (!touch) return;
-        const endX = touch.screenX;
-        const endY = touch.screenY;
-        const dx = endX - app._touchStartX;
-        const dy = endY - app._touchStartY;
-        if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
-        if (window.innerWidth > 1024) return;
-
-        const mapP = document.getElementById('panel-map');
-        const partyP = document.getElementById('panel-party');
-        const enemiesP = document.getElementById('panel-enemies');
-        app._haptic(6);
-
-        if (dx > 0) {
-            if (partyP && partyP.classList.contains('active')) partyP.classList.remove('active');
-            else if (enemiesP && enemiesP.classList.contains('active')) enemiesP.classList.remove('active');
-            else if (mapP && !mapP.classList.contains('active')) mapP.classList.add('active');
-        } else {
-            if (mapP && mapP.classList.contains('active')) mapP.classList.remove('active');
-            else if (partyP && !partyP.classList.contains('active')) partyP.classList.add('active');
-            else if (partyP && partyP.classList.contains('active') && enemiesP) {
-                partyP.classList.remove('active');
-                enemiesP.classList.add('active');
-            } else if (enemiesP && enemiesP.classList.contains('active')) {
-                enemiesP.classList.remove('active');
-            }
-        }
-
-        app.syncPanelBackdrop();
-    },
-
     handleMapTouchStart(app, event) {
         if (!event.touches || event.touches.length < 2) return;
         app._pinchStartDistance = this.touchDistance(event.touches);

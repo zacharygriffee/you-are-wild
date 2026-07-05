@@ -2280,19 +2280,19 @@ test('Mobile gesture helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-gestures.js'", 'Mobile gesture helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-gestures.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile gesture helper should load before app.js');
   assertContains(mobileGesturesContent, 'const YAW_MOBILE_GESTURES = {', 'Mobile gesture helper should expose the gesture service');
-  assertContains(mobileGesturesContent, 'handleTouchStart(app, event)', 'Mobile gesture helper should own swipe start');
-  assertContains(mobileGesturesContent, 'handleTouchEnd(app, event)', 'Mobile gesture helper should own swipe completion');
   assertContains(mobileGesturesContent, 'handleMapTouchStart(app, event)', 'Mobile gesture helper should own pinch start');
   assertContains(mobileGesturesContent, 'handleMapTouchMove(app, event)', 'Mobile gesture helper should own pinch movement');
   assertContains(mobileGesturesContent, 'startCreaturePress(app, targetId)', 'Mobile gesture helper should own creature long-press timers');
   assertContains(mobileGesturesContent, 'startPartyPress(app, index)', 'Mobile gesture helper should own party long-press timers');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.haptic(pattern)', 'App haptic wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchStart(this, e)', 'App swipe start wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchEnd(this, e)', 'App swipe end wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchStart(this, e)', 'App map touch start wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.handleMapTouchMove(this, e)', 'App map touch move wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.startCreaturePress(this, targetId)', 'App creature long-press wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_GESTURES.startPartyPress(this, index)', 'App party long-press wrapper should delegate to the helper');
+  assertNotContains(mobileGesturesContent, 'handleTouchStart(app, event)', 'Mobile panel access should not rely on horizontal swipe start');
+  assertNotContains(mobileGesturesContent, 'handleTouchEnd(app, event)', 'Mobile panel access should not rely on horizontal swipe completion');
+  assertNotContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchStart(this, e)', 'App should not expose panel swipe start wrapper');
+  assertNotContains(appContent, 'YAW_MOBILE_GESTURES.handleTouchEnd(this, e)', 'App should not expose panel swipe end wrapper');
 });
 
 test('Panel shell helper module is registered before app code', () => {
@@ -2647,8 +2647,8 @@ test('Status effects present', () => {
 
 test('Mobile UI handlers present', () => {
   assertContains(appContent, 'togglePanel(', 'togglePanel method missing');
-  assertContains(appContent, 'handleTouchStart(', 'handleTouchStart method missing');
-  assertContains(appContent, 'handleTouchEnd(', 'handleTouchEnd method missing');
+  assertNotContains(appContent, 'handleTouchStart(', 'Mobile side panels should avoid browser-back swipe competition');
+  assertNotContains(appContent, 'handleTouchEnd(', 'Mobile side panels should avoid browser-forward swipe competition');
 });
 
 test('Save/load system present', () => {
@@ -3580,8 +3580,9 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-aria-label="ui.largeMap.controls"', 'Large-map controls group should opt into localization');
   assertContains(template, 'data-i18n-title="ui.largeMap.zoomIn"', 'Large-map zoom-in title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.largeMap.recenter"', 'Large-map recenter accessible label should opt into localization');
-  assertContains(template, 'data-i18n-title="ui.swipeRightMap"', 'Swipe map hint title should opt into localization');
-  assertContains(template, 'data-i18n-title="ui.swipeLeftParty"', 'Swipe party hint title should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="ui.mobilePanels"', 'Mobile panel dock label should opt into localization');
+  assertNotContains(template, 'swipe-hint-left', 'Mobile should not advertise edge swipe gestures');
+  assertNotContains(template, 'swipe-hint-right', 'Mobile should not advertise edge swipe gestures');
   assertContains(template, 'data-i18n="ui.welcomeLog"', 'Welcome log fallback should opt into localization');
   assertContains(template, 'data-i18n="ui.scene.wildernessTitle"', 'Initial scene title should opt into localization');
   assertContains(template, 'data-i18n="ui.scene.wildernessIntro"', 'Initial scene description should opt into localization');
@@ -3746,6 +3747,8 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'mobile actions should expose character stats');
   assertContains(centerContextContent, "['stats', 'map', 'party', 'enemies']", 'mobile panel actions should include stats before map and party panels');
   assertContains(template, "togglePanel('enemies')", 'mobile actions should expose enemies panel');
+  assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
+  assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
   assertContains(appContent, 'closeAllPanels()', 'panel backdrop close handler should exist');
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
 });
@@ -13415,34 +13418,19 @@ test('Mobile map pinch changes zoom and applies transform', () => {
   assertEqual(App._pinchStartDistance, 0, 'Pinch end should clear gesture distance');
 });
 
-test('Mobile swipe gestures toggle panels and backdrop', () => {
-  const panelIds = ['panel-map', 'panel-party', 'panel-enemies'];
-  const { App, elements, window: appWindow } = loadAppForCombat(() => 0.5, {
-    querySelector(selector, elements) {
-      if (selector !== '.panel-map.active, .panel-party.active, .panel-enemies.active') return null;
-      return panelIds.map(id => elements.get(id)).find(panel => panel && panel.classList.contains('active')) || null;
-    }
-  });
-  appWindow.innerWidth = 390;
-  panelIds.concat('panel-backdrop').forEach(id => elements.set(id, makeElement()));
-  App._haptic = pattern => { App.__lastHaptic = pattern; };
-
-  App.handleTouchStart({ changedTouches: [{ screenX: 0, screenY: 0 }] });
-  App.handleTouchEnd({ changedTouches: [{ screenX: 80, screenY: 4 }] });
-  assertEqual(elements.get('panel-map').classList.contains('active'), true, 'Right swipe should open the mobile map panel');
-  assertEqual(elements.get('panel-backdrop').classList.contains('active'), true, 'Swipe-opened panel should sync the backdrop');
-  assertEqual(App.__lastHaptic, 6, 'Swipe should trigger light haptic feedback');
-
-  App.handleTouchStart({ changedTouches: [{ screenX: 100, screenY: 0 }] });
-  App.handleTouchEnd({ changedTouches: [{ screenX: 20, screenY: 0 }] });
-  assertEqual(elements.get('panel-map').classList.contains('active'), false, 'Left swipe should close the open map panel');
-  assertEqual(elements.get('panel-backdrop').classList.contains('active'), false, 'Swipe-closed panel should clear the backdrop');
+test('Mobile panel dock replaces edge swipe panel gestures', () => {
+  assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
+  assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
+  assertContains(template, "onclick=\"togglePanel('party')\"", 'Mobile panel dock should open the party panel by tap');
+  assertContains(template, "onclick=\"togglePanel('enemies')\"", 'Mobile panel dock should open the creature panel by tap');
+  assertNotContains(template, 'ontouchstart="App.handleTouchStart(event)"', 'Main play surface should not capture horizontal panel swipes');
+  assertNotContains(template, 'ontouchend="App.handleTouchEnd(event)"', 'Main play surface should not complete horizontal panel swipes');
 });
 
 test('Mobile gesture helpers include haptic feedback hooks', () => {
   assertContains(mobileGesturesContent, 'navigator.vibrate', 'Mobile gestures should use haptic feedback when available');
   assertContains(mobileGesturesContent, 'app._haptic([12, 20, 12])', 'Long-press should trigger haptic feedback');
-  assertContains(mobileGesturesContent, 'app._haptic(6)', 'Swipe gestures should trigger haptic feedback');
+  assertNotContains(mobileGesturesContent, 'app._haptic(6)', 'Removed panel swipes should not trigger stray haptic feedback');
 });
 
 // === SUMMARY ===

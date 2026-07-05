@@ -2780,33 +2780,35 @@
                 margin-bottom: 2px;
             }
 
-            /* Swipe hint indicators - subtle edge glows */
-            .swipe-hint-left,
-            .swipe-hint-right {
+            .mobile-panel-dock {
                 position: fixed;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 6px;
-                height: 80px;
-                background: var(--accent-primary);
-                opacity: 0.2;
-                border-radius: 3px;
-                z-index: 50;
-                pointer-events: none;
-                transition: opacity 0.3s;
+                left: 50%;
+                bottom: calc(var(--mobile-actions-height) + 14px + env(safe-area-inset-bottom));
+                transform: translateX(-50%);
+                display: flex;
+                gap: 6px;
+                padding: 6px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-lg);
+                background: rgba(26, 26, 46, 0.94);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+                z-index: 95;
             }
 
-            .swipe-hint-left {
-                left: 2px;
+            .mobile-panel-dock .nav-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 48px;
+                min-height: 36px;
+                padding: 6px 8px;
+                font-size: 16px;
             }
 
-            .swipe-hint-right {
-                right: 2px;
-            }
-
-            .swipe-hint-left:hover,
-            .swipe-hint-right:hover {
-                opacity: 0.4;
+            .mobile-panel-dock-label {
+                display: block;
+                margin-left: 4px;
+                font-size: 11px;
             }
 
             /* Panel backdrop overlay when panel is open */
@@ -2831,8 +2833,7 @@
                 display: none !important;
             }
 
-            .swipe-hint-left,
-            .swipe-hint-right {
+            .mobile-panel-dock {
                 display: none;
             }
 
@@ -3294,8 +3295,7 @@
                     </div>
                 </div>
 
-	                <!-- Main Panel - touch swipe enabled for mobile panel toggling -->
-	                <div class="panel panel-main" id="panel-main" ontouchstart="App.handleTouchStart(event)" ontouchend="App.handleTouchEnd(event)">
+	                <div class="panel panel-main" id="panel-main">
 	                    <div class="panel-content">
 	                        <div class="mobile-play-surface" id="mobile-play-surface">
 	                            <div class="mobile-map-card">
@@ -3477,9 +3477,11 @@
         <!-- Backdrop for closing mobile panels by tapping outside -->
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
 
-        <!-- Swipe hints for mobile -->
-        <div class="swipe-hint-left" title="Swipe right for map" data-i18n-title="ui.swipeRightMap"></div>
-        <div class="swipe-hint-right" title="Swipe left for party" data-i18n-title="ui.swipeLeftParty"></div>
+        <div class="mobile-panel-dock" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
+            <button class="nav-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
+            <button class="nav-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
+            <button class="nav-btn" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span></button>
+        </div>
     </div>
 
 

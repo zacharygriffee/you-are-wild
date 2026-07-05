@@ -3105,6 +3105,15 @@ test('Built-in content pack source is separate from sample module catalog', () =
   assertContains(marketScreenContent, 'sampleModules: [', 'Sample module catalog should live in market-screen UI source');
 });
 
+test('Safe primary action labels are neutral while internal action ids remain stable', () => {
+  const { App } = loadAppForCombat();
+  App.setContentTier('safe');
+  assertEqual(['fight', 'feast', 'fuck', 'flirt', 'feed', 'flee'].map(action => App._uiLabel(action)).join(','), 'Fight,Eat,Play,Talk,Feed,Flee', 'Safe primary actions should use neutral visible labels');
+  assertContains(appContent, "FUCK: 'fuck'", 'Internal play action id should remain stable for saves/mods');
+  assertContains(appContent, "FEAST: 'feast'", 'Internal eat action id should remain stable for saves/mods');
+  assertContains(appContent, 'registerSubAction(action, subId, config)', 'Sub-action registration API should remain available for mods');
+});
+
 test('Asset manifest supports tileset provenance and fallback metadata', () => {
   const manifest = loadAssetManifestForTest();
   assertEqual(manifest.manifest.activeTileset, 'default-basic-tileset', 'Default tileset should use the bundled basic tileset candidate');
@@ -3599,20 +3608,63 @@ test('Create screen is constrained for mobile scrolling', () => {
   assertNotContains(template, 'class="create-container" style=', 'create container should not rely on inline scroll sizing');
 });
 
-test('Create screen requires explicit gender and anatomy choices', () => {
+test('Create screen defaults to safe identity-first creation', () => {
   assertContains(appContent, 'selectedGender: null', 'gender should not be selected by default');
   assertContains(appContent, 'selectedParts: []', 'anatomy should not be selected by default');
   assertContains(template, '<div class="option-card" data-value="female"', 'female option should not be auto-selected in the template');
+  assertContains(template, '<div class="option-card" data-value="male"', 'male option should be available in the template');
+  assertContains(template, '<div class="option-card" data-value="nonbinary"', 'non-binary option should be available in the template');
   assertContains(template, '<div class="option-card" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
   assertContains(template, '<div class="option-card" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
   assertContains(template, 'id="create-validation" class="create-validation" role="alert" aria-live="polite"', 'create validation message should be visible to assistive tech');
   assertContains(template, 'data-i18n="create.random"', 'random character button should be explicit and localizable');
   assertContains(appContent, 'validateCharacterCreation()', 'create flow should expose required character validation');
   assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
+  assertContains(createFlowContent, 'ensureSafeCompatibilityParts(app)', 'safe creation should assign hidden compatibility defaults for saves/mechanics');
+  assertContains(createFlowContent, "id === 'anatomy' && this.isSafeTier(app)", 'safe creation should not expose the anatomy accordion');
   assertContains(appContent, 'YAW_CREATE_FLOW.randomize(this)', 'zero-config character creation should delegate through the create helper');
   assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
   assertContains(contentContent, "'create.random': 'Random Character'", 'English random character label missing');
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
+});
+
+test('Safe creation requires identity only while adult creation keeps anatomy validation', () => {
+  const anatomySection = makeElement();
+  const sections = ['species', 'gender', 'anatomy'].map(id => ({ dataset: { accordion: id } }));
+  const { App, elements } = loadAppForCombat(() => 0.5, {
+    querySelector(selector) {
+      if (selector === '[data-accordion="anatomy"]') return anatomySection;
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector === '.accordion-section' ? sections : [];
+    }
+  });
+  for (const id of ['species', 'gender', 'anatomy']) {
+    elements.get('body-' + id) || elements.set('body-' + id, makeElement());
+    elements.get('arrow-' + id) || elements.set('arrow-' + id, makeElement());
+  }
+
+  App.setContentTier('safe');
+  assertEqual(App.selectedParts.length, 0, 'Safe creation should not assign hidden compatibility defaults before identity selection');
+  App.selectedGender = 'female';
+  App.selectedParts = [];
+  assertEqual(App.validateCharacterCreation(), true, 'Safe creation should not require visible anatomy choices');
+  assertEqual(App.selectedParts.join(','), 'clit,tits', 'Safe creation should assign compatibility defaults after identity selection');
+  assertEqual(anatomySection.style.display, 'none', 'Safe creation should hide anatomy controls');
+  App.toggleAccordion('anatomy');
+  assertEqual(elements.get('body-gender').style.display, 'block', 'Safe creation should redirect anatomy accordion attempts to identity');
+  assertEqual(elements.get('body-anatomy').style.display, 'none', 'Safe creation should keep anatomy collapsed');
+
+  App.setContentTier('adult');
+  assertEqual(App.selectedParts.length, 0, 'Adult creation should clear hidden safe compatibility defaults until explicit anatomy is selected');
+  App.selectedGender = 'female';
+  App.selectedParts = [];
+  assertEqual(App.validateCharacterCreation(), false, 'Adult creation should still require explicit anatomy choices');
+  assertContains(elements.get('create-validation').textContent, 'choose a primary anatomy option', 'Adult validation should request primary anatomy');
+  assertContains(elements.get('create-validation').textContent, 'choose a chest anatomy option', 'Adult validation should request chest anatomy');
+  assertEqual(anatomySection.style.display, '', 'Adult creation should show anatomy controls');
+  assertEqual(elements.get('body-anatomy').style.display, 'block', 'Adult validation should open anatomy choices');
 });
 
 test('Create screen links content level to highlighted settings control', () => {
@@ -6055,6 +6107,11 @@ test('Species canon gates baseline social and recruit eligibility', () => {
   assertEqual(App._hasBaselineInteractionEligibility(animal, 'sensitiveSocial'), false, 'Animal metadata should block baseline social eligibility');
   assertEqual(App._canRecruit(player, folk), true, 'Sapient folk canon should allow high-score recruitment');
   assertEqual(App._canRecruit(player, animal), false, 'Animal metadata should block recruitment even with high score');
+  assertEqual(App._dispatchPanelInteraction({ mode: 'adventure', actors: [player], targets: [animal], action: 'flirt', source: 'test' }), false, 'Animal metadata should block shared social dispatch');
+  assertEqual(App._dispatchPanelInteraction({ mode: 'adventure', actors: [player], targets: [animal], action: 'fuck', source: 'test' }), false, 'Animal metadata should block shared sensitive social dispatch');
+  assertEqual(App._dispatchPanelInteraction({ mode: 'adventure', actors: [player], targets: [animal], action: 'feed', source: 'test' }), false, 'Animal metadata should block shared feed dispatch when explicitly gated');
+  assertEqual(App._dispatchPanelInteraction({ mode: 'adventure', actors: [player], targets: [animal], action: 'feast', source: 'test' }), false, 'Animal metadata should block shared eat dispatch when explicitly gated');
+  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'adventure', actors: [player], targets: [animal], action: 'fight' })).ok, true, 'Animal metadata should not block baseline combat dispatch');
   assertEqual(App.showIntentMenu('creature', 'animal-1'), false, 'Living creature intent menus should not duplicate marked-target panel actions');
   assertNotContains(body.innerHTML, 'aria-label="Fight Wolf"', 'Living creature menu suppression should remove general action duplication');
   assertNotContains(body.innerHTML, 'aria-label="Flirt Wolf"', 'Animal metadata should not leak social actions through a duplicate menu');
@@ -6104,6 +6161,33 @@ test('Default encounter species canon stays person-like for sensitive interactio
   }));
 
   assertEqual(App._hasBaselineInteractionEligibility(plainAnimal, 'sensitiveSocial'), false, 'Explicit animal metadata should block sensitive social eligibility even when a mod requests it');
+});
+
+test('Modded sapient species can opt into baseline interaction eligibility', () => {
+  const { App } = loadAppForCombat();
+  App.SPECIES_CANON.modfolk = {
+    label: 'Modfolk',
+    sapience: 'person',
+    bodyPlan: 'monsterfolk',
+    traits: ['person', 'modded'],
+    baselineInteraction: 'sapient',
+    interactionEligibility: { social: true, sensitiveSocial: true, feed: true, feast: true, recruit: true }
+  };
+  const player = makeUnit('You', { id: 'modfolk-player' });
+  const modfolk = App._normalizeUnit(makeUnit('Modfolk', {
+    id: 'modfolk-target',
+    species: 'modfolk',
+    disposition: App.DISPOSITION.FRIENDLY,
+    CPle: 95,
+    willing: true
+  }));
+  App.player = player;
+  App.party = [player];
+  App.creatures = [modfolk];
+  assertEqual(App._hasBaselineInteractionEligibility(modfolk, 'sensitiveSocial'), true, 'Sapient mod species should be eligible for baseline sensitive social interactions');
+  assertEqual(App._hasBaselineInteractionEligibility(modfolk, 'recruit'), true, 'Sapient mod species should be eligible for recruitment');
+  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'adventure', actors: [player], targets: [modfolk], action: 'flirt' })).ok, true, 'Sapient mod species should pass shared social dispatch validation');
+  assertEqual(App._canRecruit(player, modfolk), true, 'Sapient mod species should be recruitable when ordinary recruit scoring passes');
 });
 
 test('Desktop action bars do not duplicate large buttons with tiny legends', () => {
@@ -11307,6 +11391,30 @@ test('Inventory and character stats render equipped items', () => {
   App.showCharacterStats();
   assertContains(elements.get('party-content').innerHTML, 'Leather Cap', 'Character stats should list equipped item in the party panel');
   assertNotContains(document.getElementById('scene-description').innerHTML, 'Leather Cap', 'Character stats should not replace center tile content');
+});
+
+test('Safe stats and inspect hide hidden body compatibility fields', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  App.setContentTier('safe');
+  App.player = makeUnit('You', { id: 'player-safe-stats', parts: 'cock', chest: 'tits', bodyParts: ['wings'] });
+  App.party = [App.player];
+  App.showCharacterStats();
+  const safeStatsHtml = elements.get('party-content').innerHTML;
+  assertNotContains(safeStatsHtml, 'Body Type:', 'Safe character stats should hide compatibility body type');
+  assertNotContains(safeStatsHtml, 'Chest Type:', 'Safe character stats should hide compatibility chest type');
+  assertContains(safeStatsHtml, 'Wings', 'Safe character stats should still show fantasy traits');
+
+  const target = makeUnit('Target', { id: 'safe-inspect-target', disposition: App.DISPOSITION.FRIENDLY, parts: 'cock', chest: 'tits' });
+  App.creatures = [target];
+  App.outsideActionForCreature('inspect', 'safe-inspect-target');
+  assertNotContains(App.log[App.log.length - 1].text, 'Body Type:', 'Safe inspect should hide compatibility body type');
+  assertNotContains(App.log[App.log.length - 1].text, 'Chest Type:', 'Safe inspect should hide compatibility chest type');
+
+  App.setContentTier('adult');
+  App.showCharacterStats();
+  assertContains(elements.get('party-content').innerHTML, 'Body Type:', 'Adult character stats should keep explicit body details available');
+  App.outsideActionForCreature('inspect', 'safe-inspect-target');
+  assertContains(App.log[App.log.length - 1].text, 'Body Type:', 'Adult inspect should keep explicit body details available');
 });
 
 test('Inventory equipment summary labels localize', () => {

@@ -37,14 +37,34 @@ const YAW_CREATE_FLOW = {
         });
     },
 
+    isSafeTier(app) {
+        return app._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
+    },
+
+    compatibilityPartsForGender(gender) {
+        if (gender === 'male') return ['cock', 'pecs'];
+        if (gender === 'female') return ['clit', 'tits'];
+        return ['clit', 'pecs'];
+    },
+
+    ensureSafeCompatibilityParts(app) {
+        if (!this.isSafeTier(app) || !app.selectedGender) return;
+        const defaults = this.compatibilityPartsForGender(app.selectedGender);
+        app.selectedParts = [...defaults];
+        app._safeCompatibilityPartsApplied = true;
+        app.updateAnatomyUI();
+    },
+
     selectGender(app, gender) {
         app.selectedGender = gender;
+        this.ensureSafeCompatibilityParts(app);
         app._setCreateValidation('');
     },
 
     selectPart(app, part) {
         if (app.selectedParts.includes(part)) app.selectedParts = app.selectedParts.filter(x => x !== part);
         else app.selectedParts.push(part);
+        app._safeCompatibilityPartsApplied = false;
         app._setCreateValidation('');
     },
 
@@ -62,6 +82,11 @@ const YAW_CREATE_FLOW = {
 
     validate(app) {
         const hasGender = Boolean(app.selectedGender);
+        if (hasGender && this.isSafeTier(app)) {
+            this.ensureSafeCompatibilityParts(app);
+            app._setCreateValidation('');
+            return true;
+        }
         const hasPrimaryAnatomy = app.selectedParts.includes('clit') || app.selectedParts.includes('cock');
         const hasChestAnatomy = app.selectedParts.includes('tits') || app.selectedParts.includes('pecs');
         if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
@@ -94,19 +119,42 @@ const YAW_CREATE_FLOW = {
         app.selectSpecies(species);
         app.selectedGender = gender;
         app.selectedParts = [...parts];
+        app._safeCompatibilityPartsApplied = false;
         app._setCreateOptionSelection('#gender-grid .option-card', gender);
         app.updateAnatomyUI();
         app._setCreateValidation('');
         app.toggleAccordion('species');
     },
 
-    toggleAccordion(id) {
+    syncTierGates(app) {
+        const anatomySection = document.querySelector('[data-accordion="anatomy"]');
+        const anatomyBody = document.getElementById('body-anatomy');
+        const anatomyArrow = document.getElementById('arrow-anatomy');
+        const safeTier = this.isSafeTier(app);
+        if (anatomySection) anatomySection.style.display = safeTier ? 'none' : '';
+        if (anatomyBody && safeTier) anatomyBody.style.display = 'none';
+        if (anatomyArrow && safeTier) anatomyArrow.textContent = '▶';
+        if (safeTier) this.ensureSafeCompatibilityParts(app);
+        if (!safeTier && app._safeCompatibilityPartsApplied) {
+            app.selectedParts = [];
+            app._safeCompatibilityPartsApplied = false;
+            app.updateAnatomyUI();
+        }
+    },
+
+    toggleAccordion(app, id) {
+        const targetId = id === 'anatomy' && this.isSafeTier(app) ? 'gender' : id;
         document.querySelectorAll('.accordion-section').forEach(section => {
             const sectionId = section.dataset.accordion;
             const body = document.getElementById('body-' + sectionId);
             const arrow = document.getElementById('arrow-' + sectionId);
             if (!body || !arrow) return;
-            const isSelected = sectionId === id;
+            if (sectionId === 'anatomy' && this.isSafeTier(app)) {
+                body.style.display = 'none';
+                arrow.textContent = '▶';
+                return;
+            }
+            const isSelected = sectionId === targetId;
             body.style.display = isSelected ? 'block' : 'none';
             arrow.textContent = isSelected ? '▼' : '▶';
         });
@@ -125,6 +173,7 @@ const YAW_CREATE_FLOW = {
 
     createCharacter(app) {
         if (!app.validateCharacterCreation()) return;
+        this.ensureSafeCompatibilityParts(app);
         const name = document.getElementById('char-name')?.value?.trim() || 'You';
         app.playerName = name;
         const species = app.species.find(s => s.id === app.selectedSpecies);

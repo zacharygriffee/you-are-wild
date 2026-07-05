@@ -137,6 +137,9 @@ const YAW_SETTINGS_FLOW = {
     },
 
     syncCreateContentLevel(app) {
+        if (typeof YAW_CREATE_FLOW !== 'undefined' && YAW_CREATE_FLOW?.syncTierGates) {
+            YAW_CREATE_FLOW.syncTierGates(app);
+        }
         const label = document.getElementById('create-content-level-label');
         if (!label) return;
         const tierName = app._tierName();

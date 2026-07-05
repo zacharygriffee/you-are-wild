@@ -137,6 +137,17 @@ const YAW_INTERACTION_DISPATCH = {
         if (['fight', 'flirt', 'fuck', 'feast', 'feed', 'inspect'].includes(command.action) && !command.targets?.length && command.mode !== 'combat') {
             return { ok: false, reason: 'missing-target' };
         }
+        if (command.mode !== 'combat' && command.targets?.length) {
+            const requiredInteraction = {
+                flirt: 'social',
+                fuck: 'sensitiveSocial',
+                feast: 'feast',
+                feed: 'feed'
+            }[command.action];
+            if (requiredInteraction && command.targets.some(target => !app._hasBaselineInteractionEligibility(target, requiredInteraction))) {
+                return { ok: false, reason: 'ineligible-target' };
+            }
+        }
         if (command.mode === 'combat') {
             const current = app._currentCombatActor() || app.activeActor || command.actors[0];
             const actor = command.actors[0];

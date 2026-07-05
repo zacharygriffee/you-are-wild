@@ -1035,7 +1035,7 @@
                 return YAW_CREATE_FLOW.randomize(this);
             },
             toggleAccordion(id) {
-                return YAW_CREATE_FLOW.toggleAccordion(id);
+                return YAW_CREATE_FLOW.toggleAccordion(this, id);
             },
             initBodyPartsGrid() {
                 return YAW_CREATE_FLOW.initBodyPartsGrid(this);
@@ -3214,8 +3214,11 @@
                         break;
                     }
                     case 'inspect': {
+                        const safeTier = this._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
                         const labelBodyType = (value) => (typeof YAW_STATS_PANEL !== 'undefined' && YAW_STATS_PANEL?.bodyTypeLabel) ? YAW_STATS_PANEL.bodyTypeLabel(value) : value;
-                        result = `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
+                        result = safeTier
+                            ? `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}`
+                            : `${target.name} [${target.species}]: Punishment ${target.CPun}/${target.MPun}, Spirit ${target.CPle}/${target.MPle}, Size ${target.size}, Appetite ${target.appetite}, Body Type: ${labelBodyType(target.parts) || 'none'}, Chest Type: ${labelBodyType(target.chest) || 'none'}`;
                         break;
                     }
                 }

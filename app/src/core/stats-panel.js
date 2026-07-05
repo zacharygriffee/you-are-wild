@@ -57,6 +57,10 @@ const YAW_STATS_PANEL = {
         const parts = app._escapeHtml(this.bodyTypeLabel(p.parts) || app._label('party.none', 'None'));
         const chest = app._escapeHtml(this.bodyTypeLabel(p.chest) || app._label('party.none', 'None'));
         const bodyParts = (p.bodyParts || []).map(b => app._escapeHtml(app.BODY_PARTS[b]?.label || b)).join(', ') || noneText;
+        const safeTier = app._tierValue(CONTENT?.preferences?.maxTier ?? 0) < 2;
+        const bodySummary = safeTier
+            ? `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`
+            : `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${parts} | ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${chest}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`;
         const perks = (p.perks || []).map(pk => app._escapeHtml(pk.name)).join(', ') || noneText;
         const html = `<div class="party-stats-view character-stats-view" role="region" aria-label="${closeLabel}">
             <div class="party-stats-header">
@@ -68,7 +72,7 @@ const YAW_STATS_PANEL = {
                 ${this.statCard(app, 'party.pleasure', 'Spirit', `${stats.CPle}/${stats.MPle}`)}
                 ${this.statCard(app, 'character.combatStats', 'Combat Stats', `Figh: ${stats.Figh} | Feas: ${stats.Feas} | Flir: ${stats.Flir}<br>${app._escapeHtml(app._uiLabel('fuck'))}: ${stats.Fuck} | Flee: ${stats.Flee} | Feed: ${stats.Feed}`)}
                 ${this.statCard(app, 'party.attributes', 'Attributes', `STR: ${stats.str} | CON: ${stats.con} | SPD: ${stats.spd}<br>INT: ${stats.int} | WIS: ${stats.wis} | CHA: ${stats.cha}`)}
-                ${this.statCard(app, 'character.body', 'Body', `${app._escapeHtml(app._label('character.size', 'Size'))}: ${p.size} | ${app._escapeHtml(app._label('character.appetite', 'Appetite'))}: ${p.appetite}<br>${app._escapeHtml(app._label('character.parts', 'Parts'))}: ${parts} | ${app._escapeHtml(app._label('character.chest', 'Chest'))}: ${chest}<br>${app._escapeHtml(app._label('character.bodyParts', 'Body'))}: ${bodyParts}`)}
+                ${this.statCard(app, 'character.body', 'Body', bodySummary)}
                 ${this.statCard(app, 'party.equipment', 'Equipment', app._equipmentSummary(p))}
                 ${this.statCard(app, 'party.perks', 'Perks', perks)}
                 ${this.statCard(app, 'character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}

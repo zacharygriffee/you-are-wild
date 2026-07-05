@@ -50,6 +50,8 @@ Runtime data added through `MODS.addBiome()`, `MODS.addSpecies()`, and `MODS.add
 
 Biome, species, and item contributions must be object data with a non-empty `id`. Species and item contributions are copied as JSON-style serializable data before they enter the live registries, so circular references, function-backed fields, symbols, `undefined`, `bigint`, and non-finite numbers reject enablement and leave the module disabled.
 
+Species that should participate in baseline party, recruit, social, quest, merchant, feed, eat, or mature-capable interaction systems must declare person-like canon metadata such as `sapience: 'person'` or `baselineInteraction: 'sapient'`, a non-`animal` `bodyPlan`, and appropriate `interactionEligibility` flags. Species explicitly classified as ordinary animals with `sapience: 'animal'`, `bodyPlan: 'animal'`, `baselineInteraction: 'animal'`, or `modOnlyAnimal: true` do not inherit those baseline person-like interaction lanes even if a mod sets individual eligibility flags. They can still exist as authored/modded creatures, but interactions must be added deliberately by the mod rather than leaking through core defaults.
+
 Mutating runtime registries requires declared permissions:
 
 - `MODS.addBiome()` requires `world:add_biome`

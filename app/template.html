@@ -2193,6 +2193,7 @@
         @media (max-width: 1024px) {
             :root {
                 --mobile-actions-height: 0px;
+                --mobile-scene-height: 132px;
             }
 
             :root.mobile-combat-active {
@@ -2640,13 +2641,20 @@
 
             .mobile-scene-sheet {
                 order: 1;
-                flex: 0 0 auto;
+                flex: 0 0 var(--mobile-scene-height);
                 padding: 10px 12px;
-                min-height: 132px;
-                max-height: 28vh;
-                max-height: 28dvh;
+                height: var(--mobile-scene-height);
+                min-height: var(--mobile-scene-height);
+                max-height: var(--mobile-scene-height);
                 overflow: auto;
                 overscroll-behavior: contain;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-sheet {
+                flex: 1 1 auto;
+                height: auto;
+                min-height: 160px;
+                max-height: none;
             }
 
             .mobile-scene-sheet.rich-content {
@@ -2656,6 +2664,8 @@
                 top: 72px;
                 bottom: calc(var(--mobile-actions-height) + env(safe-area-inset-bottom) + 8px);
                 z-index: 95;
+                height: auto;
+                min-height: 0;
                 max-height: none;
                 overscroll-behavior: contain;
             }

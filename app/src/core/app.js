@@ -3916,11 +3916,16 @@
             renderCenterTileActions() {
                 return YAW_CENTER_CONTEXT.renderCenterActions(this);
             },
+            renderCenterPresence() {
+                return YAW_CENTER_CONTEXT.renderPresence(this);
+            },
 			            renderExplorationActions() {
 		                this.renderCenterTileActions();
 			            },
             showExplorationActions() {
-                return YAW_CENTER_CONTEXT.showExplorationActions(this);
+                const result = YAW_CENTER_CONTEXT.showExplorationActions(this);
+                this.renderCenterPresence();
+                return result;
             },
             _ensureSafeAnchor() {
                 return YAW_DEFEAT_RECOVERY.ensureSafeAnchor(this);

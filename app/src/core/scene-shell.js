@@ -27,6 +27,7 @@ const YAW_SCENE_SHELL = {
         if (mobileTitle) mobileTitle.textContent = title || '';
         if (mobileDesc) mobileDesc.innerHTML = html || '';
         if (mobileSheet) mobileSheet.classList.add('rich-content');
+        YAW_CENTER_CONTEXT.clearPresence();
         app.renderTileEvents();
         app.renderSelectionSentence?.();
     },
@@ -60,6 +61,7 @@ const YAW_SCENE_SHELL = {
         const mobileExplore = document.getElementById('mobile-explore-actions');
         document.documentElement?.classList?.toggle('mobile-combat-active', Boolean(inCombat));
         if (inCombat) {
+            YAW_CENTER_CONTEXT.clearPresence();
             app.renderCombatSceneForTurn(app.activeActor || app._currentCombatActor());
             this.clearCenterActionsForCombat(app);
             if (mobileCombat) {
@@ -69,6 +71,7 @@ const YAW_SCENE_SHELL = {
             if (mobileActions) mobileActions.style.display = 'none';
             if (mobileExplore) mobileExplore.style.display = 'none';
         } else {
+            YAW_CENTER_CONTEXT.renderPresence(app);
             app.renderCenterTileActions();
             if (mobileActions) mobileActions.style.display = 'none';
             if (mobileCombat) mobileCombat.style.display = 'none';

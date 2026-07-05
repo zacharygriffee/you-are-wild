@@ -134,6 +134,7 @@ const YAW_COMBAT_SCENE = {
 
     renderForTurn(app, unit = null) {
         if (!app.combatState?.active) return false;
+        YAW_CENTER_CONTEXT.clearPresence();
         const title = this.turnTitle(app, unit);
         const html = this.sceneHtml(app, unit);
         const textDescription = this.turnDescription(app, unit);

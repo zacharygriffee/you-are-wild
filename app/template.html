@@ -566,6 +566,7 @@
             scroll-padding-block: clamp(16px, 3vw, 32px);
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
+            z-index: 2;
         }
 
         .desktop-play-cell:focus-visible {
@@ -584,6 +585,8 @@
             min-height: 100%;
             min-width: 0;
             box-sizing: border-box;
+            position: relative;
+            z-index: 1;
         }
 
         .desktop-play-cell-content::before,
@@ -591,6 +594,7 @@
             content: "";
             flex: 1 1 0;
             min-height: 0;
+            pointer-events: none;
         }
 
         .desktop-play-cell-icon {
@@ -628,6 +632,93 @@
             max-width: 720px;
             min-width: 0;
             overflow-wrap: anywhere;
+        }
+
+        .center-presence {
+            width: 100%;
+            max-width: 720px;
+            text-align: left;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(20, 20, 40, 0.42);
+            padding: 8px;
+        }
+
+        .center-presence:empty,
+        .center-presence-slot:empty {
+            display: none;
+        }
+
+        .center-presence-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .center-presence-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .center-presence-chip,
+        .center-presence-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            max-width: 100%;
+            padding: 5px 7px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.58);
+            color: var(--text-secondary);
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .center-presence-chip.party,
+        .center-presence-chip.player {
+            border-color: rgba(0, 212, 170, 0.35);
+        }
+
+        .center-presence-chip.enemy {
+            border-color: rgba(255, 107, 157, 0.45);
+        }
+
+        .center-presence-chip.neutral,
+        .center-presence-chip.friendly,
+        .center-presence-chip.merchant,
+        .center-presence-chip.quest_giver {
+            border-color: rgba(0, 212, 170, 0.22);
+        }
+
+        .center-presence-icon {
+            flex: 0 0 auto;
+        }
+
+        .center-presence-text {
+            display: grid;
+            gap: 1px;
+            min-width: 0;
+        }
+
+        .center-presence-text strong {
+            color: var(--text-primary);
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .center-presence-meta,
+        .center-presence-more {
+            color: var(--text-muted);
+            font-size: 10px;
         }
 
         .tile-event-feed {
@@ -955,6 +1046,8 @@
 
         .scene-actions.center-tile-actions {
             margin-top: var(--space-md);
+            min-height: 76px;
+            overflow-y: visible;
         }
 
         .scene-actions > .action-btn {
@@ -2828,6 +2921,24 @@
                 line-height: 1.45;
             }
 
+            .mobile-scene-sheet .center-presence {
+                margin-top: 8px;
+                padding: 7px;
+            }
+
+            .mobile-scene-sheet .center-presence-list {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overscroll-behavior-inline: contain;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 2px;
+            }
+
+            .mobile-scene-sheet .center-presence-chip {
+                flex: 0 0 auto;
+                max-width: min(58vw, 184px);
+            }
+
             .mobile-scene-description .party-stats-view {
                 width: 100%;
                 max-height: none;
@@ -3519,6 +3630,7 @@
 	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
+	                                <div class="center-presence-slot" id="mobile-center-presence" aria-live="polite"></div>
 	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
 	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-scene-actions action-bar"></div>
@@ -3550,6 +3662,7 @@
                                             <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
                                             <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
                                         </div>
+                                        <div class="center-presence-slot" id="center-presence" aria-live="polite"></div>
                                         <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
                                         <div class="tile-event-feed-slot" id="tile-event-feed" aria-live="polite"></div>
                                         <div class="scene-actions" id="scene-actions">

@@ -4,6 +4,72 @@
  */
 
 const YAW_CENTER_CONTEXT = {
+    presenceEntries(app) {
+        if (app.combatState?.active) return [];
+        const entries = [];
+        const seen = new Set();
+        const isLiving = unit => {
+            if (!unit) return false;
+            if (typeof app._isCorpse === 'function' && app._isCorpse(unit)) return false;
+            if (typeof app._isLivingCreature === 'function') return app._isLivingCreature(unit);
+            return (unit.CPun ?? 1) > 0;
+        };
+        const add = (unit, type, meta, tone = type) => {
+            if (!unit || !isLiving(unit)) return;
+            const key = unit.id || `${type}:${unit.name || entries.length}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            entries.push({ unit, type, meta, tone });
+        };
+        if (app.player) add(app.player, 'player', app._label('party.you', 'You'), 'party');
+        (app.party || []).forEach(unit => {
+            const role = typeof app._getPartyRole === 'function' ? app._getPartyRole(unit) : 'companion';
+            const roleLabel = typeof app._partyRoleLabel === 'function' ? app._partyRoleLabel(role) : role;
+            add(unit, 'party', roleLabel, 'party');
+        });
+        (app.creatures || []).forEach(unit => {
+            const meta = typeof app._unitDispositionLabel === 'function' ? app._unitDispositionLabel(unit) : '';
+            const tone = unit.disposition || 'creature';
+            add(unit, 'creature', meta || app._label('ui.creatures', 'Creatures'), tone);
+        });
+        return entries;
+    },
+
+    presenceChip(app, entry) {
+        const unit = entry.unit || {};
+        const name = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
+        const icon = app._escapeHtml(unit.icon || '👤');
+        const meta = entry.meta ? `<span class="center-presence-meta">${app._escapeHtml(entry.meta)}</span>` : '';
+        return `<span class="center-presence-chip ${app._escapeHtml(entry.type)} ${app._escapeHtml(entry.tone)}" data-presence-type="${app._escapeHtml(entry.type)}"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></span>`;
+    },
+
+    renderPresence(app) {
+        const slots = ['center-presence', 'mobile-center-presence']
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+        if (slots.length === 0) return '';
+        const entries = this.presenceEntries(app);
+        const visible = entries.slice(0, 8);
+        const extra = entries.length - visible.length;
+        const title = app._escapeHtml(app._label('ui.presence.here', 'Here'));
+        const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
+        const more = extra > 0
+            ? `<span class="center-presence-more">${app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }))}</span>`
+            : '';
+        const html = entries.length
+            ? `<section class="center-presence" aria-label="${title}"><div class="center-presence-title">${title}</div><div class="center-presence-list">${chips}${more}</div></section>`
+            : '';
+        slots.forEach(slot => { slot.innerHTML = html; });
+        return html;
+    },
+
+    clearPresence() {
+        ['center-presence', 'mobile-center-presence'].forEach(id => {
+            const slot = document.getElementById(id);
+            if (slot) slot.innerHTML = '';
+        });
+    },
+
     actionKeys(app) {
         const keys = [];
         if ((app.quests || []).length > 0) keys.push('quests');
@@ -55,6 +121,7 @@ const YAW_CENTER_CONTEXT = {
     showExplorationActions(app) {
         const context = this.context(app);
         app.updateScene(context.title, context.description, false);
+        this.renderPresence(app);
         const titleEl = document.getElementById('scene-title');
         const descEl = document.getElementById('scene-description');
         if (titleEl && !titleEl.textContent) titleEl.textContent = context.title || '';

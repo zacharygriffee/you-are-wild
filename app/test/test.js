@@ -2547,12 +2547,17 @@ test('Center context helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
+  assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own center tile presence rendering');
+  assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear center tile presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
+  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should render center tile presence');
+  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear center tile presence');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.actionKeys(this)', 'App center context action keys should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
@@ -3823,6 +3828,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
+  assertContains(template, 'id="center-presence"', 'desktop center presence slot missing');
+  assertContains(template, 'id="mobile-center-presence"', 'mobile center presence slot missing');
+  assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
+  assertContains(template, '.mobile-scene-sheet .center-presence-list', 'mobile center presence should use a compact scrollable row');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
@@ -6496,6 +6505,8 @@ test('Center tile stays traversal and context only across interaction states', (
     const html = [
       el('scene-title').innerHTML || '',
       el('scene-description').innerHTML || '',
+      el('center-presence').innerHTML || '',
+      el('mobile-center-presence').innerHTML || '',
       el('tile-event-feed').innerHTML || '',
       el('scene-actions').innerHTML || ''
     ].join('\n');
@@ -6518,7 +6529,11 @@ test('Center tile stays traversal and context only across interaction states', (
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', overlays: { poi: { category: 'restSite' } }, creatures: [] }]]);
   App.combatState.active = false;
 
-  App.showExplorationActions();
+  App.renderCenterPresence();
+  assertContains(el('center-presence').innerHTML, 'center-presence-chip', 'Exploration center tile should show lightweight local presence');
+  assertContains(el('center-presence').innerHTML, 'Ally', 'Exploration center presence should include party members');
+  assertContains(el('center-presence').innerHTML, 'Friendly', 'Exploration center presence should include local creatures');
+  assertEqual(el('mobile-center-presence').innerHTML, el('center-presence').innerHTML, 'Mobile scene should mirror desktop center presence');
   assertCenterOnly('exploration structure');
 
   App.showActorActions(ally);
@@ -6550,6 +6565,8 @@ test('Center tile stays traversal and context only across interaction states', (
   App.activeActor = player;
   App.showActorActions(player);
   assertCenterOnly('combat actor actions');
+  assertEqual(el('center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the center tile');
+  assertEqual(el('mobile-center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the mobile scene');
   assertContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live on the party panel');
 
   App.selectTarget('fight');

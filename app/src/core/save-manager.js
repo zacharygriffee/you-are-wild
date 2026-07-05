@@ -14,7 +14,7 @@ const YAW_SAVE_MANAGER = {
         if (saveManager) saveManager.setAttribute('aria-label', title);
         const saveButton = (classes, label, titleText, onclick, style = '') => `<button class="${classes}" title="${app._escapeHtml(titleText)}" aria-label="${app._escapeHtml(titleText)}"${style ? ` style="${style}"` : ''} onclick="${onclick}">${app._escapeHtml(label)}</button>`;
         const descriptionKey = isNewMode ? 'save.newDescription' : (isSaveMode ? 'save.saveDescription' : 'save.loadDescription');
-        const description = app._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose where to save the current game. Occupied slots warn before overwrite.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
+        const description = app._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose the slot that will continue this run. Auto-save will keep updating the saved slot; the previous active slot stops progressing.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
         let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + app._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + app._escapeHtml(description) + '</p>';
         if (app.saveManagerStatus) {
             const statusClass = app.saveManagerStatus.kind === 'error' ? ' error' : '';
@@ -69,7 +69,7 @@ const YAW_SAVE_MANAGER = {
         if (!isNewMode && !isSaveMode && !hasData) html += saveButton('nav-btn primary', '🆕 ' + app._label('save.toolbarNew', 'New Game'), app._label('save.action.useEmpty', 'Start new game in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '🆕 ' + app._label('save.newRun', 'New Run'), app._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '📂 ' + app._label('save.load', 'Load'), app._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })');
-        if (isSaveMode) html += saveButton('nav-btn primary', '💾 ' + app._label('save.save', 'Save'), app._label('save.action.save', 'Save current game to {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
+        if (isSaveMode) html += saveButton('nav-btn primary', '💾 ' + app._label('save.save', 'Save'), app._label('save.action.save', 'Save and continue in {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
         if (hasData) html += saveButton('nav-btn', '🗑️ ' + app._label('save.delete', 'Delete'), app._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
         html += '</div></div>';
         return html;

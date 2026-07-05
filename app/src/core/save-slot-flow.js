@@ -57,7 +57,7 @@ const YAW_SAVE_SLOT_FLOW = {
         if (parseInt(saveTime) > 0 && slotName !== app.activeSlot) {
             return app.showConfirmDialog({
                 title: app._label('save.saveTitle', 'Save Game'),
-                message: app._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game? This cannot be undone.', { slot: slotLabel }),
+                message: app._label('save.confirm.manualOverwrite', 'Overwrite {slot} with the current game and continue auto-saving there? This cannot be undone.', { slot: slotLabel }),
                 confirmLabel: app._label('save.save', 'Save'),
                 cancelLabel: app._label('ui.cancel', 'Cancel'),
                 danger: true,
@@ -74,7 +74,7 @@ const YAW_SAVE_SLOT_FLOW = {
             await YAW_SAVE_PERSISTENCE.writeSlot(app, slotName, { auto: false });
             app.saveManagerStatus = {
                 kind: 'success',
-                message: app._label('save.success.saved', 'Game saved to {slot}!', { slot: slotLabel })
+                message: app._label('save.success.saved', 'Game saved to {slot}. Auto-save now updates this slot.', { slot: slotLabel })
             };
             app.renderSaveManager(app.saveManagerMode || 'save');
             return true;

@@ -3786,8 +3786,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
-  assertContains(template, '.mobile-panel-dock {\n                order: 2;', 'mobile panel shortcuts should sit between semantics and map');
-  assertContains(template, '.mobile-map-card {\n                order: 3;', 'mobile map should sit lower for thumb reach');
+  assertContains(template, 'min-height: 132px;', 'mobile scene and activity area should reserve readable space');
+  assertContains(template, 'max-height: 28dvh;', 'mobile scene and activity area should scroll before pushing the map down');
+  assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile map should sit directly below semantics for thumb reach');
+  assertContains(template, '.mobile-panel-dock {\n                order: 3;', 'mobile panel shortcuts should sit below the navigation map');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');
@@ -13428,7 +13430,7 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 
 test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
-  assertContains(template, 'position: sticky', 'Mobile panel dock should remain compact without covering the thumb-zone map as a fixed overlay');
+  assertContains(template, 'position: static', 'Mobile panel dock should stay in normal flow below the map instead of covering it');
   assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
   assertContains(template, "onclick=\"togglePanel('party')\"", 'Mobile panel dock should open the party panel by tap');

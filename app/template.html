@@ -2343,7 +2343,7 @@
             }
 
             .mobile-map-card {
-                order: 3;
+                order: 2;
                 padding: 10px;
                 flex: 1 1 auto;
                 min-height: 230px;
@@ -2642,9 +2642,11 @@
                 order: 1;
                 flex: 0 0 auto;
                 padding: 10px 12px;
+                min-height: 132px;
                 max-height: 28vh;
                 max-height: 28dvh;
                 overflow: auto;
+                overscroll-behavior: contain;
             }
 
             .mobile-scene-sheet.rich-content {
@@ -2815,9 +2817,8 @@
             }
 
             .mobile-panel-dock {
-                order: 2;
-                position: sticky;
-                bottom: 10px;
+                order: 3;
+                position: static;
                 align-self: center;
                 display: flex;
                 gap: 6px;

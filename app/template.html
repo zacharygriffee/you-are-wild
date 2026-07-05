@@ -3634,9 +3634,9 @@
             <!-- Stage -->
             <div class="stage">
                 <!-- Map Panel -->
-                <div class="panel panel-map" id="panel-map">
+                <div class="panel panel-map" id="panel-map" data-surface-role="review-map" aria-label="Review Map" data-i18n-aria-label="ui.reviewMap">
 	                    <div class="panel-header">
-	                        <span>🗺️ <span data-i18n="ui.map">Map</span></span>
+	                        <span>🗺️ <span data-i18n="ui.reviewMap">Review Map</span></span>
 	                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
 	                        <button class="nav-btn" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
 	                    </div>
@@ -3666,15 +3666,15 @@
 	                <div class="panel panel-main" id="panel-main">
 	                    <div class="panel-content">
 	                        <div class="mobile-play-surface" id="mobile-play-surface">
-	                            <div class="mobile-map-card">
+	                            <div class="mobile-map-card mobile-play-card" data-surface-role="play-traversal" aria-label="Play Surface" data-i18n-aria-label="ui.playSurface">
 	                                <div class="mobile-map-header">
-	                                    <span>Play</span>
+	                                    <span data-i18n="ui.playSurface">Play Surface</span>
 	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
 	                                <div class="tile-info mobile-tile-info" id="mobile-tile-info" aria-live="polite">
 	                                    <!-- Populated by App.renderMap() -->
 	                                </div>
-	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
+	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad">
 	                                    <button class="nav-btn" title="Northwest" aria-label="Move northwest" onclick="App.move(-1,-1)">↖</button>
 	                                    <button class="nav-btn" title="North" aria-label="Move north" onclick="App.move(0,-1)">↑</button>
@@ -3729,7 +3729,7 @@
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
-                            <div class="desktop-play-surface" id="desktop-play-surface" aria-label="Current play surface">
+                            <div class="desktop-play-surface" id="desktop-play-surface" data-surface-role="play-traversal" aria-label="Current play surface">
                                 <div class="desktop-play-cell" id="desktop-play-cell-nw"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-n"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-ne"></div>

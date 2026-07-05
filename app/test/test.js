@@ -3831,6 +3831,9 @@ test('Tile event feed is ephemeral scene presentation', () => {
 test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-play-surface"', 'mobile play surface missing');
   assertContains(template, 'id="mobile-mini-map"', 'mobile map surface missing');
+  assertContains(template, 'class="mobile-map-card mobile-play-card" data-surface-role="play-traversal"', 'mobile routine card should identify as the traversal play surface');
+  assertContains(template, 'data-i18n="ui.playSurface">Play Surface', 'mobile routine surface should be labeled as play, not review map');
+  assertContains(template, 'id="mobile-mini-map" role="group" aria-label="3x3 traversal surface"', 'mobile traversal grid should expose its 3x3 role');
   assertContains(template, 'id="mobile-move-pad"', 'mobile movement pad should mirror traversal near the thumb zone');
   assertContains(template, 'id="mobile-party-card"', 'mobile party strip card should be addressable for combat ordering');
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
@@ -3909,6 +3912,7 @@ test('Battle mode contract keeps combat panel-first', () => {
 
 test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="desktop-play-surface"', 'desktop play surface missing');
+  assertContains(template, 'id="desktop-play-surface" data-surface-role="play-traversal"', 'desktop play surface should share the traversal surface role with mobile');
   assertContains(template, 'id="desktop-play-cell-center"', 'desktop play surface should have a center tile');
   assertContains(template, 'id="desktop-play-cell-n"', 'desktop play surface should expose north movement');
   assertContains(template, 'id="desktop-play-cell-s"', 'desktop play surface should expose south movement');
@@ -3935,6 +3939,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
 });
 
 test('Large map discovery surface exists', () => {
+  assertContains(template, 'id="panel-map" data-surface-role="review-map"', 'Map panel should identify as review/planning surface');
+  assertContains(template, 'data-i18n="ui.reviewMap">Review Map', 'Map panel should be labeled as review map instead of primary movement');
   assertContains(template, 'id="large-map"', 'Large map container missing');
   assertContains(template, 'id="large-map-pois"', 'Large map point-of-interest container missing');
   assertContains(template, 'id="large-map-view"', 'Large map view label missing');

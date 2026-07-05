@@ -1678,10 +1678,13 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'const YAW_INTERACTION_STATE = {', 'Interaction state helper should expose the interaction state service');
   assertContains(interactionStateContent, 'clearTransient(app)', 'Interaction state helper should own transient selection cleanup');
   assertContains(interactionStateContent, 'render(app, options = {})', 'Interaction state helper should own panel/toolbelt refresh orchestration');
+  assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
+  assertContains(interactionStateContent, 'selectionSentence(app)', 'Interaction state helper should derive the current selection sentence');
   assertContains(interactionStateContent, 'syncSelectedParticipants(app)', 'Interaction state helper should own sync participant lookup');
   assertContains(interactionStateContent, 'toggleSyncParticipantById(app, id)', 'Interaction state helper should own sync participant toggling');
   assertContains(appContent, 'YAW_INTERACTION_STATE.clearTransient(this)', 'App transient cleanup wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.render(this, options)', 'App interaction render wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_STATE.renderSelectionSentence(this)', 'App selection sentence wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.syncSelectedParticipants(this)', 'App sync participants wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.isSyncParticipant(this, unit)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_STATE.toggleSyncParticipantById(this, id)', 'App sync toggle wrapper should delegate to the helper');
@@ -3818,6 +3821,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
+  assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
+  assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
+  assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
+  assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
   assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
@@ -9787,6 +9794,65 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.renderMobileCombatToolbelt();
   assertEqual(elements.get('mobile-play-surface').classList.contains('combat-active'), false, 'Mobile play surface should leave combat layout mode after combat');
   assertEqual(elements.get('mobile-combat-toolbelt').innerHTML, '', 'Mobile combat toolbelt should clear after combat');
+});
+
+test('Selection sentence mirrors exploration actor target and pending intent', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Long-Named Ally', { id: 'ally-1' });
+  const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [guide];
+  App.explorationActorIds = ['ally-1'];
+
+  App.renderSelectionSentence();
+  assertContains(elements.get('selection-sentence').innerHTML, 'Actors', 'Desktop sentence should label selected actors');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Long-Named Ally', 'Desktop sentence should name the selected actor');
+  assertNotContains(elements.get('selection-sentence').innerHTML, 'Targets', 'Desktop sentence should not imply a target before one is marked');
+  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should mirror selected actor state');
+
+  App.toggleExplorationTarget('creature', 'guide-1');
+  const html = elements.get('selection-sentence').innerHTML;
+  assertContains(html, 'Targets', 'Marked exploration targets should be visible in the sentence');
+  assertContains(html, 'Guide', 'Marked exploration target name should be visible in the sentence');
+  assertContains(html, 'Intent', 'Marked exploration targets should expose a pending intent field');
+  assertContains(html, 'Choose', 'Pending marked-target intent should tell the player to choose an action');
+  assertEqual(elements.get('mobile-selection-sentence').innerHTML, html, 'Mobile and desktop selection sentences should stay in sync');
+
+  App.explorationActorIds = ['missing-actor'];
+  App.renderSelectionSentence();
+  assertContains(elements.get('selection-sentence').innerHTML, 'Select a living actor', 'Stale actor selections should remain visible for correction');
+});
+
+test('Selection sentence mirrors combat target-pick state without changing action ids', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-sentence', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    turnQueue: [{ unit: player, initiative: 10 }],
+    currentTurn: 0,
+    syncActions: [],
+    processing: false
+  };
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+
+  App.renderSelectionSentence();
+  const html = elements.get('selection-sentence').innerHTML;
+  assertContains(html, 'Actors', 'Combat sentence should label current actor state');
+  assertContains(html, 'You', 'Combat sentence should name the active actor');
+  assertContains(html, 'Targets', 'Combat target picking should expose target state');
+  assertContains(html, 'Pick target', 'Combat target picking should tell the player to pick a target');
+  assertContains(html, 'Intent', 'Combat target picking should expose the selected intent');
+  assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
+  assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
+  assertEqual(elements.get('mobile-selection-sentence').innerHTML, html, 'Mobile combat sentence should mirror desktop sentence');
 });
 
 test('Combat creature target button localizes visible and accessible labels', () => {

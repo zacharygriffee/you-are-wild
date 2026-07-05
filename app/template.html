@@ -985,6 +985,66 @@
             overflow-wrap: anywhere;
         }
 
+        .selection-sentence {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 4px 8px;
+            width: min(100%, 720px);
+            margin: var(--space-sm) auto 0;
+            padding: 6px 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(17, 31, 52, 0.72);
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.3;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .selection-sentence:empty {
+            display: none;
+        }
+
+        .selection-sentence-part {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            min-width: 0;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .selection-sentence-label {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .selection-sentence-value {
+            color: var(--text-primary);
+            font-weight: 600;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .selection-sentence-arrow {
+            color: var(--accent-cyan);
+            opacity: 0.78;
+            font-family: var(--font-mono);
+            font-size: 10px;
+        }
+
+        .mobile-selection-sentence {
+            justify-content: flex-start;
+            width: 100%;
+            margin-top: 8px;
+            font-size: 11px;
+        }
+
         .panel-interaction-tray {
             border: 1px solid var(--border-default);
             border-radius: var(--radius-sm);
@@ -3440,6 +3500,7 @@
 	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
+	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
 	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-scene-actions action-bar"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log">
@@ -3470,6 +3531,7 @@
                                             <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
                                             <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
                                         </div>
+                                        <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
                                         <div class="tile-event-feed-slot" id="tile-event-feed" aria-live="polite"></div>
                                         <div class="scene-actions" id="scene-actions">
                                             <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">

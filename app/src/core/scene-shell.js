@@ -28,6 +28,7 @@ const YAW_SCENE_SHELL = {
         if (mobileDesc) mobileDesc.innerHTML = html || '';
         if (mobileSheet) mobileSheet.classList.add('rich-content');
         app.renderTileEvents();
+        app.renderSelectionSentence?.();
     },
 
     update(app, title, description, inCombat) {
@@ -73,6 +74,7 @@ const YAW_SCENE_SHELL = {
             if (mobileCombat) mobileCombat.style.display = 'none';
             if (mobileExplore) mobileExplore.style.display = 'flex';
         }
+        app.renderSelectionSentence?.();
     },
 
     closeDetails(app) {

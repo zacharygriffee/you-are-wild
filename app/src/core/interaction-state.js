@@ -20,6 +20,97 @@ const YAW_INTERACTION_STATE = {
         app.renderCreatures();
         if (includeExploration) app.renderExplorationActions();
         if (includeToolbelt) app.renderMobileCombatToolbelt();
+        this.renderSelectionSentence(app);
+    },
+
+    unitNames(app, units = [], fallback = '') {
+        const names = (units || [])
+            .map(unit => unit === app.player ? app._label('party.you', 'You') : (unit?.name || unit?.species || ''))
+            .filter(Boolean);
+        return names.length ? names.join(' + ') : fallback;
+    },
+
+    actionLabel(app, action, fallback = 'Choose') {
+        if (!action) return fallback;
+        return app._uiLabel ? app._uiLabel(action) : action;
+    },
+
+    explorationSentence(app) {
+        const actorState = app._selectedExplorationActorState
+            ? app._selectedExplorationActorState({ allowFallback: true })
+            : { actors: [app.player].filter(Boolean), valid: Boolean(app.player) };
+        const targets = app._getExplorationTargets ? app._getExplorationTargets() : [];
+        const actorLabel = app._label('target.actors', 'Actors');
+        const targetLabel = app._label('target.targets', 'Targets');
+        const intentLabel = app._label('target.intent', 'Intent');
+        const actorText = actorState.valid
+            ? this.unitNames(app, actorState.actors, app._label('target.none', 'None'))
+            : app._label('target.invalidActorSummary', 'Select a living actor');
+        const parts = [{ label: actorLabel, value: actorText }];
+        if (targets.length > 0) {
+            parts.push({ label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')) });
+            parts.push({ label: intentLabel, value: app._label('ui.chooseAction', 'Choose') });
+        }
+        return parts;
+    },
+
+    combatActor(app) {
+        return app.activeActor || (app._currentCombatActor ? app._currentCombatActor() : null) || app.player || null;
+    },
+
+    combatSentence(app) {
+        const actor = this.combatActor(app);
+        const actorLabel = app._label('target.actors', 'Actors');
+        const targetLabel = app._label('target.targets', 'Targets');
+        const intentLabel = app._label('target.intent', 'Intent');
+        const parts = [{
+            label: actorLabel,
+            value: this.unitNames(app, [actor].filter(Boolean), app._label('target.none', 'None'))
+        }];
+        let targetText = '';
+        let intentText = app._label('ui.chooseAction', 'Choose');
+        if (app.syncSelection?.active) {
+            const participants = this.syncSelectedParticipants(app);
+            if (participants.length > 0) {
+                parts[0].value = this.unitNames(app, participants, parts[0].value);
+            }
+            intentText = this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
+            if (app.syncSelection.phase === 'participants') {
+                targetText = app._label('combat.sync.selectParticipants', 'Select participants for sync');
+            } else if (app.syncSelection.phase === 'target') {
+                targetText = app._label('target.pickTarget', 'Pick target');
+            }
+        } else if (app.feedSelection?.active) {
+            intentText = this.actionLabel(app, 'feed', 'Feed');
+            targetText = app._label('feed.chooseOption', 'Choose feed option');
+        } else if (app.targetSelection?.source === 'combat') {
+            intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
+            targetText = app._label('target.pickTarget', 'Pick target');
+        }
+        if (targetText) parts.push({ label: targetLabel, value: targetText });
+        parts.push({ label: intentLabel, value: intentText });
+        return parts;
+    },
+
+    selectionSentence(app) {
+        return app.combatState?.active ? this.combatSentence(app) : this.explorationSentence(app);
+    },
+
+    sentenceHtml(app, parts = []) {
+        if (!parts.length) return '';
+        return parts.map((part, index) => {
+            const arrow = index === 0 ? '' : '<span class="selection-sentence-arrow" aria-hidden="true">-&gt;</span>';
+            return `${arrow}<span class="selection-sentence-part"><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
+        }).join('');
+    },
+
+    renderSelectionSentence(app) {
+        const html = this.sentenceHtml(app, this.selectionSentence(app));
+        for (const id of ['selection-sentence', 'mobile-selection-sentence']) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = html;
+        }
+        return html;
     },
 
     syncSelectedParticipants(app) {

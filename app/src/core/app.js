@@ -261,6 +261,9 @@
             _renderInteractionState(options = {}) {
                 return YAW_INTERACTION_STATE.render(this, options);
             },
+            renderSelectionSentence() {
+                return YAW_INTERACTION_STATE.renderSelectionSentence(this);
+            },
             _panelInteractionTrayTitle(mode) {
                 return YAW_PANEL_INTERACTIONS.title(this, mode);
             },

@@ -26,6 +26,25 @@ const YAW_PANEL_SHELL = {
         this.syncBackdrop(app);
     },
 
+    open(app, panelName) {
+        const panel = document.getElementById('panel-' + panelName);
+        if (!panel) return false;
+        const isMobile = window.innerWidth <= 1024;
+        if (!isMobile) {
+            if (panelName === 'map') {
+                this.toggleDesktopMap(app, panel);
+                return true;
+            }
+            this.focusDesktopPanel(app, panelName);
+            return true;
+        }
+        this.panels().forEach(panelEl => panelEl.classList.remove('active'));
+        panel.classList.add('active');
+        this.syncBackdrop(app);
+        this.focusPanel(panel, { preventScroll: true });
+        return true;
+    },
+
     toggleDesktopMap(app, panel) {
         this.panels().forEach(panelEl => panelEl.classList.remove('nav-focus'));
         const isActive = panel.classList.toggle('active');

@@ -2548,16 +2548,19 @@ test('Center context helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
   assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own center tile presence rendering');
+  assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should focus presence chips into detail panels');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear center tile presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should render center tile presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear center tile presence');
+  assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.actionKeys(this)', 'App center context action keys should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresence(this, type, ref)', 'App center presence focus should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
@@ -6536,10 +6539,23 @@ test('Center tile stays traversal and context only across interaction states', (
 
   App.renderCenterPresence();
   assertContains(el('center-presence').innerHTML, 'center-presence-chip', 'Exploration center tile should show lightweight local presence');
+  assertContains(el('center-presence').innerHTML, "App.focusPresence('party','ally-1')", 'Presence chips should focus party details instead of exposing actor actions');
+  assertContains(el('center-presence').innerHTML, "App.focusPresence('creature','friendly-1')", 'Presence chips should focus creature details instead of exposing interaction menus');
+  assertContains(el('center-presence').innerHTML, 'data-presence-ref="ally-1"', 'Presence chips should expose stable party focus refs');
+  assertContains(el('center-presence').innerHTML, 'data-presence-ref="friendly-1"', 'Presence chips should expose stable creature focus refs');
   assertContains(el('center-presence').innerHTML, 'Ally', 'Exploration center presence should include party members');
   assertContains(el('center-presence').innerHTML, 'Friendly', 'Exploration center presence should include local creatures');
   assertEqual(el('mobile-center-presence').innerHTML, el('center-presence').innerHTML, 'Mobile scene should mirror desktop center presence');
   assertCenterOnly('exploration structure');
+
+  assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the detail panel path');
+  assertEqual(ally.expanded, true, 'Party presence focus should expand the matching party card');
+  assertContains(el('party-content').innerHTML, 'Ally', 'Party presence focus should render the party panel');
+  assertEqual(el('panel-party').focused, true, 'Desktop party presence focus should focus the party panel');
+  assertEqual(App.focusPresence('creature', 'friendly-1'), true, 'Creature presence focus should resolve through the detail panel path');
+  assertEqual(friendly.expanded, true, 'Creature presence focus should expand the matching creature card');
+  assertContains(el('enemies-content').innerHTML, 'Friendly', 'Creature presence focus should render the creature panel');
+  assertEqual(el('panel-enemies').focused, true, 'Desktop creature presence focus should focus the creature panel');
 
   App.showActorActions(ally);
   assertCenterOnly('adventure actor action legacy call');
@@ -6585,6 +6601,45 @@ test('Center tile stays traversal and context only across interaction states', (
   App.showCreatureInteract('creature', 0);
   assertCenterOnly('creature interact wrapper');
   assertContains(el('enemies-content').innerHTML, 'selected selected-target', 'Creature interaction wrapper should mark the panel target instead of rendering center actions');
+});
+
+test('Center presence focus opens mobile detail drawers without action dispatch', () => {
+  const panels = {};
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    window: { innerWidth: 390 },
+    querySelector(selector, elements) {
+      if (selector !== '.panel-map.active, .panel-party.active, .panel-enemies.active') return null;
+      return ['panel-map', 'panel-party', 'panel-enemies']
+        .map(id => panels[id] || elements.get(id) || document.getElementById(id))
+        .find(panel => panel.classList.contains('active')) || null;
+    },
+    querySelectorAll(selector, elements) {
+      if (selector !== '.panel-map, .panel-party, .panel-enemies') return [];
+      return ['panel-map', 'panel-party', 'panel-enemies'].map(id => {
+        if (!panels[id]) panels[id] = elements.get(id) || document.getElementById(id);
+        return panels[id];
+      });
+    }
+  });
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const creature = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [creature];
+  App.combatState.active = false;
+
+  assertEqual(App.focusPresence('party', 'ally-1'), true, 'Mobile party presence focus should resolve');
+  assertEqual(document.getElementById('panel-party').classList.contains('active'), true, 'Mobile party presence focus should open the party drawer');
+  assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), true, 'Mobile party presence focus should enable the backdrop');
+  assertContains(document.getElementById('party-content').innerHTML, 'Ally', 'Mobile party presence focus should render party detail cards');
+  assertNotContains(document.getElementById('party-content').innerHTML, 'showIntentMenu(', 'Mobile party presence focus should not open an action menu');
+
+  assertEqual(App.focusPresence('creature', 'guide-1'), true, 'Mobile creature presence focus should resolve');
+  assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile creature presence focus should close the previous drawer');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), true, 'Mobile creature presence focus should open the creature drawer');
+  assertContains(document.getElementById('enemies-content').innerHTML, 'Guide', 'Mobile creature presence focus should render creature detail cards');
+  assertNotContains(document.getElementById('enemies-content').innerHTML, 'showIntentMenu(', 'Mobile creature presence focus should not open an action menu');
 });
 
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {

@@ -4351,8 +4351,14 @@
             focusDesktopPanel(p) {
                 return YAW_PANEL_SHELL.focusDesktopPanel(this, p);
             },
+            openPanel(p) {
+                return YAW_PANEL_SHELL.open(this, p);
+            },
             closeAllPanels() {
                 return YAW_PANEL_SHELL.closeAll(this);
+            },
+            focusPresence(type, ref) {
+                return YAW_CENTER_CONTEXT.focusPresence(this, type, ref);
             },
             syncPanelBackdrop() {
                 return YAW_PANEL_SHELL.syncBackdrop(this);

@@ -40,7 +40,41 @@ const YAW_CENTER_CONTEXT = {
         const name = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
         const icon = app._escapeHtml(unit.icon || '👤');
         const meta = entry.meta ? `<span class="center-presence-meta">${app._escapeHtml(entry.meta)}</span>` : '';
-        return `<span class="center-presence-chip ${app._escapeHtml(entry.type)} ${app._escapeHtml(entry.tone)}" data-presence-type="${app._escapeHtml(entry.type)}"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></span>`;
+        const presenceType = entry.type === 'creature' ? 'creature' : 'party';
+        const ref = presenceType === 'creature'
+            ? app._explorationTargetUnitId('creature', unit)
+            : app._unitSelectionId(unit);
+        const panelLabel = presenceType === 'creature'
+            ? app._label('ui.creatures', 'Creatures')
+            : app._label('ui.party', 'Party');
+        const focusTitle = app._escapeHtml(app._label('ui.presence.focus', 'Focus {name} in {panel}', { name: unit.name || app._label('ui.unknown', 'Unknown'), panel: panelLabel }));
+        const escapedType = app._escapeHtml(entry.type);
+        const escapedTone = app._escapeHtml(entry.tone);
+        const escapedRef = app._escapeHtml(ref);
+        const jsType = app._escapeJsString(presenceType);
+        const jsRef = app._escapeJsString(ref);
+        return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
+    },
+
+    focusPresence(app, type, ref) {
+        if (!ref || app.combatState?.active) return false;
+        if (type === 'party') {
+            const index = (app.party || []).findIndex(unit => app._unitSelectionId(unit) === String(ref) || unit?.id === ref || unit?.name === ref);
+            if (index < 0) return false;
+            app.party[index].expanded = true;
+            app.renderParty();
+            app.openPanel('party');
+            return true;
+        }
+        if (type === 'creature') {
+            const index = (app.creatures || []).findIndex(unit => app._explorationTargetUnitId('creature', unit) === String(ref) || app._unitKey(unit) === String(ref) || unit?.id === ref || unit?.name === ref);
+            if (index < 0) return false;
+            app.creatures[index].expanded = true;
+            app.renderCreatures();
+            app.openPanel('enemies');
+            return true;
+        }
+        return false;
     },
 
     renderPresence(app) {

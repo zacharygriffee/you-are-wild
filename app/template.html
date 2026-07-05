@@ -687,8 +687,17 @@
             border-radius: var(--radius-sm);
             background: rgba(42, 42, 74, 0.58);
             color: var(--text-secondary);
+            font: inherit;
             font-size: 11px;
             line-height: 1.2;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .center-presence-chip:hover,
+        .center-presence-chip:focus-visible {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
         }
 
         .center-presence-chip.party,

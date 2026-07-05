@@ -3752,6 +3752,7 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
   assertContains(template, 'onclick="App.showCharacterStats()"', 'Mobile panel dock should expose stats without the bottom exploration bar');
   assertContains(centerContextContent, 'mobileExplore.innerHTML = this.renderActions(app, false)', 'Mobile scene actions should avoid duplicating panel shortcuts');
+  assertContains(template, '.panel-map:not(.active),\n            .panel-party:not(.active),\n            .panel-enemies:not(.active) {\n                display: none;', 'inactive mobile overlay panels should not contribute to horizontal overflow');
   assertContains(appContent, 'closeAllPanels()', 'panel backdrop close handler should exist');
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
 });
@@ -3800,9 +3801,16 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips', 'combat mode should size unit strips independently from the scene summary');
-  assertContains(template, 'overflow: auto;\n                overscroll-behavior: contain;', 'combat unit strips should scroll instead of hiding behind a blank toolbar');
-  assertContains(template, 'flex: 0 0 180px;\n                height: 180px;', 'combat scene summary should stay compact on mobile');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-map-card {\n                display: none;', 'combat mode should hide map navigation');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips {\n                order: 1;', 'combat unit strips should replace the map as the primary surface');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card {\n                order: 1;', 'combat enemy strip should render above the combat prompt');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
+  assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
+  assertContains(template, 'flex: 0 0 112px;\n                height: 112px;', 'combat scene summary should stay compact on mobile');
   assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
+  assertContains(mobileUnitStripsContent, "app.combatState?.active\n            ? app._label('ui.enemies', 'Enemies')", 'mobile combat creature strip should be labeled as enemies');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');

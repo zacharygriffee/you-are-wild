@@ -8,7 +8,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
     creatures(app) {
         const strip = document.getElementById('mobile-creature-strip');
         const card = document.getElementById('mobile-creature-card');
+        const title = document.getElementById('mobile-creature-title');
         if (!strip) return;
+        if (title) title.textContent = app.combatState?.active
+            ? app._label('ui.enemies', 'Enemies')
+            : app._label('ui.creatures', 'Creatures');
         const living = app.creatures.filter(c => c.CPun > 0 && !app._isCorpse(c));
         const corpses = app.creatures.filter(c => app._isCorpse(c));
         const visible = [...living, ...corpses];

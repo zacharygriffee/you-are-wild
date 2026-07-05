@@ -2288,6 +2288,7 @@
             .panel-map:not(.active),
             .panel-party:not(.active),
             .panel-enemies:not(.active) {
+                display: none;
                 pointer-events: none;
             }
 
@@ -2434,12 +2435,12 @@
             }
 
             .mobile-play-surface.combat-active .mobile-unit-strips {
-                order: 2;
+                order: 1;
                 display: flex;
                 flex-direction: column;
                 flex: 1 1 auto;
                 min-height: 0;
-                overflow: auto;
+                overflow: visible;
                 overscroll-behavior: contain;
             }
 
@@ -2459,21 +2460,22 @@
                 display: none;
             }
 
-            .mobile-play-surface.combat-active .mobile-scene-sheet {
-                flex: 1 1 auto;
-                min-height: 160px;
-            }
-
             .mobile-strip-card {
                 padding: 8px;
+                overflow: hidden;
+                min-width: 0;
             }
 
             .mobile-unit-strip {
                 display: flex;
                 gap: 8px;
                 overflow-x: auto;
+                overflow-y: hidden;
+                overscroll-behavior-x: contain;
                 padding-bottom: 2px;
                 scrollbar-width: none;
+                min-width: 0;
+                contain: layout paint;
             }
 
             .mobile-unit-strip > .panel-interaction-tray {
@@ -2494,6 +2496,10 @@
                 padding: 8px;
                 color: var(--text-primary);
                 cursor: pointer;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-chip {
+                flex-basis: clamp(132px, 42vw, 172px);
             }
 
             .mobile-unit-chip.targetable {
@@ -2668,10 +2674,11 @@
             }
 
             .mobile-play-surface.combat-active .mobile-scene-sheet {
-                flex: 0 0 180px;
-                height: 180px;
-                min-height: 180px;
-                max-height: 180px;
+                order: 2;
+                flex: 0 0 112px;
+                height: 112px;
+                min-height: 112px;
+                max-height: 112px;
             }
 
             .mobile-scene-sheet.rich-content {

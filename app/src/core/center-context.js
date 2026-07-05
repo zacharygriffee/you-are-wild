@@ -9,6 +9,7 @@ const YAW_CENTER_CONTEXT = {
         if ((app.quests || []).length > 0) keys.push('quests');
         if (app._canTakeTileItems()) keys.unshift('takeItems');
         if (app._canSearchHere()) keys.unshift('search');
+        if (app._canSetSafeAnchor()) keys.push('setSafePlace');
         if (app.inInterior) keys.unshift('exit');
         else if (app._currentExplorationTile()?.structure) keys.unshift('enter');
         if (app._canRestHere()) keys.unshift('rest');
@@ -22,6 +23,7 @@ const YAW_CENTER_CONTEXT = {
             takeItems: 'App.takeTileItems()',
             quests: 'App.showQuestLog()',
             stats: 'App.showCharacterStats()',
+            setSafePlace: 'App.setSafeAnchorFromCurrentLocation()',
             enter: 'App.enterStructure()',
             exit: 'App.exitStructure()',
             map: "togglePanel('map')",

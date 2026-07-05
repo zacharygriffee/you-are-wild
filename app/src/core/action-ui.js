@@ -34,6 +34,7 @@ const YAW_ACTION_UI = {
             flee: '🏃',
             search: '🔍',
             rest: '🏕️',
+            setSafePlace: '🏠',
             inventory: '🎒',
             takeItems: '🎒',
             stats: '📊',

@@ -87,6 +87,7 @@ const YAW_CREATE_FLOW = {
             app._setCreateValidation('');
             return true;
         }
+        const safeTier = this.isSafeTier(app);
         const hasPrimaryAnatomy = app.selectedParts.includes('clit') || app.selectedParts.includes('cock');
         const hasChestAnatomy = app.selectedParts.includes('tits') || app.selectedParts.includes('pecs');
         if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
@@ -95,8 +96,8 @@ const YAW_CREATE_FLOW = {
         }
         const missing = [];
         if (!hasGender) missing.push(app._label('create.validation.gender', 'choose a gender'));
-        if (!hasPrimaryAnatomy) missing.push(app._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
-        if (!hasChestAnatomy) missing.push(app._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
+        if (!safeTier && !hasPrimaryAnatomy) missing.push(app._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
+        if (!safeTier && !hasChestAnatomy) missing.push(app._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
         const message = app._label('create.validation.required', 'Before beginning, please {items}.', { items: missing.join(', ') });
         app._setCreateValidation(message);
         app.toggleAccordion(!hasGender ? 'gender' : 'anatomy');
@@ -235,6 +236,8 @@ const YAW_CREATE_FLOW = {
         app.inInterior = false;
         app.activeInterior = null;
         app.interiorLocation = { x: 0, y: 0 };
+        app.safeAnchor = app._ensureSafeAnchor();
+        app.defeatState = null;
         app.exploreTile(0, 0);
         app.showScreen('game');
         app._renderTime();

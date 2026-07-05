@@ -357,6 +357,8 @@
         explorationActorIds,
         explorationPartyTargetIds,
         encounterWeights: appState.encounterWeights || appState.selectedEncounterWeights || null,
+        safeAnchor: appState.safeAnchor || null,
+        defeatState: appState.defeatState || null,
         combatState
       }
     };

@@ -17,6 +17,7 @@
                 flee: 'Flee',
                 search: 'Search',
                 rest: 'Rest',
+                setSafePlace: 'Set Home',
                 inventory: 'Items',
                 takeItems: 'Take Items',
                 quests: 'Quests',
@@ -683,6 +684,8 @@
             SUPER_PATCH_SIZE: 3, // 3x3 patches = 30x30 tiles per biome region
             currentBiome: 'forest',
             activeSlot: 'slot1',
+            safeAnchor: null,
+            defeatState: null,
             settings: {
                 powerDynamics: false, endoMode: false, slowDigestion: false,
                 fatalVore: false, chewing: false, allTheWayThrough: false,
@@ -3915,6 +3918,30 @@
 			            },
             showExplorationActions() {
                 return YAW_CENTER_CONTEXT.showExplorationActions(this);
+            },
+            _ensureSafeAnchor() {
+                return YAW_DEFEAT_RECOVERY.ensureSafeAnchor(this);
+            },
+            _canSetSafeAnchor() {
+                return YAW_DEFEAT_RECOVERY.canSetSafeAnchor(this);
+            },
+            setSafeAnchorFromCurrentLocation() {
+                return YAW_DEFEAT_RECOVERY.setSafeAnchorFromCurrentLocation(this);
+            },
+            _markDefeat(outcome = 'defeat') {
+                return YAW_DEFEAT_RECOVERY.markDefeat(this, outcome);
+            },
+            _sanitizeLoadedDefeatState(loaded = null) {
+                return YAW_DEFEAT_RECOVERY.sanitizeLoadedDefeat(this, loaded);
+            },
+            showDefeatRecovery() {
+                return YAW_DEFEAT_RECOVERY.showDefeatRecovery(this);
+            },
+            regenerateFromDefeat() {
+                return YAW_DEFEAT_RECOVERY.regenerate(this);
+            },
+            endDefeatedRun() {
+                return YAW_DEFEAT_RECOVERY.endDefeatedRun(this);
             },
             closeSceneDetails() {
                 return YAW_SCENE_SHELL.closeDetails(this);

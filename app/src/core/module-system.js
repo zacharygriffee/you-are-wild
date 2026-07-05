@@ -23,6 +23,8 @@ const MODULE_SYSTEM = {
         onCombatAction: [],
         onDigestionTick: [],
         onSubActionExecute: [],
+        onDefeat: [],
+        onRegenerate: [],
         onPlayerMove: [],
         onGameLoad: [],
         onGameSave: [],

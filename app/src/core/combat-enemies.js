@@ -162,7 +162,6 @@ const YAW_COMBAT_ENEMIES = {
                     if (livingAllies.length === 0) {
                         app.log.push({ text: app._label('combat.partyWipedOut', 'Your party has been wiped out!'), type: 'combat' });
                         app.renderLog();
-                        setTimeout(() => { App.showScreen('menu'); }, 2000);
                         app.endCombat('defeat');
                         return;
                     }

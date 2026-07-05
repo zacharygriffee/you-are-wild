@@ -6,8 +6,8 @@
 
 ## Current State
 
-- **Build:** 620/620 tests pass, 92/92 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
-- **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 92-script modular JS source in `app/src/`, template shell in `app/template.html`
+- **Build:** 628/628 tests pass, 93/93 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
+- **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 93-script modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
 - **Automation:** Repo-owned auto-agent lanes live in `.auto-agent/lanes.json`, with human guidance in `docs/AUTO-AGENT-LANES.md`; validate from the auto-agent repo with `node src/cli.js process validate-lane-map --target /home/zevilz/work/porn`
@@ -159,6 +159,7 @@
 - POI and route-anchor generation has a first-pass deterministic budget/spacing seam: each macro region exposes stable category budgets and spaced candidates for settlement, rest-site, resource-site, danger-site, landmark, and structure POIs; route-capable POIs become route anchors for road segment intent with center fallback; and tile POI lookup resolves candidate anchors without materializing unknown tiles
 - Map tile art has a first-pass metadata seam: minimap, interior minimap, and large-map cells now expose `data-tileset-key`, `data-base-tileset-key`, `data-map-kind`, and route shape metadata from a centralized `MAP_TILESET_KEYS` registry while preserving emoji fallback and base biome identity; route visuals infer straight, corner, T-junction, intersection, and dead-end keys from known/visible route neighbors; interior visuals expose room, cave-room, exit, wall, and structure-feature keys; the proposed painted tileset is evaluated in `docs/map-tileset-evaluation.md`, with source confirmed as project-owner ChatGPT Image output and missing transition/special-biome tiles deferred before asset import
 - SFW startup and creature canon gating have a first-pass hardening: safe/mature character creation requires only name/species/identity and hides anatomy controls while assigning compatibility defaults for saves/mechanics; adult tier keeps explicit anatomy validation; safe stats/inspect omit hidden anatomy fields; safe primary labels are `Fight`, `Eat`, `Play`, `Talk`, `Feed`, `Flee` while internal action IDs remain unchanged; and shared adventure dispatch blocks explicit ordinary-animal metadata from baseline social, feed, eat, mature-capable, and recruit-style eligibility while sapient/person-like mod species can opt into those lanes.
+- Defeat recovery has a first-pass durable boundary: party wipes persist `defeatState`, reject stale combat refresh snapshots, load into an in-app Regenerate/End Game choice instead of half-active combat, and regenerate at an explicit overworld safe/home anchor with the starting tile as fallback. Safe/home anchors are intentionally overworld tile anchors for now, not interior locations.
 
 ---
 

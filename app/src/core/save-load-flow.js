@@ -159,35 +159,20 @@ const YAW_SAVE_LOAD_FLOW = {
             app.activeSlot = slotName;
             app._restoreWorldState(loaded);
             await app.loadWorldStateFromMapStore().catch(e => console.warn('World map load failed', e));
-            app._restoreCombatState(loaded.questState?.combatState);
+            const loadedDefeated = app._sanitizeLoadedDefeatState(loaded);
+            if (!loadedDefeated) app._restoreCombatState(loaded.questState?.combatState);
             app._normalizeExplorationSelections();
             app._setStoredValue('lastSlot', slotName);
             const saveTime = app._getSaveTime(slotName);
             if (parseInt(saveTime, 10) > 0) app._setStoredValue('lastSaveTime', saveTime);
-
-            let revived = false;
-            if (app.player && app.player.CPun <= 0) {
-                app.player.CPun = 1;
-                app.player.knockedOut = false;
-                revived = true;
-            }
-            for (const p of app.party) {
-                if (p.CPun <= 0) {
-                    p.CPun = 1;
-                    revived = true;
-                }
-                p.knockedOut = false;
-            }
-            if (revived) {
-                app.log.push({ text: app._label('save.recoveredOnLoad', 'You were revived from the brink of defeat. Welcome back, {name}.', { name: app.player.name }), type: 'discovery' });
-            }
 
             app.showScreen('game');
             app.renderMap();
             app.renderParty();
             app.renderCreatures();
             app.renderLog();
-            if (!app._resumeLoadedCombat()) app.showExplorationActions();
+            if (loadedDefeated) app.showDefeatRecovery();
+            else if (!app._resumeLoadedCombat()) app.showExplorationActions();
             app._emitModuleHook('onGameLoad', {
                 slotName,
                 combatActive: Boolean(app.combatState?.active),

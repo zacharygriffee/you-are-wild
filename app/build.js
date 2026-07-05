@@ -31,6 +31,7 @@ const SCRIPT_ORDER = [
   'src/core/local-map.js',
   'src/core/tile-resources.js',
   'src/core/center-context.js',
+  'src/core/defeat-recovery.js',
   'src/core/log-view.js',
   'src/core/tile-event-feed.js',
   'src/core/structure-navigation.js',

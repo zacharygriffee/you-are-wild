@@ -60,7 +60,7 @@ const YAW_COMBAT_LIFECYCLE = {
         app._clearTransientInteractionState();
         app._clearCombatRefreshSnapshot(app.activeSlot);
         app.party.forEach(p => { p.fledCombat = false; });
-        if (app.player?.knockedOut) {
+        if (outcome !== 'defeat' && app.player?.knockedOut) {
             app.player.knockedOut = false;
             app.player.CPun = Math.max(1, app.player.CPun || 0);
             app.log.push({ text: app._label('combat.playerComesTo', '{name} comes to after the fight.', { name: app.player.name }), type: 'discovery' });
@@ -92,7 +92,8 @@ const YAW_COMBAT_LIFECYCLE = {
         } else {
             app.log.push({ text: app._label('combat.defeat', 'Defeat...'), type: 'combat' });
             app.updateScene('Defeat', 'Darkness claims you...', false);
-            setTimeout(() => { app._confirmDefeatReturnToMenu(); }, 1500);
+            app._markDefeat(outcome);
+            app.showDefeatRecovery();
         }
         app.renderLog();
         app.renderParty();

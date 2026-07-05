@@ -24,7 +24,7 @@ const YAW_COMBAT_SAVE_STATE = {
             const snapshot = YAW_STORAGE.readCombatRefreshSnapshot(app, slotName);
             if (!snapshot) return null;
             const loaded = Binary.loadGame(snapshot.saveData);
-            if (!loaded?.questState?.combatState?.active) {
+            if (!loaded?.questState?.combatState?.active || YAW_DEFEAT_RECOVERY.isWipedCombatSave(app, loaded)) {
                 app._clearCombatRefreshSnapshot(slotName);
                 return null;
             }

@@ -12900,6 +12900,33 @@ test('Delete save slot is scoped to one selected slot', async () => {
   assertContains(elements.get('save-manager').innerHTML, 'Open slot', 'Deleted slot should render as open after refresh');
 });
 
+test('Active auto-save slot cannot be deleted during a live run', async () => {
+  const { App, elements, storage } = loadAppForCombat(() => 0.5, { confirm: true });
+  const deleted = [];
+  App._dbDelete = async (_store, key) => { deleted.push(key); };
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.activeSlot = 'slot2';
+  App.saveManagerMode = 'load';
+  storage.set('yaw-last-slot', 'slot2');
+  storage.set('yaw-save-time-slot2', '1710000000000');
+
+  App.renderSaveManager('load');
+  const html = elements.get('save-manager').innerHTML;
+  assertContains(html, 'Current auto-save slot: delete is locked while this run is active.', 'Active slot hint should explain why delete is locked');
+  assertContains(html, 'Delete locked during live run', 'Active slot action summary should not advertise direct delete');
+  assertContains(html, 'Cannot delete Slot 2 while this run is using it for auto-save. Quit to the main menu before deleting it.', 'Disabled delete control should explain the live-run guard');
+  assertContains(html, 'disabled aria-disabled="true"', 'Active auto-save delete control should be disabled while playing');
+  assertNotContains(html, "App.deleteSlot('slot2')", 'Active auto-save delete control should not wire a delete handler while playing');
+
+  const deletedActive = await App.deleteSlot('slot2');
+  assertEqual(deletedActive, false, 'Deleting the active auto-save slot should be rejected during a live run');
+  assertEqual(deleted.length, 0, 'Rejected active-slot delete should not remove data');
+  assert(!App.pendingConfirm, 'Rejected active-slot delete should not open confirmation');
+  assertEqual(App.activeSlot, 'slot2', 'Rejected active-slot delete should keep the current auto-save slot');
+  assertEqual(App.saveManagerStatus.message, 'Cannot delete Slot 2 while this run is using it for auto-save. Quit to the main menu before deleting it.', 'Rejected active-slot delete should explain the policy in the save manager');
+});
+
 test('Save slot metadata normalizes stored and requested slot names', async () => {
   const syncCase = loadAppForCombat(() => 0.5);
   const dbGets = [];

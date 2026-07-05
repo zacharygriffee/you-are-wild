@@ -92,6 +92,14 @@ const YAW_SAVE_SLOT_FLOW = {
         slotName = app._normalizeSaveSlotName(slotName, null);
         if (!slotName) return false;
         const slotLabel = app._slotDisplayLabel(slotName);
+        if (app.player && app._normalizeSaveSlotName(app.activeSlot) === slotName) {
+            app.saveManagerStatus = {
+                kind: 'error',
+                message: app._label('save.error.deleteActiveSlot', 'Cannot delete {slot} while this run is using it for auto-save. Quit to the main menu before deleting it.', { slot: slotLabel })
+            };
+            app.renderSaveManager(app.saveManagerMode || 'load');
+            return false;
+        }
         return app.showConfirmDialog({
             title: app._label('save.delete', 'Delete'),
             message: app._label('save.confirm.deleteSlot', 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', { slot: slotLabel }),

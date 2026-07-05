@@ -12,7 +12,7 @@ const YAW_SAVE_MANAGER = {
         const title = app._label(titleKey, isNewMode ? 'Choose New Game Slot' : (isSaveMode ? 'Save Game' : 'Load Game'));
         const saveManager = document.getElementById('save-manager');
         if (saveManager) saveManager.setAttribute('aria-label', title);
-        const saveButton = (classes, label, titleText, onclick, style = '') => `<button class="${classes}" title="${app._escapeHtml(titleText)}" aria-label="${app._escapeHtml(titleText)}"${style ? ` style="${style}"` : ''} onclick="${onclick}">${app._escapeHtml(label)}</button>`;
+        const saveButton = (classes, label, titleText, onclick, style = '', attrs = '') => `<button class="${classes}" title="${app._escapeHtml(titleText)}" aria-label="${app._escapeHtml(titleText)}"${style ? ` style="${style}"` : ''}${attrs ? ` ${attrs}` : ''}${onclick ? ` onclick="${onclick}"` : ''}>${app._escapeHtml(label)}</button>`;
         const descriptionKey = isNewMode ? 'save.newDescription' : (isSaveMode ? 'save.saveDescription' : 'save.loadDescription');
         const description = app._label(descriptionKey, isNewMode ? 'Pick an empty slot for the new run, or deliberately overwrite an occupied slot.' : (isSaveMode ? 'Choose the slot that will continue this run. Auto-save will keep updating the saved slot; the previous active slot stops progressing.' : 'Choose a save to load, start a new run in a slot, or delete one slot.'));
         let html = '<div class="save-manager-shell"><h1 style="color:var(--accent-primary);margin-bottom:8px;">' + app._escapeHtml(title) + '</h1><p style="color:var(--text-muted);margin-bottom:16px;">' + app._escapeHtml(description) + '</p>';
@@ -44,6 +44,7 @@ const YAW_SAVE_MANAGER = {
     slotCard(app, options) {
         const { slotName, index, lastSlot, isNewMode, isSaveMode, saveButton } = options;
         const isActive = slotName === lastSlot;
+        const isCurrentAutoSaveSlot = Boolean(app.player) && app._normalizeSaveSlotName(app.activeSlot) === slotName;
         const saveTime = app._getSaveTime(slotName);
         const hasData = parseInt(saveTime) > 0;
         const slotLabel = app._label('save.slotLabel', 'Slot {number}', { number: index });
@@ -54,13 +55,18 @@ const YAW_SAVE_MANAGER = {
             : (isSaveMode
                 ? (hasData ? 'save.slotHint.occupiedSave' : 'save.slotHint.emptySave')
                 : (hasData ? 'save.slotHint.occupiedLoad' : 'save.slotHint.emptyLoad'));
-        const slotHint = app._label(hintKey, hasData ? 'Saved slot.' : 'Empty slot.');
+        const slotHint = isCurrentAutoSaveSlot && hasData
+            ? app._label('save.slotHint.activeAutoSave', 'Current auto-save slot: delete is locked while this run is active.')
+            : app._label(hintKey, hasData ? 'Saved slot.' : 'Empty slot.');
         const actionSummaryKey = isNewMode
             ? (hasData ? 'save.slotActions.occupiedNew' : 'save.slotActions.emptyNew')
             : (isSaveMode
                 ? (hasData ? 'save.slotActions.occupiedSave' : 'save.slotActions.emptySave')
                 : (hasData ? 'save.slotActions.occupiedLoad' : 'save.slotActions.emptyLoad'));
-        const actionSummary = app._label(actionSummaryKey, 'Actions available for this slot.');
+        const activeActionSummaryKey = isNewMode ? 'save.slotActions.activeNew' : (isSaveMode ? 'save.slotActions.activeSave' : 'save.slotActions.activeLoad');
+        const actionSummary = isCurrentAutoSaveSlot && hasData
+            ? app._label(activeActionSummaryKey, 'Actions available; Delete locked during live run.')
+            : app._label(actionSummaryKey, 'Actions available for this slot.');
         const actionSummaryLabel = app._label('save.slotActions.label', 'Available slot actions');
         let html = '<div class="save-slot-card ' + (hasData ? 'occupied' : 'empty') + (isActive ? ' active' : '') + '">';
         html += '<div><div class="save-slot-title">' + (isActive ? '▶ ' : '') + app._escapeHtml(slotLabel) + '<span class="save-slot-badge">' + app._escapeHtml(slotStatus) + '</span></div><div class="save-slot-time">' + app._escapeHtml(timeStr) + '</div><div class="save-slot-hint">' + app._escapeHtml(slotHint) + '</div><div class="save-slot-summary" aria-label="' + app._escapeHtml(actionSummaryLabel) + '">' + app._escapeHtml(actionSummary) + '</div></div>';
@@ -70,7 +76,11 @@ const YAW_SAVE_MANAGER = {
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '🆕 ' + app._label('save.newRun', 'New Run'), app._label('save.action.newRun', 'Start a new run in {slot}', { slot: slotLabel }), 'App.beginNewGameInSlot(\'' + slotName + '\')');
         if (!isNewMode && !isSaveMode && hasData) html += saveButton('nav-btn', '📂 ' + app._label('save.load', 'Load'), app._label('save.action.load', 'Load {slot}', { slot: slotLabel }), 'App.loadFromSlot(\'' + slotName + '\').then(ok => { if (ok) App.showScreen(\'game\'); })');
         if (isSaveMode) html += saveButton('nav-btn primary', '💾 ' + app._label('save.save', 'Save'), app._label('save.action.save', 'Save and continue in {slot}', { slot: slotLabel }), 'App.saveToSlot(\'' + slotName + '\')');
-        if (hasData) html += saveButton('nav-btn', '🗑️ ' + app._label('save.delete', 'Delete'), app._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
+        if (hasData && isCurrentAutoSaveSlot) {
+            html += saveButton('nav-btn', '🗑️ ' + app._label('save.delete', 'Delete'), app._label('save.action.deleteActiveBlocked', 'Cannot delete {slot} while this run is using it for auto-save. Quit to the main menu before deleting it.', { slot: slotLabel }), '', 'color:var(--text-muted);', 'disabled aria-disabled="true"');
+        } else if (hasData) {
+            html += saveButton('nav-btn', '🗑️ ' + app._label('save.delete', 'Delete'), app._label('save.action.delete', 'Delete {slot}', { slot: slotLabel }), 'App.deleteSlot(\'' + slotName + '\')', 'color:var(--accent-danger);');
+        }
         html += '</div></div>';
         return html;
     }

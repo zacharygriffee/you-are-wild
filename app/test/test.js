@@ -3811,7 +3811,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
-  assertContains(template, '--mobile-scene-height: 148px;', 'mobile scene and activity area should use a stable exploration height with log breathing room');
+  assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
   assertContains(template, 'height: var(--mobile-scene-height);', 'mobile scene and activity area should lock map position');
   assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should scroll before pushing the map down');

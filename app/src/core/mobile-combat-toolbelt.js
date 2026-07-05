@@ -15,6 +15,15 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         return app._label('ui.chooseAction', 'Choose your next action.');
     },
 
+    intentButtons(app, actor = app._currentCombatActor()) {
+        if (!app.combatState?.active || !actor || !(actor === app.player || app.party.includes(actor))) return '';
+        if (app.syncSelection?.active || app.feedSelection?.active) return '';
+        const buttons = app._combatActionButtons(actor, { compact: false });
+        if (!buttons) return '';
+        const label = app._escapeHtml(app._label('mobile.combat.intents', 'Combat intents'));
+        return `<div class="mobile-combat-intents" role="group" aria-label="${label}">${buttons}</div>`;
+    },
+
     render(app) {
         const surface = document.getElementById('mobile-play-surface');
         const belt = document.getElementById('mobile-combat-toolbelt');
@@ -35,7 +44,8 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
         const prompt = this.prompt(app, actor);
-        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>`;
+        const intents = this.intentButtons(app, actor);
+        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>${intents}`;
         belt.className = 'mobile-combat-toolbelt active';
         belt.innerHTML = html;
         return html;

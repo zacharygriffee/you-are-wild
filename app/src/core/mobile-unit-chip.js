@@ -29,8 +29,6 @@ const YAW_MOBILE_UNIT_CHIP = {
         } else if (isParty && app.combatState.active) {
             if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('sync-participants', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${app._syncParticipantButton(unit, true)}</div>`;
-            } else {
-                actionButtons = app._combatActionButtons(unit, { compact: true });
             }
         }
         if (isCorpse) {

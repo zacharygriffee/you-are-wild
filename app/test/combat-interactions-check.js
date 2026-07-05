@@ -950,7 +950,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile resolution');
 
   await setupCombat(page);
-  await page.locator(`#mobile-party-strip button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   const mobilePick = page.locator('#mobile-creature-strip button[data-selection-mode="combat-pick"]').first();
   await assert.doesNotReject(() => mobilePick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat pick should render in creature strip');
   state = await page.evaluate(() => {

@@ -65,7 +65,7 @@ const YAW_SCENE_SHELL = {
                 mobileCombat.innerHTML = '';
                 mobileCombat.style.display = 'none';
             }
-            if (mobileActions) mobileActions.style.display = 'block';
+            if (mobileActions) mobileActions.style.display = 'none';
             if (mobileExplore) mobileExplore.style.display = 'none';
         } else {
             app.renderCenterTileActions();

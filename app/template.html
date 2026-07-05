@@ -2197,7 +2197,7 @@
             }
 
             :root.mobile-combat-active {
-                --mobile-actions-height: 112px;
+                --mobile-actions-height: 0px;
             }
 
             #app {
@@ -2437,6 +2437,10 @@
                 order: 2;
                 display: flex;
                 flex-direction: column;
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow: auto;
+                overscroll-behavior: contain;
             }
 
             .mobile-play-surface.combat-active #mobile-creature-card {
@@ -2664,10 +2668,10 @@
             }
 
             .mobile-play-surface.combat-active .mobile-scene-sheet {
-                flex: 1 1 auto;
-                height: auto;
-                min-height: 160px;
-                max-height: none;
+                flex: 0 0 180px;
+                height: 180px;
+                min-height: 180px;
+                max-height: 180px;
             }
 
             .mobile-scene-sheet.rich-content {
@@ -2814,10 +2818,6 @@
 	                padding-bottom: calc(8px + env(safe-area-inset-bottom));
 	            }
 
-            :root.mobile-combat-active .mobile-action-bar {
-                display: block !important;
-            }
-
             .mobile-action-bar .action-bar {
                 display: flex;
                 gap: 8px;
@@ -2942,9 +2942,6 @@
                 display: none !important;
             }
 
-            :root.mobile-combat-active .mobile-action-bar {
-                display: block !important;
-            }
         }
 
         /* Animations */

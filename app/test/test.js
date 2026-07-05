@@ -3729,8 +3729,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, 'max-width: 100vw', 'mobile shell should be constrained to viewport width');
   assertContains(template, 'overflow: hidden', 'mobile shell should hide horizontal overflow');
   assertContains(template, '--mobile-actions-height: 0px', 'mobile exploration should not reserve space for the combat toolbar');
-  assertContains(template, ':root.mobile-combat-active', 'mobile combat should opt into the bottom combat toolbar height');
-  assertContains(template, '--mobile-actions-height: 112px', 'mobile combat toolbar height should be explicit');
+  assertContains(template, ':root.mobile-combat-active', 'mobile combat should expose a state hook without reserving an empty toolbar');
   assertContains(template, 'height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom))', 'mobile app should reserve space above bottom toolbar');
   assertContains(template, '.mobile-context-menu', 'mobile context menu styles should exist');
   assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
@@ -3800,6 +3799,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips', 'combat mode should size unit strips independently from the scene summary');
+  assertContains(template, 'overflow: auto;\n                overscroll-behavior: contain;', 'combat unit strips should scroll instead of hiding behind a blank toolbar');
+  assertContains(template, 'flex: 0 0 180px;\n                height: 180px;', 'combat scene summary should stay compact on mobile');
+  assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');

@@ -57,6 +57,7 @@ const YAW_SCENE_SHELL = {
         const mobileActions = document.getElementById('mobile-actions');
         const mobileCombat = document.getElementById('mobile-combat-actions');
         const mobileExplore = document.getElementById('mobile-explore-actions');
+        document.documentElement?.classList?.toggle('mobile-combat-active', Boolean(inCombat));
         if (inCombat) {
             app.renderCombatSceneForTurn(app.activeActor || app._currentCombatActor());
             this.clearCenterActionsForCombat(app);
@@ -68,7 +69,7 @@ const YAW_SCENE_SHELL = {
             if (mobileExplore) mobileExplore.style.display = 'none';
         } else {
             app.renderCenterTileActions();
-            if (mobileActions) mobileActions.style.display = 'block';
+            if (mobileActions) mobileActions.style.display = 'none';
             if (mobileCombat) mobileCombat.style.display = 'none';
             if (mobileExplore) mobileExplore.style.display = 'flex';
         }

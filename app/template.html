@@ -2192,6 +2192,10 @@
 
         @media (max-width: 1024px) {
             :root {
+                --mobile-actions-height: 0px;
+            }
+
+            :root.mobile-combat-active {
                 --mobile-actions-height: 112px;
             }
 
@@ -2339,6 +2343,7 @@
             }
 
             .mobile-map-card {
+                order: 3;
                 padding: 10px;
                 flex: 1 1 auto;
                 min-height: 230px;
@@ -2368,6 +2373,7 @@
             }
 
             .mobile-unit-strips {
+                order: 4;
                 display: grid;
                 grid-template-columns: 1fr;
                 gap: 8px;
@@ -2414,6 +2420,7 @@
             }
 
             .mobile-play-surface.combat-active .mobile-unit-strips {
+                order: 2;
                 display: flex;
                 flex-direction: column;
             }
@@ -2632,6 +2639,7 @@
             }
 
             .mobile-scene-sheet {
+                order: 1;
                 flex: 0 0 auto;
                 padding: 10px 12px;
                 max-height: 28vh;
@@ -2722,9 +2730,27 @@
             font-size: 10px;
         }
 
-        .mobile-activity-log[open] .mobile-log-summary {
-            display: none;
-        }
+            .mobile-activity-log[open] .mobile-log-summary {
+                display: none;
+            }
+
+            .mobile-scene-actions {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-top: 10px;
+            }
+
+            .mobile-scene-actions:empty {
+                display: none;
+            }
+
+            .mobile-scene-actions .action-btn {
+                flex: 1 1 78px;
+                min-width: 0;
+                padding: 9px 8px;
+                font-size: 12px;
+            }
 
         .mobile-log-list {
             margin-top: 8px;
@@ -2750,7 +2776,7 @@
             }
 
 	            .mobile-action-bar {
-	                display: block !important;
+	                display: none !important;
 	                position: fixed;
                 bottom: 0;
                 left: 0;
@@ -2762,6 +2788,10 @@
 	                min-height: var(--mobile-actions-height);
 	                padding-bottom: calc(8px + env(safe-area-inset-bottom));
 	            }
+
+            :root.mobile-combat-active .mobile-action-bar {
+                display: block !important;
+            }
 
             .mobile-action-bar .action-bar {
                 display: flex;
@@ -2785,10 +2815,10 @@
             }
 
             .mobile-panel-dock {
-                position: fixed;
-                left: 50%;
-                bottom: calc(var(--mobile-actions-height) + 14px + env(safe-area-inset-bottom));
-                transform: translateX(-50%);
+                order: 2;
+                position: sticky;
+                bottom: 10px;
+                align-self: center;
                 display: flex;
                 gap: 6px;
                 padding: 6px;
@@ -2797,6 +2827,7 @@
                 background: rgba(26, 26, 46, 0.94);
                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
                 z-index: 95;
+                max-width: calc(100vw - 32px);
             }
 
             .mobile-panel-dock .nav-btn {
@@ -2833,10 +2864,6 @@
         }
 
         @media (min-width: 1025px) {
-            .mobile-action-bar {
-                display: none !important;
-            }
-
             .mobile-panel-dock {
                 display: none;
             }
@@ -2888,6 +2915,10 @@
 
         @media (max-width: 1024px) {
             .mobile-action-bar {
+                display: none !important;
+            }
+
+            :root.mobile-combat-active .mobile-action-bar {
                 display: block !important;
             }
         }
@@ -3335,6 +3366,7 @@
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
 	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
+	                                <div id="mobile-explore-actions" class="mobile-scene-actions action-bar"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log">
 	                                    <summary class="mobile-activity-log-summary" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
 	                                        <span class="mobile-activity-log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span></span>
@@ -3342,6 +3374,12 @@
 	                                    </summary>
 	                                    <div class="mobile-log-list" id="mobile-log-list" aria-live="polite" aria-relevant="additions text"></div>
 	                                </details>
+	                            </div>
+	                            <div class="mobile-panel-dock" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
+	                                <button class="nav-btn" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
+	                                <button class="nav-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
+	                                <button class="nav-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
+	                                <button class="nav-btn" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span></button>
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
@@ -3457,35 +3495,10 @@
                     <span class="action-caption" data-i18n="action.flee">Flee</span>
                 </button>
             </div>
-            <!-- Exploration buttons -->
-            <div id="mobile-explore-actions" class="action-bar">
-                <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
-                    <span class="action-icon" aria-hidden="true">🔍</span>
-                    <span class="action-caption" data-i18n="action.search">Search</span>
-                </button>
-                <button class="action-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">
-                    <span class="action-icon" aria-hidden="true">🗺️</span>
-                    <span class="action-caption" data-i18n="ui.map">Map</span>
-                </button>
-	                <button class="action-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">
-	                    <span class="action-icon" aria-hidden="true">👥</span>
-	                    <span class="action-caption" data-i18n="ui.party">Party</span>
-	                </button>
-	                <button class="action-btn" title="Enemies" aria-label="Enemies" data-i18n-title="ui.enemies" data-i18n-aria-label="ui.enemies" onclick="togglePanel('enemies')">
-	                    <span class="action-icon" aria-hidden="true">⚔️</span>
-	                    <span class="action-caption" data-i18n="ui.enemies">Enemies</span>
-	                </button>
-	            </div>
         </div>
 
         <!-- Backdrop for closing mobile panels by tapping outside -->
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
-
-        <div class="mobile-panel-dock" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
-            <button class="nav-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
-            <button class="nav-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
-            <button class="nav-btn" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span></button>
-        </div>
     </div>
 
 

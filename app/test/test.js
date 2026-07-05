@@ -3728,7 +3728,9 @@ test('Mobile game shell prevents horizontal overflow', () => {
   assertContains(template, 'height: 100dvh', 'mobile shell should use dynamic viewport height');
   assertContains(template, 'max-width: 100vw', 'mobile shell should be constrained to viewport width');
   assertContains(template, 'overflow: hidden', 'mobile shell should hide horizontal overflow');
-  assertContains(template, '--mobile-actions-height: 112px', 'mobile toolbar height should be explicit');
+  assertContains(template, '--mobile-actions-height: 0px', 'mobile exploration should not reserve space for the combat toolbar');
+  assertContains(template, ':root.mobile-combat-active', 'mobile combat should opt into the bottom combat toolbar height');
+  assertContains(template, '--mobile-actions-height: 112px', 'mobile combat toolbar height should be explicit');
   assertContains(template, 'height: calc(100dvh - var(--mobile-actions-height) - env(safe-area-inset-bottom))', 'mobile app should reserve space above bottom toolbar');
   assertContains(template, '.mobile-context-menu', 'mobile context menu styles should exist');
   assertContains(template, 'max-height: calc(100dvh - var(--mobile-actions-height)', 'mobile context menus should be viewport bounded above the action toolbar');
@@ -3749,6 +3751,8 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, "togglePanel('enemies')", 'mobile actions should expose enemies panel');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
+  assertContains(template, 'onclick="App.showCharacterStats()"', 'Mobile panel dock should expose stats without the bottom exploration bar');
+  assertContains(centerContextContent, 'mobileExplore.innerHTML = this.renderActions(app, false)', 'Mobile scene actions should avoid duplicating panel shortcuts');
   assertContains(appContent, 'closeAllPanels()', 'panel backdrop close handler should exist');
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
 });
@@ -3781,6 +3785,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
+  assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
+  assertContains(template, '.mobile-panel-dock {\n                order: 2;', 'mobile panel shortcuts should sit between semantics and map');
+  assertContains(template, '.mobile-map-card {\n                order: 3;', 'mobile map should sit lower for thumb reach');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');
@@ -13421,6 +13428,8 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 
 test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
+  assertContains(template, 'position: sticky', 'Mobile panel dock should remain compact without covering the thumb-zone map as a fixed overlay');
+  assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
   assertContains(template, "onclick=\"togglePanel('party')\"", 'Mobile panel dock should open the party panel by tap');
   assertContains(template, "onclick=\"togglePanel('enemies')\"", 'Mobile panel dock should open the creature panel by tap');

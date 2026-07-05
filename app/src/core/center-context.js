@@ -47,7 +47,7 @@ const YAW_CENTER_CONTEXT = {
             actions.innerHTML = this.renderActions(app, false);
         }
         const mobileExplore = document.getElementById('mobile-explore-actions');
-        if (mobileExplore) mobileExplore.innerHTML = this.renderActions(app, true);
+        if (mobileExplore) mobileExplore.innerHTML = this.renderActions(app, false);
     },
 
     showExplorationActions(app) {

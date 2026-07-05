@@ -5661,7 +5661,7 @@ test('Creature panel renders corpses as remains without target actions', () => {
   App.renderCreatures();
   const html = elements.get('enemies-content').innerHTML;
   assertContains(elements.get('enemies-title').textContent, 'Remains', 'Corpse-only panel should be titled Remains');
-  assertContains(html, '[Remains]', 'Corpse card should label remains');
+  assertContains(html, '<span class="unit-meta-badge">Remains</span>', 'Corpse card should label remains');
   assertContains(html, "selectIntent('creature','fallen-1','loot','panel-card')", 'Corpse card should expose loot through shared intent selection');
   assertContains(html, "selectIntent('creature','fallen-1','scavenge','panel-card')", 'Corpse card should expose scavenge through shared intent selection');
   assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
@@ -10052,7 +10052,7 @@ test('Party panel exposes management controls and leader badge', () => {
   App.partyLeaderId = 'player-1';
   App.renderParty();
   let html = elements.get('party-content').innerHTML;
-  assertContains(html, '[Leader]', 'Party leader badge should render');
+  assertContains(html, '<span class="unit-meta-badge leader">Leader</span>', 'Party leader badge should render');
   assertContains(html, 'showPartyMemberStats(1)', 'Party card should expose detailed stats');
   assertNotContains(html, 'setPartyLeader(1)', 'Default party card should keep leader management out of the compact action row');
   assertNotContains(html, 'dismissPartyMember(1)', 'Default party card should keep dismiss management out of the compact action row');
@@ -10131,7 +10131,7 @@ test('Desktop creature card status and detail labels localize', () => {
   App.renderCreatures();
   const panelHtml = elements.get('enemies-content').innerHTML;
   assertEqual(elements.get('enemies-title').textContent, 'Enemigos', 'Enemy panel title should localize');
-  assertContains(panelHtml, '[Hostil]', 'Creature disposition badge should localize');
+  assertContains(panelHtml, '<span class="unit-meta-badge">Hostil</span>', 'Creature disposition badge should localize');
   assertContains(panelHtml, 'Fila:Retaguardia', 'Combat row label should localize');
   assertNotContains(panelHtml, 'Tamano:', 'Expanded creature card should keep exact body stats in Stats/detail instead of the card body');
   assertNotContains(panelHtml, 'Apetito:', 'Expanded creature card should keep exact body stats in Stats/detail instead of the card body');
@@ -11620,6 +11620,21 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
 });
 
+test('Unit card headers keep long names separate from role metadata', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Mousefolk Expedition Cartographer With A Very Long Name', { id: 'ally-long', partyRole: 'companion' });
+  App.player = player;
+  App.party = [player, ally];
+
+  const allyCard = App.renderUnitCard(ally, 1, 'party');
+  assertContains(allyCard, '<div class="unit-name">Mousefolk Expedition Cartographer With A Very Long Name</div>', 'Long unit name should own the name row');
+  assertContains(allyCard, '<div class="unit-meta"><span class="unit-meta-badge">Companion</span></div>', 'Party role should render as metadata below the name');
+  assertNotContains(allyCard, 'Mousefolk Expedition Cartographer With A Very Long Name <span', 'Role metadata should not share the name text line');
+  assertContains(template, '.unit-meta-badge', 'Unit metadata badges should have dedicated styling');
+  assertContains(template, '-webkit-line-clamp: 2;', 'Unit names should wrap predictably instead of truncating beside metadata');
+});
+
 test('Unit selection controls distinguish focus actor target and combat pick semantics', () => {
   const { App } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
@@ -11744,7 +11759,7 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
   assertContains(allyCard, 'Asleep', 'Party card should render localized status trait chips');
   assertContains(allyCard, 'Poison', 'Party card should render localized danger trait chips');
   assertContains(allyCard, 'Burning', 'Party card should render capped third trait');
-  assertNotContains(allyCard, 'Guard</span>', 'Lower-priority role chip should be hidden once cap is reached');
+  assertNotContains(allyCard, 'class="unit-trait-chip role" title="Guard">Guard</span>', 'Lower-priority role chip should be hidden once cap is reached');
   assertContains(creatureCard, 'Wounded', 'Creature card should expose wounded state as a trait chip');
   assertContains(creatureCard, 'Hungry', 'Creature card should expose hunger pressure as a trait chip');
   assertContains(creatureCard, 'Quest', 'Creature card should expose contextual quest state as a trait chip');

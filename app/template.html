@@ -1254,9 +1254,16 @@
 
         .unit-header {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: var(--space-sm);
             padding: var(--space-sm);
+            min-width: 0;
+        }
+
+        .unit-icon {
+            flex: 0 0 auto;
+            line-height: 1.2;
+            margin-top: 2px;
         }
 
         .unit-avatar {
@@ -1280,14 +1287,45 @@
             font-size: 14px;
             font-weight: 600;
             color: var(--text-primary);
-            white-space: nowrap;
+            line-height: 1.25;
+            white-space: normal;
             overflow: hidden;
-            text-overflow: ellipsis;
+            overflow-wrap: anywhere;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
         }
 
         .unit-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px 5px;
+            align-items: center;
+            margin-top: 2px;
             font-size: 11px;
             color: var(--text-muted);
+            min-width: 0;
+        }
+
+        .unit-meta-badge {
+            max-width: 100%;
+            min-width: 0;
+            color: var(--text-muted);
+            font-size: 10px;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        .unit-meta-badge::before {
+            content: "[";
+        }
+
+        .unit-meta-badge::after {
+            content: "]";
+        }
+
+        .unit-meta-badge.leader {
+            color: var(--accent-primary);
         }
 
         .unit-health {

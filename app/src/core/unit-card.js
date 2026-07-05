@@ -12,6 +12,7 @@ const YAW_UNIT_CARD = {
         const isCorpse = app._isCorpse(unit);
         const isLeader = isParty && app._getPartyLeader() === unit;
         const unitName = unit.name || 'party member';
+        const escapedUnitName = app._escapeHtml(unitName);
         const roleLabel = isAlly ? app._escapeHtml(app._partyRoleLabel(app._getPartyRole(unit))) : '';
         const canDragPartyMember = isAlly && !app.combatState.active;
         const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
@@ -152,6 +153,12 @@ const YAW_UNIT_CARD = {
         const turnBadge = app._turnOrderBadge(unit);
         const combatStatus = app._srOnly(app._combatStatusText(unit), 'role="status" aria-live="polite"');
         const compactStatus = app._escapeHtml(`${isParty ? (isPlayer ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
+        const unitMeta = [
+            isLeader ? `<span class="unit-meta-badge leader">${app._escapeHtml(app._label('party.leader', 'Leader'))}</span>` : '',
+            roleLabel ? `<span class="unit-meta-badge">${roleLabel}</span>` : '',
+            dispLabel ? `<span class="unit-meta-badge">${app._escapeHtml(dispLabel)}</span>` : '',
+            turnBadge
+        ].filter(Boolean).join('');
         const statLabels = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
@@ -163,7 +170,8 @@ const YAW_UNIT_CARD = {
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">
-                            <div class="unit-name">${unit.name} ${isLeader ? '<span style="font-size:10px;color:var(--accent-primary)">[Leader]</span>' : ''} ${roleLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + roleLabel + ']</span>' : ''} ${dispLabel ? '<span style="font-size:10px;color:var(--text-muted)">[' + dispLabel + ']</span>' : ''}${turnBadge}</div>
+                            <div class="unit-name">${escapedUnitName}</div>
+                            ${unitMeta ? `<div class="unit-meta">${unitMeta}</div>` : ''}
                             ${combatStatus}
                             <div class="unit-card-status">${compactStatus}</div>
                             ${app._unitTacticalBars(unit)}

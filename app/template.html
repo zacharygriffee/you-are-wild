@@ -3820,35 +3820,9 @@
             </div>
         </div>
 
-        <!-- Mobile Action Bar - switches between combat and exploration modes -->
+        <!-- Legacy mobile action bar shell; combat intents live in the mobile combat toolbelt. -->
         <div class="mobile-action-bar" id="mobile-actions" style="display: none;">
-            <!-- Combat buttons -->
-            <div id="mobile-combat-actions" class="action-bar" style="display: none;">
-                <button class="action-btn primary" title="Fight" aria-label="Fight" data-i18n-title="action.fight" data-i18n-aria-label="action.fight" onclick="combatAction('fight')">
-                    <span class="action-icon" aria-hidden="true">⚔️</span>
-                    <span class="action-caption" data-i18n="action.fight">Fight</span>
-                </button>
-                <button class="action-btn" title="Talk" aria-label="Talk" data-i18n-title="action.flirt" data-i18n-aria-label="action.flirt" onclick="combatAction('flirt')">
-                    <span class="action-icon" aria-hidden="true">😘</span>
-                    <span class="action-caption" data-i18n="action.flirt">Talk</span>
-                </button>
-                <button class="action-btn" title="Eat" aria-label="Eat" data-i18n-title="action.feast" data-i18n-aria-label="action.feast" onclick="combatAction('feast')">
-                    <span class="action-icon" aria-hidden="true">🍽️</span>
-                    <span class="action-caption" data-i18n="action.feast">Eat</span>
-                </button>
-                <button class="action-btn" title="Play" aria-label="Play" data-i18n-title="action.fuck" data-i18n-aria-label="action.fuck" onclick="combatAction('fuck')">
-                    <span class="action-icon" aria-hidden="true">💕</span>
-                    <span class="action-caption" data-i18n="action.fuck">Play</span>
-                </button>
-                <button class="action-btn" title="Feed" aria-label="Feed" data-i18n-title="action.feed" data-i18n-aria-label="action.feed" onclick="combatAction('feed')">
-                    <span class="action-icon" aria-hidden="true">🍲</span>
-                    <span class="action-caption" data-i18n="action.feed">Feed</span>
-                </button>
-                <button class="action-btn" title="Flee" aria-label="Flee" data-i18n-title="action.flee" data-i18n-aria-label="action.flee" onclick="combatAction('flee')">
-                    <span class="action-icon" aria-hidden="true">🏃</span>
-                    <span class="action-caption" data-i18n="action.flee">Flee</span>
-                </button>
-            </div>
+            <div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>
         </div>
 
         <!-- Backdrop for closing mobile panels by tapping outside -->

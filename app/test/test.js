@@ -3632,7 +3632,8 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n="ui.log.createdCharacter"', 'Initial character-created log should opt into localization');
   assertContains(template, 'data-i18n-title="action.search"', 'Static search action title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="action.rest"', 'Static rest action accessible label should opt into localization');
-  assertContains(template, 'data-i18n="action.fight"', 'Static combat action fallback should opt into localization');
+  assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'Legacy mobile combat shell should not ship static fallback buttons');
+  assertContains(mobileCombatToolbeltContent, 'app._combatActionButtons(actor', 'Mobile combat toolbelt should use the shared localized combat action helper');
   assertNotContains(template, 'onclick="App.showInventory()"', 'Static shell should not expose carried inventory from center context');
   assertContains(template, 'data-i18n="ui.tutorial.skip"', 'Tutorial skip button should opt into localization');
   assertContains(template, 'data-i18n="ui.tutorial.next"', 'Tutorial next button should opt into localization');
@@ -3875,6 +3876,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
   assertContains(template, '.mobile-combat-intents .unit-actions', 'mobile combat toolbelt should own a shared intent action row');
+  assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');
+  assertNotContains(template, 'onclick="combatAction(\'fight\')"', 'legacy mobile action bar should not ship duplicate Fight controls');
   assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet .mobile-selection-sentence', 'mobile combat should suppress the lower duplicate scene selection sentence');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');

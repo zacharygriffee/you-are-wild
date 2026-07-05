@@ -2679,13 +2679,63 @@
                 background: var(--bg-secondary);
             }
 
-            .mobile-log-summary {
-                color: var(--text-muted);
-                font-size: 12px;
-                margin-top: 8px;
-                border-top: 1px solid var(--border-subtle);
-                padding-top: 8px;
-            }
+        .mobile-log-summary {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mobile-activity-log {
+            margin-top: 8px;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 8px;
+        }
+
+        .mobile-activity-log-summary {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .mobile-activity-log-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .mobile-activity-log-title {
+            flex: 0 0 auto;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 10px;
+        }
+
+        .mobile-activity-log[open] .mobile-log-summary {
+            display: none;
+        }
+
+        .mobile-log-list {
+            margin-top: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .mobile-log-list .log-entry {
+            margin-bottom: 6px;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
 
             .scene-actions {
                 display: none;
@@ -3281,7 +3331,13 @@
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
 	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
-	                                <div class="mobile-log-summary" id="mobile-log-summary" data-i18n="ui.welcomeLog">Welcome to You Are Wild</div>
+	                                <details class="mobile-activity-log" id="mobile-activity-log">
+	                                    <summary class="mobile-activity-log-summary" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
+	                                        <span class="mobile-activity-log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span></span>
+	                                        <span class="mobile-log-summary" id="mobile-log-summary" data-i18n="ui.welcomeLog">Welcome to You Are Wild</span>
+	                                    </summary>
+	                                    <div class="mobile-log-list" id="mobile-log-list" aria-live="polite" aria-relevant="additions text"></div>
+	                                </details>
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
@@ -3345,7 +3401,7 @@
             <!-- Log Panel -->
             <div class="panel-log">
                 <div class="log-header">
-                    <span class="log-title">📜 <span data-i18n="ui.combatLog">Combat Log</span><span class="log-collapsed-summary" id="log-collapsed-summary"></span></span>
+                    <span class="log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span><span class="log-collapsed-summary" id="log-collapsed-summary"></span></span>
                     <div class="log-header-actions">
                         <button class="nav-btn log-layout-toggle" id="log-toggle-collapse" style="padding: 2px 8px; font-size: 10px;" title="Minimize log" aria-label="Minimize log" data-i18n-title="ui.log.minimize" data-i18n-aria-label="ui.log.minimize" data-i18n="ui.log.minimize" onclick="App.toggleLogCollapsed()">Minimize</button>
                         <button class="nav-btn log-layout-toggle" id="log-toggle-expand" style="padding: 2px 8px; font-size: 10px;" title="Expand log" aria-label="Expand log" data-i18n-title="ui.log.expand" data-i18n-aria-label="ui.log.expand" data-i18n="ui.log.expand" onclick="App.toggleLogExpanded()">Expand</button>

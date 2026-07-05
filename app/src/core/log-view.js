@@ -164,7 +164,7 @@ const YAW_LOG_VIEW = {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `combat-log-${Date.now()}.txt`;
+                a.download = `activity-log-${Date.now()}.txt`;
                 if (typeof a.click === 'function') a.click();
                 URL.revokeObjectURL(url);
             } catch(e) {}
@@ -172,17 +172,18 @@ const YAW_LOG_VIEW = {
         return text;
     },
 
+    renderEntry(app, entry, indexFromEnd = 0) {
+        const type = entry.type || 'discovery';
+        const meta = this.categoryMeta(app, type);
+        let cn = 'log-entry';
+        if (type) cn += ` ${type}`;
+        return `<div class="${cn}" role="status"><span class="log-time">${app._escapeHtml(this.timestamp(app, entry, indexFromEnd))}</span><span class="log-category" aria-label="${app._escapeHtml(meta.label)}"><span aria-hidden="true">${app._escapeHtml(meta.icon)}</span> ${app._escapeHtml(meta.label)}</span>${app._escapeHtml(entry.text)}</div>`;
+    },
+
     render(app) {
         const container = document.getElementById('log-content');
         const filtered = this.filteredEntries(app);
-        const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => {
-            const indexFromEnd = visibleIndex;
-            const type = e.type || 'discovery';
-            const meta = this.categoryMeta(app, type);
-            let cn = 'log-entry';
-            if (type) cn += ` ${type}`;
-            return `<div class="${cn}" role="status"><span class="log-time">${app._escapeHtml(this.timestamp(app, e, indexFromEnd))}</span><span class="log-category" aria-label="${app._escapeHtml(meta.label)}"><span aria-hidden="true">${app._escapeHtml(meta.icon)}</span> ${app._escapeHtml(meta.label)}</span>${app._escapeHtml(e.text)}</div>`;
-        }).join('');
+        const entries = filtered.slice(-20).reverse().map((e, visibleIndex) => this.renderEntry(app, e, visibleIndex)).join('');
         if (container) container.innerHTML = entries || `<div class="log-entry text-muted">${app._escapeHtml(app._label('log.noEntriesMatchFilter', 'No log entries match the current filter.'))}</div>`;
         document.querySelectorAll?.('.log-filter-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.logFilter === (app.logFilter || 'all'));
@@ -193,6 +194,13 @@ const YAW_LOG_VIEW = {
         if (mobileLog) {
             const latest = app.log[app.log.length - 1];
             mobileLog.textContent = latest ? latest.text : app._label('ui.welcomeLog', 'Welcome to You Are Wild');
+        }
+        const mobileList = document.getElementById('mobile-log-list');
+        if (mobileList) {
+            const recent = (app.log || []).slice(-5).reverse();
+            mobileList.innerHTML = recent.length
+                ? recent.map((entry, visibleIndex) => this.renderEntry(app, entry, visibleIndex)).join('')
+                : `<div class="log-entry text-muted">${app._escapeHtml(app._label('ui.welcomeLog', 'Welcome to You Are Wild'))}</div>`;
         }
         const collapsedSummary = document.getElementById('log-collapsed-summary');
         if (collapsedSummary) {

@@ -3535,6 +3535,7 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Expand or collapse creature cards"', 'Creature panel expand control should expose accessible label');
   assertContains(template, 'aria-label="Export visible log entries"', 'Log export control should expose accessible label');
   assertContains(template, 'aria-label="Show combat log entries"', 'Combat log filter should expose accessible label');
+  assertContains(template, 'aria-label="Open activity log"', 'Mobile activity log summary should expose accessible label');
 });
 
 test('Settings expose language selector', () => {
@@ -12240,7 +12241,10 @@ test('Perk state persists through binary saves', () => {
   assertEqual(loaded.questState.pendingPerkChoices, 1, 'Pending perk choices should persist');
 });
 
-test('Combat log template exposes filters search and export controls', () => {
+test('Activity log template exposes filters search export and mobile controls', () => {
+  assertContains(template, 'data-i18n="ui.activityLog">Activity Log', 'Desktop log should be labeled as the general activity log');
+  assertContains(template, 'id="mobile-activity-log"', 'Mobile should expose a collapsible activity log');
+  assertContains(template, 'id="mobile-log-list"', 'Mobile activity log should expose recent entries');
   assertContains(template, 'data-log-filter="all"', 'Log should expose All filter');
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');
@@ -12252,6 +12256,7 @@ test('Combat log template exposes filters search and export controls', () => {
   assertContains(appContent, 'loadLogViewPreferences()', 'Log view preferences should load during init');
   assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
   assertContains(template, '.log-category', 'Log category badge style should exist');
+  assertContains(template, '.mobile-activity-log', 'Mobile activity log style should exist');
   assertContains(template, '#app.log-collapsed', 'Log collapsed layout style should exist');
   assertContains(template, '#app.log-expanded', 'Log expanded layout style should exist');
 });
@@ -12357,7 +12362,7 @@ test('Combat log expand and minimize states persist and stay exclusive', () => {
   assertEqual(root.classList.contains('log-expanded'), false, 'Restored log should remove expanded class');
 });
 
-test('Combat log renders relative timestamps and status role', () => {
+test('Activity log renders relative timestamps status role and mobile recent entries', () => {
   const { App, elements } = loadAppForCombat();
   App.updateLanguage('es');
   App.log = [];
@@ -12375,6 +12380,8 @@ test('Combat log renders relative timestamps and status role', () => {
   assertContains(html, 'class="log-category"', 'Log entries should show category badges');
   assertContains(html, 'aria-label="Combat"', 'Combat category badge should expose an accessible label');
   assertContains(html, '⚔️</span> Combat', 'Combat category badge should show icon and label');
+  assertContains(elements.get('mobile-log-list').innerHTML, 'Latest entry', 'Mobile activity log should show latest entries');
+  assertContains(elements.get('mobile-log-list').innerHTML, 'Older entry', 'Mobile activity log should show recent history');
 });
 
 test('Combat log entries capture round turn and actor metadata at creation', () => {
@@ -13025,7 +13032,7 @@ test('Deleting from new-game slot mode keeps the new-run flow active', async () 
   assertNotContains(html, 'Save and continue in Slot 2', 'New-game slot mode should not switch back to in-game save actions after delete');
 });
 
-test('Combat log export returns filtered text', () => {
+test('Activity log export returns filtered text', () => {
   const { App } = loadAppForCombat();
   App.log = [
     { text: 'Wolf attacks', type: 'combat' },

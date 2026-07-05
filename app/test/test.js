@@ -3786,12 +3786,16 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
-  assertContains(template, '--mobile-scene-height: 132px;', 'mobile scene and activity area should use a stable exploration height');
+  assertContains(template, '--mobile-scene-height: 148px;', 'mobile scene and activity area should use a stable exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
   assertContains(template, 'height: var(--mobile-scene-height);', 'mobile scene and activity area should lock map position');
   assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should scroll before pushing the map down');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
   assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile map should sit directly below semantics for thumb reach');
+  assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
+  assertContains(template, '.mobile-map-card .mini-map {\n                flex: 1 1 auto;', 'mobile navigation map should fill the lower card space');
+  assertContains(template, 'justify-content: flex-end;', 'mobile navigation map should stay near the lower thumb area');
+  assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-panel-dock {\n                order: 3;', 'mobile panel shortcuts should sit below the navigation map');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');

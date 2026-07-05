@@ -2193,7 +2193,7 @@
         @media (max-width: 1024px) {
             :root {
                 --mobile-actions-height: 0px;
-                --mobile-scene-height: 132px;
+                --mobile-scene-height: 148px;
             }
 
             :root.mobile-combat-active {
@@ -2345,10 +2345,12 @@
 
             .mobile-map-card {
                 order: 2;
+                display: flex;
+                flex-direction: column;
                 padding: 10px;
                 flex: 1 1 auto;
-                min-height: 230px;
-                overflow: auto;
+                min-height: 214px;
+                overflow: hidden;
             }
 
             .mobile-map-header,
@@ -2364,7 +2366,18 @@
             }
 
             .mobile-map-card .mini-map {
-                min-height: 190px;
+                flex: 1 1 auto;
+                min-height: 0;
+                justify-content: flex-end;
+                padding-bottom: 0;
+            }
+
+            .mobile-tile-info {
+                flex: 0 0 auto;
+                margin: 0 0 8px;
+                font-size: 11px;
+                line-height: 1.38;
+                color: var(--text-secondary);
             }
 
             .mobile-map-card .map-tile {
@@ -3349,10 +3362,10 @@
 	                                    <span>Map</span>
 	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
-	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
-	                                <div class="tile-info mobile-tile-info" id="mobile-tile-info" aria-live="polite" style="margin-top:8px;font-size:11px;line-height:1.45;color:var(--text-secondary);">
+	                                <div class="tile-info mobile-tile-info" id="mobile-tile-info" aria-live="polite">
 	                                    <!-- Populated by App.renderMap() -->
 	                                </div>
+	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
 	                                <div class="mobile-strip-card" id="mobile-party-card">

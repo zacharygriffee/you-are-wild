@@ -3813,6 +3813,7 @@ test('Tile event feed is ephemeral scene presentation', () => {
 test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-play-surface"', 'mobile play surface missing');
   assertContains(template, 'id="mobile-mini-map"', 'mobile map surface missing');
+  assertContains(template, 'id="mobile-move-pad"', 'mobile movement pad should mirror traversal near the thumb zone');
   assertContains(template, 'id="mobile-party-card"', 'mobile party strip card should be addressable for combat ordering');
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
@@ -3823,10 +3824,13 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'height: var(--mobile-scene-height);', 'mobile scene and activity area should lock map position');
   assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should scroll before pushing the map down');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
-  assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile map should sit directly below semantics for thumb reach');
+  assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile play surface should sit directly below semantics for thumb reach');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
-  assertContains(template, '.mobile-map-card .mini-map {\n                flex: 1 1 auto;', 'mobile navigation map should fill the lower card space');
-  assertContains(template, 'justify-content: flex-end;', 'mobile navigation map should stay near the lower thumb area');
+  assertContains(template, 'grid-template-columns: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should use a true 3x3 surface with a larger center');
+  assertContains(template, 'grid-template-rows: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should reserve a larger center row');
+  assertContains(template, '.mobile-move-pad {\n                display: grid;', 'mobile movement pad should be a bottom thumb control');
+  assertContains(template, "onclick=\"App.move(-1,-1)\"", 'mobile movement pad should mirror northwest traversal');
+  assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-panel-dock {\n                order: 3;', 'mobile panel shortcuts should sit below the navigation map');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
@@ -3848,6 +3852,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');
   assertContains(appContent, 'renderMobileCombatToolbelt()', 'mobile combat toolbelt renderer missing');
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'local map renderer should target mobile map');
+  assertContains(localMapContent, "data-mobile-play-cell=\"${key}\"", 'local map renderer should emit stable mobile play-cell metadata');
+  assertContains(localMapContent, 'moveable: !isCenter && isVisible', 'mobile 3x3 movement cells should dispatch through normal movement');
 });
 
 test('Battle mode contract keeps combat panel-first', () => {
@@ -8603,7 +8609,7 @@ test('Restored world state populates current tile creatures', () => {
   assertEqual(App.worldMap.get('2,3').structureSpawned, true, 'Restored tile should keep structureSpawned');
 });
 
-test('Minimap resolves adjacent tile biomes without exploring them', () => {
+test('Mobile play surface resolves only the 3x3 traversal neighborhood without exploring it', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');
   App.party = [App.player];
@@ -8616,8 +8622,13 @@ test('Minimap resolves adjacent tile biomes without exploring them', () => {
   assert(adjacentTile, 'Adjacent minimap tile should be resolved into worldMap');
   assertEqual(App.exploredTiles.has('1,0'), false, 'Resolved adjacent tile should not be marked explored');
   const adjacentBiome = App.biomes[adjacentTile.biome];
-  assertContains(elements.get('mobile-mini-map').innerHTML, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile minimap');
-  assertContains(elements.get('mobile-mini-map').innerHTML, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
+  const html = elements.get('mobile-mini-map').innerHTML;
+  assertEqual((html.match(/data-mobile-play-cell=/g) || []).length, 9, 'Mobile routine play should render exactly 9 traversal cells');
+  assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
+  assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');
+  assertContains(html, 'onclick="App.move(1,0)"', 'Mobile east cell should use normal movement dispatch');
+  assertContains(html, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile play surface');
+  assertContains(html, adjacentBiome.name, 'Adjacent tile biome name should be available as label');
 });
 
 test('Map tile visuals expose tileset keys while preserving base biome identity', () => {
@@ -9659,7 +9670,7 @@ test('Night encounter table favors nocturnal species and suppresses diurnal spec
   assertEqual(table.find(entry => entry.id === 'wolf').weight, 10, 'Neutral species weight should stay stable');
 });
 
-test('Night map visibility shrinks unless the party has darkvision', () => {
+test('Night map visibility policy shrinks while mobile play remains local', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');
   App.party = [App.player];
@@ -9674,13 +9685,15 @@ test('Night map visibility shrinks unless the party has darkvision', () => {
   farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
+  assertEqual(App._mapVisibilityRadius(), 1, 'Night visibility should shrink without darkvision');
   assertNotContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Far explored tile should be hidden by night visibility');
   App.player.darkvision = true;
   App.renderMap();
-  assertContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Darkvision should restore full minimap visibility');
+  assertEqual(App._mapVisibilityRadius(), App.DAY_VISIBILITY_RADIUS, 'Darkvision should restore full review-map visibility');
+  assertNotContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Mobile routine play should stay scoped to the 3x3 traversal surface');
 });
 
-test('Scout party role improves night map visibility', () => {
+test('Scout party role improves night review-map visibility while mobile play remains local', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const scout = makeUnit('Scout', { id: 'scout-1', partyRole: 'scout' });
   App.player = makeUnit('You');
@@ -9696,7 +9709,8 @@ test('Scout party role improves night map visibility', () => {
   farTile.overlays = { road: null, bridge: null, poi: null, structure: null };
   farTile.explored = true;
   App.renderMap();
-  assertContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Scout role should recover one tile of night visibility');
+  assertEqual(App._mapVisibilityRadius(), App.DAY_VISIBILITY_RADIUS, 'Scout role should recover review-map visibility at night');
+  assertNotContains(elements.get('mobile-mini-map').innerHTML, App.biomes.cave.icon, 'Mobile routine play should stay scoped to adjacent traversal even when review visibility improves');
 });
 
 test('Diurnal creatures spawned at night start asleep', () => {

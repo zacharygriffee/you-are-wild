@@ -2369,7 +2369,13 @@
             .mobile-map-card .mini-map {
                 flex: 1 1 auto;
                 min-height: 0;
-                justify-content: flex-end;
+                display: grid;
+                grid-template-columns: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);
+                grid-template-rows: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);
+                gap: 6px;
+                align-items: stretch;
+                justify-content: center;
+                align-content: end;
                 padding-bottom: 0;
             }
 
@@ -2382,9 +2388,39 @@
             }
 
             .mobile-map-card .map-tile {
-                width: clamp(42px, 13vw, 56px);
-                height: clamp(42px, 13vw, 56px);
+                width: auto;
+                height: auto;
+                min-width: 0;
+                min-height: 0;
                 font-size: 20px;
+            }
+
+            .mobile-map-card .map-tile.center {
+                font-size: 28px;
+            }
+
+            .mobile-move-pad {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(38px, 48px));
+                grid-auto-rows: 34px;
+                gap: 4px;
+                justify-content: center;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid var(--border-subtle);
+            }
+
+            .mobile-move-pad .nav-btn {
+                min-width: 0;
+                min-height: 0;
+                padding: 4px;
+                font-size: 15px;
+                line-height: 1;
+            }
+
+            .mobile-move-pad .mobile-move-pad-center {
+                color: var(--text-muted);
+                cursor: default;
             }
 
             .mobile-unit-strips {
@@ -3363,13 +3399,24 @@
 	                        <div class="mobile-play-surface" id="mobile-play-surface">
 	                            <div class="mobile-map-card">
 	                                <div class="mobile-map-header">
-	                                    <span>Map</span>
+	                                    <span>Play</span>
 	                                    <span><span id="mobile-time-display">☀️ 08:00</span> · <span id="mobile-coords" style="font-family: var(--font-mono);">0, 0</span></span>
 	                                </div>
 	                                <div class="tile-info mobile-tile-info" id="mobile-tile-info" aria-live="polite">
 	                                    <!-- Populated by App.renderMap() -->
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
+	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad">
+	                                    <button class="nav-btn" title="Northwest" aria-label="Move northwest" onclick="App.move(-1,-1)">↖</button>
+	                                    <button class="nav-btn" title="North" aria-label="Move north" onclick="App.move(0,-1)">↑</button>
+	                                    <button class="nav-btn" title="Northeast" aria-label="Move northeast" onclick="App.move(1,-1)">↗</button>
+	                                    <button class="nav-btn" title="West" aria-label="Move west" onclick="App.move(-1,0)">←</button>
+	                                    <button class="nav-btn mobile-move-pad-center" title="Current tile" aria-label="Current tile" disabled>⌾</button>
+	                                    <button class="nav-btn" title="East" aria-label="Move east" onclick="App.move(1,0)">→</button>
+	                                    <button class="nav-btn" title="Southwest" aria-label="Move southwest" onclick="App.move(-1,1)">↙</button>
+	                                    <button class="nav-btn" title="South" aria-label="Move south" onclick="App.move(0,1)">↓</button>
+	                                    <button class="nav-btn" title="Southeast" aria-label="Move southeast" onclick="App.move(1,1)">↘</button>
+	                                </div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
 	                                <div class="mobile-strip-card" id="mobile-party-card">

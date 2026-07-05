@@ -3852,6 +3852,11 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-panel-dock {\n                order: 3;', 'mobile panel shortcuts should sit below the navigation map');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
+  assertContains(template, '.mobile-panel-close {\n            display: none;', 'mobile panel close buttons should not alter persistent desktop panels');
+  assertContains(template, '.mobile-panel-close {\n                display: inline-flex;', 'mobile panel close buttons should be available in mobile drawers');
+  assertContains(template, 'aria-label="Close party"', 'mobile party panel should have an explicit close control');
+  assertContains(template, 'aria-label="Close creatures"', 'mobile creature panel should have an explicit close control');
+  assertContains(template, 'onclick="App.closeAllPanels()">×</button>', 'mobile panel close controls should dismiss active drawers');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips', 'combat mode should size unit strips independently from the scene summary');

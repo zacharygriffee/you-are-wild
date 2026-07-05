@@ -274,6 +274,16 @@
             color: var(--text-secondary);
         }
 
+        .panel-header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mobile-panel-close {
+            display: none;
+        }
+
         .panel-content {
             flex: 1;
             overflow: auto;
@@ -2476,6 +2486,12 @@
                 -webkit-overflow-scrolling: touch;
             }
 
+            .mobile-panel-close {
+                display: inline-flex;
+                padding: 2px 8px;
+                font-size: 11px;
+            }
+
             .scene-display {
                 display: none;
             }
@@ -3690,7 +3706,10 @@
                 <div class="panel panel-party" id="panel-party">
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
+                        <span class="panel-header-actions">
+                            <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
+                            <button class="nav-btn mobile-panel-close" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+                        </span>
                     </div>
                     <div class="panel-content" id="party-content">
                         <!-- Populated by JS -->
@@ -3701,7 +3720,10 @@
                 <div class="panel panel-enemies" id="panel-enemies">
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
-                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
+                        <span class="panel-header-actions">
+                            <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
+                            <button class="nav-btn mobile-panel-close" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+                        </span>
                     </div>
                     <div class="panel-content" id="enemies-content">
                         <p style="color: var(--text-muted); text-align: center;">No enemies present</p>

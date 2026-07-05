@@ -2033,6 +2033,8 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'const YAW_MOBILE_COMBAT_TOOLBELT = {', 'Mobile combat toolbelt helper should expose the toolbelt service');
   assertContains(mobileCombatToolbeltContent, 'prompt(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own prompt text selection');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
+  assertContains(mobileCombatToolbeltContent, 'selectionSentence(app)', 'Mobile combat toolbelt helper should own the combat actor target intent sentence');
+  assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.combatSentence(app)', 'Mobile combat toolbelt sentence should reuse canonical combat selection state');
   assertContains(mobileCombatToolbeltContent, 'render(app)', 'Mobile combat toolbelt helper should own DOM rendering');
   assertContains(mobileCombatToolbeltContent, "app._combatActionButtons(actor", 'Mobile combat toolbelt should reuse the shared combat action button path');
   assertContains(appContent, 'YAW_MOBILE_COMBAT_TOOLBELT.render(this)', 'App mobile combat toolbelt wrapper should delegate to the helper');
@@ -3873,6 +3875,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
   assertContains(template, '.mobile-combat-intents .unit-actions', 'mobile combat toolbelt should own a shared intent action row');
+  assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet .mobile-selection-sentence', 'mobile combat should suppress the lower duplicate scene selection sentence');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
@@ -9873,6 +9877,10 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You to act', 'Mobile combat toolbelt should show current party actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-selection-sentence', 'Mobile combat toolbelt should show the current actor target intent sentence');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actors', 'Mobile combat selection sentence should label the actor');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('fight')", 'Mobile combat intent belt should expose Fight through the shared dispatcher');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('flee')", 'Mobile combat intent belt should expose Flee through the shared dispatcher');
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
@@ -9882,6 +9890,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.selectTarget('fight');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should not duplicate selected target guidance');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick a target in the enemy strip', 'Mobile combat toolbelt should not prompt target selection from strips');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targets', 'Mobile combat selected intent should make target state visible');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick target', 'Mobile combat selected intent should tell the player target selection is pending');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Fight', 'Mobile combat selected intent should show the safe visible action label');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
 

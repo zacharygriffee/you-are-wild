@@ -24,6 +24,13 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         return `<div class="mobile-combat-intents" role="group" aria-label="${label}">${buttons}</div>`;
     },
 
+    selectionSentence(app) {
+        if (!app.combatState?.active || typeof YAW_INTERACTION_STATE === 'undefined') return '';
+        const parts = YAW_INTERACTION_STATE.combatSentence(app);
+        const html = YAW_INTERACTION_STATE.sentenceHtml(app, parts);
+        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" aria-live="polite">${html}</div>` : '';
+    },
+
     render(app) {
         const surface = document.getElementById('mobile-play-surface');
         const belt = document.getElementById('mobile-combat-toolbelt');
@@ -44,8 +51,9 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
         const prompt = this.prompt(app, actor);
+        const sentence = this.selectionSentence(app);
         const intents = this.intentButtons(app, actor);
-        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div><div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>${intents}`;
+        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div>${sentence}<div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>${intents}`;
         belt.className = 'mobile-combat-toolbelt active';
         belt.innerHTML = html;
         return html;

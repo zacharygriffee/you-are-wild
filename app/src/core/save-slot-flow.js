@@ -129,8 +129,8 @@ const YAW_SAVE_SLOT_FLOW = {
                 app._removeStoredValue('lastSaveTime');
             }
             if (app._normalizeSaveSlotName(app.activeSlot) === slotName) app.activeSlot = 'slot1';
-            await app.refreshContinueButton();
             app.showSaveManager(app.saveManagerMode || 'load');
+            await app.refreshContinueButton();
             app._pruneUnreferencedWorldStore().catch(e => console.warn('World cleanup skipped after delete', e));
             return true;
         } catch (e) { alert(app._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }

@@ -222,8 +222,8 @@
             _contextActionButton(key) {
                 return YAW_CENTER_CONTEXT.actionButton(this, key);
             },
-            _renderContextActions(includePanels = false) {
-                return YAW_CENTER_CONTEXT.renderActions(this, includePanels);
+            _renderContextActions() {
+                return YAW_CENTER_CONTEXT.renderActions(this);
             },
             _buildInteractionCommand(context = {}) {
                 return YAW_INTERACTION_DISPATCH.buildCommand(this, context);

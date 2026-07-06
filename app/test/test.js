@@ -2593,7 +2593,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
-  assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this)', 'App center context action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.actionKeys(this)', 'App center context action keys should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
@@ -3873,7 +3873,10 @@ test('Mobile game shell prevents horizontal overflow', () => {
 test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, 'transform: translateX(-110%)', 'mobile map panel should use transform overlay');
   assertContains(template, 'transform: translateX(110%)', 'mobile side panels should use transform overlay');
-  assertContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'shared context action helper should still know panel shortcut handlers for compatibility');
+  assertNotContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'shared context action helper should not own drawer shortcut handlers');
+  assertNotContains(centerContextContent, "togglePanel('map')", 'shared context action helper should not own map drawer shortcuts');
+  assertNotContains(centerContextContent, "togglePanel('party')", 'shared context action helper should not own party drawer shortcuts');
+  assertNotContains(centerContextContent, "togglePanel('enemies')", 'shared context action helper should not own creature drawer shortcuts');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, "onclick=\"togglePanel('enemies')\"", 'mobile dock should expose creatures panel');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
@@ -7998,7 +8001,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
   assertNotContains(actionsHtml, 'target.clear', 'Selected-target actions should not render raw clear locale keys');
   assertNotContains(actionsHtml, "openExplorationTargetSubActionSheet('flirt','desktop-target')", 'Composer selected-target actions should not require a second picker click for the default action');
-  const mobileActionsHtml = App._renderContextActions(true);
+  const mobileActionsHtml = App._renderContextActions();
   assertNotContains(mobileActionsHtml, "resolveExplorationTargetAction('flirt','tease','target-bar')", 'Mobile center action bar should not render actor-target actions');
   App.toggleExplorationTarget('party', 'actor-1');
   const actorTargetCard = App.renderUnitCard(actor, 0, 'party');
@@ -8706,7 +8709,7 @@ test('Structures expose enter action and create persistent interiors', () => {
   const context = App._centerTileContext();
   assertContains(context.title, 'Cabin', `Structure center context should include structure title. Got ${context.title}`);
   assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
-  assertContains(App._renderContextActions(false), 'App.enterStructure()', 'Structure center context should generate enter action');
+  assertContains(App._renderContextActions(), 'App.enterStructure()', 'Structure center context should generate enter action');
   App.showExplorationActions();
   assertNotContains(elements.get('desktop-context-belt').innerHTML, 'App.showInventory()', 'Structure context belt should not expose carried inventory');
   App.enterStructure();
@@ -8716,8 +8719,8 @@ test('Structures expose enter action and create persistent interiors', () => {
   assert(App.worldMap.get('0,0').interior, 'Interior should be stored on overworld tile for persistence');
   assertEqual(App.worldMap.get('0,0').items[0].name, 'Healing Herb', 'Entering a structure should preserve ground items instead of copying carried inventory');
   assertContains(App._contextActionKeys().join(','), 'exit', 'Interior center context should include exit action key');
-  assertContains(App._renderContextActions(false), 'App.exitStructure()', 'Interior center context should generate exit action');
-  assertNotContains(App._renderContextActions(false), 'App.enterStructure()', 'Interior center context should not keep stale enter action');
+  assertContains(App._renderContextActions(), 'App.exitStructure()', 'Interior center context should generate exit action');
+  assertNotContains(App._renderContextActions(), 'App.enterStructure()', 'Interior center context should not keep stale enter action');
 });
 
 test('Moving between tiles does not copy carried inventory into ground items', () => {
@@ -8758,14 +8761,14 @@ test('Center tile exposes only tile-local item pickup', () => {
 
   const context = App._centerTileContext();
   assertContains(context.description, 'Items here: Healing Herb.', 'Center context should summarize tile-local items');
-  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Center context should expose tile-local pickup');
-  assertNotContains(App._renderContextActions(false), 'App.showInventory()', 'Tile-local pickup should not expose carried inventory in the center');
+  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Center context should expose tile-local pickup');
+  assertNotContains(App._renderContextActions(), 'App.showInventory()', 'Tile-local pickup should not expose carried inventory in the center');
 
   assertEqual(App.takeTileItems(), true, 'Taking tile items should report a handled action');
   assertEqual(App.inventory.length, 1, 'Tile-local pickup should move the item into carried inventory');
   assertEqual(App.inventory[0].name, 'Healing Herb', 'Tile-local pickup should preserve item identity');
   assertEqual(App.worldMap.get('0,0').items.length, 0, 'Tile-local pickup should remove the item from the ground');
-  assertNotContains(App._renderContextActions(false), 'App.takeTileItems()', 'Tile-local pickup should disappear after the ground is empty');
+  assertNotContains(App._renderContextActions(), 'App.takeTileItems()', 'Tile-local pickup should disappear after the ground is empty');
   assertContains(App.log[App.log.length - 1].text, 'Picked up Healing Herb.', 'Tile-local pickup should log the item transfer');
   assertEqual(autoSaveCalls, 1, 'Tile-local pickup should autosave changed world and inventory state');
 });
@@ -8785,7 +8788,7 @@ test('Full inventory keeps tile-local item pickup stable', () => {
   assertEqual(App.takeTileItems(), true, 'Full inventory pickup should still report a handled center action');
   assertEqual(App.inventory.length, App.MAX_INVENTORY, 'Full inventory pickup should not overfill carried inventory');
   assertEqual(App.worldMap.get('0,0').items.length, 1, 'Full inventory pickup should keep tile-local items on the ground');
-  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Full inventory pickup should keep Take Items available for correction');
+  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Full inventory pickup should keep Take Items available for correction');
   assertContains(App.log[App.log.length - 1].text, 'Inventory is full.', 'Full inventory pickup should explain why nothing moved');
   assertEqual(autoSaveCalls, 1, 'Full inventory pickup should autosave feedback state');
 });
@@ -8808,7 +8811,7 @@ test('Dropping carried inventory creates tile-local pickup state', () => {
   assertEqual(App.worldMap.get('0,0').items[1].name, 'Old Coin', 'Dropped item should keep its item identity on the tile');
   assertEqual(App.getTileDelta(0, 0).items[1].name, 'Old Coin', 'Dropped item should persist through sparse tile deltas');
   assertContains(App._centerTileContext().description, 'Items here: Healing Herb, Old Coin.', 'Center context should summarize dropped tile-local items');
-  assertContains(App._renderContextActions(false), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the center');
+  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the center');
   assertContains(App.log[App.log.length - 1].text, 'Dropped Old Coin.', 'Dropping should log the item transfer');
   assertEqual(autoSaveCalls, 1, 'Dropping should autosave changed world and inventory state');
 });

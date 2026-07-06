@@ -119,22 +119,16 @@ const YAW_CENTER_CONTEXT = {
             rest: 'App.rest()',
             search: 'App.search()',
             takeItems: 'App.takeTileItems()',
-            stats: 'App.showCharacterStats()',
             setSafePlace: 'App.setSafeAnchorFromCurrentLocation()',
             enter: 'App.enterStructure()',
-            exit: 'App.exitStructure()',
-            map: "togglePanel('map')",
-            party: "togglePanel('party')",
-            enemies: "togglePanel('enemies')"
+            exit: 'App.exitStructure()'
         };
         return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '');
     },
 
-    renderActions(app, includePanels = false) {
+    renderActions(app) {
         const keys = this.actionKeys(app);
-        const panelKeys = includePanels ? ['stats', 'map', 'party', 'enemies'] : [];
-        const allKeys = [...keys, ...panelKeys];
-        return allKeys.map(key => this.actionButton(app, key)).join('');
+        return keys.map(key => this.actionButton(app, key)).join('');
     },
 
     renderCenterActions(app) {
@@ -142,7 +136,7 @@ const YAW_CENTER_CONTEXT = {
         const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
         const html = hasMarkedTargets
             ? app._renderExplorationTargetActions('desktop')
-            : this.renderActions(app, false);
+            : this.renderActions(app);
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';

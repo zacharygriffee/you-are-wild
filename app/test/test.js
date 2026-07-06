@@ -2169,7 +2169,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile party Mark chip should identify button-level target routing');
   assertContains(mobileUnitChipContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile creature Mark chip should identify button-level target routing');
   assertContains(mobileUnitChipContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Mobile combat Pick chip should identify button-level combat target routing');
-  assertContains(mobileUnitChipContent, "App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')", 'Mobile corpse chips should keep secondary-click intent acceleration');
+  assertNotContains(mobileUnitChipContent, 'showRadialIntentMenu', 'Mobile unit chips should not expose duplicate secondary-click intent menus');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
 });
 
@@ -6279,13 +6279,13 @@ test('Creature panel renders corpses as remains with target routing only', () =>
   assertNotContains(html, 'data-command-intent="loot"', 'Corpse card should not duplicate Loot intent metadata on the card');
   assertNotContains(html, 'data-command-intent="scavenge"', 'Corpse card should not duplicate Scavenge intent metadata on the card');
   assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
-  assertContains(html, "showIntentMenu('creature','fallen-1','desktop-card','desktop',event)", 'Desktop corpse card should open a desktop utility popover on secondary click');
+  assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop-card','desktop',event)", 'Desktop corpse card should not open a duplicate utility popover on secondary click');
   assertNotContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Desktop corpse card should not route secondary click through the mobile radial menu');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
 });
 
-test('Mobile creature strip marks corpse targets while long-press keeps utilities reachable', () => {
+test('Mobile creature strip and long-press mark corpse targets through the composer', () => {
   const { App, elements, body } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-mobile', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = makeUnit('You');
@@ -6302,15 +6302,12 @@ test('Mobile creature strip marks corpse targets while long-press keeps utilitie
   assertNotContains(html, 'data-command-intent="loot"', 'Mobile corpse chip should not duplicate Loot intent metadata on the chip');
   assertNotContains(html, 'data-command-intent="scavenge"', 'Mobile corpse chip should not duplicate Scavenge intent metadata on the chip');
   assertNotContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should not duplicate loot/scavenge behind a visible action menu');
-  assertContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should expose secondary-click radial menu');
+  assertNotContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should not expose a duplicate secondary-click radial menu');
   App.showMobileCreatureContext('fallen-mobile');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should open the radial intent presentation');
-  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile corpse long-press utility menu should identify the shared exploration utility grammar');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Mobile corpse long-press loot should expose stable utility intent metadata');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge"', 'Mobile corpse long-press scavenge should expose stable utility intent metadata');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Mobile corpse long-press close should expose a structural utility-menu exit');
-  assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','loot','longpress')", 'Mobile corpse long-press should dispatch loot through shared intent selection');
-  assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','longpress')", 'Mobile corpse long-press should dispatch scavenge through shared intent selection');
+  assert(App.explorationTargetIds.includes('creature:fallen-mobile'), 'Mobile corpse long-press should mark remains as the composer target');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','loot','panel-tray')", 'Marked mobile corpse should expose Loot through the visible composer tray');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','panel-tray')", 'Marked mobile corpse should expose Scavenge through the visible composer tray');
+  assertNotContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should not open a duplicate radial utility menu');
   assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','fallen-mobile','fight'", 'Mobile corpse long-press should not expose living primary action spam');
   App.closeIntentMenu();
 });
@@ -7560,10 +7557,10 @@ test('Contextual intent dispatch reports corpse loot and scavenge outcomes', () 
   App.party = [player];
   App.creatures = [lootCorpse, scavengeCorpse];
   App.inventory = [];
-  App.showIntentMenu('creature', 'corpse-loot-intent');
-  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','loot','sheet')", 'Corpse intent menu should dispatch loot through shared intent selection');
-  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','scavenge','sheet')", 'Corpse intent menu should dispatch scavenge through shared intent selection');
-  assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','corpse-loot-intent','fight'", 'Corpse intent menu should not expose living primary action spam');
+  assertEqual(App.showIntentMenu('creature', 'corpse-loot-intent'), false, 'Corpse intent menus should stay suppressed in favor of marked-target composer actions');
+  assertNotContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','loot','sheet')", 'Suppressed corpse menu should not duplicate Loot intent controls');
+  assertNotContains(body.innerHTML, "App.selectIntent('creature','corpse-loot-intent','scavenge','sheet')", 'Suppressed corpse menu should not duplicate Scavenge intent controls');
+  assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','corpse-loot-intent','fight'", 'Suppressed corpse menu should not expose living primary action spam');
   App.closeIntentMenu();
   assertEqual(App.selectIntent('creature', 'corpse-loot-intent', 'loot', 'sheet'), true, 'Loot intent should report handled corpse action');
   assertEqual(App.lastIntentCommand.action, 'loot', 'Loot intent should record selected contextual action');
@@ -14508,9 +14505,8 @@ test('Mobile context menus dismiss on outside pointer only', () => {
   const opener = makeElement();
   document.activeElement = opener;
   App.player = makeUnit('You');
-  App.party = [App.player];
-  App.creatures = [makeUnit('Remains', { id: 'corpse-outside', disposition: App.DISPOSITION.CORPSE, CPun: 0 })];
-  App.showIntentMenu('creature', 'corpse-outside');
+  App.party = [App.player, makeUnit('Ally', { id: 'ally-context-menu' })];
+  App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Mobile context dialog should reference its visible title');
   assertContains(body.innerHTML, 'id="mobile-context-menu-title"', 'Mobile context dialog title should be addressable');
   const menu = elements.get('mobile-context-menu');
@@ -15184,7 +15180,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(App._renderExplorationTargetActions('mobile-target'), 'aria-label="Comerciar Merchant"', 'Marked-target tray trade button should expose localized accessible label');
 });
 
-test('Desktop intent menu uses a bounded desktop surface', () => {
+test('Desktop card intent menus stay suppressed for composer-owned actions', () => {
   const { App, body, document, listeners, elements } = loadAppForCombat();
   const opener = makeElement();
   opener.getBoundingClientRect = () => ({ left: 420, top: 180, right: 520, bottom: 220 });
@@ -15209,44 +15205,23 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(App.showIntentMenu('creature', 'friendly-desktop', 'desktop'), false, 'Desktop living creature intent menu should stay suppressed in favor of marked-target controls');
   assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Suppressed living creature intent should not expose primary action popups');
 
-  App.showIntentMenu('creature', 'remains-desktop', 'desktop-card', 'desktop', { currentTarget: opener });
-  assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');
-  assertContains(body.innerHTML, 'class="desktop-intent-menu intent-menu intent-menu-desktop"', 'Desktop intent menu should use desktop-specific classes');
-  assertContains(body.innerHTML, 'data-intent-source="desktop-card"', 'Desktop card menus should identify their card source');
-  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop corpse menu should identify the shared exploration utility grammar');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Desktop corpse loot should expose stable utility intent metadata');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Desktop corpse close should expose a structural utility-menu exit');
-  assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop intent menu should not reuse the mobile bottom-sheet id');
-  assertContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop-card')", 'Desktop card corpse menu should keep contextual utility actions');
-  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','remains-desktop','fight','desktop')", 'Desktop corpse menu should not expose living primary actions');
-  assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop intent menu should use the shared intent close handler');
-  assertNotContains(body.innerHTML, 'App.closeMobileContextMenu()', 'Desktop intent menu should not emit the mobile-specific close handler');
-  const anchoredMenu = elements.get('desktop-intent-menu');
-  assertEqual(anchoredMenu.getAttribute('data-intent-position'), 'anchored', 'Desktop card menu should record anchored positioning');
-  assertEqual(anchoredMenu.style.left, '420px', 'Desktop card menu should anchor near the opener horizontally');
-  assertEqual(anchoredMenu.style.top, '226px', 'Desktop card menu should anchor below the opener vertically');
-  assertEqual(anchoredMenu.style.right, 'auto', 'Desktop card menu should not keep the fallback right edge when anchored');
-  assert(App._mobileContextOutsideHandler, 'Desktop intent menu should register outside pointer dismissal');
-  assert(listeners.has('pointerdown'), 'Desktop intent menu should listen for outside pointer dismissal');
-  const outsideDismissMenu = elements.get('desktop-intent-menu');
-  outsideDismissMenu.removed = undefined;
-  listeners.get('pointerdown')({ target: outsideDismissMenu });
-  assertEqual(outsideDismissMenu.removed, undefined, 'Pointer inside the desktop intent menu should not dismiss it');
-  listeners.get('pointerdown')({ target: body });
-  assertEqual(outsideDismissMenu.removed, true, 'Pointer outside the desktop intent menu should dismiss it');
-  assertEqual(App._mobileContextOutsideHandler, null, 'Closing desktop intent menu should clear outside pointer dismissal');
-  assertEqual(opener.focused, true, 'Outside dismissal should restore focus to the desktop opener');
+  const remainsHtml = App.renderUnitCard(remains, 1, 'creature');
+  assertNotContains(remainsHtml, "showIntentMenu('creature','remains-desktop','desktop-card','desktop',event)", 'Desktop remains card should not expose a duplicate utility context menu');
+  assertEqual(App.showIntentMenu('creature', 'remains-desktop', 'desktop-card', 'desktop', { currentTarget: opener }), false, 'Desktop corpse utility menus should stay suppressed in favor of marked-target composer controls');
+  assertNotContains(body.innerHTML, 'id="desktop-intent-menu"', 'Suppressed desktop corpse utility menu should not render a duplicate dialog');
+  assertNotContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop-card')", 'Suppressed desktop corpse utility menu should not duplicate Loot controls');
+  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','remains-desktop','fight','desktop')", 'Suppressed desktop corpse utility menu should not expose living primary actions');
 
   document.activeElement = opener;
-  App.showIntentMenu('creature', 'remains-desktop', 'desktop');
+  App.openIntentSubActionSheet('creature', 'friendly-desktop', 'flirt', 'desktop', { currentTarget: opener });
   assertContains(appContent, 'closeMobileContextMenu() {\n                return this.closeIntentMenu();', 'Legacy mobile context close method should delegate to the shared intent close handler');
-  assert(App._focusTrap, 'Desktop intent menus should activate the shared focus trap');
+  assert(App._focusTrap, 'Desktop sub-action intent menus should activate the shared focus trap');
   assert(listeners.has('keydown'), 'Desktop intent menus should register keyboard focus handling');
   const desktopMenu = elements.get('desktop-intent-menu');
   let prevented = false;
   listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
   assertEqual(prevented, true, 'Escape should be consumed by the desktop intent focus trap');
-  assertEqual(desktopMenu.removed, true, 'Escape should close the desktop intent menu');
+  assertEqual(desktopMenu.removed, true, 'Escape should close the desktop sub-action intent menu');
   assertEqual(opener.focused, true, 'Closing desktop intent menu should restore focus to the opener');
   App.selectIntent('creature', 'remains-desktop', 'loot', 'desktop');
   assertEqual(App.lastIntentCommand.source, 'desktop', 'Desktop menu selection should record its command source');
@@ -15441,7 +15416,7 @@ test('Mobile creature context actions route through shared intent dispatch', () 
   assertEqual(App.mobileCreatureContextAction('close', 'inspect-mobile-context'), false, 'Mobile creature context close should remain a canceled action');
 });
 
-test('Radial intent menu remains a corpse utility accelerator over shared dispatch', () => {
+test('Radial intent menu stays suppressed for composer-owned target actions', () => {
   const { App, body } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });
   const enemy = makeUnit('Enemy', { id: 'enemy-radial', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1 });
@@ -15454,18 +15429,15 @@ test('Radial intent menu remains a corpse utility accelerator over shared dispat
   assertNotContains(intentMenuContent, "App.openIntentSubActionSheet('${type}',${targetArg},'${action}','${commandSource}')", 'Corpse utility popup should not be able to branch into primary sub-action sheets');
   assertEqual(App.showRadialIntentMenu('creature', 'enemy-radial'), false, 'Radial living creature menus should stay suppressed in favor of marked-target actions');
   assertNotContains(body.innerHTML, 'intent-menu-radial', 'Suppressed living radial menu should not render duplicate primary actions');
-  App.showRadialIntentMenu('creature', 'corpse-radial');
-  assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
-  assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Radial helper should use its visible title as dialog label');
-  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Radial corpse menu should identify the shared exploration utility grammar');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Radial corpse loot should expose stable utility intent metadata');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Radial corpse close should expose a structural utility-menu exit');
-  assertContains(body.innerHTML, "App.selectIntent('creature','corpse-radial','loot','radial')", 'Radial corpse menu should route loot through shared intent selection');
-  assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','corpse-radial','fight','radial')", 'Radial corpse menu should not expose living primary actions');
-  App.selectIntent('creature', 'corpse-radial', 'loot', 'radial');
-  assertEqual(App.lastIntentCommand.source, 'radial', 'Radial accelerator should record its command source');
-  assertEqual(App.lastIntentCommand.action, 'loot', 'Radial accelerator should preserve selected utility action');
-  assertEqual(remains.looted, true, 'Radial accelerator should reuse existing contextual dispatch');
+  assertEqual(App.showRadialIntentMenu('creature', 'corpse-radial'), false, 'Radial corpse utility menus should stay suppressed in favor of marked-target composer actions');
+  assertNotContains(body.innerHTML, 'intent-menu-radial', 'Suppressed corpse radial menu should not render duplicate utility actions');
+  assertNotContains(body.innerHTML, "App.selectIntent('creature','corpse-radial','loot','radial')", 'Suppressed corpse radial menu should not duplicate Loot controls');
+  App.toggleExplorationTarget('creature', 'corpse-radial');
+  assertContains(App._renderExplorationTargetActions('mobile-target'), "App.selectIntent('creature','corpse-radial','loot','panel-tray')", 'Marked corpse should expose Loot through the composer tray');
+  App.selectIntent('creature', 'corpse-radial', 'loot', 'panel-tray');
+  assertEqual(App.lastIntentCommand.source, 'panel-tray', 'Composer corpse utility should record the composer command source');
+  assertEqual(App.lastIntentCommand.action, 'loot', 'Composer corpse utility should preserve selected utility action');
+  assertEqual(remains.looted, true, 'Composer corpse utility should reuse existing contextual dispatch');
 });
 
 test('Mobile creature long-press target marking is mode-safe and repeatable', () => {

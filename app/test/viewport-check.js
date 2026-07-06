@@ -431,16 +431,40 @@ async function checkViewport(browser, name, width, height) {
       App.showMobileCreatureContext('corpse-1');
     });
     await page.waitForTimeout(50);
-    const corpseMenu = await readContextMenuBounds('corpse menu');
-    assert(corpseMenu.exists, `${name}: corpse long-press menu should render`);
-    assert.strictEqual(corpseMenu.role, 'dialog', `${name}: corpse long-press menu should use dialog semantics`);
-    assert.strictEqual(corpseMenu.ariaModal, 'true', `${name}: corpse long-press menu should be modal`);
-    assert(corpseMenu.overflowY === 'auto' || corpseMenu.overflowY === 'scroll', `${name}: corpse long-press menu should be scrollable`);
-    assert(corpseMenu.top >= -1, `${name}: corpse long-press menu should not clip above viewport`);
-    assert(corpseMenu.left >= -1, `${name}: corpse long-press menu should not clip left`);
-    assert(corpseMenu.right <= corpseMenu.viewportWidth + 1, `${name}: corpse long-press menu should not clip right`);
-    assert(corpseMenu.bottom <= corpseMenu.viewportHeight + 1, `${name}: corpse long-press menu should not clip below viewport`);
-    if (corpseMenu.toolbarVisible) assert(corpseMenu.bottom <= corpseMenu.toolbarTop + 1, `${name}: corpse long-press menu should stay above mobile toolbar`);
+    const corpseComposer = await page.evaluate(() => {
+      const tray = document.getElementById('mobile-target-action-tray');
+      const trayRect = tray?.getBoundingClientRect();
+      const visibleButtons = tray
+        ? Array.from(tray.querySelectorAll('button')).filter(btn => {
+            const rect = btn.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          }).map(btn => {
+            const rect = btn.getBoundingClientRect();
+            return {
+              label: btn.textContent.trim(),
+              top: rect.top,
+              bottom: rect.bottom,
+              left: rect.left,
+              right: rect.right
+            };
+          })
+        : [];
+      return {
+        marked: App.explorationTargetIds.includes('creature:corpse-1'),
+        hasContextMenu: Boolean(document.getElementById('mobile-context-menu')),
+        hasRadialMenu: Boolean(document.querySelector('.intent-menu-radial')),
+        trayVisible: Boolean(trayRect && trayRect.width > 0 && trayRect.height > 0),
+        viewportHeight: innerHeight,
+        viewportWidth: innerWidth,
+        visibleButtons
+      };
+    });
+    assert(corpseComposer.marked, `${name}: corpse long-press should mark remains as the composer target`);
+    assert(!corpseComposer.hasContextMenu, `${name}: corpse long-press should not open duplicate context menu`);
+    assert(!corpseComposer.hasRadialMenu, `${name}: corpse long-press should not open duplicate radial menu`);
+    assert(corpseComposer.trayVisible, `${name}: corpse composer target tray should be visible`);
+    assert(corpseComposer.visibleButtons.some(btn => /loot/i.test(btn.label)), `${name}: corpse composer target tray should expose Loot`);
+    assert(corpseComposer.visibleButtons.some(btn => /scavenge/i.test(btn.label)), `${name}: corpse composer target tray should expose Scavenge`);
   } else {
     const desktopPanels = await page.evaluate(() => {
       const read = id => {
@@ -515,25 +539,12 @@ async function checkViewport(browser, name, width, height) {
 
     const livingIntentSuppressed = await page.evaluate(() => App.showIntentMenu('creature', 'creature-1', 'desktop', 'desktop') === false && !document.getElementById('desktop-intent-menu'));
     assert(livingIntentSuppressed, `${name}: living desktop intent menu should stay suppressed in favor of marked-target actions`);
-    await page.evaluate(() => App.showIntentMenu('creature', 'corpse-1', 'desktop', 'desktop'));
-    await page.waitForTimeout(50);
-    const desktopIntentMenu = await readDesktopIntentBounds('desktop intent menu');
-    assert(desktopIntentMenu.exists, `${name}: desktop intent menu should render`);
-    assert.strictEqual(desktopIntentMenu.role, 'dialog', `${name}: desktop intent menu should use dialog semantics`);
-    assert.strictEqual(desktopIntentMenu.ariaModal, 'true', `${name}: desktop intent menu should be modal`);
-    assert.strictEqual(desktopIntentMenu.presentation, 'desktop', `${name}: desktop intent menu should declare desktop presentation`);
-    assert(desktopIntentMenu.overflowY === 'auto' || desktopIntentMenu.overflowY === 'scroll', `${name}: desktop intent menu should be scrollable`);
-    assert(desktopIntentMenu.zIndex > desktopPanels.party.zIndex, `${name}: desktop intent menu should layer above side panels`);
-    assert(desktopIntentMenu.top >= -1, `${name}: desktop intent menu should not clip above viewport`);
-    assert(desktopIntentMenu.left >= -1, `${name}: desktop intent menu should not clip left`);
-    assert(desktopIntentMenu.right <= desktopIntentMenu.viewportWidth + 1, `${name}: desktop intent menu should not clip right`);
-    assert(desktopIntentMenu.bottom <= desktopIntentMenu.viewportHeight + 1, `${name}: desktop intent menu should not clip below viewport`);
-    assert(desktopIntentMenu.visibleButtons >= 3, `${name}: desktop intent menu should expose reachable utility buttons`);
-    assert.deepStrictEqual(desktopIntentMenu.clippedButtons, [], `${name}: desktop intent menu buttons should not clip`);
-
+    const corpseIntentSuppressed = await page.evaluate(() => App.showIntentMenu('creature', 'corpse-1', 'desktop', 'desktop') === false && !document.getElementById('desktop-intent-menu'));
+    assert(corpseIntentSuppressed, `${name}: corpse desktop intent menu should stay suppressed in favor of marked-target actions`);
     await page.evaluate(() => App.openIntentSubActionSheet('creature', 'creature-1', 'fight', 'desktop'));
     await page.waitForTimeout(50);
-    const desktopSubActionSheet = await readDesktopIntentBounds('desktop sub-action sheet');
+    const desktopIntentMenu = await readDesktopIntentBounds('desktop intent menu');
+    const desktopSubActionSheet = desktopIntentMenu;
     assert(desktopSubActionSheet.exists, `${name}: desktop sub-action sheet should render`);
     assert.strictEqual(desktopSubActionSheet.role, 'dialog', `${name}: desktop sub-action sheet should use dialog semantics`);
     assert.strictEqual(desktopSubActionSheet.ariaModal, 'true', `${name}: desktop sub-action sheet should be modal`);

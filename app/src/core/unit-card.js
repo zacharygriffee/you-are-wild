@@ -160,10 +160,7 @@ const YAW_UNIT_CARD = {
         const statLabels = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
-        const cardCanOpenIntentMenu = !isParty && isCorpse;
-        const cardContextMenuAttr = cardCanOpenIntentMenu
-            ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${app._unitKey(unit)}'`},'desktop-card','desktop',event)"`
-            : '';
+        const cardContextMenuAttr = '';
         return `<div class="${cardClass}" ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>

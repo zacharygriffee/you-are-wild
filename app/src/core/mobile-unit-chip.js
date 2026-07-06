@@ -72,10 +72,7 @@ const YAW_MOBILE_UNIT_CHIP = {
             }
         }
         const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-        const canOpenIntentMenu = !isParty && isCorpse;
-        const contextMenuAttr = canOpenIntentMenu
-            ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')"`
-            : '';
+        const contextMenuAttr = '';
         const partyRole = isParty && unit.name !== app.player?.name ? app._partyRoleLabel(app._getPartyRole(unit)) : '';
         const partyStatus = unit.name === app.player?.name ? app._label('party.you', 'You') : `${app._label('party.ally', 'Ally')}${partyRole ? ' - ' + partyRole : ''}`;
         const status = isParty ? partyStatus : app._unitDispositionLabel(unit);

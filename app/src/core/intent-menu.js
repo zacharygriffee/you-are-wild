@@ -50,48 +50,8 @@ const YAW_INTENT_MENU = {
     },
 
     show(app, type, targetRef, source = 'sheet', presentation = 'sheet', anchorEvent = null) {
-        const isParty = type === 'party';
-        const target = app._intentTarget(type, targetRef);
-        if (!target) return;
-        const isCorpse = app._isCorpse(target);
         app.closeIntentMenu();
-        if (!isCorpse) return false;
-        if (app.combatState?.active) return false;
-        const targetName = target.name || (isParty ? 'party member' : 'creature');
-        const menuLabel = app._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
-        const targetLabel = app._escapeHtml(targetName);
-        const targetArg = isParty ? Number(targetRef) : `'${String(targetRef).replace(/'/g, "\\'")}'`;
-        const commandSource = String(source || 'sheet').replace(/'/g, "\\'");
-        const surface = this.surface(source, presentation);
-        const actionButton = (key, action = key, extraClass = '') => {
-            const label = key === 'close' ? app._label('ui.close', 'Close') : app._uiLabel(key);
-            const icon = app._actionIcon(key);
-            const title = key === 'close' ? label : `${label} ${targetName}`;
-            const handler = action === 'close'
-                ? 'App.closeIntentMenu()'
-                : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
-            const commandAttr = action === 'close'
-                ? 'data-command-mode="exploration" data-command-control="close-utility-menu"'
-                : `data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"`;
-            return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" ${commandAttr} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${app._escapeHtml(label)}</button>`;
-        };
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
-        html += actionButton('loot');
-        if (app._canScavengeCorpse(target)) {
-            html += actionButton('scavenge');
-        } else {
-            const label = app._corpseScavengeLabel(target);
-            const title = `${app._corpseScavengeStatus(target)} ${targetName}`;
-            html += `<button class="action-btn intent-menu-item disabled" role="menuitem" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" disabled aria-disabled="true">${app._escapeHtml(label)}</button>`;
-        }
-        html += actionButton('inspect');
-        html += actionButton('close', 'close');
-        html += '</div></div>';
-        document.body.insertAdjacentHTML('beforeend', html);
-        const menu = document.getElementById(surface.id);
-        this.positionDesktopMenu(menu, anchorEvent, surface.presentation === 'desktop');
-        app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
-        app._activateOutsideContextDismiss(menu);
+        return false;
     },
 
     openSubActionSheet(app, type, targetRef, action, source = 'sheet', anchorEvent = null) {

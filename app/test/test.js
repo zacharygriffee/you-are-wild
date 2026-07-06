@@ -2309,6 +2309,9 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'maybeSpawnStructureGiver(app, tile)', 'Quest flow helper should own structure quest-giver placement');
   assertContains(questFlowContent, "'structure-quest-template'", 'Structure quest template selection should use deterministic world keys');
   assertContains(questFlowContent, "'structure-quest-giver'", 'Structure quest-giver placement should use deterministic world keys');
+  assertContains(questFlowContent, 'data-command-surface="quest-preview"', 'Quest preview should identify its composer/detail command surface');
+  assertContains(questFlowContent, 'data-command-control="confirm-quest"', 'Quest preview accept should identify the confirm quest control');
+  assertContains(questFlowContent, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify the cancel preview control');
   assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
@@ -12789,6 +12792,10 @@ test('Quest system exposes quest giver actions and quest log', () => {
   assertContains(elements.get('enemies-content').innerHTML, '10 XP', 'Quest preview should show XP reward');
   assertContains(elements.get('enemies-content').innerHTML, '5 gold', 'Quest preview should show gold reward');
   assertContains(elements.get('enemies-content').innerHTML, 'Old Coin', 'Quest preview should show item reward');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-surface="quest-preview"', 'Quest preview should render as an explicit composer/detail command surface');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="confirm-quest"', 'Quest preview accept should identify its confirm control');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify its cancel control');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-intent="acceptQuest"', 'Quest preview accept should expose the stable accept intent');
   assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');

@@ -167,7 +167,7 @@ const YAW_QUEST_FLOW = {
         const acceptLabel = app._escapeHtml(app._label('action.acceptQuest', 'Accept Quest'));
         const acceptTitle = app._escapeHtml(app._label('action.acceptQuestFrom', 'Accept quest from {name}', { name: giver?.name || normalized.giverName || normalized.title }));
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        let html = `<div class="quest-preview" style="max-width:720px;margin:0 auto;text-align:left;display:grid;gap:12px;">`;
+        let html = `<div class="quest-preview" data-command-surface="quest-preview" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="quest" style="max-width:720px;margin:0 auto;text-align:left;display:grid;gap:12px;">`;
         html += `<h3 style="color:var(--accent-primary);margin:0;">${title}: ${app._escapeHtml(normalized.title)}</h3>`;
         if (normalized.description) html += `<p style="color:var(--text-secondary);margin:0;">${app._escapeHtml(normalized.description)}</p>`;
         html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${app._escapeHtml(app._label('quest.objectives', 'Objectives'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${app._questProgressText(normalized)}</div>`;
@@ -180,7 +180,7 @@ const YAW_QUEST_FLOW = {
         }
         html += `</div>`;
         html += `<div class="option-card" style="cursor:default;text-align:left;"><div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">${app._escapeHtml(app._label('quest.rewards', 'Rewards'))}</div><div style="font-size:12px;line-height:1.6;color:var(--text-primary);">${this.rewardPreviewText(app, normalized.reward)}</div></div>`;
-        html += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="nav-btn primary" title="${acceptTitle}" aria-label="${acceptTitle}" onclick="App.acceptQuestFromUnit('${targetKey}')">📜 ${acceptLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.renderCreatures();App.renderExplorationActions();">${closeLabel}</button></div>`;
+        html += `<div class="quest-preview-actions" data-command-surface="quest-preview" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="quest" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="nav-btn primary" data-command-surface="quest-preview" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="confirm-quest" data-command-intent="acceptQuest" title="${acceptTitle}" aria-label="${acceptTitle}" onclick="App.acceptQuestFromUnit('${targetKey}')">📜 ${acceptLabel}</button><button class="nav-btn" data-command-surface="quest-preview" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="cancel-quest-preview" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.renderCreatures();App.renderExplorationActions();">${closeLabel}</button></div>`;
         html += `</div>`;
         app.showCreaturePanelDetail(normalized.title, html);
         return true;

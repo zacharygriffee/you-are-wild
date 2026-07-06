@@ -325,10 +325,10 @@ const YAW_CENTER_CONTEXT = {
     overflowCommandAttrs(app, overflow = []) {
         const info = this.overflowCommandInfo(overflow);
         if (info.route === 'target') {
-            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
         }
         if (info.route === 'actor') {
-            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(info.count))}"`;
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="actor" data-command-actor-count="${app._escapeHtml(String(info.count))}"`;
         }
         return `data-command-control="${info.control}"`;
     },

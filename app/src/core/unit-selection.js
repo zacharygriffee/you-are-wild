@@ -55,13 +55,13 @@ const YAW_UNIT_SELECTION = {
 
     controlAttrs(app, kind, active = false) {
         if (kind === 'actor') {
-            return `data-selection-control="actor" aria-pressed="${Boolean(active)}" data-selection-mode="act-actor" data-selection-state="${active ? 'selected' : 'available'}"`;
+            return `data-selection-control="actor" aria-pressed="${Boolean(active)}" data-selection-mode="act-actor" data-selection-state="${active ? 'selected' : 'available'}" data-command-slot="actor"`;
         }
         if (kind === 'target') {
-            return `data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? 'marked' : 'available'}"`;
+            return `data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? 'marked' : 'available'}" data-command-slot="target"`;
         }
         if (kind === 'combat-target') {
-            return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}"`;
+            return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}" data-command-slot="target"`;
         }
         return `data-selection-control="${app._escapeHtml(String(kind || 'unknown'))}"`;
     },

@@ -533,8 +533,8 @@ async function runSelectionSemanticsFlow(page) {
   }));
   assert.deepStrictEqual(initial.actors, ['player-1'], 'Adventure should start with the player as selected actor');
   assert.deepStrictEqual(initial.targets, [], 'Adventure should start with no marked targets');
-  assert.strictEqual(initial.partyCards[0]?.purpose, 'focus-toggle', 'Party card click target should be explicitly scoped to focus');
-  assert(initial.partyCards[0]?.label.includes('Focus You card'), 'Party card focus label should describe focus, not action selection');
+  assert.strictEqual(initial.partyCards[0]?.purpose, 'detail-toggle', 'Party card click target should be explicitly scoped to detail toggling');
+  assert(initial.partyCards[0]?.label.includes('Show details for You'), 'Party card detail label should describe details, not action selection');
   assert.strictEqual(initial.partyCards[0]?.selectedActor, true, 'Player card should show actor state separately from focus');
   assert.strictEqual(initial.partyCards[0]?.selectedTarget, false, 'Player card should not imply target state');
 

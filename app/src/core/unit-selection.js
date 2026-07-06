@@ -74,14 +74,16 @@ const YAW_UNIT_SELECTION = {
         return role;
     },
 
-    focusLabel(app, unit) {
-        return app._label('unit.cardFocus', 'Focus {name} card', { name: unit?.name || 'unit' });
+    detailLabel(app, unit, expanded = false) {
+        const key = expanded ? 'unit.cardHideDetails' : 'unit.cardShowDetails';
+        const fallback = expanded ? 'Hide details for {name}' : 'Show details for {name}';
+        return app._label(key, fallback, { name: unit?.name || 'unit' });
     },
 
     focusAttrs(app, unit, expanded = false) {
-        const focusTitle = app._escapeHtml(this.focusLabel(app, unit));
+        const focusTitle = app._escapeHtml(this.detailLabel(app, unit, expanded));
         const state = expanded ? 'expanded' : 'collapsed';
-        return `role="button" tabindex="0" data-card-purpose="focus-toggle" data-card-state="${state}" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${expanded ? 'true' : 'false'}"`;
+        return `role="button" tabindex="0" data-card-purpose="detail-toggle" data-card-state="${state}" title="${focusTitle}" aria-label="${focusTitle}" aria-expanded="${expanded ? 'true' : 'false'}"`;
     },
 
     actionRowAttrs(app, scope, unit = null) {

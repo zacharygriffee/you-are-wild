@@ -714,6 +714,7 @@
             explorationActorSelectionExplicit: false,
             explorationTargetIds: [],
             mobileMovePadOpen: false,
+            mobileActorBeltOpen: false,
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -3867,6 +3868,11 @@
             },
             toggleMobileMovePad() {
                 this.mobileMovePadOpen = !this.mobileMovePadOpen;
+                this.renderMobileExplorationControls();
+            },
+            toggleMobileActorBelt() {
+                this.mobileActorBeltOpen = !this.mobileActorBeltOpen;
+                if (this.mobileActorBeltOpen) this.mobileMovePadOpen = false;
                 this.renderMobileExplorationControls();
             },
             renderMobileCreatureStrip() {

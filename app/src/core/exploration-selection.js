@@ -183,6 +183,7 @@ const YAW_EXPLORATION_SELECTION = {
 
     clearTargets(app) {
         app.explorationTargetIds = [];
+        app.mobileActorBeltOpen = false;
         app._renderInteractionState({ exploration: true, toolbelt: false });
     },
 

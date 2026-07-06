@@ -3963,6 +3963,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
+  assertContains(template, 'id="mobile-actor-toggle"', 'mobile actor row should open through an explicit composer control');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
@@ -4009,11 +4010,13 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
+  assertContains(mobileUnitStripsContent, 'const actorToggle = document.getElementById(\'mobile-actor-toggle\')', 'mobile actor row should have a visible toggle control');
   assertContains(mobileUnitStripsContent, 'actorControls(app)', 'mobile actor strip should render compact actor chips rather than full party cards');
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
   assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('has-control-belt', hasContent)", 'mobile exploration controls should toggle scroll padding for the fixed context belt');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
+  assertContains(appContent, 'toggleMobileActorBelt()', 'App should expose a mobile actor-belt toggle');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');
@@ -10231,11 +10234,18 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
   assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
-  assertContains(actorHtml, 'Ally', 'Mobile actor belt should expose party members when a marked target needs actor selection');
-  assertContains(actorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
-  assertContains(actorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
-  assertNotContains(actorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
-  assertNotContains(actorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
+  assertEqual(actorHtml, '', 'Mobile actor belt should stay collapsed until the composer actor toggle is opened');
+  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), false, 'Mobile marked target state should expose an Actors toggle');
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Mobile Actors toggle should start collapsed');
+
+  App.toggleMobileActorBelt();
+  const openedActorHtml = elements.get('mobile-actor-belt').innerHTML;
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'true', 'Mobile Actors toggle should expose expanded state');
+  assertContains(openedActorHtml, 'Ally', 'Mobile actor belt should expose party members when the actor toggle is opened');
+  assertContains(openedActorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
+  assertContains(openedActorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
+  assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
 });
 
 test('Mobile exploration hides empty control belt over traversal map', () => {
@@ -10251,6 +10261,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   App.inventory = [];
   App.combatState.active = false;
   App.mobileMovePadOpen = false;
+  App.mobileActorBeltOpen = false;
   App.explorationActorIds = [];
   App.explorationActorSelectionExplicit = false;
   App.explorationTargets = [];
@@ -10266,11 +10277,13 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Plain traversal without creatures should not leave an empty cue overlay');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Plain traversal should not leave target controls behind');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
+  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');
 });
 
 test('Combat action clearing removes stale mobile exploration belt controls', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   App.mobileMovePadOpen = true;
+  App.mobileActorBeltOpen = true;
   elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
   elements.get('mobile-explore-actions').style.display = 'flex';
   elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
@@ -10278,6 +10291,10 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   elements.get('mobile-creature-presence-cue').innerHTML = '<button>Here: Guide</button>';
   elements.get('mobile-move-pad').classList.add('expanded');
   elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
+  elements.get('mobile-actor-toggle').hidden = false;
+  elements.get('mobile-actor-toggle').style.display = '';
+  elements.get('mobile-actor-toggle').setAttribute('aria-expanded', 'true');
+  elements.get('mobile-actor-toggle').classList.add('selected');
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open');
   elements.get('mobile-play-surface').classList.add('has-control-belt');
 
@@ -10290,15 +10307,20 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Combat clearing should remove stale creature presence cue controls');
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Combat clearing should collapse the dormant move pad');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Combat clearing should reset the move toggle state');
+  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Combat clearing should hide the mobile actor toggle');
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Combat clearing should reset the mobile actor toggle state');
+  assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Combat clearing should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Combat clearing should remove fixed control-belt overlay state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Combat clearing should remove target-priority belt state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Combat clearing should stop reserving exploration belt space');
   assertEqual(App.mobileMovePadOpen, false, 'Combat clearing should reset the app move-pad flag');
+  assertEqual(App.mobileActorBeltOpen, false, 'Combat clearing should reset the app actor-belt flag');
 });
 
 test('Rich scene content clears stale mobile exploration belt controls', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   App.mobileMovePadOpen = true;
+  App.mobileActorBeltOpen = true;
   elements.get('scene-actions').innerHTML = '<button>Center action</button>';
   elements.get('scene-actions').style.display = '';
   elements.get('desktop-context-belt').innerHTML = '<button>Rest</button>';
@@ -10309,6 +10331,10 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('mobile-creature-presence-cue').innerHTML = '<button>Here: Guide</button>';
   elements.get('mobile-move-pad').classList.add('expanded');
   elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
+  elements.get('mobile-actor-toggle').hidden = false;
+  elements.get('mobile-actor-toggle').style.display = '';
+  elements.get('mobile-actor-toggle').setAttribute('aria-expanded', 'true');
+  elements.get('mobile-actor-toggle').classList.add('selected');
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open');
   elements.get('mobile-play-surface').classList.add('has-control-belt');
   elements.get('selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
@@ -10327,10 +10353,14 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Rich scene should remove stale creature presence cues');
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Rich scene should collapse the dormant move pad');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Rich scene should reset the move toggle state');
+  assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Rich scene should hide the mobile actor toggle');
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Rich scene should reset the mobile actor toggle state');
+  assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Rich scene should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Rich scene should remove fixed control-belt overlay state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Rich scene should remove target-priority belt state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Rich scene should stop reserving exploration belt space');
   assertEqual(App.mobileMovePadOpen, false, 'Rich scene should reset the app move-pad flag');
+  assertEqual(App.mobileActorBeltOpen, false, 'Rich scene should reset the app actor-belt flag');
   assertEqual(elements.get('selection-sentence').innerHTML, '', 'Rich scene should clear stale desktop actor-target-intent sentence');
   assertEqual(elements.get('mobile-selection-sentence').innerHTML, '', 'Rich scene should clear stale mobile actor-target-intent sentence');
 });

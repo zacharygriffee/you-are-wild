@@ -919,6 +919,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   const mobileTray = page.locator('#mobile-target-action-tray .target-action-row').first();
   await assert.doesNotReject(() => mobileTray.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray should render in the visible exploration control belt');
+  await page.locator(`#mobile-actor-toggle`).first().click();
   await page.locator(`#mobile-actor-belt button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
 
   state = await page.evaluate(() => {

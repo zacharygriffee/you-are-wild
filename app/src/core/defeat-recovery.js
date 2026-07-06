@@ -166,6 +166,13 @@ const YAW_DEFEAT_RECOVERY = {
         if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
         const mobileMovePad = document.getElementById('mobile-move-pad');
         if (mobileMovePad) mobileMovePad.classList?.remove('expanded');
+        const mobileActorToggle = document.getElementById('mobile-actor-toggle');
+        if (mobileActorToggle) {
+            mobileActorToggle.hidden = true;
+            mobileActorToggle.style.display = 'none';
+            mobileActorToggle.setAttribute('aria-expanded', 'false');
+            mobileActorToggle.classList?.remove('selected');
+        }
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
             mobileControlBelt.classList?.add('has-controls');
@@ -173,6 +180,7 @@ const YAW_DEFEAT_RECOVERY = {
         }
         document.getElementById('mobile-play-surface')?.classList?.add('has-control-belt');
         app.mobileMovePadOpen = false;
+        app.mobileActorBeltOpen = false;
     },
 
     regenerate(app) {

@@ -27,6 +27,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
     explorationControls(app) {
         const movePad = document.getElementById('mobile-move-pad');
         const moveToggle = document.getElementById('mobile-move-toggle');
+        const actorToggle = document.getElementById('mobile-actor-toggle');
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
         const controlBelt = document.getElementById('mobile-control-belt');
@@ -35,7 +36,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const creatureCue = document.getElementById('mobile-creature-presence-cue');
         const inCombat = Boolean(app.combatState?.active);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
-        const actorSelectionOpen = !inCombat && Boolean(app.explorationActorSelectionExplicit);
+        if (inCombat || !hasTargets) app.mobileActorBeltOpen = false;
+        const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);
         if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen) {
             app.mobileMovePadOpen = false;
         }
@@ -48,11 +50,18 @@ const YAW_MOBILE_UNIT_STRIPS = {
             moveToggle.style.display = 'none';
             moveToggle.setAttribute('aria-expanded', String(Boolean(app.mobileMovePadOpen) && !inCombat));
         }
+        if (actorToggle) {
+            const showActorToggle = hasTargets || actorSelectionOpen;
+            actorToggle.hidden = !showActorToggle;
+            actorToggle.style.display = showActorToggle ? '' : 'none';
+            actorToggle.classList.toggle('selected', actorSelectionOpen);
+            actorToggle.setAttribute('aria-expanded', String(actorSelectionOpen));
+        }
         if (targetTray) {
             targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target');
         }
         if (actorBelt) {
-            actorBelt.innerHTML = hasTargets || actorSelectionOpen
+            actorBelt.innerHTML = actorSelectionOpen
                 ? this.actorControls(app)
                 : '';
         }

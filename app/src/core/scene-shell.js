@@ -20,12 +20,20 @@ const YAW_SCENE_SHELL = {
         if (mobileMovePad) mobileMovePad.classList?.remove('expanded');
         const mobileMoveToggle = document.getElementById('mobile-move-toggle');
         if (mobileMoveToggle) mobileMoveToggle.setAttribute('aria-expanded', 'false');
+        const mobileActorToggle = document.getElementById('mobile-actor-toggle');
+        if (mobileActorToggle) {
+            mobileActorToggle.hidden = true;
+            mobileActorToggle.style.display = 'none';
+            mobileActorToggle.setAttribute('aria-expanded', 'false');
+            mobileActorToggle.classList?.remove('selected');
+        }
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
             mobileControlBelt.classList?.remove('has-controls', 'target-controls-open');
         }
         document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt');
         app.mobileMovePadOpen = false;
+        app.mobileActorBeltOpen = false;
     },
 
     clearCommandSentences() {

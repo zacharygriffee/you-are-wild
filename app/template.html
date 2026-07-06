@@ -764,6 +764,13 @@
             color: var(--text-primary);
         }
 
+        .center-presence-chip.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.16);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.2);
+        }
+
         .center-presence-chip.party,
         .center-presence-chip.player {
             border-color: rgba(0, 212, 170, 0.35);
@@ -2704,6 +2711,12 @@
             .mobile-play-presence-more:focus-visible {
                 border-color: var(--accent-primary);
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.28);
+            }
+
+            .mobile-play-presence-dot.selected {
+                border-color: var(--accent-primary);
+                background: rgba(0, 212, 170, 0.26);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.36);
             }
 
             .mobile-play-presence-dot.party,

@@ -57,8 +57,14 @@ const YAW_CENTER_CONTEXT = {
             ? app._explorationTargetUnitId('creature', unit)
             : app._unitSelectionId(unit);
         const actorSelected = presenceType === 'party' && app._getExplorationActors().includes(unit);
+        const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
+        const selected = actorSelected || targetSelected;
+        const selectedClass = selected ? ` selected selected-${presenceType === 'creature' ? 'target' : 'actor'}` : '';
+        const selectionAttrs = presenceType === 'creature'
+            ? app._selectionControlAttrs('target', targetSelected)
+            : app._selectionControlAttrs('actor', actorSelected);
         const focusTitle = app._escapeHtml(presenceType === 'creature'
-            ? app._targetToggleLabel(unit, app._isExplorationTargetUnit('creature', unit))
+            ? app._targetToggleLabel(unit, targetSelected)
             : app._actorToggleLabel(unit, actorSelected));
         const escapedType = app._escapeHtml(entry.type);
         const escapedTone = app._escapeHtml(entry.tone);
@@ -66,7 +72,7 @@ const YAW_CENTER_CONTEXT = {
         const jsType = app._escapeJsString(presenceType);
         const jsRef = app._escapeJsString(ref);
         const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
-        return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
+        return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}${selectedClass}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
     },
 
     focusPresence(app, type, ref) {

@@ -38,15 +38,22 @@ const YAW_LOCAL_MAP = {
             const ref = presenceType === 'creature'
                 ? app._explorationTargetUnitId('creature', unit)
                 : app._unitSelectionId(unit);
+            const actorSelected = presenceType === 'party' && app._getExplorationActors().includes(unit);
+            const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
+            const selected = actorSelected || targetSelected;
+            const selectedClass = selected ? ` selected selected-${presenceType === 'creature' ? 'target' : 'actor'}` : '';
+            const selectionAttrs = presenceType === 'creature'
+                ? app._selectionControlAttrs('target', targetSelected)
+                : app._selectionControlAttrs('actor', actorSelected);
             const label = presenceType === 'creature'
-                ? app._targetToggleLabel(unit, app._isExplorationTargetUnit('creature', unit))
-                : app._actorToggleLabel(unit, app._getExplorationActors().includes(unit));
+                ? app._targetToggleLabel(unit, targetSelected)
+                : app._actorToggleLabel(unit, actorSelected);
             const escapedLabel = app._escapeHtml(label);
             const escapedRef = app._escapeHtml(ref);
             const jsType = app._escapeJsString(presenceType);
             const jsRef = app._escapeJsString(ref);
             const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
-            return `<button type="button" class="mobile-play-presence-dot ${tone}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
+            return `<button type="button" class="mobile-play-presence-dot ${tone}${selectedClass}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0

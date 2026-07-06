@@ -4017,6 +4017,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-presence-rail"'), 'Desktop presence rail should live below the stage, not inside the center tile');
   assert(template.indexOf('id="desktop-presence-rail"') < template.indexOf('id="selection-sentence"'), 'Desktop presence rail should sit above the command sentence');
   assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');
+  assertContains(template, '.center-presence-chip.selected', 'Desktop stage presence should visibly mark selected actor and target chips');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
   assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
@@ -4029,6 +4030,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'grid-template-rows: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should reserve a larger center row');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
+  assertContains(template, '.mobile-play-presence-dot.selected', 'Mobile center presence should visibly mark selected actor and target dots');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
@@ -6962,10 +6964,16 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(App.explorationActorIds[0], 'ally-1', 'Party presence focus should select the party actor for the composer');
   App.renderCenterPresence();
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Remove Ally from actors"', 'Selected desktop party presence should advertise remove-actor semantics');
+  assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-actor', 'Selected desktop party presence should expose selected actor styling');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Selected desktop party presence should expose actor selection state');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-pressed="true"', 'Selected desktop party presence should expose pressed state');
   assertContains(el('selection-sentence').innerHTML, 'Ally', 'Party presence focus should update the desktop actor-target-intent sentence');
   assert(el('panel-party').focused !== true, 'Desktop party presence focus should not force-open the detail panel');
   assertEqual(App.focusPresence('creature', 'friendly-1'), true, 'Creature presence focus should resolve through the composer selection path');
   assert(App.explorationTargetIds.includes('creature:friendly-1'), 'Creature presence focus should mark the creature as the composer target');
+  App.renderCenterPresence();
+  assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-target', 'Selected desktop creature presence should expose selected target styling');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Selected desktop creature presence should expose target selection state');
   assertContains(el('selection-sentence').innerHTML, 'Friendly', 'Creature presence focus should update the desktop target sentence');
   assertContains(el('desktop-context-belt').innerHTML, "resolveExplorationTargetAction('fight'", 'Creature presence focus should expose target actions through the desktop composer belt');
   assert(el('panel-enemies').focused !== true, 'Desktop creature presence focus should not force-open the detail panel');
@@ -7072,12 +7080,18 @@ test('Center presence focus selects mobile composer state without opening drawer
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Mobile party presence focus should resolve');
   assertEqual(App.explorationActorIds[0], 'ally-1', 'Mobile party presence focus should select the party actor');
+  App.renderMap();
+  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'selected selected-actor', 'Mobile party presence should visually expose selected actor state after focus');
+  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Mobile party presence should expose actor selection state after focus');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile party presence focus should update the composer sentence');
   assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile party presence focus should not open the party drawer');
   assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile party presence focus should not enable the backdrop');
 
   assertEqual(App.focusPresence('creature', 'guide-1'), true, 'Mobile creature presence focus should resolve');
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature presence focus should mark the target');
+  App.renderMap();
+  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'selected selected-target', 'Mobile creature presence should visually expose selected target state after focus');
+  assertContains(document.getElementById('mobile-mini-map').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature presence should expose target selection state after focus');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature presence focus should update the target sentence');
   assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature presence focus should expose target actions in the visible tray');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile creature presence focus should not open the creature drawer');

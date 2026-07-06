@@ -90,7 +90,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const selected = actors.includes(unit);
             const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
             const role = unit === app.player ? app._label('party.you', 'You') : app._partyRoleLabel(app._getPartyRole(unit));
-            const title = app._escapeHtml(app._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }));
+            const title = app._escapeHtml(app._actorToggleLabel(unit, selected));
             const label = app._escapeHtml(unitName);
             const meta = app._escapeHtml(role || '');
             const icon = app._escapeHtml(unit.icon || '👤');

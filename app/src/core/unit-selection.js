@@ -35,6 +35,13 @@ const YAW_UNIT_SELECTION = {
         return app._label('target.mark', 'Mark');
     },
 
+    actorToggleLabel(app, unit, selected = false) {
+        const name = unit?.name || app._label('unit.generic', 'unit');
+        return selected
+            ? app._label('target.removeActorFor', 'Remove {name} from actors', { name })
+            : app._label('target.addActorFor', 'Add {name} as actor', { name });
+    },
+
     combatTargetPickLabel(app) {
         return app._label('target.pick', 'Pick');
     },

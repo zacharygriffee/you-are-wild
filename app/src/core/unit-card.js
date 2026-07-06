@@ -25,11 +25,11 @@ const YAW_UNIT_CARD = {
             const targetClass = app._isExplorationTarget('party', app._unitSelectionId(unit)) ? ' primary' : '';
             const targetKey = app._unitKey(unit);
             const actorLabel = app._escapeHtml(app._label('target.act', 'Actor'));
-            const actorTitle = app._escapeHtml(app._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }));
             const targetLabel = app._escapeHtml(app._targetMarkLabel());
             const targetTitle = app._escapeHtml(app._label('target.markFor', 'Mark {name} as target', { name: unitName }));
             const actorPressed = selectedActors.includes(unit);
             const targetPressed = app._isExplorationTarget('party', app._unitSelectionId(unit));
+            const actorTitle = app._escapeHtml(app._actorToggleLabel(unit, actorPressed));
             actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
             const statsLabel = app._escapeHtml(app._label('party.stats', 'Stats'));
             const statsTitle = app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unitName }));

@@ -2297,6 +2297,10 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, "'ui.creatureCue.openPanel'", 'Multi-creature mobile cue should announce the creature drawer action');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
+  assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-surface', 'actor-target-routing')", 'Mobile actor belt should identify the actor-routing command surface when open');
+  assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-mode', 'exploration')", 'Mobile actor belt should identify exploration command mode when open');
+  assertContains(mobileUnitStripsContent, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
+  assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors"', 'Mobile actor belt should expose a structural clear-actors exit');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
@@ -10468,6 +10472,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.toggleMobileActorBelt();
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Remove You from actors"', 'Mobile actor belt should advertise removing the active actor');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add Ally as actor"', 'Mobile actor belt should advertise adding an available actor');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), 'actor-target-routing', 'Mobile actor belt should identify actor-routing command surface when opened');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), 'exploration', 'Mobile actor belt should identify exploration command mode when opened');
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Dormant mobile move pad behavior should remain restorable');
@@ -10503,7 +10509,10 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'Ally', 'Mobile actor belt should expose party members when the actor toggle is opened');
   assertContains(openedActorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
   assertContains(openedActorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertContains(openedActorHtml, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
+  assertContains(openedActorHtml, 'data-command-mode="exploration"', 'Mobile actor chips should identify exploration command mode');
   assertContains(openedActorHtml, 'clearExplorationActors()', 'Mobile actor belt should expose an explicit clear actor exit');
+  assertContains(openedActorHtml, 'data-command-control="clear-actors"', 'Mobile actor clear exit should identify its command route');
   assertContains(openedActorHtml, 'Clear actors', 'Mobile actor clear exit should use a visible localized label');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
@@ -10514,6 +10523,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.clearExplorationActors();
   assertEqual(App.explorationActorSelectionExplicit, false, 'Clearing actors should restore implicit player actor state');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Clearing actors should close the mobile actor belt');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), null, 'Closing actor belt should clear actor-routing command surface metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), null, 'Closing actor belt should clear command mode metadata');
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Clearing actors should collapse the Actors toggle');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'You', 'Marked-target composer sentence should keep the implicit player actor after clearing');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Clearing actors should preserve the marked target');

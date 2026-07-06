@@ -65,6 +65,13 @@ const YAW_MOBILE_UNIT_STRIPS = {
             actorBelt.innerHTML = actorSelectionOpen
                 ? this.actorControls(app)
                 : '';
+            if (actorSelectionOpen) {
+                actorBelt.setAttribute('data-command-surface', 'actor-target-routing');
+                actorBelt.setAttribute('data-command-mode', 'exploration');
+            } else {
+                actorBelt.removeAttribute('data-command-surface');
+                actorBelt.removeAttribute('data-command-mode');
+            }
         }
         this.creaturePresenceCue(app);
         if (controlBelt) {
@@ -96,11 +103,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const icon = app._escapeHtml(unit.icon || '👤');
             const selectedClass = selected ? ' selected selected-actor' : '';
             const pressed = app._selectionControlAttrs('actor', selected);
-            return `<button type="button" class="mobile-actor-chip${selectedClass}" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
+            return `<button type="button" class="mobile-actor-chip${selectedClass}" data-command-control="focus-actor" data-command-mode="exploration" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
         }).join('');
         const clearLabel = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
         const clearTitle = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
-        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
+        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-control="clear-actors" data-command-mode="exploration" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
         return `${chips}${clear}`;
     },
 

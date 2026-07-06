@@ -38,12 +38,19 @@ const YAW_SCENE_SHELL = {
     },
 
     clearCommandSentences() {
+        const attrs = [
+            'data-command-surface',
+            'data-command-mode',
+            'data-command-grammar',
+            'data-command-actor-count',
+            'data-command-target-count',
+            'data-command-intent'
+        ];
         ['selection-sentence', 'mobile-selection-sentence'].forEach(id => {
             const slot = document.getElementById(id);
             if (slot) {
                 slot.innerHTML = '';
-                slot.removeAttribute('data-command-surface');
-                slot.removeAttribute('data-command-mode');
+                attrs.forEach(attr => slot.removeAttribute(attr));
             }
         });
     },

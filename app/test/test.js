@@ -10577,9 +10577,17 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
   elements.get('selection-sentence').setAttribute('data-command-surface', 'command-sentence');
   elements.get('selection-sentence').setAttribute('data-command-mode', 'exploration');
+  elements.get('selection-sentence').setAttribute('data-command-grammar', 'actor-target-intent');
+  elements.get('selection-sentence').setAttribute('data-command-actor-count', '1');
+  elements.get('selection-sentence').setAttribute('data-command-target-count', '1');
+  elements.get('selection-sentence').setAttribute('data-command-intent', 'fight');
   elements.get('mobile-selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
   elements.get('mobile-selection-sentence').setAttribute('data-command-surface', 'command-sentence');
   elements.get('mobile-selection-sentence').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-selection-sentence').setAttribute('data-command-grammar', 'actor-target-intent');
+  elements.get('mobile-selection-sentence').setAttribute('data-command-actor-count', '1');
+  elements.get('mobile-selection-sentence').setAttribute('data-command-target-count', '1');
+  elements.get('mobile-selection-sentence').setAttribute('data-command-intent', 'fight');
 
   App._setRichSceneContent('Inventory', '<p>Carried items</p>');
 
@@ -10607,9 +10615,17 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('selection-sentence').innerHTML, '', 'Rich scene should clear stale desktop actor-target-intent sentence');
   assertEqual(elements.get('selection-sentence').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command sentence metadata');
   assertEqual(elements.get('selection-sentence').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command sentence mode');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop command grammar metadata');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale desktop actor count metadata');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale desktop target count metadata');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-intent'), null, 'Rich scene should clear stale desktop intent metadata');
   assertEqual(elements.get('mobile-selection-sentence').innerHTML, '', 'Rich scene should clear stale mobile actor-target-intent sentence');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile command sentence metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-mode'), null, 'Rich scene should clear stale mobile command sentence mode');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale mobile command grammar metadata');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale mobile actor count metadata');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale mobile target count metadata');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-intent'), null, 'Rich scene should clear stale mobile intent metadata');
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {

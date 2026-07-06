@@ -78,8 +78,6 @@ const YAW_UNIT_CARD = {
         } else if (isParty && app.combatState.active) {
             if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('sync-participants', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${app._syncParticipantButton(unit)}</div>`;
-            } else {
-                actionButtons = app._combatActionButtons(unit);
             }
         }
         if (!isParty && isCorpse) {

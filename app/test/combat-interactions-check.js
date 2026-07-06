@@ -226,7 +226,7 @@ async function setupAdventure(page, options = {}) {
 }
 
 async function clickIntentAndTarget(page, action) {
-  await page.locator(`#party-content button[onclick*="executeCombatIntent('${action}')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('${action}')"]`).first().click();
   const target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
   await assert.doesNotReject(() => target.waitFor({ state: 'visible', timeout: 1000 }), `${action} should render a target button`);
   await target.click();
@@ -272,7 +272,7 @@ async function runActionMatrix(page) {
   assert.strictEqual(state.enemyVisible, false, 'Feast should remove contained enemy from visible enemies');
 
   await setupCombat(page, { withAlly: true });
-  await page.locator(`#party-content button[onclick*="executeCombatIntent('feed')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('feed')"]`).first().click();
   state = await page.evaluate(() => ({
     allyPun: App.party.find(p => p.id === 'ally-1')?.CPun,
     advanced: App._advancedTurn === true
@@ -283,7 +283,7 @@ async function runActionMatrix(page) {
 
 async function runReachabilityMatrix(page) {
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
-  await page.locator(`#party-content button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   let target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
@@ -298,7 +298,7 @@ async function runReachabilityMatrix(page) {
   assert.strictEqual(state.targetSelectionAction, 'fight', 'Disabled fight target should preserve selected intent for correction');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 20, MPun: 100, size: 2 } });
-  await page.locator(`#party-content button[onclick*="executeCombatIntent('feast')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('feast')"]`).first().click();
   target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
@@ -456,12 +456,12 @@ async function runAdventureMarkedTargetFlow(page) {
   await setupCombat(page);
   const swapped = await page.evaluate(() => ({
     trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
-    combatButtons: document.querySelector('#party-content')?.innerHTML.includes("executeCombatIntent('fight')") || false,
+    combatButtons: document.querySelector('#desktop-context-belt')?.innerHTML.includes("executeCombatIntent('fight')") || false,
     creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target composer tray');
-  assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the party panel');
+  assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the desktop composer');
   assert.strictEqual(swapped.creatureMarkButtons, false, 'Switching into combat should replace adventure target marks with combat target picks');
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
 }
@@ -603,7 +603,7 @@ async function runSelectionSemanticsFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Creature focus should not clear or add target marks');
 
   await setupCombat(page);
-  await page.locator(`#party-content button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   state = await page.evaluate(() => {
     const enemyCard = document.querySelector('#enemies-content .unit-card');
     const pick = document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]');

@@ -53,6 +53,15 @@ const YAW_PANEL_RENDERING = {
     closeDetails(app, panel = 'party') {
         if (panel === 'party') app.renderParty();
         if (panel === 'creature') app.renderCreatures();
+        if (app.combatState?.active) {
+            const actor = app._currentCombatActor?.() || app.activeActor;
+            if (actor === app.player || app.party.includes(actor)) {
+                app.activeActor = actor;
+                app.renderDesktopCombatComposer?.(actor);
+                app.renderMobileCombatToolbelt?.();
+                app.renderSelectionSentence?.();
+            }
+        }
     },
 
     creatures(app) {

@@ -1563,7 +1563,7 @@ test('Combat save state helper module is registered before app code', () => {
   assertContains(combatSaveStateContent, 'loaded?.questState?.combatState?.active', 'Refresh reads should reject non-combat snapshots');
   assertContains(combatSaveStateContent, 'YAW_DEFEAT_RECOVERY.isWipedCombatSave(app, loaded)', 'Refresh reads should reject wiped combat snapshots');
   assertContains(combatSaveStateContent, 'app._clearCombatRefreshSnapshot(slotName)', 'Invalid refresh snapshots should clean themselves up');
-  assertContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should restore actor actions through party cards');
+  assertContains(combatSaveStateContent, 'app.showActorActions(unit)', 'Loaded party turns should restore actor actions through the combat composer');
   assertContains(combatSaveStateContent, 'app.processTurn()', 'Loaded enemy turns should resume the combat loop');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.writeRefreshSnapshot(this, slotName)', 'App refresh write wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SAVE_STATE.restoreCombatState(this, savedCombat)', 'App combat restore wrapper should delegate to the helper');
@@ -1905,6 +1905,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, 'showActorActions(app, actor)', 'Combat action helper should own actor action presentation');
   assertContains(combatActionsContent, 'syncParticipantButton(app, unit, compact = false)', 'Combat action helper should own sync participant buttons');
   assertContains(combatActionsContent, 'actionButtons(app, actor, options = {})', 'Combat action helper should own combat action buttons');
+  assertContains(combatActionsContent, 'desktopComposer(app, actor =', 'Combat action helper should own desktop composer rendering');
+  assertContains(combatActionsContent, 'renderDesktopComposer(app, actor =', 'Combat action helper should render into the desktop context belt');
   assertContains(combatActionsContent, 'app._clearCenterActionsForCombat()', 'Combat action helper should keep center actions cleared for combat');
   assertContains(combatActionsContent, "app._combatIntentButton('fight', actor, 'primary')", 'Combat action helper should keep fight on the shared combat intent button path');
   assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');
@@ -1912,6 +1914,7 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.showActorActions(this, actor)', 'App actor action wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_ACTIONS.actionButtons(this, actor, options)', 'App combat action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_ACTIONS.renderDesktopComposer(this, actor)', 'App desktop combat composer wrapper should delegate to the helper');
 });
 
 test('Combat targeting helper module is registered before app code', () => {
@@ -4388,8 +4391,8 @@ test('Instant Win is gated behind Overpowered cheat', () => {
   assertContains(App.log[App.log.length - 1].text, 'Victoria instantanea requiere modo Sobrepotenciado.', 'Instant Win overpowered guard should localize');
   App.cheats.overpowered = true;
   App.showPlayerActions();
-  assertContains(elements.get('party-content').innerHTML, 'Victoria instantanea');
-  assertContains(elements.get('party-content').innerHTML, 'aria-label="Derrotar al instante a todos los enemigos"', 'Instant Win button should expose localized accessible title on the active actor card');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Victoria instantanea');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Derrotar al instante a todos los enemigos"', 'Instant Win button should expose localized accessible title in the desktop composer');
   App.instantWin();
   assertContains(App.log.map(entry => entry.text).join('\n'), 'Victoria instantanea! Todos los enemigos fueron derrotados.', 'Instant Win success log should localize');
 });
@@ -4420,13 +4423,13 @@ test('Flee ends combat without granting victory XP', () => {
   App.combatState = { active: true, round: 1, currentTurn: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }], syncActions: [] };
   App.activeActor = player;
   App.updateLanguage('es');
-  App.renderParty();
-  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Combat party card should expose combat actions before fleeing');
+  App.showActorActions(player);
+  assertContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Desktop combat composer should expose combat actions before fleeing');
   App.attemptFlee();
   assertEqual(App.combatState.active, false, 'Flee should end combat');
   assertEqual(player.xp, 0, 'Flee should not grant victory XP');
   assertContains(App.log[0].text, 'Huyes con exito!', 'Successful flee log should localize');
-  assertNotContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from party card');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from the desktop composer');
   assertContains(elements.get('party-content').innerHTML, 'Asignar You como actor', 'Flee should restore exploration party actor selection');
   assertNotContains(elements.get('party-content').innerHTML, 'Now #', 'Flee should remove stale turn-order badges');
 });
@@ -5345,7 +5348,7 @@ test('Loading combat on an enemy turn resumes the turn instead of freezing', asy
   assertEqual(loadedApp.App.combatState.active, true, 'Combat should remain active after resuming the enemy turn');
   assertEqual(loadedApp.App.combatState.turnQueue[loadedApp.App.combatState.currentTurn]?.unit?.id, 'player-load-resume', 'Enemy turn should advance to a usable player turn');
   assertContains(elements.get('scene-title').textContent, "You's turn", 'Loaded combat should render a usable player turn after enemy resumes');
-  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Loaded combat should restore player card actions');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Loaded combat should restore player composer actions');
   assertNotContains(elements.get('scene-title').textContent, 'Loaded', 'Loaded combat should not remain on the generic loaded scene');
 });
 
@@ -5398,7 +5401,7 @@ test('Combat refresh snapshot restores current turn when IndexedDB save is stale
   assertEqual(loadedApp.App.combatState.round, 4, 'Refresh snapshot should restore the newer combat round');
   assertEqual(loadedApp.App.combatState.currentTurn, 0, 'Refresh snapshot should restore whose turn it is');
   assertEqual(loadedApp.App.creatures[0].CPun, 12, 'Refresh snapshot should restore newer enemy damage instead of stale IndexedDB state');
-  assertContains(loadedApp.elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Restored refresh combat should render usable panel actions');
+  assertContains(loadedApp.elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Restored refresh combat should render usable composer actions');
 });
 
 test('Defeat ends combat into a durable recovery state', () => {
@@ -6670,13 +6673,13 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   const combatBeltHtml = elements.get('desktop-context-belt').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
   assertEqual(combatHtml, '', 'Desktop combat should clear stale exploration center actions instead of rendering prompt controls');
-  assertEqual(combatBeltHtml, '', 'Desktop combat should clear stale exploration context belt actions');
+  assertContains(combatBeltHtml, 'unit-combat-actions', 'Desktop combat should replace stale exploration actions with composer intents');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Fight"', 'Desktop combat center should not duplicate panel action buttons');
-  assertContains(partyHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button on the active actor card');
-  assertContains(partyHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button on the active actor card');
+  assertContains(combatBeltHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button in the composer belt');
+  assertContains(combatBeltHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button in the composer belt');
   assertNotContains(partyHtml, 'action-legend', 'Desktop combat should not render a duplicate tiny icon legend beside real buttons');
 });
 
@@ -6774,7 +6777,8 @@ test('Center tile stays traversal and context only across interaction states', (
   App.showActorActions(player);
   assertCenterOnly('combat actor actions');
   assertEqual(el('center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the center tile');
-  assertContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live on the party panel');
+  assertContains(el('desktop-context-belt').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live in the desktop composer belt');
+  assertNotContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat party cards should not duplicate composer-owned intent controls');
 
   App.selectTarget('fight');
   assertCenterOnly('combat target pick');
@@ -6866,9 +6870,9 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
   assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should not duplicate panel-first guidance');
-  assertNotContains(actionsHtml, "executeCombatIntent('fight')", 'Combat center should not expose enemy action targeting');
-  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should expose enemy action targeting');
-  assertContains(elements.get('party-content').innerHTML, "App.executeCombatIntent('feed')", 'Active party card should still expose party feed action');
+  assertContains(actionsHtml, "executeCombatIntent('fight')", 'Desktop combat composer should expose enemy action targeting');
+  assertContains(actionsHtml, "App.executeCombatIntent('feed')", 'Desktop combat composer should still expose party feed action');
+  assertNotContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should not duplicate composer-owned enemy action targeting');
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','neutral-1')", 'Neutral creature card should keep target marking in panel');
   assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','neutral-1','inspect','panel-card')", 'Neutral creature card should not duplicate inspect outside the marked-target tray');
   assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should not duplicate marked-target actions behind a visible menu');
@@ -10486,8 +10490,8 @@ test('Combat move action swaps row and costs the active turn', () => {
   App.updateLanguage('es');
   App.showActorActions(player);
   assertNotContains(elements.get('scene-actions').innerHTML, 'Usa la carta del actor activo', 'Scene center should not duplicate active actor guidance');
-  assertContains(elements.get('party-content').innerHTML, 'aria-label="Mover fila"', 'Move row button should expose localized accessible label on the actor card');
-  assertContains(elements.get('party-content').innerHTML, '>↕️ Mover fila<', 'Move row button visible label should localize on the actor card');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Mover fila"', 'Move row button should expose localized accessible label in the desktop composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, '>↕️ Mover fila<', 'Move row button visible label should localize in the desktop composer');
   App.nextTurn = function() { this._movedTurn = true; };
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-move' };
   App.syncSelection = { active: true, phase: 'choose', actorId: 'player-move', participantIds: ['player-move'], type: null };
@@ -10670,14 +10674,15 @@ test('Obedient ally turns use the same panel target selection', () => {
   const actionsHtml = elements.get('scene-actions').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
   assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Ally turn should keep center free of redundant guidance');
-  assertContains(partyHtml, "executeCombatIntent('fight')", 'Ally turn should expose manual actions on the active actor card');
-  assertContains(partyHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
-  assertContains(partyHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
-  assertContains(partyHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
-  assertContains(partyHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
+  const composerHtml = elements.get('desktop-context-belt').innerHTML;
+  assertContains(composerHtml, "executeCombatIntent('fight')", 'Ally turn should expose manual actions in the desktop composer');
+  assertContains(composerHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
+  assertContains(composerHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
+  assertContains(composerHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
+  assertContains(composerHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
   App.executeCombatIntent('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
-  assertContains(elements.get('party-content').innerHTML, 'action-btn primary selected', 'Repeating the selected combat intent should expose a toggled action state');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'action-btn primary selected', 'Repeating the selected combat intent should expose a toggled action state');
   App.executeCombatIntent('fight');
   assertEqual(App.targetSelection, null, 'Repeating the same combat intent should cancel target selection');
   App.executeCombatIntent('fight');
@@ -10685,7 +10690,7 @@ test('Obedient ally turns use the same panel target selection', () => {
   assert(enemy.CPun < 100, 'Ally panel target action should damage selected enemy');
 });
 
-test('Player combat action controls localize on active actor card', () => {
+test('Player combat action controls localize in desktop composer', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-actions' });
   const ally = makeUnit('Ally', { id: 'ally-actions' });
@@ -10696,7 +10701,7 @@ test('Player combat action controls localize on active actor card', () => {
   App.combatState.active = true;
   App.updateLanguage('es');
   App.showActorActions(player);
-  const html = elements.get('party-content').innerHTML;
+  const html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'aria-label="Luchar"', 'Fight action should localize accessible label');
   assertContains(html, '>Hablar<', 'Flirt action should localize visible label');
   assertContains(html, 'aria-label="Comer"', 'Feast action should localize accessible label');
@@ -10706,7 +10711,7 @@ test('Player combat action controls localize on active actor card', () => {
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
   assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
-  assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while combat panels own controls');
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while the composer owns controls');
   App.updateScene('Combat', 'Panel first', true);
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Combat scene updates should keep center actions empty');
   assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
@@ -12728,7 +12733,7 @@ test('Closing party-panel stats during combat restores party cards without chang
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(document.getElementById('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should leave the combat turn title intact');
   assertNotContains(document.getElementById('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
-  assertContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions on the active actor card');
+  assertContains(document.getElementById('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions in the desktop composer');
   assertEqual(document.getElementById('scene-actions').innerHTML, '<button>Combat center marker</button>', 'Closing combat stats should not mutate center actions');
 });
 

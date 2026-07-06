@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD COMBAT ACTIONS
- * Shared panel action controls for the current combat actor and sync participant picking.
+ * Shared combat action controls for the current actor and sync participant picking.
  */
 
 const YAW_COMBAT_ACTIONS = {
@@ -23,6 +23,7 @@ const YAW_COMBAT_ACTIONS = {
         app.renderCombatSceneForTurn(app.activeActor);
         app._clearCenterActionsForCombat();
         app._renderInteractionState({ exploration: false, toolbelt: true });
+        app.renderDesktopCombatComposer?.(app.activeActor);
     },
 
     syncParticipantButton(app, unit, compact = false) {
@@ -77,6 +78,24 @@ const YAW_COMBAT_ACTIONS = {
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);
         const compactClass = compact ? ' compact' : '';
         return `<div class="unit-actions unit-combat-actions${compactClass}" ${rowAttrs}>${buttons.join('')}</div>`;
+    },
+
+    desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
+        if (!app.combatState?.active) return '';
+        if (app.targetSelection?.source === 'combat') return '';
+        if (app.syncSelection?.active || app.feedSelection?.active) return '';
+        const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
+        if (!actions) return '';
+        const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
+        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${actions}</div>`;
+    },
+
+    renderDesktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
+        const belt = document.getElementById('desktop-context-belt');
+        if (!belt) return '';
+        const html = this.desktopComposer(app, actor);
+        belt.innerHTML = html;
+        return html;
     }
 };
 

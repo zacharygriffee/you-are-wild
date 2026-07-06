@@ -294,6 +294,9 @@
             _combatActionButtons(actor, options = {}) {
                 return YAW_COMBAT_ACTIONS.actionButtons(this, actor, options);
             },
+            renderDesktopCombatComposer(actor) {
+                return YAW_COMBAT_ACTIONS.renderDesktopComposer(this, actor);
+            },
             BODY_PARTS: {
                 fangs: { id: 'fangs', label: 'Fangs', desc: 'Bloodsuck/poison. +2 SPD priority. Enables bite attacks.', priority: 2 },
                 wings: { id: 'wings', label: 'Wings', desc: 'Flying. +3 SPD priority. 50% dodge vs non-reach. Enables flight.', priority: 3 },

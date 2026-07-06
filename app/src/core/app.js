@@ -2510,6 +2510,10 @@
                 return YAW_EXPLORATION_SELECTION.clearActors(this);
             },
 
+            clearFocusedStageObject() {
+                return YAW_CENTER_CONTEXT.clearFocusedStageObject(this);
+            },
+
             _reportInvalidExplorationActorSelection(action) {
                 return YAW_EXPLORATION_SELECTION.reportInvalidActor(this, action);
             },

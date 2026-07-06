@@ -384,6 +384,21 @@ const YAW_CENTER_CONTEXT = {
         return `<button class="action-btn composer-exit" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" title="${title}" aria-label="${title}" onclick="App.clearExplorationActors()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
     },
 
+    focusedObjectExitButton(app) {
+        if (!app.focusedStageObject?.name) return '';
+        const label = app._escapeHtml(app._label('target.clearFocus', 'Clear focus'));
+        const title = app._escapeHtml(app._label('target.clearFocusTitle', 'Clear focused place or item'));
+        return `<button class="action-btn composer-exit" data-command-surface="stage-focus" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-focused-object" title="${title}" aria-label="${title}" onclick="App.clearFocusedStageObject()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
+    },
+
+    clearFocusedStageObject(app) {
+        if (!app.focusedStageObject) return false;
+        app.focusedStageObject = null;
+        app.renderExplorationActions?.();
+        this.renderPresence(app);
+        return true;
+    },
+
     renderActions(app) {
         const keys = this.actionKeys(app);
         return keys.map(key => this.actionButton(app, key)).join('');
@@ -394,19 +409,20 @@ const YAW_CENTER_CONTEXT = {
         const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
         const locationHtml = this.renderActions(app);
         const actorExitHtml = this.actorExitButton(app);
+        const focusedExitHtml = this.focusedObjectExitButton(app);
         const html = hasMarkedTargets
             ? app._renderExplorationTargetActions('desktop')
-            : `${actorExitHtml}${locationHtml}`;
+            : `${actorExitHtml}${focusedExitHtml}${locationHtml}`;
         const mobileHtml = hasMarkedTargets
             ? app._renderExplorationTargetActions('mobile-target')
-            : locationHtml;
+            : `${focusedExitHtml}${locationHtml}`;
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';
             actions.style.display = 'none';
         }
-        const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : (actorExitHtml ? 'command-composer' : 'location-actions')) : '';
-        const mobileCommandSurface = mobileHtml ? (hasMarkedTargets ? 'target-intents' : 'location-actions') : '';
+        const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : (actorExitHtml || focusedExitHtml ? 'command-composer' : 'location-actions')) : '';
+        const mobileCommandSurface = mobileHtml ? (hasMarkedTargets ? 'target-intents' : (focusedExitHtml ? 'command-composer' : 'location-actions')) : '';
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = html;

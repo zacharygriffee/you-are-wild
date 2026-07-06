@@ -2718,7 +2718,10 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"', 'Location action buttons should expose exploration grammar with stable intent ids');
   assertContains(centerContextContent, 'actorExitButton(app)', 'Center context helper should provide a desktop composer exit for explicit actor state');
   assertContains(centerContextContent, 'data-command-control="clear-actors"', 'Desktop actor exit should expose the clear-actors command control');
-  assertContains(centerContextContent, "actorExitHtml ? 'command-composer' : 'location-actions'", 'Desktop belt should identify mixed actor/location controls as the command composer');
+  assertContains(centerContextContent, 'focusedObjectExitButton(app)', 'Center context helper should provide a composer exit for focused stage objects');
+  assertContains(centerContextContent, 'clearFocusedStageObject(app)', 'Center context helper should own focused stage object clearing');
+  assertContains(centerContextContent, 'data-command-control="clear-focused-object"', 'Focused stage object exit should expose the clear-focused-object command control');
+  assertContains(centerContextContent, "actorExitHtml || focusedExitHtml ? 'command-composer' : 'location-actions'", 'Desktop belt should identify mixed actor/location controls as the command composer');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should refresh desktop stage presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
@@ -2729,6 +2732,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresence(this, type, ref)', 'App center presence focus should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresenceOverflow(this, route)', 'App center presence overflow focus should delegate the explicit route to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.clearFocusedStageObject(this)', 'App focused stage clearing should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
@@ -7380,6 +7384,10 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Landmark focus should expose one focused place in metadata');
   assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Landmark focus should expose pending intent metadata');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the mobile command sentence');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a desktop composer exit');
+  assertEqual(el('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the desktop belt as composer state');
+  assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a mobile composer exit');
+  assertEqual(el('mobile-explore-actions').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the mobile action row as composer state');
 
   App.renderMap();
   const mobileHtml = el('mobile-mini-map').innerHTML;
@@ -7387,6 +7395,14 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(mobileHtml, 'data-command-control="focus-place"', 'Mobile landmark presence should route through place focus');
   assertContains(mobileHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Mobile landmark presence should focus the location composer');
 
+  assertEqual(App.clearFocusedStageObject(), true, 'Focused stage object clear should resolve through the composer exit');
+  assertEqual(App.focusedStageObject, null, 'Focused stage object clear should remove passive place focus');
+  assertEqual(el('selection-sentence').innerHTML, '', 'Focused stage object clear should remove the desktop command sentence');
+  assertEqual(el('mobile-selection-sentence').innerHTML, '', 'Focused stage object clear should remove the mobile command sentence');
+  assertNotContains(el('desktop-context-belt').innerHTML, 'data-command-control="clear-focused-object"', 'Focused stage object clear should remove the desktop clear-focus button');
+  assertNotContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Focused stage object clear should remove the mobile clear-focus button');
+
+  assertEqual(App.focusPresence('place', 'landmark:Ancient Tree'), true, 'Landmark focus should be selectable again after clearing focus');
   App.clearTileBoundExplorationTargets();
   assertEqual(App.focusedStageObject, null, 'Tile-bound clearing should remove passive place focus');
   App.renderSelectionSentence();

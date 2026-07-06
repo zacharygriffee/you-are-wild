@@ -145,7 +145,7 @@ const MODULE_MARKETPLACE = {
             const installTitle = this.escapeHtml(this.label('market.installSampleModule', 'Install fixture {name}', { name: sample.name || 'module' }));
             const sampleId = this.escapeHtml(this.jsString(sample.id || ''));
             const html = `
-                <div style="max-width: 1000px; margin: 0 auto; padding: 24px;">
+                <div data-command-surface="marketplace" data-command-mode="system" style="max-width: 1000px; margin: 0 auto; padding: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <div>
                             <h1 style="color: var(--accent-primary); margin: 0;">🏪 ${title}</h1>
@@ -154,13 +154,13 @@ const MODULE_MARKETPLACE = {
                             </p>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="nav-btn" title="${myModules}" aria-label="${myModules}" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="${myModules}" aria-label="${myModules}" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
                                 📦 ${myModules}
                             </button>
-                            <button class="nav-btn" title="${create}" aria-label="${create}" onclick="MODULE_MARKETPLACE.ui.showCreate()">
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-module-tools" title="${create}" aria-label="${create}" onclick="MODULE_MARKETPLACE.ui.showCreate()">
                                 ✏️ ${create}
                             </button>
-                            <button class="nav-btn" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" title="${closeTitle}" aria-label="${closeTitle}" onclick="returnToGame()">
                                 ${closeLabel}
                             </button>
                         </div>
@@ -170,11 +170,11 @@ const MODULE_MARKETPLACE = {
                     <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); 
                                     border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px;">
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <input type="text" placeholder="🔍 ${search}" aria-label="${search}"
+                            <input type="text" data-command-surface="marketplace" data-command-mode="system" data-command-control="search-marketplace" placeholder="🔍 ${search}" aria-label="${search}"
                                    style="flex: 1; min-width: 200px; background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                           border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;"
                                    oninput="MODULE_MARKETPLACE.ui.filter(this.value)">
-                            <select aria-label="${typeLabel}" onchange="MODULE_MARKETPLACE.ui.filterByType(this.value)"
+                            <select data-command-surface="marketplace" data-command-mode="system" data-command-control="filter-marketplace-type" aria-label="${typeLabel}" onchange="MODULE_MARKETPLACE.ui.filterByType(this.value)"
                                     style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                            border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
                                 <option value="all">${this.escapeHtml(this.label('market.type.all', 'All Types'))}</option>
@@ -183,7 +183,7 @@ const MODULE_MARKETPLACE = {
                                 <option value="feature_pack">${this.escapeHtml(this.label('market.type.feature_pack', 'Features'))}</option>
                                 <option value="content_pack">${this.escapeHtml(this.label('market.type.content_pack', 'Content'))}</option>
                             </select>
-                            <select aria-label="${sortLabel}" onchange="MODULE_MARKETPLACE.ui.sort(this.value)"
+                            <select data-command-surface="marketplace" data-command-mode="system" data-command-control="sort-marketplace" aria-label="${sortLabel}" onchange="MODULE_MARKETPLACE.ui.sort(this.value)"
                                     style="background: var(--bg-tertiary); border: 1px solid var(--border-default); 
                                            border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
                                 <option value="catalog">${this.escapeHtml(this.label('market.sort.catalog', 'Catalog Order'))}</option>
@@ -221,7 +221,7 @@ const MODULE_MARKETPLACE = {
                                     ${contentRatingBadge}
                                 </div>
                             </div>
-                            <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);"
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="install-sample-module" style="background: var(--accent-primary); color: var(--bg-primary);"
                                     title="${installTitle}" aria-label="${installTitle}"
                                     onclick="MODULE_MARKETPLACE.ui.install('${sampleId}')">
                                 ${installLabel}
@@ -275,7 +275,7 @@ const MODULE_MARKETPLACE = {
                                 <span>${sampleBadge}</span>
                                 <span>${samplePurpose}</span>
                             </div>
-                            <button class="nav-btn" style="padding: 6px 12px; font-size: 12px;"
+                            <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="install-sample-module" style="padding: 6px 12px; font-size: 12px;"
                                     title="${installTitle}" aria-label="${installTitle}"
                                     onclick="event.stopPropagation(); MODULE_MARKETPLACE.ui.install('${id}')">
                                 ${installLabel}

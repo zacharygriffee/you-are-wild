@@ -20,7 +20,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         }
         if (app.targetSelection?.source === 'combat') {
             const action = app._uiLabel(app.targetSelection.action || 'action');
-            return app._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', { action });
+            return app._label('mobile.combat.pickTarget', 'Pick a target for {action}.', { action });
         }
         if (actor && (actor === app.player || app.party.includes(actor))) {
             return app._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');

@@ -34,6 +34,10 @@ const YAW_INTERACTION_STATE = {
     actionLabel(app, action, fallback = 'Choose') {
         if (!action) return fallback;
         if (action === 'choose') return fallback;
+        if (String(action).startsWith('sync_')) {
+            const base = String(action).replace(/^sync_/, '');
+            return app._label(`combat.sync.action.${base}`, fallback);
+        }
         return app._uiLabel ? app._uiLabel(action) : action;
     },
 

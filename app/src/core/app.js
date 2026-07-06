@@ -1352,6 +1352,12 @@
             _makeCorpse(target, cause = 'fight') {
                 if (!target) return target;
                 const wasLiving = this._isLivingCreature(target);
+                if (Array.isArray(this.explorationTargetIds) && this.explorationTargetIds.length) {
+                    this.explorationTargetIds = this.explorationTargetIds.filter(key => {
+                        if (!String(key).startsWith('creature:')) return true;
+                        return this._explorationTargetFromKey(key) !== target;
+                    });
+                }
                 target.CPun = 0;
                 target.CPle = 0;
                 target.alive = false;

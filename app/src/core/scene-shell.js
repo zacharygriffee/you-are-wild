@@ -85,6 +85,7 @@ const YAW_SCENE_SHELL = {
             desktopBelt.innerHTML = '';
             desktopBelt.removeAttribute('data-command-surface');
             desktopBelt.removeAttribute('data-command-mode');
+            desktopBelt.removeAttribute('data-command-grammar');
         }
         this.clearMobileExplorationControls(app);
     },
@@ -105,6 +106,7 @@ const YAW_SCENE_SHELL = {
             desktopBelt.innerHTML = '';
             desktopBelt.removeAttribute('data-command-surface');
             desktopBelt.removeAttribute('data-command-mode');
+            desktopBelt.removeAttribute('data-command-grammar');
         }
         this.clearMobileExplorationControls(app);
         const mobileTitle = document.getElementById('mobile-scene-title');

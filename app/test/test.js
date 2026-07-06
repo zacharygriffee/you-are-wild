@@ -3584,6 +3584,7 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'id="app-menu" role="menu"', 'Header app menu should expose a menu role');
   assertContains(template, '.app-menu {\n                position: fixed;', 'Mobile app menu should escape the clipped mobile header');
   assertContains(template, 'max-height: calc(100dvh - 72px);', 'Mobile app menu should stay inside the dynamic viewport');
+  assertContains(template, '.app-nav {\n                display: none;', 'Mobile header should hide duplicated desktop play shortcuts');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu should expose Save without a top-level nav button');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('load')", 'App menu should expose Load without a top-level nav button');
   assertContains(template, "App.closeAppMenu(); App.showScreen('settings'); App.showSettings();", 'App menu should expose Settings');

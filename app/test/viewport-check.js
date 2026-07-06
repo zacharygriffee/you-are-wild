@@ -161,7 +161,10 @@ async function checkViewport(browser, name, width, height) {
     const appMenu = await page.evaluate(() => {
       const menu = document.getElementById('app-menu');
       const toggle = document.getElementById('app-menu-toggle');
+      const topNav = document.querySelector('.app-nav');
+      const timeDisplay = document.getElementById('time-display');
       const rect = menu.getBoundingClientRect();
+      const timeRect = timeDisplay.getBoundingClientRect();
       const style = getComputedStyle(menu);
       const visibleItems = Array.from(menu.querySelectorAll('button')).filter(btn => {
         const r = btn.getBoundingClientRect();
@@ -178,6 +181,8 @@ async function checkViewport(browser, name, width, height) {
         bottom: rect.bottom,
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
+        topNavDisplay: topNav ? getComputedStyle(topNav).display : '',
+        timeDisplayVisible: Boolean(timeDisplay) && getComputedStyle(timeDisplay).display !== 'none' && timeRect.width > 0 && timeRect.height > 0,
         visibleItems
       };
     });
@@ -190,6 +195,8 @@ async function checkViewport(browser, name, width, height) {
     assert(appMenu.bottom <= appMenu.viewportHeight + 1, `${name}: mobile app menu should stay inside viewport vertically`);
     assert(appMenu.visibleItems.some(label => label.includes('Save')), `${name}: mobile app menu should expose Save`);
     assert(appMenu.visibleItems.some(label => label.includes('Load')), `${name}: mobile app menu should expose Load`);
+    assert.strictEqual(appMenu.topNavDisplay, 'none', `${name}: mobile header should hide duplicated desktop play shortcuts`);
+    assert.strictEqual(appMenu.timeDisplayVisible, true, `${name}: mobile header should keep the time indicator visible`);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(50);
 

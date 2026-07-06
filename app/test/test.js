@@ -10487,6 +10487,40 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should leave the exploration control-belt sentence empty');
 });
 
+test('Combat command sentence reserves target state for real target picking', () => {
+  const { App, elements, document } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-command-grammar' });
+  const ally = makeUnit('Ally', { id: 'ally-command-grammar' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [makeUnit('Enemy', { id: 'enemy-command-grammar', disposition: App.DISPOSITION.ENEMY })];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    turnQueue: [{ unit: player, initiative: 10 }, { unit: ally, initiative: 5 }],
+    currentTurn: 0,
+    syncActions: [],
+    processing: false
+  };
+
+  App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-command-grammar', participantIds: ['player-command-grammar', 'ally-command-grammar'] };
+  let html = App.renderSelectionSentence();
+  assertContains(html, 'You + Ally', 'Sync participant sentence should show selected actors in the actor slot');
+  assertContains(html, 'Group Fight', 'Sync participant sentence should show the chosen group intent');
+  assertNotContains(html, 'Targets', 'Sync participant selection should not be presented as a target state');
+  assertNotContains(html, 'Select participants for sync', 'Sync participant instruction belongs to phase controls, not the target slot');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Group Fight', 'Desktop sentence should render sync participant intent below the stage');
+
+  App.feedSelection = { active: true, subIds: ['heal'] };
+  App.syncSelection = null;
+  html = App.renderSelectionSentence();
+  assertContains(html, 'Feed Options', 'Feed option selection should be represented as the current intent phase');
+  assertNotContains(html, 'Targets', 'Feed option selection should not fabricate a target state');
+  assertNotContains(html, 'Choose feed option', 'Feed option instruction should not appear as a target value');
+  assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should keep the exploration control-belt sentence empty for feed options');
+});
+
 test('Combat creature target button localizes visible and accessible labels', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { Figh: 30 });

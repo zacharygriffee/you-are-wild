@@ -76,14 +76,11 @@ const YAW_INTERACTION_STATE = {
                 parts[0].value = this.unitNames(app, participants, parts[0].value);
             }
             intentText = this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
-            if (app.syncSelection.phase === 'participants') {
-                targetText = app._label('combat.sync.selectParticipants', 'Select participants for sync');
-            } else if (app.syncSelection.phase === 'target') {
+            if (app.syncSelection.phase === 'target') {
                 targetText = app._label('target.pickTarget', 'Pick target');
             }
         } else if (app.feedSelection?.active) {
-            intentText = this.actionLabel(app, 'feed', 'Feed');
-            targetText = app._label('feed.chooseOption', 'Choose feed option');
+            intentText = app._label('feed.optionsTitle', 'Feed Options');
         } else if (app.targetSelection?.source === 'combat') {
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
             targetText = app._label('target.pickTarget', 'Pick target');

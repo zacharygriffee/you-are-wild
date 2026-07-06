@@ -121,14 +121,14 @@ const YAW_QUEST_PANEL = {
             ['status', app._label('quest.sort.status', 'Status')],
             ['title', app._label('quest.sort.title', 'Title')]
         ];
-        return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
+        return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;" data-command-surface="quest-log-detail" data-command-mode="exploration">
             <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${statusLabel}
-                <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${statusLabel}" aria-label="${statusLabel}" onchange="App.setQuestFilter(this.value)">
+                <select class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="filter-quests" style="padding:4px 8px;font-size:11px;" title="${statusLabel}" aria-label="${statusLabel}" onchange="App.setQuestFilter(this.value)">
                     ${filterOptions.map(([value, label]) => `<option value="${value}" ${app.questFilter === value ? 'selected' : ''}>${app._escapeHtml(label)}</option>`).join('')}
                 </select>
             </label>
             <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
-                <select class="nav-btn" style="padding:4px 8px;font-size:11px;" title="${sortLabel}" aria-label="${sortLabel}" onchange="App.setQuestSort(this.value)">
+                <select class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="sort-quests" style="padding:4px 8px;font-size:11px;" title="${sortLabel}" aria-label="${sortLabel}" onchange="App.setQuestSort(this.value)">
                     ${sortOptions.map(([value, label]) => `<option value="${value}" ${app.questSort === value ? 'selected' : ''}>${app._escapeHtml(label)}</option>`).join('')}
                 </select>
             </label>
@@ -155,15 +155,17 @@ const YAW_QUEST_PANEL = {
         const quests = app.quests || [];
         const titleLabel = app._escapeHtml(app._label('quest.title', 'Quests'));
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
+        const backButton = `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="close-quest-log" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
+        const openDetail = `<div class="quest-log-detail" data-command-surface="quest-log-detail" data-command-mode="exploration">`;
+        const closeDetail = `</div>`;
         if (quests.length === 0) {
-            app.showPartyPanelDetail(titleLabel, `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${app._escapeHtml(app._label('quest.noneActive', 'No active quests.'))}</p>${backButton}`);
+            app.showPartyPanelDetail(titleLabel, `${openDetail}<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${app._escapeHtml(app._label('quest.noneActive', 'No active quests.'))}</p>${backButton}${closeDetail}`);
             return;
         }
         const visibleQuests = app._filteredQuestEntries();
-        let html = `<h3>${titleLabel}</h3>${app._questLogControls()}`;
+        let html = `${openDetail}<h3>${titleLabel}</h3>${app._questLogControls()}`;
         if (visibleQuests.length === 0) {
-            html += `<p style="color:var(--text-muted);margin-top:12px;">${app._escapeHtml(app._label('quest.noneMatchFilter', 'No quests match the current filter.'))}</p>${backButton}`;
+            html += `<p style="color:var(--text-muted);margin-top:12px;">${app._escapeHtml(app._label('quest.noneMatchFilter', 'No quests match the current filter.'))}</p>${backButton}${closeDetail}`;
             app.showPartyPanelDetail(titleLabel, html);
             return;
         }
@@ -182,7 +184,7 @@ const YAW_QUEST_PANEL = {
                 if (marker && quest.status === 'active') {
                     const showMapLabel = app._escapeHtml(app._label('quest.showOnMap', 'Show On Map'));
                     const showMapTitle = app._escapeHtml(app._label('quest.showOnMapFor', 'Show {name} on map', { name: quest.title }));
-                    html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showMapTitle}" aria-label="${showMapTitle}" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showMapLabel}</button>`;
+                    html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="show-quest-route" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showMapTitle}" aria-label="${showMapTitle}" onclick="App.focusQuestOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}','${String(objective.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showMapLabel}</button>`;
                 }
             }
             if (needsTurnIn) {
@@ -192,15 +194,15 @@ const YAW_QUEST_PANEL = {
                     html += `<div class="quest-route-preview" style="display:grid;gap:4px;font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">${app._escapeHtml(app._questTurnInPreview(turnInMarker))}${guidance ? ` · ${app._escapeHtml(guidance)}` : ''}</div>`;
                     const showTurnInLabel = app._escapeHtml(app._label('quest.showTurnIn', 'Show Turn-In'));
                     const showTurnInTitle = app._escapeHtml(app._label('quest.showTurnInFor', 'Show turn-in for {name}', { name: quest.title }));
-                    html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
+                    html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="show-quest-turn-in-route" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${showTurnInTitle}" aria-label="${showTurnInTitle}" onclick="App.focusQuestTurnInOnMap('${String(quest.id).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">${showTurnInLabel}</button>`;
                 }
                 const turnInLabel = app._escapeHtml(app._label('quest.turnIn', 'Turn In'));
                 const turnInTitle = app._escapeHtml(app._label('quest.turnInQuest', 'Turn in {name}', { name: quest.title }));
-                html += `<button class="nav-btn" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
+                html += `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="turn-in-quest" data-command-intent="turnInQuest" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${turnInTitle}" aria-label="${turnInTitle}" onclick="App.turnInQuest('${String(quest.id).replace(/'/g, "\\'")}')">${turnInLabel}</button>`;
             }
             html += `</div>`;
         });
-        html += `</div>${backButton}`;
+        html += `</div>${backButton}${closeDetail}`;
         app.showPartyPanelDetail(titleLabel, html);
     }
 };

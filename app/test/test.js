@@ -2344,6 +2344,13 @@ test('Quest panel helper module is registered before app code', () => {
   assertContains(questPanelContent, 'routePreviewText(app, objective)', 'Quest panel helper should own quest route preview rendering');
   assertContains(questPanelContent, 'showLog(app)', 'Quest panel helper should own quest log presentation');
   assertContains(questPanelContent, 'app.showPartyPanelDetail(titleLabel, html)', 'Quest log should render through party panel details');
+  assertContains(questPanelContent, 'data-command-surface="quest-log-detail"', 'Quest log should identify its detail command surface');
+  assertContains(questPanelContent, 'data-command-control="filter-quests"', 'Quest log filter should identify its drawer control');
+  assertContains(questPanelContent, 'data-command-control="sort-quests"', 'Quest log sort should identify its drawer control');
+  assertContains(questPanelContent, 'data-command-control="show-quest-route"', 'Quest log route preview should identify its drawer control');
+  assertContains(questPanelContent, 'data-command-control="show-quest-turn-in-route"', 'Quest log turn-in route preview should identify its drawer control');
+  assertContains(questPanelContent, 'data-command-control="turn-in-quest"', 'Quest log turn-in should identify its drawer control');
+  assertContains(questPanelContent, 'data-command-control="close-quest-log"', 'Quest log back control should identify its drawer exit');
   assertNotContains(questPanelContent, "document.getElementById('scene-description')", 'Quest log should not render into center tile content');
   assertContains(appContent, 'YAW_QUEST_PANEL.progressText(this, quest)', 'App quest progress wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_PANEL.routePreviewText(this, objective)', 'App quest route wrapper should delegate to the helper');
@@ -12859,6 +12866,10 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertContains(elements.get('party-content').innerHTML, 'Turn In', 'Quest log should expose turn-in action for deferred rewards');
   assertContains(elements.get('party-content').innerHTML, 'Turn in with Guide Camp (3, -1)', 'Quest log should show turn-in route when giver location is known');
   assertContains(elements.get('party-content').innerHTML, 'Show Turn-In', 'Quest log should expose map focus for turn-in location');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-surface="quest-log-detail"', 'Quest log should render as a detail command surface');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="show-quest-turn-in-route"', 'Quest log turn-in route should expose its detail control role');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="turn-in-quest"', 'Quest log turn-in should expose its detail control role');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-intent="turnInQuest"', 'Quest log turn-in should expose its stable intent id');
   assertNotContains(elements.get('scene-description').innerHTML, 'Deferred Wolf Hunt', 'Quest log should not replace center presentation content');
   const focused = App.focusQuestTurnInOnMap('deferred_wolf_hunt');
   assertEqual(focused, true, 'Turn-in map focus should succeed when giver location is known');
@@ -12984,6 +12995,13 @@ test('Quest log controls localize with accessible names', () => {
   App.updateLanguage('es');
   App.showQuestLog();
   const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'data-command-surface="quest-log-detail"', 'Quest log should render as a detail command surface');
+  assertContains(html, 'data-command-control="filter-quests"', 'Quest filter select should expose its drawer control role');
+  assertContains(html, 'data-command-control="sort-quests"', 'Quest sort select should expose its drawer control role');
+  assertContains(html, 'data-command-control="show-quest-route"', 'Quest map action should expose its drawer control role');
+  assertContains(html, 'data-command-control="show-quest-turn-in-route"', 'Quest turn-in map action should expose its drawer control role');
+  assertContains(html, 'data-command-control="turn-in-quest"', 'Quest turn-in action should expose its drawer control role');
+  assertContains(html, 'data-command-control="close-quest-log"', 'Quest back action should expose its drawer exit role');
   assertContains(html, '<h3>Misiones</h3>', 'Quest log title should localize');
   assertContains(html, 'aria-label="Estado"', 'Quest filter select should expose localized accessible label');
   assertContains(html, '>Activas<', 'Quest active filter option should localize');

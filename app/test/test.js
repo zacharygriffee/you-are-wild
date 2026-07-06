@@ -4048,7 +4048,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(appContent, "_directionLabel", 'desktop play surface should label directional movement cells');
   assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
   assertContains(template, '.desktop-context-belt', 'desktop context belt styles missing');
-  assertContains(template, '.scene-actions .target-action-row', 'desktop target actions should be bounded inside the scene action area');
+  assertContains(template, '.scene-actions {\n            display: none;', 'center presentation action slot should stay hidden as a compatibility slot');
+  assertContains(template, '.desktop-context-belt .target-action-row', 'desktop target actions should be bounded inside the composer belt');
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');
   assertContains(template, 'text-overflow: ellipsis;', 'desktop target action captions should clip instead of pushing horizontal scroll');
@@ -7999,7 +8000,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(template, '.mobile-unit-chip.selected-target', 'Mobile target selection should have distinct styling');
   assertContains(template, 'overflow-wrap: anywhere;', 'Long selected actor and target names should wrap instead of forcing horizontal scroll');
   assertContains(template, '.desktop-context-belt .action-caption', 'Desktop context belt action captions should be constrained independently');
-  assertContains(template, '.scene-actions .target-action-row .action-icon', 'Legacy selected-target action icons should remain block-level compact controls');
+  assertContains(template, '.desktop-context-belt .target-action-row .action-icon', 'Selected-target action icons should be compact inside the desktop composer belt');
+  assertNotContains(template, '.scene-actions .target-action-row', 'Center presentation should not keep legacy target action row styling');
   assertContains(template, 'max-width: calc(100vw - 36px);', 'Desktop intent popup should clamp to viewport width');
   assertNotContains(actionsHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(actionsHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');

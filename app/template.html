@@ -1113,36 +1113,7 @@
         }
 
         .scene-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(68px, 92px));
-            gap: var(--space-sm);
-            margin-top: var(--space-xl);
-            justify-content: center;
-            align-items: flex-start;
-            max-width: 100%;
-            width: min(100%, 720px);
-            overflow-x: hidden;
-            min-width: 0;
-        }
-
-        .scene-actions.center-tile-actions {
-            margin-top: var(--space-md);
-            min-height: 76px;
-            overflow-y: visible;
-        }
-
-        .scene-actions > .action-btn {
-            width: 100%;
-            min-width: 0;
-            max-width: 120px;
-            min-inline-size: 0;
-        }
-
-        .scene-actions > .action-legend {
-            grid-column: 1 / -1;
-            min-width: 0;
-            max-width: 100%;
-            overflow-wrap: anywhere;
+            display: none;
         }
 
         .selection-sentence {
@@ -1233,50 +1204,6 @@
             text-overflow: ellipsis;
         }
 
-        .scene-actions > .action-legend span {
-            min-width: 0;
-            overflow-wrap: anywhere;
-        }
-
-        .scene-actions .target-action-row {
-            grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(58px, 82px));
-            justify-content: center;
-            gap: var(--space-sm);
-            max-width: 100%;
-            width: min(100%, 560px);
-            min-width: 0;
-            overflow-x: hidden;
-            margin-inline: auto;
-        }
-
-        .scene-actions .target-action-row > .action-btn {
-            min-width: 0;
-            width: 100%;
-            max-width: 82px;
-            min-height: 52px;
-            padding: 7px 4px;
-        }
-
-        .scene-actions .action-caption {
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            text-align: center;
-            display: block;
-            font-size: 11px;
-            line-height: 1.15;
-        }
-
-        .scene-actions .target-action-row .action-icon {
-            display: block;
-            margin-bottom: 2px;
-            font-size: 18px;
-            line-height: 1;
-        }
-
         .desktop-context-belt {
             display: flex;
             gap: var(--space-sm);
@@ -1312,6 +1239,33 @@
             display: block;
             font-size: 11px;
             line-height: 1.15;
+        }
+
+        .desktop-context-belt .target-action-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(58px, 82px));
+            justify-content: center;
+            gap: var(--space-sm);
+            max-width: 100%;
+            width: min(100%, 560px);
+            min-width: 0;
+            overflow-x: hidden;
+            margin-inline: auto;
+        }
+
+        .desktop-context-belt .target-action-row > .action-btn {
+            min-width: 0;
+            width: 100%;
+            max-width: 82px;
+            min-height: 52px;
+            padding: 7px 4px;
+        }
+
+        .desktop-context-belt .target-action-row .action-icon {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 18px;
+            line-height: 1;
         }
 
         .desktop-combat-composer,
@@ -3423,10 +3377,6 @@
             padding-top: 0;
             padding-bottom: 0;
         }
-
-            .scene-actions {
-                display: none;
-            }
 
             .panel-log {
                 display: none;

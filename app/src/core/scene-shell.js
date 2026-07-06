@@ -39,7 +39,6 @@ const YAW_SCENE_SHELL = {
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';
-            actions.classList?.remove('center-tile-actions');
             actions.style.display = 'none';
         }
         const desktopBelt = document.getElementById('desktop-context-belt');

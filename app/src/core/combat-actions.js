@@ -105,9 +105,11 @@ const YAW_COMBAT_ACTIONS = {
         if (html) {
             belt.setAttribute('data-command-surface', 'combat-composer');
             belt.setAttribute('data-command-mode', 'combat');
+            belt.setAttribute('data-command-grammar', 'actor-target-intent');
         } else {
             belt.removeAttribute('data-command-surface');
             belt.removeAttribute('data-command-mode');
+            belt.removeAttribute('data-command-grammar');
         }
         return html;
     }

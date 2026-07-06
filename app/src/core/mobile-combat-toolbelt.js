@@ -110,6 +110,10 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (!active) {
             belt.className = 'mobile-combat-toolbelt';
             belt.innerHTML = '';
+            belt.removeAttribute('data-surface-role');
+            belt.removeAttribute('data-command-surface');
+            belt.removeAttribute('data-command-mode');
+            belt.removeAttribute('data-command-grammar');
             return '';
         }
         const actor = app._currentCombatActor();
@@ -125,6 +129,10 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const intents = this.intentButtons(app, actor);
         const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div>${sentence}${phaseControls}<div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>${intents}`;
         belt.className = 'mobile-combat-toolbelt active';
+        belt.setAttribute('data-surface-role', 'command-composer');
+        belt.setAttribute('data-command-surface', 'combat-composer');
+        belt.setAttribute('data-command-mode', 'combat');
+        belt.setAttribute('data-command-grammar', 'actor-target-intent');
         belt.innerHTML = html;
         return html;
     }

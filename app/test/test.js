@@ -4088,6 +4088,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
   assertContains(template, '.mobile-combat-intents .unit-actions', 'mobile combat toolbelt should own a shared intent action row');
+  assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-surface-role', 'command-composer')", 'mobile combat toolbelt should identify as the combat command composer when active');
+  assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-grammar', 'actor-target-intent')", 'mobile combat toolbelt should identify the shared actor-target-intent grammar when active');
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');
   assertNotContains(template, 'onclick="combatAction(\'fight\')"', 'legacy mobile action bar should not ship duplicate Fight controls');
   assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
@@ -6878,6 +6880,8 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   assertContains(combatBeltHtml, 'data-command-surface="combat-intents" data-command-mode="combat"', 'Desktop combat composer row should identify combat command mode');
   assertContains(combatBeltHtml, 'data-command-mode="combat" data-command-intent="fight"', 'Desktop combat Fight button should identify combat command mode');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'combat', 'Desktop combat composer belt should identify combat command mode');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'combat-composer', 'Desktop combat composer belt should identify the combat composer surface');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Desktop combat composer belt should identify the shared command grammar');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
@@ -10428,6 +10432,10 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
 
   App.renderMobileCombatToolbelt();
   assertEqual(elements.get('mobile-play-surface').classList.contains('combat-active'), true, 'Mobile play surface should enter combat layout mode');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-surface-role'), 'command-composer', 'Mobile combat toolbelt should identify as the command composer while active');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-surface'), 'combat-composer', 'Mobile combat toolbelt should identify the combat composer surface');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-mode'), 'combat', 'Mobile combat toolbelt should identify combat command mode while active');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile combat toolbelt should identify the shared command grammar while active');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You to act', 'Mobile combat toolbelt should show current party actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');

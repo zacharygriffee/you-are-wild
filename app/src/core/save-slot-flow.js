@@ -70,8 +70,13 @@ const YAW_SAVE_SLOT_FLOW = {
     async saveToSlotConfirmed(app, slotName) {
         slotName = app._normalizeSaveSlotName(slotName);
         const slotLabel = app._slotDisplayLabel(slotName);
+        const previousSlot = app._normalizeSaveSlotName(app.activeSlot);
+        const shouldForkWorld = Boolean(app.player && previousSlot && previousSlot !== slotName);
+        const previousWorldMeta = shouldForkWorld ? { ...(app.worldMeta || {}) } : null;
         try {
+            if (shouldForkWorld) app._forkWorldForSaveSlot(slotName);
             await YAW_SAVE_PERSISTENCE.writeSlot(app, slotName, { auto: false });
+            await app._pruneUnreferencedWorldStore().catch(e => console.warn('World cleanup skipped after save', e));
             app.saveManagerStatus = {
                 kind: 'success',
                 message: app._label('save.success.saved', 'Game saved to {slot}. Auto-save now updates this slot.', { slot: slotLabel })
@@ -79,6 +84,7 @@ const YAW_SAVE_SLOT_FLOW = {
             app.renderSaveManager(app.saveManagerMode || 'save');
             return true;
         } catch (e) {
+            if (previousWorldMeta) app.worldMeta = previousWorldMeta;
             app.saveManagerStatus = {
                 kind: 'error',
                 message: app._label('save.error.saveFailed', 'Save failed: {message}', { message: e.message })
@@ -125,6 +131,7 @@ const YAW_SAVE_SLOT_FLOW = {
             if (app._normalizeSaveSlotName(app.activeSlot) === slotName) app.activeSlot = 'slot1';
             await app.refreshContinueButton();
             app.showSaveManager(app.saveManagerMode || 'load');
+            app._pruneUnreferencedWorldStore().catch(e => console.warn('World cleanup skipped after delete', e));
             return true;
         } catch (e) { alert(app._label('save.error.deleteFailed', 'Delete failed: {message}', { message: e.message })); }
         return false;

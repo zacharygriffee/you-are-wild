@@ -1445,9 +1445,15 @@ test('World store helper module is registered before app code', () => {
   assertContains(worldStoreContent, "createObjectStore('entityIndex'", 'World store helper should reserve entity index storage');
   assertContains(worldStoreContent, 'app.persistAllTileDeltas()', 'World store persistence should flush tile deltas before writing');
   assertContains(worldStoreContent, 'app._applyTileDeltaRecords(records)', 'World store loading should apply normalized tile delta records');
+  assertContains(worldStoreContent, 'forkCurrent(app', 'World store helper should support save-slot world forks');
+  assertContains(worldStoreContent, 'referencedWorldIds(app)', 'World store helper should collect save-referenced worlds before cleanup');
+  assertContains(worldStoreContent, 'pruneUnreferenced(app', 'World store helper should garbage-collect unreferenced world data');
+  assertContains(worldStoreContent, "['worlds', 'tileDeltas', 'chunkDeltas', 'entityIndex']", 'World cleanup should cover world metadata and delta stores');
   assertContains(appContent, 'YAW_WORLD_STORE.dbOpen(this)', 'App world DB wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.persist(this)', 'App world persistence wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STORE.load(this)', 'App world load wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STORE.forkCurrent(this', 'App world fork wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_WORLD_STORE.pruneUnreferenced(this', 'App world cleanup wrapper should delegate to the helper');
 });
 
 test('World random helper module is registered before app code', () => {
@@ -2039,6 +2045,8 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.combatSentence(app)', 'Mobile combat toolbelt sentence should reuse canonical combat selection state');
   assertContains(mobileCombatToolbeltContent, 'render(app)', 'Mobile combat toolbelt helper should own DOM rendering');
   assertContains(mobileCombatToolbeltContent, "app._combatActionButtons(actor", 'Mobile combat toolbelt should reuse the shared combat action button path');
+  assertContains(combatSceneContent, 'mobileLatestHtml(app', 'Combat scene helper should render a compact mobile latest-exchange strip');
+  assertContains(combatSceneContent, 'mobile-combat-latest-strip', 'Mobile combat scene should not reuse the full boxed desktop summary');
   assertContains(appContent, 'YAW_MOBILE_COMBAT_TOOLBELT.render(this)', 'App mobile combat toolbelt wrapper should delegate to the helper');
 });
 
@@ -2408,6 +2416,8 @@ test('Save slot flow helper module is registered before app code', () => {
   assertContains(saveSlotFlowContent, "app._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should remain localized');
   assertContains(saveSlotFlowContent, "app._label('save.confirm.deleteSlot'", 'Delete warning should remain localized and scoped');
   assertContains(saveSlotFlowContent, "app._dbDelete('saves', slotName)", 'Delete flow should remove only the selected save slot');
+  assertContains(saveSlotFlowContent, 'app._forkWorldForSaveSlot(slotName)', 'Manual save-as should fork mutable world state before writing another slot');
+  assertContains(saveSlotFlowContent, 'app._pruneUnreferencedWorldStore()', 'Save-slot flow should prune orphaned world records after save/delete changes');
   assertContains(saveSlotFlowContent, 'app.showSaveManager(app.saveManagerMode ||', 'Delete flow should preserve the current save manager mode');
   assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.showNewGameManager(this)', 'App new-game manager wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.beginNewGameInSlot(this, slotName)', 'App new-game slot wrapper should delegate to the helper');
@@ -3954,7 +3964,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
-  assertContains(template, 'flex: 0 0 112px;\n                height: 112px;', 'combat scene summary should stay compact on mobile');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-control-belt:not(.has-controls)', 'combat should hide the floating exploration belt when it has no real controls');
+  assertContains(template, '.mobile-combat-latest-strip', 'combat scene summary should become a single compact latest-exchange strip on mobile');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-activity-log[open]', 'mobile combat activity log should expand as an overlay sheet instead of pushing controls');
   assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
   assertContains(mobileUnitStripsContent, "app.combatState?.active\n            ? app._label('ui.enemies', 'Enemies')", 'mobile combat creature strip should be labeled as enemies');
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
@@ -10062,6 +10074,30 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.renderMobileCombatToolbelt();
   assertEqual(elements.get('mobile-play-surface').classList.contains('combat-active'), false, 'Mobile play surface should leave combat layout mode after combat');
   assertEqual(elements.get('mobile-combat-toolbelt').innerHTML, '', 'Mobile combat toolbelt should clear after combat');
+});
+
+test('Mobile combat scene renders one latest-exchange strip instead of boxed summary', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.combatState = {
+    active: true,
+    round: 3,
+    turnQueue: [{ unit: player, initiative: 10 }],
+    currentTurn: 0,
+    syncActions: [],
+    processing: false
+  };
+  App.log = [{ text: 'You hit Enemy for 8.', type: 'combat', actorName: 'You', action: 'fight' }];
+
+  App.renderCombatSceneForTurn(player);
+
+  assertContains(elements.get('scene-description').innerHTML, 'combat-scene-summary', 'Desktop center should keep the full combat summary');
+  assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-latest-strip', 'Mobile scene should use the compact latest-exchange strip');
+  assertContains(elements.get('mobile-scene-description').innerHTML, 'You hit Enemy for 8.', 'Mobile latest-exchange strip should show the newest combat exchange');
+  assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-recent-exchange', 'Mobile scene should not embed the boxed recent-exchange list');
+  assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-turn-order', 'Mobile scene should not embed the full turn-order box');
 });
 
 test('Mobile exploration uses visible control belt for movement target actions and actors', () => {

@@ -4,6 +4,12 @@
  */
 
 const YAW_WORLD_STORE = {
+    makeWorldId(app, purpose = 'world') {
+        const cleanPurpose = String(purpose || 'world').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24) || 'world';
+        const random = Math.floor(Math.random() * 0xFFFFFF).toString(36).padStart(4, '0');
+        return `world_${Date.now()}_${cleanPurpose}_${random}`;
+    },
+
     async dbOpen(app) {
         return new Promise((resolve, reject) => {
             if (!indexedDB || typeof indexedDB.open !== 'function') {
@@ -83,6 +89,77 @@ const YAW_WORLD_STORE = {
                 app.creatures = app._tileCreatures(currentTile.creatures || []);
                 resolve(records.length);
             };
+            tx.onerror = () => { db.close(); reject(tx.error); };
+        });
+    },
+
+    forkCurrent(app, purpose = 'save') {
+        const current = app._normalizeWorldMeta(app.worldMeta, app._defaultWorldMeta());
+        const previousWorldId = current.worldId;
+        const worldId = this.makeWorldId(app, purpose);
+        app.worldMeta = { ...current, worldId };
+        return { previousWorldId, worldId };
+    },
+
+    async referencedWorldIds(app) {
+        const ids = new Set();
+        for (const slotName of app._saveSlotNames()) {
+            let saveData = null;
+            try {
+                saveData = await app._dbGet('saves', slotName);
+            } catch (e) {
+                console.warn(`Failed to read save slot ${slotName} for world cleanup`, e);
+                return null;
+            }
+            if (!saveData) continue;
+            try {
+                const loaded = Binary.loadGame(saveData);
+                const meta = app._normalizeWorldMeta(loaded.worldMeta, null);
+                if (meta?.worldId) ids.add(meta.worldId);
+            } catch (e) {
+                console.warn(`Skipped world cleanup because ${slotName} could not be decoded`, e);
+                return null;
+            }
+        }
+        return ids;
+    },
+
+    recordWorldId(storeName, key, record) {
+        if (storeName === 'worlds') return record?.worldId || String(key || '');
+        if (record?.worldId) return record.worldId;
+        const keyText = String(record?.key || key || '');
+        return keyText.includes(':') ? keyText.split(':')[0] : '';
+    },
+
+    async pruneUnreferenced(app, referencedIds = null) {
+        const refs = referencedIds instanceof Set ? referencedIds : await this.referencedWorldIds(app);
+        if (!(refs instanceof Set)) return { skipped: true, deleted: 0 };
+        const db = await app._worldDbOpen();
+        const storeNames = ['worlds', 'tileDeltas', 'chunkDeltas', 'entityIndex']
+            .filter(name => db.objectStoreNames?.contains?.(name));
+        if (!storeNames.length) {
+            db.close();
+            return { skipped: false, deleted: 0 };
+        }
+        return new Promise((resolve, reject) => {
+            let deleted = 0;
+            const tx = db.transaction(storeNames, 'readwrite');
+            for (const storeName of storeNames) {
+                const store = tx.objectStore(storeName);
+                const cursorReq = store.openCursor();
+                cursorReq.onsuccess = e => {
+                    const cursor = e.target.result;
+                    if (!cursor) return;
+                    const worldId = this.recordWorldId(storeName, cursor.key, cursor.value);
+                    if (worldId && !refs.has(worldId)) {
+                        cursor.delete();
+                        deleted++;
+                    }
+                    cursor.continue();
+                };
+                cursorReq.onerror = () => reject(cursorReq.error);
+            }
+            tx.oncomplete = () => { db.close(); resolve({ skipped: false, deleted }); };
             tx.onerror = () => { db.close(); reject(tx.error); };
         });
     }

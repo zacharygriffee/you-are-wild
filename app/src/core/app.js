@@ -4680,6 +4680,15 @@
             async loadWorldStateFromMapStore() {
                 return YAW_WORLD_STORE.load(this);
             },
+            _forkWorldForSaveSlot(slotName) {
+                return YAW_WORLD_STORE.forkCurrent(this, `save_${this._normalizeSaveSlotName(slotName)}`);
+            },
+            async _referencedWorldIds() {
+                return YAW_WORLD_STORE.referencedWorldIds(this);
+            },
+            async _pruneUnreferencedWorldStore(referencedIds = null) {
+                return YAW_WORLD_STORE.pruneUnreferenced(this, referencedIds);
+            },
         };
 
         // Window helpers

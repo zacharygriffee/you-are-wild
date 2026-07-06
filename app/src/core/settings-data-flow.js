@@ -86,6 +86,7 @@ const YAW_SETTINGS_DATA_FLOW = {
             app._removeStoredValue('lastSaveTime');
             app._removeStoredValue('hasPlayed');
             app.activeSlot = 'slot1';
+            await app._pruneUnreferencedWorldStore(new Set()).catch(e => console.warn('World cleanup skipped after deleting saves', e));
             await app.refreshContinueButton();
             alert(app._label('save.success.deletedAll', 'All saves deleted.'));
             if (document.getElementById('save-manager')?.classList.contains('active')) {

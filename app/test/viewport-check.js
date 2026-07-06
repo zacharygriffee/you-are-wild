@@ -231,6 +231,85 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(markedControls.moveAria, 'false', `${name}: move toggle aria state should reflect collapsed target-tray mode`);
     await page.evaluate(() => App.clearExplorationTargets());
 
+    await page.evaluate(() => {
+      const enemy = {
+        id: 'enemy-viewport',
+        name: 'Enemy',
+        species: 'human',
+        icon: '👤',
+        disposition: App.DISPOSITION.ENEMY,
+        CPun: 100,
+        MPun: 100,
+        CPle: 0,
+        MPle: 100,
+        level: 1,
+        size: 4,
+        appetite: 4,
+        stomach: [],
+        inventory: [],
+        Figh: 10,
+        Flir: 10,
+        Fuck: 10,
+        Feas: 10,
+        Feed: 10,
+        Flee: 10,
+        con: 10,
+        wis: 10,
+        cha: 10
+      };
+      App.creatures = [enemy];
+      App.combatState = {
+        active: true,
+        round: 1,
+        currentTurn: 0,
+        turnQueue: [{ unit: App.player, initiative: 10 }, { unit: enemy, initiative: 5 }],
+        syncActions: [],
+        processing: false
+      };
+      App.log.push({ text: 'You hit Enemy for 4.', type: 'combat', actorName: 'You', action: 'fight' });
+      App.renderCreatures();
+      App.renderParty();
+      App.renderCombatSceneForTurn(App.player);
+      App.renderMobileCombatToolbelt();
+    });
+    await page.waitForTimeout(50);
+    const mobileCombat = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const map = document.querySelector('.mobile-map-card');
+      const controlBelt = document.getElementById('mobile-control-belt');
+      const latest = document.querySelector('.mobile-combat-latest-strip');
+      const mobileDesc = document.getElementById('mobile-scene-description');
+      const dockRect = dock.getBoundingClientRect();
+      const latestRect = latest.getBoundingClientRect();
+      const controlRect = controlBelt.getBoundingClientRect();
+      return {
+        mapDisplay: getComputedStyle(map).display,
+        controlDisplay: getComputedStyle(controlBelt).display,
+        controlHeight: controlRect.height,
+        latestText: latest?.innerText || '',
+        latestTop: latestRect.top,
+        latestBottom: latestRect.bottom,
+        dockTop: dockRect.top,
+        descHasBoxedRecent: Boolean(mobileDesc?.querySelector('.combat-recent-exchange')),
+        descHasTurnOrder: Boolean(mobileDesc?.querySelector('.combat-turn-order')),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(mobileCombat.mapDisplay, 'none', `${name}: mobile combat should hide traversal map`);
+    assert.strictEqual(mobileCombat.controlDisplay, 'none', `${name}: empty exploration control belt should hide during combat`);
+    assert.strictEqual(mobileCombat.controlHeight, 0, `${name}: hidden exploration control belt should not consume combat space`);
+    assert(mobileCombat.latestText.includes('You hit Enemy for 4.'), `${name}: mobile combat should expose one latest-exchange strip`);
+    assert(mobileCombat.latestTop >= 0, `${name}: latest-exchange strip should be visible in the viewport`);
+    assert(mobileCombat.latestBottom <= mobileCombat.dockTop + 1, `${name}: latest-exchange strip should stay above the fixed dock`);
+    assert.strictEqual(mobileCombat.descHasBoxedRecent, false, `${name}: mobile combat should not embed the boxed recent-exchange list`);
+    assert.strictEqual(mobileCombat.descHasTurnOrder, false, `${name}: mobile combat should not embed the full turn-order box`);
+    assert.strictEqual(mobileCombat.pageOverflow, false, `${name}: mobile combat strip should not create horizontal overflow`);
+    await page.evaluate(() => {
+      App.combatState.active = false;
+      App.renderMobileCombatToolbelt();
+      App.showExplorationActions();
+    });
+
     const readContextMenuBounds = async label => page.evaluate(menuLabel => {
       const menu = document.getElementById('mobile-context-menu');
       const toolbar = document.getElementById('mobile-actions');

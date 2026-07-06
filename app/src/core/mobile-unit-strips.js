@@ -29,6 +29,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const moveToggle = document.getElementById('mobile-move-toggle');
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
+        const controlBelt = document.getElementById('mobile-control-belt');
+        const exploreActions = document.getElementById('mobile-explore-actions');
+        const creatureCue = document.getElementById('mobile-creature-presence-cue');
         const inCombat = Boolean(app.combatState?.active);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
         const actorSelectionOpen = !inCombat && Boolean(app.explorationActorSelectionExplicit);
@@ -53,6 +56,16 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 : '';
         }
         this.creaturePresenceCue(app);
+        if (controlBelt) {
+            const hasContent = !inCombat && Boolean(
+                (exploreActions?.innerHTML || '').trim()
+                || (targetTray?.innerHTML || '').trim()
+                || (actorBelt?.innerHTML || '').trim()
+                || (creatureCue?.innerHTML || '').trim()
+                || (movePad?.classList?.contains('expanded'))
+            );
+            controlBelt.classList.toggle('has-controls', hasContent);
+        }
     },
 
     livingCreatures(app) {

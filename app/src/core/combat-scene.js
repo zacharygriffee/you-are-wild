@@ -132,11 +132,33 @@ const YAW_COMBAT_SCENE = {
             + `</section>`;
     },
 
+    mobileLatestHtml(app, unit = null) {
+        const actor = this.actor(app, unit);
+        const turn = (app.combatState?.currentTurn ?? 0) + 1;
+        const total = Math.max(1, app.combatState?.turnQueue?.length || 1);
+        const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', {
+            round: app.combatState?.round || 1,
+            turn,
+            total
+        });
+        const recent = this.recentExchangeEntries(app, 1)[0] || null;
+        const fallbackText = this.turnDescription(app, actor);
+        const actorName = recent?.actorName || actor?.name || app._label('ui.combat', 'Combat');
+        const action = recent?.action ? app._uiLabel(recent.action) : '';
+        const text = recent?.text || fallbackText;
+        const actionHtml = action ? `<span class="combat-exchange-intent">${app._escapeHtml(action)}</span>` : '';
+        return `<div class="mobile-combat-latest-strip" aria-label="${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}">`
+            + `<div class="mobile-combat-latest-meta"><strong>${app._escapeHtml(actorName)}</strong><span>${app._escapeHtml(status)}</span></div>`
+            + `<div class="mobile-combat-latest-text">${actionHtml}<span>${app._escapeHtml(text)}</span></div>`
+            + `</div>`;
+    },
+
     renderForTurn(app, unit = null) {
         if (!app.combatState?.active) return false;
         YAW_CENTER_CONTEXT.clearPresence();
         const title = this.turnTitle(app, unit);
         const html = this.sceneHtml(app, unit);
+        const mobileHtml = this.mobileLatestHtml(app, unit);
         const textDescription = this.turnDescription(app, unit);
         const titleEl = document.getElementById('scene-title');
         const descEl = document.getElementById('scene-description');
@@ -145,8 +167,8 @@ const YAW_COMBAT_SCENE = {
         const mobileSheet = document.querySelector?.('.mobile-scene-sheet');
         if (titleEl) titleEl.textContent = title;
         if (descEl) descEl.innerHTML = html;
-        if (mobileTitle) mobileTitle.textContent = title;
-        if (mobileDesc) mobileDesc.innerHTML = html;
+        if (mobileTitle) mobileTitle.textContent = app._label('ui.combat', 'Combat');
+        if (mobileDesc) mobileDesc.innerHTML = mobileHtml;
         if (mobileSheet) mobileSheet.classList.remove('rich-content');
         app.renderTileEvents();
         return textDescription;

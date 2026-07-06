@@ -41,11 +41,11 @@ const YAW_MOBILE_UNIT_CHIP = {
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')`, pickAttrs)}</div>`;
             } else {
                 const scavengeAction = app.combatState.active
-                    ? chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="combat" data-command-intent="scavenge" disabled aria-disabled="true"')
+                    ? chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"')
                     : (app._canScavengeCorpse(unit)
-                        ? chipButton('action-btn', app._uiLabel('scavenge'), `${app._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'), 'data-command-mode="exploration" data-command-intent="scavenge"')
-                        : chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="exploration" data-command-intent="scavenge" disabled aria-disabled="true"'));
-                const lootAction = app.combatState.active ? '' : chipButton('action-btn', app._uiLabel('loot'), `${app._uiLabel('loot')} ${unitName}`, mobileIntent('loot'), 'data-command-mode="exploration" data-command-intent="loot"');
+                        ? chipButton('action-btn', app._uiLabel('scavenge'), `${app._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'), 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge"')
+                        : chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"'));
+                const lootAction = app.combatState.active ? '' : chipButton('action-btn', app._uiLabel('loot'), `${app._uiLabel('loot')} ${unitName}`, mobileIntent('loot'), 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"');
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${lootAction}${scavengeAction}</div>`;
             }
         }

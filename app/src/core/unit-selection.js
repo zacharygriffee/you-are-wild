@@ -115,12 +115,14 @@ const YAW_UNIT_SELECTION = {
             'creature-selection',
             'sync-participants',
             'combat-actions',
+            'corpse-utility',
             'combat-target'
         ]);
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
         const surface = commandSurfaces[scope];
+        const commandMode = commandModes[scope] || (scope === 'corpse-utility' && app.combatState?.active ? 'combat' : 'exploration');
         const commandAttrs = surface
-            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandModes[scope] || 'exploration'}"${grammarScopes.has(scope) ? ' data-command-grammar="actor-target-intent"' : ''}`
+            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandMode}"${grammarScopes.has(scope) ? ' data-command-grammar="actor-target-intent"' : ''}`
             : '';
         return `data-action-scope="${safeScope}" aria-label="${label}"${commandAttrs}`;
     },

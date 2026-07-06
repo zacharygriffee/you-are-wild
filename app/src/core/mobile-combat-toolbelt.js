@@ -34,7 +34,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             if (app.syncSelection.phase === 'choose') {
                 const syncButton = (type, icon, key, fallback) => {
                     const label = app._label(key, fallback);
-                    return button(`${icon} ${label}`, `event.stopPropagation();App.selectSyncParticipants('${type}')`, 'action-btn', label, `data-command-intent="${app._escapeHtml(type)}"`);
+                    return button(`${icon} ${label}`, `event.stopPropagation();App.selectSyncParticipants('${type}')`, 'action-btn', label, `data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"`);
                 };
                 const buttons = [
                     syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight'),
@@ -59,7 +59,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             const buttons = (app.feedSelection.subIds || []).map(subId => {
                 const subDef = app.SUB_ACTIONS.feed?.[subId] || {};
                 const subLabel = app._getActionLabel('feed', subId);
-                return button(`${subDef.icon || ''} ${subLabel}`.trim(), `event.stopPropagation();App._executeFeedSubAction('${app._escapeJsString(subId)}', App.activeActor || App._currentCombatActor() || App.player)`, 'action-btn', subLabel, `data-command-intent="feed:${app._escapeHtml(subId)}"`);
+                return button(`${subDef.icon || ''} ${subLabel}`.trim(), `event.stopPropagation();App._executeFeedSubAction('${app._escapeJsString(subId)}', App.activeActor || App._currentCombatActor() || App.player)`, 'action-btn', subLabel, `data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}"`);
             });
             buttons.push(button(app._label('feed.cancel', 'Cancel Feed'), 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', app._label('feed.cancel', 'Cancel Feed'), 'data-command-control="cancel-feed"'));
             return row(feedLabel, 'feed-options', buttons.join(''));

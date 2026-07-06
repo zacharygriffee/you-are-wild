@@ -65,10 +65,11 @@ const YAW_LOCAL_MAP = {
     cellHtml(app, { classes, visual, title, dx, dy, key, moveable }) {
         const escapedTitle = app._escapeHtml(title);
         const movementAttrs = moveable
-            ? `onclick="App.move(${dx},${dy})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}"`
+            ? `data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="${key}" onclick="App.move(${dx},${dy})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}"`
             : 'tabindex="-1"';
         const presence = key === 'center' ? this.centerPresenceHtml(app) : '';
-        return `<div class="${classes}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
+        const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell';
+        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
     },
 
     renderInterior(app) {

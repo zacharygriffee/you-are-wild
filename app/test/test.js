@@ -2591,6 +2591,11 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.render(this)', 'App desktop play renderer should delegate to the helper');
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label)', 'App desktop center updater should delegate to the helper');
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'current-tile')", 'Desktop center tile should identify as the current stage tile');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'traversal-cell')", 'Desktop movement cells should identify as traversal stage cells');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-command-surface', 'stage-traversal')", 'Desktop movement cells should route through the stage traversal command surface');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-command-control', 'move')", 'Desktop movement cells should identify movement as the command control');
+  assertContains(desktopPlaySurfaceContent, "el.removeAttribute('data-command-surface')", 'Desktop non-moveable cells should clear stale stage traversal command metadata');
 });
 
 test('Local map helper module is registered before app code', () => {
@@ -2606,6 +2611,10 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'app._actorToggleLabel(unit', 'Mobile center party presence should announce add/remove actor semantics');
   assertContains(localMapContent, 'app._targetToggleLabel(unit', 'Mobile center creature presence should announce mark/remove target semantics');
   assertContains(localMapContent, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
+  assertContains(localMapContent, 'data-stage-surface="${stageSurface}"', 'Mobile play cells should identify current-tile versus traversal-cell stage surfaces');
+  assertContains(localMapContent, "const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell'", 'Mobile local map should classify the center tile separately from traversal cells');
+  assertContains(localMapContent, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move"', 'Mobile movement cells should identify stage traversal command routing');
+  assertContains(localMapContent, 'data-command-direction="${key}"', 'Mobile movement cells should expose their direction for stage routing');
   assertContains(localMapContent, 'data-command-surface="stage-presence"', 'Mobile center presence controls should identify stage-presence command routing');
   assertContains(localMapContent, 'data-command-grammar="actor-target-intent"', 'Mobile center actor/target presence controls should identify the shared command grammar');
   assertContains(localMapContent, 'data-command-control="${control}"', 'Mobile center presence should identify its actor/target composer route');

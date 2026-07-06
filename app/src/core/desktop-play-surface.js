@@ -44,6 +44,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
             el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
             el.setAttribute('data-map-kind', visual?.kind || 'current');
+            el.setAttribute('data-stage-surface', 'current-tile');
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
         }
@@ -63,12 +64,25 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
             el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
             el.setAttribute('data-map-kind', visual?.kind || 'unknown');
+            el.setAttribute('data-stage-surface', 'traversal-cell');
+            el.setAttribute('data-stage-direction', `${dx},${dy}`);
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
-            if (moveable) el.setAttribute('onclick', `App.move(${dx},${dy})`);
-            else if (typeof el.removeAttribute === 'function') el.removeAttribute('onclick');
-            if (moveable) el.setAttribute('onkeydown', `if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}`);
-            else if (typeof el.removeAttribute === 'function') el.removeAttribute('onkeydown');
+            if (moveable) {
+                el.setAttribute('data-command-surface', 'stage-traversal');
+                el.setAttribute('data-command-mode', 'exploration');
+                el.setAttribute('data-command-control', 'move');
+                el.setAttribute('data-command-direction', `${dx},${dy}`);
+                el.setAttribute('onclick', `App.move(${dx},${dy})`);
+                el.setAttribute('onkeydown', `if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}`);
+            } else if (typeof el.removeAttribute === 'function') {
+                el.removeAttribute('data-command-surface');
+                el.removeAttribute('data-command-mode');
+                el.removeAttribute('data-command-control');
+                el.removeAttribute('data-command-direction');
+                el.removeAttribute('onclick');
+                el.removeAttribute('onkeydown');
+            }
         }
         el.onclick = moveable ? () => app.move(dx, dy) : null;
     },

@@ -146,7 +146,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             ? app._label('ui.creatureCue.single', 'Here: {name}', { name: first.name || app._label('ui.unknown', 'Unknown') })
             : app._label('ui.creatureCue.count', '{count} creatures here', { count: living.length });
         const actionLabel = living.length === 1
-            ? app._label('ui.creatureCue.selectTarget', 'Select {name} as target', { name: first.name || app._label('ui.unknown', 'Unknown') })
+            ? app._targetToggleLabel(first, app._isExplorationTargetUnit('creature', first))
             : app._label('ui.creatureCue.openPanel', 'Open {count} creatures here', { count: living.length });
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);

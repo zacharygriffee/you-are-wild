@@ -26,10 +26,10 @@ const YAW_UNIT_CARD = {
             const targetKey = app._unitKey(unit);
             const actorLabel = app._escapeHtml(app._label('target.act', 'Actor'));
             const targetLabel = app._escapeHtml(app._targetMarkLabel());
-            const targetTitle = app._escapeHtml(app._label('target.markFor', 'Mark {name} as target', { name: unitName }));
             const actorPressed = selectedActors.includes(unit);
             const targetPressed = app._isExplorationTarget('party', app._unitSelectionId(unit));
             const actorTitle = app._escapeHtml(app._actorToggleLabel(unit, actorPressed));
+            const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
             actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
             const statsLabel = app._escapeHtml(app._label('party.stats', 'Stats'));
             const statsTitle = app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
@@ -127,11 +127,10 @@ const YAW_UNIT_CARD = {
                 const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
-                const targetName = unit.name || 'creature';
                 const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';
                 const markLabel = app._escapeHtml(app._targetMarkLabel());
-                const markTitle = app._escapeHtml(app._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                 const targetPressed = app._isExplorationTargetUnit('creature', unit);
+                const markTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')">${markLabel}</button></div>`;
             }
         }

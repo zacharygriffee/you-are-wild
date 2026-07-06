@@ -3915,6 +3915,9 @@
             _targetMarkLabel() {
                 return YAW_UNIT_SELECTION.targetMarkLabel(this);
             },
+            _targetToggleLabel(unit, selected = false) {
+                return YAW_UNIT_SELECTION.targetToggleLabel(this, unit, selected);
+            },
             _actorToggleLabel(unit, selected = false) {
                 return YAW_UNIT_SELECTION.actorToggleLabel(this, unit, selected);
             },

@@ -131,21 +131,48 @@ const YAW_DEFEAT_RECOVERY = {
         const anchor = this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
         const title = app._label('recovery.defeatTitle', 'Defeat');
         const message = app._label('recovery.defeatMessage', 'Your party has fallen. Regenerate at {label}, or end this run for now.', { label: anchor.label });
-        const regenerate = app._label('recovery.regenerate', 'Regenerate');
-        const endGame = app._label('recovery.endGame', 'End Game');
         const html = `
             <div class="scene-detail-panel">
                 <p>${app._escapeHtml(message)}</p>
-                <div class="scene-actions center-tile-actions" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                    <button class="action-btn primary" onclick="App.regenerateFromDefeat()">${app._escapeHtml(regenerate)}</button>
-                    <button class="action-btn danger" onclick="App.endDefeatedRun()">${app._escapeHtml(endGame)}</button>
-                </div>
             </div>`;
         app._setRichSceneContent(title, html);
         app.renderParty();
         app.renderCreatures();
         app.renderLog();
         app.renderMobileCombatToolbelt();
+        this.renderRecoveryControls(app);
+    },
+
+    recoveryControlsHtml(app) {
+        const regenerate = app._escapeHtml(app._label('recovery.regenerate', 'Regenerate'));
+        const endGame = app._escapeHtml(app._label('recovery.endGame', 'End Game'));
+        return `<button class="action-btn primary" onclick="App.regenerateFromDefeat()">${regenerate}</button><button class="action-btn danger" onclick="App.endDefeatedRun()">${endGame}</button>`;
+    },
+
+    renderRecoveryControls(app) {
+        const html = this.recoveryControlsHtml(app);
+        const desktopBelt = document.getElementById('desktop-context-belt');
+        if (desktopBelt) desktopBelt.innerHTML = html;
+        const mobileExplore = document.getElementById('mobile-explore-actions');
+        if (mobileExplore) {
+            mobileExplore.innerHTML = html;
+            mobileExplore.style.display = 'flex';
+        }
+        const mobileTargetTray = document.getElementById('mobile-target-action-tray');
+        if (mobileTargetTray) mobileTargetTray.innerHTML = '';
+        const mobileActorBelt = document.getElementById('mobile-actor-belt');
+        if (mobileActorBelt) mobileActorBelt.innerHTML = '';
+        const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
+        if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
+        const mobileMovePad = document.getElementById('mobile-move-pad');
+        if (mobileMovePad) mobileMovePad.classList?.remove('expanded');
+        const mobileControlBelt = document.getElementById('mobile-control-belt');
+        if (mobileControlBelt) {
+            mobileControlBelt.classList?.add('has-controls');
+            mobileControlBelt.classList?.remove('target-controls-open');
+        }
+        document.getElementById('mobile-play-surface')?.classList?.add('has-control-belt');
+        app.mobileMovePadOpen = false;
     },
 
     regenerate(app) {

@@ -1512,6 +1512,7 @@ test('Defeat recovery helper module is registered before app code', () => {
   assertContains(defeatRecoveryContent, 'const YAW_DEFEAT_RECOVERY = {', 'Defeat recovery helper should expose the recovery service');
   assertContains(defeatRecoveryContent, 'markDefeat(app, outcome = ', 'Defeat recovery should own defeated state creation');
   assertContains(defeatRecoveryContent, 'showDefeatRecovery(app)', 'Defeat recovery should own the recovery screen');
+  assertContains(defeatRecoveryContent, 'renderRecoveryControls(app)', 'Defeat recovery should render recovery actions through command belts');
   assertContains(defeatRecoveryContent, 'regenerate(app)', 'Defeat recovery should own regeneration');
   assertContains(defeatRecoveryContent, 'canSetSafeAnchor(app)', 'Defeat recovery should own safe-place eligibility');
   assertContains(defeatRecoveryContent, "app._emitModuleHook('onDefeat'", 'Defeat recovery should emit a defeat module hook');
@@ -5443,8 +5444,10 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertEqual(autoSaveCalls, 1, 'Defeat should autosave the defeated state');
   assert(hooks.some(hook => hook.event === 'onDefeat'), 'Defeat should emit an onDefeat module hook');
   assertContains(elements.get('scene-title').textContent, 'Defeat', 'Defeat should render a recovery title');
-  assertContains(elements.get('scene-description').innerHTML, 'Regenerate', 'Defeat should offer regeneration');
-  assertContains(elements.get('scene-description').innerHTML, 'End Game', 'Defeat should offer end game');
+  assertNotContains(elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat presentation should not embed recovery action controls');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the desktop command belt');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'End Game', 'Defeat should offer end game in the desktop command belt');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the mobile command belt');
 });
 
 test('Defeat regeneration restores the safe anchor without clearing defeated tile enemies', () => {
@@ -5918,8 +5921,10 @@ test('Defeat renders recovery choices instead of return confirmation', () => {
   assertEqual(defeated.confirmations.length, 0, 'Defeat should not call the browser-native confirm dialog');
   assert(!defeated.App.pendingConfirm, 'Defeat should not open an in-app confirmation dialog');
   assertEqual(defeated.App.defeatState.pending, true, 'Defeat should preserve a pending recovery state');
-  assertContains(defeated.elements.get('scene-description').innerHTML, 'Regenerar', 'Defeat recovery should localize regenerate action');
-  assertContains(defeated.elements.get('scene-description').innerHTML, 'Terminar partida', 'Defeat recovery should localize end-game action');
+  assertNotContains(defeated.elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat recovery should keep controls out of presentation content');
+  assertContains(defeated.elements.get('desktop-context-belt').innerHTML, 'Regenerar', 'Defeat recovery should localize regenerate action in the desktop command belt');
+  assertContains(defeated.elements.get('desktop-context-belt').innerHTML, 'Terminar partida', 'Defeat recovery should localize end-game action in the desktop command belt');
+  assertContains(defeated.elements.get('mobile-explore-actions').innerHTML, 'Regenerar', 'Defeat recovery should localize regenerate action in the mobile command belt');
   assertEqual(shownScreen, null, 'Defeat should not immediately return to menu');
   defeated.App.endDefeatedRun();
   assertEqual(shownScreen, 'menu', 'End Game should return to the menu');
@@ -13584,7 +13589,8 @@ test('Save slot status feedback uses display slot labels', async () => {
   assertEqual(recovery.App.player.CPun, 0, 'Loaded fallen player should not be silently revived');
   assertEqual(recovery.App.defeatState.pending, true, 'Loaded fallen player should enter pending defeat recovery');
   assertEqual(recovery.App.combatState.active, false, 'Loaded fallen player should not resume combat');
-  assertContains(recovery.elements.get('scene-description').innerHTML, 'Regenerate', 'Load recovery should render regeneration choice');
+  assertNotContains(recovery.elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Load recovery should keep regeneration controls out of presentation content');
+  assertContains(recovery.elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Load recovery should render regeneration choice in the desktop command belt');
 });
 
 test('Settings destructive confirmations localize', async () => {

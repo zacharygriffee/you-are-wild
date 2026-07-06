@@ -53,7 +53,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }
         if (actorBelt) {
             actorBelt.innerHTML = hasTargets || actorSelectionOpen
-                ? app.party.map((unit, i) => app.renderMobileUnitChip(unit, i, 'party')).join('')
+                ? this.actorControls(app)
                 : '';
         }
         this.creaturePresenceCue(app);
@@ -71,6 +71,23 @@ const YAW_MOBILE_UNIT_STRIPS = {
         } else {
             surface?.classList?.remove('has-control-belt');
         }
+    },
+
+    actorControls(app) {
+        const actors = app._getExplorationActors?.() || [];
+        return (app.party || []).map((unit, index) => {
+            if (!unit || !app._isLivingCreature(unit)) return '';
+            const selected = actors.includes(unit);
+            const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
+            const role = unit === app.player ? app._label('party.you', 'You') : app._partyRoleLabel(app._getPartyRole(unit));
+            const title = app._escapeHtml(app._label('target.selectActorFor', 'Set {name} as actor', { name: unitName }));
+            const label = app._escapeHtml(unitName);
+            const meta = app._escapeHtml(role || '');
+            const icon = app._escapeHtml(unit.icon || '👤');
+            const selectedClass = selected ? ' selected selected-actor' : '';
+            const pressed = app._selectionControlAttrs('actor', selected);
+            return `<button type="button" class="mobile-actor-chip${selectedClass}" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
+        }).join('');
     },
 
     livingCreatures(app) {

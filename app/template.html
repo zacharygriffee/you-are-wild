@@ -2839,8 +2839,52 @@
                 display: none;
             }
 
-            .mobile-actor-belt .mobile-unit-chip {
-                flex: 0 0 clamp(132px, 42vw, 172px);
+            .mobile-actor-chip {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                min-width: 96px;
+                max-width: 156px;
+                min-height: 40px;
+                padding: 7px 10px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                background: rgba(42, 42, 74, 0.92);
+                color: var(--text-primary);
+                cursor: pointer;
+            }
+
+            .mobile-actor-chip.selected {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35), var(--shadow-glow);
+            }
+
+            .mobile-actor-chip-icon {
+                flex: 0 0 auto;
+                font-size: 16px;
+                line-height: 1;
+            }
+
+            .mobile-actor-chip-text {
+                display: grid;
+                gap: 1px;
+                min-width: 0;
+                text-align: left;
+                line-height: 1.1;
+            }
+
+            .mobile-actor-chip-text strong,
+            .mobile-actor-chip-text span {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .mobile-actor-chip-text span {
+                color: var(--text-muted);
+                font-size: 10px;
             }
 
             .mobile-move-pad {

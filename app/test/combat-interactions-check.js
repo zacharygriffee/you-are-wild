@@ -924,7 +924,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   state = await page.evaluate(() => {
     const trayEl = document.querySelector('#mobile-target-action-tray');
     const partyStripTray = document.querySelector('#mobile-party-strip .panel-interaction-tray');
-    const allyChip = Array.from(document.querySelectorAll('#mobile-actor-belt .mobile-unit-chip')).find(chip => chip.textContent.includes('Ally'));
+    const allyChip = Array.from(document.querySelectorAll('#mobile-actor-belt .mobile-actor-chip')).find(chip => chip.textContent.includes('Ally'));
     const creatureChip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
     return {
       hiddenPartyTrayVisible: Boolean(partyStripTray),
@@ -939,7 +939,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.hiddenPartyTrayVisible, false, 'Mobile marked-target tray should not live inside the hidden party strip');
   assert.deepStrictEqual(state.actors, ['ally-1'], 'Mobile Act should select the ally as the adventure actor');
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Mobile Mark should select the creature as an adventure target');
-  assert.strictEqual(state.allySelectedActor, true, 'Mobile Act-selected chip should expose actor state');
+  assert.strictEqual(state.allySelectedActor, true, 'Mobile Act-selected compact actor chip should expose actor state');
   assert.strictEqual(state.creatureSelectedTarget, true, 'Mobile marked creature chip should expose target state');
   assert.strictEqual(state.hasPanelSource, true, 'Mobile tray should dispatch through the shared panel-tray command source');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls while mobile target tray is active');

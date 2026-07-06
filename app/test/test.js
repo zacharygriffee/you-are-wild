@@ -3964,6 +3964,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
+  assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
   assertContains(template, 'id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
@@ -4008,6 +4009,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
+  assertContains(mobileUnitStripsContent, 'actorControls(app)', 'mobile actor strip should render compact actor chips rather than full party cards');
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
   assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('has-control-belt', hasContent)", 'mobile exploration controls should toggle scroll padding for the fixed context belt');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
@@ -10231,6 +10233,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
   assertContains(actorHtml, 'Ally', 'Mobile actor belt should expose party members when a marked target needs actor selection');
   assertContains(actorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
+  assertContains(actorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertNotContains(actorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
+  assertNotContains(actorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
 });
 
 test('Mobile exploration hides empty control belt over traversal map', () => {

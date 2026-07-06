@@ -275,15 +275,35 @@ const YAW_CENTER_CONTEXT = {
         if (hasCreature) {
             app.renderCreatures();
             app.openPanel('enemies');
+            if (typeof document !== 'undefined') {
+                const target = document.querySelector('#enemies-content [data-command-control="focus-target"], #mobile-creature-strip [data-command-control="focus-target"], #mobile-target-picker [data-command-control="focus-target"]');
+                if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+            }
             return true;
         }
         const hasParty = entries.some(entry => entry.type === 'player' || entry.type === 'party');
         if (hasParty) {
             app.renderParty();
             app.openPanel('party');
+            if (typeof document !== 'undefined') {
+                const actor = document.querySelector('#party-content [data-command-control="focus-actor"], #mobile-party-strip [data-command-control="focus-actor"], #mobile-actor-belt [data-command-control="focus-actor"]');
+                if (actor && typeof actor.focus === 'function') actor.focus({ preventScroll: true });
+            }
             return true;
         }
         return false;
+    },
+
+    overflowCommandAttrs(app, overflow = []) {
+        const creatureCount = overflow.filter(entry => entry?.type === 'creature').length;
+        const actorCount = overflow.filter(entry => entry?.type === 'player' || entry?.type === 'party').length;
+        if (creatureCount > 0) {
+            return `data-command-control="open-target-picker" data-command-grammar="actor-target-intent" data-command-target-count="${app._escapeHtml(String(creatureCount))}"`;
+        }
+        if (actorCount > 0) {
+            return `data-command-control="open-actor-picker" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(actorCount))}"`;
+        }
+        return 'data-command-control="open-details"';
     },
 
     renderPresence(app) {
@@ -294,12 +314,14 @@ const YAW_CENTER_CONTEXT = {
         rail.innerHTML = '';
         if (!entries.length) return '';
         const visible = entries.slice(0, 6);
-        const extra = entries.length - visible.length;
+        const overflow = entries.slice(visible.length);
+        const extra = overflow.length;
         const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
         const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
+        const commandAttrs = this.overflowCommandAttrs(app, overflow);
         const more = extra > 0
-            ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-control="open-details" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
+            ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
         rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;

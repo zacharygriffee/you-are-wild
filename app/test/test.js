@@ -2666,7 +2666,8 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'data-command-control="${control}"', 'Mobile center presence should identify its actor/target composer route');
   assertContains(localMapContent, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
-  assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
+  assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant actor/target drawer');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)', 'Mobile center presence overflow should reuse shared actor/target overflow metadata');
   assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
@@ -2704,6 +2705,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'data-command-grammar="actor-target-intent"', 'Center context actor/target presence controls should identify the shared command grammar');
   assertContains(centerContextContent, 'data-command-control="${control}"', 'Center context presence chips should identify their actor/target composer route');
   assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
+  assertContains(centerContextContent, 'overflowCommandAttrs(app, overflow = [])', 'Center context helper should describe overflow actor/target picker routing');
   assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
@@ -7157,7 +7159,9 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Focus Camp location actions"', 'Desktop structure presence should advertise location-action focus semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Mark Friendly as target"', 'Desktop creature presence should advertise mark-target semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
-  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-details"', 'Desktop overflow presence should identify detail-drawer routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-target-picker"', 'Desktop overflow with hidden creatures should identify target-picker routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-target-count="2"', 'Desktop overflow should expose the hidden creature target count');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-grammar="actor-target-intent"', 'Desktop overflow with hidden creatures should keep the shared command grammar');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 2 more in details"', 'Desktop overflow presence should advertise that it opens details');
   assertContains(el('desktop-presence-rail').innerHTML, '>+2 more<', 'Desktop overflow presence should keep the compact visible count');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
@@ -9618,7 +9622,9 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'aria-label="Add Ally as actor"', 'Mobile center party presence should advertise add-actor semantics');
   assertContains(html, 'aria-label="Mark Guide as target"', 'Mobile center creature presence should advertise mark-target semantics');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
-  assertContains(html, 'data-command-control="open-details"', 'Mobile center presence overflow should identify detail-drawer routing');
+  assertContains(html, 'data-command-control="open-target-picker"', 'Mobile center presence overflow should identify target-picker routing when hidden creatures are clipped');
+  assertContains(html, 'data-command-target-count="1"', 'Mobile center presence overflow should expose the hidden creature target count');
+  assertContains(html, 'data-command-grammar="actor-target-intent"', 'Mobile center presence overflow should preserve the shared command grammar');
   assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
   assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');

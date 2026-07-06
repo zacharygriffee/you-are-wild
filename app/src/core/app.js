@@ -3302,15 +3302,34 @@
                 return true;
             },
 
-            scavengeCorpse(targetId) {
+            scavengeCorpse(targetId, actors = null) {
                 const corpse = this._findCorpseById(targetId);
                 if (!corpse) return false;
+                const actorPool = Array.isArray(actors) && actors.length > 0 ? actors : this._getExplorationActors();
+                const seenActorIds = new Set();
+                const scavengers = (actorPool || []).filter(actor => {
+                    if (!actor || !this.party.includes(actor) || !this._isLivingCreature(actor)) return false;
+                    const actorId = this._unitSelectionId(actor);
+                    if (seenActorIds.has(actorId)) return false;
+                    seenActorIds.add(actorId);
+                    return true;
+                });
+                if (scavengers.length === 0) return false;
                 corpse.scavenged = true;
-                this.player.hunger = Math.max(0, (this.player.hunger || 0) - 20);
-                this.player.CPun = Math.min(this.player.MPun, this.player.CPun + 5);
+                scavengers.forEach(actor => {
+                    const maxPun = Number.isFinite(Number(actor.MPun)) ? Number(actor.MPun) : (actor.CPun || 0);
+                    actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
+                    actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5);
+                });
+                const actorText = YAW_INTERACTION_STATE.unitNames(this, scavengers, this.player?.name || this._label('party.you', 'You'));
+                const singularNamedActor = scavengers.length === 1 && scavengers[0] !== this.player;
                 const text = CONTENT.actionResult('corpseScavenge', {
                     target: corpse.corpseName || corpse.name,
-                    actor: this.player.name,
+                    actor: actorText,
+                    actors: scavengers.map(actor => actor.name || actor.species || this._label('ui.unknown', 'Unknown')).filter(Boolean),
+                    scavengeVerb: singularNamedActor ? 'scavenges' : 'scavenge',
+                    carveVerb: singularNamedActor ? 'carves' : 'carve',
+                    feastVerb: singularNamedActor ? 'feasts' : 'feast',
                     explicit: true,
                     voreEnabled: this.settings.vore
                 });

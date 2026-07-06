@@ -50,7 +50,7 @@ const YAW_INTERACTION_DISPATCH = {
         }
         const targetId = app._unitSelectionId(target);
         if (action === 'loot') return Boolean(app.lootCorpse(targetId));
-        if (action === 'scavenge') return Boolean(app.scavengeCorpse(targetId));
+        if (action === 'scavenge') return Boolean(app.scavengeCorpse(targetId, app._getExplorationActors()));
         if (action === 'recruit') return Boolean(app.recruitCreatureById(targetId));
         if (action === 'quest') return Boolean(app.previewQuestFromUnit(targetId));
         if (action === 'trade') return Boolean(app.showTrade(targetId));

@@ -1705,9 +1705,9 @@ const CONTENT_SYSTEM = {
                 adult: (ctx) => ctx.item ? `You pick over the remains of ${ctx.target}, recovering ${ctx.item}.` : `You pick over the remains of ${ctx.target}, finding nothing but cooling flesh.`
             },
             corpseScavenge: {
-                safe: (ctx) => `You carefully scavenge the remains of ${ctx.target}.`,
-                mature: (ctx) => `You carve useful scraps from ${ctx.target}'s remains.`,
-                adult: (ctx) => ctx.voreEnabled ? `You feast from ${ctx.target}'s remains, taking what the battle left behind.` : null
+                safe: (ctx) => `${ctx.actor || 'You'} carefully ${ctx.scavengeVerb || 'scavenge'} the remains of ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor || 'You'} ${ctx.carveVerb || 'carve'} useful scraps from ${ctx.target}'s remains.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor || 'You'} ${ctx.feastVerb || 'feast'} from ${ctx.target}'s remains, taking what the battle left behind.` : null
             }
         }
     },

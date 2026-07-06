@@ -4210,7 +4210,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
       },
       biomeIntro: () => '',
       encounter: () => '',
-      actionResult: (action, ctx = {}) => `${action}:${ctx.target || ''}:${ctx.item || ''}`
+      actionResult: (action, ctx = {}) => action === 'corpseScavenge'
+        ? `${action}:${ctx.actor || ''}:${ctx.target || ''}:${ctx.item || ''}`
+        : `${action}:${ctx.target || ''}:${ctx.item || ''}`
     },
     options.binary || { saveGame: () => new Uint8Array(), loadGame: () => ({}) },
     moduleSystem,
@@ -6156,6 +6158,32 @@ test('Scavenging a corpse uses corpse-specific result and does not remove it', (
   assertEqual(player.CPun, 85, 'Scavenging should restore a small amount of punishment');
   assertContains(App.log[App.log.length - 1].text, 'Fallen', 'Scavenge log should use corpse content');
   assertEqual(App.scavengeCorpse('missing-corpse'), false, 'Missing corpse scavenge should report failure');
+});
+
+test('Scavenging a corpse uses selected exploration actors', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-scavenger', hunger: 50, CPun: 80, MPun: 100 });
+  const ally = makeUnit('Forager', { id: 'ally-scavenger', hunger: 60, CPun: 70, MPun: 100 });
+  const helper = makeUnit('Helper', { id: 'helper-scavenger', hunger: 40, CPun: 65, MPun: 100 });
+  const corpse = makeUnit('Fallen', { id: 'selected-scavenge-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  const groupCorpse = makeUnit('Group Fallen', { id: 'group-scavenge-corpse', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally, helper];
+  App.creatures = [corpse, groupCorpse];
+  App.selectExplorationActor(1);
+  assertEqual(App.scavengeCorpse('selected-scavenge-corpse'), true, 'Selected actor should be able to scavenge remains');
+  assertEqual(ally.hunger, 40, 'Selected ally should receive hunger recovery');
+  assertEqual(ally.CPun, 75, 'Selected ally should receive punishment recovery');
+  assertEqual(player.hunger, 50, 'Selected ally scavenge should not apply recovery to the player');
+  assertContains(App.log[App.log.length - 1].text, 'Forager', 'Scavenge log should name the selected ally');
+
+  App.selectExplorationActor(2);
+  assertEqual(App.selectIntent('creature', 'group-scavenge-corpse', 'scavenge', 'sheet'), true, 'Scavenge intent should use selected exploration actors');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-scavenger,helper-scavenger', 'Scavenge intent command should record selected actor ids');
+  assertEqual(ally.hunger, 20, 'Group scavenge should apply to the first selected actor');
+  assertEqual(helper.hunger, 20, 'Group scavenge should apply to the second selected actor');
+  assertEqual(player.hunger, 50, 'Group scavenge should not implicitly include the player when other actors are selected');
+  assertContains(App.log[App.log.length - 1].text, 'Forager + Helper', 'Group scavenge log should name selected actors');
 });
 
 test('Threatened timid non-hostile can flee without XP', () => {

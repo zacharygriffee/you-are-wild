@@ -199,7 +199,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);
         const commandControl = living.length === 1 ? 'focus-target' : 'open-target-picker';
-        const targetCountAttr = ` data-command-target-count="${app._escapeHtml(String(living.length))}"`;
+        const targetCountAttr = living.length === 1
+            ? ` data-command-target-count="${app._escapeHtml(String(living.length))}"`
+            : ` data-command-slot="target" data-command-target-count="${app._escapeHtml(String(living.length))}"`;
         cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${commandControl}"${targetCountAttr} ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
     },
 

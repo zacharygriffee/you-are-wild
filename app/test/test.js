@@ -2727,6 +2727,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'app._actorToggleLabel(unit', 'Mobile center party presence should announce add/remove actor semantics');
   assertContains(localMapContent, 'app._targetToggleLabel(unit', 'Mobile center creature presence should announce mark/remove target semantics');
   assertContains(localMapContent, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
+  assertContains(localMapContent, 'data-selection-mode="stage-focus" data-selection-state="${selected ? \'focused\' : \'available\'}" data-command-slot="target"', 'Mobile center item/place focus should identify the target slot');
   assertContains(localMapContent, 'data-stage-surface="${stageSurface}"', 'Mobile play cells should identify current-tile versus traversal-cell stage surfaces');
   assertContains(localMapContent, "const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell'", 'Mobile local map should classify the center tile separately from traversal cells');
   assertContains(localMapContent, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move"', 'Mobile movement cells should identify stage traversal command routing');
@@ -2772,6 +2773,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'centerPresenceToken(app, entry)', 'Center context helper should separate visual stage tokens from interactive rail chips');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should route presence chips into actor/target selection');
   assertContains(centerContextContent, 'data-stage-surface="presence"', 'Center context presence controls should identify the stage presence surface');
+  assertContains(centerContextContent, 'data-selection-mode="stage-focus" data-selection-state="${selected ? \'focused\' : \'available\'}" data-command-slot="target"', 'Center item/place focus should identify the target slot');
   assertContains(centerContextContent, 'data-command-surface="stage-presence"', 'Center context presence controls should identify stage-presence command routing');
   assertContains(centerContextContent, 'data-command-grammar="actor-target-intent"', 'Center context actor/target presence controls should identify the shared command grammar');
   assertContains(centerContextContent, 'data-command-control="${control}"', 'Center context presence chips should identify their actor/target composer route');
@@ -2788,9 +2790,11 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"', 'Location action buttons should expose exploration grammar with stable intent ids');
   assertContains(centerContextContent, 'actorExitButton(app)', 'Center context helper should provide a desktop composer exit for explicit actor state');
   assertContains(centerContextContent, 'data-command-control="clear-actors"', 'Desktop actor exit should expose the clear-actors command control');
+  assertContains(centerContextContent, 'data-command-control="clear-actors" data-command-slot="exit"', 'Desktop actor exit should identify the exit slot');
   assertContains(centerContextContent, 'focusedObjectExitButton(app)', 'Center context helper should provide a composer exit for focused stage objects');
   assertContains(centerContextContent, 'clearFocusedStageObject(app)', 'Center context helper should own focused stage object clearing');
   assertContains(centerContextContent, 'data-command-control="clear-focused-object"', 'Focused stage object exit should expose the clear-focused-object command control');
+  assertContains(centerContextContent, 'data-command-control="clear-focused-object" data-command-slot="exit"', 'Focused stage object exit should identify the exit slot');
   assertContains(centerContextContent, 'groupedActionRows(app', 'Center context helper should separate composer exits from location intents');
   assertContains(centerContextContent, 'data-command-group="selection-exits"', 'Composer exit controls should render as a distinct command group');
   assertContains(centerContextContent, 'data-command-group="location-intents"', 'Location actions should render as a distinct command group');
@@ -4350,6 +4354,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
   assertContains(mobileUnitStripsContent, 'data-stage-surface="presence"', 'mobile creature cue should identify the stage presence surface');
   assertContains(mobileUnitStripsContent, 'data-command-control="${commandControl}"', 'mobile creature cue should identify whether it routes to target focus or details');
+  assertContains(mobileUnitStripsContent, 'data-command-slot="target" data-command-target-count', 'mobile creature cue should identify the target slot and local target count');
   assertContains(mobileUnitStripsContent, 'const actorToggle = document.getElementById(\'mobile-actor-toggle\')', 'mobile actor row should have a visible toggle control');
   assertContains(mobileUnitStripsContent, 'actorControls(app)', 'mobile actor strip should render compact actor chips rather than full party cards');
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
@@ -7539,6 +7544,7 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'takeItems', 'Item focus should expose the stable Take Items intent in sentence metadata');
   assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Item focus should visibly mark its desktop stage presence chip');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Item focus should expose stage-focus pressed state');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused" data-command-slot="target"', 'Item focus should identify the target slot in desktop stage presence');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Healing Herb', 'Item focus should show the tile item in the mobile command sentence');
 
   App.renderMap();
@@ -7549,6 +7555,7 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(mobileHtml, 'data-command-intent="takeItems"', 'Mobile item presence should point at the stable Take Items intent');
   assertContains(mobileHtml, "App.focusPresence('items','tile-items')", 'Mobile item presence should focus the existing Take Items command');
   assertContains(mobileHtml, 'selected selected-stage-focus', 'Item focus should visibly mark its mobile stage presence dot');
+  assertContains(mobileHtml, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused" data-command-slot="target"', 'Item focus should identify the target slot in mobile stage presence');
   assertNotContains(mobileHtml, 'App.takeTileItems()', 'Mobile item presence should not immediately pick up items');
   assertEqual(App.takeTileItems(), true, 'Taking focused tile items should still use the existing pickup path');
   assertEqual(App.focusedStageObject, null, 'Taking the last focused tile item should clear object focus');
@@ -7597,10 +7604,13 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Landmark focus should expose pending intent metadata');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the mobile command sentence');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a desktop composer exit');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-control="clear-focused-object" data-command-slot="exit"', 'Landmark focus desktop composer exit should identify the exit slot');
   assertEqual(el('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the desktop belt as composer state');
   assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Landmark focus should visibly mark its desktop stage presence chip');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Landmark focus should expose stage-focus pressed state');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused" data-command-slot="target"', 'Landmark focus should identify the target slot in desktop stage presence');
   assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a mobile composer exit');
+  assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object" data-command-slot="exit"', 'Landmark focus mobile composer exit should identify the exit slot');
   assertEqual(el('mobile-explore-actions').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the mobile action row as composer state');
 
   App.renderMap();
@@ -7609,6 +7619,7 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(mobileHtml, 'data-command-control="focus-place"', 'Mobile landmark presence should route through place focus');
   assertContains(mobileHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Mobile landmark presence should focus the location composer');
   assertContains(mobileHtml, 'selected selected-stage-focus', 'Landmark focus should visibly mark its mobile stage presence dot');
+  assertContains(mobileHtml, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused" data-command-slot="target"', 'Landmark focus should identify the target slot in mobile stage presence');
 
   assertEqual(App.clearFocusedStageObject(), true, 'Focused stage object clear should resolve through the composer exit');
   assertEqual(App.focusedStageObject, null, 'Focused stage object clear should remove passive place focus');
@@ -11231,6 +11242,13 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Mobile creature dock badge should be visible when living creatures are here');
   assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Mobile creature dock badge should show the local living creature count');
   assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), '1 here', 'Mobile creature dock button should expose the local creature count accessibly');
+  const scout = makeUnit('Scout', { id: 'scout-1', disposition: App.DISPOSITION.NEUTRAL });
+  App.creatures = [guide, scout];
+  App.renderMobileExplorationControls();
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, '2 creatures here', 'Multi-creature cue should summarize local targets without opening the full panel');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-command-control="open-target-picker" data-command-slot="target" data-command-target-count="2"', 'Multi-creature cue should identify the target picker slot and count');
+  App.creatures = [guide];
+  App.renderMobileExplorationControls();
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Hidden exploration party card should not be the only marked-target action host');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile target action tray should be empty before a target is marked');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile actor belt should stay collapsed until selection state needs it');
@@ -11646,6 +11664,7 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-intent'), 'choose', 'Mobile active exploration sentence should expose pending intent metadata');
   App.renderExplorationActions();
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors"', 'Desktop composer belt should expose a clear-actors exit for explicit actor state');
+  assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors" data-command-slot="exit"', 'Desktop clear-actors exit should identify the exit slot');
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'Clear actors', 'Desktop clear-actors exit should use a visible localized label');
   assertEqual(document.getElementById('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Desktop belt with explicit actor exit should identify the command composer surface');
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-group="selection-exits"', 'Desktop composer exits should be grouped separately from location intents');

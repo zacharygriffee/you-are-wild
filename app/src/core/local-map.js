@@ -39,7 +39,7 @@ const YAW_LOCAL_MAP = {
                 const label = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
                 const selected = app.focusedStageObject?.type === 'items';
                 const selectedClass = selected ? ' selected selected-stage-focus' : '';
-                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}" data-command-slot="target"`;
                 return `<button type="button" class="mobile-play-presence-dot item${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" ${selectionAttrs} title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')">${app._escapeHtml(unit.icon || '🎒')}</button>`;
             }
             if (entry.type === 'place') {
@@ -50,7 +50,7 @@ const YAW_LOCAL_MAP = {
                 const jsRef = app._escapeJsString(rawRef);
                 const selected = app.focusedStageObject?.type === 'place' && app.focusedStageObject.id === rawRef;
                 const selectedClass = selected ? ' selected selected-stage-focus' : '';
-                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}" data-command-slot="target"`;
                 return `<button type="button" class="mobile-play-presence-dot place${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-place"${intent} data-presence-type="place" data-presence-ref="${ref}" ${selectionAttrs} title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('place','${jsRef}')">${app._escapeHtml(unit.icon || '◆')}</button>`;
             }
             const presenceType = entry.type === 'creature' ? 'creature' : 'party';

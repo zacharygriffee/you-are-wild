@@ -131,7 +131,7 @@ const YAW_CENTER_CONTEXT = {
             const focusTitle = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
             const selected = app.focusedStageObject?.type === 'items';
             const selectedClass = selected ? ' selected selected-stage-focus' : '';
-            const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+            const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}" data-command-slot="target"`;
             return `<button type="button" class="center-presence-chip items item${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" ${selectionAttrs} title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
         }
         if (entry.type === 'place') {
@@ -143,7 +143,7 @@ const YAW_CENTER_CONTEXT = {
             const escapedTone = app._escapeHtml(entry.tone || 'place');
             const selected = app.focusedStageObject?.type === 'place' && app.focusedStageObject.id === rawRef;
             const selectedClass = selected ? ' selected selected-stage-focus' : '';
-            const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+            const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}" data-command-slot="target"`;
             return `<button type="button" class="center-presence-chip place ${escapedTone}${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-place"${intent} data-presence-type="place" data-presence-ref="${ref}" ${selectionAttrs} title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('place','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
         }
         const presenceType = entry.type === 'creature' ? 'creature' : 'party';
@@ -395,14 +395,14 @@ const YAW_CENTER_CONTEXT = {
         if (!app.explorationActorSelectionExplicit) return '';
         const label = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
         const title = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
-        return `<button class="action-btn composer-exit" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" title="${title}" aria-label="${title}" onclick="App.clearExplorationActors()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
+        return `<button class="action-btn composer-exit" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" data-command-slot="exit" title="${title}" aria-label="${title}" onclick="App.clearExplorationActors()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
     },
 
     focusedObjectExitButton(app) {
         if (!app.focusedStageObject?.name) return '';
         const label = app._escapeHtml(app._label('target.clearFocus', 'Clear focus'));
         const title = app._escapeHtml(app._label('target.clearFocusTitle', 'Clear focused place or item'));
-        return `<button class="action-btn composer-exit" data-command-surface="stage-focus" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-focused-object" title="${title}" aria-label="${title}" onclick="App.clearFocusedStageObject()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
+        return `<button class="action-btn composer-exit" data-command-surface="stage-focus" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-focused-object" data-command-slot="exit" title="${title}" aria-label="${title}" onclick="App.clearFocusedStageObject()"><span class="action-icon" aria-hidden="true">×</span><span class="action-caption">${label}</span></button>`;
     },
 
     clearFocusedStageObject(app) {

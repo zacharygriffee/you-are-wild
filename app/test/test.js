@@ -2144,6 +2144,10 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Mobile creature chip should label target-only row semantics');
+  assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile party Actor chip should identify button-level actor routing');
+  assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile party Mark chip should identify button-level target routing');
+  assertContains(mobileUnitChipContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile creature Mark chip should identify button-level target routing');
+  assertContains(mobileUnitChipContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Mobile combat Pick chip should identify button-level combat target routing');
   assertContains(mobileUnitChipContent, "App.showRadialIntentMenu('${type}',${isParty ? index : `'${targetKey}'`},'secondary-click')", 'Mobile corpse chips should keep secondary-click intent acceleration');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
 });
@@ -2158,6 +2162,10 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
   assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Unit card helper should label creature target-only row semantics');
+  assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Desktop party Actor button should identify button-level actor routing');
+  assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Desktop party Mark button should identify button-level target routing');
+  assertContains(unitCardContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Desktop creature Mark button should identify button-level target routing');
+  assertContains(unitCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Desktop combat Pick button should identify button-level combat target routing');
   assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
 });
 
@@ -13270,9 +13278,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(playerCard, 'data-action-scope="party-selection" aria-label="Actor and target controls for You"', 'Desktop party action row should identify actor/target selection scope');
   assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Desktop party action row should identify actor-target composer routing');
   assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop party action row should identify the shared command grammar');
+  assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" data-selection-control="actor"', 'Desktop party Actor button should expose button-level actor routing');
   assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Unselected party actor control should expose false pressed state');
   assertContains(playerCard, 'data-selection-mode="act-actor" data-selection-state="available"', 'Actor control should expose its act-actor mode and available state');
   assertContains(playerCard, 'aria-label="Add You as actor"', 'Unselected desktop actor control should advertise add semantics');
+  assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Desktop party Mark button should expose button-level target routing');
   assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
   assertContains(playerCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked party target control should expose exploration target mode');
   assertContains(playerCard, 'aria-label="Remove You from targets"', 'Marked desktop party target control should advertise remove semantics');
@@ -13290,6 +13300,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(creatureCard, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Desktop creature action row should identify target-only scope');
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Desktop creature action row should identify target composer routing');
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop creature action row should identify the shared command grammar');
+  assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Desktop creature Mark button should expose button-level target routing');
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(creatureCard, 'aria-label="Remove Guide from targets"', 'Marked desktop creature target control should advertise remove semantics');
@@ -13299,9 +13310,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-action-scope="party-selection" aria-label="Actor and target controls for You"', 'Mobile party action row should identify actor/target selection scope');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Mobile party action row should identify actor-target composer routing');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile party action row should identify the shared command grammar');
+  assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" data-selection-control="actor"', 'Mobile party Actor chip should expose button-level actor routing');
   assertContains(mobilePlayerChip, 'data-selection-control="actor" aria-pressed="false"', 'Mobile Act control should expose actor pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available"', 'Mobile Act control should expose act-actor mode');
   assertContains(mobilePlayerChip, 'aria-label="Add You as actor"', 'Unselected mobile actor control should advertise add semantics');
+  assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Mobile party Mark chip should expose button-level target routing');
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobilePlayerChip, 'aria-label="Remove You from targets"', 'Marked mobile party target control should advertise remove semantics');
@@ -13312,6 +13325,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileCreatureChip, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Mobile creature action row should identify target-only scope');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Mobile creature action row should identify target composer routing');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile creature action row should identify the shared command grammar');
+  assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Mobile creature Mark chip should expose button-level target routing');
   assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
   assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature Mark control should expose mark-target mode');
   assertContains(mobileCreatureChip, 'aria-label="Remove Guide from targets"', 'Marked mobile creature target control should advertise remove semantics');
@@ -13355,11 +13369,13 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(enemyCard, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Desktop combat target row should identify combat-pick scope');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Desktop combat target row should identify combat target-pick routing');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop combat target row should identify the shared command grammar');
+  assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Desktop combat Pick button should expose button-level combat target routing');
   assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat Pick button should identify combat target selection separately from exploration marking');
   assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Desktop combat Pick button should expose combat-pick mode');
   assertContains(mobileEnemyChip, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Mobile combat target row should identify combat-pick scope');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target row should identify combat target-pick routing');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target row should identify the shared command grammar');
+  assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Mobile combat Pick button should expose button-level combat target routing');
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat Pick button should identify combat target selection separately from exploration marking');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Mobile combat Pick button should expose combat-pick mode');
   assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop blocked combat target should be an actual disabled control');

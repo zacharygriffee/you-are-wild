@@ -2159,7 +2159,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
-  assertContains(mobileUnitChipContent, "App.selectIntent('creature','${explorationTargetKey}','${action}','mobile-chip')", 'Mobile creature chip actions should keep routing through shared intent selection');
+  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual creature utility dispatch');
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
@@ -6262,7 +6262,7 @@ test('Defeated enemies stay corpses after save and load', async () => {
   assertEqual(loadedApp.App.worldMap.get('0,0').creatures[0].disposition, loadedApp.App.DISPOSITION.CORPSE, 'Loaded current tile should keep corpse disposition');
 });
 
-test('Creature panel renders corpses as remains without target actions', () => {
+test('Creature panel renders corpses as remains with target routing only', () => {
   const { App, elements } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-1', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = makeUnit('You');
@@ -6272,11 +6272,12 @@ test('Creature panel renders corpses as remains without target actions', () => {
   const html = elements.get('enemies-content').innerHTML;
   assertContains(elements.get('enemies-title').textContent, 'Remains', 'Corpse-only panel should be titled Remains');
   assertContains(html, '<span class="unit-meta-badge">Remains</span>', 'Corpse card should label remains');
-  assertContains(html, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Corpse card utility row should identify the shared exploration utility grammar');
-  assertContains(html, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Corpse card loot should expose stable utility intent metadata');
-  assertContains(html, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge"', 'Corpse card scavenge should expose stable utility intent metadata');
-  assertContains(html, "selectIntent('creature','fallen-1','loot','panel-card')", 'Corpse card should expose loot through shared intent selection');
-  assertContains(html, "selectIntent('creature','fallen-1','scavenge','panel-card')", 'Corpse card should expose scavenge through shared intent selection');
+  assertContains(html, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Corpse card row should identify target routing');
+  assertContains(html, "toggleExplorationTarget('creature','fallen-1')", 'Corpse card should mark remains as the composer target');
+  assertNotContains(html, "selectIntent('creature','fallen-1','loot','panel-card')", 'Corpse card should not directly expose Loot outside the composer');
+  assertNotContains(html, "selectIntent('creature','fallen-1','scavenge','panel-card')", 'Corpse card should not directly expose Scavenge outside the composer');
+  assertNotContains(html, 'data-command-intent="loot"', 'Corpse card should not duplicate Loot intent metadata on the card');
+  assertNotContains(html, 'data-command-intent="scavenge"', 'Corpse card should not duplicate Scavenge intent metadata on the card');
   assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
   assertContains(html, "showIntentMenu('creature','fallen-1','desktop-card','desktop',event)", 'Desktop corpse card should open a desktop utility popover on secondary click');
   assertNotContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Desktop corpse card should not route secondary click through the mobile radial menu');
@@ -6284,7 +6285,7 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
 });
 
-test('Mobile creature strip keeps corpse interactions reachable', () => {
+test('Mobile creature strip marks corpse targets while long-press keeps utilities reachable', () => {
   const { App, elements, body } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-mobile', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = makeUnit('You');
@@ -6294,11 +6295,12 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   const card = elements.get('mobile-creature-card');
   const html = elements.get('mobile-creature-strip').innerHTML;
   assertEqual(card.style.display, 'block', 'Corpse-only mobile creature panel should remain visible');
-  assertContains(html, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile corpse chip utility row should identify the shared exploration utility grammar');
-  assertContains(html, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Mobile corpse chip loot should expose stable utility intent metadata');
-  assertContains(html, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge"', 'Mobile corpse chip scavenge should expose stable utility intent metadata');
-  assertContains(html, "selectIntent('creature','fallen-mobile','loot','mobile-chip')", 'Mobile corpse chip should expose loot through shared intent selection');
-  assertContains(html, "selectIntent('creature','fallen-mobile','scavenge','mobile-chip')", 'Mobile corpse chip should expose scavenge through shared intent selection');
+  assertContains(html, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile corpse chip should identify target routing');
+  assertContains(html, "toggleExplorationTarget('creature','fallen-mobile')", 'Mobile corpse chip should mark remains as the composer target');
+  assertNotContains(html, "selectIntent('creature','fallen-mobile','loot','mobile-chip')", 'Mobile corpse chip should not directly expose Loot outside the composer');
+  assertNotContains(html, "selectIntent('creature','fallen-mobile','scavenge','mobile-chip')", 'Mobile corpse chip should not directly expose Scavenge outside the composer');
+  assertNotContains(html, 'data-command-intent="loot"', 'Mobile corpse chip should not duplicate Loot intent metadata on the chip');
+  assertNotContains(html, 'data-command-intent="scavenge"', 'Mobile corpse chip should not duplicate Scavenge intent metadata on the chip');
   assertNotContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should not duplicate loot/scavenge behind a visible action menu');
   assertContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should expose secondary-click radial menu');
   App.showMobileCreatureContext('fallen-mobile');
@@ -6313,19 +6315,19 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   App.closeIntentMenu();
 });
 
-test('Corpse card loot actions expose localized accessible labels', () => {
+test('Marked corpse utility actions expose localized accessible labels', () => {
   const { App, elements } = loadAppForCombat();
   const corpse = makeUnit('Fallen', { id: 'fallen-1', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100 });
   App.player = makeUnit('You');
   App.party = [App.player];
   App.creatures = [corpse];
   App.updateLanguage('es');
-  App.renderCreatures();
-  const html = elements.get('enemies-content').innerHTML;
-  assertContains(html, 'aria-label="Saquear Fallen"', 'Corpse loot action should expose localized accessible label');
-  assertContains(html, 'aria-label="Rebuscar Fallen"', 'Corpse scavenge action should expose localized accessible label');
-  assertContains(html, '>Saquear<', 'Corpse loot visible label should localize');
-  assertContains(html, '>Rebuscar<', 'Corpse scavenge visible label should localize');
+  App.toggleExplorationTarget('creature', 'fallen-1');
+  const html = elements.get('desktop-context-belt').innerHTML;
+  assertContains(html, 'aria-label="Saquear Fallen"', 'Composer corpse loot action should expose localized accessible label');
+  assertContains(html, 'aria-label="Rebuscar Fallen', 'Composer corpse scavenge action should expose localized accessible label with status context');
+  assertContains(html, '>Saquear<', 'Composer corpse loot visible label should localize');
+  assertContains(html, '>Rebuscar<', 'Composer corpse scavenge visible label should localize');
 });
 
 test('Looting a corpse can grant an item without starting combat', () => {
@@ -6527,16 +6529,18 @@ test('Corpse size and actor size bound scavenge portions', () => {
   assertEqual(smallActor.CPun, 55, 'Small actor health recovery should use one portion');
 });
 
-test('Depleted corpse cards disable scavenge but keep loot utility visible', () => {
+test('Depleted corpse cards route to composer instead of direct scavenge', () => {
   const { App } = loadAppForCombat(() => 0);
   const corpse = makeUnit('Picked Remains', { id: 'picked-remains', disposition: App.DISPOSITION.CORPSE, CPun: 0, remainingPortions: 0, scavenged: true });
   App.creatures = [corpse];
   const desktopHtml = App.renderUnitCard(corpse, 0, 'creature');
   const mobileHtml = App.renderMobileUnitChip(corpse, 0, 'creature');
-  assertContains(desktopHtml, 'Scavenged', 'Desktop corpse card should show depleted scavenge state');
-  assertContains(desktopHtml, 'Loot', 'Desktop corpse card should keep loot independent from scavenge depletion');
+  assertContains(desktopHtml, "toggleExplorationTarget('creature','picked-remains')", 'Desktop depleted corpse card should mark remains for composer utility resolution');
+  assertContains(mobileHtml, "toggleExplorationTarget('creature','picked-remains')", 'Mobile depleted corpse chip should mark remains for composer utility resolution');
+  assertNotContains(desktopHtml, 'Scavenged', 'Desktop depleted corpse card should not duplicate composer scavenge state');
+  assertNotContains(desktopHtml, 'Loot', 'Desktop depleted corpse card should not duplicate composer loot controls');
   assertNotContains(desktopHtml, "App.selectIntent('creature','picked-remains','scavenge'", 'Desktop corpse card should not offer active scavenge after depletion');
-  assertContains(mobileHtml, 'Scavenged', 'Mobile corpse chip should show depleted scavenge state');
+  assertNotContains(mobileHtml, 'Scavenged', 'Mobile depleted corpse chip should not duplicate composer scavenge state');
   assertNotContains(mobileHtml, "App.selectIntent('creature','creature:picked-remains','scavenge'", 'Mobile corpse chip should not offer active scavenge after depletion');
 });
 

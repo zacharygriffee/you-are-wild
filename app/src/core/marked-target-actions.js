@@ -46,7 +46,11 @@ const YAW_MARKED_TARGET_ACTIONS = {
             };
             buttons.push(corpseButton('loot', 'loot', '🎒'));
             const canScavenge = app._canScavengeCorpse(singleCorpseTarget);
-            buttons.push(corpseButton('scavenge', 'scavenge', '🍖', canScavenge, `${app._corpseScavengeStatus(singleCorpseTarget)} ${targetName}`));
+            const scavengeStatus = app._corpseScavengeStatus(singleCorpseTarget);
+            const scavengeTitle = canScavenge
+                ? `${app._uiLabel('scavenge')} ${targetName} (${scavengeStatus})`
+                : `${scavengeStatus} ${targetName}`;
+            buttons.push(corpseButton('scavenge', 'scavenge', '🍖', canScavenge, scavengeTitle));
         }
         if (singleCreatureTarget) {
             const targetName = singleCreatureTarget.name || app._label('ui.creatures', 'Creatures');

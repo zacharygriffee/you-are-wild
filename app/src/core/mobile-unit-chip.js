@@ -17,7 +17,6 @@ const YAW_MOBILE_UNIT_CHIP = {
         const unitName = unit.name || (isParty ? 'party member' : 'creature');
         const unitLabel = app._escapeHtml(unitName);
         const chipButton = (classes, label, title, onclick, attrs = '') => `<button class="${classes}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}"${attrs ? ' ' + attrs : ''} onclick="${onclick}">${app._escapeHtml(label)}</button>`;
-        const mobileIntent = action => `event.stopPropagation();App.selectIntent('creature','${explorationTargetKey}','${action}','mobile-chip')`;
         let actionButtons = '';
         let detailButtons = '';
         if (isParty && !app.combatState.active) {
@@ -44,13 +43,13 @@ const YAW_MOBILE_UNIT_CHIP = {
                 const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', canTarget)}`;
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')`, pickAttrs)}</div>`;
             } else {
-                const scavengeAction = app.combatState.active
-                    ? chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"')
-                    : (app._canScavengeCorpse(unit)
-                        ? chipButton('action-btn', app._uiLabel('scavenge'), `${app._uiLabel('scavenge')} ${unitName}`, mobileIntent('scavenge'), 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge"')
-                        : chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"'));
-                const lootAction = app.combatState.active ? '' : chipButton('action-btn', app._uiLabel('loot'), `${app._uiLabel('loot')} ${unitName}`, mobileIntent('loot'), 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"');
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${lootAction}${scavengeAction}</div>`;
+                if (app.combatState.active) {
+                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"')}</div>`;
+                } else {
+                    const targetClass = targetSelected ? ' primary' : '';
+                    const targetCommandAttrs = `data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
+                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, targetCommandAttrs)}</div>`;
+                }
             }
         }
         if (!isParty && unit.CPun > 0) {

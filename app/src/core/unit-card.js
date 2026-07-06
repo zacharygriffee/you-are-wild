@@ -87,9 +87,7 @@ const YAW_UNIT_CARD = {
         }
         if (!isParty && isCorpse) {
             const targetKey = app._unitKey(unit);
-            const panelIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','panel-card')`;
             const corpseLabel = app._escapeHtml(unit.corpseName || unit.name || 'remains');
-            const lootLabel = app._escapeHtml(app._uiLabel('loot'));
             const scavengeLabel = app._escapeHtml(app._corpseScavengeLabel(unit));
             const scavengeStatus = app._escapeHtml(app._corpseScavengeStatus(unit));
             if (app.combatState.active) {
@@ -104,10 +102,11 @@ const YAW_UNIT_CARD = {
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn disabled" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button></div>`;
                 }
             } else {
-                const scavengeButton = app._canScavengeCorpse(unit)
-                ? `<button class="action-btn" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button>`
-                : `<button class="action-btn disabled" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="scavenge" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button>`;
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button>${scavengeButton}</div>`;
+                const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';
+                const markLabel = app._escapeHtml(app._targetMarkLabel());
+                const targetPressed = app._isExplorationTargetUnit('creature', unit);
+                const markTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${targetKey}')">${markLabel}</button></div>`;
             }
         }
         if (!isParty && unit.CPun > 0 && !isCorpse) {

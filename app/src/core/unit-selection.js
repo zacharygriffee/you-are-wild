@@ -110,10 +110,17 @@ const YAW_UNIT_SELECTION = {
             'combat-actions': 'combat',
             'combat-target': 'combat'
         };
+        const grammarScopes = new Set([
+            'party-selection',
+            'creature-selection',
+            'sync-participants',
+            'combat-actions',
+            'combat-target'
+        ]);
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
         const surface = commandSurfaces[scope];
         const commandAttrs = surface
-            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandModes[scope] || 'exploration'}"`
+            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandModes[scope] || 'exploration'}"${grammarScopes.has(scope) ? ' data-command-grammar="actor-target-intent"' : ''}`
             : '';
         return `data-action-scope="${safeScope}" aria-label="${label}"${commandAttrs}`;
     },

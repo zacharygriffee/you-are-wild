@@ -11853,7 +11853,7 @@ test('Quest state persists through binary saves', () => {
   assertEqual(loaded.worldMeta.worldId, 'world-save-test', 'World id metadata should persist');
 });
 
-test('Merchant cards expose trade actions', () => {
+test('Merchant cards expose trade through the marked-target composer', () => {
   const { App, elements } = loadAppForCombat();
   App.player = makeUnit('You', { gold: 20 });
   App.party = [App.player];
@@ -11863,7 +11863,10 @@ test('Merchant cards expose trade actions', () => {
     stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
   })];
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Trade', 'Merchant card should expose trade action');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','trader-1')", 'Merchant card should expose target marking');
+  assertNotContains(elements.get('enemies-content').innerHTML, "'trade','panel-card'", 'Merchant card should not duplicate composer-owned trade actions');
+  App.toggleExplorationTarget('creature', 'trader-1');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "'trade','panel-tray'", 'Marked merchant should expose trade through the shared composer');
 });
 
 test('Merchant buy and sell update gold inventory and stock', () => {

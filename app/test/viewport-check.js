@@ -155,8 +155,10 @@ async function checkViewport(browser, name, width, height) {
       const belt = document.getElementById('mobile-control-belt');
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
+      const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
+      const moveToggleRect = moveToggle.getBoundingClientRect();
       return {
         dockPosition: getComputedStyle(dock).position,
         dockTop: dockRect.top,
@@ -169,6 +171,8 @@ async function checkViewport(browser, name, width, height) {
         locationActionsText: actions?.innerText || '',
         locationActionsInSheet: Boolean(sheet?.querySelector('#mobile-explore-actions')),
         sheetActionButtons: sheet ? sheet.querySelectorAll('.action-btn').length : 0,
+        moveToggleHidden: Boolean(moveToggle?.hidden),
+        moveToggleHeight: moveToggleRect.height,
         moveExpanded: document.getElementById('mobile-move-pad')?.classList.contains('expanded') || false,
         controlBeltHasLocationActions: Boolean(belt?.querySelector('#mobile-explore-actions'))
       };
@@ -181,6 +185,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
     assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
+    assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
+    assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);
 
     await page.evaluate(() => {

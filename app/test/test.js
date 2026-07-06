@@ -3882,9 +3882,11 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
-  assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad should be opened through a compact control');
+  assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
+  assertContains(template, 'id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
-  assertContains(template, '.mobile-move-pad.expanded {\n                display: grid;', 'mobile movement pad should expand only when requested');
+  assertContains(template, '.mobile-move-pad.expanded {\n                display: grid;', 'dormant mobile movement pad should still be restorable without rebuilding the controls');
+  assertContains(mobileUnitStripsContent, 'moveToggle.hidden = true;', 'mobile render refresh should keep the dormant move toggle hidden');
   assertContains(template, "onclick=\"App.move(-1,-1)\"", 'mobile movement pad should mirror northwest traversal');
   assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
@@ -9977,6 +9979,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.renderExplorationActions();
   App.renderMobileExplorationControls();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should be collapsed by default');
+  assertEqual(Boolean(elements.get('mobile-move-toggle').hidden), true, 'Mobile move toggle should be hidden while the 3x3 traversal map is in thumb reach');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
@@ -9986,8 +9989,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(document.getElementById('mobile-selection-sentence').innerHTML, '', 'Mobile selection sentence should stay hidden for implicit player state');
 
   App.toggleMobileMovePad();
-  assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Mobile move pad should expand from the Move control');
-  assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'true', 'Move toggle should expose expanded state');
+  assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Dormant mobile move pad behavior should remain restorable');
+  assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'true', 'Hidden move toggle should still expose expanded state if restored later');
 
   App.toggleExplorationTarget('creature', 'guide-1');
   const trayHtml = elements.get('mobile-target-action-tray').innerHTML;

@@ -40,7 +40,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (inCombat) movePad.classList.remove('expanded');
         }
         if (moveToggle) {
-            moveToggle.style.display = inCombat ? 'none' : '';
+            moveToggle.hidden = true;
+            moveToggle.style.display = 'none';
             moveToggle.setAttribute('aria-expanded', String(Boolean(app.mobileMovePadOpen) && !inCombat));
         }
         if (targetTray) {

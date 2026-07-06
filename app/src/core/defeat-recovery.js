@@ -182,9 +182,11 @@ const YAW_DEFEAT_RECOVERY = {
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
             mobileControlBelt.classList?.add('has-controls');
-            mobileControlBelt.classList?.remove('target-controls-open');
+            mobileControlBelt.classList?.remove('target-controls-open', 'expanded-controls-open');
         }
-        document.getElementById('mobile-play-surface')?.classList?.add('has-control-belt');
+        const surface = document.getElementById('mobile-play-surface');
+        surface?.classList?.add('has-control-belt');
+        surface?.classList?.remove('control-belt-expanded');
         app.mobileMovePadOpen = false;
         app.mobileActorBeltOpen = false;
     },

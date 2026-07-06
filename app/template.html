@@ -2422,6 +2422,7 @@
             :root {
                 --mobile-actions-height: 0px;
                 --mobile-dock-height: 58px;
+                --mobile-control-belt-compact-height: 104px;
                 --mobile-control-belt-max-height: 164px;
                 --mobile-scene-height: clamp(164px, 24dvh, 214px);
             }
@@ -2586,6 +2587,10 @@
 	            }
 
             .mobile-play-surface.has-control-belt {
+                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 18px);
+            }
+
+            .mobile-play-surface.has-control-belt.control-belt-expanded {
                 padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 22px);
             }
 
@@ -2725,13 +2730,17 @@
                 transform: translateX(-50%);
                 z-index: 94;
                 width: min(520px, calc(100vw - 32px));
-                max-height: var(--mobile-control-belt-max-height);
+                max-height: var(--mobile-control-belt-compact-height);
                 overflow-y: auto;
                 overscroll-behavior: contain;
             }
 
             .mobile-control-belt.has-controls {
                 display: grid;
+            }
+
+            .mobile-control-belt.expanded-controls-open {
+                max-height: var(--mobile-control-belt-max-height);
             }
 
             .mobile-control-belt.target-controls-open .mobile-creature-presence-cue,

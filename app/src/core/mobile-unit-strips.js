@@ -82,11 +82,19 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 || (creatureCue?.innerHTML || '').trim()
                 || (movePad?.classList?.contains('expanded'))
             );
+            const expandedControls = hasContent && Boolean(
+                hasTargets
+                || actorSelectionOpen
+                || (movePad?.classList?.contains('expanded'))
+            );
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);
+            controlBelt.classList.toggle('expanded-controls-open', expandedControls);
             surface?.classList?.toggle('has-control-belt', hasContent);
+            surface?.classList?.toggle('control-belt-expanded', expandedControls);
         } else {
             surface?.classList?.remove('has-control-belt');
+            surface?.classList?.remove('control-belt-expanded');
         }
     },
 

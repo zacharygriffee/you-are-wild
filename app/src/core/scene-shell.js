@@ -31,9 +31,9 @@ const YAW_SCENE_SHELL = {
         }
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
-            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open');
+            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'expanded-controls-open');
         }
-        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt');
+        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded');
         app.mobileMovePadOpen = false;
         app.mobileActorBeltOpen = false;
     },

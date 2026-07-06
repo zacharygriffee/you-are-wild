@@ -155,18 +155,16 @@ const YAW_QUEST_PANEL = {
         const quests = app.quests || [];
         const titleLabel = app._escapeHtml(app._label('quest.title', 'Quests'));
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showExplorationActions()">${backLabel}</button>`;
-        const sceneDescription = document.getElementById('scene-description');
-        if (!sceneDescription) return;
+        const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
         if (quests.length === 0) {
-            sceneDescription.innerHTML = `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${app._escapeHtml(app._label('quest.noneActive', 'No active quests.'))}</p>${backButton}`;
+            app.showPartyPanelDetail(titleLabel, `<h3>${titleLabel}</h3><p style="color:var(--text-muted)">${app._escapeHtml(app._label('quest.noneActive', 'No active quests.'))}</p>${backButton}`);
             return;
         }
         const visibleQuests = app._filteredQuestEntries();
         let html = `<h3>${titleLabel}</h3>${app._questLogControls()}`;
         if (visibleQuests.length === 0) {
             html += `<p style="color:var(--text-muted);margin-top:12px;">${app._escapeHtml(app._label('quest.noneMatchFilter', 'No quests match the current filter.'))}</p>${backButton}`;
-            sceneDescription.innerHTML = html;
+            app.showPartyPanelDetail(titleLabel, html);
             return;
         }
         html += `<div style="display:grid;gap:12px;margin-top:12px;">`;
@@ -203,7 +201,7 @@ const YAW_QUEST_PANEL = {
             html += `</div>`;
         });
         html += `</div>${backButton}`;
-        sceneDescription.innerHTML = html;
+        app.showPartyPanelDetail(titleLabel, html);
     }
 };
 

@@ -2259,7 +2259,8 @@ test('Quest panel helper module is registered before app code', () => {
   assertContains(questPanelContent, 'progressText(app, quest)', 'Quest panel helper should own quest progress rendering');
   assertContains(questPanelContent, 'routePreviewText(app, objective)', 'Quest panel helper should own quest route preview rendering');
   assertContains(questPanelContent, 'showLog(app)', 'Quest panel helper should own quest log presentation');
-  assertContains(questPanelContent, "document.getElementById('scene-description')", 'Quest log should remain an explicit center-context view');
+  assertContains(questPanelContent, 'app.showPartyPanelDetail(titleLabel, html)', 'Quest log should render through party panel details');
+  assertNotContains(questPanelContent, "document.getElementById('scene-description')", 'Quest log should not render into center tile content');
   assertContains(appContent, 'YAW_QUEST_PANEL.progressText(this, quest)', 'App quest progress wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_PANEL.routePreviewText(this, objective)', 'App quest route wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_PANEL.showLog(this)', 'App quest log wrapper should delegate to the helper');
@@ -11641,9 +11642,10 @@ test('Quest turn-in can defer rewards until claimed from quest log', () => {
   assertEqual(App.player.gold, 0, 'Deferred quest should not grant gold immediately');
   assertEqual(App.player.xp, 0, 'Deferred quest should not grant XP immediately');
   App.showQuestLog();
-  assertContains(elements.get('scene-description').innerHTML, 'Turn In', 'Quest log should expose turn-in action for deferred rewards');
-  assertContains(elements.get('scene-description').innerHTML, 'Turn in with Guide Camp (3, -1)', 'Quest log should show turn-in route when giver location is known');
-  assertContains(elements.get('scene-description').innerHTML, 'Show Turn-In', 'Quest log should expose map focus for turn-in location');
+  assertContains(elements.get('party-content').innerHTML, 'Turn In', 'Quest log should expose turn-in action for deferred rewards');
+  assertContains(elements.get('party-content').innerHTML, 'Turn in with Guide Camp (3, -1)', 'Quest log should show turn-in route when giver location is known');
+  assertContains(elements.get('party-content').innerHTML, 'Show Turn-In', 'Quest log should expose map focus for turn-in location');
+  assertNotContains(elements.get('scene-description').innerHTML, 'Deferred Wolf Hunt', 'Quest log should not replace center presentation content');
   const focused = App.focusQuestTurnInOnMap('deferred_wolf_hunt');
   assertEqual(focused, true, 'Turn-in map focus should succeed when giver location is known');
   assertEqual(App.largeMapOffset.x, 3, 'Turn-in map focus should pan to giver x offset');
@@ -11726,16 +11728,16 @@ test('Quest log supports status filtering and title sorting', () => {
     { id: 'c', title: 'C Task', status: 'active', objectives: [], reward: {} }
   ];
   App.setQuestFilter('active');
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'A Task', 'Active filter should show active quests');
   assertNotContains(html, 'B Task', 'Active filter should hide completed quests');
   App.setQuestFilter('completed');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'B Task', 'Completed filter should show completed quests');
   assertNotContains(html, 'A Task', 'Completed filter should hide active quests');
   App.setQuestFilter('all');
   App.setQuestSort('title');
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assert(html.indexOf('A Task') < html.indexOf('B Task'), 'Title sort should order quests alphabetically');
   assertContains(html, 'Status', 'Quest log should expose status filter control');
   assertContains(html, 'Sort', 'Quest log should expose sort control');
@@ -11767,7 +11769,7 @@ test('Quest log controls localize with accessible names', () => {
   ];
   App.updateLanguage('es');
   App.showQuestLog();
-  const html = elements.get('scene-description').innerHTML;
+  const html = elements.get('party-content').innerHTML;
   assertContains(html, '<h3>Misiones</h3>', 'Quest log title should localize');
   assertContains(html, 'aria-label="Estado"', 'Quest filter select should expose localized accessible label');
   assertContains(html, '>Activas<', 'Quest active filter option should localize');
@@ -11789,11 +11791,11 @@ test('Quest log empty states localize', () => {
   App.updateLanguage('es');
   App.quests = [];
   App.showQuestLog();
-  assertContains(elements.get('scene-description').innerHTML, 'No hay misiones activas.', 'Empty quest log message should localize');
+  assertContains(elements.get('party-content').innerHTML, 'No hay misiones activas.', 'Empty quest log message should localize');
 
   App.quests = [{ id: 'done', title: 'Done Quest', status: 'completed', objectives: [], reward: {} }];
   App.setQuestFilter('active');
-  assertContains(elements.get('scene-description').innerHTML, 'No hay misiones que coincidan con el filtro actual.', 'Filtered-empty quest log message should localize');
+  assertContains(elements.get('party-content').innerHTML, 'No hay misiones que coincidan con el filtro actual.', 'Filtered-empty quest log message should localize');
 });
 
 test('Quest accept and completion feedback localizes', () => {
@@ -11852,7 +11854,7 @@ test('Quest log previews routes and can focus the large map on a checkpoint', ()
     reward: {}
   })];
   App.showQuestLog();
-  let html = elements.get('scene-description').innerHTML;
+  let html = elements.get('party-content').innerHTML;
   assertContains(html, 'quest-route-preview', 'Quest log should render route preview container');
   assertContains(html, 'quest-route-step current', 'Quest log should mark the next checkpoint as current');
   assertContains(html, 'quest-route-step pending', 'Quest log should mark later checkpoints as pending');
@@ -11873,12 +11875,12 @@ test('Quest log previews routes and can focus the large map on a checkpoint', ()
   App.quests[0].objectives[0].checkpoints[0].complete = true;
   App.quests[0].objectives[0].progress = 1;
   App.showQuestLog();
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'quest-route-step complete', 'Quest log should mark finished checkpoints as complete');
   assertContains(html, 'Current checkpoint 2: Safe Camp at 6, 0, 6 steps 6 east', 'Quest log should advance current route guidance');
   App.updateLanguage('es');
   App.showQuestLog();
-  html = elements.get('scene-description').innerHTML;
+  html = elements.get('party-content').innerHTML;
   assertContains(html, 'Actual punto de ruta 2: Safe Camp en 6, 0, 6 pasos 6 este', 'Route preview aria text should localize');
   assertContains(html, '6 pasos 6 este', 'Route guidance should localize after language change');
   assertContains(html, '[Activa]', 'Quest status badge should localize');
@@ -11923,10 +11925,10 @@ test('Quest route guidance can include known terrain without materializing unkno
     reward: {}
   })];
   App.showQuestLog();
-  assertContains(elements.get('scene-description').innerHTML, 'known route crosses 2 road, 1 bridge; 1 rough terrain', 'Quest log should expose known terrain route guidance');
+  assertContains(elements.get('party-content').innerHTML, 'known route crosses 2 road, 1 bridge; 1 rough terrain', 'Quest log should expose known terrain route guidance');
   App.updateLanguage('es');
   App.showQuestLog();
-  assertContains(elements.get('scene-description').innerHTML, 'la ruta conocida cruza 2 camino, 1 puente; 1 terreno dificil', 'Quest terrain guidance should localize');
+  assertContains(elements.get('party-content').innerHTML, 'la ruta conocida cruza 2 camino, 1 puente; 1 terreno dificil', 'Quest terrain guidance should localize');
 });
 
 test('Quest state persists through binary saves', () => {

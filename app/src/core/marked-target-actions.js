@@ -48,7 +48,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
-        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-mode="exploration" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;
@@ -65,16 +65,16 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const defaultSub = app._getDefaultSubAction(action);
         const defaultLabel = app._getActionLabel(action, defaultSub);
         const surface = app._intentMenuSurface(source);
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
-        html += `<button class="action-btn primary" role="menuitem" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${app._escapeHtml(defaultLabel)}</button>`;
+        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration">`;
+        html += `<button class="action-btn primary" role="menuitem" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.resolveExplorationTargetAction('${action}','${String(defaultSub).replace(/'/g, "\\'")}','${commandSource}')">${app._escapeHtml(defaultLabel)}</button>`;
         subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
             const label = app._escapeHtml(sub.label);
             const disabled = sub.available ? '' : ' disabled';
             const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
-            html += `<button class="action-btn" role="menuitem" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
+            html += `<button class="action-btn" role="menuitem" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
         });
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
+        html += `<button class="action-btn" role="menuitem" data-command-mode="exploration" data-command-control="cancel-sub-action" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);

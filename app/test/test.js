@@ -7194,6 +7194,11 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   App.party = [player];
   App.creatures = [friendly];
   App.openIntentSubActionSheet('creature', 'friendly-sub', 'flirt', 'sheet');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Sub-action sheet should identify the exploration composer sub-action surface');
+  assertContains(body.innerHTML, 'data-command-intent="flirt"', 'Sub-action sheet container should expose the primary intent id');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:tease"', 'Default sub-action should expose exploration mode and stable sub-action intent id');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Sub-action sheet should expose a structural cancel exit');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','tease')", 'Sub-action sheet should expose the default sub-action dispatch');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
   App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');
@@ -7661,6 +7666,10 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   App.explorationActorIds = ['helper-1', 'primary-1'];
   App.toggleExplorationTarget('party', 'prey-1');
   App.openExplorationTargetSubActionSheet('feast', 'target-bar');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Marked target sub-action sheet should identify the exploration composer sub-action surface');
+  assertContains(body.innerHTML, 'data-command-intent="feast"', 'Marked target sub-action sheet container should expose the primary intent id');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow"', 'Marked target default sub-action should expose exploration mode and stable sub-action intent id');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action sheet should expose a structural cancel exit');
   assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feast','swallow','target-bar')", 'Marked target sub-action sheet should dispatch default feast sub-action');
   App.resolveExplorationTargetAction('feast', 'swallow', 'target-bar');
   assertEqual(App.lastIntentCommand.source, 'target-bar', 'Marked target command should record its source');
@@ -8145,6 +8154,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'data-command-intent="flirt"', 'Composer selected-target action buttons should expose stable intent ids');
   assertContains(actionsHtml, 'data-command-mode="exploration" data-command-intent="flirt"', 'Composer selected-target action buttons should expose exploration command mode');
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Composer selected-target action buttons should dispatch the default sub-action directly');
+  assertContains(actionsHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Composer selected-target clear should identify exploration mode');
   assertContains(actionsHtml, 'data-command-control="clear-targets"', 'Composer selected-target clear should identify the command exit control');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
@@ -10531,6 +10541,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, 'data-command-intent="inspect"', 'Mobile target action tray should mark contextual utility intents with stable action ids');
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
+  assertContains(trayHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Mobile target action tray clear should identify exploration mode');
   assertContains(trayHtml, 'data-command-control="clear-targets"', 'Mobile target action tray should expose Clear as the composer exit control');
   assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');

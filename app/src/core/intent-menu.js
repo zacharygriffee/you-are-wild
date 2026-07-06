@@ -75,16 +75,16 @@ const YAW_INTENT_MENU = {
         const title = `${app._uiLabel(action)} ${target.name || ''}`.trim();
         const defaultSub = app._getDefaultSubAction(action);
         const defaultLabel = app._getActionLabel(action, defaultSub);
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu">`;
-        html += `<button class="action-btn primary" role="menuitem" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${defaultSub.replace(/'/g, "\\'")}')">${app._escapeHtml(defaultLabel)}</button>`;
+        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration">`;
+        html += `<button class="action-btn primary" role="menuitem" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(defaultSub).replace(/'/g, "\\'")}')">${app._escapeHtml(defaultLabel)}</button>`;
         subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
             const label = app._escapeHtml(sub.label);
             const disabled = sub.available ? '' : ' disabled';
             const settingHint = sub.available || !sub.setting ? '' : ` (${sub.setting})`;
-            html += `<button class="action-btn" role="menuitem" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
+            html += `<button class="action-btn" role="menuitem" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
         });
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
+        html += `<button class="action-btn" role="menuitem" data-command-mode="exploration" data-command-control="cancel-sub-action" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);

@@ -107,7 +107,7 @@ const YAW_INTERACTION_STATE = {
     renderSelectionSentence(app) {
         const html = this.sentenceHtml(app, this.selectionSentence(app));
         const desktop = document.getElementById('selection-sentence');
-        if (desktop) desktop.innerHTML = html;
+        if (desktop) desktop.innerHTML = '';
         const mobile = document.getElementById('mobile-selection-sentence');
         if (mobile) {
             const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;

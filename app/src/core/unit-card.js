@@ -115,7 +115,10 @@ const YAW_UNIT_CARD = {
                 const markLabel = app._escapeHtml(app._targetMarkLabel());
                 const markTitle = app._escapeHtml(app._label('target.markFor', 'Mark {name} as target', { name: targetName }));
                 const targetPressed = app._isExplorationTargetUnit('creature', unit);
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')">${markLabel}</button></div>`;
+                const questAction = unit.quest
+                    ? `<button class="action-btn contextual-utility" title="${app._escapeHtml(app._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'))} ${app._escapeHtml(targetName)}" aria-label="${app._escapeHtml(app._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'))} ${app._escapeHtml(targetName)}" onclick="event.stopPropagation();App.selectIntent('creature','${explorationTargetKey}','quest','panel-card')">📜 ${app._escapeHtml(app._uiLabel(unit.questAccepted ? 'viewQuest' : 'acceptQuest'))}</button>`
+                    : '';
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')">${markLabel}</button>${questAction}</div>`;
             }
         }
         let dispLabel = '';

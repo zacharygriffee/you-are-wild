@@ -2551,12 +2551,12 @@ test('Center context helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
-  assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own center tile presence rendering');
+  assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own clearing deprecated desktop presence rendering');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should focus presence chips into detail panels');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear center tile presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
-  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should render center tile presence');
+  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should clear deprecated center presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear center tile presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
@@ -6591,13 +6591,7 @@ test('Center tile stays traversal and context only across interaction states', (
   App.combatState.active = false;
 
   App.renderCenterPresence();
-  assertContains(el('center-presence').innerHTML, 'center-presence-chip', 'Exploration center tile should show lightweight local presence');
-  assertContains(el('center-presence').innerHTML, "App.focusPresence('party','ally-1')", 'Presence chips should focus party details instead of exposing actor actions');
-  assertContains(el('center-presence').innerHTML, "App.focusPresence('creature','friendly-1')", 'Presence chips should focus creature details instead of exposing interaction menus');
-  assertContains(el('center-presence').innerHTML, 'data-presence-ref="ally-1"', 'Presence chips should expose stable party focus refs');
-  assertContains(el('center-presence').innerHTML, 'data-presence-ref="friendly-1"', 'Presence chips should expose stable creature focus refs');
-  assertContains(el('center-presence').innerHTML, 'Ally', 'Exploration center presence should include party members');
-  assertContains(el('center-presence').innerHTML, 'Friendly', 'Exploration center presence should include local creatures');
+  assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence already shown in panels and traversal chips');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
 
@@ -10018,22 +10012,21 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   App.explorationActorSelectionExplicit = true;
 
   App.renderSelectionSentence();
-  assertContains(elements.get('selection-sentence').innerHTML, 'Actors', 'Desktop sentence should label selected actors');
-  assertContains(elements.get('selection-sentence').innerHTML, 'Long-Named Ally', 'Desktop sentence should name the selected actor');
-  assertNotContains(elements.get('selection-sentence').innerHTML, 'Targets', 'Desktop sentence should not imply a target before one is marked');
-  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should mirror selected actor state');
+  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should not duplicate actor selection state');
+  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should show selected actor state in the control belt');
 
   App.toggleExplorationTarget('creature', 'guide-1');
-  const html = elements.get('selection-sentence').innerHTML;
-  assertContains(html, 'Targets', 'Marked exploration targets should be visible in the sentence');
-  assertContains(html, 'Guide', 'Marked exploration target name should be visible in the sentence');
+  const html = elements.get('mobile-selection-sentence').innerHTML;
+  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should stay clear when marked target state exists');
+  assertContains(html, 'Targets', 'Marked exploration targets should be visible in the mobile control-belt sentence');
+  assertContains(html, 'Guide', 'Marked exploration target name should be visible in the mobile control-belt sentence');
   assertContains(html, 'Intent', 'Marked exploration targets should expose a pending intent field');
   assertContains(html, 'Choose', 'Pending marked-target intent should tell the player to choose an action');
-  assertEqual(elements.get('mobile-selection-sentence').innerHTML, html, 'Mobile and desktop selection sentences should stay in sync');
 
   App.explorationActorIds = ['missing-actor'];
   App.renderSelectionSentence();
-  assertContains(elements.get('selection-sentence').innerHTML, 'Select a living actor', 'Stale actor selections should remain visible for correction');
+  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should stay clear for stale actor selections');
+  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Select a living actor', 'Stale actor selections should remain visible for correction in the mobile control belt');
 });
 
 test('Selection sentence mirrors combat target-pick state without changing action ids', () => {
@@ -10054,8 +10047,8 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   };
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
 
-  App.renderSelectionSentence();
-  const html = elements.get('selection-sentence').innerHTML;
+  const html = App.renderSelectionSentence();
+  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should not duplicate combat target-pick state');
   assertContains(html, 'Actors', 'Combat sentence should label current actor state');
   assertContains(html, 'You', 'Combat sentence should name the active actor');
   assertContains(html, 'Targets', 'Combat target picking should expose target state');
@@ -11197,7 +11190,8 @@ test('Quest system exposes quest giver actions and quest log', () => {
   App.party = [App.player];
   App.creatures = [giver];
   App.renderCreatures();
-  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should not duplicate quest preview outside the marked-target tray');
+  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Quest giver card should expose quest preview directly');
+  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should preview through shared intent selection');
   App.toggleExplorationTarget('creature', 'guide-1');
   assertContains(App._renderPanelInteractionTray(), 'Accept Quest', 'Marked quest giver tray should expose accept action');
   assertContains(App._renderPanelInteractionTray(), "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest giver tray should preview through shared intent selection before accepting');
@@ -11820,7 +11814,8 @@ test('Structure encounters can place authored quest givers', () => {
   assertEqual(giver.quest.templateId, 'shrine_relic', 'Placed quest giver should use authored quest template');
   assertEqual(giver.quest.id, 'shrine_relic_2_0', 'Authored quest id should be stable for the structure tile');
   App.renderCreatures();
-  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed quest giver card should not duplicate quest directly on the card');
+  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Placed quest giver card should expose its quest utility directly');
+  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed quest giver card should dispatch quest preview directly');
   App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', giver));
   assertContains(App._renderPanelInteractionTray(), 'Accept Quest', 'Marked quest giver should expose quest action through the shared panel tray');
   assertContains(App._renderPanelInteractionTray(), "'quest','panel-tray'", 'Marked quest giver should dispatch quest through the shared panel tray');

@@ -81,20 +81,8 @@ const YAW_CENTER_CONTEXT = {
         const slots = ['center-presence']
             .map(id => document.getElementById(id))
             .filter(Boolean);
-        if (slots.length === 0) return '';
-        const entries = this.presenceEntries(app);
-        const visible = entries.slice(0, 8);
-        const extra = entries.length - visible.length;
-        const title = app._escapeHtml(app._label('ui.presence.here', 'Here'));
-        const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
-        const more = extra > 0
-            ? `<span class="center-presence-more">${app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }))}</span>`
-            : '';
-        const html = entries.length
-            ? `<section class="center-presence" aria-label="${title}"><div class="center-presence-title">${title}</div><div class="center-presence-list">${chips}${more}</div></section>`
-            : '';
-        slots.forEach(slot => { slot.innerHTML = html; });
-        return html;
+        slots.forEach(slot => { slot.innerHTML = ''; });
+        return '';
     },
 
     clearPresence() {

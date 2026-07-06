@@ -7284,6 +7284,7 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   App.creatures = [friendly];
   App.openIntentSubActionSheet('creature', 'friendly-sub', 'flirt', 'sheet');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Sub-action sheet should identify the exploration composer sub-action surface');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Sub-action sheet should identify the shared command grammar');
   assertContains(body.innerHTML, 'data-command-intent="flirt"', 'Sub-action sheet container should expose the primary intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:tease"', 'Default sub-action should expose exploration mode and stable sub-action intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
@@ -7756,6 +7757,7 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   App.toggleExplorationTarget('party', 'prey-1');
   App.openExplorationTargetSubActionSheet('feast', 'target-bar');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Marked target sub-action sheet should identify the exploration composer sub-action surface');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Marked target sub-action sheet should identify the shared command grammar');
   assertContains(body.innerHTML, 'data-command-intent="feast"', 'Marked target sub-action sheet container should expose the primary intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow"', 'Marked target default sub-action should expose exploration mode and stable sub-action intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action sheet should expose a structural cancel exit');
@@ -14812,6 +14814,7 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target sub-actions should identify the shared command grammar');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
 });
 

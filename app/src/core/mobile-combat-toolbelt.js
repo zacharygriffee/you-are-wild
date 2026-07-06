@@ -67,7 +67,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
-            return row(app._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', { action: actionLabel }), button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()'));
+            return row(app._label('target.controls', 'Target controls'), button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()'));
         }
         return '';
     },

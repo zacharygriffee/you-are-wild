@@ -130,7 +130,10 @@ const YAW_CENTER_CONTEXT = {
 
     renderCenterActions(app) {
         if (app.combatState?.active) return;
-        const html = this.renderActions(app, false);
+        const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
+        const html = hasMarkedTargets
+            ? app._renderExplorationTargetActions('desktop')
+            : this.renderActions(app, false);
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';

@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD PANEL INTERACTION TRAYS
- * Renders panel-first actor/target/intent trays for adventure and combat.
+ * Renders transient combat trays; exploration intents live in the command composer.
  */
 
 const YAW_PANEL_INTERACTIONS = {
@@ -12,7 +12,7 @@ const YAW_PANEL_INTERACTIONS = {
 
     render(app, mode = app.combatState?.active ? 'combat' : 'adventure') {
         if (mode === 'combat') return this.combat(app);
-        return app._renderExplorationTargetActions('panel-tray');
+        return '';
     },
 
     combat(app) {

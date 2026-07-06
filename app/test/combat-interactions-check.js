@@ -412,39 +412,39 @@ async function runAdventureMarkedTargetFlow(page) {
   await page.locator(`#party-content button[onclick*="selectExplorationActor(1)"]`).first().click();
   await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
 
-  const tray = page.locator('#party-content .panel-interaction-tray');
-  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Marked target tray should render above party cards');
+  const tray = page.locator('#desktop-context-belt .target-action-row');
+  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Marked target composer should render in the desktop context belt');
   const trayState = await page.evaluate(() => {
-    const trayEl = document.querySelector('#party-content .panel-interaction-tray');
+    const beltEl = document.querySelector('#desktop-context-belt');
     const partyContent = document.querySelector('#party-content');
     return {
-      isFirstChild: partyContent?.firstElementChild === trayEl,
-      hasPanelSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','panel-tray')") || false,
-      actorSummary: trayEl?.textContent?.includes('Actors: Ally') || false,
-      targetSummary: trayEl?.textContent?.includes('Targets: Friendly') || false,
+      partyHasTray: Boolean(partyContent?.querySelector('.panel-interaction-tray')),
+      hasDesktopSource: beltEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','desktop-target')") || false,
+      actorSummary: beltEl?.textContent?.includes('Actors: Ally') || false,
+      targetSummary: beltEl?.textContent?.includes('Targets: Friendly') || false,
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert.strictEqual(trayState.isFirstChild, true, 'Marked target tray should sit above party cards');
-  assert.strictEqual(trayState.hasPanelSource, true, 'Marked target tray should dispatch through the panel-tray command source');
-  assert.strictEqual(trayState.actorSummary, true, 'Marked target tray should summarize the selected actor');
-  assert.strictEqual(trayState.targetSummary, true, 'Marked target tray should summarize the marked creature target');
+  assert.strictEqual(trayState.partyHasTray, false, 'Party panel should not duplicate the desktop composer tray');
+  assert.strictEqual(trayState.hasDesktopSource, true, 'Marked target composer should dispatch defaults through the desktop-target command source');
+  assert.strictEqual(trayState.actorSummary, true, 'Marked target composer should summarize the selected actor');
+  assert.strictEqual(trayState.targetSummary, true, 'Marked target composer should summarize the marked creature target');
   assert.strictEqual(trayState.centerHasActorControls, false, 'Center tile should stay free of actor controls while a target is marked');
 
-  await page.locator(`#party-content .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','desktop-target')"]`).first().click();
   const resolved = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
     actors: App._getExplorationActors().map(unit => unit.id),
     commandSource: App.lastIntentCommand?.source || '',
-    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
-  assert(resolved.targetPle > 0, 'Panel-tray marked target action should resolve against the marked creature');
+  assert(resolved.targetPle > 0, 'Composer marked target action should resolve against the marked creature');
   assert.strictEqual(resolved.targetsRemaining, 0, 'Resolved marked target action should clear target marks');
   assert.deepStrictEqual(resolved.actors, ['ally-1'], 'Resolved marked target action should preserve the selected actor');
-  assert.strictEqual(resolved.commandSource, 'panel-tray', 'Resolved marked target action should preserve panel source metadata');
-  assert.strictEqual(resolved.trayVisible, false, 'Resolved marked target action should remove the tray after clearing targets');
+  assert.strictEqual(resolved.commandSource, 'desktop-target', 'Resolved marked target action should preserve desktop composer source metadata');
+  assert.strictEqual(resolved.trayVisible, false, 'Resolved marked target action should remove the composer tray after clearing targets');
   assert.strictEqual(resolved.centerHasActorControls, false, 'Center tile should stay free of actor controls after resolving a marked target action');
 
   await setupAdventure(page);
@@ -452,12 +452,12 @@ async function runAdventureMarkedTargetFlow(page) {
   await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   await setupCombat(page);
   const swapped = await page.evaluate(() => ({
-    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
     combatButtons: document.querySelector('#party-content')?.innerHTML.includes("executeCombatIntent('fight')") || false,
     creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
-  assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target tray');
+  assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target composer tray');
   assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the party panel');
   assert.strictEqual(swapped.creatureMarkButtons, false, 'Switching into combat should replace adventure target marks with combat target picks');
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
@@ -475,11 +475,11 @@ async function runStaleMarkedActorFlow(page) {
     App.renderExplorationActions();
   });
 
-  const tray = page.locator('#party-content .panel-interaction-tray');
-  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Stale actor marked-target tray should still render for correction');
+  const tray = page.locator('#desktop-context-belt .target-action-row');
+  await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Stale actor marked-target composer should still render for correction');
 
   let state = await page.evaluate(() => {
-    const trayEl = document.querySelector('#party-content .panel-interaction-tray');
+    const trayEl = document.querySelector('#desktop-context-belt');
     return {
       trayText: trayEl?.textContent || '',
       trayHasPlayerPrimary: trayEl?.textContent?.includes('Primary: You') || false,
@@ -489,21 +489,21 @@ async function runStaleMarkedActorFlow(page) {
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert(state.trayText.includes('Select a living actor'), 'Stale actor tray should explain that an actor must be selected');
-  assert.strictEqual(state.trayHasPlayerPrimary, false, 'Stale actor tray should not present the player as primary actor');
+  assert(state.trayText.includes('Select a living actor'), 'Stale actor composer should explain that an actor must be selected');
+  assert.strictEqual(state.trayHasPlayerPrimary, false, 'Stale actor composer should not present the player as primary actor');
   assert.strictEqual(state.targetPle, 0, 'Stale actor setup should start before target mutation');
   assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor setup should preserve explicit invalid actor id');
   assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor setup should preserve marked creature target');
-  assert.strictEqual(state.centerHasActorControls, false, 'Stale actor tray should keep center free of actor controls');
+  assert.strictEqual(state.centerHasActorControls, false, 'Stale actor composer should keep center free of actor controls');
 
-  await page.locator(`#party-content .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','desktop-target')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     actorIds: [...App.explorationActorIds],
     targetIds: [...App.explorationTargetIds],
     lastCommand: App.lastIntentCommand,
     lastLog: App.log[App.log.length - 1]?.text || '',
-    trayVisible: Boolean(document.querySelector('#party-content .panel-interaction-tray')),
+    trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.targetPle, 0, 'Stale actor marked-target action should not fall back to player and mutate target');
@@ -693,8 +693,8 @@ async function runContextualCardIntentSourceFlow(page) {
   const desktopMark = page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
   await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop creature card Mark should render as the card-level target control');
   await desktopMark.click();
-  const desktopInspect = page.locator(`#party-content .panel-interaction-tray button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
-  await assert.doesNotReject(() => desktopInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop marked-target tray Inspect should render through shared intent selection');
+  const desktopInspect = page.locator(`#desktop-context-belt button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
+  await assert.doesNotReject(() => desktopInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop marked-target composer Inspect should render through shared intent selection');
   await desktopInspect.click();
 
   let state = await page.evaluate(() => ({

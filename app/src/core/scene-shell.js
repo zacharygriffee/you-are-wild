@@ -4,15 +4,7 @@
  */
 
 const YAW_SCENE_SHELL = {
-    clearCenterActionsForCombat(app) {
-        const actions = document.getElementById('scene-actions');
-        if (actions) {
-            actions.innerHTML = '';
-            actions.classList?.remove('center-tile-actions');
-            actions.style.display = 'none';
-        }
-        const desktopBelt = document.getElementById('desktop-context-belt');
-        if (desktopBelt) desktopBelt.innerHTML = '';
+    clearMobileExplorationControls(app) {
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = '';
@@ -36,6 +28,18 @@ const YAW_SCENE_SHELL = {
         app.mobileMovePadOpen = false;
     },
 
+    clearCenterActionsForCombat(app) {
+        const actions = document.getElementById('scene-actions');
+        if (actions) {
+            actions.innerHTML = '';
+            actions.classList?.remove('center-tile-actions');
+            actions.style.display = 'none';
+        }
+        const desktopBelt = document.getElementById('desktop-context-belt');
+        if (desktopBelt) desktopBelt.innerHTML = '';
+        this.clearMobileExplorationControls(app);
+    },
+
     setRichContent(app, title, html) {
         const titleEl = document.getElementById('scene-title');
         const descEl = document.getElementById('scene-description');
@@ -48,6 +52,7 @@ const YAW_SCENE_SHELL = {
         }
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) desktopBelt.innerHTML = '';
+        this.clearMobileExplorationControls(app);
         const mobileTitle = document.getElementById('mobile-scene-title');
         const mobileDesc = document.getElementById('mobile-scene-description');
         const mobileSheet = document.querySelector?.('.mobile-scene-sheet');

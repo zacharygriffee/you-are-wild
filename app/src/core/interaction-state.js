@@ -20,6 +20,7 @@ const YAW_INTERACTION_STATE = {
         app.renderCreatures();
         if (includeExploration) app.renderExplorationActions();
         if (includeToolbelt) app.renderMobileCombatToolbelt();
+        if (app.combatState?.active) app.renderDesktopCombatComposer?.(this.combatActor(app));
         this.renderSelectionSentence(app);
     },
 

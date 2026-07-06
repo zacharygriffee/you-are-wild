@@ -11,7 +11,7 @@ const YAW_PANEL_INTERACTIONS = {
     },
 
     render(app, mode = app.combatState?.active ? 'combat' : 'adventure') {
-        if (mode === 'combat') return this.combat(app);
+        if (mode === 'combat') return '';
         return '';
     },
 
@@ -53,10 +53,18 @@ const YAW_PANEL_INTERACTIONS = {
         const participants = app._syncSelectedParticipants();
         const names = participants.map(unit => unit.name).join(', ') || (actor?.name || '');
         const needMore = participants.length < 2;
-        const message = needMore
-            ? app._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.')
+        const message = app.syncSelection.phase === 'participants'
+            ? app._label('combat.sync.selectParticipants', 'Select participants for sync')
             : app._label('combat.sync.selectTarget', 'Select sync target');
-        return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${app._escapeHtml(app._label('target.actors', 'Actors'))}: ${app._escapeHtml(names)}</span><span>${app._escapeHtml(message)}</span></div><button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div>`;
+        let controls = `<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button>`;
+        if (app.syncSelection.phase === 'participants') {
+            const confirmLabel = app._escapeHtml(app._label('combat.sync.confirmParticipants', 'Confirm Participants'));
+            const disabled = needMore ? ' disabled aria-disabled="true"' : '';
+            const disabledClass = needMore ? ' disabled' : '';
+            const syncType = app._escapeJsString(app.syncSelection.type || 'sync_fight');
+            controls = `<button class="action-btn primary${disabledClass}" title="${confirmLabel}" aria-label="${confirmLabel}"${disabled} onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button>${controls}`;
+        }
+        return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${app._escapeHtml(app._label('target.actors', 'Actors'))}: ${app._escapeHtml(names)}</span><span>${app._escapeHtml(message)}</span></div><div class="target-action-row">${controls}</div></div>`;
     }
 };
 

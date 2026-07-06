@@ -1590,7 +1590,9 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assert(buildContent.indexOf("'src/core/panel-interactions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel interaction helper should load before app.js');
   assertContains(panelInteractionsContent, 'const YAW_PANEL_INTERACTIONS = {', 'Panel interaction helper should expose the tray service');
   assertContains(panelInteractionsContent, "return '';", 'Adventure panel tray should defer marked target actions to the command composer');
+  assertContains(combatActionsContent, 'app._renderCombatPanelTray?.()', 'Desktop combat composer should reuse combat transient trays');
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
+  assertContains(panelInteractionsContent, 'App.confirmSyncParticipants', 'Combat sync participant tray should expose confirm through the composer');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
 });
@@ -1684,6 +1686,7 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'const YAW_INTERACTION_STATE = {', 'Interaction state helper should expose the interaction state service');
   assertContains(interactionStateContent, 'clearTransient(app)', 'Interaction state helper should own transient selection cleanup');
   assertContains(interactionStateContent, 'render(app, options = {})', 'Interaction state helper should own panel/toolbelt refresh orchestration');
+  assertContains(interactionStateContent, 'app.renderDesktopCombatComposer?.', 'Interaction state refresh should keep the desktop combat composer in sync');
   assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
   assertContains(interactionStateContent, 'selectionSentence(app)', 'Interaction state helper should derive the current selection sentence');
   assertContains(interactionStateContent, 'syncSelectedParticipants(app)', 'Interaction state helper should own sync participant lookup');
@@ -4764,21 +4767,23 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.activeActor = player;
   App.updateLanguage('es');
   App.showSyncMenu();
-  let html = elements.get('party-content').innerHTML;
+  let html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
   assertContains(html, '>Cancelar<', 'Sync tray cancel action should localize');
+  assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Elegir accion sincronizada', 'Sync action menu should not render in center scene');
 
   App.selectSyncParticipants('sync_fight');
-  html = elements.get('party-content').innerHTML;
+  html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
-  assertContains(html, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
+  assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
+  assertContains(elements.get('party-content').innerHTML, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
 
   App._syncSelected = [0, 1];
   App.syncSelection.participantIds = ['sync-player', 'sync-ally'];
   App.confirmSyncParticipants('sync_fight');
-  html = elements.get('party-content').innerHTML;
+  html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
   html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Sincronizar"', 'Sync target card should expose localized accessible label');
@@ -5669,7 +5674,7 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
   assert(second.CPun < beforeSecond, 'Direct target dispatch should damage the clicked enemy id');
 });
 
-test('Combat feed sub-action picker renders in the panel tray, not center scene', () => {
+test('Combat feed sub-action picker renders in the desktop composer, not center scene', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-feed-tray' });
   const ally = makeUnit('Ally', { id: 'ally-feed-tray', CPun: 50, MPun: 100 });
@@ -5683,11 +5688,13 @@ test('Combat feed sub-action picker renders in the panel tray, not center scene'
     { id: 'breastfeed', label: 'Support', icon: 'S', available: true }
   ];
   const result = App.executeCombatIntent('feed');
-  assertEqual(result, true, 'Feed intent should enter panel feed selection when multiple sub-actions exist');
-  assert(App.feedSelection?.active, 'Feed selection state should be active for panel tray rendering');
-  const partyHtml = elements.get('party-content')?.innerHTML || App._renderPanelInteractionTray('combat');
+  assertEqual(result, true, 'Feed intent should enter composer feed selection when multiple sub-actions exist');
+  assert(App.feedSelection?.active, 'Feed selection state should be active for composer tray rendering');
+  const partyHtml = elements.get('party-content')?.innerHTML || '';
+  const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
-  assertContains(partyHtml, 'combat-feed-tray', 'Feed options should render in the party panel tray');
+  assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
+  assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
   assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');
 });
 
@@ -10290,6 +10297,7 @@ test('Combat creature target button localizes visible and accessible labels', ()
   assertNotContains(sceneHtml, 'Selecciona un objetivo desde el panel de criaturas.', 'Target selection prompt should not overwrite the center scene');
   assertNotContains(sceneHtml, 'aria-label="Cancelar Luchar"', 'Target cancellation should not render in the center scene');
   assertNotContains(elements.get('scene-actions').innerHTML, 'Objetivo de Luchar. Elige un objetivo valido en el panel enemigo.', 'Center should not duplicate panel targeting guidance');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancelar Luchar"', 'Desktop composer should expose combat target cancellation');
   const html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Luchar"', 'Combat target button should localize selected-action accessible label');
   assertContains(html, '>Elegir<', 'Combat target button visible label should localize');

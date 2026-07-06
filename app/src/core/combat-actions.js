@@ -82,8 +82,17 @@ const YAW_COMBAT_ACTIONS = {
 
     desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
         if (!app.combatState?.active) return '';
-        if (app.targetSelection?.source === 'combat') return '';
-        if (app.syncSelection?.active || app.feedSelection?.active) return '';
+        if (app.syncSelection?.active || app.feedSelection?.active) {
+            return app._renderCombatPanelTray?.() || '';
+        }
+        if (app.targetSelection?.source === 'combat') {
+            const actionText = app._uiLabel(app.targetSelection.action || 'action');
+            const actionLabel = app._escapeHtml(actionText);
+            const cancelLabel = app._escapeHtml(app._label('target.cancelAction', 'Cancel {action}', { action: actionText }));
+            const targetLabel = app._escapeHtml(app._label('target.pickTarget', 'Pick target'));
+            const label = app._escapeHtml(app._label('target.controls', 'Target controls'));
+            return `<div class="panel-interaction-tray combat-target-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${targetLabel}</span><span>${actionLabel}</span></div><div class="target-action-row"><button class="action-btn" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
+        }
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
         if (!actions) return '';
         const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));

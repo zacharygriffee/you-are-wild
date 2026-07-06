@@ -87,9 +87,6 @@ const YAW_UNIT_CARD = {
         }
         if (!isParty && isCorpse) {
             const targetKey = app._unitKey(unit);
-            const corpseLabel = app._escapeHtml(unit.corpseName || unit.name || 'remains');
-            const scavengeLabel = app._escapeHtml(app._corpseScavengeLabel(unit));
-            const scavengeStatus = app._escapeHtml(app._corpseScavengeStatus(unit));
             if (app.combatState.active) {
                 if (app.targetSelection?.source === 'combat' && app.targetSelection.action === 'scavenge') {
                     const canTarget = app.canSelectCreatureTarget(unit);
@@ -98,8 +95,6 @@ const YAW_UNIT_CARD = {
                     const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, 'scavenge', canTarget));
                     const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')">${targetLabel}</button></div>`;
-                } else {
-                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn disabled" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button></div>`;
                 }
             } else {
                 const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';

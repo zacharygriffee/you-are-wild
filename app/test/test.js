@@ -1590,10 +1590,10 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, "'party-selection': 'actor-target-routing'", 'Party selection rows should declare actor/target composer routing');
   assertContains(unitSelectionContent, "'party-details': 'detail-management'", 'Party detail rows should declare detail-management routing separately from actor/target selection');
   assertContains(unitSelectionContent, "'creature-selection': 'target-routing'", 'Creature selection rows should declare target composer routing');
-  assertContains(unitSelectionContent, "'corpse-utility': 'utility-actions'", 'Corpse utility rows should declare utility command routing');
-  assertContains(unitSelectionContent, "'corpse-utility',", 'Corpse utility rows should identify the shared command grammar');
+  assertNotContains(unitSelectionContent, "'corpse-utility': 'utility-actions'", 'Corpse utility rows should not preserve a separate non-composer utility surface');
+  assertNotContains(unitSelectionContent, "'corpse-utility',", 'Corpse utility rows should not preserve a separate grammar path');
   assertContains(unitSelectionContent, "'combat-target': 'combat-targeting'", 'Combat target rows should declare combat target-pick routing');
-  assertContains(unitSelectionContent, "'party-selection',\n            'creature-selection',\n            'sync-participants',\n            'combat-actions',\n            'corpse-utility',\n            'combat-target'", 'Composer-routing action rows should opt into the shared command grammar');
+  assertContains(unitSelectionContent, "'party-selection',\n            'creature-selection',\n            'sync-participants',\n            'combat-actions',\n            'combat-target'", 'Composer-routing action rows should opt into the shared command grammar');
   assertContains(unitSelectionContent, 'data-command-grammar="actor-target-intent"', 'Composer-routing action rows should expose actor-target-intent grammar metadata');
   assertContains(appContent, 'YAW_UNIT_SELECTION.roles(this, unit, type)', 'App unit selection role wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded)', 'App unit focus wrapper should delegate to the helper');
@@ -12302,6 +12302,41 @@ test('Combat scavenge targets remains and consumes the current actor turn', () =
   assertEqual(player.hunger, 50, 'Combat scavenge should reduce hunger by consumed portions');
   assertEqual(player.CPun, 85, 'Combat scavenge should restore bounded health');
   assertContains(App.log.map(entry => entry.text).join('\n'), 'You uses 1 portion(s) from Remains.', 'Combat scavenge should log the finite portion use');
+});
+
+test('Combat remains cards only expose scavenge after the composer enters target-pick mode', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-combat-remains-ui', hunger: 40, CPun: 70, MPun: 100, size: 4 });
+  const enemy = makeUnit('Enemy', { id: 'enemy-combat-remains-ui', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100 });
+  const corpse = makeUnit('Remains', { id: 'combat-remains-ui', disposition: App.DISPOSITION.CORPSE, CPun: 0, MPun: 100, size: 2 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy, corpse];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+
+  const idleCard = App.renderUnitCard(corpse, 1, 'creature');
+  const idleChip = App.renderMobileUnitChip(corpse, 1, 'creature');
+  assertNotContains(idleCard, 'data-command-intent="scavenge"', 'Combat corpse card should not expose inactive Scavenge before the intent is chosen');
+  assertNotContains(idleChip, 'data-command-intent="scavenge"', 'Mobile combat corpse chip should not expose inactive Scavenge before the intent is chosen');
+  assertNotContains(idleCard, 'corpse-utility', 'Combat corpse card should not keep a separate utility action row');
+  assertNotContains(idleChip, 'corpse-utility', 'Mobile combat corpse chip should not keep a separate utility action row');
+
+  assertEqual(App.executeCombatIntent('scavenge'), true, 'Combat scavenge should enter target-pick mode');
+  const targetingCard = App.renderUnitCard(corpse, 1, 'creature');
+  const targetingChip = App.renderMobileUnitChip(corpse, 1, 'creature');
+  assertContains(targetingCard, "executeActionOnTarget('scavenge','combat-remains-ui')", 'Combat corpse card should expose Pick only after scavenge targeting begins');
+  assertContains(targetingChip, "executeActionOnTarget('scavenge','combat-remains-ui')", 'Mobile combat corpse chip should expose Pick only after scavenge targeting begins');
+  assertContains(targetingCard, 'data-command-surface="combat-targeting"', 'Combat corpse card Pick should identify combat target-pick routing');
+  assertContains(targetingChip, 'data-command-surface="combat-targeting"', 'Mobile combat corpse chip Pick should identify combat target-pick routing');
 });
 
 test('Enemy and ally combat scavenge AI use finite remains', () => {

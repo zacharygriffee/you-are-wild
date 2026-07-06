@@ -43,9 +43,7 @@ const YAW_MOBILE_UNIT_CHIP = {
                 const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', canTarget)}`;
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')`, pickAttrs)}</div>`;
             } else {
-                if (app.combatState.active) {
-                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn disabled', app._corpseScavengeLabel(unit), `${app._corpseScavengeStatus(unit)} ${unitName}`, 'event.stopPropagation()', 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-intent="scavenge" disabled aria-disabled="true"')}</div>`;
-                } else {
+                if (!app.combatState.active) {
                     const targetClass = targetSelected ? ' primary' : '';
                     const targetCommandAttrs = `data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('creature-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, targetCommandAttrs)}</div>`;

@@ -1596,6 +1596,8 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(combatActionsContent, 'app._renderCombatPanelTray?.()', 'Desktop combat composer should reuse combat transient trays');
   assertContains(panelInteractionsContent, 'combat(app)', 'Panel interaction helper should own combat tray rendering');
   assertContains(panelInteractionsContent, 'App.confirmSyncParticipants', 'Combat sync participant tray should expose confirm through the composer');
+  assertContains(panelInteractionsContent, "app._label('feed.cancel', 'Cancel Feed')", 'Desktop feed tray should expose an explicit Cancel Feed exit');
+  assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
 });
@@ -4803,7 +4805,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
-  assertContains(html, '>Cancelar<', 'Sync tray cancel action should localize');
+  assertContains(html, 'Cancel Sync', 'Sync tray should expose a mode-specific cancel exit');
   assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Elegir accion sincronizada', 'Sync action menu should not render in center scene');
 
@@ -4811,6 +4813,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
+  assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
   assertContains(elements.get('party-content').innerHTML, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
 
@@ -4819,6 +4822,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.confirmSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
+  assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Sincronizar"', 'Sync target card should expose localized accessible label');
@@ -5733,6 +5737,7 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
   assertContains(composerHtml, 'aria-label="Feed Options"', 'Feed options tray should keep an accessible phase label');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
+  assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
   assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
   assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
   assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');

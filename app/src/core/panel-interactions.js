@@ -29,7 +29,7 @@ const YAW_PANEL_INTERACTIONS = {
     },
 
     feed(app, actor, label) {
-        const clearLabel = app._escapeHtml(app._label('ui.cancel', 'Cancel'));
+        const clearLabel = app._escapeHtml(app._label('feed.cancel', 'Cancel Feed'));
         const title = app._escapeHtml(app._label('feed.optionsTitle', 'Feed Options'));
         const buttons = (app.feedSelection.subIds || []).map(subId => {
             const subDef = app.SUB_ACTIONS.feed?.[subId] || {};
@@ -41,7 +41,7 @@ const YAW_PANEL_INTERACTIONS = {
     },
 
     sync(app, actor, label) {
-        const clearLabel = app._escapeHtml(app._label('ui.cancel', 'Cancel'));
+        const clearLabel = app._escapeHtml(app._label('combat.sync.cancel', 'Cancel Sync'));
         if (app.syncSelection.phase === 'choose') {
             const title = app._escapeHtml(app._label('combat.sync.chooseAction', 'Choose Sync Action'));
             const syncButton = (type, icon, key, fallback) => {

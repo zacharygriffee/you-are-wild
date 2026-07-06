@@ -2030,6 +2030,10 @@
                 return YAW_COMBAT_TARGETING.canSelectCreatureTarget(this, unit);
             },
 
+            _combatTargetPickHint(unit, action, canTarget) {
+                return YAW_COMBAT_TARGETING.targetPickHint(this, unit, action, canTarget);
+            },
+
             _syncBaseAction(syncType) {
                 return YAW_COMBAT_TARGETING.syncBaseAction(syncType);
             },

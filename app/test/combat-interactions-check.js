@@ -289,7 +289,7 @@ async function runReachabilityMatrix(page) {
   let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
   assert.strictEqual(attrs.disabled, true, 'Unreachable fight target should be an actual disabled control');
   assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable fight target should expose disabled state accessibly');
-  assert(attrs.label.includes('Cannot select Enemy as Fight target'), 'Unreachable fight target should explain why it is unavailable');
+  assert(attrs.label.includes('Enemy is airborne'), 'Unreachable fight target should explain the flying reach blocker');
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures[0]?.CPun,
     targetSelectionAction: App.targetSelection?.action || null
@@ -304,7 +304,7 @@ async function runReachabilityMatrix(page) {
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
   assert.strictEqual(attrs.disabled, true, 'Unreachable feast target should be an actual disabled control');
   assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable feast target should expose disabled state accessibly');
-  assert(attrs.label.includes('Cannot select Enemy as') && attrs.label.includes('target'), 'Unreachable feast target should explain why it is unavailable');
+  assert(attrs.label.includes('Enemy is airborne'), 'Unreachable feast target should explain the flying reach blocker');
   state = await page.evaluate(() => ({
     stomachCount: App.player.stomach.length,
     targetSelectionAction: App.targetSelection?.action || null

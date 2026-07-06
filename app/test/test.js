@@ -1948,6 +1948,7 @@ test('Combat targeting helper module is registered before app code', () => {
   assertContains(combatTargetingContent, 'const YAW_COMBAT_TARGETING = {', 'Combat targeting helper should expose the targeting service');
   assertContains(combatTargetingContent, 'selectTarget(app, action)', 'Combat targeting helper should own target-pick entry');
   assertContains(combatTargetingContent, 'canSelectCreatureTarget(app, unit)', 'Combat targeting helper should own target validation');
+  assertContains(combatTargetingContent, 'targetPickHint(app, unit, action', 'Combat targeting helper should own target-pick explanation text');
   assertContains(combatTargetingContent, 'executeActionOnTarget(app, action, targetId)', 'Combat targeting helper should own panel target dispatch');
   assertContains(combatTargetingContent, 'requireCurrentTurn: true', 'Combat targeting helper should preserve current-turn constraints');
   assertContains(combatTargetingContent, "hostileOnly: action !== 'scavenge'", 'Combat targeting helper should relax hostile-only targeting only for corpse scavenge');
@@ -11090,7 +11091,11 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   player.combatRow = 'front';
   App.nextTurn = function() {};
   App.selectTarget('fight');
-  assertContains(elements.get('enemies-content').innerHTML, 'disabled', 'Unreachable back-row enemy should render disabled');
+  const desktopTargetHtml = elements.get('enemies-content').innerHTML;
+  assertContains(desktopTargetHtml, 'disabled', 'Unreachable back-row enemy should render disabled');
+  assertContains(desktopTargetHtml, 'Backline is in the back row', 'Unreachable desktop target should explain the back-row reach blocker');
+  const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
+  assertContains(mobileTargetHtml, 'Backline is in the back row', 'Unreachable mobile target should explain the back-row reach blocker');
   App.updateLanguage('es');
   App.executeActionOnTarget('fight', 'backline-1');
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');

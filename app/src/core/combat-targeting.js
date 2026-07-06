@@ -50,6 +50,32 @@ const YAW_COMBAT_TARGETING = {
         return livingParticipants.some(unit => app._canReachCombatTarget(unit, target, action));
     },
 
+    targetPickHint(app, unit, action, canTarget = this.canSelectCreatureTarget(app, unit)) {
+        const name = unit?.name || app._label('unit.generic', 'unit');
+        const syncActive = Boolean(app.syncSelection?.active && app.syncSelection.phase === 'target');
+        const effectiveAction = syncActive ? this.syncBaseAction(app.syncSelection.type) : action;
+        const actionLabel = syncActive
+            ? app._label('action.sync', 'Sync')
+            : app._uiLabel(action || 'action');
+        if (canTarget) {
+            return app._label('target.selectAs', 'Select {name} as {action} target', { name, action: actionLabel });
+        }
+        const actors = syncActive
+            ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
+            : [app.activeActor || app.player].filter(Boolean);
+        const physical = app._isPhysicalCombatAction?.(effectiveAction);
+        if (physical && unit?.CPun > 0 && unit.disposition === app.DISPOSITION.ENEMY) {
+            const anyRanged = actors.some(actor => actor?.flying || actor?.ranged || actor?.antiflying);
+            if (unit.flying && !anyRanged) {
+                return app._label('target.blockedFlying', '{name} is airborne. Use a flying or ranged actor before choosing {action}.', { name, action: actionLabel });
+            }
+            if (unit.combatRow === 'back' && !anyRanged) {
+                return app._label('target.blockedBackRow', '{name} is in the back row. Use a flying or ranged actor, or move rows before choosing {action}.', { name, action: actionLabel });
+            }
+        }
+        return app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name, action: actionLabel });
+    },
+
     executeActionOnTarget(app, action, targetId) {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
         if (!target) {

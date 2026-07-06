@@ -92,9 +92,7 @@ const YAW_UNIT_CARD = {
                     const canTarget = app.canSelectCreatureTarget(unit);
                     const disabledClass = canTarget ? '' : ' disabled';
                     const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
-                    const targetHint = app._escapeHtml(canTarget
-                        ? app._label('target.selectAs', 'Select {name} as {action} target', { name: unit.name || 'remains', action: scavengeLabel })
-                        : app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name: unit.name || 'remains', action: scavengeLabel }));
+                    const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, 'scavenge', canTarget));
                     const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')">${targetLabel}</button></div>`;
                 } else {
@@ -114,16 +112,13 @@ const YAW_UNIT_CARD = {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';
                 const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
-                const targetName = unit.name || 'creature';
-                const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
-                const targetHint = app._escapeHtml(app._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: actionLabel }));
+                const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.targetSelection.action || 'action', canTarget));
                 const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabled = canTarget ? '' : ' disabled aria-disabled="true"';
-                const targetName = unit.name || 'creature';
-                const targetHint = app._escapeHtml(app._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: targetName, action: app._label('action.sync', 'Sync') }));
+                const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', canTarget));
                 const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {

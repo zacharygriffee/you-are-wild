@@ -36,7 +36,7 @@ const YAW_MOBILE_UNIT_CHIP = {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';
                 const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
-                const targetHint = app._label(canTarget ? 'target.selectAs' : 'target.cannotSelectAs', canTarget ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: app._uiLabel('scavenge') });
+                const targetHint = app._combatTargetPickHint(unit, 'scavenge', canTarget);
                 const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', canTarget)}`;
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')`, pickAttrs)}</div>`;
             } else {
@@ -53,14 +53,13 @@ const YAW_MOBILE_UNIT_CHIP = {
             if (app.targetSelection) {
                 const disabledClass = isTargetable ? '' : ' disabled';
                 const disabledAttr = isTargetable ? '' : 'disabled aria-disabled="true"';
-                const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
-                const targetHint = app._label(isTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: actionLabel });
+                const targetHint = app._combatTargetPickHint(unit, app.targetSelection.action || 'action', isTargetable);
                 const pickAttrs = `${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', isTargetable)}`;
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary' + disabledClass, app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const isSyncTargetable = app.canSelectCreatureTarget(unit);
                 const disabled = isSyncTargetable ? '' : 'disabled aria-disabled="true"';
-                const targetHint = app._label(isSyncTargetable ? 'target.selectAs' : 'target.cannotSelectAs', isSyncTargetable ? 'Select {name} as {action} target' : 'Cannot select {name} as {action} target', { name: unitName, action: app._label('action.sync', 'Sync') });
+                const targetHint = app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', isSyncTargetable);
                 const pickAttrs = `${disabled.trim()}${disabled.trim() ? ' ' : ''}${app._selectionControlAttrs('combat-target', isSyncTargetable)}`;
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn primary', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {

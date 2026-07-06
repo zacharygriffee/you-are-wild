@@ -1544,6 +1544,10 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'this.clearCenterActionsForCombat(app)', 'Combat scene updates should keep center actions empty');
   assertContains(sceneShellContent, 'app.renderCenterTileActions()', 'Exploration scene updates should restore context belt actions');
   assertContains(sceneShellContent, "mobileExplore.removeAttribute('data-command-mode')", 'Scene shell should clear stale mobile command mode metadata');
+  assertContains(sceneShellContent, "mobileExplore.removeAttribute('data-command-grammar')", 'Scene shell should clear stale mobile command grammar metadata');
+  assertContains(sceneShellContent, "mobileTargetTray.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile target tray command surface metadata');
+  assertContains(sceneShellContent, "mobileActorBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile actor belt command surface metadata');
+  assertContains(sceneShellContent, "mobileControlBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile composer belt command surface metadata');
   assertContains(sceneShellContent, "desktopBelt.removeAttribute('data-command-mode')", 'Scene shell should clear stale desktop command mode metadata');
   assertContains(appContent, 'YAW_SCENE_SHELL.clearCenterActionsForCombat(this)', 'App center-action clearing wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
@@ -2313,9 +2317,13 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'data-command-grammar="actor-target-intent"', 'Single-creature mobile cue should identify the shared command grammar');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
+  assertContains(mobileUnitStripsContent, "controlBelt.setAttribute('data-command-surface', 'command-composer')", 'Mobile control belt should identify as the active command composer when populated');
+  assertContains(mobileUnitStripsContent, "targetTray.setAttribute('data-command-surface', 'target-intents')", 'Mobile target action tray should identify the active target-intent surface when populated');
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-surface', 'actor-target-routing')", 'Mobile actor belt should identify the actor-routing command surface when open');
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-mode', 'exploration')", 'Mobile actor belt should identify exploration command mode when open');
+  assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile actor chips should identify their actor-routing composer surface');
   assertContains(mobileUnitStripsContent, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
+  assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear chip should identify actor-routing composer surface');
   assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors"', 'Mobile actor belt should expose a structural clear-actors exit');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
@@ -4057,6 +4065,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence-dot.selected', 'Mobile center presence should visibly mark selected actor and target dots');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
+  assertContains(template, 'id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors"', 'Mobile actor toggle should identify as an actor-routing composer control');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
   assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-explore-actions"'), 'Mobile creature cue should sit near the top of the control belt');
@@ -10621,6 +10630,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(Boolean(elements.get('mobile-move-toggle').hidden), true, 'Mobile move toggle should be hidden while the 3x3 traversal map is in thumb reach');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Mobile control belt should become fixed-visible when location or target controls exist');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), 'command-composer', 'Active mobile control belt should identify the command composer surface');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), 'exploration', 'Active mobile control belt should identify exploration command mode');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Active mobile control belt should identify the shared command grammar');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), true, 'Mobile play surface should reserve space for the fixed control belt while controls are visible');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Simple mobile location/cue controls should use compact belt reservation');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), false, 'Simple mobile location/cue controls should not reserve maximum belt space');
@@ -10678,6 +10690,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Target', 'Mobile selection sentence should move into the control belt when one target is marked');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, 'data-command-surface="target-intents"', 'Mobile target action tray should identify the composer intent surface');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-surface'), 'target-intents', 'Mobile target action tray container should identify the target-intent composer surface');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-mode'), 'exploration', 'Mobile target action tray container should identify exploration command mode');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile target action tray container should identify the shared command grammar');
   assertContains(trayHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Mobile target action tray should identify exploration command mode');
   assertContains(trayHtml, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile target action tray should identify the shared command grammar');
   assertContains(trayHtml, 'aria-label="Target intent controls"', 'Mobile target action tray should expose the target intent surface label');
@@ -10703,9 +10718,11 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'Ally', 'Mobile actor belt should expose party members when the actor toggle is opened');
   assertContains(openedActorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
   assertContains(openedActorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile actor chips should identify actor-routing composer surface');
   assertContains(openedActorHtml, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
   assertContains(openedActorHtml, 'data-command-mode="exploration"', 'Mobile actor chips should identify exploration command mode');
   assertContains(openedActorHtml, 'clearExplorationActors()', 'Mobile actor belt should expose an explicit clear actor exit');
+  assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear exit should identify actor-routing composer surface');
   assertContains(openedActorHtml, 'data-command-control="clear-actors"', 'Mobile actor clear exit should identify its command route');
   assertContains(openedActorHtml, 'Clear actors', 'Mobile actor clear exit should use a visible localized label');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
@@ -10750,6 +10767,9 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   App.renderMobileExplorationControls();
 
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Empty mobile control belt should not become an overlay during plain traversal');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Empty mobile control belt should not keep command composer surface metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Empty mobile control belt should not keep command mode metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), null, 'Empty mobile control belt should not keep command grammar metadata');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Empty mobile control belt should not keep expanded composer state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Plain traversal should not reserve fixed control-belt space when no controls are visible');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), false, 'Plain traversal should not reserve expanded composer space');
@@ -10758,6 +10778,8 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Plain traversal without creatures should not leave an empty cue overlay');
   assertEqual(elements.get('mobile-creature-dock-badge').hidden, true, 'Plain traversal without creatures should hide the mobile creature dock badge');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Plain traversal should not leave target controls behind');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-surface'), null, 'Plain traversal should not leave target tray command surface metadata');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Plain traversal should not leave target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
   assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');
 });
@@ -10768,10 +10790,17 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   App.mobileActorBeltOpen = true;
   elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
   elements.get('mobile-explore-actions').setAttribute('data-command-surface', 'location-actions');
+  elements.get('mobile-explore-actions').setAttribute('data-command-mode', 'exploration');
   elements.get('mobile-explore-actions').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-explore-actions').style.display = 'flex';
   elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
+  elements.get('mobile-target-action-tray').setAttribute('data-command-surface', 'target-intents');
+  elements.get('mobile-target-action-tray').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-target-action-tray').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-actor-belt').innerHTML = '<button>Ally</button>';
+  elements.get('mobile-actor-belt').setAttribute('data-command-surface', 'actor-target-routing');
+  elements.get('mobile-actor-belt').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-actor-belt').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-creature-presence-cue').innerHTML = '<button>Here: Guide</button>';
   elements.get('mobile-move-pad').classList.add('expanded');
   elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
@@ -10780,16 +10809,26 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   elements.get('mobile-actor-toggle').setAttribute('aria-expanded', 'true');
   elements.get('mobile-actor-toggle').classList.add('selected');
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open', 'expanded-controls-open');
+  elements.get('mobile-control-belt').setAttribute('data-command-surface', 'command-composer');
+  elements.get('mobile-control-belt').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-control-belt').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-play-surface').classList.add('has-control-belt', 'control-belt-expanded');
 
   App._clearCenterActionsForCombat();
 
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Combat clearing should remove stale mobile location actions');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale mobile command-surface metadata');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), null, 'Combat clearing should remove stale mobile command mode metadata');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-grammar'), null, 'Combat clearing should remove stale mobile command grammar metadata');
   assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Combat clearing should hide the mobile location action row');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Combat clearing should remove stale marked-target actions');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale target tray command surface metadata');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-mode'), null, 'Combat clearing should remove stale target tray command mode metadata');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Combat clearing should remove stale target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Combat clearing should remove stale exploration actor controls');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale actor belt command surface metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), null, 'Combat clearing should remove stale actor belt command mode metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), null, 'Combat clearing should remove stale actor belt command grammar metadata');
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Combat clearing should remove stale creature presence cue controls');
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Combat clearing should collapse the dormant move pad');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Combat clearing should reset the move toggle state');
@@ -10797,6 +10836,9 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Combat clearing should reset the mobile actor toggle state');
   assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Combat clearing should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Combat clearing should remove fixed control-belt overlay state');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale mobile composer surface metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Combat clearing should remove stale mobile composer mode metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), null, 'Combat clearing should remove stale mobile composer grammar metadata');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Combat clearing should remove target-priority belt state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Combat clearing should remove expanded composer belt state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Combat clearing should stop reserving exploration belt space');
@@ -10821,7 +10863,13 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('mobile-explore-actions').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-explore-actions').style.display = 'flex';
   elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
+  elements.get('mobile-target-action-tray').setAttribute('data-command-surface', 'target-intents');
+  elements.get('mobile-target-action-tray').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-target-action-tray').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-actor-belt').innerHTML = '<button>Ally</button>';
+  elements.get('mobile-actor-belt').setAttribute('data-command-surface', 'actor-target-routing');
+  elements.get('mobile-actor-belt').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-actor-belt').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-creature-presence-cue').innerHTML = '<button>Here: Guide</button>';
   elements.get('mobile-move-pad').classList.add('expanded');
   elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
@@ -10830,6 +10878,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('mobile-actor-toggle').setAttribute('aria-expanded', 'true');
   elements.get('mobile-actor-toggle').classList.add('selected');
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open', 'expanded-controls-open');
+  elements.get('mobile-control-belt').setAttribute('data-command-surface', 'command-composer');
+  elements.get('mobile-control-belt').setAttribute('data-command-mode', 'exploration');
+  elements.get('mobile-control-belt').setAttribute('data-command-grammar', 'actor-target-intent');
   elements.get('mobile-play-surface').classList.add('has-control-belt', 'control-belt-expanded');
   elements.get('selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
   elements.get('selection-sentence').setAttribute('data-command-surface', 'command-sentence');
@@ -10861,7 +10912,13 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale mobile command grammar metadata');
   assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Rich scene should hide the mobile location row');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Rich scene should remove stale marked-target actions');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-surface'), null, 'Rich scene should clear stale target tray command surface metadata');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-mode'), null, 'Rich scene should clear stale target tray command mode metadata');
+  assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Rich scene should remove stale exploration actor controls');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale actor belt command surface metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale actor belt command mode metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale actor belt command grammar metadata');
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Rich scene should remove stale creature presence cues');
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Rich scene should collapse the dormant move pad');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Rich scene should reset the move toggle state');
@@ -10869,6 +10926,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Rich scene should reset the mobile actor toggle state');
   assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Rich scene should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Rich scene should remove fixed control-belt overlay state');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile composer surface metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale mobile composer mode metadata');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale mobile composer grammar metadata');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Rich scene should remove target-priority belt state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Rich scene should remove expanded composer belt state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Rich scene should stop reserving exploration belt space');

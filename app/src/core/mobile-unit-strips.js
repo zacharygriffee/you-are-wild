@@ -60,6 +60,15 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }
         if (targetTray) {
             targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target');
+            if ((targetTray.innerHTML || '').trim()) {
+                targetTray.setAttribute('data-command-surface', 'target-intents');
+                targetTray.setAttribute('data-command-mode', 'exploration');
+                targetTray.setAttribute('data-command-grammar', 'actor-target-intent');
+            } else {
+                targetTray.removeAttribute('data-command-surface');
+                targetTray.removeAttribute('data-command-mode');
+                targetTray.removeAttribute('data-command-grammar');
+            }
         }
         if (actorBelt) {
             actorBelt.innerHTML = actorSelectionOpen
@@ -92,6 +101,15 @@ const YAW_MOBILE_UNIT_STRIPS = {
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);
             controlBelt.classList.toggle('expanded-controls-open', expandedControls);
+            if (hasContent) {
+                controlBelt.setAttribute('data-command-surface', 'command-composer');
+                controlBelt.setAttribute('data-command-mode', 'exploration');
+                controlBelt.setAttribute('data-command-grammar', 'actor-target-intent');
+            } else {
+                controlBelt.removeAttribute('data-command-surface');
+                controlBelt.removeAttribute('data-command-mode');
+                controlBelt.removeAttribute('data-command-grammar');
+            }
             surface?.classList?.toggle('has-control-belt', hasContent);
             surface?.classList?.toggle('control-belt-expanded', expandedControls);
         } else {
@@ -113,11 +131,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const icon = app._escapeHtml(unit.icon || '👤');
             const selectedClass = selected ? ' selected selected-actor' : '';
             const pressed = app._selectionControlAttrs('actor', selected);
-            return `<button type="button" class="mobile-actor-chip${selectedClass}" data-command-control="focus-actor" data-command-mode="exploration" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
+            return `<button type="button" class="mobile-actor-chip${selectedClass}" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
         }).join('');
         const clearLabel = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
         const clearTitle = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
-        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-control="clear-actors" data-command-mode="exploration" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
+        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
         return `${chips}${clear}`;
     },
 

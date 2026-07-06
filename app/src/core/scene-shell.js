@@ -10,12 +10,23 @@ const YAW_SCENE_SHELL = {
             mobileExplore.innerHTML = '';
             mobileExplore.removeAttribute('data-command-surface');
             mobileExplore.removeAttribute('data-command-mode');
+            mobileExplore.removeAttribute('data-command-grammar');
             mobileExplore.style.display = 'none';
         }
         const mobileTargetTray = document.getElementById('mobile-target-action-tray');
-        if (mobileTargetTray) mobileTargetTray.innerHTML = '';
+        if (mobileTargetTray) {
+            mobileTargetTray.innerHTML = '';
+            mobileTargetTray.removeAttribute('data-command-surface');
+            mobileTargetTray.removeAttribute('data-command-mode');
+            mobileTargetTray.removeAttribute('data-command-grammar');
+        }
         const mobileActorBelt = document.getElementById('mobile-actor-belt');
-        if (mobileActorBelt) mobileActorBelt.innerHTML = '';
+        if (mobileActorBelt) {
+            mobileActorBelt.innerHTML = '';
+            mobileActorBelt.removeAttribute('data-command-surface');
+            mobileActorBelt.removeAttribute('data-command-mode');
+            mobileActorBelt.removeAttribute('data-command-grammar');
+        }
         const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
         if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
         const mobileMovePad = document.getElementById('mobile-move-pad');
@@ -32,6 +43,9 @@ const YAW_SCENE_SHELL = {
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
             mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'expanded-controls-open');
+            mobileControlBelt.removeAttribute('data-command-surface');
+            mobileControlBelt.removeAttribute('data-command-mode');
+            mobileControlBelt.removeAttribute('data-command-grammar');
         }
         document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded');
         app.mobileMovePadOpen = false;

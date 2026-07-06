@@ -4061,17 +4061,17 @@
                     <div class="encounter-weight-controls" aria-label="Encounter identity weights">
                         <label class="encounter-weight-row" for="encounter-weight-female">
                             <span>Females</span>
-                            <input id="encounter-weight-female" type="range" min="0" max="100" value="34" oninput="App.updateEncounterWeight('female', this.value)">
+                            <input id="encounter-weight-female" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="female" type="range" min="0" max="100" value="34" oninput="App.updateEncounterWeight('female', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-female-value">34%</span>
                         </label>
                         <label class="encounter-weight-row" for="encounter-weight-male">
                             <span>Males</span>
-                            <input id="encounter-weight-male" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('male', this.value)">
+                            <input id="encounter-weight-male" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="male" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('male', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-male-value">33%</span>
                         </label>
                         <label class="encounter-weight-row" for="encounter-weight-nonbinary">
                             <span>Non-Binary</span>
-                            <input id="encounter-weight-nonbinary" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('nonbinary', this.value)">
+                            <input id="encounter-weight-nonbinary" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="nonbinary" type="range" min="0" max="100" value="33" oninput="App.updateEncounterWeight('nonbinary', this.value)">
                             <span class="encounter-weight-value" id="encounter-weight-nonbinary-value">33%</span>
                         </label>
                     </div>
@@ -4081,7 +4081,7 @@
             <!-- Name Input -->
             <div class="create-section create-name-section">
                 <h3 class="section-title">Name</h3>
-                <input id="char-name" type="text" placeholder="Enter your name..." data-i18n-placeholder="create.namePlaceholder" autocomplete="off"
+                <input id="char-name" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-character-name" type="text" placeholder="Enter your name..." data-i18n-placeholder="create.namePlaceholder" autocomplete="off"
                        style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
             </div>
 
@@ -4347,7 +4347,7 @@
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.languageSection">Language</h3>
                 <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                     <span data-i18n="settings.interfaceLanguage">Interface Language</span>
-                    <select id="setting-language" class="nav-btn" aria-label="Interface language" data-i18n-aria-label="settings.interfaceLanguage" onchange="App.updateLanguage(this.value)">
+                    <select id="setting-language" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-language" aria-label="Interface language" data-i18n-aria-label="settings.interfaceLanguage" onchange="App.updateLanguage(this.value)">
                         <option value="en">English</option>
                         <option value="es">Espanol</option>
                     </select>
@@ -4370,31 +4370,31 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Enable Vore</span>
-                        <input type="checkbox" id="toggle-vore" onchange="CONTENT.setPreference('voreEnabled', this.checked); App.saveSettings()">
+                        <input type="checkbox" id="toggle-vore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="voreEnabled" onchange="CONTENT.setPreference('voreEnabled', this.checked); App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Fatal Vore (prey dies)</span>
-                        <input type="checkbox" id="toggle-fatal" onchange="App.settings.fatalVore = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-fatal" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="fatalVore" onchange="App.settings.fatalVore = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Endo Mode (prey survives)</span>
-                        <input type="checkbox" id="toggle-endo" onchange="App.settings.endoMode = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-endo" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="endoMode" onchange="App.settings.endoMode = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Slow Digestion</span>
-                        <input type="checkbox" id="toggle-slow" onchange="App.settings.slowDigestion = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-slow" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="slowDigestion" onchange="App.settings.slowDigestion = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Stat Absorption</span>
-                        <input type="checkbox" id="toggle-absorb" onchange="App.settings.statAbsorption = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-absorb" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="statAbsorption" onchange="App.settings.statAbsorption = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Chewing Option</span>
-                        <input type="checkbox" id="toggle-chew" onchange="App.settings.chewing = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-chew" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="chewing" onchange="App.settings.chewing = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>All-the-Way-Through</span>
-                        <input type="checkbox" id="toggle-attw" onchange="App.settings.allTheWayThrough = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-attw" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="allTheWayThrough" onchange="App.settings.allTheWayThrough = this.checked; App.saveSettings()">
                     </label>
                 </div>
             </div>
@@ -4405,19 +4405,19 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label data-setting-tier="adult" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Explicit Descriptions</span>
-                        <input type="checkbox" id="toggle-explicit" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
+                        <input type="checkbox" id="toggle-explicit" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="explicitDescriptions" onchange="CONTENT.setPreference('explicitDescriptions', this.checked); App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Power Dynamics (Dom/Sub)</span>
-                        <input type="checkbox" id="toggle-power" onchange="App.settings.powerDynamics = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-power" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="powerDynamics" onchange="App.settings.powerDynamics = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Refractory Period</span>
-                        <input type="checkbox" id="toggle-refractory" onchange="App.settings.refractoryPeriod = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-refractory" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="refractoryPeriod" onchange="App.settings.refractoryPeriod = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Same-Species Bonus</span>
-                        <input type="checkbox" id="toggle-same" onchange="App.settings.sameSpeciesBonus = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-same" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="sameSpeciesBonus" onchange="App.settings.sameSpeciesBonus = this.checked; App.saveSettings()">
                     </label>
                 </div>
             </div>
@@ -4428,35 +4428,35 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Fluid Production</span>
-                        <input type="checkbox" id="toggle-fluids" onchange="App.settings.fluidEnabled = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-fluids" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="fluidEnabled" onchange="App.settings.fluidEnabled = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Scat Content</span>
-                        <input type="checkbox" id="toggle-scat" onchange="App.settings.scat = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-scat" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="scat" onchange="App.settings.scat = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Watersports</span>
-                        <input type="checkbox" id="toggle-ws" onchange="App.settings.watersports = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-ws" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="watersports" onchange="App.settings.watersports = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Reserve Capture</span>
-                        <input type="checkbox" id="toggle-cockVore" onchange="App.settings.cockVoreEnabled = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-cockVore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="cockVoreEnabled" onchange="App.settings.cockVoreEnabled = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Unbirth</span>
-                        <input type="checkbox" id="toggle-unbirth" onchange="App.settings.unbirthEnabled = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-unbirth" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="unbirthEnabled" onchange="App.settings.unbirthEnabled = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Forced Feeding (CNC)</span>
-                        <input type="checkbox" id="toggle-forcedFeed" onchange="App.settings.forcedFeeding = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-forcedFeed" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="forcedFeeding" onchange="App.settings.forcedFeeding = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Bone Crushing</span>
-                        <input type="checkbox" id="toggle-bones" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-bones" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="boneCrushing" onchange="App.settings.boneCrushing = this.checked; App.saveSettings()">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Unwilling Prey Warnings</span>
-                        <input type="checkbox" id="toggle-warn" onchange="App.settings.unwillingWarnings = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-warn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="unwillingWarnings" onchange="App.settings.unwillingWarnings = this.checked; App.saveSettings()">
                     </label>
                 </div>
             </div>
@@ -4467,7 +4467,7 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span>Hardcore Mode (delete save on death)</span>
-                        <input type="checkbox" id="toggle-hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
+                        <input type="checkbox" id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore" onchange="App.settings.hardcore = this.checked; App.saveSettings()">
                     </label>
                 </div>
             </div>
@@ -4478,15 +4478,15 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span data-i18n="settings.highContrast">High Contrast</span>
-                        <input type="checkbox" id="setting-high-contrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
+                        <input type="checkbox" id="setting-high-contrast" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-accessibility-setting" data-setting-key="highContrast" onchange="App.updateAccessibilitySetting('highContrast', this.checked)">
                     </label>
                     <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span data-i18n="settings.reducedMotion">Reduced Motion</span>
-                        <input type="checkbox" id="setting-reduced-motion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
+                        <input type="checkbox" id="setting-reduced-motion" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-accessibility-setting" data-setting-key="reducedMotion" onchange="App.updateAccessibilitySetting('reducedMotion', this.checked)">
                     </label>
                     <label style="display: grid; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-sm); cursor: pointer;">
                         <span style="display:flex;justify-content:space-between;gap:12px;"><span data-i18n="settings.baseFontSize">Base Font Size</span><span id="setting-font-size-value">14px</span></span>
-                        <input type="range" id="setting-font-size" min="12" max="20" step="1" value="14" aria-label="Base font size" data-i18n-aria-label="settings.baseFontSize" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
+                        <input type="range" id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize" min="12" max="20" step="1" value="14" aria-label="Base font size" data-i18n-aria-label="settings.baseFontSize" oninput="App.updateAccessibilitySetting('fontSize', this.value)">
                     </label>
                 </div>
             </div>

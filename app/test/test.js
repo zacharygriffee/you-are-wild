@@ -2221,6 +2221,8 @@ test('Merchant system helper module is registered before app code', () => {
   assertContains(merchantSystemContent, 'createStructureMerchant(app, structureId', 'Merchant helper should own structure merchant creation');
   assertContains(merchantSystemContent, 'maybeSpawnStructureMerchant(app, tile)', 'Merchant helper should own deterministic structure merchant placement');
   assertContains(merchantSystemContent, 'filterAndSortItemEntries(app, entries', 'Merchant helper should own shared inventory/trade filtering');
+  assertContains(merchantSystemContent, 'data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="filter-items"', 'Trade filter select should identify as a trade detail control');
+  assertContains(merchantSystemContent, 'data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="sort-items"', 'Trade sort select should identify as a trade detail control');
   assertContains(merchantSystemContent, 'stockQuantity(app, merchant, itemName, index, day)', 'Merchant helper should own deterministic stock quantities');
   assertContains(merchantSystemContent, 'WorldGen.hash01', 'Merchant stock quantities should be seed-derived when worldgen is available');
   assertNotContains(merchantSystemContent, 'Math.random', 'Merchant helper should not use raw randomness');
@@ -3881,6 +3883,9 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help"', 'Tutorial should identify as a main-menu system control');
 
   assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="open-content-settings"', 'Create content-level shortcut should identify as setup controls');
+  assertContains(template, 'id="encounter-weight-female" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="female"', 'Encounter weight controls should identify as setup inputs');
+  assertContains(template, 'id="encounter-weight-nonbinary" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-encounter-weight" data-encounter-identity="nonbinary"', 'Encounter weight controls should identify all setup identity inputs');
+  assertContains(template, 'id="char-name" data-command-surface="character-creation" data-command-mode="setup" data-command-control="set-character-name"', 'Character name input should identify as setup controls');
   assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character"', 'Random Character should identify as setup controls');
   assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character"', 'Create submit should identify as setup controls');
   assertContains(template, 'data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial"', 'Tutorial skip should identify as a system tutorial control');
@@ -3894,6 +3899,12 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile"', 'Dormant mobile move pad center should classify the current-tile affordance');
 
   assertContains(template, 'id="tier-safe" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="safe"', 'Settings safe tier should identify as system settings controls');
+  assertContains(template, 'id="setting-language" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-language"', 'Language select should identify as a settings system control');
+  assertContains(template, 'id="toggle-vore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="voreEnabled"', 'Content setting toggles should identify as settings system controls');
+  assertContains(template, 'id="toggle-explicit" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-content-setting" data-setting-key="explicitDescriptions"', 'Adult-tier setting toggles should identify as settings system controls');
+  assertContains(template, 'id="toggle-hardcore" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-game-setting" data-setting-key="hardcore"', 'Game setting toggles should identify as settings system controls');
+  assertContains(template, 'id="setting-high-contrast" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-accessibility-setting" data-setting-key="highContrast"', 'Accessibility toggles should identify as settings system controls');
+  assertContains(template, 'id="setting-font-size" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-accessibility-setting" data-setting-key="fontSize"', 'Accessibility range inputs should identify as settings system controls');
   assertContains(template, 'id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode"', 'Cheat toggles should identify as system settings controls');
   assertContains(template, 'id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win"', 'Instant win should identify as a settings system control');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="delete-all-saves"', 'Clear all saves should identify as a settings system control');

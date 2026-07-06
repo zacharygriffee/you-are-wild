@@ -94,12 +94,12 @@ const YAW_MERCHANT_SYSTEM = {
         ].map(([value, label]) => `<option value="${value}" ${app[`${prefix.toLowerCase()}Sort`] === value ? 'selected' : ''}>${app._escapeHtml(label)}</option>`).join('');
         return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
                     <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${categoryLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Filter(this.value${targetArg})">
+                        <select class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="filter-items" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Filter(this.value${targetArg})">
                             ${filterOptions}
                         </select>
                     </label>
                     <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">${sortLabel}
-                        <select class="nav-btn" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Sort(this.value${targetArg})">
+                        <select class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="sort-items" style="padding:4px 8px;font-size:11px;" onchange="App.set${prefix}Sort(this.value${targetArg})">
                             ${sortOptions}
                         </select>
                     </label>

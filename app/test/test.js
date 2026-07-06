@@ -1534,6 +1534,7 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/scene-shell.js'", 'Scene shell helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/scene-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Scene shell helper should load before app.js');
   assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
+  assertContains(sceneShellContent, 'clearLegacyCenterActions()', 'Scene shell helper should own hidden legacy center action cleanup');
   assertContains(sceneShellContent, 'clearCenterActionsForCombat(app)', 'Scene shell helper should own combat center action clearing');
   assertContains(sceneShellContent, 'clearMobileExplorationControls(app)', 'Scene shell helper should own stale mobile exploration control clearing');
   assertContains(sceneShellContent, 'clearCommandSentences()', 'Scene shell helper should own stale command sentence clearing');
@@ -11233,6 +11234,7 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('scene-title').textContent, 'Inventory', 'Rich scene should update the desktop presentation title');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'Carried items', 'Rich scene should update the mobile presentation sheet');
   assertEqual(elements.get('scene-actions').style.display, 'none', 'Rich scene should hide legacy center actions');
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'Rich scene should clear stale legacy center actions');
   assertEqual(elements.get('desktop-context-belt').innerHTML, '', 'Rich scene should clear stale desktop composer actions');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command-surface metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command-mode metadata');

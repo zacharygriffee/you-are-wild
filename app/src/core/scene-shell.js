@@ -4,6 +4,14 @@
  */
 
 const YAW_SCENE_SHELL = {
+    clearLegacyCenterActions() {
+        const actions = document.getElementById('scene-actions');
+        if (!actions) return;
+        actions.innerHTML = '';
+        actions.style.display = 'none';
+        if (actions.dataset?.richHidden) delete actions.dataset.richHidden;
+    },
+
     clearMobileExplorationControls(app) {
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
@@ -71,11 +79,7 @@ const YAW_SCENE_SHELL = {
     },
 
     clearCenterActionsForCombat(app) {
-        const actions = document.getElementById('scene-actions');
-        if (actions) {
-            actions.innerHTML = '';
-            actions.style.display = 'none';
-        }
+        this.clearLegacyCenterActions();
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = '';
@@ -92,6 +96,7 @@ const YAW_SCENE_SHELL = {
         if (titleEl) titleEl.textContent = title || '';
         if (descEl) descEl.innerHTML = html || '';
         if (actions) {
+            actions.innerHTML = '';
             actions.dataset.richHidden = 'true';
             actions.style.display = 'none';
         }
@@ -132,11 +137,7 @@ const YAW_SCENE_SHELL = {
         if (mobileSheet) mobileSheet.classList.remove('rich-content');
         app.renderTileEvents();
 
-        const actions = document.getElementById('scene-actions');
-        if (actions?.dataset?.richHidden) {
-            delete actions.dataset.richHidden;
-            actions.style.display = '';
-        }
+        this.clearLegacyCenterActions();
         const mobileActions = document.getElementById('mobile-actions');
         const mobileCombat = document.getElementById('mobile-combat-actions');
         const mobileExplore = document.getElementById('mobile-explore-actions');
@@ -171,14 +172,11 @@ const YAW_SCENE_SHELL = {
                     const actions = document.getElementById('scene-actions');
                     if (mobileSheet) mobileSheet.classList.remove('rich-content');
                     app.renderCombatSceneForTurn(unit);
-                    if (actions?.dataset?.richHidden) {
-                        delete actions.dataset.richHidden;
-                        actions.style.display = '';
-                    }
+                    this.clearLegacyCenterActions();
                     if (unit === app.player || app.party.includes(unit)) {
                         app.showActorActions(unit);
                     } else if (actions) {
-                        actions.innerHTML = '';
+                        this.clearLegacyCenterActions();
                     }
                     return;
                 }

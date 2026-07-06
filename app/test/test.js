@@ -2428,6 +2428,9 @@ test('Intent menu helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation, anchorEvent)', 'App intent menu renderer should delegate to the helper with optional anchoring');
   assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source, anchorEvent)', 'App intent sub-action sheet should delegate to the helper with optional anchoring');
   assertContains(appContent, 'YAW_INTENT_MENU.close(this)', 'App intent menu close lifecycle should delegate to the helper');
+  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Intent menu default sub-action should identify the sub-action composer surface');
+  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}"', 'Intent menu alternate sub-actions should identify the sub-action composer surface');
+  assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Intent menu cancel should identify the sub-action composer surface');
 });
 
 test('Focus trap helper module is registered before app code', () => {
@@ -7702,11 +7705,11 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration"', 'Sub-action sheet should identify the exploration composer sub-action surface');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Sub-action sheet should identify the shared command grammar');
   assertContains(body.innerHTML, 'data-command-intent="flirt"', 'Sub-action sheet container should expose the primary intent id');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:tease"', 'Default sub-action should expose exploration mode and stable sub-action intent id');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:tease" data-command-grammar="actor-target-intent"', 'Default sub-action should identify the shared command grammar on the intent itself');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="flirt:dance" data-command-grammar="actor-target-intent"', 'Alternate sub-action should identify the shared command grammar on the intent itself');
-  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Sub-action sheet should expose a structural cancel exit');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:tease"', 'Default sub-action should expose exploration mode and stable sub-action intent id');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:tease" data-command-grammar="actor-target-intent"', 'Default sub-action should identify the shared grammar on the sub-action composer surface');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance" data-command-grammar="actor-target-intent"', 'Alternate sub-action should identify the shared grammar on the sub-action composer surface');
+  assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Sub-action sheet should expose a structural cancel exit');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','tease')", 'Sub-action sheet should expose the default sub-action dispatch');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
   App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');

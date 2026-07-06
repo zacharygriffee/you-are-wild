@@ -4058,7 +4058,7 @@
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
-	                            <div class="mobile-control-belt" id="mobile-control-belt">
+	                            <div class="mobile-control-belt" id="mobile-control-belt" data-surface-role="command-composer">
 	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
 	                                <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
@@ -4080,7 +4080,7 @@
 	                                </div>
 	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls"></div>
 	                            </div>
-	                            <div class="mobile-unit-strips">
+	                            <div class="mobile-unit-strips" data-surface-role="presence-rails">
 	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
@@ -4097,7 +4097,7 @@
 	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
 	                                </div>
 	                            </div>
-	                            <div class="mobile-scene-sheet">
+	                            <div class="mobile-scene-sheet" data-surface-role="story">
 	                                <div class="mobile-scene-title" id="mobile-scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
 	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
@@ -4141,15 +4141,15 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
-                            <div class="desktop-presence-rail" id="desktop-presence-rail" aria-live="polite"></div>
+                            <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
-                            <div class="desktop-context-belt" id="desktop-context-belt" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
+                            <div class="desktop-context-belt" id="desktop-context-belt" data-surface-role="command-composer" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Party Panel -->
-                <div class="panel panel-party" id="panel-party">
+                <div class="panel panel-party" id="panel-party" data-surface-role="actor-drawer">
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
                         <span class="panel-header-actions">
@@ -4163,7 +4163,7 @@
                 </div>
 
                 <!-- Enemies Panel -->
-                <div class="panel panel-enemies" id="panel-enemies">
+                <div class="panel panel-enemies" id="panel-enemies" data-surface-role="target-drawer">
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
                         <span class="panel-header-actions">

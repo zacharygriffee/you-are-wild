@@ -3992,6 +3992,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
+  assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
   assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-explore-actions"'), 'Mobile creature cue should sit near the top of the control belt');
@@ -4066,6 +4067,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
   assertContains(appContent, 'toggleMobileActorBelt()', 'App should expose a mobile actor-belt toggle');
+  assertContains(template, 'class="mobile-unit-strips" data-surface-role="presence-rails"', 'mobile unit strips should identify as compact presence rails');
+  assertContains(template, 'class="mobile-scene-sheet" data-surface-role="story"', 'mobile scene sheet should identify as the story/semantics surface');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
   assertContains(appContent, 'renderMobileCreatureStrip()', 'mobile creature renderer missing');
@@ -4092,6 +4095,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="desktop-play-surface" data-surface-role="play-traversal"', 'desktop play surface should share the traversal surface role with mobile');
   assertContains(template, 'id="desktop-play-cell-center"', 'desktop play surface should have a center tile');
   assertContains(template, 'id="desktop-context-belt"', 'desktop play surface should expose a context action belt below the 3x3 surface');
+  assertContains(template, 'id="desktop-context-belt" data-surface-role="command-composer"', 'desktop context belt should identify as the command composer surface');
+  assertContains(template, 'id="desktop-presence-rail" data-surface-role="presence-rail"', 'desktop presence rail should identify as the presence surface');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-context-belt"'), 'Desktop context belt should sit below the 3x3 play surface');
   assertContains(template, 'id="desktop-play-cell-n"', 'desktop play surface should expose north movement');
   assertContains(template, 'id="desktop-play-cell-s"', 'desktop play surface should expose south movement');
@@ -4113,6 +4118,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'justify-content: flex-start;', 'desktop center content should start tall content at the top for predictable scrolling');
   assertContains(template, 'overflow-wrap: anywhere;', 'desktop center text should wrap instead of forcing horizontal overflow');
   assertContains(template, 'grid-template-areas: "main party enemies";', 'desktop stage should reserve columns for main play and actor panels only');
+  assertContains(template, 'id="panel-party" data-surface-role="actor-drawer"', 'party panel should identify as an actor detail drawer');
+  assertContains(template, 'id="panel-enemies" data-surface-role="target-drawer"', 'creature panel should identify as a target detail drawer');
   assertContains(template, 'grid-template-columns: minmax(520px, 1fr) 260px 260px;', 'desktop stage should not reserve a permanent left map column');
   assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
   assertNotContains(template, 'id="mini-map"', 'desktop should not render a duplicate minimap now that movement lives in the center play surface');

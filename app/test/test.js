@@ -2716,6 +2716,9 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, "desktopBelt.setAttribute('data-command-mode', 'exploration')", 'Desktop exploration belt should expose exploration command mode');
   assertContains(centerContextContent, "mobileExplore.setAttribute('data-command-mode', 'exploration')", 'Mobile exploration belt should expose exploration command mode');
   assertContains(centerContextContent, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"', 'Location action buttons should expose exploration grammar with stable intent ids');
+  assertContains(centerContextContent, 'actorExitButton(app)', 'Center context helper should provide a desktop composer exit for explicit actor state');
+  assertContains(centerContextContent, 'data-command-control="clear-actors"', 'Desktop actor exit should expose the clear-actors command control');
+  assertContains(centerContextContent, "actorExitHtml ? 'command-composer' : 'location-actions'", 'Desktop belt should identify mixed actor/location controls as the command composer');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should refresh desktop stage presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
@@ -11385,6 +11388,11 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-actor-count'), '1', 'Mobile active exploration sentence should expose actor count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-target-count'), '0', 'Mobile active exploration sentence should expose target count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-intent'), 'choose', 'Mobile active exploration sentence should expose pending intent metadata');
+  App.renderExplorationActions();
+  assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors"', 'Desktop composer belt should expose a clear-actors exit for explicit actor state');
+  assertContains(document.getElementById('desktop-context-belt').innerHTML, 'Clear actors', 'Desktop clear-actors exit should use a visible localized label');
+  assertEqual(document.getElementById('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Desktop belt with explicit actor exit should identify the command composer surface');
+  assertNotContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-control="clear-actors"', 'Mobile location row should not duplicate the actor belt clear exit');
 
   App.toggleExplorationTarget('creature', 'guide-1');
   const html = elements.get('mobile-selection-sentence').innerHTML;

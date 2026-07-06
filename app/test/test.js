@@ -4068,6 +4068,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(template, 'id="mobile-center-presence"', 'mobile scene sheet should not duplicate the full here/presence block');
   assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
   assertContains(template, '.center-presence-chip.item', 'desktop stage presence should distinguish tile item cues');
+  assertContains(template, '.center-presence-chip.place', 'desktop stage presence should distinguish structure and landmark cues');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
@@ -4091,6 +4092,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
+  assertContains(template, '.mobile-play-presence-dot.place', 'mobile center presence should distinguish structure and landmark markers');
   assertContains(template, '.mobile-play-presence-dot.selected', 'Mobile center presence should visibly mark selected actor and target dots');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
@@ -7022,23 +7024,37 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence inside the presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('place','structure:camp')", 'Desktop stage rail should focus structure presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-stage-surface="presence"', 'Desktop stage rail controls should identify the presence surface');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-surface="stage-presence"', 'Desktop stage rail controls should identify stage-presence command routing');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop actor/target presence should identify the shared command grammar');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-actor"', 'Desktop party presence should identify actor-focus routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-place"', 'Desktop structure presence should identify place-focus routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-intent="enter"', 'Desktop structure presence should point at the stable Enter intent');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-target"', 'Desktop creature presence should identify target-focus routing');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-mode="exploration"', 'Desktop presence routing should identify exploration command mode');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Add Ally as actor"', 'Desktop party presence should advertise add-actor semantics');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Focus Camp location actions"', 'Desktop structure presence should advertise location-action focus semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Mark Friendly as target"', 'Desktop creature presence should advertise mark-target semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-details"', 'Desktop overflow presence should identify detail-drawer routing');
-  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 1 more in details"', 'Desktop overflow presence should advertise that it opens details');
-  assertContains(el('desktop-presence-rail').innerHTML, '>+1 more<', 'Desktop overflow presence should keep the compact visible count');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 2 more in details"', 'Desktop overflow presence should advertise that it opens details');
+  assertContains(el('desktop-presence-rail').innerHTML, '>+2 more<', 'Desktop overflow presence should keep the compact visible count');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'selectIntent(', 'Desktop stage rail should not duplicate intent controls');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
+
+  App.renderMap();
+  assertContains(el('mobile-mini-map').innerHTML, 'mobile-play-presence-dot place', 'Mobile center tile should expose structures as compact place presence');
+  assertContains(el('mobile-mini-map').innerHTML, 'data-command-control="focus-place"', 'Mobile place presence should identify place-focus routing');
+  assertContains(el('mobile-mini-map').innerHTML, 'data-command-intent="enter"', 'Mobile structure presence should point at the stable Enter intent');
+  assertContains(el('mobile-mini-map').innerHTML, "App.focusPresence('place','structure:camp')", 'Mobile structure presence should focus the location composer path');
+
+  assertEqual(App.focusPresence('place', 'structure:camp'), true, 'Structure presence focus should resolve through the location composer path');
+  assertEqual(App.inInterior, false, 'Structure presence focus should not enter the structure directly');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="enter"', 'Structure presence focus should expose Enter in the desktop composer belt');
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the composer selection path');
   assertEqual(App.explorationActorIds[0], 'ally-1', 'Party presence focus should select the party actor for the composer');
@@ -7176,6 +7192,45 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(mobileHtml, 'data-command-intent="takeItems"', 'Mobile item presence should point at the stable Take Items intent');
   assertContains(mobileHtml, "App.focusPresence('items','tile-items')", 'Mobile item presence should focus the existing Take Items command');
   assertNotContains(mobileHtml, 'App.takeTileItems()', 'Mobile item presence should not immediately pick up items');
+});
+
+test('Stage presence exposes landmarks as passive place cues', () => {
+  const { App, document } = loadAppForCombat();
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', {
+    ...App.getBaseTile(0, 0),
+    x: 0,
+    y: 0,
+    biome: 'grove',
+    explored: true,
+    creatures: [],
+    items: [],
+    hasLandmark: true,
+    landmarkName: 'Ancient Tree'
+  }]]);
+  App.combatState.active = false;
+
+  App.renderCenterPresence();
+  const desktopHtml = el('desktop-presence-rail').innerHTML;
+  assertContains(desktopHtml, 'center-presence-chip place landmark', 'Desktop stage rail should expose landmarks as compact place presence');
+  assertContains(desktopHtml, 'Ancient Tree', 'Desktop landmark presence should name the place object');
+  assertContains(desktopHtml, 'data-presence-type="place"', 'Desktop landmark presence should identify place presence type');
+  assertContains(desktopHtml, 'data-command-control="focus-place"', 'Desktop landmark presence should route through place focus');
+  assertNotContains(desktopHtml, 'data-command-intent="enter"', 'Passive landmark presence should not claim an Enter intent');
+  assertContains(desktopHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Desktop landmark presence should focus the location composer');
+  assertEqual(App.focusPresence('place', 'landmark:Ancient Tree'), true, 'Landmark presence focus should resolve without adding a mechanic');
+  assertEqual(App.inInterior, false, 'Landmark presence focus should not move or enter anything');
+
+  App.renderMap();
+  const mobileHtml = el('mobile-mini-map').innerHTML;
+  assertContains(mobileHtml, 'mobile-play-presence-dot place', 'Mobile center tile should expose landmarks as compact place presence');
+  assertContains(mobileHtml, 'data-command-control="focus-place"', 'Mobile landmark presence should route through place focus');
+  assertContains(mobileHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Mobile landmark presence should focus the location composer');
 });
 
 test('Center presence focus selects mobile composer state without opening drawers', () => {

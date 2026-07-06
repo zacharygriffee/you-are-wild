@@ -17,6 +17,7 @@ const YAW_CENTER_CONTEXT = {
         };
         const keyFor = (unit, type) => {
             if (type === 'items') return `items:${unit?.id || 'tile-items'}`;
+            if (type === 'place') return `place:${unit?.id || 'tile-place'}`;
             if (type === 'creature' && typeof app._explorationTargetUnitId === 'function') {
                 return `creature:${app._explorationTargetUnitId('creature', unit)}`;
             }
@@ -51,13 +52,50 @@ const YAW_CENTER_CONTEXT = {
                 tone: 'item'
             });
         };
+        const addPlaceEntries = tile => {
+            if (!tile) return;
+            const addPlace = ({ id, name, icon, meta, tone = 'place', intent = '' }) => {
+                if (!name) return;
+                const key = `place:${id}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                entries.push({
+                    unit: { id, name, icon: icon || '◆', intent },
+                    type: 'place',
+                    meta,
+                    tone
+                });
+            };
+            if (tile.structure) {
+                const structure = app.STRUCTURES?.[tile.structure] || {};
+                addPlace({
+                    id: `structure:${tile.structure}`,
+                    name: structure.name || tile.structure,
+                    icon: structure.icon || '🚪',
+                    meta: app._label('action.enter', 'Enter'),
+                    tone: 'structure',
+                    intent: 'enter'
+                });
+            }
+            if (tile.hasLandmark && tile.landmarkName) {
+                addPlace({
+                    id: `landmark:${tile.landmarkName}`,
+                    name: tile.landmarkName,
+                    icon: '◆',
+                    meta: app._label('ui.tileInfo.landmark', 'Landmark'),
+                    tone: 'landmark'
+                });
+            }
+        };
         if (app.player) add(app.player, 'player', app._label('party.you', 'You'), 'party');
         (app.party || []).forEach(unit => {
             const role = typeof app._getPartyRole === 'function' ? app._getPartyRole(unit) : 'companion';
             const roleLabel = typeof app._partyRoleLabel === 'function' ? app._partyRoleLabel(role) : role;
             add(unit, 'party', roleLabel, 'party');
         });
-        addItemEntry(app._currentExplorationTile?.());
+        const tile = app._currentExplorationTile?.();
+        addPlaceEntries(tile);
+        addItemEntry(tile);
         (app.creatures || []).forEach(unit => {
             const meta = typeof app._unitDispositionLabel === 'function' ? app._unitDispositionLabel(unit) : '';
             const tone = unit.disposition || 'creature';
@@ -74,6 +112,14 @@ const YAW_CENTER_CONTEXT = {
         if (entry.type === 'items') {
             const focusTitle = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
             return `<button type="button" class="center-presence-chip items item" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
+        }
+        if (entry.type === 'place') {
+            const ref = app._escapeHtml(unit.id || 'tile-place');
+            const intent = unit.intent ? ` data-command-intent="${app._escapeHtml(unit.intent)}"` : '';
+            const jsRef = app._escapeJsString(unit.id || 'tile-place');
+            const focusTitle = app._escapeHtml(app._label('ui.presence.focusPlace', 'Focus {name} location actions', { name: unit.name || app._label('ui.tileInfo.landmark', 'Landmark') }));
+            const escapedTone = app._escapeHtml(entry.tone || 'place');
+            return `<button type="button" class="center-presence-chip place ${escapedTone}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-place"${intent} data-presence-type="place" data-presence-ref="${ref}" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('place','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
         }
         const presenceType = entry.type === 'creature' ? 'creature' : 'party';
         const ref = presenceType === 'creature'
@@ -106,6 +152,18 @@ const YAW_CENTER_CONTEXT = {
             if (typeof document !== 'undefined') {
                 const button = document.querySelector('#mobile-explore-actions [data-command-intent="takeItems"], #desktop-context-belt [data-command-intent="takeItems"]');
                 if (button && typeof button.focus === 'function') button.focus({ preventScroll: true });
+            }
+            return true;
+        }
+        if (type === 'place') {
+            app.renderExplorationActions?.();
+            if (typeof document !== 'undefined') {
+                const focusIntent = String(ref || '').startsWith('structure:') ? 'enter' : '';
+                const selector = focusIntent
+                    ? `#mobile-explore-actions [data-command-intent="${focusIntent}"], #desktop-context-belt [data-command-intent="${focusIntent}"]`
+                    : '#mobile-explore-actions .action-btn, #desktop-context-belt .action-btn, #mobile-control-belt, #desktop-context-belt';
+                const target = document.querySelector(selector);
+                if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
             }
             return true;
         }

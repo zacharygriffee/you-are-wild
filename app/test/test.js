@@ -1536,6 +1536,7 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
   assertContains(sceneShellContent, 'clearCenterActionsForCombat(app)', 'Scene shell helper should own combat center action clearing');
   assertContains(sceneShellContent, 'clearMobileExplorationControls(app)', 'Scene shell helper should own stale mobile exploration control clearing');
+  assertContains(sceneShellContent, 'clearCommandSentences()', 'Scene shell helper should own stale command sentence clearing');
   assertContains(sceneShellContent, 'setRichContent(app, title, html)', 'Scene shell helper should own rich scene display state');
   assertContains(sceneShellContent, 'update(app, title, description, inCombat)', 'Scene shell helper should own desktop/mobile scene shell updates');
   assertContains(sceneShellContent, 'closeDetails(app)', 'Scene shell helper should own scene detail closing behavior');
@@ -10286,6 +10287,8 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open');
   elements.get('mobile-play-surface').classList.add('has-control-belt');
+  elements.get('selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
+  elements.get('mobile-selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
 
   App._setRichSceneContent('Inventory', '<p>Carried items</p>');
 
@@ -10304,6 +10307,8 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Rich scene should remove target-priority belt state');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Rich scene should stop reserving exploration belt space');
   assertEqual(App.mobileMovePadOpen, false, 'Rich scene should reset the app move-pad flag');
+  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Rich scene should clear stale desktop actor-target-intent sentence');
+  assertEqual(elements.get('mobile-selection-sentence').innerHTML, '', 'Rich scene should clear stale mobile actor-target-intent sentence');
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {

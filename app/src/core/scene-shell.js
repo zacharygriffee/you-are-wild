@@ -28,6 +28,13 @@ const YAW_SCENE_SHELL = {
         app.mobileMovePadOpen = false;
     },
 
+    clearCommandSentences() {
+        ['selection-sentence', 'mobile-selection-sentence'].forEach(id => {
+            const slot = document.getElementById(id);
+            if (slot) slot.innerHTML = '';
+        });
+    },
+
     clearCenterActionsForCombat(app) {
         const actions = document.getElementById('scene-actions');
         if (actions) {
@@ -61,7 +68,7 @@ const YAW_SCENE_SHELL = {
         if (mobileSheet) mobileSheet.classList.add('rich-content');
         YAW_CENTER_CONTEXT.clearPresence();
         app.renderTileEvents();
-        app.renderSelectionSentence?.();
+        this.clearCommandSentences();
     },
 
     update(app, title, description, inCombat) {

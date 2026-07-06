@@ -4020,7 +4020,7 @@
 	                    <div class="panel-header">
 	                        <span>🗺️ <span data-i18n="ui.reviewMap">Review Map</span></span>
 	                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
-		                        <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
+	                        <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
 	                    </div>
 	                    <div class="panel-content">
 	                    <div class="tile-info" id="tile-info" aria-live="polite" style="padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);font-size:12px;line-height:1.5;color:var(--text-secondary);">
@@ -4084,7 +4084,7 @@
 	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
-		                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
+	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
 	                                </div>
@@ -4092,17 +4092,17 @@
 	                                <div class="mobile-strip-card" id="mobile-creature-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span id="mobile-creature-title">Creatures</span>
-		                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
+	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
 	                                </div>
 	                            </div>
-	                            <div class="mobile-scene-sheet" data-surface-role="story">
-	                                <div class="mobile-scene-title" id="mobile-scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
-	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
-	                                    You find yourself in an untamed land where predators roam and only the strong survive.
-	                                </div>
-	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
+		                            <div class="mobile-scene-sheet" data-surface-role="story">
+		                                <div class="mobile-scene-title" id="mobile-scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
+		                                <div class="mobile-scene-description" id="mobile-scene-description" data-stage-layer="story-passage" data-i18n="ui.scene.wildernessIntro">
+		                                    You find yourself in an untamed land where predators roam and only the strong survive.
+		                                </div>
+		                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log" data-surface-role="history-drawer">
 	                                    <summary class="mobile-activity-log-summary" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
 	                                        <span class="mobile-activity-log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span></span>
@@ -4125,15 +4125,15 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-ne"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-w"></div>
                                 <div class="desktop-play-cell center" id="desktop-play-cell-center">
-                                    <div class="desktop-play-cell-content">
-                                        <h2 class="scene-title" id="scene-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
-                                        <div class="scene-description" id="scene-description">
-                                            <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
-                                            <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
-                                        </div>
-                                        <div class="center-presence-slot" id="center-presence" aria-live="polite"></div>
-                                        <div class="tile-event-feed-slot" id="tile-event-feed" aria-live="polite"></div>
-                                        <div class="scene-actions" id="scene-actions"></div>
+	                                    <div class="desktop-play-cell-content" data-surface-role="story-stage">
+	                                        <h2 class="scene-title" id="scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</h2>
+	                                        <div class="scene-description" id="scene-description" data-stage-layer="story-passage">
+	                                            <span data-i18n="ui.scene.wildernessIntro">You find yourself in an untamed land where predators roam and only the strong survive.</span>
+	                                            <span data-i18n="ui.scene.wildernessAmbient">The air is thick with the scent of pine and the distant calls of creatures unknown.</span>
+	                                        </div>
+	                                        <div class="center-presence-slot" id="center-presence" data-stage-layer="presence" aria-live="polite"></div>
+	                                        <div class="tile-event-feed-slot" id="tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
+	                                        <div class="scene-actions" id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"></div>
                                     </div>
                                 </div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-e"></div>
@@ -4153,8 +4153,8 @@
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
                         <span class="panel-header-actions">
-	                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
-	                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-actor-drawer" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
+                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-actor-drawer" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>
                     <div class="panel-content" id="party-content">
@@ -4167,8 +4167,8 @@
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
                         <span class="panel-header-actions">
-	                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
-	                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-target-drawer" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
+                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-target-drawer" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>
                     <div class="panel-content" id="enemies-content">

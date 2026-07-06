@@ -3387,9 +3387,15 @@ test('Template has all panels', () => {
 });
 
 test('Scene description supports rich bounded content', () => {
-  assertContains(template, '<div class="scene-description" id="scene-description">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
+  assertContains(template, '<div class="scene-description" id="scene-description" data-stage-layer="story-passage">', 'Scene description should be a div so rich panels do not get invalidly nested inside a paragraph');
   assertContains(template, 'id="tile-event-feed"', 'Desktop scene should expose a tile-scoped event feed slot');
   assertContains(template, 'id="mobile-tile-event-feed"', 'Mobile scene should expose a tile-scoped event feed slot');
+  assertContains(template, 'id="scene-title" data-stage-layer="story-title"', 'Desktop scene title should identify the story title layer');
+  assertContains(template, 'id="scene-description" data-stage-layer="story-passage"', 'Desktop scene description should identify the story passage layer');
+  assertContains(template, 'id="tile-event-feed" data-stage-layer="event-feed"', 'Desktop tile event feed should identify the event presentation layer');
+  assertContains(template, 'id="mobile-scene-title" data-stage-layer="story-title"', 'Mobile scene title should identify the story title layer');
+  assertContains(template, 'id="mobile-scene-description" data-stage-layer="story-passage"', 'Mobile scene description should identify the story passage layer');
+  assertContains(template, 'id="mobile-tile-event-feed" data-stage-layer="event-feed"', 'Mobile tile event feed should identify the event presentation layer');
   assertContains(template, '.tile-event-feed', 'Tile event feed styles should be bounded and reusable');
   assertContains(template, '.desktop-context-belt .action-btn', 'Desktop context belt buttons should have scoped sizing rules');
   assertContains(template, 'flex-wrap: wrap;', 'Desktop scene action rows should wrap instead of forcing horizontal scroll');
@@ -3992,7 +3998,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, 'id="center-presence"', 'desktop center presence slot missing');
+  assertContains(template, 'id="center-presence" data-stage-layer="presence"', 'Desktop center presence slot should identify the stage presence layer');
   assertContains(template, 'id="desktop-presence-rail"', 'desktop stage presence rail missing');
+  assertContains(template, 'class="desktop-play-cell-content" data-surface-role="story-stage"', 'Desktop center content should identify as the story/stage compositor');
   assertNotContains(template, 'id="mobile-center-presence"', 'mobile scene sheet should not duplicate the full here/presence block');
   assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
@@ -4137,6 +4145,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
   assertContains(template, '.desktop-context-belt', 'desktop context belt styles missing');
   assertContains(template, '.scene-actions {\n            display: none;', 'center presentation action slot should stay hidden as a compatibility slot');
+  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"', 'center presentation action slot should identify as hidden legacy compatibility, not the composer');
   assertContains(template, '.desktop-context-belt .target-action-row', 'desktop target actions should be bounded inside the composer belt');
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');

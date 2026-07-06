@@ -2557,6 +2557,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should focus detail drawers through the shared presence path');
+  assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
   assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
@@ -2587,6 +2588,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, "document.getElementById('desktop-presence-rail')", 'Center context helper should render presence into the desktop stage rail');
   assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should focus presence chips into detail panels');
+  assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
@@ -2599,6 +2601,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresence(this, type, ref)', 'App center presence focus should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresenceOverflow(this)', 'App center presence overflow focus should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
@@ -6768,9 +6771,10 @@ test('Center tile stays traversal and context only across interaction states', (
   const ally = makeUnit('Ally', { id: 'ally-1' });
   const friendly = makeUnit('Friendly', { id: 'friendly-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, willing: true });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, CPun: 100 });
+  const bystanders = [1, 2, 3].map(index => makeUnit(`Bystander ${index}`, { id: `bystander-${index}`, disposition: App.DISPOSITION.FRIENDLY }));
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [friendly, enemy];
+  App.creatures = [friendly, enemy, ...bystanders];
   App.location = { x: 0, y: 0 };
   App.inInterior = false;
   App.activeInterior = null;
@@ -6783,6 +6787,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should focus party presence through detail panels');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should focus creature presence through detail panels');
+  assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'selectIntent(', 'Desktop stage rail should not duplicate intent controls');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
@@ -6796,6 +6801,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(friendly.expanded, true, 'Creature presence focus should expand the matching creature card');
   assertContains(el('enemies-content').innerHTML, 'Friendly', 'Creature presence focus should render the creature panel');
   assertEqual(el('panel-enemies').focused, true, 'Desktop creature presence focus should focus the creature panel');
+  assertEqual(App.focusPresenceOverflow(), true, 'Presence overflow focus should resolve through the detail panel path');
+  assertEqual(el('panel-enemies').focused, true, 'Presence overflow should prefer the creature detail panel when creatures are present');
 
   App.showActorActions(ally);
   assertCenterOnly('adventure actor action legacy call');
@@ -8962,8 +8969,10 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   App.player = makeUnit('You');
   const ally = makeUnit('Ally', { id: 'ally-1', icon: '🧭' });
   const guide = makeUnit('Guide', { id: 'guide-1', icon: '👤', disposition: App.DISPOSITION.FRIENDLY });
+  const trader = makeUnit('Trader', { id: 'trader-1', icon: '🧑', disposition: App.DISPOSITION.FRIENDLY });
+  const watcher = makeUnit('Watcher', { id: 'watcher-1', icon: '👁️', disposition: App.DISPOSITION.FRIENDLY });
   App.party = [App.player, ally];
-  App.creatures = [guide];
+  App.creatures = [guide, trader, watcher];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map();
   App.exploredTiles = new Set(['0,0']);
@@ -8980,6 +8989,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
   assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should focus the party detail drawer');
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should focus the creature detail drawer');
+  assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
+  assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');

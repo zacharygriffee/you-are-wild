@@ -757,7 +757,9 @@
         }
 
         .center-presence-chip:hover,
-        .center-presence-chip:focus-visible {
+        .center-presence-chip:focus-visible,
+        .center-presence-more:hover,
+        .center-presence-more:focus-visible {
             border-color: var(--accent-primary);
             color: var(--text-primary);
         }
@@ -2675,12 +2677,15 @@
                 line-height: 1;
             }
 
-            .mobile-play-presence-dot {
+            .mobile-play-presence-dot,
+            .mobile-play-presence-more {
                 cursor: pointer;
             }
 
             .mobile-play-presence-dot:hover,
-            .mobile-play-presence-dot:focus-visible {
+            .mobile-play-presence-dot:focus-visible,
+            .mobile-play-presence-more:hover,
+            .mobile-play-presence-more:focus-visible {
                 border-color: var(--accent-primary);
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.28);
             }

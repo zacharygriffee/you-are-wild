@@ -77,6 +77,24 @@ const YAW_CENTER_CONTEXT = {
         return false;
     },
 
+    focusPresenceOverflow(app) {
+        if (app.combatState?.active) return false;
+        const entries = this.presenceEntries(app);
+        const hasCreature = entries.some(entry => entry.type === 'creature');
+        if (hasCreature) {
+            app.renderCreatures();
+            app.openPanel('enemies');
+            return true;
+        }
+        const hasParty = entries.some(entry => entry.type === 'player' || entry.type === 'party');
+        if (hasParty) {
+            app.renderParty();
+            app.openPanel('party');
+            return true;
+        }
+        return false;
+    },
+
     renderPresence(app) {
         const centerSlot = document.getElementById('center-presence');
         if (centerSlot) centerSlot.innerHTML = '';
@@ -88,8 +106,9 @@ const YAW_CENTER_CONTEXT = {
         const visible = entries.slice(0, 6);
         const extra = entries.length - visible.length;
         const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
+        const moreLabel = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
         const more = extra > 0
-            ? `<span class="center-presence-more">${app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }))}</span>`
+            ? `<button type="button" class="center-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreLabel}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
         rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;

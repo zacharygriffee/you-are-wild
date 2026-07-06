@@ -4517,6 +4517,9 @@
             focusPresence(type, ref) {
                 return YAW_CENTER_CONTEXT.focusPresence(this, type, ref);
             },
+            focusPresenceOverflow() {
+                return YAW_CENTER_CONTEXT.focusPresenceOverflow(this);
+            },
             syncPanelBackdrop() {
                 return YAW_PANEL_SHELL.syncBackdrop(this);
             },

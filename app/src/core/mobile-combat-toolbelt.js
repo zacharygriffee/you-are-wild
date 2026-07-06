@@ -6,6 +6,22 @@
 const YAW_MOBILE_COMBAT_TOOLBELT = {
     prompt(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active) return '';
+        if (app.syncSelection?.active) {
+            if (app.syncSelection.phase === 'choose') {
+                return app._label('combat.sync.chooseAction', 'Choose Sync Action');
+            }
+            if (app.syncSelection.phase === 'participants') {
+                return app._label('combat.sync.selectParticipants', 'Select participants for sync');
+            }
+            return app._label('combat.sync.selectTarget', 'Select sync target');
+        }
+        if (app.feedSelection?.active) {
+            return app._label('feed.optionsTitle', 'Feed Options');
+        }
+        if (app.targetSelection?.source === 'combat') {
+            const action = app._uiLabel(app.targetSelection.action || 'action');
+            return app._label('mobile.combat.pickTarget', 'Pick a target in the enemy strip for {action}.', { action });
+        }
         if (actor && (actor === app.player || app.party.includes(actor))) {
             return app._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
         }

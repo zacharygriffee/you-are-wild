@@ -2068,6 +2068,10 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assert(buildContent.indexOf("'src/core/mobile-combat-toolbelt.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile combat toolbelt helper should load before app.js');
   assertContains(mobileCombatToolbeltContent, 'const YAW_MOBILE_COMBAT_TOOLBELT = {', 'Mobile combat toolbelt helper should expose the toolbelt service');
   assertContains(mobileCombatToolbeltContent, 'prompt(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own prompt text selection');
+  assertContains(mobileCombatToolbeltContent, "app.syncSelection?.active", 'Mobile combat prompt should be phase-aware for Sync states');
+  assertContains(mobileCombatToolbeltContent, "app.feedSelection?.active", 'Mobile combat prompt should be phase-aware for Feed states');
+  assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source === 'combat'", 'Mobile combat prompt should be phase-aware for target-pick states');
+  assertContains(mobileCombatToolbeltContent, "app._label('mobile.combat.pickTarget'", 'Mobile combat target prompt should tell players to pick from the enemy strip');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
   assertContains(mobileCombatToolbeltContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Mobile Sync states should expose a visible Cancel Sync control');

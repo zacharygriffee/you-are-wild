@@ -68,9 +68,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (actorSelectionOpen) {
                 actorBelt.setAttribute('data-command-surface', 'actor-target-routing');
                 actorBelt.setAttribute('data-command-mode', 'exploration');
+                actorBelt.setAttribute('data-command-grammar', 'actor-target-intent');
             } else {
                 actorBelt.removeAttribute('data-command-surface');
                 actorBelt.removeAttribute('data-command-mode');
+                actorBelt.removeAttribute('data-command-grammar');
             }
         }
         this.creaturePresenceCue(app);

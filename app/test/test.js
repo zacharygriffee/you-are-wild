@@ -10604,6 +10604,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add Ally as actor"', 'Mobile actor belt should advertise adding an available actor');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), 'actor-target-routing', 'Mobile actor belt should identify actor-routing command surface when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), 'exploration', 'Mobile actor belt should identify exploration command mode when opened');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile actor belt should identify the shared command grammar when opened');
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Dormant mobile move pad behavior should remain restorable');
@@ -10658,6 +10659,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Clearing actors should close the mobile actor belt');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), null, 'Closing actor belt should clear actor-routing command surface metadata');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), null, 'Closing actor belt should clear command mode metadata');
+  assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), null, 'Closing actor belt should clear command grammar metadata');
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Clearing actors should collapse the Actors toggle');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'You', 'Marked-target composer sentence should keep the implicit player actor after clearing');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Clearing actors should preserve the marked target');

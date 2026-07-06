@@ -4,6 +4,10 @@
  */
 
 const YAW_INTERACTION_DISPATCH = {
+    normalizeSource(source = 'sheet') {
+        return source === 'panel-tray' ? 'composer-tray' : source;
+    },
+
     intentTarget(app, type, targetRef) {
         return type === 'party'
             ? app.party[Number(targetRef)]
@@ -11,6 +15,7 @@ const YAW_INTERACTION_DISPATCH = {
     },
 
     intentCommand(app, type, targetRef, action, subAction = null, source = 'sheet') {
+        const commandSource = this.normalizeSource(source);
         const actorIds = app._getExplorationActors().map(actor => actor.id || actor.name);
         const target = this.intentTarget(app, type, targetRef);
         return {
@@ -20,7 +25,7 @@ const YAW_INTERACTION_DISPATCH = {
             targetId: target?.id || target?.name || String(targetRef),
             targetIds: [target?.id || target?.name || String(targetRef)],
             targetType: type,
-            source
+            source: commandSource
         };
     },
 
@@ -83,7 +88,7 @@ const YAW_INTERACTION_DISPATCH = {
             targetType: context.targetType || inferredTargetType,
             action: context.action || null,
             subAction: context.subAction || null,
-            source: context.source || 'panel-card',
+            source: this.normalizeSource(context.source || 'panel-card'),
             timing: context.timing || 'immediate',
             resolveAt: context.resolveAt || null,
             constraints: context.constraints || {},

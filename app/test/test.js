@@ -1666,6 +1666,8 @@ test('Marked target action helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/marked-target-actions.js'") < buildContent.indexOf("'src/core/app.js'"), 'Marked target action helper should load before app.js');
   assertContains(markedTargetActionsContent, 'const YAW_MARKED_TARGET_ACTIONS = {', 'Marked target helper should expose the marked target action service');
   assertContains(markedTargetActionsContent, 'render(app, source = \'sheet\')', 'Marked target helper should own selected-target action rendering');
+  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked target helper should emit composer-tray command metadata for contextual utilities');
+  assertContains(markedTargetActionsContent, "source === 'composer-tray' || source === 'panel-tray'", 'Marked target helper should retain legacy panel-tray wrapper compatibility');
   assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\')', 'Marked target helper should own selected-target sub-action sheets');
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
@@ -1693,6 +1695,8 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/interaction-dispatch.js'", 'Interaction dispatch helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/interaction-dispatch.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction dispatch helper should load before app.js');
   assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
+  assertContains(interactionDispatchContent, "normalizeSource(source = 'sheet')", 'Interaction dispatch helper should own command source normalization');
+  assertContains(interactionDispatchContent, "source === 'panel-tray' ? 'composer-tray' : source", 'Interaction dispatch helper should keep panel-tray as a composer-tray compatibility alias');
   assertContains(interactionDispatchContent, 'intentCommand(app, type, targetRef, action', 'Interaction dispatch helper should own intent command building');
   assertContains(interactionDispatchContent, 'intentTarget(app, type, targetRef)', 'Interaction dispatch helper should own intent target resolution');
   assertContains(interactionDispatchContent, 'selectIntent(app, type, targetRef, action', 'Interaction dispatch helper should own intent selection routing');
@@ -2159,7 +2163,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
-  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual creature utility dispatch');
+  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual creature utility dispatch');
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
@@ -2180,7 +2184,7 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, 'const YAW_UNIT_CARD = {', 'Unit card helper should expose a renderer service');
   assertContains(unitCardContent, 'render(app, unit, index, type)', 'Unit card helper should own desktop card rendering');
   assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Unit card helper should retain exact creature target marking');
-  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual utility intent dispatch');
+  assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-details', unit)", 'Unit card helper should label detail utility row semantics separately from actor/target selection');
   assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Unit card helper should label creature target-only row semantics');
@@ -6312,8 +6316,8 @@ test('Mobile creature strip and long-press mark corpse targets through the compo
   assertNotContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should not expose a duplicate secondary-click radial menu');
   App.showMobileCreatureContext('fallen-mobile');
   assert(App.explorationTargetIds.includes('creature:fallen-mobile'), 'Mobile corpse long-press should mark remains as the composer target');
-  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','loot','panel-tray')", 'Marked mobile corpse should expose Loot through the visible composer tray');
-  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','panel-tray')", 'Marked mobile corpse should expose Scavenge through the visible composer tray');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','loot','composer-tray')", 'Marked mobile corpse should expose Loot through the visible composer tray');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','composer-tray')", 'Marked mobile corpse should expose Scavenge through the visible composer tray');
   assertNotContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should not open a duplicate radial utility menu');
   assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','fallen-mobile','fight'", 'Mobile corpse long-press should not expose living primary action spam');
   App.closeIntentMenu();
@@ -6594,8 +6598,8 @@ test('Stage presence routes remains to composer utility actions', () => {
   assertContains(beltHtml, 'data-command-surface="target-intents"', 'Marked remains should render through the target intent composer surface');
   assertContains(beltHtml, 'data-command-intent="loot"', 'Marked remains should expose Loot through the composer');
   assertContains(beltHtml, 'data-command-intent="scavenge"', 'Marked remains should expose Scavenge through the composer');
-  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','loot','panel-tray')", 'Marked remains Loot should dispatch through shared intent selection');
-  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','scavenge','panel-tray')", 'Marked remains Scavenge should dispatch through shared intent selection');
+  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','loot','composer-tray')", 'Marked remains Loot should dispatch through shared intent selection');
+  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','scavenge','composer-tray')", 'Marked remains Scavenge should dispatch through shared intent selection');
   assertNotContains(beltHtml, "resolveExplorationTargetAction('fight'", 'Marked remains should not expose living Fight intent');
   assertNotContains(beltHtml, 'data-command-intent="flirt"', 'Marked remains should not expose living Talk intent');
   assertNotContains(beltHtml, 'data-command-intent="fuck"', 'Marked remains should not expose living Play intent');
@@ -6918,8 +6922,8 @@ test('Exploration context keeps creature interaction in panels', () => {
   const composerHtml = elements.get('desktop-context-belt').innerHTML;
   assertContains(composerHtml, 'aria-label="Fight 1 target"', 'Marked creature target actions should live in the desktop command composer');
   assertContains(composerHtml, 'aria-label="Talk 1 target"', 'Marked creature target actions should include baseline interactions in the composer');
-  assertContains(composerHtml, "selectIntent('creature','friendly-1','inspect','panel-tray')", 'Marked creature composer should offer inspect through shared intent selection');
-  assertContains(composerHtml, "selectIntent('creature','friendly-1','recruit','panel-tray')", 'Marked creature composer should offer recruitment through shared intent selection');
+  assertContains(composerHtml, "selectIntent('creature','friendly-1','inspect','composer-tray')", 'Marked creature composer should offer inspect through shared intent selection');
+  assertContains(composerHtml, "selectIntent('creature','friendly-1','recruit','composer-tray')", 'Marked creature composer should offer recruitment through shared intent selection');
   assertEqual(App._renderPanelInteractionTray(), '', 'Exploration party panel tray should stay empty while composer owns target actions');
 });
 
@@ -7699,7 +7703,7 @@ test('Explicit player actor selection can remain primary in group interactions',
 
   assertEqual(App.explorationActorIds.join(','), 'player-1,ally-1', 'Explicit player selection should stay first when adding a helper');
   assertEqual(App.explorationActorSelectionExplicit, true, 'Clicking the default player actor should promote the selection to explicit');
-  const trayHtml = App._renderExplorationTargetActions('panel-tray');
+  const trayHtml = App._renderExplorationTargetActions('composer-tray');
   assertNotContains(trayHtml, 'selected-target-summary', 'Marked target tray should leave group summaries to the composer sentence');
   const sentenceHtml = App.renderSelectionSentence();
   assertContains(sentenceHtml, 'You + Ally', 'Composer sentence should allow the player to remain first in a group interaction');
@@ -8278,13 +8282,13 @@ test('Marked target action rejects stale selected actors without falling back to
   App.explorationActorIds = ['missing-actor'];
   App.explorationActorId = 'missing-actor';
   App.toggleExplorationTarget('party', 'target-a');
-  const trayHtml = App._renderExplorationTargetActions('panel-tray');
+  const trayHtml = App._renderExplorationTargetActions('composer-tray');
   assertNotContains(trayHtml, 'selected-target-summary', 'Marked target tray should leave stale actor correction to the composer sentence');
   const sentenceHtml = App.renderSelectionSentence();
   assertContains(sentenceHtml, 'Select a living actor', 'Composer sentence should explain stale actor selection instead of showing player fallback');
   assertNotContains(sentenceHtml, 'Player', 'Composer sentence should not present the player as primary when explicit actor selection is stale');
 
-  const resolved = App.resolveExplorationTargetAction('flirt', 'tease', 'panel-tray');
+  const resolved = App.resolveExplorationTargetAction('flirt', 'tease', 'composer-tray');
 
   assertEqual(resolved, false, 'Marked target action should reject stale selected actors');
   assertEqual(target.CPle, 0, 'Stale selected actor should not fall back to the player and mutate the target');
@@ -8329,7 +8333,7 @@ test('Single-target exploration wrappers return resolver outcomes', () => {
   assertEqual(creatureTarget.CPle, creaturePleAfterValidActor, 'Stale actor wrapper should not mutate the target through player fallback');
 });
 
-test('Panel tray and intent menu use one adventure interaction dispatcher', () => {
+test('Composer tray and intent menu use one adventure interaction dispatcher', () => {
   const setup = () => {
     const { App } = loadAppForCombat(() => 0);
     const player = makeUnit('You', { id: 'player-1', CPle: 0, MPle: 100, wis: 1 });
@@ -8341,10 +8345,16 @@ test('Panel tray and intent menu use one adventure interaction dispatcher', () =
   };
   const tray = setup();
   tray.App.toggleExplorationTarget('party', 'player-1');
-  assertEqual(tray.App.resolveExplorationTargetAction('fuck', 'seduce', 'panel-tray'), true, 'Tray route should resolve the selected actor against the selected target');
-  assert(tray.player.CPle > 0, 'Tray route should affect the selected party target');
-  assertEqual(tray.App.lastIntentCommand.actorIds.join(','), 'goat-1', 'Tray route should record the selected actor');
-  assertEqual(tray.App.lastIntentCommand.targetIds.join(','), 'player-1', 'Tray route should record the selected target');
+  assertEqual(tray.App.resolveExplorationTargetAction('fuck', 'seduce', 'composer-tray'), true, 'Composer tray route should resolve the selected actor against the selected target');
+  assert(tray.player.CPle > 0, 'Composer tray route should affect the selected party target');
+  assertEqual(tray.App.lastIntentCommand.source, 'composer-tray', 'Composer tray route should record the composer command source');
+  assertEqual(tray.App.lastIntentCommand.actorIds.join(','), 'goat-1', 'Composer tray route should record the selected actor');
+  assertEqual(tray.App.lastIntentCommand.targetIds.join(','), 'player-1', 'Composer tray route should record the selected target');
+
+  const legacyTray = setup();
+  legacyTray.App.toggleExplorationTarget('party', 'player-1');
+  assertEqual(legacyTray.App.resolveExplorationTargetAction('fuck', 'seduce', 'panel-tray'), true, 'Legacy panel-tray source should remain a valid composer alias');
+  assertEqual(legacyTray.App.lastIntentCommand.source, 'composer-tray', 'Legacy panel-tray source should normalize to composer-tray metadata');
 
   const menu = setup();
   assertEqual(menu.App.selectIntent('party', 0, 'fuck', 'sheet', 'seduce'), true, 'Intent menu route should resolve through the same dispatcher');
@@ -8362,7 +8372,7 @@ test('Resisted single-target panel interaction does not emit bogus multi-target 
   App.party = [player, actor];
   App.explorationActorIds = ['goat-1'];
   App.toggleExplorationTarget('party', 'player-1');
-  const result = App.resolveExplorationTargetAction('fuck', 'seduce', 'panel-tray');
+  const result = App.resolveExplorationTargetAction('fuck', 'seduce', 'composer-tray');
   assertEqual(result, false, 'Resisted single-target action should report no effect');
   assertEqual(player.CPle, 0, 'Resisted single-target action should not mutate the target');
   assertContains(App.log[App.log.length - 1].text, 'You does not want to play.', 'Resisted action should keep the specific resistance feedback');
@@ -8428,7 +8438,7 @@ test('Panel wrappers use one command dispatcher for adventure interactions', () 
   assertEqual(App.outsideAction('flirt', 'party', 0), true, 'Filtered-index party compatibility wrapper should still resolve');
   assertEqual(App.outsideAction('flirt', 'creature', 0), true, 'Filtered-index creature compatibility wrapper should still resolve');
   App.toggleExplorationTarget('party', 'party-panel-dispatch');
-  assertEqual(App.resolveExplorationTargetAction('feed', 'heal', 'panel-tray'), true, 'Marked-target tray should resolve through shared panel dispatch');
+  assertEqual(App.resolveExplorationTargetAction('feed', 'heal', 'composer-tray'), true, 'Marked-target tray should resolve through shared panel dispatch');
   assertEqual(seen.length, 5, 'Each panel interaction route should hit the same dispatcher once');
   assertEqual(seen[0].source, 'party-wrapper', 'Party wrapper should keep source metadata');
   assertEqual(seen[0].targetType, 'party', 'Party wrapper should preserve target type');
@@ -8437,7 +8447,7 @@ test('Panel wrappers use one command dispatcher for adventure interactions', () 
   assertEqual(seen[2].source, 'party-wrapper', 'Filtered-index party compatibility wrapper should delegate to the canonical party wrapper');
   assertEqual(seen[3].source, 'creature-wrapper', 'Filtered-index creature compatibility wrapper should delegate to the canonical creature wrapper');
   assertNotContains(seen.map(entry => entry.source).join(','), 'legacy-wrapper', 'Filtered-index compatibility wrappers should not emit a legacy command source');
-  assertEqual(seen[4].source, 'panel-tray', 'Marked target tray should keep source metadata');
+  assertEqual(seen[4].source, 'composer-tray', 'Marked target tray should keep source metadata');
   assertEqual(seen[4].targetType, 'marked', 'Marked target tray should preserve marked target type');
 });
 
@@ -9245,7 +9255,7 @@ test('Recruitment is gated by pleasure and willingness score', () => {
   assertNotContains(html, "selectIntent('creature','reluctant-1','recruit','panel-card')", 'Low-pleasure friendly should not show recruitment');
   assertNotContains(html, "selectIntent('creature','willing-1','recruit','panel-card')", 'High-pleasure willing friendly should not duplicate recruitment on the card');
   App.toggleExplorationTarget('creature', 'willing-1');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','willing-1','recruit','panel-tray')", 'High-pleasure willing friendly should show recruitment through the composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','willing-1','recruit','composer-tray')", 'High-pleasure willing friendly should show recruitment through the composer');
   App.clearExplorationTargets();
   App.recruitCreatureById('reluctant-1');
   assert(!App.party.includes(reluctant), 'Low-score friendly should not join');
@@ -10986,7 +10996,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, 'data-command-intent="inspect"', 'Mobile target action tray should mark contextual utility intents with stable action ids');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="inspect" data-command-grammar="actor-target-intent"', 'Mobile target action tray should identify the shared command grammar on contextual utility intents');
-  assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
+  assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','composer-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Mobile target action tray clear should identify exploration mode');
   assertContains(trayHtml, 'data-command-control="clear-targets"', 'Mobile target action tray should expose Clear as the composer exit control');
   assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
@@ -12672,7 +12682,7 @@ test('Quest system exposes quest giver actions and quest log', () => {
   assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should not duplicate composer-owned quest preview');
   App.toggleExplorationTarget('creature', 'guide-1');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Accept Quest', 'Marked quest giver composer should expose accept action');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest giver composer should preview through shared intent selection before accepting');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','guide-1','quest','composer-tray')", 'Marked quest giver composer should preview through shared intent selection before accepting');
   App.previewQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 0, 'Quest preview should not immediately accept the quest');
   assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest preview should show the quest title before acceptance in the creature panel');
@@ -13053,7 +13063,7 @@ test('Merchant cards expose trade through the marked-target composer', () => {
   assertContains(elements.get('enemies-content').innerHTML, "toggleExplorationTarget('creature','trader-1')", 'Merchant card should expose target marking');
   assertNotContains(elements.get('enemies-content').innerHTML, "'trade','panel-card'", 'Merchant card should not duplicate composer-owned trade actions');
   App.toggleExplorationTarget('creature', 'trader-1');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "'trade','panel-tray'", 'Marked merchant should expose trade through the shared composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "'trade','composer-tray'", 'Marked merchant should expose trade through the shared composer');
 });
 
 test('Merchant buy and sell update gold inventory and stock', () => {
@@ -13276,7 +13286,7 @@ test('Structure encounters can place authored merchants with trade actions', () 
   assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed merchant card should not duplicate trade directly on the card');
   App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', merchant));
   assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature'", 'Marked merchant should expose trade through the shared composer');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "'trade','panel-tray'", 'Marked merchant should expose trade action through the shared composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "'trade','composer-tray'", 'Marked merchant should expose trade action through the shared composer');
   assertEqual(tile.structureSpawned, true, 'Structure spawn should be marked complete after merchant placement');
 });
 
@@ -13299,7 +13309,7 @@ test('Structure encounters can place authored quest givers', () => {
   assertNotContains(elements.get('enemies-content').innerHTML, "'quest','panel-card'", 'Placed quest giver card should not duplicate composer-owned quest actions');
   App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', giver));
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Accept Quest', 'Marked quest giver should expose quest action through the shared composer');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "'quest','panel-tray'", 'Marked quest giver should dispatch quest through the shared composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "'quest','composer-tray'", 'Marked quest giver should dispatch quest through the shared composer');
   App.acceptQuestFromUnit(giver.id);
   assertEqual(App.quests.length, 1, 'Accepted authored structure quest should enter quest log');
   assertEqual(App.quests[0].title, 'Shrine Offering', 'Accepted structure quest should preserve authored title');
@@ -13580,7 +13590,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(mobileCreatureChip, "showRadialIntentMenu('creature','fox-1','secondary-click')", 'Mobile creature chip should not expose a secondary-click primary-action popup');
   assertNotContains(mobilePartyChip, '| 80/100', 'Mobile chip should avoid old dense numeric vital text');
   App.toggleExplorationTarget('creature', 'fox-1');
-  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','fox-1','inspect','panel-tray')", 'Marked creature composer should expose inspect through shared intent selection');
+  assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','fox-1','inspect','composer-tray')", 'Marked creature composer should expose inspect through shared intent selection');
 });
 
 test('Unit card headers keep long names separate from role metadata', () => {
@@ -15475,9 +15485,9 @@ test('Radial intent menu stays suppressed for composer-owned target actions', ()
   assertNotContains(body.innerHTML, 'intent-menu-radial', 'Suppressed corpse radial menu should not render duplicate utility actions');
   assertNotContains(body.innerHTML, "App.selectIntent('creature','corpse-radial','loot','radial')", 'Suppressed corpse radial menu should not duplicate Loot controls');
   App.toggleExplorationTarget('creature', 'corpse-radial');
-  assertContains(App._renderExplorationTargetActions('mobile-target'), "App.selectIntent('creature','corpse-radial','loot','panel-tray')", 'Marked corpse should expose Loot through the composer tray');
-  App.selectIntent('creature', 'corpse-radial', 'loot', 'panel-tray');
-  assertEqual(App.lastIntentCommand.source, 'panel-tray', 'Composer corpse utility should record the composer command source');
+  assertContains(App._renderExplorationTargetActions('mobile-target'), "App.selectIntent('creature','corpse-radial','loot','composer-tray')", 'Marked corpse should expose Loot through the composer tray');
+  App.selectIntent('creature', 'corpse-radial', 'loot', 'composer-tray');
+  assertEqual(App.lastIntentCommand.source, 'composer-tray', 'Composer corpse utility should record the composer command source');
   assertEqual(App.lastIntentCommand.action, 'loot', 'Composer corpse utility should preserve selected utility action');
   assertEqual(remains.looted, true, 'Composer corpse utility should reuse existing contextual dispatch');
 });
@@ -15509,12 +15519,12 @@ test('Mobile creature long-press exposes quest and trade through marked-target t
   App.showMobileCreatureContext('guide-1');
   assertEqual(App.explorationTargetIds.includes('creature:guide-1'), true, 'Quest creature long-press should still only mark the target');
   let trayHtml = App._renderExplorationTargetActions('mobile-target');
-  assertContains(trayHtml, "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest creature tray should expose quest preview through shared intent selection');
+  assertContains(trayHtml, "selectIntent('creature','guide-1','quest','composer-tray')", 'Marked quest creature tray should expose quest preview through shared intent selection');
   App.clearExplorationTargets();
   App.showMobileCreatureContext('merchant-1');
   assertEqual(App.explorationTargetIds.includes('creature:merchant-1'), true, 'Merchant long-press should still only mark the target');
   trayHtml = App._renderExplorationTargetActions('mobile-target');
-  assertContains(trayHtml, "selectIntent('creature','merchant-1','trade','panel-tray')", 'Marked merchant tray should expose trade through shared intent selection');
+  assertContains(trayHtml, "selectIntent('creature','merchant-1','trade','composer-tray')", 'Marked merchant tray should expose trade through shared intent selection');
   const guideHtml = App.renderMobileUnitChip(App.creatures[0], 0, 'creature');
   const merchantHtml = App.renderMobileUnitChip(App.creatures[1], 1, 'creature');
   assertNotContains(guideHtml, "selectIntent('creature','guide-1','quest','mobile-chip')", 'Quest action should not be duplicated on the creature chip');

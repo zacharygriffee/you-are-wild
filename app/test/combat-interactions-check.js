@@ -696,7 +696,7 @@ async function runContextualCardIntentSourceFlow(page) {
   const desktopMark = page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
   await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop creature card Mark should render as the card-level target control');
   await desktopMark.click();
-  const desktopInspect = page.locator(`#desktop-context-belt button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
+  const desktopInspect = page.locator(`#desktop-context-belt button[onclick*="selectIntent('creature','friendly-1','inspect','composer-tray')"]`).first();
   await assert.doesNotReject(() => desktopInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop marked-target composer Inspect should render through shared intent selection');
   await desktopInspect.click();
 
@@ -709,7 +709,7 @@ async function runContextualCardIntentSourceFlow(page) {
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.action, 'inspect', 'Desktop marked-target tray Inspect should record the selected action');
-  assert.strictEqual(state.source, 'panel-tray', 'Desktop marked-target tray Inspect should preserve panel-tray source metadata');
+  assert.strictEqual(state.source, 'composer-tray', 'Desktop marked-target tray Inspect should preserve composer-tray source metadata');
   assert.strictEqual(state.mode, 'adventure', 'Desktop creature card Inspect should normalize as an adventure command');
   assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Desktop creature card Inspect should record the clicked creature target');
   assert(state.lastLog.includes('Friendly [human]'), 'Desktop creature card Inspect should still use the normal inspect resolution');
@@ -720,7 +720,7 @@ async function runContextualCardIntentSourceFlow(page) {
   const mobileMark = page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
   await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile creature chip Mark should render as the chip-level target control');
   await mobileMark.click();
-  const mobileInspect = page.locator(`#mobile-target-action-tray button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
+  const mobileInspect = page.locator(`#mobile-target-action-tray button[onclick*="selectIntent('creature','friendly-1','inspect','composer-tray')"]`).first();
   await assert.doesNotReject(() => mobileInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray Inspect should render through shared intent selection');
   await mobileInspect.click();
 
@@ -733,7 +733,7 @@ async function runContextualCardIntentSourceFlow(page) {
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.action, 'inspect', 'Mobile marked-target tray Inspect should record the selected action');
-  assert.strictEqual(state.source, 'panel-tray', 'Mobile marked-target tray Inspect should preserve panel-tray source metadata');
+  assert.strictEqual(state.source, 'composer-tray', 'Mobile marked-target tray Inspect should preserve composer-tray source metadata');
   assert.strictEqual(state.mode, 'adventure', 'Mobile creature chip Inspect should normalize as an adventure command');
   assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Mobile creature chip Inspect should record the tapped creature target');
   assert(state.lastLog.includes('Friendly [human]'), 'Mobile creature chip Inspect should still use the normal inspect resolution');
@@ -933,7 +933,7 @@ async function runMobileSelectionAndCombatFlow(page) {
       targets: [...App.explorationTargetIds],
       allySelectedActor: allyChip?.classList.contains('selected-actor') || false,
       creatureSelectedTarget: creatureChip?.classList.contains('selected-target') || false,
-      hasPanelSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','panel-tray')") || false,
+      hasComposerSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','composer-tray')") || false,
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
@@ -942,10 +942,10 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Mobile Mark should select the creature as an adventure target');
   assert.strictEqual(state.allySelectedActor, true, 'Mobile Act-selected compact actor chip should expose actor state');
   assert.strictEqual(state.creatureSelectedTarget, true, 'Mobile marked creature chip should expose target state');
-  assert.strictEqual(state.hasPanelSource, true, 'Mobile tray should dispatch through the shared panel-tray command source');
+  assert.strictEqual(state.hasComposerSource, true, 'Mobile tray should dispatch through the shared composer-tray command source');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls while mobile target tray is active');
 
-  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
@@ -953,9 +953,9 @@ async function runMobileSelectionAndCombatFlow(page) {
     trayVisible: Boolean((document.querySelector('#mobile-target-action-tray')?.innerHTML || '').trim()),
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
-  assert(state.targetPle > 0, 'Mobile panel-tray action should resolve against the marked creature');
+  assert(state.targetPle > 0, 'Mobile composer-tray action should resolve against the marked creature');
   assert.strictEqual(state.targetsRemaining, 0, 'Mobile marked-target action should clear target marks');
-  assert.strictEqual(state.commandSource, 'panel-tray', 'Mobile marked-target action should preserve shared command source metadata');
+  assert.strictEqual(state.commandSource, 'composer-tray', 'Mobile marked-target action should preserve shared command source metadata');
   assert.strictEqual(state.trayVisible, false, 'Mobile marked-target tray should disappear after resolution');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile resolution');
 

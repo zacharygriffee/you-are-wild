@@ -20,12 +20,14 @@ const YAW_MARKED_TARGET_ACTIONS = {
             : null;
         const singlePanelTarget = singleCreatureTarget || singleCorpseTarget;
         const targetRef = singlePanelTarget ? app._explorationTargetUnitId('creature', singlePanelTarget) : '';
-        const panelIntent = action => `App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')`;
+        const panelIntent = action => `App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')`;
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
         const buttons = singleCorpseTarget ? [] : keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
             const intent = app._escapeHtml(key);
-            const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' || source === 'mobile-target' ? 'panel-tray' : 'target-bar');
+            const actionSource = source === 'desktop'
+                ? 'desktop-target'
+                : (source === 'composer-tray' || source === 'panel-tray' || source === 'mobile-target' ? 'composer-tray' : 'target-bar');
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const handler = defaultSubAction
@@ -72,7 +74,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
         const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
-        return source === 'panel-tray'
+        return source === 'composer-tray' || source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;
     },

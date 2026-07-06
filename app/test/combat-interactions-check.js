@@ -717,7 +717,7 @@ async function runContextualCardIntentSourceFlow(page) {
   const mobileMark = page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
   await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile creature chip Mark should render as the chip-level target control');
   await mobileMark.click();
-  const mobileInspect = page.locator(`#mobile-party-strip .panel-interaction-tray button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
+  const mobileInspect = page.locator(`#mobile-target-action-tray button[onclick*="selectIntent('creature','friendly-1','inspect','panel-tray')"]`).first();
   await assert.doesNotReject(() => mobileInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray Inspect should render through shared intent selection');
   await mobileInspect.click();
 
@@ -913,18 +913,18 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.menuVisible, false, 'Mobile living creature long-press should not open a duplicate action menu');
   assert.strictEqual(state.hasRadialEntry, false, 'Mobile living creature chip should not expose a secondary-click primary-action popup');
 
-  await page.locator(`#mobile-party-strip button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
   await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
-  const mobileTray = page.locator('#mobile-party-strip .panel-interaction-tray').first();
-  await assert.doesNotReject(() => mobileTray.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray should render above party chips');
+  const mobileTray = page.locator('#mobile-target-action-tray .target-action-row').first();
+  await assert.doesNotReject(() => mobileTray.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray should render in the visible exploration control belt');
+  await page.locator(`#mobile-actor-belt button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
 
   state = await page.evaluate(() => {
-    const trayEl = document.querySelector('#mobile-party-strip .panel-interaction-tray');
-    const partyStrip = document.querySelector('#mobile-party-strip');
-    const allyChip = Array.from(document.querySelectorAll('#mobile-party-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Ally'));
+    const trayEl = document.querySelector('#mobile-target-action-tray');
+    const partyStripTray = document.querySelector('#mobile-party-strip .panel-interaction-tray');
+    const allyChip = Array.from(document.querySelectorAll('#mobile-actor-belt .mobile-unit-chip')).find(chip => chip.textContent.includes('Ally'));
     const creatureChip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
     return {
-      isFirstChild: partyStrip?.firstElementChild === trayEl,
+      hiddenPartyTrayVisible: Boolean(partyStripTray),
       actors: App._getExplorationActors().map(unit => unit.id || unit.name),
       targets: [...App.explorationTargetIds],
       allySelectedActor: allyChip?.classList.contains('selected-actor') || false,
@@ -933,7 +933,7 @@ async function runMobileSelectionAndCombatFlow(page) {
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert.strictEqual(state.isFirstChild, true, 'Mobile marked-target tray should sit above party chips');
+  assert.strictEqual(state.hiddenPartyTrayVisible, false, 'Mobile marked-target tray should not live inside the hidden party strip');
   assert.deepStrictEqual(state.actors, ['ally-1'], 'Mobile Act should select the ally as the adventure actor');
   assert.deepStrictEqual(state.targets, ['creature:friendly-1'], 'Mobile Mark should select the creature as an adventure target');
   assert.strictEqual(state.allySelectedActor, true, 'Mobile Act-selected chip should expose actor state');
@@ -941,12 +941,12 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.hasPanelSource, true, 'Mobile tray should dispatch through the shared panel-tray command source');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls while mobile target tray is active');
 
-  await page.locator(`#mobile-party-strip .panel-interaction-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
+  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','panel-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
     commandSource: App.lastIntentCommand?.source || '',
-    trayVisible: Boolean(document.querySelector('#mobile-party-strip .panel-interaction-tray')),
+    trayVisible: Boolean((document.querySelector('#mobile-target-action-tray')?.innerHTML || '').trim()),
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.targetPle > 0, 'Mobile panel-tray action should resolve against the marked creature');

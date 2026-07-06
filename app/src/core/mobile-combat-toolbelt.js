@@ -37,6 +37,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const active = Boolean(app.combatState?.active);
         if (surface?.classList) surface.classList.toggle('combat-active', active);
         document.documentElement?.classList?.toggle('mobile-combat-active', active);
+        app.renderMobileExplorationControls?.();
         if (!belt) return '';
         if (!active) {
             belt.className = 'mobile-combat-toolbelt';

@@ -710,6 +710,7 @@
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,
             explorationTargetIds: [],
+            mobileMovePadOpen: false,
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -3751,6 +3752,13 @@
             },
             renderMobilePartyStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.party(this);
+            },
+            renderMobileExplorationControls() {
+                return YAW_MOBILE_UNIT_STRIPS.explorationControls(this);
+            },
+            toggleMobileMovePad() {
+                this.mobileMovePadOpen = !this.mobileMovePadOpen;
+                this.renderMobileExplorationControls();
             },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);

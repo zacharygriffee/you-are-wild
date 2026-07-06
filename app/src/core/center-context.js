@@ -150,6 +150,7 @@ const YAW_CENTER_CONTEXT = {
         }
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) mobileExplore.innerHTML = this.renderActions(app, false);
+        app.renderMobileExplorationControls?.();
     },
 
     showExplorationActions(app) {

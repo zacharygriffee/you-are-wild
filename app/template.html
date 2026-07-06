@@ -2620,15 +2620,93 @@
                 border-color: rgba(255, 107, 157, 0.62);
             }
 
-            .mobile-move-pad {
+            .mobile-control-belt {
+                order: 3;
                 display: grid;
+                gap: 8px;
+                padding: 8px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: rgba(26, 26, 46, 0.94);
+                position: sticky;
+                bottom: 0;
+                z-index: 90;
+                align-self: stretch;
+            }
+
+            .mobile-control-row {
+                display: flex;
+                gap: 6px;
+                align-items: flex-start;
+                min-width: 0;
+            }
+
+            .mobile-control-row > .nav-btn {
+                flex: 0 0 auto;
+            }
+
+            .mobile-target-action-tray {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            .mobile-target-action-tray:empty,
+            .mobile-actor-belt:empty {
+                display: none;
+            }
+
+            .mobile-target-action-tray .action-legend {
+                margin-bottom: 6px;
+            }
+
+            .mobile-target-action-tray .target-action-row {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+
+            .mobile-target-action-tray .target-action-row::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-target-action-tray .action-btn {
+                flex: 0 0 auto;
+                min-width: 64px;
+                padding: 7px 9px;
+                font-size: 11px;
+            }
+
+            .mobile-actor-belt {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                overscroll-behavior-x: contain;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+
+            .mobile-actor-belt::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-actor-belt .mobile-unit-chip {
+                flex: 0 0 clamp(132px, 42vw, 172px);
+            }
+
+            .mobile-move-pad {
+                display: none;
                 grid-template-columns: repeat(3, minmax(38px, 48px));
                 grid-auto-rows: 34px;
                 gap: 4px;
                 justify-content: center;
-                margin-top: 8px;
-                padding-top: 8px;
-                border-top: 1px solid var(--border-subtle);
+            }
+
+            .mobile-move-pad.expanded {
+                display: grid;
             }
 
             .mobile-move-pad .nav-btn {
@@ -3152,7 +3230,7 @@
             }
 
             .mobile-panel-dock {
-                order: 3;
+                order: 4;
                 position: static;
                 align-self: center;
                 display: flex;
@@ -3675,6 +3753,12 @@
 	                                    <!-- Populated by App.renderMap() -->
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
+	                            </div>
+	                            <div class="mobile-control-belt" id="mobile-control-belt">
+	                                <div class="mobile-control-row">
+	                                    <button class="nav-btn" id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()">↕ Move</button>
+	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>
+	                                </div>
 	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad">
 	                                    <button class="nav-btn" title="Northwest" aria-label="Move northwest" onclick="App.move(-1,-1)">↖</button>
 	                                    <button class="nav-btn" title="North" aria-label="Move north" onclick="App.move(0,-1)">↑</button>
@@ -3686,6 +3770,7 @@
 	                                    <button class="nav-btn" title="South" aria-label="Move south" onclick="App.move(0,1)">↓</button>
 	                                    <button class="nav-btn" title="Southeast" aria-label="Move southeast" onclick="App.move(1,1)">↘</button>
 	                                </div>
+	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls"></div>
 	                            </div>
 	                            <div class="mobile-unit-strips">
 	                                <div class="mobile-strip-card" id="mobile-party-card">

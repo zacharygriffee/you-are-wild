@@ -27,7 +27,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
         const buttons = keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
-            const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' ? 'panel-tray' : 'target-bar');
+            const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' || source === 'mobile-target' ? 'panel-tray' : 'target-bar');
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const handler = defaultSubAction

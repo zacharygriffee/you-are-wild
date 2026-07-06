@@ -78,7 +78,7 @@ const YAW_CENTER_CONTEXT = {
     },
 
     renderPresence(app) {
-        const slots = ['center-presence', 'mobile-center-presence']
+        const slots = ['center-presence']
             .map(id => document.getElementById(id))
             .filter(Boolean);
         if (slots.length === 0) return '';
@@ -98,7 +98,7 @@ const YAW_CENTER_CONTEXT = {
     },
 
     clearPresence() {
-        ['center-presence', 'mobile-center-presence'].forEach(id => {
+        ['center-presence'].forEach(id => {
             const slot = document.getElementById(id);
             if (slot) slot.innerHTML = '';
         });

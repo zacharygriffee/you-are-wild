@@ -42,6 +42,10 @@ function makeUnitScript() {
     ];
     App.combatState.active = false;
     App.location = { x: 0, y: 0 };
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', items: [{ id: 'test-item', name: 'Test Item' }] }]]);
+    App.tileDeltas = new Map();
+    App.exploredTiles = new Set(['0,0']);
+    App.inventory = [];
     App.renderParty();
     App.renderCreatures();
     App.renderExplorationActions();
@@ -145,6 +149,67 @@ async function checkViewport(browser, name, width, height) {
       clientWidth: document.documentElement.clientWidth
     }));
     assert(largeFontShell.scrollWidth <= largeFontShell.clientWidth + 1, `${name}: large font/high contrast mobile shell should not horizontally overflow`);
+
+    const mobileControls = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const belt = document.getElementById('mobile-control-belt');
+      const sheet = document.querySelector('.mobile-scene-sheet');
+      const actions = document.getElementById('mobile-explore-actions');
+      const dockRect = dock.getBoundingClientRect();
+      const beltRect = belt.getBoundingClientRect();
+      return {
+        dockPosition: getComputedStyle(dock).position,
+        dockTop: dockRect.top,
+        dockBottom: dockRect.bottom,
+        dockLeft: dockRect.left,
+        dockRight: dockRect.right,
+        beltBottom: beltRect.bottom,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        locationActionsText: actions?.innerText || '',
+        locationActionsInSheet: Boolean(sheet?.querySelector('#mobile-explore-actions')),
+        sheetActionButtons: sheet ? sheet.querySelectorAll('.action-btn').length : 0,
+        moveExpanded: document.getElementById('mobile-move-pad')?.classList.contains('expanded') || false,
+        controlBeltHasLocationActions: Boolean(belt?.querySelector('#mobile-explore-actions'))
+      };
+    });
+    assert.strictEqual(mobileControls.dockPosition, 'fixed', `${name}: mobile dock should be fixed to the viewport`);
+    assert(mobileControls.dockTop >= 0, `${name}: mobile dock should not clip above viewport`);
+    assert(mobileControls.dockBottom <= mobileControls.viewportHeight + 1, `${name}: mobile dock should be visible without scrolling`);
+    assert(mobileControls.dockLeft >= -1 && mobileControls.dockRight <= mobileControls.viewportWidth + 1, `${name}: mobile dock should stay inside viewport horizontally`);
+    assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
+    assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
+    assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
+    assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
+    assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);
+
+    await page.evaluate(() => {
+      App.toggleMobileMovePad();
+      App.toggleExplorationTarget('creature', 'creature-1');
+    });
+    await page.waitForTimeout(50);
+    const markedControls = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const tray = document.getElementById('mobile-target-action-tray');
+      const movePad = document.getElementById('mobile-move-pad');
+      const sentence = document.getElementById('mobile-selection-sentence');
+      const dockRect = dock.getBoundingClientRect();
+      const trayRect = tray.getBoundingClientRect();
+      return {
+        trayText: tray?.innerText || '',
+        sentenceText: sentence?.innerText || '',
+        trayBottom: trayRect.bottom,
+        dockTop: dockRect.top,
+        moveExpanded: movePad?.classList.contains('expanded') || false,
+        moveAria: document.getElementById('mobile-move-toggle')?.getAttribute('aria-expanded') || ''
+      };
+    });
+    assert(markedControls.trayText.includes('Fight') && markedControls.trayText.includes('Clear'), `${name}: marked target tray should be visible above the dock`);
+    assert(markedControls.sentenceText.toLowerCase().includes('targets'), `${name}: mobile actor target sentence should move into the control belt when target state exists`);
+    assert(markedControls.trayBottom <= markedControls.dockTop + 1, `${name}: marked target tray should stay above the fixed dock`);
+    assert.strictEqual(markedControls.moveExpanded, false, `${name}: move pad should close when target tray opens`);
+    assert.strictEqual(markedControls.moveAria, 'false', `${name}: move toggle aria state should reflect collapsed target-tray mode`);
+    await page.evaluate(() => App.clearExplorationTargets());
 
     const readContextMenuBounds = async label => page.evaluate(menuLabel => {
       const menu = document.getElementById('mobile-context-menu');

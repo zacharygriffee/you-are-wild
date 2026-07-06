@@ -52,8 +52,8 @@ const YAW_TILE_EVENT_FEED = {
         return event;
     },
 
-    html(app) {
-        const events = Array.isArray(app.tileEvents) ? app.tileEvents.slice(-6) : [];
+    html(app, { limit = 6, compact = false } = {}) {
+        const events = Array.isArray(app.tileEvents) ? app.tileEvents.slice(-limit) : [];
         if (!events.length) return '';
         const title = app._escapeHtml(app._label('ui.tileEvents.title', 'Here now'));
         const items = events.map(event => {
@@ -69,16 +69,19 @@ const YAW_TILE_EVENT_FEED = {
                 time +
             `</div>`;
         }).join('');
-        return `<section class="tile-event-feed" aria-label="${title}"><div class="tile-event-title">${title}</div><div class="tile-event-list" role="list">${items}</div></section>`;
+        const titleHtml = compact ? '' : `<div class="tile-event-title">${title}</div>`;
+        const className = compact ? 'tile-event-feed compact' : 'tile-event-feed';
+        return `<section class="${className}" aria-label="${title}">${titleHtml}<div class="tile-event-list" role="list">${items}</div></section>`;
     },
 
     render(app) {
-        const html = this.html(app);
-        ['tile-event-feed', 'mobile-tile-event-feed'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = html;
-        });
-        return html;
+        const desktopHtml = this.html(app);
+        const mobileHtml = this.html(app, { limit: 1, compact: true });
+        const desktop = document.getElementById('tile-event-feed');
+        const mobile = document.getElementById('mobile-tile-event-feed');
+        if (desktop) desktop.innerHTML = desktopHtml;
+        if (mobile) mobile.innerHTML = mobileHtml;
+        return desktopHtml;
     }
 };
 

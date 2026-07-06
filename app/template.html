@@ -2365,6 +2365,7 @@
         @media (max-width: 1024px) {
             :root {
                 --mobile-actions-height: 0px;
+                --mobile-dock-height: 58px;
                 --mobile-scene-height: clamp(164px, 24dvh, 214px);
             }
 
@@ -2491,6 +2492,7 @@
             .panel-main .panel-content {
                 min-height: 0;
                 padding: 8px;
+                padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 14px);
                 overflow: auto;
                 -webkit-overflow-scrolling: touch;
             }
@@ -2511,7 +2513,7 @@
 	                gap: 10px;
 	                min-height: 100%;
 	                overflow: visible;
-	                padding-bottom: 10px;
+	                padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
 	            }
 
             .mobile-map-card,
@@ -2629,9 +2631,33 @@
                 border-radius: var(--radius-md);
                 background: rgba(26, 26, 46, 0.94);
                 position: sticky;
-                bottom: 0;
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
                 z-index: 90;
                 align-self: stretch;
+            }
+
+            .mobile-location-actions {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                padding-bottom: 2px;
+                scrollbar-width: none;
+            }
+
+            .mobile-location-actions::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-location-actions:empty {
+                display: none;
+            }
+
+            .mobile-location-actions .action-btn {
+                flex: 0 0 auto;
+                min-width: 64px;
+                padding: 7px 9px;
+                font-size: 11px;
             }
 
             .mobile-control-row {
@@ -2651,7 +2677,8 @@
             }
 
             .mobile-target-action-tray:empty,
-            .mobile-actor-belt:empty {
+            .mobile-actor-belt:empty,
+            .mobile-selection-sentence:empty {
                 display: none;
             }
 
@@ -2770,10 +2797,6 @@
                 margin: 0;
                 justify-content: flex-start;
                 background: rgba(17, 31, 52, 0.52);
-            }
-
-            .mobile-play-surface.combat-active .mobile-scene-sheet .mobile-selection-sentence {
-                display: none;
             }
 
             .mobile-combat-intents {
@@ -3078,22 +3101,18 @@
                 line-height: 1.45;
             }
 
-            .mobile-scene-sheet .center-presence {
+            .mobile-scene-sheet .tile-event-feed.compact {
                 margin-top: 8px;
-                padding: 7px;
+                padding: 0;
+                border: 0;
+                background: transparent;
+                max-height: none;
+                overflow: visible;
             }
 
-            .mobile-scene-sheet .center-presence-list {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                overscroll-behavior-inline: contain;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 2px;
-            }
-
-            .mobile-scene-sheet .center-presence-chip {
-                flex: 0 0 auto;
-                max-width: min(58vw, 184px);
+            .mobile-scene-sheet .tile-event-feed.compact .tile-event-item {
+                padding: 0;
+                background: transparent;
             }
 
             .mobile-scene-description .party-stats-view {
@@ -3151,24 +3170,6 @@
 
             .mobile-activity-log[open] .mobile-log-summary {
                 display: none;
-            }
-
-            .mobile-scene-actions {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-                margin-top: 10px;
-            }
-
-            .mobile-scene-actions:empty {
-                display: none;
-            }
-
-            .mobile-scene-actions .action-btn {
-                flex: 1 1 78px;
-                min-width: 0;
-                padding: 9px 8px;
-                font-size: 12px;
             }
 
         .mobile-log-list {
@@ -3231,8 +3232,11 @@
 
             .mobile-panel-dock {
                 order: 4;
-                position: static;
-                align-self: center;
+                position: fixed;
+                left: 50%;
+                right: auto;
+                bottom: calc(env(safe-area-inset-bottom) + 8px);
+                transform: translateX(-50%);
                 display: flex;
                 gap: 6px;
                 padding: 6px;
@@ -3755,6 +3759,8 @@
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt">
+	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
+	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
 	                                <div class="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()">↕ Move</button>
 	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>
@@ -3794,10 +3800,7 @@
 	                                <div class="mobile-scene-description" id="mobile-scene-description" data-i18n="ui.scene.wildernessIntro">
 	                                    You find yourself in an untamed land where predators roam and only the strong survive.
 	                                </div>
-	                                <div class="center-presence-slot" id="mobile-center-presence" aria-live="polite"></div>
-	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
 	                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" aria-live="polite"></div>
-	                                <div id="mobile-explore-actions" class="mobile-scene-actions action-bar"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log">
 	                                    <summary class="mobile-activity-log-summary" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
 	                                        <span class="mobile-activity-log-title">📜 <span data-i18n="ui.activityLog">Activity Log</span></span>

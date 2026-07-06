@@ -3832,7 +3832,9 @@ test('Tile event feed is ephemeral scene presentation', () => {
   assertContains(appContent, '_addTileEvent(text', 'Tile event feed should expose an append helper');
   assertContains(tileEventFeedContent, 'normalizeMeta(app, type', 'Tile events should normalize semantic presentation metadata');
   assertContains(appContent, 'renderTileEvents()', 'Tile event feed should render into scene slots');
-  assertContains(tileEventFeedContent, "['tile-event-feed', 'mobile-tile-event-feed']", 'Tile events should mirror to desktop and mobile scene slots');
+  assertContains(tileEventFeedContent, "document.getElementById('tile-event-feed')", 'Tile events should render the full desktop feed');
+  assertContains(tileEventFeedContent, "document.getElementById('mobile-tile-event-feed')", 'Tile events should render the compact mobile feed');
+  assertContains(tileEventFeedContent, "this.html(app, { limit: 1, compact: true })", 'Mobile tile events should show only the latest compact event');
   assertContains(tileEventFeedContent, 'data-event-kind', 'Tile event entries should expose a safe semantic kind for presentation');
   assertContains(template, '.tile-event-actor', 'Tile event feed should style actor labels');
   assertContains(template, '.tile-event-intent', 'Tile event feed should style intent labels');
@@ -3851,13 +3853,13 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, 'id="center-presence"', 'desktop center presence slot missing');
-  assertContains(template, 'id="mobile-center-presence"', 'mobile center presence slot missing');
+  assertNotContains(template, 'id="mobile-center-presence"', 'mobile scene sheet should not duplicate the full here/presence block');
   assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
-  assertContains(template, '.mobile-scene-sheet .center-presence-list', 'mobile center presence should use a compact scrollable row');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
+  assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
   assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
@@ -3871,6 +3873,11 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
+  assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar"', 'mobile location actions should render in the control belt');
+  assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('id="mobile-move-toggle"'), 'Mobile location actions should sit above movement controls in the control belt');
+  assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('class="mobile-scene-sheet"'), 'Mobile location actions should not be buried below presentation content');
+  assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
+  assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
@@ -3883,6 +3890,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-control-belt {\n                order: 3;', 'mobile exploration controls should sit below the navigation map');
   assertContains(template, '.mobile-panel-dock {\n                order: 4;', 'mobile panel shortcuts should sit below the exploration control belt');
+  assertContains(template, 'position: fixed;\n                left: 50%;', 'mobile panel dock should stay anchored to the viewport');
+  assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'mobile panel dock should respect the safe-area inset');
+  assertContains(template, 'padding-bottom: calc(var(--mobile-dock-height)', 'mobile scroll content should reserve room for the fixed dock');
   assertContains(template, '.mobile-play-surface:not(.combat-active) #mobile-party-card', 'non-combat mobile context should not embed the party card above the activity log');
   assertContains(template, '.mobile-panel-close {\n            display: none;', 'mobile panel close buttons should not alter persistent desktop panels');
   assertContains(template, '.mobile-panel-close {\n                display: inline-flex;', 'mobile panel close buttons should be available in mobile drawers');
@@ -3901,7 +3911,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');
   assertNotContains(template, 'onclick="combatAction(\'fight\')"', 'legacy mobile action bar should not ship duplicate Fight controls');
   assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
-  assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet .mobile-selection-sentence', 'mobile combat should suppress the lower duplicate scene selection sentence');
+  assertContains(interactionStateContent, "mobile.innerHTML = hasTargets || hasExplicitActors ? html : ''", 'mobile selection sentence should appear only when exploration selection state exists');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
@@ -6556,7 +6566,6 @@ test('Center tile stays traversal and context only across interaction states', (
       el('scene-title').innerHTML || '',
       el('scene-description').innerHTML || '',
       el('center-presence').innerHTML || '',
-      el('mobile-center-presence').innerHTML || '',
       el('tile-event-feed').innerHTML || '',
       el('scene-actions').innerHTML || ''
     ].join('\n');
@@ -6587,7 +6596,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('center-presence').innerHTML, 'data-presence-ref="friendly-1"', 'Presence chips should expose stable creature focus refs');
   assertContains(el('center-presence').innerHTML, 'Ally', 'Exploration center presence should include party members');
   assertContains(el('center-presence').innerHTML, 'Friendly', 'Exploration center presence should include local creatures');
-  assertEqual(el('mobile-center-presence').innerHTML, el('center-presence').innerHTML, 'Mobile scene should mirror desktop center presence');
+  assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the detail panel path');
@@ -6629,7 +6638,6 @@ test('Center tile stays traversal and context only across interaction states', (
   App.showActorActions(player);
   assertCenterOnly('combat actor actions');
   assertEqual(el('center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the center tile');
-  assertEqual(el('mobile-center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the mobile scene');
   assertContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live on the party panel');
 
   App.selectTarget('fight');
@@ -9949,25 +9957,33 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
 });
 
 test('Mobile exploration uses visible control belt for movement target actions and actors', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-1' });
   const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
   App.player = player;
   App.party = [player, ally];
   App.creatures = [guide];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', items: [{ id: 'berry', name: 'Berry' }] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.inventory = [];
   App.combatState.active = false;
   App.mobileMovePadOpen = false;
 
   App.renderParty();
   App.renderCreatures();
+  App.renderExplorationActions();
   App.renderMobileExplorationControls();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should be collapsed by default');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Hidden exploration party card should not be the only marked-target action host');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile target action tray should be empty before a target is marked');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile actor belt should stay collapsed until selection state needs it');
+  assertEqual(document.getElementById('mobile-selection-sentence').innerHTML, '', 'Mobile selection sentence should stay hidden for implicit player state');
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Mobile move pad should expand from the Move control');
@@ -9978,6 +9994,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   const actorHtml = elements.get('mobile-actor-belt').innerHTML;
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should collapse when marked-target controls open');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state while target controls are active');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Targets', 'Mobile selection sentence should move into the control belt when a target is marked');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
@@ -9995,6 +10012,7 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   App.party = [player, ally];
   App.creatures = [guide];
   App.explorationActorIds = ['ally-1'];
+  App.explorationActorSelectionExplicit = true;
 
   App.renderSelectionSentence();
   assertContains(elements.get('selection-sentence').innerHTML, 'Actors', 'Desktop sentence should label selected actors');
@@ -10042,7 +10060,7 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertContains(html, 'Intent', 'Combat target picking should expose the selected intent');
   assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
   assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
-  assertEqual(elements.get('mobile-selection-sentence').innerHTML, html, 'Mobile combat sentence should mirror desktop sentence');
+  assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should leave the exploration control-belt sentence empty');
 });
 
 test('Combat creature target button localizes visible and accessible labels', () => {
@@ -13958,7 +13976,8 @@ test('Mobile map pinch changes zoom and applies transform', () => {
 
 test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should be present');
-  assertContains(template, 'position: static', 'Mobile panel dock should stay in normal flow below the map instead of covering it');
+  assertContains(template, 'position: fixed', 'Mobile panel dock should stay anchored to the viewport');
+  assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'Mobile panel dock should respect the safe-area inset');
   assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
   assertContains(template, "onclick=\"togglePanel('party')\"", 'Mobile panel dock should open the party panel by tap');

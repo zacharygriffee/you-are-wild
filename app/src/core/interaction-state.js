@@ -106,9 +106,13 @@ const YAW_INTERACTION_STATE = {
 
     renderSelectionSentence(app) {
         const html = this.sentenceHtml(app, this.selectionSentence(app));
-        for (const id of ['selection-sentence', 'mobile-selection-sentence']) {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = html;
+        const desktop = document.getElementById('selection-sentence');
+        if (desktop) desktop.innerHTML = html;
+        const mobile = document.getElementById('mobile-selection-sentence');
+        if (mobile) {
+            const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
+            const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
+            mobile.innerHTML = hasTargets || hasExplicitActors ? html : '';
         }
         return html;
     },

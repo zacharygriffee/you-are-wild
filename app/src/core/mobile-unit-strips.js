@@ -17,6 +17,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const living = app.creatures.filter(c => c.CPun > 0 && !app._isCorpse(c));
         const corpses = app.creatures.filter(c => app._isCorpse(c));
         const visible = [...living, ...corpses];
+        this.updateCreatureDockBadge(app, living);
         if (card) card.style.display = visible.length > 0 || app.combatState.active ? 'block' : 'none';
         strip.innerHTML = visible.length > 0
             ? visible.map(unit => app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')).join('')
@@ -103,14 +104,34 @@ const YAW_MOBILE_UNIT_STRIPS = {
         return (app.creatures || []).filter(unit => unit && (unit.CPun ?? 1) > 0 && !app._isCorpse(unit));
     },
 
+    updateCreatureDockBadge(app, living = this.livingCreatures(app)) {
+        const badge = document.getElementById('mobile-creature-dock-badge');
+        const button = document.getElementById('mobile-creatures-dock-btn');
+        const count = living.length;
+        const baseLabel = app.combatState?.active
+            ? app._label('ui.enemies', 'Enemies')
+            : app._label('ui.creatures', 'Creatures');
+        const title = count > 0
+            ? app._label('ui.creatureDock.count', '{label}: {count} here', { label: baseLabel, count })
+            : baseLabel;
+        if (button) {
+            button.setAttribute('title', title);
+            button.setAttribute('aria-label', title);
+        }
+        if (!badge) return;
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.hidden = count <= 0;
+    },
+
     creaturePresenceCue(app) {
         const cue = document.getElementById('mobile-creature-presence-cue');
+        const living = this.livingCreatures(app);
+        this.updateCreatureDockBadge(app, living);
         if (!cue) return;
         if (app.combatState?.active) {
             cue.innerHTML = '';
             return;
         }
-        const living = this.livingCreatures(app);
         if (!living.length) {
             cue.innerHTML = '';
             return;

@@ -2275,6 +2275,7 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'creatures(app)', 'Mobile unit strip helper should own creature strip rendering');
   assertContains(mobileUnitStripsContent, 'creaturePresenceCue(app)', 'Mobile unit strip helper should own the compact creature presence cue');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
+  assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
@@ -3883,6 +3884,8 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertNotContains(centerContextContent, "togglePanel('enemies')", 'shared context action helper should not own creature drawer shortcuts');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, "onclick=\"togglePanel('enemies')\"", 'mobile dock should expose creatures panel');
+  assertContains(template, 'id="mobile-creature-dock-badge"', 'mobile dock should expose a compact creature count badge');
+  assertContains(template, '.mobile-panel-dock-badge[hidden]', 'mobile creature dock badge should collapse when no creatures are present');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
   assertContains(template, 'onclick="App.showCharacterStats()"', 'Mobile panel dock should expose stats without the bottom exploration bar');
@@ -10227,6 +10230,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'focusMobileCreaturePresence()', 'Mobile creature cue should focus/open creature details on tap');
+  assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Mobile creature dock badge should be visible when living creatures are here');
+  assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Mobile creature dock badge should show the local living creature count');
+  assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), '1 here', 'Mobile creature dock button should expose the local creature count accessibly');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Hidden exploration party card should not be the only marked-target action host');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile target action tray should be empty before a target is marked');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile actor belt should stay collapsed until selection state needs it');
@@ -10278,6 +10284,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   App.exploredTiles = new Set(['12,2']);
   App.inventory = [];
   App.combatState.active = false;
+  App.creatures = [];
   App.mobileMovePadOpen = false;
   App.mobileActorBeltOpen = false;
   App.explorationActorIds = [];
@@ -10293,6 +10300,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Plain traversal should not reserve fixed control-belt space when no controls are visible');
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Plain traversal should not leave hidden location actions behind');
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Plain traversal without creatures should not leave an empty cue overlay');
+  assertEqual(elements.get('mobile-creature-dock-badge').hidden, true, 'Plain traversal without creatures should hide the mobile creature dock badge');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Plain traversal should not leave target controls behind');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
   assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');

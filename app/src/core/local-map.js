@@ -43,7 +43,7 @@ const YAW_LOCAL_MAP = {
             const jsRef = app._escapeJsString(ref);
             return `<button type="button" class="mobile-play-presence-dot ${tone}" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
-        const moreLabel = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
+        const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0
             ? `<button type="button" class="mobile-play-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
             : '';

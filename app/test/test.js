@@ -2565,6 +2565,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
   assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
+  assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
   assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
@@ -2596,6 +2597,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should route presence chips into actor/target selection');
   assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
+  assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
@@ -6803,6 +6805,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 1 more in details"', 'Desktop overflow presence should advertise that it opens details');
+  assertContains(el('desktop-presence-rail').innerHTML, '>+1 more<', 'Desktop overflow presence should keep the compact visible count');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'selectIntent(', 'Desktop stage rail should not duplicate intent controls');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
@@ -9080,6 +9084,7 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
   assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
+  assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');

@@ -113,9 +113,10 @@ const YAW_CENTER_CONTEXT = {
         const visible = entries.slice(0, 6);
         const extra = entries.length - visible.length;
         const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
-        const moreLabel = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
+        const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
+        const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0
-            ? `<button type="button" class="center-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreLabel}</button>`
+            ? `<button type="button" class="center-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
         rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;

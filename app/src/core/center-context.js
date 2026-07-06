@@ -105,7 +105,6 @@ const YAW_CENTER_CONTEXT = {
 
     actionKeys(app) {
         const keys = [];
-        if ((app.quests || []).length > 0) keys.push('quests');
         if (app._canTakeTileItems()) keys.unshift('takeItems');
         if (app._canSearchHere()) keys.unshift('search');
         if (app._canSetSafeAnchor()) keys.push('setSafePlace');
@@ -120,7 +119,6 @@ const YAW_CENTER_CONTEXT = {
             rest: 'App.rest()',
             search: 'App.search()',
             takeItems: 'App.takeTileItems()',
-            quests: 'App.showQuestLog()',
             stats: 'App.showCharacterStats()',
             setSafePlace: 'App.setSafeAnchorFromCurrentLocation()',
             enter: 'App.enterStructure()',

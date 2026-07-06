@@ -4,12 +4,20 @@
  */
 
 const YAW_PANEL_RENDERING = {
+    partyUtilities(app) {
+        if (app.combatState?.active || !(app.quests || []).length) return '';
+        const label = app._escapeHtml(app._label('quest.title', 'Quests'));
+        const title = app._escapeHtml(app._label('quest.openLog', 'Open quest log'));
+        return `<div class="panel-interaction-tray party-panel-utilities" role="toolbar" aria-label="${label}"><div class="target-action-row"><button class="action-btn" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
+    },
+
     party(app) {
         app._syncPlayerPartyReference();
         const container = document.getElementById('party-content');
         if (container) {
             const tray = app._renderPanelInteractionTray();
-            container.innerHTML = `${tray}${app.party.map((unit, i) => app.renderUnitCard(unit, i, 'party')).join('')}`;
+            const utilities = this.partyUtilities(app);
+            container.innerHTML = `${utilities}${tray}${app.party.map((unit, i) => app.renderUnitCard(unit, i, 'party')).join('')}`;
         }
         app.renderMobilePartyStrip();
     },

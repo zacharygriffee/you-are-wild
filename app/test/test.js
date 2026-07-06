@@ -2373,6 +2373,7 @@ test('Panel rendering helper module is registered before app code', () => {
   assertContains(panelRenderingContent, 'partyUtilities(app)', 'Panel rendering helper should own party panel utility actions');
   assertContains(panelRenderingContent, 'party(app)', 'Panel rendering helper should own party panel refresh');
   assertContains(panelRenderingContent, 'showPartyDetail(app, title, html)', 'Panel rendering helper should own party detail presentation');
+  assertContains(panelRenderingContent, 'clearLegacyCenterActions()', 'Panel rendering helper should clear stale legacy center action markup');
   assertContains(panelRenderingContent, 'restoreCenterContextIfPanelDetailLeaked(app)', 'Panel rendering helper should own center-detail leak repair');
   assertContains(panelRenderingContent, 'creatures(app)', 'Panel rendering helper should own creature panel refresh');
   assertContains(panelRenderingContent, 'showCreatureDetail(app, title, html)', 'Panel rendering helper should own creature detail presentation');
@@ -13934,17 +13935,18 @@ test('Non-player equipment renders as read-only card metadata', () => {
   assertNotContains(statsHtml, 'unequipItem(', 'Non-player equipment stats should not expose player unequip controls');
 });
 
-test('Party panel details preserve center context actions', () => {
+test('Party panel details clear legacy center action slot', () => {
   const { App, document } = loadAppForCombat();
   App.player = makeUnit('You');
   App.party = [App.player];
   const actions = document.getElementById('scene-actions');
   actions.innerHTML = '<button>Old action</button>';
   actions.style.display = 'flex';
+  actions.dataset.richHidden = 'true';
   App.showCharacterStats();
-  assertEqual(actions.style.display, 'flex', 'Party stats should not hide the center context action bar');
-  assertEqual(actions.innerHTML, '<button>Old action</button>', 'Party stats should not replace center actions');
-  assertEqual(Boolean(actions.dataset.richHidden), false, 'Party stats should not mark scene actions as rich-hidden');
+  assertEqual(actions.style.display, 'none', 'Party stats should keep the legacy center action slot hidden');
+  assertEqual(actions.innerHTML, '', 'Party stats should clear stale center actions while the composer owns controls');
+  assertEqual(Boolean(actions.dataset.richHidden), false, 'Party stats should clear stale rich-hidden action state');
   assertContains(document.getElementById('party-content').innerHTML, 'data-surface-role="actor-detail"', 'Character stats should render in the actor detail drawer surface');
   assertContains(document.getElementById('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should render in the party panel');
 });
@@ -13984,7 +13986,7 @@ test('Inventory detail repair clears stale inventory markup from center tile', (
   assertContains(document.getElementById('scene-description').textContent, 'Known road fork', 'Center tile should restore current tile context after inventory opens');
 });
 
-test('Closing party-panel stats during combat restores party cards without changing center', () => {
+test('Closing party-panel stats during combat restores cards and keeps center actions empty', () => {
   const { App, elements, document } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
   const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
@@ -14004,13 +14006,14 @@ test('Closing party-panel stats during combat restores party cards without chang
   document.getElementById('scene-actions').innerHTML = '<button>Combat center marker</button>';
   App.showCharacterStats();
   assertContains(elements.get('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Combat stats should render in party panel');
-  assertEqual(document.getElementById('scene-actions').innerHTML, '<button>Combat center marker</button>', 'Combat stats should not replace center actions');
+  assertEqual(document.getElementById('scene-actions').innerHTML, '', 'Combat stats should clear stale center actions');
+  assertEqual(document.getElementById('scene-actions').style.display, 'none', 'Combat stats should keep center actions hidden');
   App.closePanelDetails('party');
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(document.getElementById('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should leave the combat turn title intact');
   assertNotContains(document.getElementById('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Closing combat stats should not restore redundant combat guidance');
   assertContains(document.getElementById('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Closing combat stats should restore player combat actions in the desktop composer');
-  assertEqual(document.getElementById('scene-actions').innerHTML, '<button>Combat center marker</button>', 'Closing combat stats should not mutate center actions');
+  assertEqual(document.getElementById('scene-actions').innerHTML, '', 'Closing combat stats should leave center actions empty');
 });
 
 test('Closing party-panel stats during an enemy turn does not reveal stale player actions', () => {
@@ -14035,7 +14038,8 @@ test('Closing party-panel stats during an enemy turn does not reveal stale playe
   App.closePanelDetails('party');
   assertEqual(App.combatState.active, true, 'Closing enemy-turn stats should keep combat mode active');
   assertNotContains(elements.get('party-content').innerHTML, 'executeCombatIntent', 'Enemy-turn party cards should not expose player combat actions');
-  assertEqual(elements.get('scene-actions').innerHTML, '<button>Stale player action</button>', 'Party-panel stats close should not mutate center actions');
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'Party-panel stats close should clear stale center actions');
+  assertEqual(elements.get('scene-actions').style.display, 'none', 'Party-panel stats close should keep center actions hidden');
 });
 
 test('Party member stats labels localize and escape names', () => {

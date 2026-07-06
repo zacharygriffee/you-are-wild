@@ -4,6 +4,14 @@
  */
 
 const YAW_PANEL_RENDERING = {
+    clearLegacyCenterActions() {
+        const actions = document.getElementById('scene-actions');
+        if (!actions) return;
+        actions.innerHTML = '';
+        actions.style.display = 'none';
+        if (actions.dataset?.richHidden) delete actions.dataset.richHidden;
+    },
+
     partyUtilities(app) {
         if (app.combatState?.active || !(app.quests || []).length) return '';
         const label = app._escapeHtml(app._label('quest.title', 'Quests'));
@@ -40,6 +48,7 @@ const YAW_PANEL_RENDERING = {
             if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
             try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
         }
+        this.clearLegacyCenterActions();
         app._restoreCenterContextIfPanelDetailLeaked();
     },
 
@@ -59,6 +68,7 @@ const YAW_PANEL_RENDERING = {
     },
 
     closeDetails(app, panel = 'party') {
+        this.clearLegacyCenterActions();
         if (panel === 'party') app.renderParty();
         if (panel === 'creature') app.renderCreatures();
         if (app.combatState?.active) {
@@ -120,6 +130,7 @@ const YAW_PANEL_RENDERING = {
             if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
             try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
         }
+        this.clearLegacyCenterActions();
     },
 
     toggleUnit(app, index, type) {

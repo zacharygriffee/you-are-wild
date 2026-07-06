@@ -4776,6 +4776,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.showSyncMenu();
   let html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
+  assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
   assertContains(html, '>Cancelar<', 'Sync tray cancel action should localize');
   assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
@@ -4785,6 +4786,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
+  assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
   assertContains(elements.get('party-content').innerHTML, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
 
   App._syncSelected = [0, 1];
@@ -4792,6 +4794,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.confirmSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
+  assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
   assertContains(html, 'aria-label="Seleccionar Enemy como objetivo de Sincronizar"', 'Sync target card should expose localized accessible label');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Seleccionar objetivo sincronizado', 'Sync target menu should not render in center scene');
@@ -5703,6 +5706,9 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
+  assertContains(composerHtml, 'aria-label="Feed Options"', 'Feed options tray should keep an accessible phase label');
+  assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
+  assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
   assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
   assertNotContains(sceneHtml, 'Feed Options', 'Feed options should not be injected into the center scene');
 });
@@ -10361,6 +10367,9 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertContains(html, 'Intent', 'Combat target picking should expose the selected intent');
   assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
   assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
+  App.renderDesktopCombatComposer(player);
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancel Fight"', 'Desktop combat target tray should expose cancellation controls');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'selected-target-summary', 'Desktop combat target tray should leave target-pick summary to the composer sentence');
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should leave the exploration control-belt sentence empty');
 });
 

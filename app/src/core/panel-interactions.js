@@ -37,7 +37,7 @@ const YAW_PANEL_INTERACTIONS = {
             const icon = subDef.icon || '';
             return `<button class="action-btn" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${subId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
         }).join('');
-        return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${app._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${buttons}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+        return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${title || label}"><div class="target-action-row">${buttons}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
     },
 
     sync(app, actor, label) {
@@ -48,14 +48,14 @@ const YAW_PANEL_INTERACTIONS = {
                 const buttonLabel = app._escapeHtml(app._label(key, fallback));
                 return `<button class="action-btn" title="${buttonLabel}" aria-label="${buttonLabel}" onclick="App.selectSyncParticipants('${type}')">${icon} ${buttonLabel}</button>`;
             };
-            return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${label}"><div class="selected-target-summary"><span>${title}</span><span>${app._escapeHtml(actor?.name || '')}</span></div><div class="target-action-row">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Talk')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Play')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+            return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${title || label}"><div class="target-action-row">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Talk')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Play')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
         }
         const participants = app._syncSelectedParticipants();
-        const names = participants.map(unit => unit.name).join(', ') || (actor?.name || '');
         const needMore = participants.length < 2;
         const message = app.syncSelection.phase === 'participants'
             ? app._label('combat.sync.selectParticipants', 'Select participants for sync')
             : app._label('combat.sync.selectTarget', 'Select sync target');
+        const trayLabel = app._escapeHtml(message || label);
         let controls = `<button class="action-btn" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button>`;
         if (app.syncSelection.phase === 'participants') {
             const confirmLabel = app._escapeHtml(app._label('combat.sync.confirmParticipants', 'Confirm Participants'));
@@ -64,7 +64,7 @@ const YAW_PANEL_INTERACTIONS = {
             const syncType = app._escapeJsString(app.syncSelection.type || 'sync_fight');
             controls = `<button class="action-btn primary${disabledClass}" title="${confirmLabel}" aria-label="${confirmLabel}"${disabled} onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button>${controls}`;
         }
-        return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${label}"><div class="selected-target-summary"><span>${app._escapeHtml(app._label('target.actors', 'Actors'))}: ${app._escapeHtml(names)}</span><span>${app._escapeHtml(message)}</span></div><div class="target-action-row">${controls}</div></div>`;
+        return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${trayLabel}"><div class="target-action-row">${controls}</div></div>`;
     }
 };
 

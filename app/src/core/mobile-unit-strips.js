@@ -157,16 +157,21 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }
         const first = living[0] || {};
         const icon = app._escapeHtml(first.icon || '👤');
+        const selected = living.length === 1 && app._isExplorationTargetUnit('creature', first);
+        const selectedClass = selected ? ' selected selected-target' : '';
+        const selectionAttrs = living.length === 1
+            ? app._selectionControlAttrs('target', selected)
+            : '';
         const text = living.length === 1
             ? app._label('ui.creatureCue.single', 'Here: {name}', { name: first.name || app._label('ui.unknown', 'Unknown') })
             : app._label('ui.creatureCue.count', '{count} creatures here', { count: living.length });
         const actionLabel = living.length === 1
-            ? app._targetToggleLabel(first, app._isExplorationTargetUnit('creature', first))
+            ? app._targetToggleLabel(first, selected)
             : app._label('ui.creatureCue.openPanel', 'Open {count} creatures here', { count: living.length });
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);
         const commandControl = living.length === 1 ? 'focus-target' : 'open-details';
-        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn" data-stage-surface="presence" data-command-control="${commandControl}" data-command-mode="exploration" onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
+        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-control="${commandControl}" data-command-mode="exploration" ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
     },
 
     focusCreaturePresence(app) {

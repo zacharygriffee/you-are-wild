@@ -10583,6 +10583,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature cue should mark the local creature target');
   App.renderMobileExplorationControls();
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-label="Remove Guide from targets"', 'Mobile creature cue should advertise removal after the target is marked');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'mobile-creature-presence-btn selected selected-target', 'Mobile creature cue should visibly mark the selected target');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature cue should expose selected target state after focus');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-pressed="true"', 'Mobile creature cue should expose pressed state after focus');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature cue should update the composer sentence');
   assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature cue should expose target actions in the visible tray');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Single mobile creature cue should not force-open the creature drawer');

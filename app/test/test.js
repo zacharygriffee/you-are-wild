@@ -1967,6 +1967,7 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync"', 'Combat Sync button should identify the combat intent surface');
   assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow"', 'Combat Move Row button should identify the combat intent surface');
+  assertContains(combatActionsContent, 'data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Combat Move Row button should identify the combat intent slot');
   assertContains(combatActionsContent, "App.executeCombatIntent('flee')", 'Combat action helper should keep flee on the shared combat dispatcher');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="flee"', 'Combat Flee button should identify the combat intent surface');
   assertContains(combatActionsContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting"', 'Desktop combat target cancel should identify the combat targeting surface');
@@ -6629,6 +6630,7 @@ test('Resource-site search is deterministic visible and one-time', () => {
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-group="location-intents"', 'Resource-site Search should render in the location intent group');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search"', 'Resource-site Search should expose its stable location intent id');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="search"', 'Resource-site Search should expose exploration grammar and stable intent metadata');
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search" data-command-slot="intent"', 'Resource-site Search should identify itself as the intent slot in the command composer');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
     App.search();
     assertEqual(App.inventory.length, 1, 'Resource-site search should grant exactly one item');
@@ -11963,6 +11965,7 @@ test('Combat move action swaps row and costs the active turn', () => {
   App.showActorActions(player);
   assertNotContains(elements.get('scene-actions').innerHTML, 'Usa la carta del actor activo', 'Scene center should not duplicate active actor guidance');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Mover fila"', 'Move row button should expose localized accessible label in the desktop composer');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Move row button should identify itself as the combat intent slot');
   assertContains(elements.get('desktop-context-belt').innerHTML, '>↕️ Mover fila<', 'Move row button visible label should localize in the desktop composer');
   App.nextTurn = function() { this._movedTurn = true; };
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-move' };
@@ -15692,7 +15695,9 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   const html = App._renderExplorationTargetActions('desktop');
   assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
   assertContains(html, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target actions should identify the shared command grammar');
+  assertContains(html, 'data-command-actor-count="1" data-command-target-count="1"', 'Desktop marked-target action row should expose actor and target counts like the composer sentence');
   assertContains(html, "App.resolveExplorationTargetAction('fight','attack','composer-tray')", 'Desktop marked-target Fight should dispatch the default attack directly through the composer source');
+  assertContains(html, 'data-command-intent="fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target Fight should identify itself as an intent-slot control');
   assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','composer-tray')", 'Desktop marked-target Feast should dispatch the default swallow directly through the composer source');
   assertNotContains(html, "'desktop-target'", 'Rendered desktop marked-target actions should not emit the legacy desktop-target source');
   assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');
@@ -15700,6 +15705,7 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target sub-actions should identify the shared command grammar');
+  assertContains(body.innerHTML, 'data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target sub-actions should identify menu items as intent-slot controls');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
 });
 

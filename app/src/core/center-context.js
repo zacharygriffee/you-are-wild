@@ -388,7 +388,7 @@ const YAW_CENTER_CONTEXT = {
             exit: 'App.exitStructure()'
         };
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"`);
+        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}" data-command-slot="intent"`);
     },
 
     actorExitButton(app) {

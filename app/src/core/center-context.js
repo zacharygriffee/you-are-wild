@@ -413,6 +413,18 @@ const YAW_CENTER_CONTEXT = {
         return keys.map(key => this.actionButton(app, key)).join('');
     },
 
+    groupedActionRows(app, { actorExitHtml = '', focusedExitHtml = '', locationHtml = '', includeActorExit = true } = {}) {
+        const groups = [];
+        const exits = `${includeActorExit ? actorExitHtml : ''}${focusedExitHtml}`;
+        if (exits) {
+            groups.push(`<div class="composer-control-group composer-state-actions" data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="selection-exits">${exits}</div>`);
+        }
+        if (locationHtml) {
+            groups.push(`<div class="composer-control-group location-action-group" data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents">${locationHtml}</div>`);
+        }
+        return groups.join('');
+    },
+
     renderCenterActions(app) {
         if (app.combatState?.active) return;
         const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
@@ -421,10 +433,10 @@ const YAW_CENTER_CONTEXT = {
         const focusedExitHtml = this.focusedObjectExitButton(app);
         const html = hasMarkedTargets
             ? app._renderExplorationTargetActions('desktop')
-            : `${actorExitHtml}${focusedExitHtml}${locationHtml}`;
+            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: true });
         const mobileHtml = hasMarkedTargets
             ? app._renderExplorationTargetActions('mobile-target')
-            : `${focusedExitHtml}${locationHtml}`;
+            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: false });
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';

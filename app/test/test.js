@@ -2774,7 +2774,9 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'focusedObjectExitButton(app)', 'Center context helper should provide a composer exit for focused stage objects');
   assertContains(centerContextContent, 'clearFocusedStageObject(app)', 'Center context helper should own focused stage object clearing');
   assertContains(centerContextContent, 'data-command-control="clear-focused-object"', 'Focused stage object exit should expose the clear-focused-object command control');
-  assertContains(centerContextContent, "actorExitHtml || focusedExitHtml ? 'command-composer' : 'location-actions'", 'Desktop belt should identify mixed actor/location controls as the command composer');
+  assertContains(centerContextContent, 'groupedActionRows(app', 'Center context helper should separate composer exits from location intents');
+  assertContains(centerContextContent, 'data-command-group="selection-exits"', 'Composer exit controls should render as a distinct command group');
+  assertContains(centerContextContent, 'data-command-group="location-intents"', 'Location actions should render as a distinct command group');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should refresh desktop stage presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
@@ -6615,6 +6617,7 @@ test('Resource-site search is deterministic visible and one-time', () => {
     assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'location-actions', 'Resource-site desktop belt should identify location actions');
     assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'exploration', 'Resource-site desktop belt should identify exploration command mode');
     assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Resource-site desktop belt should identify the shared command grammar');
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-group="location-intents"', 'Resource-site Search should render in the location intent group');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search"', 'Resource-site Search should expose its stable location intent id');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="search"', 'Resource-site Search should expose exploration grammar and stable intent metadata');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
@@ -7357,6 +7360,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(App.focusPresence('place', 'structure:camp'), true, 'Structure presence focus should resolve through the location composer path');
   assertEqual(App.inInterior, false, 'Structure presence focus should not enter the structure directly');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="enter"', 'Structure presence focus should expose Enter in the desktop composer belt');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-group="selection-exits"', 'Structure focus should put Clear focus in the composer exit group');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-group="location-intents"', 'Structure focus should keep Enter in the location intent group');
   assertContains(el('selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the desktop command sentence');
   assertContains(el('selection-sentence').innerHTML, 'Enter', 'Structure focus should show Enter as the pending intent');
   assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Structure focus should expose one focused place in metadata');
@@ -11592,6 +11597,7 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors"', 'Desktop composer belt should expose a clear-actors exit for explicit actor state');
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'Clear actors', 'Desktop clear-actors exit should use a visible localized label');
   assertEqual(document.getElementById('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Desktop belt with explicit actor exit should identify the command composer surface');
+  assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-group="selection-exits"', 'Desktop composer exits should be grouped separately from location intents');
   assertNotContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-control="clear-actors"', 'Mobile location row should not duplicate the actor belt clear exit');
 
   App.toggleExplorationTarget('creature', 'guide-1');

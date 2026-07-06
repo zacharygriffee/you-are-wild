@@ -1317,6 +1317,23 @@
             display: none;
         }
 
+        .desktop-context-belt .composer-control-group {
+            display: flex;
+            gap: var(--space-sm);
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .desktop-context-belt .composer-state-actions {
+            flex: 0 0 auto;
+        }
+
+        .desktop-context-belt .location-action-group {
+            flex: 1 1 auto;
+        }
+
         .desktop-context-belt .action-btn {
             flex: 0 0 auto;
             min-width: 78px;
@@ -2874,6 +2891,18 @@
 
             .mobile-location-actions:empty {
                 display: none;
+            }
+
+            .mobile-location-actions .composer-control-group {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                flex: 0 0 auto;
+                min-width: 0;
+            }
+
+            .mobile-location-actions .location-action-group {
+                flex: 0 0 auto;
             }
 
             .mobile-creature-presence-cue {

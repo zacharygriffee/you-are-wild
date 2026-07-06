@@ -39,16 +39,19 @@ const YAW_INTENT_MENU = {
             const handler = action === 'close'
                 ? 'App.closeIntentMenu()'
                 : `App.selectIntent('${type}',${targetArg},'${action}','${commandSource}')`;
-            return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${app._escapeHtml(label)}</button>`;
+            const commandAttr = action === 'close'
+                ? 'data-command-mode="exploration" data-command-control="close-utility-menu"'
+                : `data-command-mode="exploration" data-command-intent="${app._escapeHtml(action)}"`;
+            return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" ${commandAttr} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${app._escapeHtml(label)}</button>`;
         };
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
+        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-command-surface="utility-actions" data-command-mode="exploration"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="utility-actions" data-command-mode="exploration">`;
         html += actionButton('loot');
         if (app._canScavengeCorpse(target)) {
             html += actionButton('scavenge');
         } else {
             const label = app._corpseScavengeLabel(target);
             const title = `${app._corpseScavengeStatus(target)} ${targetName}`;
-            html += `<button class="action-btn intent-menu-item disabled" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" disabled aria-disabled="true">${app._escapeHtml(label)}</button>`;
+            html += `<button class="action-btn intent-menu-item disabled" role="menuitem" data-command-mode="exploration" data-command-intent="scavenge" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" disabled aria-disabled="true">${app._escapeHtml(label)}</button>`;
         }
         html += actionButton('inspect');
         html += actionButton('close', 'close');

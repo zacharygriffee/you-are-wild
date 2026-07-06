@@ -6165,6 +6165,10 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   assertContains(html, "showRadialIntentMenu('creature','fallen-mobile','secondary-click')", 'Mobile corpse chip should expose secondary-click radial menu');
   App.showMobileCreatureContext('fallen-mobile');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Mobile corpse long-press should open the radial intent presentation');
+  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration"', 'Mobile corpse long-press utility menu should identify the exploration utility surface');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="loot"', 'Mobile corpse long-press loot should expose stable utility intent metadata');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="scavenge"', 'Mobile corpse long-press scavenge should expose stable utility intent metadata');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Mobile corpse long-press close should expose a structural utility-menu exit');
   assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','loot','longpress')", 'Mobile corpse long-press should dispatch loot through shared intent selection');
   assertContains(body.innerHTML, "App.selectIntent('creature','fallen-mobile','scavenge','longpress')", 'Mobile corpse long-press should dispatch scavenge through shared intent selection');
   assertNotContains(body.innerHTML, "openIntentSubActionSheet('creature','fallen-mobile','fight'", 'Mobile corpse long-press should not expose living primary action spam');
@@ -14600,6 +14604,9 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   App.showIntentMenu('creature', 'remains-desktop', 'desktop');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');
   assertContains(body.innerHTML, 'class="desktop-intent-menu intent-menu intent-menu-desktop"', 'Desktop intent menu should use desktop-specific classes');
+  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration"', 'Desktop corpse menu should identify the exploration utility surface');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="loot"', 'Desktop corpse loot should expose stable utility intent metadata');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Desktop corpse close should expose a structural utility-menu exit');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop intent menu should not reuse the mobile bottom-sheet id');
   assertContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop')", 'Desktop corpse menu should keep contextual utility actions');
   assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','remains-desktop','fight','desktop')", 'Desktop corpse menu should not expose living primary actions');
@@ -14834,6 +14841,9 @@ test('Radial intent menu remains a corpse utility accelerator over shared dispat
   App.showRadialIntentMenu('creature', 'corpse-radial');
   assertContains(body.innerHTML, 'intent-menu-radial', 'Radial helper should render the radial presentation class');
   assertContains(body.innerHTML, 'aria-labelledby="mobile-context-menu-title"', 'Radial helper should use its visible title as dialog label');
+  assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration"', 'Radial corpse menu should identify the exploration utility surface');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="loot"', 'Radial corpse loot should expose stable utility intent metadata');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Radial corpse close should expose a structural utility-menu exit');
   assertContains(body.innerHTML, "App.selectIntent('creature','corpse-radial','loot','radial')", 'Radial corpse menu should route loot through shared intent selection');
   assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','corpse-radial','fight','radial')", 'Radial corpse menu should not expose living primary actions');
   App.selectIntent('creature', 'corpse-radial', 'loot', 'radial');

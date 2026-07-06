@@ -4834,7 +4834,9 @@ test('Sync action menus localize visible and accessible labels', () => {
   let html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
   assertContains(html, 'data-command-surface="sync-intents"', 'Sync action composer should identify the sync intent surface');
+  assertContains(html, 'data-command-surface="sync-intents" data-command-mode="combat"', 'Sync action composer should identify combat command mode');
   assertContains(html, 'data-command-intent="sync_fight"', 'Sync fight should expose its stable group intent id');
+  assertContains(html, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Sync fight should expose combat command mode');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
   assertContains(html, 'data-command-control="cancel-sync"', 'Sync action composer should expose a structural cancel control');
@@ -4846,6 +4848,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
   assertContains(html, 'data-command-surface="sync-participants"', 'Sync participant composer should identify its participant surface');
+  assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Sync participant composer should identify combat command mode');
   assertContains(html, 'data-command-control="confirm-sync-participants"', 'Sync participant composer should expose confirm as a structural control');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
@@ -4858,6 +4861,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
   assertContains(html, 'data-command-surface="sync-targeting"', 'Sync target composer should identify its target-pick surface');
+  assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Sync target composer should identify combat command mode');
   assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
@@ -5778,8 +5782,10 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
   assertContains(composerHtml, 'data-command-surface="feed-options"', 'Feed options composer should identify the feed sub-action surface');
+  assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat"', 'Feed options composer should identify combat command mode');
   assertContains(composerHtml, 'aria-label="Feed Options"', 'Feed options tray should keep an accessible phase label');
   assertContains(composerHtml, 'data-command-intent="feed:heal"', 'Feed options should expose stable sub-action intent ids');
+  assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Feed options should expose combat command mode on sub-action intents');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
   assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
   assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
@@ -6783,6 +6789,8 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   assertEqual(combatHtml, '', 'Desktop combat should clear stale exploration center actions instead of rendering prompt controls');
   assertContains(combatBeltHtml, 'unit-combat-actions', 'Desktop combat should replace stale exploration actions with composer intents');
   assertContains(combatBeltHtml, 'data-command-surface="combat-intents"', 'Desktop combat composer should identify its intent surface');
+  assertContains(combatBeltHtml, 'data-command-surface="combat-intents" data-command-mode="combat"', 'Desktop combat composer row should identify combat command mode');
+  assertContains(combatBeltHtml, 'data-command-mode="combat" data-command-intent="fight"', 'Desktop combat Fight button should identify combat command mode');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'combat', 'Desktop combat composer belt should identify combat command mode');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
@@ -8104,8 +8112,10 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'aria-label="Hablar 2 objetivos"', 'Selected-target action labels should use localized target counts');
   assertContains(actionsHtml, 'class="target-action-row"', 'Composer selected-target action buttons should be wrapped in a bounded row');
   assertContains(actionsHtml, 'data-command-surface="target-intents"', 'Composer selected-target action row should identify its command surface');
+  assertContains(actionsHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Composer selected-target action row should identify exploration command mode');
   assertContains(actionsHtml, 'aria-label="Controles de intencion de objetivo"', 'Composer selected-target action row should expose a localized surface label');
   assertContains(actionsHtml, 'data-command-intent="flirt"', 'Composer selected-target action buttons should expose stable intent ids');
+  assertContains(actionsHtml, 'data-command-mode="exploration" data-command-intent="flirt"', 'Composer selected-target action buttons should expose exploration command mode');
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Composer selected-target action buttons should dispatch the default sub-action directly');
   assertContains(actionsHtml, 'data-command-control="clear-targets"', 'Composer selected-target clear should identify the command exit control');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
@@ -10462,8 +10472,10 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Target', 'Mobile selection sentence should move into the control belt when one target is marked');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, 'data-command-surface="target-intents"', 'Mobile target action tray should identify the composer intent surface');
+  assertContains(trayHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Mobile target action tray should identify exploration command mode');
   assertContains(trayHtml, 'aria-label="Target intent controls"', 'Mobile target action tray should expose the target intent surface label');
   assertContains(trayHtml, 'data-command-intent="fight"', 'Mobile target action tray should mark primary intent buttons with stable action ids');
+  assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="fight"', 'Mobile target action tray should identify exploration command mode on intent buttons');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, 'data-command-intent="inspect"', 'Mobile target action tray should mark contextual utility intents with stable action ids');

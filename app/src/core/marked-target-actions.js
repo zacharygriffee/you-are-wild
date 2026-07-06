@@ -27,7 +27,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
             const handler = defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
-            return `<button class="action-btn" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
+            return `<button class="action-btn" data-command-mode="exploration" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
         });
         if (singleCreatureTarget) {
             const targetName = singleCreatureTarget.name || app._label('ui.creatures', 'Creatures');
@@ -36,7 +36,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 const caption = app._escapeHtml(app._uiLabel(labelAction));
                 const intent = app._escapeHtml(dispatchAction);
                 const iconHtml = icon ? `<span class="action-icon" aria-hidden="true">${icon}</span>` : `<span class="action-icon" aria-hidden="true">${app._actionIcon(labelAction)}</span>`;
-                return `<button class="action-btn contextual-utility" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
+                return `<button class="action-btn contextual-utility" data-command-mode="exploration" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
             };
             buttons.push(utilityButton('inspect', 'inspect', '👁️'));
             const actor = primaryActor || app._getExplorationActor();
@@ -48,7 +48,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
-        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;

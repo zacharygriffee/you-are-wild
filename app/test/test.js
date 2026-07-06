@@ -1619,9 +1619,13 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(panelInteractionsContent, 'data-command-grammar="actor-target-intent"', 'Combat transient trays should identify the shared actor-target-intent grammar');
   assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}"', 'Feed option buttons should identify the feed composer surface');
+  assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed option buttons should identify the intent slot');
   assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed"', 'Feed cancel should identify the feed composer surface');
+  assertContains(panelInteractionsContent, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Feed cancel should identify the exit slot');
   assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Sync intent buttons should identify the sync composer surface');
+  assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Sync intent buttons should identify the intent slot');
   assertContains(panelInteractionsContent, 'data-command-surface="${surface}" data-command-mode="combat" data-command-control="cancel-sync"', 'Sync phase cancel should identify the active sync composer surface');
+  assertContains(panelInteractionsContent, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync cancel should identify the exit slot');
   assertContains(panelInteractionsContent, 'data-command-surface="${surface}" data-command-mode="combat" data-command-control="confirm-sync-participants"', 'Sync confirm should identify the participant composer surface');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
@@ -1677,8 +1681,10 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets"', 'Marked target clear should identify the target composer surface');
+  assertContains(markedTargetActionsContent, 'data-command-control="clear-targets" data-command-slot="exit"', 'Marked target clear should identify the exit slot');
   assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Marked target sub-action buttons should identify the sub-action composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action cancel should identify the sub-action composer surface');
+  assertContains(markedTargetActionsContent, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Marked target sub-action cancel should identify the exit slot');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.render(this, source)', 'App marked-target action wrapper should delegate rendering to the helper');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source)', 'App marked-target sub-action wrapper should delegate to the helper');
 });
@@ -2115,11 +2121,14 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify the sync intent surface');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}"', 'Mobile Sync action buttons should identify combat command mode with stable sync intent ids');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent"', 'Mobile Sync action buttons should identify the shared command grammar on the intent itself');
+  assertContains(mobileCombatToolbeltContent, 'data-command-intent="${app._escapeHtml(type)}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Sync action buttons should identify the intent slot');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}"', 'Mobile Feed sub-action buttons should identify the feed option surface');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}"', 'Mobile Feed sub-action buttons should identify combat command mode with stable sub-action ids');
   assertContains(mobileCombatToolbeltContent, 'data-command-mode="combat" data-command-intent="feed:${app._escapeHtml(subId)}" data-command-grammar="actor-target-intent"', 'Mobile Feed sub-action buttons should identify the shared command grammar on the intent itself');
+  assertContains(mobileCombatToolbeltContent, 'data-command-intent="feed:${app._escapeHtml(subId)}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Feed sub-action buttons should identify the intent slot');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-control="confirm-sync-participants"', 'Mobile Sync confirm should identify the participant composer surface');
   assertContains(mobileCombatToolbeltContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting"', 'Mobile target cancel should identify the combat targeting surface');
+  assertContains(mobileCombatToolbeltContent, 'data-command-control="cancel-targeting" data-command-slot="exit"', 'Mobile target cancel should identify the exit slot');
   assertContains(mobileCombatToolbeltContent, "App.confirmSyncParticipants", 'Mobile Sync participant phase should expose confirm in the visible toolbelt');
   assertContains(mobileCombatToolbeltContent, 'selectionSentence(app)', 'Mobile combat toolbelt helper should own the combat actor target intent sentence');
   assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.combatSentence(app)', 'Mobile combat toolbelt sentence should reuse canonical combat selection state');
@@ -2441,6 +2450,7 @@ test('Intent menu helper module is registered before app code', () => {
   assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Intent menu default sub-action should identify the sub-action composer surface');
   assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}"', 'Intent menu alternate sub-actions should identify the sub-action composer surface');
   assertContains(intentMenuContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Intent menu cancel should identify the sub-action composer surface');
+  assertContains(intentMenuContent, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Intent menu cancel should identify the exit slot');
 });
 
 test('Focus trap helper module is registered before app code', () => {
@@ -5186,9 +5196,11 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-intent="sync_fight"', 'Sync fight should expose its stable group intent id');
   assertContains(html, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Sync fight should expose combat command mode');
   assertContains(html, 'data-command-mode="combat" data-command-intent="sync_fight" data-command-grammar="actor-target-intent"', 'Sync fight should identify the shared command grammar on the intent itself');
+  assertContains(html, 'data-command-intent="sync_fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Sync fight should identify itself as an intent-slot control');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
   assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync action composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync action composer should tag cancel as an exit-slot control');
   assertContains(html, 'data-command-control="cancel-sync"', 'Sync action composer should expose a structural cancel control');
   assertContains(html, 'Cancel Sync', 'Sync tray should expose a mode-specific cancel exit');
   assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
@@ -5202,6 +5214,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync participant composer should identify the shared command grammar');
   assertContains(html, 'data-command-control="confirm-sync-participants"', 'Sync participant composer should expose confirm as a structural control');
   assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync participant composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync participant composer should tag cancel as an exit-slot control');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
@@ -5219,6 +5232,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Sync target composer should identify combat command mode');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync target composer should identify the shared command grammar');
   assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync target composer should tag cancel as a combat-mode exit');
+  assertContains(html, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Sync target composer should tag cancel as an exit-slot control');
   assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
@@ -6152,8 +6166,10 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   assertContains(composerHtml, 'data-command-intent="feed:heal"', 'Feed options should expose stable sub-action intent ids');
   assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Feed options should expose combat command mode on sub-action intents');
   assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Feed options should identify the shared command grammar on sub-action intents');
+  assertContains(composerHtml, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed options should identify sub-action buttons as intent-slot controls');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
   assertContains(composerHtml, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Feed options should tag cancel as a combat-mode exit');
+  assertContains(composerHtml, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Feed options should tag cancel as an exit-slot control');
   assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
   assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
   assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
@@ -7847,6 +7863,7 @@ test('Intent sub-action sheet records selected sub-action while preserving dispa
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance"', 'Alternate sub-action should expose exploration mode and stable sub-action intent id');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="flirt:dance" data-command-grammar="actor-target-intent"', 'Alternate sub-action should identify the shared grammar on the sub-action composer surface');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Sub-action sheet should expose a structural cancel exit');
+  assertContains(body.innerHTML, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Sub-action sheet cancel should identify the exit slot');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','tease')", 'Sub-action sheet should expose the default sub-action dispatch');
   assertContains(body.innerHTML, "App.selectIntent('creature','friendly-sub','flirt','sheet','dance')", 'Sub-action sheet should expose alternate registered sub-actions');
   App.selectIntent('creature', 'friendly-sub', 'flirt', 'sheet', 'dance');
@@ -8320,6 +8337,7 @@ test('Marked target sub-action sheet can resolve explicit group swallow intent',
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow"', 'Marked target default sub-action should expose exploration mode and stable sub-action intent id');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-intent="feast:swallow" data-command-grammar="actor-target-intent"', 'Marked target default sub-action should identify the shared command grammar on the intent itself');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action sheet should expose a structural cancel exit');
+  assertContains(body.innerHTML, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Marked target sub-action sheet cancel should identify the exit slot');
   assertContains(body.innerHTML, "App.resolveExplorationTargetAction('feast','swallow','target-bar')", 'Marked target sub-action sheet should dispatch default feast sub-action');
   App.resolveExplorationTargetAction('feast', 'swallow', 'target-bar');
   assertEqual(App.lastIntentCommand.source, 'target-bar', 'Marked target command should record its source');
@@ -8814,6 +8832,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','composer-tray')", 'Composer selected-target action buttons should dispatch the default sub-action directly through the composer source');
   assertContains(actionsHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Composer selected-target clear should identify exploration mode');
   assertContains(actionsHtml, 'data-command-control="clear-targets"', 'Composer selected-target clear should identify the command exit control');
+  assertContains(actionsHtml, 'data-command-control="clear-targets" data-command-slot="exit"', 'Composer selected-target clear should identify the exit slot');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
   assertContains(template, '.panel-interaction-tray .target-action-row', 'Selected-target action buttons should use bounded panel tray sizing');
@@ -11067,6 +11086,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target phase should identify the shared command grammar');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting"', 'Mobile combat target cancel should identify the combat targeting surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-targeting"', 'Mobile combat target phase should tag cancel as a combat-mode exit');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting" data-command-slot="exit"', 'Mobile combat target cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
@@ -11084,8 +11104,10 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="sync_fight"', 'Mobile Sync choose buttons should identify the sync intent surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Mobile Sync choose buttons should identify combat command mode on the action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="sync_fight" data-command-grammar="actor-target-intent"', 'Mobile Sync choose buttons should identify the shared command grammar on the action itself');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync_fight" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Sync choose buttons should identify the intent slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync choose phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync choose cancel should identify the sync intent surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync choose cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
 
   App.syncSelection = null;
@@ -11096,8 +11118,10 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify the feed options surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify combat command mode on the sub-action itself');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal" data-command-grammar="actor-target-intent"', 'Mobile Feed option buttons should identify the shared command grammar on the sub-action itself');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="feed:heal" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Mobile Feed option buttons should identify the intent slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Mobile Feed phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed"', 'Mobile Feed cancel should identify the feed options surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed" data-command-slot="exit"', 'Mobile Feed cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
@@ -11110,6 +11134,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants"', 'Mobile Sync participant phase should expose confirm structurally');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync participant phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync participant cancel should identify the participant surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync participant cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync participant phase should keep a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'target', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
@@ -11119,6 +11144,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile Sync target phase should identify the shared command grammar');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync target phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync target cancel should identify the sync targeting surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync" data-command-slot="exit"', 'Mobile Sync target cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync target phase should keep a structural cancel control');
 
   App.combatState.active = false;
@@ -11253,6 +11279,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','composer-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Mobile target action tray clear should identify exploration mode');
   assertContains(trayHtml, 'data-command-control="clear-targets"', 'Mobile target action tray should expose Clear as the composer exit control');
+  assertContains(trayHtml, 'data-command-control="clear-targets" data-command-slot="exit"', 'Mobile target action tray Clear should identify the exit slot');
   assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
   assertEqual(actorHtml, '', 'Mobile actor belt should stay collapsed until the composer actor toggle is opened');

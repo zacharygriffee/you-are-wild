@@ -79,7 +79,7 @@ const YAW_INTENT_MENU = {
             html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(sub.id).replace(/'/g, "\\'")}')">${sub.icon || ''} ${label}</button>`;
         });
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
+        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);

@@ -37,9 +37,9 @@ const YAW_PANEL_INTERACTIONS = {
             const intent = app._escapeHtml(`feed:${subId}`);
             const safeSubId = app._escapeJsString(subId);
             const icon = subDef.icon || '';
-            return `<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${safeSubId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
+            return `<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${subLabel}" aria-label="${subLabel}" onclick="App._executeFeedSubAction('${safeSubId}', App.activeActor || App._currentCombatActor() || App.player)">${icon} ${subLabel}</button>`;
         }).join('');
-        return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${buttons}<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+        return `<div class="panel-interaction-tray combat-feed-tray" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${buttons}<button class="action-btn" data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed" data-command-slot="exit" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
     },
 
     sync(app, actor, label) {
@@ -49,9 +49,9 @@ const YAW_PANEL_INTERACTIONS = {
             const syncButton = (type, icon, key, fallback) => {
                 const buttonLabel = app._escapeHtml(app._label(key, fallback));
                 const intent = app._escapeHtml(type);
-                return `<button class="action-btn" data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" title="${buttonLabel}" aria-label="${buttonLabel}" onclick="App.selectSyncParticipants('${type}')">${icon} ${buttonLabel}</button>`;
+                return `<button class="action-btn" data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${buttonLabel}" aria-label="${buttonLabel}" onclick="App.selectSyncParticipants('${type}')">${icon} ${buttonLabel}</button>`;
             };
-            return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Talk')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Play')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" data-command-surface="sync-intents" data-command-mode="combat" data-command-control="cancel-sync" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
+            return `<div class="panel-interaction-tray combat-sync-tray" role="region" aria-label="${title || label}"><div class="target-action-row" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${title || label}">${syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight')}${syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Talk')}${syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Play')}${syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed')}<button class="action-btn" data-command-surface="sync-intents" data-command-mode="combat" data-command-control="cancel-sync" data-command-slot="exit" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button></div></div>`;
         }
         const participants = app._syncSelectedParticipants();
         const needMore = participants.length < 2;
@@ -60,7 +60,7 @@ const YAW_PANEL_INTERACTIONS = {
             : app._label('combat.sync.selectTarget', 'Select sync target');
         const trayLabel = app._escapeHtml(message || label);
         const surface = app.syncSelection.phase === 'participants' ? 'sync-participants' : 'sync-targeting';
-        let controls = `<button class="action-btn" data-command-surface="${surface}" data-command-mode="combat" data-command-control="cancel-sync" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button>`;
+        let controls = `<button class="action-btn" data-command-surface="${surface}" data-command-mode="combat" data-command-control="cancel-sync" data-command-slot="exit" title="${clearLabel}" aria-label="${clearLabel}" onclick="App.cancelTargetSelection()">${clearLabel}</button>`;
         if (app.syncSelection.phase === 'participants') {
             const confirmLabel = app._escapeHtml(app._label('combat.sync.confirmParticipants', 'Confirm Participants'));
             const disabled = needMore ? ' disabled aria-disabled="true"' : '';

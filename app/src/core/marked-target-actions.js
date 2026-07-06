@@ -75,7 +75,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
         const actorCount = app._escapeHtml(String(actors.length));
         const targetCount = app._escapeHtml(String(targets.length));
-        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets" data-command-slot="exit" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'composer-tray' || source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;
@@ -101,7 +101,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
             html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${sub.id}`)}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${label}${app._escapeHtml(settingHint)}" aria-label="${label}${app._escapeHtml(settingHint)}"${disabled} onclick="App.resolveExplorationTargetAction('${action}','${String(sub.id).replace(/'/g, "\\'")}','${commandSource}')">${sub.icon || ''} ${label}</button>`;
         });
         const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
-        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
+        html += `<button class="action-btn" role="menuitem" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closeIntentMenu()">${closeLabel}</button>`;
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);

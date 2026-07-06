@@ -2666,8 +2666,9 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'data-command-control="${control}"', 'Mobile center presence should identify its actor/target composer route');
   assertContains(localMapContent, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
-  assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant actor/target drawer');
+  assertContains(localMapContent, "App.focusPresenceOverflow('${commandRoute}')", 'Mobile center presence overflow should pass the advertised actor/target drawer route');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)', 'Mobile center presence overflow should reuse shared actor/target overflow metadata');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandRoute(overflow)', 'Mobile center presence overflow should reuse shared actor/target overflow routing');
   assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
@@ -2704,8 +2705,10 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'data-command-surface="stage-presence"', 'Center context presence controls should identify stage-presence command routing');
   assertContains(centerContextContent, 'data-command-grammar="actor-target-intent"', 'Center context actor/target presence controls should identify the shared command grammar');
   assertContains(centerContextContent, 'data-command-control="${control}"', 'Center context presence chips should identify their actor/target composer route');
-  assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
+  assertContains(centerContextContent, "focusPresenceOverflow(app, route = '')", 'Center context helper should focus overflow presence by explicit route');
+  assertContains(centerContextContent, 'overflowCommandInfo(overflow = [])', 'Center context helper should derive shared overflow command metadata');
   assertContains(centerContextContent, 'overflowCommandAttrs(app, overflow = [])', 'Center context helper should describe overflow actor/target picker routing');
+  assertContains(centerContextContent, 'overflowCommandRoute(overflow = [])', 'Center context helper should expose the overflow route used by click handlers');
   assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
@@ -2722,7 +2725,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderCenterActions(this)', 'App center action renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderPresence(this)', 'App center presence renderer should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresence(this, type, ref)', 'App center presence focus should delegate to the helper');
-  assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresenceOverflow(this)', 'App center presence overflow focus should delegate to the helper');
+  assertContains(appContent, 'YAW_CENTER_CONTEXT.focusPresenceOverflow(this, route)', 'App center presence overflow focus should delegate the explicit route to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.showExplorationActions(this)', 'App exploration action restorer should delegate to the helper');
 });
 
@@ -7158,7 +7161,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Add Ally as actor"', 'Desktop party presence should advertise add-actor semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Focus Camp location actions"', 'Desktop structure presence should advertise location-action focus semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Mark Friendly as target"', 'Desktop creature presence should advertise mark-target semantics');
-  assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresenceOverflow('target')", 'Desktop stage rail overflow should pass the target-picker route instead of staying inert');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-target-picker"', 'Desktop overflow with hidden creatures should identify target-picker routing');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-target-count="2"', 'Desktop overflow should expose the hidden creature target count');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-command-grammar="actor-target-intent"', 'Desktop overflow with hidden creatures should keep the shared command grammar');
@@ -7201,7 +7204,7 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('selection-sentence').innerHTML, 'Friendly', 'Creature presence focus should update the desktop target sentence');
   assertContains(el('desktop-context-belt').innerHTML, "resolveExplorationTargetAction('fight'", 'Creature presence focus should expose target actions through the desktop composer belt');
   assert(el('panel-enemies').focused !== true, 'Desktop creature presence focus should not force-open the detail panel');
-  assertEqual(App.focusPresenceOverflow(), true, 'Presence overflow focus should resolve through the detail panel path');
+  assertEqual(App.focusPresenceOverflow('target'), true, 'Presence overflow focus should resolve through the requested target picker path');
   assertEqual(el('panel-enemies').focused, true, 'Presence overflow should prefer the creature detail panel when creatures are present');
 
   App.showActorActions(ally);
@@ -7432,6 +7435,28 @@ test('Center presence focus selects mobile composer state without opening drawer
   assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature presence focus should expose target actions in the visible tray');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile creature presence focus should not open the creature drawer');
   assertNotContains(document.getElementById('mobile-target-action-tray').innerHTML, 'showIntentMenu(', 'Mobile creature presence focus should not open an action menu');
+});
+
+test('Presence overflow click route matches advertised actor or target picker', () => {
+  const { App, document } = loadAppForCombat(() => 0.5);
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [guide];
+  App.combatState.active = false;
+
+  assertEqual(App.focusPresenceOverflow('actor'), true, 'Actor overflow route should open the actor picker path');
+  assertEqual(document.getElementById('panel-party').focused, true, 'Actor overflow route should focus the party panel');
+  assertEqual(Boolean(document.getElementById('panel-enemies').focused), false, 'Actor overflow route should not drift into the target panel');
+
+  App.closeAllPanels();
+  document.getElementById('panel-party').focused = false;
+  document.getElementById('panel-enemies').focused = false;
+  assertEqual(App.focusPresenceOverflow('target'), true, 'Target overflow route should open the target picker path');
+  assertEqual(document.getElementById('panel-enemies').focused, true, 'Target overflow route should focus the creature panel');
+  assertEqual(Boolean(document.getElementById('panel-party').focused), false, 'Target overflow route should not drift into the actor panel');
 });
 
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {
@@ -9625,7 +9650,7 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-command-control="open-target-picker"', 'Mobile center presence overflow should identify target-picker routing when hidden creatures are clipped');
   assertContains(html, 'data-command-target-count="1"', 'Mobile center presence overflow should expose the hidden creature target count');
   assertContains(html, 'data-command-grammar="actor-target-intent"', 'Mobile center presence overflow should preserve the shared command grammar');
-  assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
+  assertContains(html, "App.focusPresenceOverflow('target')", 'Mobile center presence overflow should focus the advertised target drawer');
   assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');

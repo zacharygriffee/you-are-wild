@@ -268,11 +268,14 @@ const YAW_CENTER_CONTEXT = {
         return false;
     },
 
-    focusPresenceOverflow(app) {
+    focusPresenceOverflow(app, route = '') {
         if (app.combatState?.active) return false;
         const entries = this.presenceEntries(app);
         const hasCreature = entries.some(entry => entry.type === 'creature');
-        if (hasCreature) {
+        const hasParty = entries.some(entry => entry.type === 'player' || entry.type === 'party');
+        const preferTarget = String(route || '') === 'target';
+        const preferActor = String(route || '') === 'actor';
+        const openTargets = () => {
             app.renderCreatures();
             app.openPanel('enemies');
             if (typeof document !== 'undefined') {
@@ -280,9 +283,8 @@ const YAW_CENTER_CONTEXT = {
                 if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
             }
             return true;
-        }
-        const hasParty = entries.some(entry => entry.type === 'player' || entry.type === 'party');
-        if (hasParty) {
+        };
+        const openActors = () => {
             app.renderParty();
             app.openPanel('party');
             if (typeof document !== 'undefined') {
@@ -290,20 +292,35 @@ const YAW_CENTER_CONTEXT = {
                 if (actor && typeof actor.focus === 'function') actor.focus({ preventScroll: true });
             }
             return true;
-        }
+        };
+        if (preferTarget && hasCreature) return openTargets();
+        if (preferActor && hasParty) return openActors();
+        if (hasCreature) return openTargets();
+        if (hasParty) return openActors();
         return false;
     },
 
-    overflowCommandAttrs(app, overflow = []) {
+    overflowCommandInfo(overflow = []) {
         const creatureCount = overflow.filter(entry => entry?.type === 'creature').length;
         const actorCount = overflow.filter(entry => entry?.type === 'player' || entry?.type === 'party').length;
-        if (creatureCount > 0) {
-            return `data-command-control="open-target-picker" data-command-grammar="actor-target-intent" data-command-target-count="${app._escapeHtml(String(creatureCount))}"`;
+        if (creatureCount > 0) return { route: 'target', control: 'open-target-picker', count: creatureCount };
+        if (actorCount > 0) return { route: 'actor', control: 'open-actor-picker', count: actorCount };
+        return { route: 'details', control: 'open-details', count: 0 };
+    },
+
+    overflowCommandAttrs(app, overflow = []) {
+        const info = this.overflowCommandInfo(overflow);
+        if (info.route === 'target') {
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
         }
-        if (actorCount > 0) {
-            return `data-command-control="open-actor-picker" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(actorCount))}"`;
+        if (info.route === 'actor') {
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(info.count))}"`;
         }
-        return 'data-command-control="open-details"';
+        return `data-command-control="${info.control}"`;
+    },
+
+    overflowCommandRoute(overflow = []) {
+        return this.overflowCommandInfo(overflow).route;
     },
 
     renderPresence(app) {
@@ -320,8 +337,9 @@ const YAW_CENTER_CONTEXT = {
         const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const commandAttrs = this.overflowCommandAttrs(app, overflow);
+        const commandRoute = app._escapeJsString(this.overflowCommandRoute(overflow));
         const more = extra > 0
-            ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
+            ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow('${commandRoute}')">${moreText}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
         rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;

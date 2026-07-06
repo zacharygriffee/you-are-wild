@@ -71,8 +71,11 @@ const YAW_LOCAL_MAP = {
         const commandAttrs = typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.overflowCommandAttrs
             ? YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)
             : 'data-command-control="open-details"';
+        const commandRoute = typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.overflowCommandRoute
+            ? app._escapeJsString(YAW_CENTER_CONTEXT.overflowCommandRoute(overflow))
+            : 'details';
         const more = extra > 0
-            ? `<button type="button" class="mobile-play-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
+            ? `<button type="button" class="mobile-play-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow('${commandRoute}')">${app._escapeHtml(`+${extra}`)}</button>`
             : '';
         return `<span class="mobile-play-presence">${icons}${more}</span>`;
     },

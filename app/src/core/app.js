@@ -4532,8 +4532,8 @@
             focusPresence(type, ref) {
                 return YAW_CENTER_CONTEXT.focusPresence(this, type, ref);
             },
-            focusPresenceOverflow() {
-                return YAW_CENTER_CONTEXT.focusPresenceOverflow(this);
+            focusPresenceOverflow(route = '') {
+                return YAW_CENTER_CONTEXT.focusPresenceOverflow(this, route);
             },
             syncPanelBackdrop() {
                 return YAW_PANEL_SHELL.syncBackdrop(this);

@@ -4843,7 +4843,7 @@ test('Flee ends combat without granting victory XP', () => {
   assertEqual(player.xp, 0, 'Flee should not grant victory XP');
   assertContains(App.log[0].text, 'Huyes con exito!', 'Successful flee log should localize');
   assertNotContains(elements.get('desktop-context-belt').innerHTML, "executeCombatIntent('fight')", 'Flee should remove stale combat actions from the desktop composer');
-  assertContains(elements.get('party-content').innerHTML, 'Quitar You de los actores', 'Flee should restore exploration party actor selection');
+  assertContains(elements.get('party-content').innerHTML, 'Agregar You como actor', 'Flee should restore effective player fallback without showing explicit actor selection');
   assertNotContains(elements.get('party-content').innerHTML, 'Now #', 'Flee should remove stale turn-order badges');
 });
 
@@ -8755,6 +8755,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   App.creatures = [creatureTarget];
   App.explorationActorIds = ['actor-1', 'helper-1'];
   App.explorationActorId = 'actor-1';
+  App.explorationActorSelectionExplicit = true;
   App.updateLanguage('es');
   App.renderParty();
   App.renderCreatures();
@@ -11211,7 +11212,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature cue should expose target actions in the visible tray');
   assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Single mobile creature cue should not force-open the creature drawer');
   App.toggleMobileActorBelt();
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Remove You from actors"', 'Mobile actor belt should advertise removing the active actor');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add You as actor"', 'Mobile actor belt should advertise adding the implicit fallback actor until it is explicitly selected');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add Ally as actor"', 'Mobile actor belt should advertise adding an available actor');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), 'actor-target-routing', 'Mobile actor belt should identify actor-routing command surface when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), 'exploration', 'Mobile actor belt should identify exploration command mode when opened');
@@ -13933,6 +13934,28 @@ test('Unit card headers keep long names separate from role metadata', () => {
   assertContains(template, '-webkit-line-clamp: 2;', 'Unit names should wrap predictably instead of truncating beside metadata');
 });
 
+test('Implicit player actor fallback does not render as explicit card selection', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.explorationActorIds = ['player-1'];
+  App.explorationActorId = 'player-1';
+  App.explorationActorSelectionExplicit = false;
+
+  const playerCard = App.renderUnitCard(player, 0, 'party');
+  const playerChip = App.renderMobileUnitChip(player, 0, 'party');
+  const roles = App._unitSelectionRoles(player, 'party');
+
+  assertEqual(roles.includes('actor'), false, 'Implicit fallback should not expose an explicit actor selection role');
+  assertNotContains(playerCard, 'selected selected-actor', 'Implicit fallback should not visually select the desktop player card as an actor');
+  assertContains(playerCard, 'data-selection-control="actor" aria-pressed="false"', 'Implicit fallback desktop actor button should not expose pressed state');
+  assertContains(playerCard, 'aria-label="Add You as actor"', 'Implicit fallback desktop actor button should promote selection when tapped');
+  assertNotContains(playerChip, 'selected selected-actor', 'Implicit fallback should not visually select the mobile player chip as an actor');
+  assertContains(playerChip, 'data-selection-control="actor" aria-pressed="false"', 'Implicit fallback mobile actor button should not expose pressed state');
+  assertContains(playerChip, 'aria-label="Add You as actor"', 'Implicit fallback mobile actor button should promote selection when tapped');
+});
+
 test('Unit selection controls distinguish focus actor target and combat pick semantics', () => {
   const { App } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });
@@ -13944,6 +13967,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   App.party = [player, ally];
   App.creatures = [creature, enemy, blockedEnemy];
   App.explorationActorIds = ['ally-1'];
+  App.explorationActorSelectionExplicit = true;
   App.explorationTargetIds = ['party:player-1', 'creature:guide-1'];
 
   const playerCard = App.renderUnitCard(player, 0, 'party');

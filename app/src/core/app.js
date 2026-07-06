@@ -2409,6 +2409,9 @@
             _getExplorationActor(actorId = null) {
                 return YAW_EXPLORATION_SELECTION.getActor(this, actorId);
             },
+            _isExplicitExplorationActor(unit) {
+                return YAW_EXPLORATION_SELECTION.isExplicitActorSelected(this, unit);
+            },
             _selectedExplorationActorState({ allowFallback = true } = {}) {
                 return YAW_EXPLORATION_SELECTION.selectedActorState(this, { allowFallback });
             },

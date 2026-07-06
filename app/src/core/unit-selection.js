@@ -14,7 +14,7 @@ const YAW_UNIT_SELECTION = {
             if (type === 'creature' && app.syncSelection?.active && app.syncSelection.phase === 'target' && app.canSelectCreatureTarget(unit)) roles.push('target');
             return roles;
         }
-        if (type === 'party' && app._getExplorationActors().includes(unit)) {
+        if (type === 'party' && app._isExplicitExplorationActor?.(unit)) {
             roles.push('actor');
         }
         const marked = type === 'creature'

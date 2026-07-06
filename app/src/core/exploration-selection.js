@@ -13,6 +13,11 @@ const YAW_EXPLORATION_SELECTION = {
             && !app.explorationActorSelectionExplicit;
     },
 
+    isExplicitActorSelected(app, unit) {
+        if (!unit || !app.explorationActorSelectionExplicit) return false;
+        return this.getActors(app).includes(unit);
+    },
+
     getActors(app, actorId = null) {
         if (actorId) {
             const actor = app.party.find(p => app._unitSelectionId(p) === String(actorId) && app._isLivingCreature(p));

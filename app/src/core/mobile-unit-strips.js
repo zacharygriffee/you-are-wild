@@ -128,10 +128,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
     },
 
     actorControls(app) {
-        const actors = app._getExplorationActors?.() || [];
         const chips = (app.party || []).map((unit, index) => {
             if (!unit || !app._isLivingCreature(unit)) return '';
-            const selected = actors.includes(unit);
+            const selected = app._isExplicitExplorationActor?.(unit);
             const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
             const role = unit === app.player ? app._label('party.you', 'You') : app._partyRoleLabel(app._getPartyRole(unit));
             const title = app._escapeHtml(app._actorToggleLabel(unit, selected));

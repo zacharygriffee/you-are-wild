@@ -528,14 +528,18 @@ async function runSelectionSemanticsFlow(page) {
       purpose: card.getAttribute('data-card-purpose'),
       label: card.getAttribute('aria-label') || '',
       selectedActor: card.classList.contains('selected-actor'),
-      selectedTarget: card.classList.contains('selected-target')
+      selectedTarget: card.classList.contains('selected-target'),
+      actorButtonState: card.querySelector('[data-selection-control="actor"]')?.getAttribute('data-selection-state') || '',
+      actorButtonLabel: card.querySelector('[data-selection-control="actor"]')?.getAttribute('aria-label') || ''
     }))
   }));
   assert.deepStrictEqual(initial.actors, ['player-1'], 'Adventure should start with the player as selected actor');
   assert.deepStrictEqual(initial.targets, [], 'Adventure should start with no marked targets');
   assert.strictEqual(initial.partyCards[0]?.purpose, 'detail-toggle', 'Party card click target should be explicitly scoped to detail toggling');
   assert(initial.partyCards[0]?.label.includes('Show details for You'), 'Party card detail label should describe details, not action selection');
-  assert.strictEqual(initial.partyCards[0]?.selectedActor, true, 'Player card should show actor state separately from focus');
+  assert.strictEqual(initial.partyCards[0]?.selectedActor, false, 'Implicit player fallback should not render as explicit actor selection');
+  assert.strictEqual(initial.partyCards[0]?.actorButtonState, 'available', 'Implicit player actor button should remain available until explicitly selected');
+  assert(initial.partyCards[0]?.actorButtonLabel.includes('Add You as actor'), 'Implicit player actor button should promote explicit selection');
   assert.strictEqual(initial.partyCards[0]?.selectedTarget, false, 'Player card should not imply target state');
 
   await page.locator('#party-content .unit-card').nth(1).click({ position: { x: 16, y: 16 } });

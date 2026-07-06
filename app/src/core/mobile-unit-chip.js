@@ -20,10 +20,10 @@ const YAW_MOBILE_UNIT_CHIP = {
         let actionButtons = '';
         let detailButtons = '';
         if (isParty && !app.combatState.active) {
-            const selectedActors = app._getExplorationActors();
-            const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
+            const explicitlySelectedActor = app._isExplicitExplorationActor?.(unit);
+            const selectedClass = explicitlySelectedActor ? ' primary' : '';
             const targetClass = targetSelected ? ' primary' : '';
-            const actorPressed = selectedActors.includes(unit);
+            const actorPressed = explicitlySelectedActor;
             const targetPressed = targetSelected;
             const actorCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', actorPressed)}`;
             const targetCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetPressed)}`;

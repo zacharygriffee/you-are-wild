@@ -21,13 +21,13 @@ const YAW_UNIT_CARD = {
         let detailButtons = '';
         let partyManagementControls = '';
         if (isParty && !app.combatState.active) {
-            const selectedActors = app._getExplorationActors();
-            const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
+            const explicitlySelectedActor = app._isExplicitExplorationActor?.(unit);
+            const selectedClass = explicitlySelectedActor ? ' primary' : '';
             const targetClass = app._isExplorationTarget('party', app._unitSelectionId(unit)) ? ' primary' : '';
             const targetKey = app._unitKey(unit);
             const actorLabel = app._escapeHtml(app._label('target.act', 'Actor'));
             const targetLabel = app._escapeHtml(app._targetMarkLabel());
-            const actorPressed = selectedActors.includes(unit);
+            const actorPressed = explicitlySelectedActor;
             const targetPressed = app._isExplorationTarget('party', app._unitSelectionId(unit));
             const actorTitle = app._escapeHtml(app._actorToggleLabel(unit, actorPressed));
             const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));

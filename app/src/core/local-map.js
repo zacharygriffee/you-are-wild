@@ -34,6 +34,10 @@ const YAW_LOCAL_MAP = {
         const icons = visible.map(entry => {
             const unit = entry.unit || {};
             const tone = app._escapeHtml(entry.tone || entry.type || 'party');
+            if (entry.type === 'items') {
+                const label = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
+                return `<button type="button" class="mobile-play-presence-dot item" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')">${app._escapeHtml(unit.icon || '🎒')}</button>`;
+            }
             const presenceType = entry.type === 'creature' ? 'creature' : 'party';
             const ref = presenceType === 'creature'
                 ? app._explorationTargetUnitId('creature', unit)

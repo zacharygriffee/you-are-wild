@@ -16,6 +16,7 @@ const YAW_CENTER_CONTEXT = {
             return (unit.CPun ?? 1) > 0;
         };
         const keyFor = (unit, type) => {
+            if (type === 'items') return `items:${unit?.id || 'tile-items'}`;
             if (type === 'creature' && typeof app._explorationTargetUnitId === 'function') {
                 return `creature:${app._explorationTargetUnitId('creature', unit)}`;
             }
@@ -33,12 +34,30 @@ const YAW_CENTER_CONTEXT = {
             seen.add(key);
             entries.push({ unit, type, meta, tone });
         };
+        const addItemEntry = tile => {
+            const items = Array.isArray(tile?.items) ? tile.items : [];
+            if (!items.length) return;
+            const first = app._tileItemLabel(items[0]);
+            const name = items.length === 1
+                ? first
+                : app._label('ui.tileItems.count', '{count} items', { count: items.length });
+            const key = 'items:tile-items';
+            if (seen.has(key)) return;
+            seen.add(key);
+            entries.push({
+                unit: { id: 'tile-items', name, icon: app._actionIcon('takeItems') || '🎒' },
+                type: 'items',
+                meta: app._label('action.takeItems', 'Take Items'),
+                tone: 'item'
+            });
+        };
         if (app.player) add(app.player, 'player', app._label('party.you', 'You'), 'party');
         (app.party || []).forEach(unit => {
             const role = typeof app._getPartyRole === 'function' ? app._getPartyRole(unit) : 'companion';
             const roleLabel = typeof app._partyRoleLabel === 'function' ? app._partyRoleLabel(role) : role;
             add(unit, 'party', roleLabel, 'party');
         });
+        addItemEntry(app._currentExplorationTile?.());
         (app.creatures || []).forEach(unit => {
             const meta = typeof app._unitDispositionLabel === 'function' ? app._unitDispositionLabel(unit) : '';
             const tone = unit.disposition || 'creature';
@@ -52,6 +71,10 @@ const YAW_CENTER_CONTEXT = {
         const name = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
         const icon = app._escapeHtml(unit.icon || '👤');
         const meta = entry.meta ? `<span class="center-presence-meta">${app._escapeHtml(entry.meta)}</span>` : '';
+        if (entry.type === 'items') {
+            const focusTitle = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
+            return `<button type="button" class="center-presence-chip items item" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
+        }
         const presenceType = entry.type === 'creature' ? 'creature' : 'party';
         const ref = presenceType === 'creature'
             ? app._explorationTargetUnitId('creature', unit)
@@ -77,6 +100,15 @@ const YAW_CENTER_CONTEXT = {
 
     focusPresence(app, type, ref) {
         if (!ref || app.combatState?.active) return false;
+        if (type === 'items') {
+            if (ref !== 'tile-items' || !app._canTakeTileItems?.()) return false;
+            app.renderExplorationActions?.();
+            if (typeof document !== 'undefined') {
+                const button = document.querySelector('#mobile-explore-actions [data-command-intent="takeItems"], #desktop-context-belt [data-command-intent="takeItems"]');
+                if (button && typeof button.focus === 'function') button.focus({ preventScroll: true });
+            }
+            return true;
+        }
         if (type === 'party') {
             const index = (app.party || []).findIndex(unit => app._unitSelectionId(unit) === String(ref) || unit?.id === ref || unit?.name === ref);
             if (index < 0) return false;

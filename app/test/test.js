@@ -4067,6 +4067,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'class="desktop-play-cell-content" data-surface-role="story-stage"', 'Desktop center content should identify as the story/stage compositor');
   assertNotContains(template, 'id="mobile-center-presence"', 'mobile scene sheet should not duplicate the full here/presence block');
   assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
+  assertContains(template, '.center-presence-chip.item', 'desktop stage presence should distinguish tile item cues');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
@@ -4089,6 +4090,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'grid-template-rows: minmax(44px, 1fr) minmax(76px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should reserve a larger center row');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
+  assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
   assertContains(template, '.mobile-play-presence-dot.selected', 'Mobile center presence should visibly mark selected actor and target dots');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
@@ -7128,6 +7130,52 @@ test('Stage presence dedupes party references and preserves duplicate creature r
   assertEqual((mobileHtml.match(/mobile-play-presence-dot party/g) || []).length, 1, 'Mobile center presence should not duplicate the player dot');
   assertContains(mobileHtml, "App.focusPresence('creature','@creature:0:guide-shared')", 'Mobile center presence should focus the first duplicate-id creature');
   assertContains(mobileHtml, "App.focusPresence('creature','@creature:1:guide-shared')", 'Mobile center presence should focus the second duplicate-id creature');
+});
+
+test('Stage presence exposes tile-local items as bounded cues', () => {
+  const { App, document } = loadAppForCombat();
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', {
+    ...App.getBaseTile(0, 0),
+    x: 0,
+    y: 0,
+    biome: 'grove',
+    explored: true,
+    creatures: [],
+    items: [{ id: 'ground-herb', name: 'Healing Herb' }]
+  }]]);
+  App.combatState.active = false;
+
+  App.renderCenterPresence();
+  const desktopHtml = el('desktop-presence-rail').innerHTML;
+  assertContains(desktopHtml, 'center-presence-chip items item', 'Desktop stage rail should expose tile-local items as a compact presence cue');
+  assertContains(desktopHtml, 'Healing Herb', 'Desktop item presence should name the first tile-local item');
+  assertContains(desktopHtml, 'data-presence-type="items"', 'Desktop item presence should identify item presence type');
+  assertContains(desktopHtml, 'data-command-control="focus-items"', 'Desktop item presence should route through item focus');
+  assertContains(desktopHtml, 'data-command-intent="takeItems"', 'Desktop item presence should point at the stable Take Items intent');
+  assertContains(desktopHtml, "App.focusPresence('items','tile-items')", 'Desktop item presence should focus the existing Take Items command');
+  assertNotContains(desktopHtml, 'App.takeTileItems()', 'Desktop item presence should not immediately pick up items');
+  assertNotContains(el('center-presence').innerHTML, 'Healing Herb', 'Center presentation tile should not duplicate item presence');
+
+  assertEqual(App.focusPresence('items', 'tile-items'), true, 'Item presence focus should resolve through the existing location command');
+  assertEqual(App.inventory.length, 0, 'Focusing item presence should not mutate carried inventory');
+  assertEqual(App.worldMap.get('0,0').items.length, 1, 'Focusing item presence should not remove tile-local items');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="takeItems"', 'Item focus should expose Take Items in the desktop composer belt');
+
+  App.renderMap();
+  const mobileHtml = el('mobile-mini-map').innerHTML;
+  assertContains(mobileHtml, 'mobile-play-presence-dot item', 'Mobile center tile should expose tile-local items as a compact presence dot');
+  assertContains(mobileHtml, 'data-presence-type="items"', 'Mobile item presence should identify item presence type');
+  assertContains(mobileHtml, 'data-command-control="focus-items"', 'Mobile item presence should route through item focus');
+  assertContains(mobileHtml, 'data-command-intent="takeItems"', 'Mobile item presence should point at the stable Take Items intent');
+  assertContains(mobileHtml, "App.focusPresence('items','tile-items')", 'Mobile item presence should focus the existing Take Items command');
+  assertNotContains(mobileHtml, 'App.takeTileItems()', 'Mobile item presence should not immediately pick up items');
 });
 
 test('Center presence focus selects mobile composer state without opening drawers', () => {

@@ -10218,6 +10218,34 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
 });
 
+test('Combat action clearing removes stale mobile exploration belt controls', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  App.mobileMovePadOpen = true;
+  elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
+  elements.get('mobile-explore-actions').style.display = 'flex';
+  elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
+  elements.get('mobile-actor-belt').innerHTML = '<button>Ally</button>';
+  elements.get('mobile-creature-presence-cue').innerHTML = '<button>Here: Guide</button>';
+  elements.get('mobile-move-pad').classList.add('expanded');
+  elements.get('mobile-move-toggle').setAttribute('aria-expanded', 'true');
+  elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open');
+  elements.get('mobile-play-surface').classList.add('has-control-belt');
+
+  App._clearCenterActionsForCombat();
+
+  assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Combat clearing should remove stale mobile location actions');
+  assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Combat clearing should hide the mobile location action row');
+  assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Combat clearing should remove stale marked-target actions');
+  assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Combat clearing should remove stale exploration actor controls');
+  assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Combat clearing should remove stale creature presence cue controls');
+  assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Combat clearing should collapse the dormant move pad');
+  assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Combat clearing should reset the move toggle state');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Combat clearing should remove fixed control-belt overlay state');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), false, 'Combat clearing should remove target-priority belt state');
+  assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Combat clearing should stop reserving exploration belt space');
+  assertEqual(App.mobileMovePadOpen, false, 'Combat clearing should reset the app move-pad flag');
+});
+
 test('Selection sentence mirrors exploration actor target and pending intent', () => {
   const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });

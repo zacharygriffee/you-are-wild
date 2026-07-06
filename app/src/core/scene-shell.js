@@ -13,6 +13,27 @@ const YAW_SCENE_SHELL = {
         }
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) desktopBelt.innerHTML = '';
+        const mobileExplore = document.getElementById('mobile-explore-actions');
+        if (mobileExplore) {
+            mobileExplore.innerHTML = '';
+            mobileExplore.style.display = 'none';
+        }
+        const mobileTargetTray = document.getElementById('mobile-target-action-tray');
+        if (mobileTargetTray) mobileTargetTray.innerHTML = '';
+        const mobileActorBelt = document.getElementById('mobile-actor-belt');
+        if (mobileActorBelt) mobileActorBelt.innerHTML = '';
+        const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
+        if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
+        const mobileMovePad = document.getElementById('mobile-move-pad');
+        if (mobileMovePad) mobileMovePad.classList?.remove('expanded');
+        const mobileMoveToggle = document.getElementById('mobile-move-toggle');
+        if (mobileMoveToggle) mobileMoveToggle.setAttribute('aria-expanded', 'false');
+        const mobileControlBelt = document.getElementById('mobile-control-belt');
+        if (mobileControlBelt) {
+            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open');
+        }
+        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt');
+        app.mobileMovePadOpen = false;
     },
 
     setRichContent(app, title, html) {

@@ -53,7 +53,7 @@ const YAW_COMBAT_ACTIONS = {
         if (app.cheats.overpowered && actor?.name === app.player?.name) {
             const instantWinLabel = app._escapeHtml(app._label('combat.instantWin', 'Instant Win'));
             const instantWinTitle = app._escapeHtml(app._label('combat.instantWinTitle', 'Instantly defeat all enemies'));
-            buttons.push(`<button class="action-btn" data-command-control="instant-win" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
+            buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="instant-win" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
         }
         if (enemies.length > 0) {
             buttons.push(app._combatIntentButton('fight', actor, 'primary'));
@@ -62,20 +62,20 @@ const YAW_COMBAT_ACTIONS = {
             buttons.push(app._combatIntentButton('fuck', actor));
         }
         if (allies.length > 0) {
-            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", '', 'data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent"'));
+            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent"'));
         }
         if (corpses.length > 0) {
-            buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-mode="combat" data-command-intent="scavenge" data-command-grammar="actor-target-intent"'));
+            buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="scavenge" data-command-grammar="actor-target-intent"'));
         }
         if (enemies.length > 0) {
-            buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent"'));
+            buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent"'));
             const moveRowLabel = app._escapeHtml(app._label('action.moveRow', 'Move Row'));
-            buttons.push(`<button class="action-btn" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
+            buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
         }
         if (actor?.name === app.player?.name) {
-            buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent"'));
+            buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent"'));
         } else {
-            buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent"'));
+            buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent"'));
         }
         if (buttons.length === 0) return '';
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);
@@ -92,7 +92,7 @@ const YAW_COMBAT_ACTIONS = {
             const actionText = app._uiLabel(app.targetSelection.action || 'action');
             const cancelLabel = app._escapeHtml(app._label('target.cancelAction', 'Cancel {action}', { action: actionText }));
             const label = app._escapeHtml(app._label('target.controls', 'Target controls'));
-            return `<div class="panel-interaction-tray combat-target-tray" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}"><button class="action-btn" data-command-control="cancel-targeting" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
+            return `<div class="panel-interaction-tray combat-target-tray" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}"><button class="action-btn" data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
         }
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
         if (!actions) return '';

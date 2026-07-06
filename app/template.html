@@ -3440,13 +3440,6 @@
             <h1 class="create-title">Create Your Character</h1>
             <p class="create-subtitle">Begin your journey in a world of predators and prey</p>
 
-            <!-- Name Input -->
-            <div class="create-section">
-                <h3 class="section-title">Name</h3>
-                <input id="char-name" type="text" placeholder="Enter your name..." value="You" data-i18n-placeholder="create.namePlaceholder"
-                       style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
-            </div>
-
             <div class="create-section">
                 <h3 class="section-title" data-i18n="settings.contentLevel">Content Level</h3>
                 <button class="action-btn" type="button" title="Open content level settings" aria-label="Open content level settings" data-i18n-title="create.contentLevelTitle" data-i18n-aria-label="create.contentLevelTitle" onclick="App.openContentSettingsFromCreate()">
@@ -3586,6 +3579,13 @@
                         </label>
                     </div>
                 </div>
+            </div>
+
+            <!-- Name Input -->
+            <div class="create-section create-name-section">
+                <h3 class="section-title">Name</h3>
+                <input id="char-name" type="text" placeholder="Enter your name..." data-i18n-placeholder="create.namePlaceholder" autocomplete="off"
+                       style="width:100%;padding:12px 16px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:16px;box-sizing:border-box;">
             </div>
 
             <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>

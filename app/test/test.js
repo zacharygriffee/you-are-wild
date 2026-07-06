@@ -3661,14 +3661,20 @@ test('Create screen defaults to safe identity-first creation', () => {
   assertContains(template, '<div class="option-card" data-value="nonbinary"', 'non-binary option should be available in the template');
   assertContains(template, '<div class="option-card" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
   assertContains(template, '<div class="option-card" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
+  assertNotContains(template, 'id="char-name" type="text" placeholder="Enter your name..." value="You"', 'Name input should not default to a pronoun-like player name');
+  assert(template.indexOf('data-accordion="preferences"') < template.indexOf('id="char-name"'), 'Name input should appear after core identity and preference choices');
+  assert(template.indexOf('id="char-name"') < template.indexOf('id="create-validation"'), 'Name input should remain near the final submit controls');
   assertContains(template, 'id="create-validation" class="create-validation" role="alert" aria-live="polite"', 'create validation message should be visible to assistive tech');
   assertContains(template, 'data-i18n="create.random"', 'random character button should be explicit and localizable');
   assertContains(appContent, 'validateCharacterCreation()', 'create flow should expose required character validation');
   assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'begin adventure should stop when required choices are missing');
+  assertNotContains(createFlowContent, "value?.trim() || 'You'", 'Create flow should not silently fall back to You when name is blank');
+  assertNotContains(createFlowContent, "getElementById('char-name').value =", 'Random Character should not silently fill the player name');
   assertContains(createFlowContent, 'ensureSafeCompatibilityParts(app)', 'safe creation should assign hidden compatibility defaults for saves/mechanics');
   assertContains(createFlowContent, "id === 'anatomy' && this.isSafeTier(app)", 'safe creation should not expose the anatomy accordion');
   assertContains(appContent, 'YAW_CREATE_FLOW.randomize(this)', 'zero-config character creation should delegate through the create helper');
   assertContains(contentContent, "'create.validation.required': 'Before beginning, please {items}.'", 'English create validation message missing');
+  assertContains(contentContent, "'create.validation.name': 'enter a name'", 'English create name validation message missing');
   assertContains(contentContent, "'create.random': 'Random Character'", 'English random character label missing');
   assertContains(contentContent, "'create.random': 'Personaje aleatorio'", 'Spanish random character label missing');
 });
@@ -3676,7 +3682,7 @@ test('Create screen defaults to safe identity-first creation', () => {
 test('Safe creation requires identity only while adult creation keeps anatomy validation', () => {
   const anatomySection = makeElement();
   const sections = ['species', 'gender', 'anatomy'].map(id => ({ dataset: { accordion: id } }));
-  const { App, elements } = loadAppForCombat(() => 0.5, {
+  const { App, elements, document } = loadAppForCombat(() => 0.5, {
     querySelector(selector) {
       if (selector === '[data-accordion="anatomy"]') return anatomySection;
       return null;
@@ -3691,15 +3697,19 @@ test('Safe creation requires identity only while adult creation keeps anatomy va
   }
 
   App.setContentTier('safe');
+  document.getElementById('char-name').value = '';
   assertEqual(App.selectedParts.length, 0, 'Safe creation should not assign hidden compatibility defaults before identity selection');
   App.selectedGender = null;
-  assertEqual(App.validateCharacterCreation(), false, 'Safe creation should require identity before starting');
+  assertEqual(App.validateCharacterCreation(), false, 'Safe creation should require name and identity before starting');
+  assertContains(elements.get('create-validation').textContent, 'enter a name', 'Safe validation should request an explicit player name');
   assertContains(elements.get('create-validation').textContent, 'choose a gender', 'Safe validation should request identity');
   assertNotContains(elements.get('create-validation').textContent, 'choose a primary anatomy option', 'Safe validation should not request hidden primary anatomy');
   assertNotContains(elements.get('create-validation').textContent, 'choose a chest anatomy option', 'Safe validation should not request hidden chest anatomy');
   App.selectedGender = 'female';
   App.selectedParts = [];
-  assertEqual(App.validateCharacterCreation(), true, 'Safe creation should not require visible anatomy choices');
+  assertEqual(App.validateCharacterCreation(), false, 'Safe creation should still require an explicit name after identity selection');
+  document.getElementById('char-name').value = 'River';
+  assertEqual(App.validateCharacterCreation(), true, 'Safe creation should require name and identity but not visible anatomy choices');
   assertEqual(App.selectedParts.join(','), 'clit,tits', 'Safe creation should assign compatibility defaults after identity selection');
   assertEqual(anatomySection.style.display, 'none', 'Safe creation should hide anatomy controls');
   App.toggleAccordion('anatomy');
@@ -3707,6 +3717,7 @@ test('Safe creation requires identity only while adult creation keeps anatomy va
   assertEqual(elements.get('body-anatomy').style.display, 'none', 'Safe creation should keep anatomy collapsed');
 
   App.setContentTier('adult');
+  document.getElementById('char-name').value = 'River';
   assertEqual(App.selectedParts.length, 0, 'Adult creation should clear hidden safe compatibility defaults until explicit anatomy is selected');
   App.selectedGender = 'female';
   App.selectedParts = [];

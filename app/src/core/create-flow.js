@@ -81,8 +81,10 @@ const YAW_CREATE_FLOW = {
     },
 
     validate(app) {
+        const name = document.getElementById('char-name')?.value?.trim() || '';
         const hasGender = Boolean(app.selectedGender);
-        if (hasGender && this.isSafeTier(app)) {
+        const hasName = Boolean(name);
+        if (hasName && hasGender && this.isSafeTier(app)) {
             this.ensureSafeCompatibilityParts(app);
             app._setCreateValidation('');
             return true;
@@ -90,11 +92,12 @@ const YAW_CREATE_FLOW = {
         const safeTier = this.isSafeTier(app);
         const hasPrimaryAnatomy = app.selectedParts.includes('clit') || app.selectedParts.includes('cock');
         const hasChestAnatomy = app.selectedParts.includes('tits') || app.selectedParts.includes('pecs');
-        if (hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
+        if (hasName && hasGender && hasPrimaryAnatomy && hasChestAnatomy) {
             app._setCreateValidation('');
             return true;
         }
         const missing = [];
+        if (!hasName) missing.push(app._label('create.validation.name', 'enter a name'));
         if (!hasGender) missing.push(app._label('create.validation.gender', 'choose a gender'));
         if (!safeTier && !hasPrimaryAnatomy) missing.push(app._label('create.validation.primaryAnatomy', 'choose a primary anatomy option'));
         if (!safeTier && !hasChestAnatomy) missing.push(app._label('create.validation.chestAnatomy', 'choose a chest anatomy option'));
@@ -175,7 +178,7 @@ const YAW_CREATE_FLOW = {
     createCharacter(app) {
         if (!app.validateCharacterCreation()) return;
         this.ensureSafeCompatibilityParts(app);
-        const name = document.getElementById('char-name')?.value?.trim() || 'You';
+        const name = document.getElementById('char-name')?.value?.trim();
         app.playerName = name;
         const species = app.species.find(s => s.id === app.selectedSpecies);
         const baseStats = app._getSpeciesBaseStats(app.selectedSpecies);
@@ -217,7 +220,7 @@ const YAW_CREATE_FLOW = {
         app.exploredTiles = new Set();
         app.worldMeta = {
             worldId: `world_${Date.now()}`,
-            seed: `${name || 'You'}:${app.selectedSpecies}:default`,
+            seed: `${name}:${app.selectedSpecies}:default`,
             generatorVersion: 2,
             mapModsHash: 'core',
             createdAt: Date.now()

@@ -2412,6 +2412,7 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
   assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear chip should identify actor-routing composer surface');
   assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors"', 'Mobile actor belt should expose a structural clear-actors exit');
+  assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile actor clear chip should identify the exit slot');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
@@ -4277,7 +4278,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence-dot.selected', 'Mobile center presence should visibly mark selected actor and target dots');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
-  assertContains(template, 'id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors"', 'Mobile actor toggle should identify as an actor-routing composer control');
+  assertContains(template, 'id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor"', 'Mobile actor toggle should identify as an actor-slot composer control');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
   assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-explore-actions"'), 'Mobile creature cue should sit near the top of the control belt');
@@ -11324,6 +11325,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'clearExplorationActors()', 'Mobile actor belt should expose an explicit clear actor exit');
   assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear exit should identify actor-routing composer surface');
   assertContains(openedActorHtml, 'data-command-control="clear-actors"', 'Mobile actor clear exit should identify its command route');
+  assertContains(openedActorHtml, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile actor clear exit should identify the exit slot');
   assertContains(openedActorHtml, 'Clear actors', 'Mobile actor clear exit should use a visible localized label');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');

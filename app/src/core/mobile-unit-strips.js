@@ -143,7 +143,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }).join('');
         const clearLabel = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
         const clearTitle = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
-        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
+        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" data-command-slot="exit" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
         return `${chips}${clear}`;
     },
 

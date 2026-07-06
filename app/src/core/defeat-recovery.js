@@ -155,11 +155,13 @@ const YAW_DEFEAT_RECOVERY = {
         if (desktopBelt) {
             desktopBelt.innerHTML = html;
             desktopBelt.setAttribute('data-command-surface', 'defeat-recovery');
+            desktopBelt.setAttribute('data-command-mode', 'recovery');
         }
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = html;
             mobileExplore.setAttribute('data-command-surface', 'defeat-recovery');
+            mobileExplore.setAttribute('data-command-mode', 'recovery');
             mobileExplore.style.display = 'flex';
         }
         const mobileTargetTray = document.getElementById('mobile-target-action-tray');

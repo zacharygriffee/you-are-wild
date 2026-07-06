@@ -9,6 +9,7 @@ const YAW_SCENE_SHELL = {
         if (mobileExplore) {
             mobileExplore.innerHTML = '';
             mobileExplore.removeAttribute('data-command-surface');
+            mobileExplore.removeAttribute('data-command-mode');
             mobileExplore.style.display = 'none';
         }
         const mobileTargetTray = document.getElementById('mobile-target-action-tray');
@@ -65,6 +66,7 @@ const YAW_SCENE_SHELL = {
         if (desktopBelt) {
             desktopBelt.innerHTML = '';
             desktopBelt.removeAttribute('data-command-surface');
+            desktopBelt.removeAttribute('data-command-mode');
         }
         this.clearMobileExplorationControls(app);
     },
@@ -83,6 +85,7 @@ const YAW_SCENE_SHELL = {
         if (desktopBelt) {
             desktopBelt.innerHTML = '';
             desktopBelt.removeAttribute('data-command-surface');
+            desktopBelt.removeAttribute('data-command-mode');
         }
         this.clearMobileExplorationControls(app);
         const mobileTitle = document.getElementById('mobile-scene-title');

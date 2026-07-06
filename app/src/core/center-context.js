@@ -153,7 +153,7 @@ const YAW_CENTER_CONTEXT = {
             exit: 'App.exitStructure()'
         };
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-intent="${intent}"`);
+        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-intent="${intent}"`);
     },
 
     renderActions(app) {
@@ -176,14 +176,24 @@ const YAW_CENTER_CONTEXT = {
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = html;
-            if (commandSurface) desktopBelt.setAttribute('data-command-surface', commandSurface);
-            else desktopBelt.removeAttribute('data-command-surface');
+            if (commandSurface) {
+                desktopBelt.setAttribute('data-command-surface', commandSurface);
+                desktopBelt.setAttribute('data-command-mode', 'exploration');
+            } else {
+                desktopBelt.removeAttribute('data-command-surface');
+                desktopBelt.removeAttribute('data-command-mode');
+            }
         }
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = html;
-            if (commandSurface) mobileExplore.setAttribute('data-command-surface', commandSurface);
-            else mobileExplore.removeAttribute('data-command-surface');
+            if (commandSurface) {
+                mobileExplore.setAttribute('data-command-surface', commandSurface);
+                mobileExplore.setAttribute('data-command-mode', 'exploration');
+            } else {
+                mobileExplore.removeAttribute('data-command-surface');
+                mobileExplore.removeAttribute('data-command-mode');
+            }
         }
         app.renderMobileExplorationControls?.();
     },

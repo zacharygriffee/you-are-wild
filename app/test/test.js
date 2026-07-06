@@ -5494,7 +5494,11 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertContains(elements.get('scene-title').textContent, 'Defeat', 'Defeat should render a recovery title');
   assertNotContains(elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat presentation should not embed recovery action controls');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the desktop command belt');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat desktop command belt should identify the recovery surface');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Defeat desktop command belt should expose Regenerate structurally');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'End Game', 'Defeat should offer end game in the desktop command belt');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="end-game"', 'Defeat desktop command belt should expose End Game structurally');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat mobile command belt should identify the recovery surface');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the mobile command belt');
 });
 
@@ -6214,6 +6218,8 @@ test('Resource-site search is deterministic visible and one-time', () => {
     App.exploredTiles = new Set(['2,0']);
     App.renderExplorationActions();
     assertEqual(elements.get('scene-actions').innerHTML, '', 'Resource-site center presentation should not own Search');
+    assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'location-actions', 'Resource-site desktop belt should identify location actions');
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search"', 'Resource-site Search should expose its stable location intent id');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
     App.search();
     assertEqual(App.inventory.length, 1, 'Resource-site search should grant exactly one item');
@@ -10369,6 +10375,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Mobile control belt should become fixed-visible when location or target controls exist');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), true, 'Mobile play surface should reserve space for the fixed control belt while controls are visible');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'location-actions', 'Mobile location action row should identify the location action surface');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-intent="takeItems"', 'Mobile Take Items should expose its stable location intent id');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
@@ -10479,6 +10487,7 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   App.mobileMovePadOpen = true;
   App.mobileActorBeltOpen = true;
   elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
+  elements.get('mobile-explore-actions').setAttribute('data-command-surface', 'location-actions');
   elements.get('mobile-explore-actions').style.display = 'flex';
   elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
   elements.get('mobile-actor-belt').innerHTML = '<button>Ally</button>';
@@ -10495,6 +10504,7 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   App._clearCenterActionsForCombat();
 
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Combat clearing should remove stale mobile location actions');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale mobile command-surface metadata');
   assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Combat clearing should hide the mobile location action row');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Combat clearing should remove stale marked-target actions');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Combat clearing should remove stale exploration actor controls');
@@ -10518,7 +10528,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('scene-actions').innerHTML = '<button>Center action</button>';
   elements.get('scene-actions').style.display = '';
   elements.get('desktop-context-belt').innerHTML = '<button>Rest</button>';
+  elements.get('desktop-context-belt').setAttribute('data-command-surface', 'location-actions');
   elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
+  elements.get('mobile-explore-actions').setAttribute('data-command-surface', 'location-actions');
   elements.get('mobile-explore-actions').style.display = 'flex';
   elements.get('mobile-target-action-tray').innerHTML = '<button>Talk</button>';
   elements.get('mobile-actor-belt').innerHTML = '<button>Ally</button>';
@@ -10540,7 +10552,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertContains(elements.get('mobile-scene-description').innerHTML, 'Carried items', 'Rich scene should update the mobile presentation sheet');
   assertEqual(elements.get('scene-actions').style.display, 'none', 'Rich scene should hide legacy center actions');
   assertEqual(elements.get('desktop-context-belt').innerHTML, '', 'Rich scene should clear stale desktop composer actions');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command-surface metadata');
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Rich scene should remove stale mobile location actions');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile command-surface metadata');
   assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Rich scene should hide the mobile location row');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Rich scene should remove stale marked-target actions');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Rich scene should remove stale exploration actor controls');

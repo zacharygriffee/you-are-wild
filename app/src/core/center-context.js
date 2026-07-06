@@ -151,7 +151,8 @@ const YAW_CENTER_CONTEXT = {
             enter: 'App.enterStructure()',
             exit: 'App.exitStructure()'
         };
-        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '');
+        const intent = app._escapeHtml(key);
+        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-intent="${intent}"`);
     },
 
     renderActions(app) {
@@ -170,10 +171,19 @@ const YAW_CENTER_CONTEXT = {
             actions.innerHTML = '';
             actions.style.display = 'none';
         }
+        const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : 'location-actions') : '';
         const desktopBelt = document.getElementById('desktop-context-belt');
-        if (desktopBelt) desktopBelt.innerHTML = html;
+        if (desktopBelt) {
+            desktopBelt.innerHTML = html;
+            if (commandSurface) desktopBelt.setAttribute('data-command-surface', commandSurface);
+            else desktopBelt.removeAttribute('data-command-surface');
+        }
         const mobileExplore = document.getElementById('mobile-explore-actions');
-        if (mobileExplore) mobileExplore.innerHTML = html;
+        if (mobileExplore) {
+            mobileExplore.innerHTML = html;
+            if (commandSurface) mobileExplore.setAttribute('data-command-surface', commandSurface);
+            else mobileExplore.removeAttribute('data-command-surface');
+        }
         app.renderMobileExplorationControls?.();
     },
 

@@ -102,6 +102,8 @@ const YAW_COMBAT_ACTIONS = {
         if (!belt) return '';
         const html = this.desktopComposer(app, actor);
         belt.innerHTML = html;
+        if (html) belt.setAttribute('data-command-surface', 'combat-composer');
+        else belt.removeAttribute('data-command-surface');
         return html;
     }
 };

@@ -8,6 +8,7 @@ const YAW_SCENE_SHELL = {
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = '';
+            mobileExplore.removeAttribute('data-command-surface');
             mobileExplore.style.display = 'none';
         }
         const mobileTargetTray = document.getElementById('mobile-target-action-tray');
@@ -50,7 +51,10 @@ const YAW_SCENE_SHELL = {
             actions.style.display = 'none';
         }
         const desktopBelt = document.getElementById('desktop-context-belt');
-        if (desktopBelt) desktopBelt.innerHTML = '';
+        if (desktopBelt) {
+            desktopBelt.innerHTML = '';
+            desktopBelt.removeAttribute('data-command-surface');
+        }
         this.clearMobileExplorationControls(app);
     },
 
@@ -65,7 +69,10 @@ const YAW_SCENE_SHELL = {
             actions.style.display = 'none';
         }
         const desktopBelt = document.getElementById('desktop-context-belt');
-        if (desktopBelt) desktopBelt.innerHTML = '';
+        if (desktopBelt) {
+            desktopBelt.innerHTML = '';
+            desktopBelt.removeAttribute('data-command-surface');
+        }
         this.clearMobileExplorationControls(app);
         const mobileTitle = document.getElementById('mobile-scene-title');
         const mobileDesc = document.getElementById('mobile-scene-description');

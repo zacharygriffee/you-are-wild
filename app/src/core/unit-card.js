@@ -45,37 +45,38 @@ const YAW_UNIT_CARD = {
                 detailControls.push(`<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-inventory" title="${inventoryTitle}" aria-label="${inventoryTitle}" onclick="event.stopPropagation();App.showInventory()">${inventoryLabel}</button>`);
             }
             detailButtons = `<div class="unit-actions unit-detail-actions" ${app._unitActionRowAttrs('party-details', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${detailControls.join('')}</div>`;
+            const managementAttrs = 'data-command-surface="detail-management" data-command-mode="exploration"';
             if (!isLeader) {
                 const leadLabel = app._escapeHtml(app._label('party.makeLeader', 'Make Leader'));
                 const leadTitle = app._escapeHtml(app._label('party.makeLeaderFor', 'Make {name} party leader', { name: unitName }));
-                partyManagementControls += `<button class="action-btn" data-command-mode="exploration" data-command-control="make-leader" title="${leadTitle}" aria-label="${leadTitle}" onclick="event.stopPropagation();App.setPartyLeader(${index})">${leadLabel}</button>`;
+                partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="make-leader" title="${leadTitle}" aria-label="${leadTitle}" onclick="event.stopPropagation();App.setPartyLeader(${index})">${leadLabel}</button>`;
             }
             if (canDragPartyMember) {
                 const dragTitle = app._escapeHtml(app._label('party.dragToReorder', 'Drag {name} to reorder', { name: unitName }));
-                partyManagementControls += `<button class="action-btn party-drag-handle" data-command-mode="exploration" data-command-control="reorder-party-member" draggable="true" title="${dragTitle}" aria-label="${dragTitle}" onclick="event.stopPropagation()" ondragstart="event.stopPropagation();App.startPartyDrag(${index})">↕</button>`;
+                partyManagementControls += `<button class="action-btn party-drag-handle" ${managementAttrs} data-command-control="reorder-party-member" draggable="true" title="${dragTitle}" aria-label="${dragTitle}" onclick="event.stopPropagation()" ondragstart="event.stopPropagation();App.startPartyDrag(${index})">↕</button>`;
             }
             if (index > 1) {
                 const moveUpTitle = app._escapeHtml(app._label('party.moveUp', 'Move {name} up', { name: unitName }));
-                partyManagementControls += `<button class="action-btn" data-command-mode="exploration" data-command-control="move-party-member-up" title="${moveUpTitle}" aria-label="${moveUpTitle}" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
+                partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="move-party-member-up" title="${moveUpTitle}" aria-label="${moveUpTitle}" onclick="event.stopPropagation();App.movePartyMember(${index},-1)">↑</button>`;
             }
             if (!isPlayer && index < app.party.length - 1) {
                 const moveDownTitle = app._escapeHtml(app._label('party.moveDown', 'Move {name} down', { name: unitName }));
-                partyManagementControls += `<button class="action-btn" data-command-mode="exploration" data-command-control="move-party-member-down" title="${moveDownTitle}" aria-label="${moveDownTitle}" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
+                partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="move-party-member-down" title="${moveDownTitle}" aria-label="${moveDownTitle}" onclick="event.stopPropagation();App.movePartyMember(${index},1)">↓</button>`;
             }
             if (isAlly) {
                 const role = app._getPartyRole(unit);
                 const roleOptions = Object.keys(app.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${app._escapeHtml(app._partyRoleLabel(key))}</option>`).join('');
                 const roleTitle = app._escapeHtml(`${app._label('party.role', 'Role')}: ${app._partyRoleDescription(role)}`);
                 const roleAria = app._escapeHtml(app._label('party.roleFor', 'Party role for {name}', { name: unitName }));
-                partyManagementControls += `<select class="nav-btn" data-command-mode="exploration" data-command-control="set-party-role" style="padding:4px 8px;font-size:11px;" title="${roleTitle}" aria-label="${roleAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select>`;
+                partyManagementControls += `<select class="nav-btn" ${managementAttrs} data-command-control="set-party-role" style="padding:4px 8px;font-size:11px;" title="${roleTitle}" aria-label="${roleAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyRole(${index},this.value)">${roleOptions}</select>`;
                 const order = app._getPartyAIOrder(unit);
                 const options = Object.keys(app.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${app._escapeHtml(app._partyAIOrderLabel(key))}</option>`).join('');
                 const orderTitle = app._escapeHtml(`${app._label('party.aiOrder', 'AI Order')}: ${app._partyAIOrderDescription(order)}`);
                 const orderAria = app._escapeHtml(app._label('party.aiOrderFor', 'AI order for {name}', { name: unitName }));
-                partyManagementControls += `<select class="nav-btn" data-command-mode="exploration" data-command-control="set-party-ai-order" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
+                partyManagementControls += `<select class="nav-btn" ${managementAttrs} data-command-control="set-party-ai-order" style="padding:4px 8px;font-size:11px;" title="${orderTitle}" aria-label="${orderAria}" onclick="event.stopPropagation()" onchange="event.stopPropagation();App.setPartyAIOrder(${index},this.value)">${options}</select>`;
                 const dismissLabel = app._escapeHtml(app._label('party.dismiss', 'Dismiss'));
                 const dismissTitle = app._escapeHtml(app._label('party.dismissFor', 'Dismiss {name}', { name: unitName }));
-                partyManagementControls += `<button class="action-btn" data-command-mode="exploration" data-command-control="dismiss-party-member" style="color:var(--accent-danger)" title="${dismissTitle}" aria-label="${dismissTitle}" onclick="event.stopPropagation();App.dismissPartyMember(${index})">${dismissLabel}</button>`;
+                partyManagementControls += `<button class="action-btn" ${managementAttrs} data-command-control="dismiss-party-member" style="color:var(--accent-danger)" title="${dismissTitle}" aria-label="${dismissTitle}" onclick="event.stopPropagation();App.dismissPartyMember(${index})">${dismissLabel}</button>`;
             }
             if (partyManagementControls) {
                 partyManagementControls = `<div class="unit-actions unit-management-actions" ${app._unitActionRowAttrs('party-management', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${partyManagementControls}</div>`;

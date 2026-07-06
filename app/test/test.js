@@ -11483,8 +11483,7 @@ test('Quest system exposes quest giver actions and quest log', () => {
   App.party = [App.player];
   App.creatures = [giver];
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Quest giver card should expose quest preview directly');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should preview through shared intent selection');
+  assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','guide-1','quest','panel-card')", 'Quest giver card should not duplicate composer-owned quest preview');
   App.toggleExplorationTarget('creature', 'guide-1');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Accept Quest', 'Marked quest giver composer should expose accept action');
   assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','guide-1','quest','panel-tray')", 'Marked quest giver composer should preview through shared intent selection before accepting');
@@ -12107,8 +12106,7 @@ test('Structure encounters can place authored quest givers', () => {
   assertEqual(giver.quest.templateId, 'shrine_relic', 'Placed quest giver should use authored quest template');
   assertEqual(giver.quest.id, 'shrine_relic_2_0', 'Authored quest id should be stable for the structure tile');
   App.renderCreatures();
-  assertContains(elements.get('enemies-content').innerHTML, 'Accept Quest', 'Placed quest giver card should expose its quest utility directly');
-  assertContains(elements.get('enemies-content').innerHTML, "selectIntent('creature'", 'Placed quest giver card should dispatch quest preview directly');
+  assertNotContains(elements.get('enemies-content').innerHTML, "'quest','panel-card'", 'Placed quest giver card should not duplicate composer-owned quest actions');
   App.toggleExplorationTarget('creature', App._explorationTargetUnitId('creature', giver));
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Accept Quest', 'Marked quest giver should expose quest action through the shared composer');
   assertContains(elements.get('desktop-context-belt').innerHTML, "'quest','panel-tray'", 'Marked quest giver should dispatch quest through the shared composer');

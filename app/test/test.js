@@ -2253,6 +2253,10 @@ test('Trade flow helper module is registered before app code', () => {
   assertContains(tradeFlowContent, 'const YAW_TRADE_FLOW = {', 'Trade flow helper should expose the trade flow service');
   assertContains(tradeFlowContent, 'show(app, targetId)', 'Trade flow helper should own merchant panel rendering');
   assertContains(tradeFlowContent, "app.showCreaturePanelDetail(title, html)", 'Trade should render through creature panel details');
+  assertContains(tradeFlowContent, 'data-command-surface="trade-detail"', 'Trade drawer should identify its detail command surface');
+  assertContains(tradeFlowContent, 'data-command-control="buy-item"', 'Trade buy controls should identify drawer transaction controls');
+  assertContains(tradeFlowContent, 'data-command-control="sell-item"', 'Trade sell controls should identify drawer transaction controls');
+  assertContains(tradeFlowContent, 'data-command-control="close-trade"', 'Trade close control should identify its drawer exit');
   assertNotContains(tradeFlowContent, "document.getElementById('scene-description')", 'Trade helper should not render into center tile content');
   assertContains(tradeFlowContent, 'buy(app, targetId, stockIndex)', 'Trade flow helper should own merchant purchase action');
   assertContains(tradeFlowContent, 'sell(app, targetId, itemId)', 'Trade flow helper should own merchant sell action');
@@ -13241,6 +13245,11 @@ test('Merchant trade action labels localize with accessible names', () => {
   App.updateLanguage('es');
   App.showTrade('trader-1');
   const html = elements.get('enemies-content').innerHTML;
+  assertContains(html, 'data-command-surface="trade-detail"', 'Trade drawer should render as a detail command surface');
+  assertContains(html, 'data-command-control="buy-item"', 'Trade buy button should expose its transaction control role');
+  assertContains(html, 'data-command-control="sell-item"', 'Trade sell button should expose its transaction control role');
+  assertContains(html, 'data-command-control="close-trade"', 'Trade back button should expose its drawer exit role');
+  assertContains(html, 'data-command-intent="trade"', 'Trade drawer controls should keep the stable trade intent visible');
   assertContains(html, 'aria-label="Comprar Healing Herb"', 'Buy control should expose localized accessible label');
   assertContains(html, '>Comprar<', 'Buy visible label should localize');
   assertContains(html, 'aria-label="Vender Old Coin"', 'Sell control should expose localized accessible label');

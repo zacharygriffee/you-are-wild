@@ -2278,6 +2278,8 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'party(app)', 'Mobile unit strip helper should own party strip rendering');
   assertContains(mobileUnitStripsContent, 'creatures(app)', 'Mobile unit strip helper should own creature strip rendering');
   assertContains(mobileUnitStripsContent, 'creaturePresenceCue(app)', 'Mobile unit strip helper should own the compact creature presence cue');
+  assertContains(mobileUnitStripsContent, "'ui.creatureCue.selectTarget'", 'Single-creature mobile cue should announce composer target selection');
+  assertContains(mobileUnitStripsContent, "'ui.creatureCue.openPanel'", 'Multi-creature mobile cue should announce the creature drawer action');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
@@ -10313,7 +10315,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
-  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'focusMobileCreaturePresence()', 'Mobile creature cue should focus/open creature details on tap');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-label="Select Guide as target"', 'Mobile creature cue should announce the composer target-selection action');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'focusMobileCreaturePresence()', 'Mobile creature cue should route through the shared presence selection path on tap');
   assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Mobile creature dock badge should be visible when living creatures are here');
   assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Mobile creature dock badge should show the local living creature count');
   assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), '1 here', 'Mobile creature dock button should expose the local creature count accessibly');
@@ -10322,8 +10325,10 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile actor belt should stay collapsed until selection state needs it');
   assertEqual(document.getElementById('mobile-selection-sentence').innerHTML, '', 'Mobile selection sentence should stay hidden for implicit player state');
   assertEqual(App.focusMobileCreaturePresence(), true, 'Mobile creature cue should use the existing creature focus path');
-  assertEqual(guide.expanded, true, 'Mobile creature cue should expand the matching creature card');
-  assertContains(document.getElementById('enemies-content').innerHTML, 'Guide', 'Mobile creature cue should render creature details in the creature panel');
+  assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature cue should mark the local creature target');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature cue should update the composer sentence');
+  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature cue should expose target actions in the visible tray');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Single mobile creature cue should not force-open the creature drawer');
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Dormant mobile move pad behavior should remain restorable');

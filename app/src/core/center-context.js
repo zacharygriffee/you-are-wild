@@ -65,7 +65,8 @@ const YAW_CENTER_CONTEXT = {
         const escapedRef = app._escapeHtml(ref);
         const jsType = app._escapeJsString(presenceType);
         const jsRef = app._escapeJsString(ref);
-        return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
+        const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
+        return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
     },
 
     focusPresence(app, type, ref) {
@@ -117,7 +118,7 @@ const YAW_CENTER_CONTEXT = {
         const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0
-            ? `<button type="button" class="center-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
+            ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-control="open-details" data-command-mode="exploration" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${moreText}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
         rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;

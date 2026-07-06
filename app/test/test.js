@@ -2601,6 +2601,8 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, "document.getElementById('desktop-presence-rail')", 'Center context helper should render presence into the desktop stage rail');
   assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should route presence chips into actor/target selection');
+  assertContains(centerContextContent, 'data-stage-surface="presence"', 'Center context presence controls should identify the stage presence surface');
+  assertContains(centerContextContent, 'data-command-control="${control}"', 'Center context presence chips should identify their actor/target composer route');
   assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
   assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
@@ -4033,6 +4035,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
+  assertContains(mobileUnitStripsContent, 'data-stage-surface="presence"', 'mobile creature cue should identify the stage presence surface');
+  assertContains(mobileUnitStripsContent, 'data-command-control="${commandControl}"', 'mobile creature cue should identify whether it routes to target focus or details');
   assertContains(mobileUnitStripsContent, 'const actorToggle = document.getElementById(\'mobile-actor-toggle\')', 'mobile actor row should have a visible toggle control');
   assertContains(mobileUnitStripsContent, 'actorControls(app)', 'mobile actor strip should render compact actor chips rather than full party cards');
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
@@ -6827,9 +6831,14 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-stage-surface="presence"', 'Desktop stage rail controls should identify the presence surface');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-actor"', 'Desktop party presence should identify actor-focus routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="focus-target"', 'Desktop creature presence should identify target-focus routing');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-mode="exploration"', 'Desktop presence routing should identify exploration command mode');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Add Ally as actor"', 'Desktop party presence should advertise add-actor semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Mark Friendly as target"', 'Desktop creature presence should advertise mark-target semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-command-control="open-details"', 'Desktop overflow presence should identify detail-drawer routing');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 1 more in details"', 'Desktop overflow presence should advertise that it opens details');
   assertContains(el('desktop-presence-rail').innerHTML, '>+1 more<', 'Desktop overflow presence should keep the compact visible count');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
@@ -10385,6 +10394,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-label="Mark Guide as target"', 'Mobile creature cue should announce the composer target-selection action');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-stage-surface="presence"', 'Mobile creature cue should identify the stage presence surface');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-command-control="focus-target"', 'Single mobile creature cue should identify target-focus routing');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-command-mode="exploration"', 'Mobile creature cue should identify exploration command mode');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'focusMobileCreaturePresence()', 'Mobile creature cue should route through the shared presence selection path on tap');
   assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Mobile creature dock badge should be visible when living creatures are here');
   assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Mobile creature dock badge should show the local living creature count');

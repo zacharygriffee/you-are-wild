@@ -150,7 +150,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
             : app._label('ui.creatureCue.openPanel', 'Open {count} creatures here', { count: living.length });
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);
-        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn" onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
+        const commandControl = living.length === 1 ? 'focus-target' : 'open-details';
+        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn" data-stage-surface="presence" data-command-control="${commandControl}" data-command-mode="exploration" onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
     },
 
     focusCreaturePresence(app) {

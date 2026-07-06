@@ -6,17 +6,17 @@
 const YAW_INVENTORY_PANEL = {
     show(app) {
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const backButton = `<button class="nav-btn" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
+        const backButton = `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="close-inventory" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
         const title = app._escapeHtml(app._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: app.inventory.length, max: app.MAX_INVENTORY }));
         const equippedLabel = app._escapeHtml(app._label('inventory.equippedSection', 'Equipped'));
-        let html = `<div class="inventory-panel-detail"><h3>${title}</h3>`;
+        let html = `<div class="inventory-panel-detail" data-command-surface="inventory-detail" data-command-mode="exploration"><h3>${title}</h3>`;
         html += `<div class="option-card" style="text-align:left;cursor:default;margin-top:12px;"><div style="font-weight:700;color:var(--text-primary)">${equippedLabel}</div><div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px">${app._equipmentSummary()}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">`;
         Object.entries(app.EQUIPMENT_SLOTS).forEach(([slot, label]) => {
             const equipped = app.player?.equipment?.[slot];
             if (equipped) {
                 const unequipTitle = app._escapeHtml(app._label('inventory.unequipSlot', 'Unequip {slot}', { slot: label }));
                 const unequipLabel = app._escapeHtml(`${app._label('inventory.unequip', 'Unequip')} ${label}`);
-                html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${slot}')">${unequipLabel}</button>`;
+                html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="unequip-item" style="padding:4px 8px;font-size:11px" title="${unequipTitle}" aria-label="${unequipTitle}" onclick="App.unequipItem('${slot}')">${unequipLabel}</button>`;
             }
         });
         html += `</div></div>`;
@@ -47,9 +47,9 @@ const YAW_INVENTORY_PANEL = {
             const useTitle = app._escapeHtml(app._label('inventory.useItem', 'Use {name}', { name: item.name }));
             const equipTitle = app._escapeHtml(app._label('inventory.equipItem', 'Equip {name}', { name: item.name }));
             const dropTitle = app._escapeHtml(app._label('inventory.dropItem', 'Drop {name}', { name: item.name }));
-            if (canUse) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
-            if (canEquip) html += `<button class="nav-btn" style="flex:1;padding:4px 8px;font-size:11px" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">${equipLabel}</button>`;
-            html += `<button class="nav-btn" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
+            if (canUse) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="use-item" style="flex:1;padding:4px 8px;font-size:11px" title="${useTitle}" aria-label="${useTitle}" onclick="App.useItem('${itemKey}')">${useLabel}</button>`;
+            if (canEquip) html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="equip-item" style="flex:1;padding:4px 8px;font-size:11px" title="${equipTitle}" aria-label="${equipTitle}" onclick="App.equipItem('${String(item.id).replace(/'/g, "\\'")}')">${equipLabel}</button>`;
+            html += `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="drop-item" style="padding:4px 8px;font-size:11px;color:var(--accent-danger)" title="${dropTitle}" aria-label="${dropTitle}" onclick="App.dropItem('${itemKey}')">${dropLabel}</button></div></div>`;
         });
         html += `</div>${backButton}</div>`;
         app.showPartyPanelDetail(title, html);

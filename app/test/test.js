@@ -2238,6 +2238,11 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'const YAW_INVENTORY_PANEL = {', 'Inventory panel helper should expose the inventory panel service');
   assertContains(inventoryPanelContent, 'show(app)', 'Inventory panel helper should own panel rendering');
   assertContains(inventoryPanelContent, "app.showPartyPanelDetail(title, html)", 'Inventory should render through party panel details');
+  assertContains(inventoryPanelContent, 'data-command-surface="inventory-detail"', 'Inventory drawer should identify its detail command surface');
+  assertContains(inventoryPanelContent, 'data-command-control="use-item"', 'Inventory use controls should identify item action controls');
+  assertContains(inventoryPanelContent, 'data-command-control="equip-item"', 'Inventory equip controls should identify item action controls');
+  assertContains(inventoryPanelContent, 'data-command-control="drop-item"', 'Inventory drop controls should identify item action controls');
+  assertContains(inventoryPanelContent, 'data-command-control="close-inventory"', 'Inventory back control should identify its drawer exit');
   assertContains(inventoryPanelContent, 'drop(app, itemId)', 'Inventory panel helper should own direct drop-to-tile behavior');
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
@@ -13949,6 +13954,12 @@ test('Inventory action labels localize with accessible names', () => {
   App.updateLanguage('es');
   App.showInventory();
   const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'data-command-surface="inventory-detail"', 'Inventory drawer should render as a detail command surface');
+  assertContains(html, 'data-command-control="unequip-item"', 'Inventory unequip button should expose its item control role');
+  assertContains(html, 'data-command-control="use-item"', 'Inventory use button should expose its item control role');
+  assertContains(html, 'data-command-control="equip-item"', 'Inventory equip button should expose its item control role');
+  assertContains(html, 'data-command-control="drop-item"', 'Inventory drop button should expose its item control role');
+  assertContains(html, 'data-command-control="close-inventory"', 'Inventory back button should expose its drawer exit role');
   assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
   assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
   assertContains(html, 'aria-label="Usar Healing Herb"', 'Use control should expose localized accessible label');

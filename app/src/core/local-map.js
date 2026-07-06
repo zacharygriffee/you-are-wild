@@ -37,14 +37,21 @@ const YAW_LOCAL_MAP = {
             const tone = app._escapeHtml(entry.tone || entry.type || 'party');
             if (entry.type === 'items') {
                 const label = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
-                return `<button type="button" class="mobile-play-presence-dot item" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')">${app._escapeHtml(unit.icon || '🎒')}</button>`;
+                const selected = app.focusedStageObject?.type === 'items';
+                const selectedClass = selected ? ' selected selected-stage-focus' : '';
+                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+                return `<button type="button" class="mobile-play-presence-dot item${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" data-presence-type="items" data-presence-ref="tile-items" ${selectionAttrs} title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')">${app._escapeHtml(unit.icon || '🎒')}</button>`;
             }
             if (entry.type === 'place') {
-                const ref = app._escapeHtml(unit.id || 'tile-place');
+                const rawRef = unit.id || 'tile-place';
+                const ref = app._escapeHtml(rawRef);
                 const intent = unit.intent ? ` data-command-intent="${app._escapeHtml(unit.intent)}"` : '';
                 const label = app._escapeHtml(app._label('ui.presence.focusPlace', 'Focus {name} location actions', { name: unit.name || app._label('ui.tileInfo.landmark', 'Landmark') }));
-                const jsRef = app._escapeJsString(unit.id || 'tile-place');
-                return `<button type="button" class="mobile-play-presence-dot place" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-place"${intent} data-presence-type="place" data-presence-ref="${ref}" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('place','${jsRef}')">${app._escapeHtml(unit.icon || '◆')}</button>`;
+                const jsRef = app._escapeJsString(rawRef);
+                const selected = app.focusedStageObject?.type === 'place' && app.focusedStageObject.id === rawRef;
+                const selectedClass = selected ? ' selected selected-stage-focus' : '';
+                const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}"`;
+                return `<button type="button" class="mobile-play-presence-dot place${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-place"${intent} data-presence-type="place" data-presence-ref="${ref}" ${selectionAttrs} title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('place','${jsRef}')">${app._escapeHtml(unit.icon || '◆')}</button>`;
             }
             const presenceType = entry.type === 'creature' ? 'creature' : 'party';
             const ref = presenceType === 'creature'

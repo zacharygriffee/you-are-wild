@@ -7361,6 +7361,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('selection-sentence').innerHTML, 'Enter', 'Structure focus should show Enter as the pending intent');
   assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Structure focus should expose one focused place in metadata');
   assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'enter', 'Structure focus should expose the stable Enter intent in sentence metadata');
+  assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Focused structure should visibly mark its desktop stage presence chip');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Focused structure should expose stage-focus pressed state');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the mobile command sentence');
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the composer selection path');
@@ -7497,6 +7499,8 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(el('selection-sentence').innerHTML, 'data-command-slot="target"', 'Item focus should use the target slot for the focused stage object');
   assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Item focus should expose one focused stage object in metadata');
   assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'takeItems', 'Item focus should expose the stable Take Items intent in sentence metadata');
+  assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Item focus should visibly mark its desktop stage presence chip');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Item focus should expose stage-focus pressed state');
   assertContains(el('mobile-selection-sentence').innerHTML, 'Healing Herb', 'Item focus should show the tile item in the mobile command sentence');
 
   App.renderMap();
@@ -7506,6 +7510,7 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(mobileHtml, 'data-command-control="focus-items"', 'Mobile item presence should route through item focus');
   assertContains(mobileHtml, 'data-command-intent="takeItems"', 'Mobile item presence should point at the stable Take Items intent');
   assertContains(mobileHtml, "App.focusPresence('items','tile-items')", 'Mobile item presence should focus the existing Take Items command');
+  assertContains(mobileHtml, 'selected selected-stage-focus', 'Item focus should visibly mark its mobile stage presence dot');
   assertNotContains(mobileHtml, 'App.takeTileItems()', 'Mobile item presence should not immediately pick up items');
   assertEqual(App.takeTileItems(), true, 'Taking focused tile items should still use the existing pickup path');
   assertEqual(App.focusedStageObject, null, 'Taking the last focused tile item should clear object focus');
@@ -7555,6 +7560,8 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(el('mobile-selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the mobile command sentence');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a desktop composer exit');
   assertEqual(el('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the desktop belt as composer state');
+  assertContains(el('desktop-presence-rail').innerHTML, 'selected selected-stage-focus', 'Landmark focus should visibly mark its desktop stage presence chip');
+  assertContains(el('desktop-presence-rail').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused"', 'Landmark focus should expose stage-focus pressed state');
   assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Landmark focus should expose a mobile composer exit');
   assertEqual(el('mobile-explore-actions').getAttribute('data-command-surface'), 'command-composer', 'Landmark focus should identify the mobile action row as composer state');
 
@@ -7563,6 +7570,7 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(mobileHtml, 'mobile-play-presence-dot place', 'Mobile center tile should expose landmarks as compact place presence');
   assertContains(mobileHtml, 'data-command-control="focus-place"', 'Mobile landmark presence should route through place focus');
   assertContains(mobileHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Mobile landmark presence should focus the location composer');
+  assertContains(mobileHtml, 'selected selected-stage-focus', 'Landmark focus should visibly mark its mobile stage presence dot');
 
   assertEqual(App.clearFocusedStageObject(), true, 'Focused stage object clear should resolve through the composer exit');
   assertEqual(App.focusedStageObject, null, 'Focused stage object clear should remove passive place focus');

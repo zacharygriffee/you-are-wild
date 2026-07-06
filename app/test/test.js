@@ -2170,6 +2170,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
+  assertContains(mobileUnitChipContent, 'if (isExpanded) {', 'Mobile party detail controls should stay behind the chip detail expansion');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-details', unit)", 'Mobile party chip should label detail utility row semantics separately from actor/target selection');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Mobile creature chip should label target-only row semantics');
   assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile party Actor chip should identify button-level actor routing');
@@ -13982,11 +13983,10 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-card-state="collapsed"', 'Mobile chip should expose collapsed focus/detail state separately from selection state');
   assertContains(mobilePlayerChip, 'aria-expanded="false"', 'Mobile collapsed chip should expose collapsed detail state');
   assertContains(mobilePlayerChip, 'data-action-scope="party-selection" aria-label="Actor and target controls for You"', 'Mobile party action row should identify actor/target selection scope');
-  assertContains(mobilePlayerChip, 'data-action-scope="party-details" aria-label="Detail controls for You"', 'Mobile party detail row should identify detail-management scope');
   const mobileSelectionStart = mobilePlayerChip.indexOf('data-action-scope="party-selection"');
-  const mobileDetailsStart = mobilePlayerChip.indexOf('data-action-scope="party-details"');
-  assert(mobileSelectionStart >= 0 && mobileDetailsStart > mobileSelectionStart, 'Mobile party detail row should render after actor/target selection row');
-  const mobileSelectionRow = mobilePlayerChip.slice(mobileSelectionStart, mobileDetailsStart);
+  assert(mobileSelectionStart >= 0, 'Mobile party selection row should render on collapsed chips');
+  assertNotContains(mobilePlayerChip, 'data-action-scope="party-details"', 'Mobile collapsed party chip should not expose detail drawer controls by default');
+  const mobileSelectionRow = mobilePlayerChip.slice(mobileSelectionStart);
   assertNotContains(mobileSelectionRow, 'open-party-stats', 'Mobile party selection row should not mix in Stats detail controls');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Mobile party action row should identify actor-target composer routing');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile party action row should identify the shared command grammar');
@@ -13998,7 +13998,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobilePlayerChip, 'aria-label="Remove You from targets"', 'Marked mobile party target control should advertise remove semantics');
-  assertContains(mobilePlayerChip, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile party stats should identify itself as a detail-management control');
+  assertNotContains(mobilePlayerChip, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile collapsed party chip should keep detail actions out of the default actor-target surface');
   assertContains(mobileAllyChip, 'data-selection-control="actor" aria-pressed="true"', 'Selected mobile actor control should expose true pressed state');
   assertContains(mobileAllyChip, 'aria-label="Remove Ally from actors"', 'Selected mobile actor control should advertise remove semantics');
   assertContains(mobileAllyChip, 'aria-label="Mark Ally as target"', 'Unmarked mobile party target control should advertise mark semantics');
@@ -14025,6 +14025,8 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Expanded ally dismiss action should identify its drawer control');
   assertContains(expandedMobilePlayerChip, 'data-card-state="expanded"', 'Mobile expanded chip should expose expanded focus/detail state');
   assertContains(expandedMobilePlayerChip, 'aria-expanded="true"', 'Mobile expanded chip should expose expanded detail state');
+  assertContains(expandedMobilePlayerChip, 'data-action-scope="party-details" aria-label="Detail controls for You"', 'Mobile expanded party chip should expose detail-management scope');
+  assertContains(expandedMobilePlayerChip, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile expanded party stats should identify itself as a detail-management control');
 
   App.combatState.active = true;
   App.activeActor = player;
@@ -15557,7 +15559,10 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(partyHtml, 'aria-label="Agregar Ally como actor"', 'Mobile party actor button should localize accessible role label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
   assertNotContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party chip should not expose a duplicate visible action menu');
-  assertContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile party stats button should localize accessible label');
+  assertNotContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile collapsed party chip should keep detail controls out of the default actor-target row');
+  ally.expanded = true;
+  const expandedPartyHtml = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(expandedPartyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile expanded party stats button should localize accessible label');
   assertContains(partyHtml, '>Actor<', 'Mobile party actor button text should localize as a role');
   assertContains(partyHtml, '>Marcar<', 'Mobile party target button text should localize');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');

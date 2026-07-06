@@ -7055,6 +7055,11 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(App.focusPresence('place', 'structure:camp'), true, 'Structure presence focus should resolve through the location composer path');
   assertEqual(App.inInterior, false, 'Structure presence focus should not enter the structure directly');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="enter"', 'Structure presence focus should expose Enter in the desktop composer belt');
+  assertContains(el('selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the desktop command sentence');
+  assertContains(el('selection-sentence').innerHTML, 'Enter', 'Structure focus should show Enter as the pending intent');
+  assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Structure focus should expose one focused place in metadata');
+  assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'enter', 'Structure focus should expose the stable Enter intent in sentence metadata');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Camp', 'Structure focus should show the place object in the mobile command sentence');
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the composer selection path');
   assertEqual(App.explorationActorIds[0], 'ally-1', 'Party presence focus should select the party actor for the composer');
@@ -7183,6 +7188,12 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertEqual(App.inventory.length, 0, 'Focusing item presence should not mutate carried inventory');
   assertEqual(App.worldMap.get('0,0').items.length, 1, 'Focusing item presence should not remove tile-local items');
   assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="takeItems"', 'Item focus should expose Take Items in the desktop composer belt');
+  assertContains(el('selection-sentence').innerHTML, 'Healing Herb', 'Item focus should show the tile item in the desktop command sentence');
+  assertContains(el('selection-sentence').innerHTML, 'Take Items', 'Item focus should show Take Items as the pending intent');
+  assertContains(el('selection-sentence').innerHTML, 'data-command-slot="target"', 'Item focus should use the target slot for the focused stage object');
+  assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Item focus should expose one focused stage object in metadata');
+  assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'takeItems', 'Item focus should expose the stable Take Items intent in sentence metadata');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Healing Herb', 'Item focus should show the tile item in the mobile command sentence');
 
   App.renderMap();
   const mobileHtml = el('mobile-mini-map').innerHTML;
@@ -7192,6 +7203,11 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(mobileHtml, 'data-command-intent="takeItems"', 'Mobile item presence should point at the stable Take Items intent');
   assertContains(mobileHtml, "App.focusPresence('items','tile-items')", 'Mobile item presence should focus the existing Take Items command');
   assertNotContains(mobileHtml, 'App.takeTileItems()', 'Mobile item presence should not immediately pick up items');
+  assertEqual(App.takeTileItems(), true, 'Taking focused tile items should still use the existing pickup path');
+  assertEqual(App.focusedStageObject, null, 'Taking the last focused tile item should clear object focus');
+  App.renderSelectionSentence();
+  assertEqual(el('selection-sentence').innerHTML, '', 'Depleted item focus should clear the desktop command sentence when no other selection exists');
+  assertEqual(el('mobile-selection-sentence').innerHTML, '', 'Depleted item focus should clear the mobile command sentence when no other selection exists');
 });
 
 test('Stage presence exposes landmarks as passive place cues', () => {
@@ -7225,12 +7241,23 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(desktopHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Desktop landmark presence should focus the location composer');
   assertEqual(App.focusPresence('place', 'landmark:Ancient Tree'), true, 'Landmark presence focus should resolve without adding a mechanic');
   assertEqual(App.inInterior, false, 'Landmark presence focus should not move or enter anything');
+  assertContains(el('selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the desktop command sentence');
+  assertContains(el('selection-sentence').innerHTML, 'Choose', 'Landmark focus should keep intent pending when no direct action is claimed');
+  assertEqual(el('selection-sentence').getAttribute('data-command-target-count'), '1', 'Landmark focus should expose one focused place in metadata');
+  assertEqual(el('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Landmark focus should expose pending intent metadata');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the mobile command sentence');
 
   App.renderMap();
   const mobileHtml = el('mobile-mini-map').innerHTML;
   assertContains(mobileHtml, 'mobile-play-presence-dot place', 'Mobile center tile should expose landmarks as compact place presence');
   assertContains(mobileHtml, 'data-command-control="focus-place"', 'Mobile landmark presence should route through place focus');
   assertContains(mobileHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Mobile landmark presence should focus the location composer');
+
+  App.clearTileBoundExplorationTargets();
+  assertEqual(App.focusedStageObject, null, 'Tile-bound clearing should remove passive place focus');
+  App.renderSelectionSentence();
+  assertEqual(el('selection-sentence').innerHTML, '', 'Cleared place focus should remove the desktop command sentence when no other selection exists');
+  assertEqual(el('mobile-selection-sentence').innerHTML, '', 'Cleared place focus should remove the mobile command sentence when no other selection exists');
 });
 
 test('Center presence focus selects mobile composer state without opening drawers', () => {

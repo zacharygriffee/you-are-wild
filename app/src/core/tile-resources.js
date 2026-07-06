@@ -108,6 +108,8 @@ const YAW_TILE_RESOURCES = {
             const fullText = app._label('inventory.full', 'Inventory is full.');
             app.log.push({ text: fullText, type: 'loot' });
             app._addTileEvent(fullText, 'loot');
+        } else if (app.focusedStageObject?.type === 'items') {
+            app.focusedStageObject = null;
         }
         app.renderLog();
         app.renderExplorationActions();

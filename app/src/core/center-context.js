@@ -148,6 +148,15 @@ const YAW_CENTER_CONTEXT = {
         if (!ref || app.combatState?.active) return false;
         if (type === 'items') {
             if (ref !== 'tile-items' || !app._canTakeTileItems?.()) return false;
+            const tile = app._currentExplorationTile?.();
+            const items = Array.isArray(tile?.items) ? tile.items : [];
+            const first = items[0] ? app._tileItemLabel(items[0]) : app._label('action.takeItems', 'Take Items');
+            app.focusedStageObject = {
+                type: 'items',
+                id: 'tile-items',
+                name: items.length === 1 ? first : app._label('ui.tileItems.count', '{count} items', { count: items.length }),
+                intent: 'takeItems'
+            };
             app.renderExplorationActions?.();
             if (typeof document !== 'undefined') {
                 const button = document.querySelector('#mobile-explore-actions [data-command-intent="takeItems"], #desktop-context-belt [data-command-intent="takeItems"]');
@@ -156,6 +165,21 @@ const YAW_CENTER_CONTEXT = {
             return true;
         }
         if (type === 'place') {
+            const tile = app._currentExplorationTile?.();
+            let name = '';
+            let intent = 'choose';
+            if (String(ref || '').startsWith('structure:')) {
+                const structureId = String(ref).slice('structure:'.length);
+                const structure = app.STRUCTURES?.[structureId] || {};
+                if (!tile?.structure || tile.structure !== structureId) return false;
+                name = structure.name || structureId;
+                intent = 'enter';
+            } else if (String(ref || '').startsWith('landmark:')) {
+                const landmarkName = String(ref).slice('landmark:'.length);
+                if (!tile?.hasLandmark || tile.landmarkName !== landmarkName) return false;
+                name = landmarkName;
+            }
+            app.focusedStageObject = { type: 'place', id: String(ref), name, intent };
             app.renderExplorationActions?.();
             if (typeof document !== 'undefined') {
                 const focusIntent = String(ref || '').startsWith('structure:') ? 'enter' : '';

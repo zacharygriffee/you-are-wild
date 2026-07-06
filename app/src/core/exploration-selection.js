@@ -74,6 +74,7 @@ const YAW_EXPLORATION_SELECTION = {
 
     clearTileBoundTargets(app) {
         app.explorationTargetIds = (app.explorationTargetIds || []).filter(key => String(key).startsWith('party:'));
+        app.focusedStageObject = null;
     },
 
     selectActor(app, index) {
@@ -180,6 +181,7 @@ const YAW_EXPLORATION_SELECTION = {
     },
 
     toggleTarget(app, type, id) {
+        app.focusedStageObject = null;
         const key = this.targetKey(type, id);
         app.explorationTargetIds = app.explorationTargetIds || [];
         if (app.explorationTargetIds.includes(key)) {

@@ -713,6 +713,7 @@
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,
             explorationTargetIds: [],
+            focusedStageObject: null,
             mobileMovePadOpen: false,
             mobileActorBeltOpen: false,
             inInterior: false,

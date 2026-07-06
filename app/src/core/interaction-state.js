@@ -33,6 +33,7 @@ const YAW_INTERACTION_STATE = {
 
     actionLabel(app, action, fallback = 'Choose') {
         if (!action) return fallback;
+        if (action === 'choose') return fallback;
         return app._uiLabel ? app._uiLabel(action) : action;
     },
 
@@ -53,6 +54,7 @@ const YAW_INTERACTION_STATE = {
             ? app._selectedExplorationActorState({ allowFallback: true })
             : { actors: [app.player].filter(Boolean), valid: Boolean(app.player) };
         const targets = app._getExplorationTargets ? app._getExplorationTargets() : [];
+        const focusedObject = targets.length === 0 ? app.focusedStageObject : null;
         const actorLabel = this.actorLabel(app, actorState.actors?.length || 1);
         const targetLabel = this.targetLabel(app, targets.length || 1);
         const intentLabel = app._label('target.intent', 'Intent');
@@ -64,6 +66,10 @@ const YAW_INTERACTION_STATE = {
         if (targets.length > 0) {
             parts.push({ slot: 'target', label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')), count: targets.length });
             parts.push({ slot: 'intent', label: intentLabel, value: app._label('ui.chooseAction', 'Choose'), intent: 'choose' });
+        } else if (focusedObject?.name) {
+            const intent = focusedObject.intent || 'choose';
+            parts.push({ slot: 'target', label: app._label('target.targetRole', 'Target'), value: focusedObject.name, count: 1 });
+            parts.push({ slot: 'intent', label: intentLabel, value: this.actionLabel(app, intent, app._label('ui.chooseAction', 'Choose')), intent });
         }
         return parts;
     },
@@ -165,6 +171,7 @@ const YAW_INTERACTION_STATE = {
         const desktop = document.getElementById('selection-sentence');
         const mode = app.combatState?.active ? 'combat' : 'exploration';
         const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
+        const hasFocusedObject = !app.combatState?.active && Boolean(app.focusedStageObject?.name);
         const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
         const actorState = !app.combatState?.active && app._selectedExplorationActorState
             ? app._selectedExplorationActorState({ allowFallback: true })
@@ -176,9 +183,9 @@ const YAW_INTERACTION_STATE = {
             app.feedSelection?.active
         ));
         const hasCombatTurn = Boolean(app.combatState?.active && this.combatActor(app));
-        this.setSentenceSlot(desktop, hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
+        this.setSentenceSlot(desktop, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
         const mobile = document.getElementById('mobile-selection-sentence');
-        this.setSentenceSlot(mobile, hasTargets || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
+        this.setSentenceSlot(mobile, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
         return html;
     },
 

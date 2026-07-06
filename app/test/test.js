@@ -2330,6 +2330,8 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'data-command-surface="quest-preview"', 'Quest preview should identify its composer/detail command surface');
   assertContains(questFlowContent, 'data-command-control="confirm-quest"', 'Quest preview accept should identify the confirm quest control');
   assertContains(questFlowContent, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify the cancel preview control');
+  assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="open-quest-log"', 'Quest accepted detail should route quest-log opening through target detail controls');
+  assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="close-target-detail"', 'Quest accepted detail should expose a structural target-detail close control');
   assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
@@ -3871,6 +3873,39 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Open activity log"', 'Mobile activity log summary should expose accessible label');
 });
 
+test('Static setup review and system controls identify non-composer surfaces', () => {
+  assertContains(template, 'class="menu-actions" data-command-surface="main-menu" data-command-mode="system"', 'Main menu action stack should identify as system navigation');
+  assertContains(template, 'id="menu-continue" class="action-btn primary" data-command-surface="main-menu" data-command-mode="system" data-command-control="continue-game"', 'Continue should identify as a main-menu system control');
+  assertContains(template, 'data-command-surface="main-menu" data-command-mode="system" data-command-control="start-new-game"', 'New Game should identify as a main-menu system control');
+  assertContains(template, 'data-command-surface="main-menu" data-command-mode="system" data-command-control="open-load-slots"', 'Load Game should identify as a main-menu system control');
+  assertContains(template, 'data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help"', 'Tutorial should identify as a main-menu system control');
+
+  assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="open-content-settings"', 'Create content-level shortcut should identify as setup controls');
+  assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character"', 'Random Character should identify as setup controls');
+  assertContains(template, 'data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character"', 'Create submit should identify as setup controls');
+  assertContains(template, 'data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial"', 'Tutorial skip should identify as a system tutorial control');
+  assertContains(template, 'data-command-surface="tutorial" data-command-mode="system" data-command-control="next-tutorial"', 'Tutorial next should identify as a system tutorial control');
+
+  assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="zoom-in"', 'Large map zoom-in should identify as review-map navigation');
+  assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="north"', 'Large map pan controls should identify review-map navigation direction');
+  assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="recenter-map"', 'Large map recenter should identify review-map navigation');
+  assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad"', 'Dormant mobile move toggle should identify as traversal controls');
+  assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast"', 'Dormant mobile move pad should classify directional traversal controls');
+  assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile"', 'Dormant mobile move pad center should classify the current-tile affordance');
+
+  assertContains(template, 'id="tier-safe" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="safe"', 'Settings safe tier should identify as system settings controls');
+  assertContains(template, 'id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode"', 'Cheat toggles should identify as system settings controls');
+  assertContains(template, 'id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win"', 'Instant win should identify as a settings system control');
+  assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="delete-all-saves"', 'Clear all saves should identify as a settings system control');
+  assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings"', 'Settings close should identify as a settings system exit');
+
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module"', 'Module import should identify as a module-manager system control');
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="create-example-module"', 'Create example module should identify as a module-manager system control');
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules"', 'Module manager close should identify as a module-manager system exit');
+  assertContains(modUiContent, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module"', 'Dynamic module toggle buttons should identify as module-manager controls');
+  assertContains(modUiContent, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="delete-module"', 'Dynamic module delete buttons should identify as module-manager controls');
+});
+
 test('Settings expose language selector', () => {
   assertContains(template, 'id="setting-language"', 'Language selector missing');
   assertContains(template, 'App.updateLanguage(this.value)', 'Language selector should update App language');
@@ -4214,7 +4249,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
   assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
-  assertContains(template, 'id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
+  assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
   assertContains(template, '.mobile-move-pad.expanded {\n                display: grid;', 'dormant mobile movement pad should still be restorable without rebuilding the controls');
   assertContains(mobileUnitStripsContent, 'moveToggle.hidden = true;', 'mobile render refresh should keep the dormant move toggle hidden');

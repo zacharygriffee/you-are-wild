@@ -210,7 +210,7 @@ const YAW_QUEST_FLOW = {
             const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
             const questLogLabel = app._escapeHtml(app._label('quest.title', 'Quests'));
             const accepted = app._escapeHtml(app._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }));
-            app.showCreaturePanelDetail(title, `<h3>${title}</h3><p style="color:var(--text-muted);margin-top:8px;">${accepted}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="nav-btn primary" title="${questLogLabel}" aria-label="${questLogLabel}" onclick="App.showQuestLog()">${questLogLabel}</button><button class="nav-btn" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('creature')">${closeLabel}</button></div>`);
+            app.showCreaturePanelDetail(title, `<h3>${title}</h3><p style="color:var(--text-muted);margin-top:8px;">${accepted}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="nav-btn primary" data-command-surface="target-detail" data-command-mode="exploration" data-command-control="open-quest-log" title="${questLogLabel}" aria-label="${questLogLabel}" onclick="App.showQuestLog()">${questLogLabel}</button><button class="nav-btn" data-command-surface="target-detail" data-command-mode="exploration" data-command-control="close-target-detail" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('creature')">${closeLabel}</button></div>`);
         } else {
             app.showQuestLog();
         }

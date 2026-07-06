@@ -172,12 +172,12 @@ const ModUI = {
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="nav-btn" style="padding: 6px 12px; font-size: 12px;"
+                    <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module" style="padding: 6px 12px; font-size: 12px;"
                             title="${enableTitle}" aria-label="${enableTitle}"
                             onclick="ModUI.toggleModule('${id}')">
                         ${mod.enabled ? '✓' : '○'} ${statusLabel}
                     </button>
-                    <button class="nav-btn" style="padding: 6px 12px; font-size: 12px; color: var(--accent-danger);"
+                    <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="delete-module" style="padding: 6px 12px; font-size: 12px; color: var(--accent-danger);"
                             title="${deleteTitle}" aria-label="${deleteTitle}"
                             onclick="ModUI.deleteModule('${id}')">
                         🗑️ ${deleteLabel}

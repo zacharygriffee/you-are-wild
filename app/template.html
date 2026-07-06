@@ -3900,26 +3900,26 @@
             <h1 style="color: var(--accent-primary); font-size: 32px; margin: 0; text-align: center;">You Are Wild</h1>
             <p style="color: var(--text-muted); margin-bottom: 32px; text-align: center;" data-i18n="ui.tagline">Explore. Change. Survive.</p>
 
-            <div class="menu-actions" style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
-                <button id="menu-continue" class="action-btn primary" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
+            <div class="menu-actions" data-command-surface="main-menu" data-command-mode="system" style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px;">
+                <button id="menu-continue" class="action-btn primary" data-command-surface="main-menu" data-command-mode="system" data-command-control="continue-game" style="display: none; font-size: 16px; padding: 16px;" title="Continue last game" aria-label="Continue last game" data-i18n-title="ui.menu.continueTitle" data-i18n-aria-label="ui.menu.continueTitle" onclick="App.continueLastGame()">
                     ▶ <span data-i18n="ui.menu.continue">Continue Last Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Start a new game" aria-label="Start a new game" data-i18n-title="ui.menu.newGameTitle" data-i18n-aria-label="ui.menu.newGameTitle" onclick="App.showNewGameManager()">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="start-new-game" style="font-size: 16px; padding: 16px;" title="Start a new game" aria-label="Start a new game" data-i18n-title="ui.menu.newGameTitle" data-i18n-aria-label="ui.menu.newGameTitle" onclick="App.showNewGameManager()">
                     🆕 <span data-i18n="ui.menu.newGame">New Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Load game" aria-label="Load game" data-i18n-title="ui.menu.loadGameTitle" data-i18n-aria-label="ui.menu.loadGameTitle" onclick="App.showSaveManager()">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-load-slots" style="font-size: 16px; padding: 16px;" title="Load game" aria-label="Load game" data-i18n-title="ui.menu.loadGameTitle" data-i18n-aria-label="ui.menu.loadGameTitle" onclick="App.showSaveManager()">
                     📂 <span data-i18n="ui.menu.loadGame">Load Game</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.showScreen('settings'); App.showSettings();">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-settings" style="font-size: 16px; padding: 16px;" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.showScreen('settings'); App.showSettings();">
                     ⚙️ <span data-i18n="ui.menu.settings">Settings</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.showModScreen()">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-mods" style="font-size: 16px; padding: 16px;" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.showModScreen()">
                     📦 <span data-i18n="ui.menu.mods">Mods</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.showMarketScreen()">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-market" style="font-size: 16px; padding: 16px;" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.showMarketScreen()">
                     🏪 <span data-i18n="ui.menu.market">Market</span>
                 </button>
-                <button class="action-btn" style="font-size: 16px; padding: 16px;" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
+                <button class="action-btn" data-command-surface="main-menu" data-command-mode="system" data-command-control="open-help" style="font-size: 16px; padding: 16px;" title="Open tutorial" aria-label="Open tutorial" data-i18n-title="ui.menu.tutorialTitle" data-i18n-aria-label="ui.menu.tutorialTitle" onclick="App.showTutorial()">
                     📖 <span data-i18n="ui.menu.tutorial">Tutorial</span>
                 </button>
             </div>
@@ -3939,7 +3939,7 @@
 
             <div class="create-section">
                 <h3 class="section-title" data-i18n="settings.contentLevel">Content Level</h3>
-                <button class="action-btn" type="button" title="Open content level settings" aria-label="Open content level settings" data-i18n-title="create.contentLevelTitle" data-i18n-aria-label="create.contentLevelTitle" onclick="App.openContentSettingsFromCreate()">
+                <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="open-content-settings" title="Open content level settings" aria-label="Open content level settings" data-i18n-title="create.contentLevelTitle" data-i18n-aria-label="create.contentLevelTitle" onclick="App.openContentSettingsFromCreate()">
                     <span id="create-content-level-label">Safe</span>
                     <span style="color:var(--text-muted);font-size:12px;" data-i18n="create.contentLevelChange">Change in Settings</span>
                 </button>
@@ -4087,8 +4087,8 @@
 
             <div id="create-validation" class="create-validation" role="alert" aria-live="polite"></div>
             <div style="display:grid;grid-template-columns:1fr;gap:8px;">
-                <button class="action-btn" type="button" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
-                <button class="action-btn primary create-submit" onclick="createCharacter()">
+                <button class="action-btn" type="button" data-command-surface="character-creation" data-command-mode="setup" data-command-control="randomize-character" data-i18n="create.random" onclick="App.randomizeCharacter()">Random Character</button>
+                <button class="action-btn primary create-submit" data-command-surface="character-creation" data-command-mode="setup" data-command-control="create-character" onclick="createCharacter()">
                     Begin Adventure →
                 </button>
             </div>
@@ -4101,8 +4101,8 @@
             <h2 id="tutorial-title" style="color: var(--accent-primary); margin-bottom: 16px;">Welcome</h2>
             <p id="tutorial-content" style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px;">Tutorial content here</p>
             <div style="display: flex; gap: 16px; justify-content: center;">
-                <button class="nav-btn" data-i18n="ui.tutorial.skip" onclick="skipTutorial()">Skip Tutorial</button>
-                <button class="nav-btn" style="background: var(--accent-primary); color: var(--bg-primary);" data-i18n="ui.tutorial.next" onclick="nextTutorial()">Next →</button>
+                <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="skip-tutorial" data-i18n="ui.tutorial.skip" onclick="skipTutorial()">Skip Tutorial</button>
+                <button class="nav-btn" data-command-surface="tutorial" data-command-mode="system" data-command-control="next-tutorial" style="background: var(--accent-primary); color: var(--bg-primary);" data-i18n="ui.tutorial.next" onclick="nextTutorial()">Next →</button>
             </div>
         </div>
     </div>
@@ -4153,13 +4153,13 @@
                         <div class="large-map-toolbar">
                             <span><span data-i18n="ui.largeMap.discoveredRegion">Discovered Region</span> <span id="large-map-view" style="color:var(--text-muted);font-family:var(--font-mono);"></span></span>
                             <div class="large-map-controls" aria-label="Large map controls" data-i18n-aria-label="ui.largeMap.controls">
-                                <button class="nav-btn" title="Zoom in" aria-label="Zoom large map in" data-i18n-title="ui.largeMap.zoomIn" data-i18n-aria-label="ui.largeMap.zoomIn" onclick="App.setLargeMapZoom(-1)">＋</button>
-                                <button class="nav-btn" title="Zoom out" aria-label="Zoom large map out" data-i18n-title="ui.largeMap.zoomOut" data-i18n-aria-label="ui.largeMap.zoomOut" onclick="App.setLargeMapZoom(1)">－</button>
-                                <button class="nav-btn" title="Pan up" aria-label="Pan large map up" data-i18n-title="ui.largeMap.panUp" data-i18n-aria-label="ui.largeMap.panUp" onclick="App.panLargeMap(0,-1)">↑</button>
-                                <button class="nav-btn" title="Pan left" aria-label="Pan large map left" data-i18n-title="ui.largeMap.panLeft" data-i18n-aria-label="ui.largeMap.panLeft" onclick="App.panLargeMap(-1,0)">←</button>
-                                <button class="nav-btn" title="Recenter" aria-label="Recenter large map" data-i18n-title="ui.largeMap.recenter" data-i18n-aria-label="ui.largeMap.recenter" onclick="App.recenterLargeMap()">⌾</button>
-                                <button class="nav-btn" title="Pan right" aria-label="Pan large map right" data-i18n-title="ui.largeMap.panRight" data-i18n-aria-label="ui.largeMap.panRight" onclick="App.panLargeMap(1,0)">→</button>
-                                <button class="nav-btn" title="Pan down" aria-label="Pan large map down" data-i18n-title="ui.largeMap.panDown" data-i18n-aria-label="ui.largeMap.panDown" onclick="App.panLargeMap(0,1)">↓</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="zoom-in" title="Zoom in" aria-label="Zoom large map in" data-i18n-title="ui.largeMap.zoomIn" data-i18n-aria-label="ui.largeMap.zoomIn" onclick="App.setLargeMapZoom(-1)">＋</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="zoom-out" title="Zoom out" aria-label="Zoom large map out" data-i18n-title="ui.largeMap.zoomOut" data-i18n-aria-label="ui.largeMap.zoomOut" onclick="App.setLargeMapZoom(1)">－</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="north" title="Pan up" aria-label="Pan large map up" data-i18n-title="ui.largeMap.panUp" data-i18n-aria-label="ui.largeMap.panUp" onclick="App.panLargeMap(0,-1)">↑</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="west" title="Pan left" aria-label="Pan large map left" data-i18n-title="ui.largeMap.panLeft" data-i18n-aria-label="ui.largeMap.panLeft" onclick="App.panLargeMap(-1,0)">←</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="recenter-map" title="Recenter" aria-label="Recenter large map" data-i18n-title="ui.largeMap.recenter" data-i18n-aria-label="ui.largeMap.recenter" onclick="App.recenterLargeMap()">⌾</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="east" title="Pan right" aria-label="Pan large map right" data-i18n-title="ui.largeMap.panRight" data-i18n-aria-label="ui.largeMap.panRight" onclick="App.panLargeMap(1,0)">→</button>
+                                <button class="nav-btn" data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="south" title="Pan down" aria-label="Pan large map down" data-i18n-title="ui.largeMap.panDown" data-i18n-aria-label="ui.largeMap.panDown" onclick="App.panLargeMap(0,1)">↓</button>
                             </div>
                         </div>
                         <div class="large-map" id="large-map"><!-- Populated by App.renderLargeMap() --></div>
@@ -4186,20 +4186,20 @@
 	                                <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
 	                                <div class="mobile-control-row">
-	                                    <button class="nav-btn" id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>
+	                                    <button class="nav-btn" id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>
 	                                    <button class="nav-btn" id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" title="Actors" aria-label="Actors" aria-controls="mobile-actor-belt" aria-expanded="false" onclick="App.toggleMobileActorBelt()" hidden>👥 Actors</button>
 	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>
 	                                </div>
 	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad">
-	                                    <button class="nav-btn" title="Northwest" aria-label="Move northwest" onclick="App.move(-1,-1)">↖</button>
-	                                    <button class="nav-btn" title="North" aria-label="Move north" onclick="App.move(0,-1)">↑</button>
-	                                    <button class="nav-btn" title="Northeast" aria-label="Move northeast" onclick="App.move(1,-1)">↗</button>
-	                                    <button class="nav-btn" title="West" aria-label="Move west" onclick="App.move(-1,0)">←</button>
-	                                    <button class="nav-btn mobile-move-pad-center" title="Current tile" aria-label="Current tile" disabled>⌾</button>
-	                                    <button class="nav-btn" title="East" aria-label="Move east" onclick="App.move(1,0)">→</button>
-	                                    <button class="nav-btn" title="Southwest" aria-label="Move southwest" onclick="App.move(-1,1)">↙</button>
-	                                    <button class="nav-btn" title="South" aria-label="Move south" onclick="App.move(0,1)">↓</button>
-	                                    <button class="nav-btn" title="Southeast" aria-label="Move southeast" onclick="App.move(1,1)">↘</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="northwest" title="Northwest" aria-label="Move northwest" onclick="App.move(-1,-1)">↖</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="north" title="North" aria-label="Move north" onclick="App.move(0,-1)">↑</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="northeast" title="Northeast" aria-label="Move northeast" onclick="App.move(1,-1)">↗</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="west" title="West" aria-label="Move west" onclick="App.move(-1,0)">←</button>
+	                                    <button class="nav-btn mobile-move-pad-center" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile" title="Current tile" aria-label="Current tile" disabled>⌾</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="east" title="East" aria-label="Move east" onclick="App.move(1,0)">→</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southwest" title="Southwest" aria-label="Move southwest" onclick="App.move(-1,1)">↙</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="south" title="South" aria-label="Move south" onclick="App.move(0,1)">↓</button>
+	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast" title="Southeast" aria-label="Move southeast" onclick="App.move(1,1)">↘</button>
 	                                </div>
 	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls"></div>
 	                            </div>
@@ -4358,9 +4358,9 @@
             <div id="settings-content-level" style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.contentLevel">Content Level</h3>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button id="tier-safe" class="nav-btn" data-i18n="settings.safe" onclick="App.setContentTier('safe')">Safe</button>
-                    <button id="tier-mature" class="nav-btn" data-i18n="settings.mature" onclick="App.setContentTier('mature')">Mature</button>
-                    <button id="tier-adult" class="nav-btn" data-i18n="settings.adult" onclick="App.setContentTier('adult')">Adult</button>
+                    <button id="tier-safe" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="safe" data-i18n="settings.safe" onclick="App.setContentTier('safe')">Safe</button>
+                    <button id="tier-mature" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="mature" data-i18n="settings.mature" onclick="App.setContentTier('mature')">Mature</button>
+                    <button id="tier-adult" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="set-content-tier" data-content-tier="adult" data-i18n="settings.adult" onclick="App.setContentTier('adult')">Adult</button>
                 </div>
             </div>
 
@@ -4495,19 +4495,19 @@
             <div style="margin-bottom: 24px;">
                 <h3 style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="settings.cheats">Cheats</h3>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                    <button id="cheat-godMode" class="nav-btn" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
-                    <button id="cheat-neverHungry" class="nav-btn" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
-                    <button id="cheat-canEatAnything" class="nav-btn" onclick="App.toggleCheat('canEatAnything')">🍴 Eat Anything</button>
-                    <button id="cheat-overpowered" class="nav-btn" onclick="App.toggleCheat('overpowered')">💪 Overpowered</button>
+                    <button id="cheat-godMode" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="godMode" onclick="App.toggleCheat('godMode')">🛡️ God Mode</button>
+                    <button id="cheat-neverHungry" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="neverHungry" onclick="App.toggleCheat('neverHungry')">🍽️ Never Hungry</button>
+                    <button id="cheat-canEatAnything" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="canEatAnything" onclick="App.toggleCheat('canEatAnything')">🍴 Eat Anything</button>
+                    <button id="cheat-overpowered" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="toggle-cheat" data-cheat-id="overpowered" onclick="App.toggleCheat('overpowered')">💪 Overpowered</button>
                 </div>
                 <div style="margin-top: 8px;">
-                    <button id="cheat-instantWin" class="nav-btn" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
+                    <button id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win" style="width: 100%;" onclick="App.instantWin()">⚡ Instant Win</button>
                 </div>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
-                <button class="nav-btn" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ <span data-i18n="settings.clearAllSaves">Clear All Saves</span></button>
-                <button class="nav-btn" data-i18n="ui.close" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="delete-all-saves" style="background: var(--accent-danger); color: var(--bg-primary);" onclick="App.deleteAllSaves()">🗑️ <span data-i18n="settings.clearAllSaves">Clear All Saves</span></button>
+                <button class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings" data-i18n="ui.close" onclick="returnToGame()">Close</button>
             </div>
         </div>
     </div>
@@ -4517,18 +4517,18 @@
         <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
                 <h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
-                <button class="nav-btn" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
             </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="mod.subtitle">Install, enable, and manage game modules.</p>
 
             <!-- Install -->
             <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-                <label class="nav-btn" style="cursor: pointer; display: inline-block;" title="Import mod file" aria-label="Import mod file" data-i18n-title="mod.importTitle" data-i18n-aria-label="mod.importTitle">
+                <label class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module" style="cursor: pointer; display: inline-block;" title="Import mod file" aria-label="Import mod file" data-i18n-title="mod.importTitle" data-i18n-aria-label="mod.importTitle">
                     📁 <span data-i18n="mod.import">Import Mod</span>
                     <input type="file" accept=".json,.js" style="display: none;" onchange="ModUI.handleFileSelect(event)">
                 </label>
-                <button class="nav-btn" title="Create example module" aria-label="Create example module" data-i18n-title="mod.createExampleTitle" data-i18n-aria-label="mod.createExampleTitle" onclick="ModUI.createExampleMod()">✨ <span data-i18n="mod.createExample">Create Example</span></button>
-                <button class="nav-btn" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
+                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="create-example-module" title="Create example module" aria-label="Create example module" data-i18n-title="mod.createExampleTitle" data-i18n-aria-label="mod.createExampleTitle" onclick="ModUI.createExampleMod()">✨ <span data-i18n="mod.createExample">Create Example</span></button>
+                <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
             </div>
 
             <!-- Mod List -->

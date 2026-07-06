@@ -2501,6 +2501,10 @@
                 return YAW_EXPLORATION_SELECTION.clearTargets(this);
             },
 
+            clearExplorationActors() {
+                return YAW_EXPLORATION_SELECTION.clearActors(this);
+            },
+
             _reportInvalidExplorationActorSelection(action) {
                 return YAW_EXPLORATION_SELECTION.reportInvalidActor(this, action);
             },

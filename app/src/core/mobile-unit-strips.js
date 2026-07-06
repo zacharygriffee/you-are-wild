@@ -85,7 +85,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
 
     actorControls(app) {
         const actors = app._getExplorationActors?.() || [];
-        return (app.party || []).map((unit, index) => {
+        const chips = (app.party || []).map((unit, index) => {
             if (!unit || !app._isLivingCreature(unit)) return '';
             const selected = actors.includes(unit);
             const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
@@ -98,6 +98,10 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const pressed = app._selectionControlAttrs('actor', selected);
             return `<button type="button" class="mobile-actor-chip${selectedClass}" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
         }).join('');
+        const clearLabel = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
+        const clearTitle = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
+        const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
+        return `${chips}${clear}`;
     },
 
     livingCreatures(app) {

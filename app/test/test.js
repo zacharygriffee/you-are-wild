@@ -1707,9 +1707,11 @@ test('Exploration selection helper module is registered before app code', () => 
   assert(buildContent.indexOf("'src/core/exploration-selection.js'") < buildContent.indexOf("'src/core/app.js'"), 'Exploration selection helper should load before app.js');
   assertContains(explorationSelectionContent, 'const YAW_EXPLORATION_SELECTION = {', 'Exploration selection helper should expose the selection service');
   assertContains(explorationSelectionContent, 'selectActor(app, index)', 'Exploration selection helper should own actor selection');
+  assertContains(explorationSelectionContent, 'clearActors(app)', 'Exploration selection helper should own actor selection clearing');
   assertContains(explorationSelectionContent, 'toggleTarget(app, type, id)', 'Exploration selection helper should own target marking');
   assertContains(explorationSelectionContent, 'resolveTargetAction(app, action, subAction = null, source =', 'Exploration selection helper should own marked target dispatch');
   assertContains(appContent, 'YAW_EXPLORATION_SELECTION.getActors(this, actorId)', 'App exploration actor wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_EXPLORATION_SELECTION.clearActors(this)', 'App exploration actor clearing wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EXPLORATION_SELECTION.toggleTarget(this, type, id)', 'App target toggle wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_EXPLORATION_SELECTION.resolveTargetAction(this, action, subAction, source)', 'App marked target resolver should delegate to the helper');
 });
@@ -3973,6 +3975,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-actor-toggle"', 'mobile actor row should open through an explicit composer control');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
+  assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
   assertContains(template, 'id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
@@ -10268,8 +10271,20 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'Ally', 'Mobile actor belt should expose party members when the actor toggle is opened');
   assertContains(openedActorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
   assertContains(openedActorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertContains(openedActorHtml, 'clearExplorationActors()', 'Mobile actor belt should expose an explicit clear actor exit');
+  assertContains(openedActorHtml, 'Clear actors', 'Mobile actor clear exit should use a visible localized label');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
+
+  App.selectExplorationActor(1);
+  assertEqual(App.explorationActorSelectionExplicit, true, 'Selecting an ally from the mobile actor belt should create explicit actor state');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show the explicit actor before clearing');
+  App.clearExplorationActors();
+  assertEqual(App.explorationActorSelectionExplicit, false, 'Clearing actors should restore implicit player actor state');
+  assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Clearing actors should close the mobile actor belt');
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Clearing actors should collapse the Actors toggle');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'You', 'Marked-target composer sentence should keep the implicit player actor after clearing');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Clearing actors should preserve the marked target');
 });
 
 test('Mobile exploration hides empty control belt over traversal map', () => {

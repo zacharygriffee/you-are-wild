@@ -109,6 +109,15 @@ const YAW_EXPLORATION_SELECTION = {
         app._renderInteractionState({ exploration: true, toolbelt: false });
     },
 
+    clearActors(app) {
+        const playerId = app.player ? app._unitSelectionId(app.player) : '';
+        app.explorationActorIds = playerId ? [playerId] : [];
+        app.explorationActorId = playerId;
+        app.explorationActorSelectionExplicit = false;
+        app.mobileActorBeltOpen = false;
+        app._renderInteractionState({ exploration: true, toolbelt: false });
+    },
+
     targetKey(type, id) {
         return `${type}:${String(id || '')}`;
     },

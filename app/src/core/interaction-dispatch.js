@@ -5,7 +5,7 @@
 
 const YAW_INTERACTION_DISPATCH = {
     normalizeSource(source = 'sheet') {
-        return source === 'panel-tray' ? 'composer-tray' : source;
+        return ['panel-tray', 'desktop-target', 'mobile-target'].includes(source) ? 'composer-tray' : source;
     },
 
     intentTarget(app, type, targetRef) {

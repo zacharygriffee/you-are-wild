@@ -420,7 +420,7 @@ async function runAdventureMarkedTargetFlow(page) {
     const partyContent = document.querySelector('#party-content');
     return {
       partyHasTray: Boolean(partyContent?.querySelector('.panel-interaction-tray')),
-      hasDesktopSource: beltEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','desktop-target')") || false,
+      hasComposerSource: beltEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','composer-tray')") || false,
       actorSummary: sentenceEl?.textContent?.includes('ActorAlly') || false,
       targetSummary: sentenceEl?.textContent?.includes('TargetFriendly') || false,
       centerHasSentence: Boolean(document.querySelector('#desktop-play-cell-center #selection-sentence')),
@@ -428,13 +428,13 @@ async function runAdventureMarkedTargetFlow(page) {
     };
   });
   assert.strictEqual(trayState.partyHasTray, false, 'Party panel should not duplicate the desktop composer tray');
-  assert.strictEqual(trayState.hasDesktopSource, true, 'Marked target composer should dispatch defaults through the desktop-target command source');
+  assert.strictEqual(trayState.hasComposerSource, true, 'Marked target composer should dispatch defaults through the canonical composer command source');
   assert.strictEqual(trayState.actorSummary, true, 'Marked target composer should summarize the selected actor');
   assert.strictEqual(trayState.targetSummary, true, 'Marked target composer should summarize the marked creature target');
   assert.strictEqual(trayState.centerHasSentence, false, 'Center tile should not contain the desktop command sentence slot');
   assert.strictEqual(trayState.centerHasActorControls, false, 'Center tile should stay free of actor controls while a target is marked');
 
-  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','desktop-target')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
   const resolved = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     targetsRemaining: App.explorationTargetIds.length,
@@ -446,7 +446,7 @@ async function runAdventureMarkedTargetFlow(page) {
   assert(resolved.targetPle > 0, 'Composer marked target action should resolve against the marked creature');
   assert.strictEqual(resolved.targetsRemaining, 0, 'Resolved marked target action should clear target marks');
   assert.deepStrictEqual(resolved.actors, ['ally-1'], 'Resolved marked target action should preserve the selected actor');
-  assert.strictEqual(resolved.commandSource, 'desktop-target', 'Resolved marked target action should preserve desktop composer source metadata');
+  assert.strictEqual(resolved.commandSource, 'composer-tray', 'Resolved marked target action should preserve canonical composer source metadata');
   assert.strictEqual(resolved.trayVisible, false, 'Resolved marked target action should remove the composer tray after clearing targets');
   assert.strictEqual(resolved.centerHasActorControls, false, 'Center tile should stay free of actor controls after resolving a marked target action');
 
@@ -499,7 +499,7 @@ async function runStaleMarkedActorFlow(page) {
   assert.deepStrictEqual(state.targetIds, ['creature:friendly-1'], 'Stale actor setup should preserve marked creature target');
   assert.strictEqual(state.centerHasActorControls, false, 'Stale actor composer should keep center free of actor controls');
 
-  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','desktop-target')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
   state = await page.evaluate(() => ({
     targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
     actorIds: [...App.explorationActorIds],

@@ -25,9 +25,9 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const buttons = singleCorpseTarget ? [] : keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
             const intent = app._escapeHtml(key);
-            const actionSource = source === 'desktop'
-                ? 'desktop-target'
-                : (source === 'composer-tray' || source === 'panel-tray' || source === 'mobile-target' ? 'composer-tray' : 'target-bar');
+            const actionSource = ['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)
+                ? 'composer-tray'
+                : 'target-bar';
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const handler = defaultSubAction

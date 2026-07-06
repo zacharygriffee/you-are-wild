@@ -1672,7 +1672,7 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, 'const YAW_MARKED_TARGET_ACTIONS = {', 'Marked target helper should expose the marked target action service');
   assertContains(markedTargetActionsContent, 'render(app, source = \'sheet\')', 'Marked target helper should own selected-target action rendering');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked target helper should emit composer-tray command metadata for contextual utilities');
-  assertContains(markedTargetActionsContent, "source === 'composer-tray' || source === 'panel-tray'", 'Marked target helper should retain legacy panel-tray wrapper compatibility');
+  assertContains(markedTargetActionsContent, "['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)", 'Marked target helper should normalize rendered tray aliases to the composer source');
   assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\')', 'Marked target helper should own selected-target sub-action sheets');
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
@@ -1701,7 +1701,7 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/interaction-dispatch.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction dispatch helper should load before app.js');
   assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
   assertContains(interactionDispatchContent, "normalizeSource(source = 'sheet')", 'Interaction dispatch helper should own command source normalization');
-  assertContains(interactionDispatchContent, "source === 'panel-tray' ? 'composer-tray' : source", 'Interaction dispatch helper should keep panel-tray as a composer-tray compatibility alias');
+  assertContains(interactionDispatchContent, "['panel-tray', 'desktop-target', 'mobile-target'].includes(source) ? 'composer-tray' : source", 'Interaction dispatch helper should keep legacy target trays as composer-tray compatibility aliases');
   assertContains(interactionDispatchContent, 'intentCommand(app, type, targetRef, action', 'Interaction dispatch helper should own intent command building');
   assertContains(interactionDispatchContent, 'intentTarget(app, type, targetRef)', 'Interaction dispatch helper should own intent target resolution');
   assertContains(interactionDispatchContent, 'selectIntent(app, type, targetRef, action', 'Interaction dispatch helper should own intent selection routing');
@@ -8806,7 +8806,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'data-command-intent="flirt"', 'Composer selected-target action buttons should expose stable intent ids');
   assertContains(actionsHtml, 'data-command-mode="exploration" data-command-intent="flirt"', 'Composer selected-target action buttons should expose exploration command mode');
   assertContains(actionsHtml, 'data-command-mode="exploration" data-command-intent="flirt" data-command-grammar="actor-target-intent"', 'Composer selected-target action buttons should identify the shared command grammar on the intent itself');
-  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Composer selected-target action buttons should dispatch the default sub-action directly');
+  assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','composer-tray')", 'Composer selected-target action buttons should dispatch the default sub-action directly through the composer source');
   assertContains(actionsHtml, 'data-command-mode="exploration" data-command-control="clear-targets"', 'Composer selected-target clear should identify exploration mode');
   assertContains(actionsHtml, 'data-command-control="clear-targets"', 'Composer selected-target clear should identify the command exit control');
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
@@ -15664,8 +15664,9 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   const html = App._renderExplorationTargetActions('desktop');
   assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
   assertContains(html, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target actions should identify the shared command grammar');
-  assertContains(html, "App.resolveExplorationTargetAction('fight','attack','desktop-target')", 'Desktop marked-target Fight should dispatch the default attack directly');
-  assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','desktop-target')", 'Desktop marked-target Feast should dispatch the default swallow directly');
+  assertContains(html, "App.resolveExplorationTargetAction('fight','attack','composer-tray')", 'Desktop marked-target Fight should dispatch the default attack directly through the composer source');
+  assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','composer-tray')", 'Desktop marked-target Feast should dispatch the default swallow directly through the composer source');
+  assertNotContains(html, "'desktop-target'", 'Rendered desktop marked-target actions should not emit the legacy desktop-target source');
   assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
@@ -15688,7 +15689,7 @@ test('Marked creature target Fight button resolves the default attack', () => {
   assertEqual(resolved, true, 'Marked-target Fight should resolve successfully');
   assert(target.CPun < 100, 'Marked-target Fight should damage the selected creature');
   assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked-target Fight should clear selected targets');
-  assertEqual(App.lastIntentCommand.source, 'desktop-target', 'Marked-target Fight should preserve command source');
+  assertEqual(App.lastIntentCommand.source, 'composer-tray', 'Marked-target Fight should normalize legacy desktop target source to the composer');
   assertEqual(App.lastIntentCommand.subAction, 'attack', 'Marked-target Fight should record the default sub-action');
 });
 

@@ -2679,11 +2679,11 @@
 	            }
 
             .mobile-play-surface.has-control-belt {
-                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 18px);
+                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 8px);
             }
 
             .mobile-play-surface.has-control-belt.control-belt-expanded {
-                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 22px);
+                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 12px);
             }
 
             .mobile-map-card,
@@ -2832,13 +2832,14 @@
                 position: fixed;
                 left: 50%;
                 right: auto;
-                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 14px);
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 4px);
                 transform: translateX(-50%);
                 z-index: 94;
                 width: min(520px, calc(100vw - 32px));
                 max-height: var(--mobile-control-belt-compact-height);
                 overflow-y: auto;
                 overscroll-behavior: contain;
+                align-content: start;
             }
 
             .mobile-control-belt.has-controls {

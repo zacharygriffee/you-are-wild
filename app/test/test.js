@@ -4117,7 +4117,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-control-belt.expanded-controls-open', 'mobile control belt should expose an expanded state for target/actor/move controls');
   assertContains(template, '.mobile-control-belt.target-controls-open .mobile-creature-presence-cue', 'mobile marked-target controls should suppress lower-priority cue rows inside the fixed belt');
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space only when the fixed context belt is populated');
-  assertContains(template, 'bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 14px);', 'mobile control belt should sit directly above the fixed dock');
+  assertContains(template, 'bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 4px);', 'mobile control belt should sit flush above the fixed dock');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');

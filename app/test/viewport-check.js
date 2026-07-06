@@ -254,7 +254,7 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltLeft >= -1 && mobileControls.beltRight <= mobileControls.viewportWidth + 1, `${name}: mobile context belt should stay inside viewport horizontally`);
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
     assert(mobileControls.beltBottom <= mobileControls.dockTop + 1, `${name}: mobile context belt should sit above the fixed dock`);
-    assert(mobileControls.dockTop - mobileControls.beltBottom <= 24, `${name}: mobile context belt should stay visually attached to the dock`);
+    assert(mobileControls.dockTop - mobileControls.beltBottom <= 10, `${name}: mobile context belt should stay flush above the fixed dock`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);

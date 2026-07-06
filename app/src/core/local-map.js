@@ -57,7 +57,9 @@ const YAW_LOCAL_MAP = {
             const ref = presenceType === 'creature'
                 ? app._explorationTargetUnitId('creature', unit)
                 : app._unitSelectionId(unit);
-            const actorSelected = presenceType === 'party' && app._getExplorationActors().includes(unit);
+            const actorSelected = presenceType === 'party'
+                && Boolean(app.explorationActorSelectionExplicit)
+                && app._getExplorationActors().includes(unit);
             const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
             const selected = actorSelected || targetSelected;
             const selectedClass = selected ? ` selected selected-${presenceType === 'creature' ? 'target' : 'actor'}` : '';

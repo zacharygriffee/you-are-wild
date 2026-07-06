@@ -150,7 +150,9 @@ const YAW_CENTER_CONTEXT = {
         const ref = presenceType === 'creature'
             ? app._explorationTargetUnitId('creature', unit)
             : app._unitSelectionId(unit);
-        const actorSelected = presenceType === 'party' && app._getExplorationActors().includes(unit);
+        const actorSelected = presenceType === 'party'
+            && Boolean(app.explorationActorSelectionExplicit)
+            && app._getExplorationActors().includes(unit);
         const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
         const selected = actorSelected || targetSelected;
         const selectedClass = selected ? ` selected selected-${presenceType === 'creature' ? 'target' : 'actor'}` : '';
@@ -183,7 +185,10 @@ const YAW_CENTER_CONTEXT = {
             place: app._label('ui.presence.placeHere', 'Place here')
         };
         const label = app._escapeHtml(labels[type] || labels[presenceType] || app._label('ui.presence.stage', 'Stage presence'));
-        const actorSelected = presenceType === 'party' && (type === 'player' || type === 'party') && app._getExplorationActors().includes(unit);
+        const actorSelected = presenceType === 'party'
+            && (type === 'player' || type === 'party')
+            && Boolean(app.explorationActorSelectionExplicit)
+            && app._getExplorationActors().includes(unit);
         const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
         const objectSelected = app.focusedStageObject
             && ((type === 'items' && app.focusedStageObject.type === 'items')

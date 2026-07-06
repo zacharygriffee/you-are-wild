@@ -7336,6 +7336,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertNotContains(centerPresenceHtml, 'data-command-surface=', 'Center visual presence should not expose command metadata');
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
+  assertNotContains(el('desktop-presence-rail').innerHTML, 'selected selected-actor', 'Implicit player fallback should not visibly mark desktop actor presence as explicitly selected');
+  assertNotContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Implicit player fallback should not expose selected actor state in desktop presence');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('place','structure:camp')", 'Desktop stage rail should focus structure presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, 'data-stage-surface="presence"', 'Desktop stage rail controls should identify the presence surface');
@@ -9855,6 +9857,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should select party actors through the composer');
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
   assertContains(html, 'aria-label="Add Ally as actor"', 'Mobile center party presence should advertise add-actor semantics');
+  assertNotContains(html, 'selected selected-actor', 'Implicit player fallback should not visibly mark mobile actor presence as explicitly selected');
+  assertNotContains(html, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Implicit player fallback should not expose selected actor state in mobile center presence');
   assertContains(html, 'aria-label="Mark Guide as target"', 'Mobile center creature presence should advertise mark-target semantics');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
   assertContains(html, 'data-command-control="open-target-picker"', 'Mobile center presence overflow should identify target-picker routing when hidden creatures are clipped');

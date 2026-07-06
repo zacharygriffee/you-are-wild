@@ -33,11 +33,11 @@ const YAW_UNIT_CARD = {
             actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${selectedClass}" ${app._selectionControlAttrs('actor', actorPressed)} title="${actorTitle}" aria-label="${actorTitle}" onclick="event.stopPropagation();App.selectExplorationActor(${index})">${actorLabel}</button><button class="action-btn${targetClass}" ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
             const statsLabel = app._escapeHtml(app._label('party.stats', 'Stats'));
             const statsTitle = app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unitName }));
-            actionButtons += `<button class="action-btn" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
+            actionButtons += `<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats" title="${statsTitle}" aria-label="${statsTitle}" onclick="event.stopPropagation();App.showPartyMemberStats(${index})">${statsLabel}</button>`;
             if (isPlayer) {
                 const inventoryLabel = app._escapeHtml(app._uiLabel('inventory'));
                 const inventoryTitle = app._escapeHtml(app._label('action.inventory', 'Items'));
-                actionButtons += `<button class="action-btn" title="${inventoryTitle}" aria-label="${inventoryTitle}" onclick="event.stopPropagation();App.showInventory()">${inventoryLabel}</button>`;
+                actionButtons += `<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-inventory" title="${inventoryTitle}" aria-label="${inventoryTitle}" onclick="event.stopPropagation();App.showInventory()">${inventoryLabel}</button>`;
             }
             actionButtons += `</div>`;
             if (!isLeader) {

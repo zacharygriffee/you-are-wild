@@ -13059,6 +13059,8 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(playerCard, 'data-selection-control="target" aria-pressed="true"', 'Marked party target control should expose true pressed state');
   assertContains(playerCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked party target control should expose exploration target mode');
   assertContains(playerCard, 'aria-label="Remove You from targets"', 'Marked desktop party target control should advertise remove semantics');
+  assertContains(playerCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Desktop party stats should identify itself as a detail-management control');
+  assertContains(playerCard, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-inventory"', 'Desktop player inventory should identify itself as a detail-management control');
   assertContains(playerCard, 'App.showInventory()', 'Player card should own inventory access');
   assertContains(allyCard, 'data-selection-control="actor" aria-pressed="true"', 'Selected party actor control should expose true pressed state');
   assertContains(allyCard, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Selected actor control should expose selected actor state');
@@ -13084,6 +13086,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobilePlayerChip, 'aria-label="Remove You from targets"', 'Marked mobile party target control should advertise remove semantics');
+  assertContains(mobilePlayerChip, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile party stats should identify itself as a detail-management control');
   assertContains(mobileAllyChip, 'data-selection-control="actor" aria-pressed="true"', 'Selected mobile actor control should expose true pressed state');
   assertContains(mobileAllyChip, 'aria-label="Remove Ally from actors"', 'Selected mobile actor control should advertise remove semantics');
   assertContains(mobileAllyChip, 'aria-label="Mark Ally as target"', 'Unmarked mobile party target control should advertise mark semantics');

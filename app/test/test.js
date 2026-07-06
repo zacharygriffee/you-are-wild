@@ -13097,10 +13097,18 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileCreatureChip, 'aria-label="Remove Guide from targets"', 'Marked mobile creature target control should advertise remove semantics');
 
   player.expanded = true;
+  ally.expanded = true;
   const expandedPlayerCard = App.renderUnitCard(player, 0, 'party');
+  const expandedAllyCard = App.renderUnitCard(ally, 1, 'party');
   const expandedMobilePlayerChip = App.renderMobileUnitChip(player, 0, 'party');
   assertContains(expandedPlayerCard, 'data-card-state="expanded"', 'Desktop expanded card should expose expanded focus/detail state');
   assertContains(expandedPlayerCard, 'aria-expanded="true"', 'Desktop expanded card should expose expanded detail state');
+  assertContains(expandedAllyCard, 'data-action-scope="party-management" aria-label="Party management controls for Ally"', 'Expanded ally card should identify party management scope');
+  assertContains(expandedAllyCard, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Expanded ally management row should identify drawer/detail routing');
+  assertContains(expandedAllyCard, 'data-command-mode="exploration" data-command-control="make-leader"', 'Expanded ally leader action should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-mode="exploration" data-command-control="set-party-role"', 'Expanded ally role selector should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-mode="exploration" data-command-control="set-party-ai-order"', 'Expanded ally AI selector should identify its drawer control');
+  assertContains(expandedAllyCard, 'data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Expanded ally dismiss action should identify its drawer control');
   assertContains(expandedMobilePlayerChip, 'data-card-state="expanded"', 'Mobile expanded chip should expose expanded focus/detail state');
   assertContains(expandedMobilePlayerChip, 'aria-expanded="true"', 'Mobile expanded chip should expose expanded detail state');
 
@@ -14534,7 +14542,7 @@ test('Mobile creature chips expose long-press context handlers', () => {
 });
 
 test('Mobile party chips expose long-press management handlers', () => {
-  const { App } = loadAppForCombat();
+  const { App, body } = loadAppForCombat();
   const player = makeUnit('You');
   const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'guard' });
   App.player = player;
@@ -14543,6 +14551,13 @@ test('Mobile party chips expose long-press management handlers', () => {
   assertContains(html, 'startMobilePartyPress(event,1)', 'Mobile party chip should start long-press management');
   assertContains(html, 'cancelMobilePartyPress()', 'Mobile party chip should cancel long-press on movement/end');
   assertContains(html, 'Ally - Guard', 'Mobile party chip should summarize assigned role');
+  App.showMobilePartyContext(1);
+  assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Mobile party long-press menu should identify the detail-management surface');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile party long-press Stats should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="make-leader"', 'Mobile party long-press leader action should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="set-party-role"', 'Mobile party long-press role selector should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="set-party-ai-order"', 'Mobile party long-press AI selector should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Mobile party long-press dismiss should identify its drawer control');
 });
 
 test('Mobile unit chip actions expose localized accessible labels', () => {

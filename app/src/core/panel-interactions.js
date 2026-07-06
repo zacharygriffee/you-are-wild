@@ -66,7 +66,7 @@ const YAW_PANEL_INTERACTIONS = {
             const disabled = needMore ? ' disabled aria-disabled="true"' : '';
             const disabledClass = needMore ? ' disabled' : '';
             const syncType = app._escapeJsString(app.syncSelection.type || 'sync_fight');
-            controls = `<button class="action-btn primary${disabledClass}" data-command-surface="${surface}" data-command-mode="combat" data-command-control="confirm-sync-participants" title="${confirmLabel}" aria-label="${confirmLabel}"${disabled} onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button>${controls}`;
+            controls = `<button class="action-btn primary${disabledClass}" data-command-surface="${surface}" data-command-mode="combat" data-command-control="confirm-sync-participants" data-command-slot="actor" title="${confirmLabel}" aria-label="${confirmLabel}"${disabled} onclick="App.confirmSyncParticipants('${syncType}')">${confirmLabel}</button>${controls}`;
         }
         return `<div class="panel-interaction-tray combat-sync-tray" role="status" aria-label="${trayLabel}"><div class="target-action-row" data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${trayLabel}">${controls}</div></div>`;
     }

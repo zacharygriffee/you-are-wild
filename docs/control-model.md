@@ -22,6 +22,7 @@ Traversal mode owns movement through the world and structure interiors.
 - Expanded map mode remains separate from routine traversal. It may open through an explicit expand control, long press, pinch zoom, or later hotkey, but returning to ordinary movement should bring the player back to the 3x3 Play surface.
 - Desktop and mobile use the same concept. Wider desktop layouts may show more state, but the command model stays aligned with touch-first traversal.
 - Desktop hotkeys are additive direction shortcuts: WASD, arrow keys, or numpad-style movement may trigger the same direction choices exposed by the surrounding 3x3 tiles, without creating a separate desktop-only traversal model.
+- Extra mobile movement controls, such as a micro-pad or joystick, are optional accessibility/reachability aids only. They should stay hidden or setting-gated by default so they do not compete with the 3x3 Play surface and command composer.
 - Combat can temporarily reduce traversal affordances. If the whole party flees, combat returns to directional escape selection on the play surface.
 
 ### Battle mode

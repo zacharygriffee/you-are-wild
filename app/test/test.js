@@ -10307,6 +10307,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-intents"', 'Mobile combat toolbelt should identify the shared combat intent surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-intents" data-command-mode="combat"', 'Mobile combat intent belt should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-selection-sentence', 'Mobile combat toolbelt should show the current actor target intent sentence');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="command-sentence"', 'Mobile combat command sentence should identify its composer surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat"', 'Mobile combat command sentence should identify combat mode');
@@ -10318,6 +10319,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="fight"', 'Mobile combat intent belt should tag Fight with its stable internal intent id');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="fight"', 'Mobile combat Fight button should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('fight')", 'Mobile combat intent belt should expose Fight through the shared dispatcher');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="flee"', 'Mobile combat intent belt should tag Flee with its stable internal intent id');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('flee')", 'Mobile combat intent belt should expose Flee through the shared dispatcher');
@@ -10333,6 +10335,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Fight', 'Mobile combat selected intent should show the safe visible action label');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="fight"', 'Mobile combat target-pick sentence should expose selected intent metadata');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting"', 'Mobile combat target phase should identify the target-pick control surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
@@ -10344,18 +10347,21 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.syncSelection = { active: true, phase: 'choose', actorId: 'player-1', participantIds: ['player-1'], type: null };
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents"', 'Mobile Sync choose phase should identify the sync intent surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents" data-command-mode="combat"', 'Mobile Sync choose phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync_fight"', 'Mobile Sync choose phase should expose stable group intent ids');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants"', 'Mobile Sync participant phase should identify the participant surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Mobile Sync participant phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants"', 'Mobile Sync participant phase should expose confirm structurally');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync participant phase should keep a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'target', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting"', 'Mobile Sync target phase should identify the target surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Mobile Sync target phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync target phase should keep a structural cancel control');
 
   App.combatState.active = false;

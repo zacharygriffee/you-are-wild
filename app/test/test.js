@@ -2685,7 +2685,8 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
   assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own desktop stage presence rendering');
   assertContains(centerContextContent, "document.getElementById('desktop-presence-rail')", 'Center context helper should render presence into the desktop stage rail');
-  assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
+  assertContains(centerContextContent, 'renderCenterPresenceSlot(app, entries)', 'Center context helper should render compact visual presence into the stage');
+  assertContains(centerContextContent, 'centerPresenceToken(app, entry)', 'Center context helper should separate visual stage tokens from interactive rail chips');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should route presence chips into actor/target selection');
   assertContains(centerContextContent, 'data-stage-surface="presence"', 'Center context presence controls should identify the stage presence surface');
   assertContains(centerContextContent, 'data-command-surface="stage-presence"', 'Center context presence controls should identify stage-presence command routing');
@@ -7022,7 +7023,15 @@ test('Center tile stays traversal and context only across interaction states', (
   App.combatState.active = false;
 
   App.renderCenterPresence();
-  assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence inside the presentation tile');
+  const centerPresenceHtml = el('center-presence').innerHTML;
+  assertContains(centerPresenceHtml, 'center-presence-visual', 'Exploration center tile should show compact visual presence on the stage');
+  assertContains(centerPresenceHtml, 'data-stage-presence-type="player"', 'Center visual presence should show the player on the stage');
+  assertContains(centerPresenceHtml, 'data-stage-presence-type="party"', 'Center visual presence should show party members on the stage');
+  assertContains(centerPresenceHtml, 'data-stage-presence-type="place"', 'Center visual presence should show structures and places on the stage');
+  assertContains(centerPresenceHtml, 'data-stage-presence-type="creature"', 'Center visual presence should show local creatures on the stage');
+  assertNotContains(centerPresenceHtml, '<button', 'Center visual presence should not become an interactive command surface');
+  assertNotContains(centerPresenceHtml, 'App.focusPresence(', 'Center visual presence should leave selection routing to the rail/composer');
+  assertNotContains(centerPresenceHtml, 'data-command-surface=', 'Center visual presence should not expose command metadata');
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('place','structure:camp')", 'Desktop stage rail should focus structure presence through the composer');
@@ -7183,7 +7192,9 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertContains(desktopHtml, 'data-command-intent="takeItems"', 'Desktop item presence should point at the stable Take Items intent');
   assertContains(desktopHtml, "App.focusPresence('items','tile-items')", 'Desktop item presence should focus the existing Take Items command');
   assertNotContains(desktopHtml, 'App.takeTileItems()', 'Desktop item presence should not immediately pick up items');
+  assertContains(el('center-presence').innerHTML, 'data-stage-presence-type="items"', 'Center stage should show a generic item presence token');
   assertNotContains(el('center-presence').innerHTML, 'Healing Herb', 'Center presentation tile should not duplicate item presence');
+  assertNotContains(el('center-presence').innerHTML, 'App.focusPresence(', 'Center item token should not duplicate the item command route');
 
   assertEqual(App.focusPresence('items', 'tile-items'), true, 'Item presence focus should resolve through the existing location command');
   assertEqual(App.inventory.length, 0, 'Focusing item presence should not mutate carried inventory');
@@ -7240,6 +7251,9 @@ test('Stage presence exposes landmarks as passive place cues', () => {
   assertContains(desktopHtml, 'data-command-control="focus-place"', 'Desktop landmark presence should route through place focus');
   assertNotContains(desktopHtml, 'data-command-intent="enter"', 'Passive landmark presence should not claim an Enter intent');
   assertContains(desktopHtml, "App.focusPresence('place','landmark:Ancient Tree')", 'Desktop landmark presence should focus the location composer');
+  assertContains(el('center-presence').innerHTML, 'data-stage-presence-type="place"', 'Center stage should show a generic passive place token');
+  assertNotContains(el('center-presence').innerHTML, 'Ancient Tree', 'Center stage passive place token should not duplicate the named presence rail');
+  assertNotContains(el('center-presence').innerHTML, 'App.focusPresence(', 'Center passive place token should not duplicate the place command route');
   assertEqual(App.focusPresence('place', 'landmark:Ancient Tree'), true, 'Landmark presence focus should resolve without adding a mechanic');
   assertEqual(App.inInterior, false, 'Landmark presence focus should not move or enter anything');
   assertContains(el('selection-sentence').innerHTML, 'Ancient Tree', 'Landmark focus should show the place object in the desktop command sentence');

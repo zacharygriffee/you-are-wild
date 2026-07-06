@@ -710,6 +710,80 @@
             display: none;
         }
 
+        .center-presence-slot {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .center-presence-visual {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            max-width: min(100%, 360px);
+            padding: 4px 6px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(16, 18, 36, 0.38);
+        }
+
+        .center-presence-token {
+            display: inline-grid;
+            place-items: center;
+            width: 26px;
+            height: 22px;
+            min-width: 26px;
+            border: 1px solid rgba(120, 120, 180, 0.28);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.46);
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .center-presence-token.selected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 212, 170, 0.16);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.14);
+        }
+
+        .center-presence-token.party,
+        .center-presence-token.player {
+            border-color: rgba(0, 212, 170, 0.32);
+        }
+
+        .center-presence-token.item,
+        .center-presence-token.items,
+        .center-presence-token.more {
+            border-color: rgba(255, 214, 102, 0.34);
+        }
+
+        .center-presence-token.place,
+        .center-presence-token.structure,
+        .center-presence-token.landmark {
+            border-color: rgba(147, 197, 253, 0.36);
+        }
+
+        .center-presence-token.enemy {
+            border-color: rgba(255, 107, 157, 0.42);
+        }
+
+        .center-presence-token.neutral,
+        .center-presence-token.friendly,
+        .center-presence-token.merchant,
+        .center-presence-token.quest_giver {
+            border-color: rgba(0, 212, 170, 0.22);
+        }
+
+        .center-presence-token.more {
+            font-size: 10px;
+            font-weight: 700;
+        }
+
         .desktop-presence-rail {
             width: 100%;
             max-width: 720px;

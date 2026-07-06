@@ -144,6 +144,50 @@ const YAW_CENTER_CONTEXT = {
         return `<button type="button" class="center-presence-chip ${escapedType} ${escapedTone}${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${control}" data-presence-type="${escapedType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${focusTitle}" aria-label="${focusTitle}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')"><span class="center-presence-icon" aria-hidden="true">${icon}</span><span class="center-presence-text"><strong>${name}</strong>${meta}</span></button>`;
     },
 
+    centerPresenceToken(app, entry) {
+        const unit = entry.unit || {};
+        const type = entry.type || 'presence';
+        const tone = entry.tone || type;
+        const presenceType = type === 'creature' ? 'creature' : (type === 'player' || type === 'party' ? 'party' : type);
+        const icon = app._escapeHtml(unit.icon || (presenceType === 'items' ? '🎒' : presenceType === 'place' ? '◆' : '👤'));
+        const labels = {
+            player: app._label('party.you', 'You'),
+            party: app._label('ui.presence.partyHere', 'Party here'),
+            creature: app._label('ui.presence.creaturesHere', 'Creatures here'),
+            items: app._label('ui.presence.itemsHere', 'Items here'),
+            place: app._label('ui.presence.placeHere', 'Place here')
+        };
+        const label = app._escapeHtml(labels[type] || labels[presenceType] || app._label('ui.presence.stage', 'Stage presence'));
+        const actorSelected = presenceType === 'party' && (type === 'player' || type === 'party') && app._getExplorationActors().includes(unit);
+        const targetSelected = presenceType === 'creature' && app._isExplorationTargetUnit('creature', unit);
+        const objectSelected = app.focusedStageObject
+            && ((type === 'items' && app.focusedStageObject.type === 'items')
+                || (type === 'place' && app.focusedStageObject.type === 'place' && app.focusedStageObject.id === unit.id));
+        const selectedClass = actorSelected || targetSelected || objectSelected ? ' selected' : '';
+        const escapedType = app._escapeHtml(type);
+        const escapedTone = app._escapeHtml(tone);
+        return `<span class="center-presence-token ${escapedType} ${escapedTone}${selectedClass}" data-stage-surface="presence" data-stage-layer="presence" data-stage-presence-type="${escapedType}" title="${label}" aria-label="${label}"><span aria-hidden="true">${icon}</span></span>`;
+    },
+
+    renderCenterPresenceSlot(app, entries) {
+        const centerSlot = document.getElementById('center-presence');
+        if (!centerSlot) return '';
+        centerSlot.innerHTML = '';
+        if (!entries.length) return '';
+        const visible = entries.slice(0, 8);
+        const extra = entries.length - visible.length;
+        const tokens = visible.map(entry => this.centerPresenceToken(app, entry)).join('');
+        const extraLabel = extra > 0
+            ? app._escapeHtml(app._label('ui.presence.moreGeneric', '+{count} more present', { count: extra }))
+            : '';
+        const more = extra > 0
+            ? `<span class="center-presence-token more" data-stage-surface="presence" data-stage-layer="presence" data-stage-presence-type="more" title="${extraLabel}" aria-label="${extraLabel}">+${app._escapeHtml(String(extra))}</span>`
+            : '';
+        const label = app._escapeHtml(app._label('ui.presence.stageVisual', 'Stage visual presence'));
+        centerSlot.innerHTML = `<div class="center-presence-visual" data-stage-surface="presence" data-stage-layer="presence" aria-label="${label}">${tokens}${more}</div>`;
+        return centerSlot.innerHTML;
+    },
+
     focusPresence(app, type, ref) {
         if (!ref || app.combatState?.active) return false;
         if (type === 'items') {
@@ -225,12 +269,11 @@ const YAW_CENTER_CONTEXT = {
     },
 
     renderPresence(app) {
-        const centerSlot = document.getElementById('center-presence');
-        if (centerSlot) centerSlot.innerHTML = '';
         const rail = document.getElementById('desktop-presence-rail');
+        const entries = this.presenceEntries(app);
+        this.renderCenterPresenceSlot(app, entries);
         if (!rail) return '';
         rail.innerHTML = '';
-        const entries = this.presenceEntries(app);
         if (!entries.length) return '';
         const visible = entries.slice(0, 6);
         const extra = entries.length - visible.length;

@@ -10197,9 +10197,11 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state while target controls are active');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), true, 'Mobile target state should prioritize marked-target controls in the fixed belt');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Targets', 'Mobile selection sentence should move into the control belt when a target is marked');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');
+  assertNotContains(trayHtml, 'selected-target-summary', 'Mobile marked-target action tray should not duplicate the composer sentence');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
   assertContains(actorHtml, 'Ally', 'Mobile actor belt should expose party members when a marked target needs actor selection');
   assertContains(actorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
@@ -14255,7 +14257,8 @@ test('Mobile creature long-press marks living targets without opening action men
   App.showMobileCreatureContext('willing-1');
   assertEqual(App.explorationTargetIds.includes('creature:willing-1'), true, 'Living creature long-press should mark the creature as the current target');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Living creature long-press should not open a duplicate primary-action menu');
-  assertContains(App._renderExplorationTargetActions('mobile-target'), 'selected-target-summary', 'Marked living creature should use the visible mobile target tray for actions');
+  assertContains(App._renderExplorationTargetActions('mobile-target'), "resolveExplorationTargetAction('fight'", 'Marked living creature should use the visible mobile target tray for actions');
+  assertNotContains(App._renderExplorationTargetActions('mobile-target'), 'selected-target-summary', 'Mobile target tray should leave actor target summaries to the composer sentence');
 });
 
 test('Mobile creature context actions route through shared intent dispatch', () => {

@@ -38,7 +38,7 @@ const YAW_COMBAT_ACTIONS = {
         const disabled = actorLocked ? ' disabled' : '';
         const state = actorLocked ? 'locked' : (selected ? 'selected' : 'available');
         const intent = app._escapeHtml(app.syncSelection?.type || 'sync');
-        const attrs = `data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
+        const attrs = `data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
         return `<button class="action-btn${selected ? ' primary' : ''}" ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${app._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;
     },
 

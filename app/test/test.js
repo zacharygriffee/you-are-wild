@@ -1513,6 +1513,8 @@ test('Defeat recovery helper module is registered before app code', () => {
   assertContains(defeatRecoveryContent, 'markDefeat(app, outcome = ', 'Defeat recovery should own defeated state creation');
   assertContains(defeatRecoveryContent, 'showDefeatRecovery(app)', 'Defeat recovery should own the recovery screen');
   assertContains(defeatRecoveryContent, 'renderRecoveryControls(app)', 'Defeat recovery should render recovery actions through command belts');
+  assertContains(defeatRecoveryContent, 'data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="regenerate"', 'Regenerate should identify the recovery command surface');
+  assertContains(defeatRecoveryContent, 'data-command-surface="defeat-recovery" data-command-mode="recovery" data-command-control="end-game"', 'End Game should identify the recovery command surface');
   assertContains(defeatRecoveryContent, 'regenerate(app)', 'Defeat recovery should own regeneration');
   assertContains(defeatRecoveryContent, 'canSetSafeAnchor(app)', 'Defeat recovery should own safe-place eligibility');
   assertContains(defeatRecoveryContent, "app._emitModuleHook('onDefeat'", 'Defeat recovery should emit a defeat module hook');
@@ -14017,12 +14019,12 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const mobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(syncAllyCard, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Desktop sync participant row should identify group actor-selection scope');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop sync participant row should identify the shared command grammar');
-  assertContains(syncAllyCard, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');
+  assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');
   assertContains(syncAllyCard, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Desktop sync participant button should identify the actor slot and stable group intent');
   assertContains(syncAllyCard, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="available"', 'Desktop sync participant button should expose available participant state');
   assertContains(syncAllyCard, 'aria-pressed="false"', 'Desktop unselected sync participant should expose false pressed state');
   assertContains(mobileSyncAllyChip, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Mobile sync participant row should identify group actor-selection scope');
-  assertContains(mobileSyncAllyChip, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Mobile sync participant button should identify itself as a combat grammar control');
+  assertContains(mobileSyncAllyChip, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Mobile sync participant button should identify itself as a combat grammar control');
   assertContains(mobileSyncAllyChip, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Mobile sync participant button should identify the actor slot and stable group intent');
   App.syncSelection = null;
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };

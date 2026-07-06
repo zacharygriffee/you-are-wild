@@ -2417,7 +2417,7 @@ test('Panel rendering helper module is registered before app code', () => {
   assertContains(panelRenderingContent, "app._label('quest.openLog'", 'Party quest-log utility should use localized accessible text');
   assertContains(panelRenderingContent, 'data-surface-role="drawer-utility"', 'Party drawer utilities should identify as drawer utilities rather than composer controls');
   assertContains(panelRenderingContent, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Party drawer utility rows should identify detail-management command routing');
-  assertContains(panelRenderingContent, 'data-command-control="open-quest-log"', 'Party quest-log utility should identify its structural drawer control');
+  assertContains(panelRenderingContent, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-quest-log"', 'Party quest-log utility should identify its structural drawer control');
   assertContains(panelRenderingContent, 'data-surface-role="actor-detail"', 'Party detail views should identify as actor detail drawer surfaces');
   assertContains(panelRenderingContent, 'data-surface-role="target-detail"', 'Creature detail views should identify as target detail drawer surfaces');
   assertContains(appContent, 'YAW_PANEL_RENDERING.party(this)', 'App party render wrapper should delegate to the helper');

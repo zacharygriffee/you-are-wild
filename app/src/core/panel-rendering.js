@@ -16,7 +16,7 @@ const YAW_PANEL_RENDERING = {
         if (app.combatState?.active || !(app.quests || []).length) return '';
         const label = app._escapeHtml(app._label('quest.title', 'Quests'));
         const title = app._escapeHtml(app._label('quest.openLog', 'Open quest log'));
-        return `<div class="panel-interaction-tray party-panel-utilities" data-surface-role="drawer-utility" role="toolbar" aria-label="${label}"><div class="target-action-row" data-command-surface="detail-management" data-command-mode="exploration"><button class="action-btn" data-command-control="open-quest-log" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
+        return `<div class="panel-interaction-tray party-panel-utilities" data-surface-role="drawer-utility" role="toolbar" aria-label="${label}"><div class="target-action-row" data-command-surface="detail-management" data-command-mode="exploration"><button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-quest-log" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
     },
 
     party(app) {

@@ -4305,7 +4305,7 @@
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
                         <span class="panel-header-actions">
-                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
+                            <button class="nav-btn" id="party-detail-toggle" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="toggle-actor-details" data-detail-state="collapsed" style="padding: 2px 8px; font-size: 10px;" title="Show details for all party cards" aria-label="Show details for all party cards" data-i18n-title="ui.showPartyDetailsTitle" data-i18n-aria-label="ui.showPartyDetailsTitle" data-i18n="ui.showDetails" onclick="expandAll('party')">Show Details</button>
                             <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-actor-drawer" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>
@@ -4319,7 +4319,7 @@
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
                         <span class="panel-header-actions">
-                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
+                            <button class="nav-btn" id="creature-detail-toggle" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="toggle-target-details" data-detail-state="collapsed" style="padding: 2px 8px; font-size: 10px;" title="Show details for all creature cards" aria-label="Show details for all creature cards" data-i18n-title="ui.showCreatureDetailsTitle" data-i18n-aria-label="ui.showCreatureDetailsTitle" data-i18n="ui.showDetails" onclick="expandAll('enemies')">Show Details</button>
                             <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-target-drawer" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>

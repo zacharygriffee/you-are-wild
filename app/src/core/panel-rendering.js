@@ -27,6 +27,7 @@ const YAW_PANEL_RENDERING = {
             const utilities = this.partyUtilities(app);
             container.innerHTML = `${utilities}${tray}${app.party.map((unit, i) => app.renderUnitCard(unit, i, 'party')).join('')}`;
         }
+        this.syncDetailToggle(app, 'party');
         app.renderMobilePartyStrip();
     },
 
@@ -107,6 +108,7 @@ const YAW_PANEL_RENDERING = {
             }
             container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${app._escapeHtml(app._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;
         }
+        this.syncDetailToggle(app, 'creature');
         app.renderMobileCreatureStrip();
     },
 
@@ -144,6 +146,32 @@ const YAW_PANEL_RENDERING = {
         const allExpanded = list.every(u => u.expanded);
         list.forEach(u => u.expanded = !allExpanded);
         if (type === 'party') app.renderParty(); else app.renderCreatures();
+    },
+
+    syncDetailToggle(app, type) {
+        const isParty = type === 'party';
+        const list = isParty ? (app.party || []) : (app.creatures || []);
+        const button = document.getElementById(isParty ? 'party-detail-toggle' : 'creature-detail-toggle');
+        if (!button) return;
+        const allExpanded = list.length > 0 && list.every(unit => unit?.expanded);
+        const labelKey = allExpanded ? 'ui.hideDetails' : 'ui.showDetails';
+        const titleKey = allExpanded
+            ? (isParty ? 'ui.hidePartyDetailsTitle' : 'ui.hideCreatureDetailsTitle')
+            : (isParty ? 'ui.showPartyDetailsTitle' : 'ui.showCreatureDetailsTitle');
+        const fallbackLabel = allExpanded ? 'Hide Details' : 'Show Details';
+        const fallbackTitle = allExpanded
+            ? (isParty ? 'Hide details for all party cards' : 'Hide details for all creature cards')
+            : (isParty ? 'Show details for all party cards' : 'Show details for all creature cards');
+        const label = app._label(labelKey, fallbackLabel);
+        const title = app._label(titleKey, fallbackTitle);
+        button.textContent = label;
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.setAttribute('aria-pressed', String(allExpanded));
+        button.dataset.detailState = allExpanded ? 'expanded' : 'collapsed';
+        button.dataset.i18n = labelKey;
+        button.dataset.i18nTitle = titleKey;
+        button.dataset.i18nAriaLabel = titleKey;
     }
 };
 

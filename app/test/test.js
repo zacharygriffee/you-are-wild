@@ -3911,6 +3911,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
+  assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="selection-sentence"'), 'Desktop selection sentence should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
   assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
@@ -7915,15 +7917,19 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(mobileCreatureChip, 'class="mobile-unit-chip selected selected-target"', 'Mobile selected target chip should expose selected target class');
   assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
   assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
+  const selectionHtml = elements.get('selection-sentence').innerHTML;
   const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   const partyPanelHtml = elements.get('party-content').innerHTML;
-  assertContains(actionsHtml, 'selected-target-summary', 'Desktop command composer should include actor-target controls');
+  assertContains(selectionHtml, 'selection-sentence-part', 'Desktop command composer should include the canonical actor-target sentence');
+  assertNotContains(actionsHtml, 'selected-target-summary', 'Desktop marked-target action row should not duplicate the canonical sentence');
   assertNotContains(partyPanelHtml, 'selected-target-summary', 'Party panel should not duplicate composer target summary');
-  assertContains(actionsHtml, 'aria-label="Objetivos de exploracion seleccionados"', 'Composer target summary region label should localize');
-  assertContains(actionsHtml, 'Actores: Actor, Helper', 'Composer should show localized selected actor names');
-  assertContains(actionsHtml, 'class="selected-target-primary">Principal: Actor</span>', 'Composer should identify the primary actor for group actions');
-  assertContains(actionsHtml, 'class="selected-target-helpers">Ayudantes: Helper</span>', 'Composer should identify helper actors for group actions');
-  assertContains(actionsHtml, 'Objetivos: Ally Target, Creature Target', 'Composer should show localized selected target names');
+  assertContains(selectionHtml, 'Actores', 'Composer target sentence should localize the actor label');
+  assertContains(selectionHtml, 'Actor', 'Composer sentence should show the selected primary actor name');
+  assertContains(selectionHtml, 'Helper', 'Composer sentence should show selected helper actor names');
+  assertContains(selectionHtml, 'Objetivos', 'Composer target sentence should localize the target label');
+  assertContains(selectionHtml, 'Ally Target', 'Composer sentence should show selected party target names');
+  assertContains(selectionHtml, 'Creature Target', 'Composer sentence should show selected creature target names');
+  assertContains(selectionHtml, 'Intent', 'Composer target sentence should expose the pending intent label');
   assertContains(actionsHtml, 'aria-label="Hablar 2 objetivos"', 'Selected-target action labels should use localized target counts');
   assertContains(actionsHtml, 'class="target-action-row"', 'Composer selected-target action buttons should be wrapped in a bounded row');
   assertContains(actionsHtml, "resolveExplorationTargetAction('flirt','tease','desktop-target')", 'Composer selected-target action buttons should dispatch the default sub-action directly');
@@ -10202,7 +10208,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Long-Named Ally', { id: 'ally-1' });
   const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
@@ -10213,12 +10219,16 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   App.explorationActorSelectionExplicit = true;
 
   App.renderSelectionSentence();
-  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should not duplicate actor selection state');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Long-Named Ally', 'Desktop composer sentence should show explicit actor state below the stage');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should show selected actor state in the control belt');
 
   App.toggleExplorationTarget('creature', 'guide-1');
   const html = elements.get('mobile-selection-sentence').innerHTML;
-  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should stay clear when marked target state exists');
+  const desktopHtml = document.getElementById('selection-sentence').innerHTML;
+  assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain the command sentence slot');
+  assertContains(desktopHtml, 'Targets', 'Desktop composer sentence should show marked target state');
+  assertContains(desktopHtml, 'Guide', 'Desktop composer sentence should name the marked target');
+  assertContains(desktopHtml, 'Intent', 'Desktop composer sentence should expose pending intent state');
   assertContains(html, 'Targets', 'Marked exploration targets should be visible in the mobile control-belt sentence');
   assertContains(html, 'Guide', 'Marked exploration target name should be visible in the mobile control-belt sentence');
   assertContains(html, 'Intent', 'Marked exploration targets should expose a pending intent field');
@@ -10226,12 +10236,12 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
 
   App.explorationActorIds = ['missing-actor'];
   App.renderSelectionSentence();
-  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should stay clear for stale actor selections');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Select a living actor', 'Stale actor selections should remain visible for correction in the desktop composer');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Select a living actor', 'Stale actor selections should remain visible for correction in the mobile control belt');
 });
 
 test('Selection sentence mirrors combat target-pick state without changing action ids', () => {
-  const { App, elements } = loadAppForCombat(() => 0);
+  const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const enemy = makeUnit('Enemy', { id: 'enemy-sentence', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
@@ -10249,7 +10259,8 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
 
   const html = App.renderSelectionSentence();
-  assertEqual(elements.get('selection-sentence').innerHTML, '', 'Desktop center should not duplicate combat target-pick state');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Pick target', 'Desktop composer sentence should show combat target-pick state below the stage');
+  assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain combat command sentence state');
   assertContains(html, 'Actors', 'Combat sentence should label current actor state');
   assertContains(html, 'You', 'Combat sentence should name the active actor');
   assertContains(html, 'Targets', 'Combat target picking should expose target state');

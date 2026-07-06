@@ -416,12 +416,14 @@ async function runAdventureMarkedTargetFlow(page) {
   await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Marked target composer should render in the desktop context belt');
   const trayState = await page.evaluate(() => {
     const beltEl = document.querySelector('#desktop-context-belt');
+    const sentenceEl = document.querySelector('#selection-sentence');
     const partyContent = document.querySelector('#party-content');
     return {
       partyHasTray: Boolean(partyContent?.querySelector('.panel-interaction-tray')),
       hasDesktopSource: beltEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','desktop-target')") || false,
-      actorSummary: beltEl?.textContent?.includes('Actors: Ally') || false,
-      targetSummary: beltEl?.textContent?.includes('Targets: Friendly') || false,
+      actorSummary: sentenceEl?.textContent?.includes('ActorsAlly') || false,
+      targetSummary: sentenceEl?.textContent?.includes('TargetsFriendly') || false,
+      centerHasSentence: Boolean(document.querySelector('#desktop-play-cell-center #selection-sentence')),
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
@@ -429,6 +431,7 @@ async function runAdventureMarkedTargetFlow(page) {
   assert.strictEqual(trayState.hasDesktopSource, true, 'Marked target composer should dispatch defaults through the desktop-target command source');
   assert.strictEqual(trayState.actorSummary, true, 'Marked target composer should summarize the selected actor');
   assert.strictEqual(trayState.targetSummary, true, 'Marked target composer should summarize the marked creature target');
+  assert.strictEqual(trayState.centerHasSentence, false, 'Center tile should not contain the desktop command sentence slot');
   assert.strictEqual(trayState.centerHasActorControls, false, 'Center tile should stay free of actor controls while a target is marked');
 
   await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','desktop-target')"]`).first().click();
@@ -479,7 +482,7 @@ async function runStaleMarkedActorFlow(page) {
   await assert.doesNotReject(() => tray.waitFor({ state: 'visible', timeout: 1000 }), 'Stale actor marked-target composer should still render for correction');
 
   let state = await page.evaluate(() => {
-    const trayEl = document.querySelector('#desktop-context-belt');
+    const trayEl = document.querySelector('#selection-sentence');
     return {
       trayText: trayEl?.textContent || '',
       trayHasPlayerPrimary: trayEl?.textContent?.includes('Primary: You') || false,

@@ -4033,9 +4033,10 @@
             renderCenterPresence() {
                 return YAW_CENTER_CONTEXT.renderPresence(this);
             },
-			            renderExplorationActions() {
-		                this.renderCenterTileActions();
-			            },
+            renderExplorationActions() {
+                this.renderCenterTileActions();
+                this.renderSelectionSentence();
+            },
             showExplorationActions() {
                 const result = YAW_CENTER_CONTEXT.showExplorationActions(this);
                 this.renderCenterPresence();

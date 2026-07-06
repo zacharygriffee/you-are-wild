@@ -107,12 +107,21 @@ const YAW_INTERACTION_STATE = {
     renderSelectionSentence(app) {
         const html = this.sentenceHtml(app, this.selectionSentence(app));
         const desktop = document.getElementById('selection-sentence');
-        if (desktop) desktop.innerHTML = '';
+        const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
+        const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
+        const actorState = !app.combatState?.active && app._selectedExplorationActorState
+            ? app._selectedExplorationActorState({ allowFallback: true })
+            : null;
+        const hasInvalidActors = Boolean(actorState && !actorState.valid);
+        const hasCombatTransient = Boolean(app.combatState?.active && (
+            app.targetSelection?.source === 'combat' ||
+            app.syncSelection?.active ||
+            app.feedSelection?.active
+        ));
+        if (desktop) desktop.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient ? html : '';
         const mobile = document.getElementById('mobile-selection-sentence');
         if (mobile) {
-            const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
-            const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
-            mobile.innerHTML = hasTargets || hasExplicitActors ? html : '';
+            mobile.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors ? html : '';
         }
         return html;
     },

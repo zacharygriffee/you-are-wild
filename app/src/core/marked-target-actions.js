@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD MARKED TARGET ACTIONS
- * Shared rendering for panel-owned marked-target intent controls.
+ * Shared rendering for composer-owned marked-target intent controls.
  */
 
 const YAW_MARKED_TARGET_ACTIONS = {
@@ -54,7 +54,9 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const primaryLine = summary.primaryActor ? `<span class="selected-target-primary">${app._escapeHtml(app._label('target.primaryActor', 'Primary'))}: ${app._escapeHtml(summary.primaryActor.name || 'You')}</span>` : '';
         const helperLine = summary.helperNames?.length ? `<span class="selected-target-helpers">${app._escapeHtml(app._label('target.helpers', 'Helpers'))}: ${app._escapeHtml(summary.helperNames.join(', '))}</span>` : '';
-        const content = `<div class="action-legend selected-target-summary" aria-label="${app._escapeHtml(app._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${app._t('target.actors')}: ${app._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${app._t('target.targets')}: ${app._escapeHtml(targetNames)}</span></div><div class="target-action-row">${buttonHtml}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const summaryHtml = `<div class="action-legend selected-target-summary" aria-label="${app._escapeHtml(app._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${app._t('target.actors')}: ${app._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${app._t('target.targets')}: ${app._escapeHtml(targetNames)}</span></div>`;
+        const actionRow = `<div class="target-action-row">${buttonHtml}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const content = source === 'desktop' ? actionRow : `${summaryHtml}${actionRow}`;
         return source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${content}</div>`
             : content;

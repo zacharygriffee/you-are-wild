@@ -36,7 +36,10 @@ const YAW_COMBAT_ACTIONS = {
             : (selected ? app._label('combat.sync.participantRole', 'Participant') : app._label('combat.sync.selectParticipants', 'Select participants for sync'));
         const title = app._escapeHtml(app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: unit.name || 'ally' }));
         const disabled = actorLocked ? ' disabled' : '';
-        return `<button class="action-btn${selected ? ' primary' : ''}" title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${app._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;
+        const state = actorLocked ? 'locked' : (selected ? 'selected' : 'available');
+        const intent = app._escapeHtml(app.syncSelection?.type || 'sync');
+        const attrs = `data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
+        return `<button class="action-btn${selected ? ' primary' : ''}" ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${app._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;
     },
 
     actionButtons(app, actor, options = {}) {

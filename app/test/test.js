@@ -4936,6 +4936,9 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
   assertContains(elements.get('party-content').innerHTML, 'aria-label="Seleccionar Ally para sincronizar"', 'Sync participant card should expose localized accessible label');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Sync participant card button should identify the shared group actor grammar');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Sync participant card button should identify actor-slot selection for the stable group intent');
+  assertContains(elements.get('party-content').innerHTML, 'data-selection-control="sync-participant" data-selection-mode="sync-participant"', 'Sync participant card button should expose participant selection semantics');
 
   App._syncSelected = [0, 1];
   App.syncSelection.participantIds = ['sync-player', 'sync-ally'];
@@ -13244,6 +13247,19 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
 
   App.combatState.active = true;
   App.activeActor = player;
+  App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1'] };
+  const syncAllyCard = App.renderUnitCard(ally, 1, 'party');
+  const mobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(syncAllyCard, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Desktop sync participant row should identify group actor-selection scope');
+  assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop sync participant row should identify the shared command grammar');
+  assertContains(syncAllyCard, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');
+  assertContains(syncAllyCard, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Desktop sync participant button should identify the actor slot and stable group intent');
+  assertContains(syncAllyCard, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="available"', 'Desktop sync participant button should expose available participant state');
+  assertContains(syncAllyCard, 'aria-pressed="false"', 'Desktop unselected sync participant should expose false pressed state');
+  assertContains(mobileSyncAllyChip, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Mobile sync participant row should identify group actor-selection scope');
+  assertContains(mobileSyncAllyChip, 'data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Mobile sync participant button should identify itself as a combat grammar control');
+  assertContains(mobileSyncAllyChip, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Mobile sync participant button should identify the actor slot and stable group intent');
+  App.syncSelection = null;
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
   const enemyCard = App.renderUnitCard(enemy, 1, 'creature');
   const mobileEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');

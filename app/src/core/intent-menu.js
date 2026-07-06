@@ -18,7 +18,38 @@ const YAW_INTENT_MENU = {
         };
     },
 
-    show(app, type, targetRef, source = 'sheet', presentation = 'sheet') {
+    desktopAnchorEvent(anchorEvent) {
+        const anchor = anchorEvent?.currentTarget || anchorEvent?.target || (typeof document !== 'undefined' ? document.activeElement : null);
+        if (!anchor || typeof anchor.getBoundingClientRect !== 'function') return null;
+        const rect = anchor.getBoundingClientRect();
+        if (!rect || !Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return null;
+        return rect;
+    },
+
+    positionDesktopMenu(menu, anchorEvent, isDesktop = false) {
+        if (!menu || !isDesktop) return;
+        const rect = this.desktopAnchorEvent(anchorEvent);
+        if (!rect) return;
+        const viewportWidth = Math.max(320, window.innerWidth || document.documentElement?.clientWidth || 1024);
+        const viewportHeight = Math.max(320, window.innerHeight || document.documentElement?.clientHeight || 720);
+        const width = Math.min(320, Math.max(260, viewportWidth - 36));
+        const left = Math.max(18, Math.min(rect.left, viewportWidth - width - 18));
+        const top = Math.max(18, Math.min((rect.bottom || rect.top) + 6, viewportHeight - 112));
+        menu.style.left = `${Math.round(left)}px`;
+        menu.style.top = `${Math.round(top)}px`;
+        menu.style.right = 'auto';
+        menu.style.width = `min(320px, calc(100vw - 36px))`;
+        menu.setAttribute('data-intent-position', 'anchored');
+        if (typeof menu.getBoundingClientRect === 'function') {
+            const menuRect = menu.getBoundingClientRect();
+            if (Number.isFinite(menuRect.bottom) && menuRect.bottom > viewportHeight - 18) {
+                const clampedTop = Math.max(18, viewportHeight - (menuRect.height || 0) - 18);
+                menu.style.top = `${Math.round(clampedTop)}px`;
+            }
+        }
+    },
+
+    show(app, type, targetRef, source = 'sheet', presentation = 'sheet', anchorEvent = null) {
         const isParty = type === 'party';
         const target = app._intentTarget(type, targetRef);
         if (!target) return;
@@ -44,7 +75,7 @@ const YAW_INTENT_MENU = {
                 : `data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"`;
             return `<button class="action-btn intent-menu-item${extraClass}" role="menuitem" ${commandAttr} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${handler}">${icon ? icon + ' ' : ''}${app._escapeHtml(label)}</button>`;
         };
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
+        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
         html += actionButton('loot');
         if (app._canScavengeCorpse(target)) {
             html += actionButton('scavenge');
@@ -58,11 +89,12 @@ const YAW_INTENT_MENU = {
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);
+        this.positionDesktopMenu(menu, anchorEvent, surface.presentation === 'desktop');
         app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
         app._activateOutsideContextDismiss(menu);
     },
 
-    openSubActionSheet(app, type, targetRef, action, source = 'sheet') {
+    openSubActionSheet(app, type, targetRef, action, source = 'sheet', anchorEvent = null) {
         const target = app._intentTarget(type, targetRef);
         if (!target || app._isCorpse(target) || !app.SUB_ACTIONS[action]) {
             return app.selectIntent(type, targetRef, action, source);
@@ -78,7 +110,7 @@ const YAW_INTENT_MENU = {
         const title = `${app._uiLabel(action)} ${target.name || ''}`.trim();
         const defaultSub = app._getDefaultSubAction(action);
         const defaultLabel = app._getActionLabel(action, defaultSub);
-        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
+        let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(title)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}" data-intent-source="${app._escapeHtml(commandSource)}" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${app._escapeHtml(action)}"><div class="${surface.titleClass}" id="${surface.titleId}">${app._actionIcon(action)} ${app._escapeHtml(title)}</div><div class="${surface.actionsClass}" role="menu" data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent">`;
         html += `<button class="action-btn primary" role="menuitem" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}" data-command-grammar="actor-target-intent" title="${app._escapeHtml(defaultLabel)}" aria-label="${app._escapeHtml(defaultLabel)}" onclick="App.selectIntent('${type}',${targetArg},'${action}','${commandSource}','${String(defaultSub).replace(/'/g, "\\'")}')">${app._escapeHtml(defaultLabel)}</button>`;
         subActions.filter(sub => sub.id !== defaultSub).forEach(sub => {
             const label = app._escapeHtml(sub.label);
@@ -91,6 +123,7 @@ const YAW_INTENT_MENU = {
         html += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', html);
         const menu = document.getElementById(surface.id);
+        this.positionDesktopMenu(menu, anchorEvent, surface.presentation === 'desktop');
         app._activateFocusTrap(menu, { close: () => app.closeIntentMenu() });
         app._activateOutsideContextDismiss(menu);
     },

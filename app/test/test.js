@@ -2386,8 +2386,8 @@ test('Intent menu helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/intent-menu.js'") < buildContent.indexOf("'src/core/app.js'"), 'Intent menu helper should load before app.js');
   assertContains(intentMenuContent, 'const YAW_INTENT_MENU = {', 'Intent menu helper should expose the menu service');
   assertContains(appContent, 'YAW_INTENT_MENU.surface(source, presentation)', 'App intent menu surface should delegate to the helper');
-  assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation)', 'App intent menu renderer should delegate to the helper');
-  assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source)', 'App intent sub-action sheet should delegate to the helper');
+  assertContains(appContent, 'YAW_INTENT_MENU.show(this, type, targetRef, source, presentation, anchorEvent)', 'App intent menu renderer should delegate to the helper with optional anchoring');
+  assertContains(appContent, 'YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source, anchorEvent)', 'App intent sub-action sheet should delegate to the helper with optional anchoring');
   assertContains(appContent, 'YAW_INTENT_MENU.close(this)', 'App intent menu close lifecycle should delegate to the helper');
 });
 
@@ -6270,7 +6270,8 @@ test('Creature panel renders corpses as remains without target actions', () => {
   assertContains(html, "selectIntent('creature','fallen-1','loot','panel-card')", 'Corpse card should expose loot through shared intent selection');
   assertContains(html, "selectIntent('creature','fallen-1','scavenge','panel-card')", 'Corpse card should expose scavenge through shared intent selection');
   assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
-  assertContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Corpse card should support secondary-click contextual menu');
+  assertContains(html, "showIntentMenu('creature','fallen-1','desktop-card','desktop',event)", 'Desktop corpse card should open a desktop utility popover on secondary click');
+  assertNotContains(html, "showRadialIntentMenu('creature','fallen-1','secondary-click')", 'Desktop corpse card should not route secondary click through the mobile radial menu');
   assertNotContains(html, 'outsideActionForCreature', 'Corpse card should not expose living interaction actions');
   assertNotContains(html, 'executeActionOnTarget', 'Corpse card should not expose target selection actions');
 });
@@ -15025,6 +15026,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
 test('Desktop intent menu uses a bounded desktop surface', () => {
   const { App, body, document, listeners, elements } = loadAppForCombat();
   const opener = makeElement();
+  opener.getBoundingClientRect = () => ({ left: 420, top: 180, right: 520, bottom: 220 });
   const player = makeUnit('You', { id: 'player-1', Figh: 40 });
   const ally = makeUnit('Ally', { id: 'ally-desktop' });
   const friendly = makeUnit('Friendly', { id: 'friendly-desktop', disposition: App.DISPOSITION.FRIENDLY, CPle: 95, willing: true });
@@ -15046,17 +15048,23 @@ test('Desktop intent menu uses a bounded desktop surface', () => {
   assertEqual(App.showIntentMenu('creature', 'friendly-desktop', 'desktop'), false, 'Desktop living creature intent menu should stay suppressed in favor of marked-target controls');
   assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','friendly-desktop','fight','desktop')", 'Suppressed living creature intent should not expose primary action popups');
 
-  App.showIntentMenu('creature', 'remains-desktop', 'desktop');
+  App.showIntentMenu('creature', 'remains-desktop', 'desktop-card', 'desktop', { currentTarget: opener });
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop intent menu should render as a desktop-specific dialog');
   assertContains(body.innerHTML, 'class="desktop-intent-menu intent-menu intent-menu-desktop"', 'Desktop intent menu should use desktop-specific classes');
+  assertContains(body.innerHTML, 'data-intent-source="desktop-card"', 'Desktop card menus should identify their card source');
   assertContains(body.innerHTML, 'data-command-surface="utility-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop corpse menu should identify the shared exploration utility grammar');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="loot"', 'Desktop corpse loot should expose stable utility intent metadata');
   assertContains(body.innerHTML, 'data-command-mode="exploration" data-command-control="close-utility-menu"', 'Desktop corpse close should expose a structural utility-menu exit');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop intent menu should not reuse the mobile bottom-sheet id');
-  assertContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop')", 'Desktop corpse menu should keep contextual utility actions');
+  assertContains(body.innerHTML, "App.selectIntent('creature','remains-desktop','loot','desktop-card')", 'Desktop card corpse menu should keep contextual utility actions');
   assertNotContains(body.innerHTML, "App.openIntentSubActionSheet('creature','remains-desktop','fight','desktop')", 'Desktop corpse menu should not expose living primary actions');
   assertContains(body.innerHTML, 'App.closeIntentMenu()', 'Desktop intent menu should use the shared intent close handler');
   assertNotContains(body.innerHTML, 'App.closeMobileContextMenu()', 'Desktop intent menu should not emit the mobile-specific close handler');
+  const anchoredMenu = elements.get('desktop-intent-menu');
+  assertEqual(anchoredMenu.getAttribute('data-intent-position'), 'anchored', 'Desktop card menu should record anchored positioning');
+  assertEqual(anchoredMenu.style.left, '420px', 'Desktop card menu should anchor near the opener horizontally');
+  assertEqual(anchoredMenu.style.top, '226px', 'Desktop card menu should anchor below the opener vertically');
+  assertEqual(anchoredMenu.style.right, 'auto', 'Desktop card menu should not keep the fallback right edge when anchored');
   assert(App._mobileContextOutsideHandler, 'Desktop intent menu should register outside pointer dismissal');
   assert(listeners.has('pointerdown'), 'Desktop intent menu should listen for outside pointer dismissal');
   const outsideDismissMenu = elements.get('desktop-intent-menu');

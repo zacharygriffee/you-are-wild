@@ -160,7 +160,7 @@ const YAW_UNIT_CARD = {
         };
         const cardCanOpenIntentMenu = !isParty && isCorpse;
         const cardContextMenuAttr = cardCanOpenIntentMenu
-            ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showRadialIntentMenu('${type}',${isParty ? index : `'${app._unitKey(unit)}'`},'secondary-click')"`
+            ? ` oncontextmenu="event.preventDefault();event.stopPropagation();App.showIntentMenu('${type}',${isParty ? index : `'${app._unitKey(unit)}'`},'desktop-card','desktop',event)"`
             : '';
         return `<div class="${cardClass}" ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">

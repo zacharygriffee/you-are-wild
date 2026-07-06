@@ -4577,14 +4577,14 @@
             _intentMenuSurface(source = 'sheet', presentation = 'sheet') {
                 return YAW_INTENT_MENU.surface(source, presentation);
             },
-            showIntentMenu(type, targetRef, source = 'sheet', presentation = 'sheet') {
-                return YAW_INTENT_MENU.show(this, type, targetRef, source, presentation);
+            showIntentMenu(type, targetRef, source = 'sheet', presentation = 'sheet', anchorEvent = null) {
+                return YAW_INTENT_MENU.show(this, type, targetRef, source, presentation, anchorEvent);
             },
             showRadialIntentMenu(type, targetRef, source = 'radial') {
                 return this.showIntentMenu(type, targetRef, source, 'radial');
             },
-            openIntentSubActionSheet(type, targetRef, action, source = 'sheet') {
-                return YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source);
+            openIntentSubActionSheet(type, targetRef, action, source = 'sheet', anchorEvent = null) {
+                return YAW_INTENT_MENU.openSubActionSheet(this, type, targetRef, action, source, anchorEvent);
             },
             selectIntent(type, targetRef, action, source = 'sheet', subAction = null) {
                 return YAW_INTERACTION_DISPATCH.selectIntent(this, type, targetRef, action, source, subAction);

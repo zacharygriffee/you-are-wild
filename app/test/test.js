@@ -2296,6 +2296,15 @@ test('Stats panel helper module is registered before app code', () => {
   assertContains(statsPanelContent, 'showCharacter(app)', 'Stats panel helper should own player stats rendering');
   assertContains(statsPanelContent, 'showPerkSelection(app)', 'Stats panel helper should own perk selection rendering');
   assertContains(statsPanelContent, 'app.showPartyPanelDetail', 'Stats panel helper should render through party panel details');
+  assertContains(statsPanelContent, 'data-command-surface="stats-detail"', 'Stats panel should identify its detail command surface');
+  assertContains(statsPanelContent, 'data-command-control="close-stats"', 'Stats close controls should identify their drawer exit');
+  assertContains(statsPanelContent, 'data-command-control="open-perk-selection"', 'Stats pending perk control should identify its drawer route');
+  assertContains(statsPanelContent, 'data-command-control="respec-perks"', 'Stats respec control should identify its drawer action');
+  assertContains(statsPanelContent, 'data-command-control="debug-grant-perk"', 'Stats debug grant control should identify its drawer action');
+  assertContains(statsPanelContent, 'data-command-surface="perk-selection-detail"', 'Perk selection should identify its detail command surface');
+  assertContains(statsPanelContent, 'data-command-control="filter-perk-tree"', 'Perk tree filters should identify their drawer control');
+  assertContains(statsPanelContent, 'data-command-control="choose-perk"', 'Perk choice buttons should identify their drawer action');
+  assertContains(statsPanelContent, 'data-command-control="back-to-stats"', 'Perk picker back control should identify its drawer exit');
   assertNotContains(statsPanelContent, "document.getElementById('scene-description')", 'Stats panel helper should not render into center tile content');
   assertContains(appContent, 'YAW_STATS_PANEL.showPartyMember(this, index)', 'App party member stats wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_STATS_PANEL.showCharacter(this)', 'App character stats wrapper should delegate to the helper');
@@ -14194,6 +14203,8 @@ test('Party member stats labels localize and escape names', () => {
   App.updateLanguage('es');
   App.showPartyMemberStats(1);
   const html = elements.get('party-content').innerHTML;
+  assertContains(html, 'data-command-surface="stats-detail"', 'Party stats should render as a detail command surface');
+  assertContains(html, 'data-command-control="close-stats"', 'Party stats close should expose its drawer exit role');
   assertContains(html, 'Ally &lt;One&gt;', 'Party stats should escape unit names');
   assertContains(html, '<strong>Equipo</strong>', 'Party stats equipment label should localize');
   assertContains(html, 'aria-label="Cerrar"', 'Party stats close action should localize');
@@ -14301,12 +14312,19 @@ test('Character stats expose pending perk selection', () => {
   App.showCharacterStats();
   let html = elements.get('party-content').innerHTML;
   assertContains(html, 'class="party-stats-view character-stats-view"', 'Character stats should render in the bounded stats view');
+  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats should render as a detail command surface');
+  assertContains(html, 'data-command-control="close-stats"', 'Character stats close should expose its drawer exit role');
+  assertContains(html, 'data-command-control="open-perk-selection"', 'Character stats perk picker should expose its drawer route');
   assertContains(html, 'class="party-stats-footer"', 'Character stats should keep close/perk actions in a sticky footer');
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
   assertContains(html, "App.closePanelDetails('party')", 'Character stats close action should return to party cards');
   assertContains(html, 'Choose Perk (2)', 'Character stats should show pending perk button');
   assertContains(elements.get('mobile-party-strip').innerHTML, 'class="party-stats-view character-stats-view"', 'Character stats should also render in the mobile party surface');
   App.showPerkSelection();
+  assertContains(elements.get('party-content').innerHTML, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="filter-perk-tree"', 'Perk filters should expose their drawer control role');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="back-to-stats"', 'Perk back button should expose its drawer exit role');
   assertContains(elements.get('party-content').innerHTML, 'Predator', 'Perk selection should render predator tree');
   assertContains(elements.get('party-content').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
   assertContains(elements.get('party-content').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
@@ -14323,6 +14341,11 @@ test('Perk and stat progression controls localize with accessible names', () => 
   App.updateLanguage('es');
   App.showCharacterStats();
   let html = elements.get('party-content').innerHTML;
+  assertContains(html, 'data-command-surface="stats-detail"', 'Character stats should render as a detail command surface');
+  assertContains(html, 'data-command-control="open-perk-selection"', 'Pending perk button should expose its drawer route role');
+  assertContains(html, 'data-command-control="respec-perks"', 'Respec button should expose its drawer action role');
+  assertContains(html, 'data-command-control="debug-grant-perk"', 'Debug perk button should expose its drawer action role');
+  assertContains(html, 'data-command-control="close-stats"', 'Character stats close button should expose its drawer exit role');
   assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
   assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
   assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
@@ -14335,6 +14358,11 @@ test('Perk and stat progression controls localize with accessible names', () => 
 
   App.showPerkSelection();
   html = elements.get('party-content').innerHTML;
+  assertContains(html, 'data-command-surface="perk-selection-detail"', 'Perk selection should render as a detail command surface');
+  assertContains(html, 'data-command-control="filter-perk-tree"', 'Perk filter should expose its drawer control role');
+  assertContains(html, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
+  assertContains(html, 'data-command-intent="choosePerk"', 'Perk choice should expose its stable intent id');
+  assertContains(html, 'data-command-control="back-to-stats"', 'Perk picker back should expose its drawer exit role');
   assertContains(html, '<h3>Elegir mejora</h3>', 'Perk picker title should localize');
   assertContains(html, 'Opciones pendientes: 1', 'Perk pending choice copy should localize');
   assertContains(html, 'aria-label="Arboles de mejoras"', 'Perk tree tablist should expose localized accessible label');

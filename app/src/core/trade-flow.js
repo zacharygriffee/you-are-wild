@@ -40,7 +40,7 @@ const YAW_TRADE_FLOW = {
                 html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="sell-item" data-command-intent="trade" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${app._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button></div>`;
             });
         }
-        html += `</div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="close-trade" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('creature')">${backLabel}</button></div>`;
+        html += `</div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="close-trade" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('creature')">${backLabel}</button></div>`;
         app.showCreaturePanelDetail(title, html);
         return true;
     },

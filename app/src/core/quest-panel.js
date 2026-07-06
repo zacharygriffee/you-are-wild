@@ -155,7 +155,7 @@ const YAW_QUEST_PANEL = {
         const quests = app.quests || [];
         const titleLabel = app._escapeHtml(app._label('quest.title', 'Quests'));
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const backButton = `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="close-quest-log" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
+        const backButton = `<button class="nav-btn" data-command-surface="quest-log-detail" data-command-mode="exploration" data-command-control="close-quest-log" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
         const openDetail = `<div class="quest-log-detail" data-command-surface="quest-log-detail" data-command-mode="exploration">`;
         const closeDetail = `</div>`;
         if (quests.length === 0) {

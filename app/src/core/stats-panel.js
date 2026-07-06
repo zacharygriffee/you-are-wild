@@ -25,7 +25,7 @@ const YAW_STATS_PANEL = {
         const html = `<div class="party-stats-view" data-command-surface="stats-detail" data-command-mode="exploration" role="region" aria-label="${app._escapeHtml(app._label('party.statsFor', 'Show stats for {name}', { name: unit.name }))}">
             <div class="party-stats-header">
                 <div><h3>${unit.icon || ''} ${app._escapeHtml(unit.name)}</h3><p style="color:var(--text-muted);margin-top:4px">${statusText} | ${levelText}</p></div>
-                <button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
+                <button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
             </div>
             <div class="party-stats-grid">
                 ${this.statCard(app, 'party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
@@ -36,7 +36,7 @@ const YAW_STATS_PANEL = {
                 ${this.statCard(app, 'party.equipment', 'Equipment', app._equipmentCompactSummary(unit))}
                 ${this.statCard(app, 'party.perks', 'Perks', perks)}
             </div>
-            <div class="party-stats-footer"><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button></div></div>`;
+            <div class="party-stats-footer"><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" data-command-slot="exit" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button></div></div>`;
         app.showPartyPanelDetail(`${unit.icon || ''} ${unit.name}`, html);
     },
 
@@ -65,7 +65,7 @@ const YAW_STATS_PANEL = {
         const html = `<div class="party-stats-view character-stats-view" data-command-surface="stats-detail" data-command-mode="exploration" role="region" aria-label="${closeLabel}">
             <div class="party-stats-header">
                 <div><h1 style="color:var(--accent-primary)">📊 ${app._escapeHtml(p.name)}</h1><p style="color:var(--text-muted);margin-top:4px">${levelText} | ${xpText}</p></div>
-                <button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
+                <button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button>
             </div>
             <div class="party-stats-grid">
                 ${this.statCard(app, 'party.punishment', 'Punishment', `${stats.CPun}/${stats.MPun}`)}
@@ -77,7 +77,7 @@ const YAW_STATS_PANEL = {
                 ${this.statCard(app, 'party.perks', 'Perks', perks)}
                 ${this.statCard(app, 'character.perkTools', 'Perk Tools', `<span style="color:var(--text-muted);font-size:12px">${app._escapeHtml(app._label('character.perkToolsHelp', 'Balance/debug controls.'))}</span><br><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="respec-perks" style="margin-top:8px" title="${respecLabel}" aria-label="${respecLabel}" onclick="App.respecPerks()"${respecDisabled}>${respecLabel}</button><button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="debug-grant-perk" style="margin-top:8px" title="${debugGrantLabel}" aria-label="${debugGrantLabel}" onclick="App.debugGrantPerkChoice(1)">${debugGrantLabel}</button>`)}
             </div>
-            <div class="party-stats-footer">${perkButton}<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button></div></div>`;
+            <div class="party-stats-footer">${perkButton}<button class="nav-btn" data-command-surface="stats-detail" data-command-mode="exploration" data-command-control="close-stats" data-command-slot="exit" title="${closeLabel}" aria-label="${closeLabel}" onclick="App.closePanelDetails('party')">${closeLabel}</button></div></div>`;
         app.showPartyPanelDetail(`${p.name} ${app._label('party.stats', 'Stats')}`, html);
     },
 
@@ -111,7 +111,7 @@ const YAW_STATS_PANEL = {
             });
             html += `</div></div>`;
         }
-        html += `</div><button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button></div>`;
+        html += `</div><button class="nav-btn" data-command-surface="perk-selection-detail" data-command-mode="exploration" data-command-control="back-to-stats" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.showCharacterStats()">${backLabel}</button></div>`;
         app.showPartyPanelDetail(titleLabel, html);
     }
 };

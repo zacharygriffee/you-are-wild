@@ -6,7 +6,7 @@
 const YAW_INVENTORY_PANEL = {
     show(app) {
         const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const backButton = `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="close-inventory" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
+        const backButton = `<button class="nav-btn" data-command-surface="inventory-detail" data-command-mode="exploration" data-command-control="close-inventory" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('party')">${backLabel}</button>`;
         const title = app._escapeHtml(app._label('inventory.titleWithCount', 'Inventory ({count}/{max})', { count: app.inventory.length, max: app.MAX_INVENTORY }));
         const equippedLabel = app._escapeHtml(app._label('inventory.equippedSection', 'Equipped'));
         let html = `<div class="inventory-panel-detail" data-command-surface="inventory-detail" data-command-mode="exploration"><h3>${title}</h3>`;

@@ -17,7 +17,10 @@ const YAW_MOBILE_CONTEXT_MENU = {
       close: 'close-detail-menu'
     };
     const detailAttrs = 'data-command-surface="detail-management" data-command-mode="exploration"';
-    const actionButton = (label, action, extraClass = '') => `<button class="action-btn${extraClass}" role="menuitem" ${detailAttrs} data-command-control="${app._escapeHtml(commandControls[action] || action)}" title="${app._escapeHtml(label)}" aria-label="${app._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${app._escapeHtml(label)}</button>`;
+    const actionButton = (label, action, extraClass = '') => {
+      const exitAttr = action === 'close' ? ' data-command-slot="exit"' : '';
+      return `<button class="action-btn${extraClass}" role="menuitem" ${detailAttrs} data-command-control="${app._escapeHtml(commandControls[action] || action)}"${exitAttr} title="${app._escapeHtml(label)}" aria-label="${app._escapeHtml(label)}" onclick="App.mobilePartyContextAction('${action}',${index})">${app._escapeHtml(label)}</button>`;
+    };
     const roleOptions = Object.keys(app.PARTY_ROLES).map(key => `<option value="${key}" ${role === key ? 'selected' : ''}>${app._escapeHtml(app._partyRoleLabel(key))}</option>`).join('');
     const orderOptions = Object.keys(app.PARTY_AI_ORDERS).map(key => `<option value="${key}" ${order === key ? 'selected' : ''}>${app._escapeHtml(app._partyAIOrderLabel(key))}</option>`).join('');
     const menuLabel = app._label('ui.partyActions', 'Party actions');

@@ -2265,6 +2265,7 @@ test('Inventory panel helper module is registered before app code', () => {
   assertContains(inventoryPanelContent, 'data-command-control="equip-item"', 'Inventory equip controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="drop-item"', 'Inventory drop controls should identify item action controls');
   assertContains(inventoryPanelContent, 'data-command-control="close-inventory"', 'Inventory back control should identify its drawer exit');
+  assertContains(inventoryPanelContent, 'data-command-control="close-inventory" data-command-slot="exit"', 'Inventory back control should identify the canonical exit slot');
   assertContains(inventoryPanelContent, 'drop(app, itemId)', 'Inventory panel helper should own direct drop-to-tile behavior');
   assertContains(inventoryPanelContent, 'app._persistCurrentExplorationTile(tile)', 'Dropped inventory should persist as tile-local state');
   assertNotContains(inventoryPanelContent, "document.getElementById('scene-description')", 'Inventory helper should not render into center tile content');
@@ -2284,6 +2285,7 @@ test('Trade flow helper module is registered before app code', () => {
   assertContains(tradeFlowContent, 'data-command-control="buy-item"', 'Trade buy controls should identify drawer transaction controls');
   assertContains(tradeFlowContent, 'data-command-control="sell-item"', 'Trade sell controls should identify drawer transaction controls');
   assertContains(tradeFlowContent, 'data-command-control="close-trade"', 'Trade close control should identify its drawer exit');
+  assertContains(tradeFlowContent, 'data-command-control="close-trade" data-command-slot="exit"', 'Trade close control should identify the canonical exit slot');
   assertNotContains(tradeFlowContent, "document.getElementById('scene-description')", 'Trade helper should not render into center tile content');
   assertContains(tradeFlowContent, 'buy(app, targetId, stockIndex)', 'Trade flow helper should own merchant purchase action');
   assertContains(tradeFlowContent, 'sell(app, targetId, itemId)', 'Trade flow helper should own merchant sell action');
@@ -2352,8 +2354,10 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'data-command-surface="quest-preview"', 'Quest preview should identify its composer/detail command surface');
   assertContains(questFlowContent, 'data-command-control="confirm-quest"', 'Quest preview accept should identify the confirm quest control');
   assertContains(questFlowContent, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify the cancel preview control');
+  assertContains(questFlowContent, 'data-command-control="cancel-quest-preview" data-command-slot="exit"', 'Quest preview close should identify the canonical exit slot');
   assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="open-quest-log"', 'Quest accepted detail should route quest-log opening through target detail controls');
   assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="close-target-detail"', 'Quest accepted detail should expose a structural target-detail close control');
+  assertContains(questFlowContent, 'data-command-control="close-target-detail" data-command-slot="exit"', 'Quest accepted close should identify the canonical exit slot');
   assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
@@ -2384,6 +2388,7 @@ test('Quest panel helper module is registered before app code', () => {
   assertContains(questPanelContent, 'data-command-control="show-quest-turn-in-route"', 'Quest log turn-in route preview should identify its drawer control');
   assertContains(questPanelContent, 'data-command-control="turn-in-quest"', 'Quest log turn-in should identify its drawer control');
   assertContains(questPanelContent, 'data-command-control="close-quest-log"', 'Quest log back control should identify its drawer exit');
+  assertContains(questPanelContent, 'data-command-control="close-quest-log" data-command-slot="exit"', 'Quest log back control should identify the canonical exit slot');
   assertNotContains(questPanelContent, "document.getElementById('scene-description')", 'Quest log should not render into center tile content');
   assertContains(appContent, 'YAW_QUEST_PANEL.progressText(this, quest)', 'App quest progress wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_PANEL.routePreviewText(this, objective)', 'App quest route wrapper should delegate to the helper');
@@ -13062,12 +13067,14 @@ test('Quest system exposes quest giver actions and quest log', () => {
   assertContains(elements.get('enemies-content').innerHTML, 'data-command-surface="quest-preview"', 'Quest preview should render as an explicit composer/detail command surface');
   assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="confirm-quest"', 'Quest preview accept should identify its confirm control');
   assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify its cancel control');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="cancel-quest-preview" data-command-slot="exit"', 'Quest preview close should expose the canonical exit slot');
   assertContains(elements.get('enemies-content').innerHTML, 'data-command-intent="acceptQuest"', 'Quest preview accept should expose the stable accept intent');
   assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 1, 'Accepted quest should enter quest log');
   assertContains(elements.get('enemies-content').innerHTML, 'Quest accepted: Guide Task.', 'Quest acceptance should remain in the creature panel');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="close-target-detail" data-command-slot="exit"', 'Accepted quest detail close should expose the canonical exit slot');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest accepted: Guide Task.', 'Quest acceptance should not replace center tile content');
 });
 
@@ -13253,6 +13260,7 @@ test('Quest log controls localize with accessible names', () => {
   assertContains(html, 'data-command-control="show-quest-turn-in-route"', 'Quest turn-in map action should expose its drawer control role');
   assertContains(html, 'data-command-control="turn-in-quest"', 'Quest turn-in action should expose its drawer control role');
   assertContains(html, 'data-command-control="close-quest-log"', 'Quest back action should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-quest-log" data-command-slot="exit"', 'Quest back action should expose the canonical exit slot');
   assertContains(html, '<h3>Misiones</h3>', 'Quest log title should localize');
   assertContains(html, 'aria-label="Estado"', 'Quest filter select should expose localized accessible label');
   assertContains(html, '>Activas<', 'Quest active filter option should localize');
@@ -14272,6 +14280,7 @@ test('Inventory action labels localize with accessible names', () => {
   assertContains(html, 'data-command-control="equip-item"', 'Inventory equip button should expose its item control role');
   assertContains(html, 'data-command-control="drop-item"', 'Inventory drop button should expose its item control role');
   assertContains(html, 'data-command-control="close-inventory"', 'Inventory back button should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-inventory" data-command-slot="exit"', 'Inventory back button should expose the canonical exit slot');
   assertContains(html, 'aria-label="Desequipar Head"', 'Unequip control should expose localized accessible label');
   assertContains(html, '>Desequipar Head<', 'Unequip visible label should localize');
   assertContains(html, 'aria-label="Usar Healing Herb"', 'Use control should expose localized accessible label');
@@ -14490,6 +14499,7 @@ test('Party member stats labels localize and escape names', () => {
   const html = elements.get('party-content').innerHTML;
   assertContains(html, 'data-command-surface="stats-detail"', 'Party stats should render as a detail command surface');
   assertContains(html, 'data-command-control="close-stats"', 'Party stats close should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Party stats close should expose the canonical exit slot');
   assertContains(html, 'Ally &lt;One&gt;', 'Party stats should escape unit names');
   assertContains(html, '<strong>Equipo</strong>', 'Party stats equipment label should localize');
   assertContains(html, 'aria-label="Cerrar"', 'Party stats close action should localize');
@@ -14599,6 +14609,7 @@ test('Character stats expose pending perk selection', () => {
   assertContains(html, 'class="party-stats-view character-stats-view"', 'Character stats should render in the bounded stats view');
   assertContains(html, 'data-command-surface="stats-detail"', 'Character stats should render as a detail command surface');
   assertContains(html, 'data-command-control="close-stats"', 'Character stats close should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Character stats close should expose the canonical exit slot');
   assertContains(html, 'data-command-control="open-perk-selection"', 'Character stats perk picker should expose its drawer route');
   assertContains(html, 'class="party-stats-footer"', 'Character stats should keep close/perk actions in a sticky footer');
   assertContains(html, 'You &lt;Hero&gt;', 'Character stats should escape player names');
@@ -14610,6 +14621,7 @@ test('Character stats expose pending perk selection', () => {
   assertContains(elements.get('party-content').innerHTML, 'data-command-control="filter-perk-tree"', 'Perk filters should expose their drawer control role');
   assertContains(elements.get('party-content').innerHTML, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
   assertContains(elements.get('party-content').innerHTML, 'data-command-control="back-to-stats"', 'Perk back button should expose its drawer exit role');
+  assertContains(elements.get('party-content').innerHTML, 'data-command-control="back-to-stats" data-command-slot="exit"', 'Perk back button should expose the canonical exit slot');
   assertContains(elements.get('party-content').innerHTML, 'Predator', 'Perk selection should render predator tree');
   assertContains(elements.get('party-content').innerHTML, 'Seducer', 'Perk selection should render seducer tree');
   assertContains(elements.get('party-content').innerHTML, 'Survivor', 'Perk selection should render survivor tree');
@@ -14631,6 +14643,7 @@ test('Perk and stat progression controls localize with accessible names', () => 
   assertContains(html, 'data-command-control="respec-perks"', 'Respec button should expose its drawer action role');
   assertContains(html, 'data-command-control="debug-grant-perk"', 'Debug perk button should expose its drawer action role');
   assertContains(html, 'data-command-control="close-stats"', 'Character stats close button should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-stats" data-command-slot="exit"', 'Character stats close button should expose the canonical exit slot');
   assertContains(html, 'aria-label="Elegir mejora (1)"', 'Pending perk button should expose localized accessible label');
   assertContains(html, '>Elegir mejora (1)<', 'Pending perk visible label should localize');
   assertContains(html, 'aria-label="Reiniciar mejoras"', 'Respec button should expose localized accessible label');
@@ -14648,6 +14661,7 @@ test('Perk and stat progression controls localize with accessible names', () => 
   assertContains(html, 'data-command-control="choose-perk"', 'Perk choice should expose its drawer action role');
   assertContains(html, 'data-command-intent="choosePerk"', 'Perk choice should expose its stable intent id');
   assertContains(html, 'data-command-control="back-to-stats"', 'Perk picker back should expose its drawer exit role');
+  assertContains(html, 'data-command-control="back-to-stats" data-command-slot="exit"', 'Perk picker back should expose the canonical exit slot');
   assertContains(html, '<h3>Elegir mejora</h3>', 'Perk picker title should localize');
   assertContains(html, 'Opciones pendientes: 1', 'Perk pending choice copy should localize');
   assertContains(html, 'aria-label="Arboles de mejoras"', 'Perk tree tablist should expose localized accessible label');
@@ -15662,6 +15676,7 @@ test('Mobile party chips expose long-press management handlers', () => {
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-role"', 'Mobile party long-press role selector should identify its drawer control');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="set-party-ai-order"', 'Mobile party long-press AI selector should identify its drawer control');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="dismiss-party-member"', 'Mobile party long-press dismiss should identify its drawer control');
+  assertContains(body.innerHTML, 'data-command-control="close-detail-menu" data-command-slot="exit"', 'Mobile party long-press close should expose the canonical exit slot');
 });
 
 test('Mobile unit chip actions expose localized accessible labels', () => {

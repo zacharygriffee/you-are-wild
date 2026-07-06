@@ -98,13 +98,13 @@ const YAW_UNIT_CARD = {
                     const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')">${targetLabel}</button></div>`;
                 } else {
-                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn disabled" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button></div>`;
+                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn disabled" data-command-mode="combat" data-command-intent="scavenge" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button></div>`;
                 }
             } else {
                 const scavengeButton = app._canScavengeCorpse(unit)
-                ? `<button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button>`
-                : `<button class="action-btn disabled" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button>`;
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button>${scavengeButton}</div>`;
+                ? `<button class="action-btn" data-command-mode="exploration" data-command-intent="scavenge" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button>`
+                : `<button class="action-btn disabled" data-command-mode="exploration" data-command-intent="scavenge" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" data-command-mode="exploration" data-command-intent="loot" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button>${scavengeButton}</div>`;
             }
         }
         if (!isParty && unit.CPun > 0 && !isCorpse) {

@@ -6141,6 +6141,9 @@ test('Creature panel renders corpses as remains without target actions', () => {
   const html = elements.get('enemies-content').innerHTML;
   assertContains(elements.get('enemies-title').textContent, 'Remains', 'Corpse-only panel should be titled Remains');
   assertContains(html, '<span class="unit-meta-badge">Remains</span>', 'Corpse card should label remains');
+  assertContains(html, 'data-command-surface="utility-actions" data-command-mode="exploration"', 'Corpse card utility row should identify the exploration utility surface');
+  assertContains(html, 'data-command-mode="exploration" data-command-intent="loot"', 'Corpse card loot should expose stable utility intent metadata');
+  assertContains(html, 'data-command-mode="exploration" data-command-intent="scavenge"', 'Corpse card scavenge should expose stable utility intent metadata');
   assertContains(html, "selectIntent('creature','fallen-1','loot','panel-card')", 'Corpse card should expose loot through shared intent selection');
   assertContains(html, "selectIntent('creature','fallen-1','scavenge','panel-card')", 'Corpse card should expose scavenge through shared intent selection');
   assertNotContains(html, "showIntentMenu('creature','fallen-1','desktop')", 'Corpse card should not duplicate loot/scavenge behind a visible action menu');
@@ -6159,6 +6162,9 @@ test('Mobile creature strip keeps corpse interactions reachable', () => {
   const card = elements.get('mobile-creature-card');
   const html = elements.get('mobile-creature-strip').innerHTML;
   assertEqual(card.style.display, 'block', 'Corpse-only mobile creature panel should remain visible');
+  assertContains(html, 'data-command-surface="utility-actions" data-command-mode="exploration"', 'Mobile corpse chip utility row should identify the exploration utility surface');
+  assertContains(html, 'data-command-mode="exploration" data-command-intent="loot"', 'Mobile corpse chip loot should expose stable utility intent metadata');
+  assertContains(html, 'data-command-mode="exploration" data-command-intent="scavenge"', 'Mobile corpse chip scavenge should expose stable utility intent metadata');
   assertContains(html, "selectIntent('creature','fallen-mobile','loot','mobile-chip')", 'Mobile corpse chip should expose loot through shared intent selection');
   assertContains(html, "selectIntent('creature','fallen-mobile','scavenge','mobile-chip')", 'Mobile corpse chip should expose scavenge through shared intent selection');
   assertNotContains(html, "showIntentMenu('creature','fallen-mobile')", 'Mobile corpse chip should not duplicate loot/scavenge behind a visible action menu');

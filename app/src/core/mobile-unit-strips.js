@@ -30,6 +30,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
         const inCombat = Boolean(app.combatState?.active);
+        const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
+        const actorSelectionOpen = !inCombat && Boolean(app.explorationActorSelectionExplicit);
+        if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen) {
+            app.mobileMovePadOpen = false;
+        }
         if (movePad) {
             movePad.classList.toggle('expanded', Boolean(app.mobileMovePadOpen) && !inCombat);
             if (inCombat) movePad.classList.remove('expanded');
@@ -42,8 +47,6 @@ const YAW_MOBILE_UNIT_STRIPS = {
             targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target');
         }
         if (actorBelt) {
-            const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
-            const actorSelectionOpen = !inCombat && Boolean(app.explorationActorSelectionExplicit);
             actorBelt.innerHTML = hasTargets || actorSelectionOpen
                 ? app.party.map((unit, i) => app.renderMobileUnitChip(unit, i, 'party')).join('')
                 : '';

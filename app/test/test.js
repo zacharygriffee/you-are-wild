@@ -9973,6 +9973,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.toggleExplorationTarget('creature', 'guide-1');
   const trayHtml = elements.get('mobile-target-action-tray').innerHTML;
   const actorHtml = elements.get('mobile-actor-belt').innerHTML;
+  assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should collapse when marked-target controls open');
+  assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state while target controls are active');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
   assertContains(trayHtml, "selectIntent('creature','guide-1','inspect','panel-tray')", 'Marked mobile creature should expose Inspect utility from the visible target-action tray');

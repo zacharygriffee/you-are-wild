@@ -1612,6 +1612,11 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, "app._label('feed.cancel', 'Cancel Feed')", 'Desktop feed tray should expose an explicit Cancel Feed exit');
   assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(panelInteractionsContent, 'data-command-grammar="actor-target-intent"', 'Combat transient trays should identify the shared actor-target-intent grammar');
+  assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}"', 'Feed option buttons should identify the feed composer surface');
+  assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed"', 'Feed cancel should identify the feed composer surface');
+  assertContains(panelInteractionsContent, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Sync intent buttons should identify the sync composer surface');
+  assertContains(panelInteractionsContent, 'data-command-surface="${surface}" data-command-mode="combat" data-command-control="cancel-sync"', 'Sync phase cancel should identify the active sync composer surface');
+  assertContains(panelInteractionsContent, 'data-command-surface="${surface}" data-command-mode="combat" data-command-control="confirm-sync-participants"', 'Sync confirm should identify the participant composer surface');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.render(this, mode)', 'App panel tray wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_PANEL_INTERACTIONS.combat(this)', 'App combat tray wrapper should delegate to the helper');
 });
@@ -1662,6 +1667,10 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, 'render(app, source = \'sheet\')', 'Marked target helper should own selected-target action rendering');
   assertContains(markedTargetActionsContent, 'openSubActionSheet(app, action, source = \'target-bar\')', 'Marked target helper should own selected-target sub-action sheets');
   assertContains(markedTargetActionsContent, "App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')", 'Marked target buttons should dispatch through the shared exploration resolver');
+  assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
+  assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets"', 'Marked target clear should identify the target composer surface');
+  assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Marked target sub-action buttons should identify the sub-action composer surface');
+  assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action cancel should identify the sub-action composer surface');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.render(this, source)', 'App marked-target action wrapper should delegate rendering to the helper');
   assertContains(appContent, 'YAW_MARKED_TARGET_ACTIONS.openSubActionSheet(this, action, source)', 'App marked-target sub-action wrapper should delegate to the helper');
 });

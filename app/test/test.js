@@ -6540,6 +6540,92 @@ test('Depleted corpse cards disable scavenge but keep loot utility visible', () 
   assertNotContains(mobileHtml, "App.selectIntent('creature','creature:picked-remains','scavenge'", 'Mobile corpse chip should not offer active scavenge after depletion');
 });
 
+test('Stage presence routes remains to composer utility actions', () => {
+  const { App, document } = loadAppForCombat(() => 0);
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: 'player-1', hunger: 40, CPun: 80, MPun: 100 });
+  const corpse = makeUnit('Fallen', {
+    id: 'fallen-stage',
+    disposition: App.DISPOSITION.CORPSE,
+    CPun: 0,
+    MPun: 100,
+    remainingPortions: 2,
+    scavenged: false
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [corpse];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', {
+    ...App.getBaseTile(0, 0),
+    x: 0,
+    y: 0,
+    biome: 'grove',
+    explored: true,
+    creatures: [corpse],
+    items: []
+  }]]);
+  App.combatState.active = false;
+
+  App.renderCenterPresence();
+  const desktopPresence = el('desktop-presence-rail').innerHTML;
+  assertContains(desktopPresence, 'center-presence-chip creature remains', 'Desktop presence rail should expose remains as targetable stage presence');
+  assertContains(desktopPresence, 'Remains', 'Desktop remains presence should use remains metadata');
+  assertContains(desktopPresence, 'data-presence-type="creature"', 'Desktop remains presence should keep creature target routing');
+  assertContains(desktopPresence, 'data-command-control="focus-target"', 'Desktop remains presence should identify target focus routing');
+  assertContains(desktopPresence, 'data-presence-ref="fallen-stage"', 'Desktop remains presence should expose the corpse ref');
+  assertContains(desktopPresence, "App.focusPresence('creature','fallen-stage')", 'Desktop remains presence should focus the shared creature target path');
+  assertContains(el('center-presence').innerHTML, 'center-presence-token creature remains', 'Center stage should show remains as passive presence, not a card');
+  assertNotContains(el('center-presence').innerHTML, 'App.focusPresence(', 'Center passive remains token should not duplicate command routing');
+
+  assertEqual(App.focusPresence('creature', 'fallen-stage'), true, 'Remains presence focus should mark the corpse as the composer target');
+  assert(App.explorationTargetIds.includes('creature:fallen-stage'), 'Remains target should be stored in the shared exploration target state');
+  assertContains(el('selection-sentence').innerHTML, 'Fallen', 'Remains target should appear in the desktop command sentence');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Fallen', 'Remains target should appear in the mobile command sentence');
+  const beltHtml = el('desktop-context-belt').innerHTML;
+  assertContains(beltHtml, 'data-command-surface="target-intents"', 'Marked remains should render through the target intent composer surface');
+  assertContains(beltHtml, 'data-command-intent="loot"', 'Marked remains should expose Loot through the composer');
+  assertContains(beltHtml, 'data-command-intent="scavenge"', 'Marked remains should expose Scavenge through the composer');
+  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','loot','panel-tray')", 'Marked remains Loot should dispatch through shared intent selection');
+  assertContains(beltHtml, "App.selectIntent('creature','fallen-stage','scavenge','panel-tray')", 'Marked remains Scavenge should dispatch through shared intent selection');
+  assertNotContains(beltHtml, "resolveExplorationTargetAction('fight'", 'Marked remains should not expose living Fight intent');
+  assertNotContains(beltHtml, 'data-command-intent="flirt"', 'Marked remains should not expose living Talk intent');
+  assertNotContains(beltHtml, 'data-command-intent="fuck"', 'Marked remains should not expose living Play intent');
+  assertNotContains(beltHtml, 'data-command-intent="feast"', 'Marked remains should not expose living Eat intent');
+  assertNotContains(beltHtml, 'data-command-intent="feed"', 'Marked remains should not expose living Feed intent');
+
+  App.renderMap();
+  const mobileHtml = el('mobile-mini-map').innerHTML;
+  assertContains(mobileHtml, 'mobile-play-presence-dot remains', 'Mobile center stage should expose remains as a compact presence dot');
+  assertContains(mobileHtml, 'data-command-control="focus-target"', 'Mobile remains presence should identify target focus routing');
+  assertContains(mobileHtml, "App.focusPresence('creature','fallen-stage')", 'Mobile remains presence should focus the shared creature target path');
+  assertContains(el('mobile-target-action-tray').innerHTML, 'data-command-intent="loot"', 'Mobile marked remains should expose Loot in the visible target tray');
+  assertContains(el('mobile-target-action-tray').innerHTML, 'data-command-intent="scavenge"', 'Mobile marked remains should expose Scavenge in the visible target tray');
+});
+
+test('Depleted remains target keeps loot but disables composer scavenge', () => {
+  const { App, document } = loadAppForCombat(() => 0);
+  const corpse = makeUnit('Picked Remains', {
+    id: 'picked-stage-remains',
+    disposition: App.DISPOSITION.CORPSE,
+    CPun: 0,
+    remainingPortions: 0,
+    scavenged: true
+  });
+  App.player = makeUnit('You', { id: 'player-1' });
+  App.party = [App.player];
+  App.creatures = [corpse];
+  App.combatState.active = false;
+
+  assertEqual(App.focusPresence('creature', 'picked-stage-remains'), true, 'Depleted remains should still be selectable for loot/inspection context');
+  const beltHtml = document.getElementById('desktop-context-belt').innerHTML;
+  assertContains(beltHtml, 'data-command-intent="loot"', 'Depleted remains composer should keep Loot independent from scavenge');
+  assertContains(beltHtml, 'data-command-intent="scavenge"', 'Depleted remains composer should expose a disabled scavenge state');
+  assertContains(beltHtml, 'disabled aria-disabled="true"', 'Depleted remains composer scavenge should be disabled');
+  assertContains(beltHtml, 'Scavenged', 'Depleted remains composer should label the depleted scavenge state');
+  assertNotContains(beltHtml, "App.selectIntent('creature','picked-stage-remains','scavenge'", 'Depleted remains composer should not dispatch active Scavenge');
+});
+
 test('Threatened timid non-hostile can flee without XP', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { xp: 0, xpToNext: 1000 });

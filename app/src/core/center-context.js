@@ -35,6 +35,20 @@ const YAW_CENTER_CONTEXT = {
             seen.add(key);
             entries.push({ unit, type, meta, tone });
         };
+        const addRemains = unit => {
+            if (!unit || typeof app._isCorpse !== 'function' || !app._isCorpse(unit)) return;
+            if (seenUnits.has(unit)) return;
+            const key = keyFor(unit, 'creature');
+            if (seen.has(key)) return;
+            seenUnits.add(unit);
+            seen.add(key);
+            entries.push({
+                unit,
+                type: 'creature',
+                meta: app._label('disposition.remains', 'Remains'),
+                tone: 'remains'
+            });
+        };
         const addItemEntry = tile => {
             const items = Array.isArray(tile?.items) ? tile.items : [];
             if (!items.length) return;
@@ -97,6 +111,10 @@ const YAW_CENTER_CONTEXT = {
         addPlaceEntries(tile);
         addItemEntry(tile);
         (app.creatures || []).forEach(unit => {
+            if (typeof app._isCorpse === 'function' && app._isCorpse(unit)) {
+                addRemains(unit);
+                return;
+            }
             const meta = typeof app._unitDispositionLabel === 'function' ? app._unitDispositionLabel(unit) : '';
             const tone = unit.disposition || 'creature';
             add(unit, 'creature', meta || app._label('ui.creatures', 'Creatures'), tone);

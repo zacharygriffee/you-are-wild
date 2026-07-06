@@ -172,7 +172,9 @@ const YAW_EXPLORATION_SELECTION = {
         let target = null;
         if (type === 'party') target = app.party.find(unit => app._unitSelectionId(unit) === id);
         if (type === 'creature') target = this.resolveCreatureRef(app, id);
-        return target && app._isLivingCreature(target) ? target : null;
+        if (!target) return null;
+        if (type === 'creature' && app._isCorpse?.(target)) return target;
+        return app._isLivingCreature(target) ? target : null;
     },
 
     getTargets(app) {

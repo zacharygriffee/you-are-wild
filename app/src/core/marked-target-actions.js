@@ -12,13 +12,17 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const label = app._escapeHtml(app._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
         const primaryActor = actorState.valid ? (actors[0] || app.player) : null;
         const singleTarget = targets.length === 1 ? targets[0] : null;
+        const singleCorpseTarget = singleTarget && !app.party.includes(singleTarget) && app._isCorpse(singleTarget)
+            ? singleTarget
+            : null;
         const singleCreatureTarget = singleTarget && !app.party.includes(singleTarget) && !app._isCorpse(singleTarget)
             ? singleTarget
             : null;
-        const targetRef = singleCreatureTarget ? app._explorationTargetUnitId('creature', singleCreatureTarget) : '';
+        const singlePanelTarget = singleCreatureTarget || singleCorpseTarget;
+        const targetRef = singlePanelTarget ? app._explorationTargetUnitId('creature', singlePanelTarget) : '';
         const panelIntent = action => `App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')`;
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
-        const buttons = keys.map(key => {
+        const buttons = singleCorpseTarget ? [] : keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
             const intent = app._escapeHtml(key);
             const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' || source === 'mobile-target' ? 'panel-tray' : 'target-bar');
@@ -29,6 +33,21 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
             return `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
         });
+        if (singleCorpseTarget) {
+            const targetName = singleCorpseTarget.corpseName || singleCorpseTarget.name || app._label('disposition.remains', 'Remains');
+            const corpseButton = (labelAction, dispatchAction = labelAction, icon = '', enabled = true, titleText = '') => {
+                const title = app._escapeHtml(titleText || `${app._uiLabel(labelAction)} ${targetName}`);
+                const caption = app._escapeHtml(app._uiLabel(labelAction));
+                const intent = app._escapeHtml(dispatchAction);
+                const iconHtml = icon ? `<span class="action-icon" aria-hidden="true">${icon}</span>` : `<span class="action-icon" aria-hidden="true">${app._actionIcon(labelAction)}</span>`;
+                const disabled = enabled ? '' : ' disabled aria-disabled="true"';
+                const handler = enabled ? ` onclick="${panelIntent(dispatchAction)}"` : '';
+                return `<button class="action-btn contextual-utility${enabled ? '' : ' disabled'}" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" title="${title}" aria-label="${title}"${disabled}${handler}>${iconHtml}<span class="action-caption">${caption}</span></button>`;
+            };
+            buttons.push(corpseButton('loot', 'loot', '🎒'));
+            const canScavenge = app._canScavengeCorpse(singleCorpseTarget);
+            buttons.push(corpseButton('scavenge', 'scavenge', '🍖', canScavenge, `${app._corpseScavengeStatus(singleCorpseTarget)} ${targetName}`));
+        }
         if (singleCreatureTarget) {
             const targetName = singleCreatureTarget.name || app._label('ui.creatures', 'Creatures');
             const utilityButton = (labelAction, dispatchAction = labelAction, icon = '') => {

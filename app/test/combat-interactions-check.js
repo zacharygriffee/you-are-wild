@@ -955,7 +955,94 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.trayVisible, false, 'Mobile marked-target tray should disappear after resolution');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile resolution');
 
-  await setupCombat(page);
+  await setupCombat(page, { withAlly: true });
+  await page.evaluate(() => {
+    const ally = App.party.find(unit => unit.id === 'ally-1');
+    if (ally && !App.combatState.turnQueue.some(entry => entry.unit === ally)) {
+      App.combatState.turnQueue.splice(1, 0, { unit: ally, initiative: 15 });
+    }
+    App.combatState.currentTurn = 0;
+    App.activeActor = App.player;
+    App.showActorActions(App.player);
+  });
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('sync')"]`).first().click();
+  const syncChoose = page.locator('#mobile-combat-toolbelt .mobile-combat-phase-controls').first();
+  await assert.doesNotReject(() => syncChoose.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile Sync choose phase should render visible toolbelt controls');
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
+    controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
+    intentButtonsVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="selectSyncParticipants"]')),
+    cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]'))
+  }));
+  assert.strictEqual(state.phase, 'choose', 'Mobile Sync should enter choose phase');
+  assert(state.sentence.toLowerCase().includes('actors') && state.sentence.toLowerCase().includes('intent'), 'Mobile Sync choose phase should keep Actor -> Intent sentence visible');
+  assert(state.controls.includes('Group Fight') && state.controls.includes('Cancel Sync'), 'Mobile Sync choose controls should expose sync choices and Cancel Sync');
+  assert.strictEqual(state.intentButtonsVisible, true, 'Mobile Sync choose phase should have visible next action buttons');
+  assert.strictEqual(state.cancelVisible, true, 'Mobile Sync choose phase should have a visible cancel');
+
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="selectSyncParticipants('sync_fight')"]`).first().click();
+  const allyParticipant = page.locator(`#mobile-party-strip button[onclick*="_toggleSyncParticipantById('ally-1')"]`).first();
+  await assert.doesNotReject(() => allyParticipant.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile Sync participant phase should render party participant controls');
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
+    confirmDisabled: document.querySelector('#mobile-combat-toolbelt button[onclick*="confirmSyncParticipants"]')?.hasAttribute('disabled') || false,
+    participantButtons: document.querySelectorAll('#mobile-party-strip button[onclick*="_toggleSyncParticipantById"]').length
+  }));
+  assert.strictEqual(state.phase, 'participants', 'Mobile Sync should enter participant phase');
+  assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Mobile Sync participant controls should expose Confirm and Cancel Sync');
+  assert.strictEqual(state.confirmDisabled, true, 'Mobile Sync confirm should stay disabled until enough participants are selected');
+  assert(state.participantButtons >= 2, 'Mobile Sync participant phase should expose party participant controls');
+
+  await allyParticipant.click();
+  state = await page.evaluate(() => ({
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    confirmDisabled: document.querySelector('#mobile-combat-toolbelt button[onclick*="confirmSyncParticipants"]')?.hasAttribute('disabled') || false
+  }));
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile Sync participant tap should add ally to group action');
+  assert.strictEqual(state.confirmDisabled, false, 'Mobile Sync confirm should enable once enough participants are selected');
+
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="confirmSyncParticipants('sync_fight')"]`).first().click();
+  const syncPick = page.locator('#mobile-creature-strip button[data-selection-mode="combat-pick"]').first();
+  await assert.doesNotReject(() => syncPick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile Sync target phase should expose enemy Pick controls');
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
+    pickVisible: Boolean(document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]')),
+    sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || ''
+  }));
+  assert.strictEqual(state.phase, 'target', 'Mobile Sync should enter target phase after confirming participants');
+  assert(state.controls.includes('Cancel Sync'), 'Mobile Sync target phase should expose Cancel Sync');
+  assert.strictEqual(state.pickVisible, true, 'Mobile Sync target phase should keep enemy Pick visible');
+  assert(state.sentence.includes('You + Ally') && state.sentence.toLowerCase().includes('pick target'), 'Mobile Sync target phase should show group actor and target sentence');
+
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]`).first().click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    targetSelection: App.targetSelection,
+    fightVisible: (document.querySelector('#mobile-combat-toolbelt')?.innerHTML || '').includes("executeCombatIntent('fight')")
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Mobile Cancel Sync should clear sync selection');
+  assert.strictEqual(state.targetSelection, null, 'Mobile Cancel Sync should leave no target selection');
+  assert.strictEqual(state.fightVisible, true, 'Mobile target selection should be reachable again after cancelling Sync');
+
+  state = await page.evaluate(() => {
+    App.feedSelection = { active: true, actorId: 'player-1', subIds: ['heal'] };
+    App.targetSelection = null;
+    App.syncSelection = null;
+    App.renderMobileCombatToolbelt();
+    return {
+      feedSelection: Boolean(App.feedSelection?.active),
+      controls: document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls')?.innerText || '',
+      cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]'))
+    };
+  });
+  assert.strictEqual(state.feedSelection, true, 'Mobile Feed test should enter feed selection state');
+  assert(state.controls.includes('Cancel Feed'), 'Mobile Feed selection should expose Cancel Feed');
+  assert.strictEqual(state.cancelVisible, true, 'Mobile Feed selection should have a visible cancel');
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]`).first().click();
+
   await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   const mobilePick = page.locator('#mobile-creature-strip button[data-selection-mode="combat-pick"]').first();
   await assert.doesNotReject(() => mobilePick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat pick should render in creature strip');
@@ -965,6 +1052,7 @@ async function runMobileSelectionAndCombatFlow(page) {
     return {
       combatActive: document.querySelector('#mobile-play-surface')?.classList.contains('combat-active') || false,
       targetSelection: App.targetSelection?.action || null,
+      cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]')),
       pickControl: pick?.getAttribute('data-selection-control') || '',
       pickState: pick?.getAttribute('data-selection-state') || '',
       enemySelectedTarget: enemyChip?.classList.contains('selected-target') || false,
@@ -973,6 +1061,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   });
   assert.strictEqual(state.combatActive, true, 'Mobile play surface should switch into combat layout');
   assert.strictEqual(state.targetSelection, 'fight', 'Mobile combat Fight should enter target-pick state');
+  assert.strictEqual(state.cancelVisible, true, 'Mobile combat target-pick should expose a visible Cancel action');
   assert.strictEqual(state.pickControl, 'combat-target', 'Mobile combat pick should use combat-target semantics');
   assert.strictEqual(state.pickState, 'pickable', 'Mobile combat pick should expose pickable state');
   assert.strictEqual(state.enemySelectedTarget, true, 'Mobile combat pickable enemy should expose selected-target state');

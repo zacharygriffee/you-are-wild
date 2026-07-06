@@ -2041,6 +2041,10 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'const YAW_MOBILE_COMBAT_TOOLBELT = {', 'Mobile combat toolbelt helper should expose the toolbelt service');
   assertContains(mobileCombatToolbeltContent, 'prompt(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own prompt text selection');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
+  assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
+  assertContains(mobileCombatToolbeltContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Mobile Sync states should expose a visible Cancel Sync control');
+  assertContains(mobileCombatToolbeltContent, "app._label('feed.cancel', 'Cancel Feed')", 'Mobile Feed states should expose a visible Cancel Feed control');
+  assertContains(mobileCombatToolbeltContent, "App.confirmSyncParticipants", 'Mobile Sync participant phase should expose confirm in the visible toolbelt');
   assertContains(mobileCombatToolbeltContent, 'selectionSentence(app)', 'Mobile combat toolbelt helper should own the combat actor target intent sentence');
   assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.combatSentence(app)', 'Mobile combat toolbelt sentence should reuse canonical combat selection state');
   assertContains(mobileCombatToolbeltContent, 'render(app)', 'Mobile combat toolbelt helper should own DOM rendering');

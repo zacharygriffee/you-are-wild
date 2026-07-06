@@ -56,9 +56,10 @@ const YAW_CENTER_CONTEXT = {
         const ref = presenceType === 'creature'
             ? app._explorationTargetUnitId('creature', unit)
             : app._unitSelectionId(unit);
+        const actorSelected = presenceType === 'party' && app._getExplorationActors().includes(unit);
         const focusTitle = app._escapeHtml(presenceType === 'creature'
             ? app._targetToggleLabel(unit, app._isExplorationTargetUnit('creature', unit))
-            : app._label('ui.presence.selectActor', 'Select {name} as actor', { name: unit.name || app._label('ui.unknown', 'Unknown') }));
+            : app._actorToggleLabel(unit, actorSelected));
         const escapedType = app._escapeHtml(entry.type);
         const escapedTone = app._escapeHtml(entry.tone);
         const escapedRef = app._escapeHtml(ref);

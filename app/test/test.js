@@ -2563,6 +2563,8 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
+  assertContains(localMapContent, 'app._actorToggleLabel(unit', 'Mobile center party presence should announce add/remove actor semantics');
+  assertContains(localMapContent, 'app._targetToggleLabel(unit', 'Mobile center creature presence should announce mark/remove target semantics');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
   assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
   assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
@@ -6804,6 +6806,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Add Ally as actor"', 'Desktop party presence should advertise add-actor semantics');
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Mark Friendly as target"', 'Desktop creature presence should advertise mark-target semantics');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
   assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Open 1 more in details"', 'Desktop overflow presence should advertise that it opens details');
   assertContains(el('desktop-presence-rail').innerHTML, '>+1 more<', 'Desktop overflow presence should keep the compact visible count');
@@ -6814,6 +6818,8 @@ test('Center tile stays traversal and context only across interaction states', (
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the composer selection path');
   assertEqual(App.explorationActorIds[0], 'ally-1', 'Party presence focus should select the party actor for the composer');
+  App.renderCenterPresence();
+  assertContains(el('desktop-presence-rail').innerHTML, 'aria-label="Remove Ally from actors"', 'Selected desktop party presence should advertise remove-actor semantics');
   assertContains(el('selection-sentence').innerHTML, 'Ally', 'Party presence focus should update the desktop actor-target-intent sentence');
   assert(el('panel-party').focused !== true, 'Desktop party presence focus should not force-open the detail panel');
   assertEqual(App.focusPresence('creature', 'friendly-1'), true, 'Creature presence focus should resolve through the composer selection path');
@@ -9082,6 +9088,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
   assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should select party actors through the composer');
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
+  assertContains(html, 'aria-label="Add Ally as actor"', 'Mobile center party presence should advertise add-actor semantics');
+  assertContains(html, 'aria-label="Mark Guide as target"', 'Mobile center creature presence should advertise mark-target semantics');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
   assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
   assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');

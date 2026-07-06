@@ -33,15 +33,18 @@ const YAW_LOCAL_MAP = {
         const extra = presence.length - visible.length;
         const icons = visible.map(entry => {
             const unit = entry.unit || {};
-            const label = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
             const tone = app._escapeHtml(entry.tone || entry.type || 'party');
             const presenceType = entry.type === 'creature' ? 'creature' : 'party';
             const ref = presenceType === 'creature'
                 ? app._explorationTargetUnitId('creature', unit)
                 : app._unitSelectionId(unit);
+            const label = presenceType === 'creature'
+                ? app._targetToggleLabel(unit, app._isExplorationTargetUnit('creature', unit))
+                : app._actorToggleLabel(unit, app._getExplorationActors().includes(unit));
+            const escapedLabel = app._escapeHtml(label);
             const jsType = app._escapeJsString(presenceType);
             const jsRef = app._escapeJsString(ref);
-            return `<button type="button" class="mobile-play-presence-dot ${tone}" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
+            return `<button type="button" class="mobile-play-presence-dot ${tone}" title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0

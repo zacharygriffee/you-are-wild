@@ -199,9 +199,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
             : app._label('ui.creatureCue.openPanel', 'Open {count} creatures here', { count: living.length });
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);
-        const commandControl = living.length === 1 ? 'focus-target' : 'open-details';
-        const grammarAttr = living.length === 1 ? ' data-command-grammar="actor-target-intent"' : '';
-        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration"${grammarAttr} data-command-control="${commandControl}" ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
+        const commandControl = living.length === 1 ? 'focus-target' : 'open-target-picker';
+        const targetCountAttr = ` data-command-target-count="${app._escapeHtml(String(living.length))}"`;
+        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${commandControl}"${targetCountAttr} ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
     },
 
     focusCreaturePresence(app) {
@@ -214,6 +214,10 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }
         app.renderCreatures();
         app.openPanel('enemies');
+        if (typeof document !== 'undefined') {
+            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"], #enemies-content [data-command-control="focus-target"]');
+            if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+        }
         return true;
     }
 };

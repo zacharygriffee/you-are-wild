@@ -2349,7 +2349,9 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'app._targetToggleLabel(first', 'Single-creature mobile cue should announce mark/remove target semantics');
   assertContains(mobileUnitStripsContent, "'ui.creatureCue.openPanel'", 'Multi-creature mobile cue should announce the creature drawer action');
   assertContains(mobileUnitStripsContent, 'data-command-surface="stage-presence"', 'Mobile creature cue should identify as stage-presence command routing');
-  assertContains(mobileUnitStripsContent, 'data-command-grammar="actor-target-intent"', 'Single-creature mobile cue should identify the shared command grammar');
+  assertContains(mobileUnitStripsContent, 'data-command-grammar="actor-target-intent"', 'Mobile creature cue should identify the shared command grammar');
+  assertContains(mobileUnitStripsContent, 'open-target-picker', 'Multi-creature mobile cue should identify target-picker routing');
+  assertContains(mobileUnitStripsContent, 'data-command-target-count', 'Multi-creature mobile cue should expose target-count metadata');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
   assertContains(mobileUnitStripsContent, "controlBelt.setAttribute('data-command-surface', 'command-composer')", 'Mobile control belt should identify as the active command composer when populated');
@@ -11077,6 +11079,45 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Plain traversal should not leave target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
   assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');
+});
+
+test('Mobile multi-creature cue opens target picker without selecting all targets', () => {
+  const { App, elements, document } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  const merchant = makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [guide, merchant];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState.active = false;
+  App.explorationTargets = [];
+  App.explorationTargetIds = [];
+
+  App.renderParty();
+  App.renderCreatures();
+  App.renderExplorationActions();
+  App.renderMobileExplorationControls();
+
+  const cueHtml = elements.get('mobile-creature-presence-cue').innerHTML;
+  assertContains(cueHtml, '2 creatures here', 'Multi-creature cue should summarize count without full card content');
+  assertContains(cueHtml, 'data-command-surface="stage-presence"', 'Multi-creature cue should identify the stage-presence route');
+  assertContains(cueHtml, 'data-command-mode="exploration"', 'Multi-creature cue should identify exploration mode');
+  assertContains(cueHtml, 'data-command-grammar="actor-target-intent"', 'Multi-creature cue should identify the shared command grammar');
+  assertContains(cueHtml, 'data-command-control="open-target-picker"', 'Multi-creature cue should open target picking rather than dispatch an action');
+  assertContains(cueHtml, 'data-command-target-count="2"', 'Multi-creature cue should expose target count metadata');
+  assertNotContains(cueHtml, 'aria-pressed="true"', 'Multi-creature cue should not imply all targets are selected');
+  assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Multi-creature cue should not expose target actions before a target is picked');
+
+  assertEqual(App.focusMobileCreaturePresence(), true, 'Multi-creature cue should open the visible creature picker');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), true, 'Multi-creature cue should open the Creatures panel');
+  assertContains(elements.get('mobile-creature-strip').innerHTML, 'data-command-control="focus-target"', 'Creature strip should expose target pick controls after opening');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="focus-target"', 'Creature drawer should expose target pick controls after opening');
+  assertEqual(App.explorationTargetIds.length, 0, 'Opening the target picker should not mark every creature');
+  assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Opening the target picker should wait for an explicit target selection before showing intents');
 });
 
 test('Mobile control belt ignores rows hidden by target-priority state', () => {

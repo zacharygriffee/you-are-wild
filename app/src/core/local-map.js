@@ -53,11 +53,11 @@ const YAW_LOCAL_MAP = {
             const jsType = app._escapeJsString(presenceType);
             const jsRef = app._escapeJsString(ref);
             const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
-            return `<button type="button" class="mobile-play-presence-dot ${tone}${selectedClass}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
+            return `<button type="button" class="mobile-play-presence-dot ${tone}${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${control}" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0
-            ? `<button type="button" class="mobile-play-presence-more" data-stage-surface="presence" data-command-control="open-details" data-command-mode="exploration" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
+            ? `<button type="button" class="mobile-play-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-control="open-details" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
             : '';
         return `<span class="mobile-play-presence">${icons}${more}</span>`;
     },

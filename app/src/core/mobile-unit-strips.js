@@ -173,7 +173,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const escapedText = app._escapeHtml(text);
         const escapedActionLabel = app._escapeHtml(actionLabel);
         const commandControl = living.length === 1 ? 'focus-target' : 'open-details';
-        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-control="${commandControl}" data-command-mode="exploration" ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
+        const grammarAttr = living.length === 1 ? ' data-command-grammar="actor-target-intent"' : '';
+        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration"${grammarAttr} data-command-control="${commandControl}" ${selectionAttrs} onclick="App.focusMobileCreaturePresence()" aria-label="${escapedActionLabel}" title="${escapedActionLabel}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
     },
 
     focusCreaturePresence(app) {

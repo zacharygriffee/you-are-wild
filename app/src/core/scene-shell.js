@@ -6,9 +6,13 @@
 const YAW_SCENE_SHELL = {
     clearCenterActionsForCombat(app) {
         const actions = document.getElementById('scene-actions');
-        if (!actions) return;
-        actions.innerHTML = '';
-        actions.classList?.remove('center-tile-actions');
+        if (actions) {
+            actions.innerHTML = '';
+            actions.classList?.remove('center-tile-actions');
+            actions.style.display = 'none';
+        }
+        const desktopBelt = document.getElementById('desktop-context-belt');
+        if (desktopBelt) desktopBelt.innerHTML = '';
     },
 
     setRichContent(app, title, html) {
@@ -21,6 +25,8 @@ const YAW_SCENE_SHELL = {
             actions.dataset.richHidden = 'true';
             actions.style.display = 'none';
         }
+        const desktopBelt = document.getElementById('desktop-context-belt');
+        if (desktopBelt) desktopBelt.innerHTML = '';
         const mobileTitle = document.getElementById('mobile-scene-title');
         const mobileDesc = document.getElementById('mobile-scene-description');
         const mobileSheet = document.querySelector?.('.mobile-scene-sheet');

@@ -1,6 +1,7 @@
 
 // Add marketplace to navigation
 document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('app-menu')) return;
     const nav = document.querySelector('.app-nav');
     if (nav) {
         const marketBtn = document.createElement('button');

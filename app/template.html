@@ -161,11 +161,28 @@
             min-width: 0;
         }
 
+        .app-brand-wrap {
+            position: relative;
+            flex: 0 1 auto;
+            min-width: 0;
+        }
+
         .app-brand {
             display: flex;
             align-items: center;
             gap: var(--space-sm);
             min-width: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: var(--radius-sm);
+        }
+
+        .app-brand:hover,
+        .app-brand[aria-expanded="true"] {
+            background: var(--bg-tertiary);
         }
 
         .app-logo {
@@ -181,6 +198,39 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             white-space: nowrap;
+        }
+
+        .app-menu-caret {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .app-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            z-index: 350;
+            display: none;
+            min-width: 180px;
+            padding: 8px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .app-menu.open {
+            display: grid;
+            gap: 6px;
+        }
+
+        .app-menu .nav-btn {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            text-align: left;
         }
 
         .app-nav {
@@ -1233,6 +1283,43 @@
             margin-bottom: 2px;
             font-size: 18px;
             line-height: 1;
+        }
+
+        .desktop-context-belt {
+            display: flex;
+            gap: var(--space-sm);
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: min(100%, 720px);
+            margin: var(--space-sm) auto 0;
+            padding: var(--space-sm);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: rgba(26, 26, 46, 0.88);
+        }
+
+        .desktop-context-belt:empty {
+            display: none;
+        }
+
+        .desktop-context-belt .action-btn {
+            flex: 0 0 auto;
+            min-width: 78px;
+            max-width: 120px;
+            padding: 8px 10px;
+        }
+
+        .desktop-context-belt .action-caption {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center;
+            display: block;
+            font-size: 11px;
+            line-height: 1.15;
         }
 
         .mobile-play-surface {
@@ -3697,9 +3784,20 @@
         <div id="app">
             <!-- Header -->
             <header class="app-header">
-                <div class="app-brand">
-                    <span class="app-logo">🐺</span>
-                    <span class="app-title">You Are Wild</span>
+                <div class="app-brand-wrap">
+                    <button type="button" class="app-brand" id="app-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" title="Open app menu" aria-label="Open app menu" data-i18n-title="ui.menu.appMenuTitle" data-i18n-aria-label="ui.menu.appMenuTitle" onclick="App.toggleAppMenu(event)">
+                        <span class="app-logo">🐺</span>
+                        <span class="app-title">You Are Wild</span>
+                        <span class="app-menu-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="app-menu" id="app-menu" role="menu" aria-label="App menu" data-i18n-aria-label="ui.menu.appMenu">
+                        <button class="nav-btn" role="menuitem" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
+                        <button class="nav-btn" role="menuitem" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
+                        <button class="nav-btn" role="menuitem" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.closeAppMenu(); App.showScreen('settings'); App.showSettings();">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
+                        <button class="nav-btn" role="menuitem" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
+                        <button class="nav-btn" role="menuitem" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
+                        <button class="nav-btn" role="menuitem" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
+                    </div>
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>
                 <nav class="app-nav">
@@ -3707,9 +3805,6 @@
                     <button class="nav-btn" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
                     <button class="nav-btn" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
                     <button class="nav-btn" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
-                    <button class="nav-btn" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
-                    <button class="nav-btn" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
-                    <button class="nav-btn" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
                 </nav>
             </header>
 
@@ -3832,16 +3927,7 @@
                                         <div class="center-presence-slot" id="center-presence" aria-live="polite"></div>
                                         <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
                                         <div class="tile-event-feed-slot" id="tile-event-feed" aria-live="polite"></div>
-                                        <div class="scene-actions" id="scene-actions">
-                                            <button class="action-btn" title="Search" aria-label="Search" data-i18n-title="action.search" data-i18n-aria-label="action.search" onclick="App.search()">
-                                                <span class="action-icon" aria-hidden="true">🔍</span>
-                                                <span class="action-caption" data-i18n="action.search">Search</span>
-                                            </button>
-                                            <button class="action-btn" title="Rest" aria-label="Rest" data-i18n-title="action.rest" data-i18n-aria-label="action.rest" onclick="rest()">
-                                                <span class="action-icon" aria-hidden="true">🏕️</span>
-                                                <span class="action-caption" data-i18n="action.rest">Rest</span>
-                                            </button>
-                                        </div>
+                                        <div class="scene-actions" id="scene-actions"></div>
                                     </div>
                                 </div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-e"></div>
@@ -3849,6 +3935,7 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
+                            <div class="desktop-context-belt" id="desktop-context-belt" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
                         </div>
                     </div>
                 </div>

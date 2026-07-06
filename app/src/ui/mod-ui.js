@@ -251,6 +251,7 @@ const ModUI = {
 
 // Add module manager to navigation
 document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('app-menu')) return;
     const nav = document.querySelector('.app-nav');
     if (nav) {
         const modBtn = document.createElement('button');

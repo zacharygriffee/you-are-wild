@@ -130,14 +130,17 @@ const YAW_CENTER_CONTEXT = {
 
     renderCenterActions(app) {
         if (app.combatState?.active) return;
+        const html = this.renderActions(app, false);
         const actions = document.getElementById('scene-actions');
-        if (actions && !actions.dataset?.richHidden) {
-            actions.style.display = '';
-            actions.classList?.add('center-tile-actions');
-            actions.innerHTML = this.renderActions(app, false);
+        if (actions) {
+            actions.innerHTML = '';
+            actions.classList?.remove('center-tile-actions');
+            actions.style.display = 'none';
         }
+        const desktopBelt = document.getElementById('desktop-context-belt');
+        if (desktopBelt) desktopBelt.innerHTML = html;
         const mobileExplore = document.getElementById('mobile-explore-actions');
-        if (mobileExplore) mobileExplore.innerHTML = this.renderActions(app, false);
+        if (mobileExplore) mobileExplore.innerHTML = html;
         app.renderMobileExplorationControls?.();
     },
 

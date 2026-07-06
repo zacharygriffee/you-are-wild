@@ -1533,7 +1533,7 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'closeDetails(app)', 'Scene shell helper should own scene detail closing behavior');
   assertContains(sceneShellContent, 'app.renderCombatSceneForTurn(app.activeActor || app._currentCombatActor())', 'Combat scene updates should keep rendering the combat summary');
   assertContains(sceneShellContent, 'this.clearCenterActionsForCombat(app)', 'Combat scene updates should keep center actions empty');
-  assertContains(sceneShellContent, 'app.renderCenterTileActions()', 'Exploration scene updates should restore center tile actions');
+  assertContains(sceneShellContent, 'app.renderCenterTileActions()', 'Exploration scene updates should restore context belt actions');
   assertContains(appContent, 'YAW_SCENE_SHELL.clearCenterActionsForCombat(this)', 'App center-action clearing wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.update(this, title, description, inCombat)', 'App scene update wrapper should delegate to the helper');
@@ -3305,7 +3305,7 @@ test('Scene description supports rich bounded content', () => {
   assertContains(template, 'id="tile-event-feed"', 'Desktop scene should expose a tile-scoped event feed slot');
   assertContains(template, 'id="mobile-tile-event-feed"', 'Mobile scene should expose a tile-scoped event feed slot');
   assertContains(template, '.tile-event-feed', 'Tile event feed styles should be bounded and reusable');
-  assertContains(template, '.scene-actions > .action-btn', 'Desktop scene action buttons should have scoped sizing rules');
+  assertContains(template, '.desktop-context-belt .action-btn', 'Desktop context belt buttons should have scoped sizing rules');
   assertContains(template, 'flex-wrap: wrap;', 'Desktop scene action rows should wrap instead of forcing horizontal scroll');
   assertContains(template, 'overflow-x: hidden;', 'Desktop scene action rows should not create horizontal page overflow');
   assertContains(template, '.party-stats-view', 'Party stats view should have bounded scroll styles');
@@ -3479,8 +3479,8 @@ test('Settings overlay returns to a centered active main menu when no game is ru
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
   assertContains(template, 'App.showNewGameManager()', 'Main menu New Game should open slot selection');
-  assertContains(template, "App.showSaveManager('save')", 'Game Save nav should open save-specific slot mode');
-  assertContains(template, "App.showSaveManager('load')", 'Game Load nav should open load-specific slot mode');
+  assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu Save should open save-specific slot mode');
+  assertContains(template, "App.closeAppMenu(); App.showSaveManager('load')", 'App menu Load should open load-specific slot mode');
   assertContains(saveSlotFlowContent, "showManager(app, 'new')", 'New game manager helper should render save slots in new-run mode');
   assertContains(appContent, 'YAW_SAVE_SLOT_FLOW.showNewGameManager(this)', 'App new game manager wrapper should delegate slot selection');
   assertContains(saveManagerContent, "saveButton('nav-btn primary'", 'Save manager should generate accessible action buttons');
@@ -3562,15 +3562,42 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Continue last game"', 'Continue menu action should expose accessible label');
   assertContains(template, 'aria-label="Start a new game"', 'New game menu action should expose accessible label');
   assertContains(template, 'aria-label="Open settings"', 'Settings menu action should expose accessible label');
+  assertContains(template, 'id="app-menu-toggle"', 'Header brand should expose an app menu toggle');
+  assertContains(template, 'aria-label="Open app menu"', 'App menu toggle should expose accessible label');
+  assertContains(template, 'id="app-menu" role="menu"', 'Header app menu should expose a menu role');
+  assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu should expose Save without a top-level nav button');
+  assertContains(template, "App.closeAppMenu(); App.showSaveManager('load')", 'App menu should expose Load without a top-level nav button');
+  assertContains(template, "App.closeAppMenu(); App.showScreen('settings'); App.showSettings();", 'App menu should expose Settings');
+  assertContains(template, 'App.closeAppMenu(); App.showMarketScreen()', 'App menu should expose Market');
+  assertContains(template, 'App.closeAppMenu(); App.showModScreen()', 'App menu should expose Mods');
+  assertContains(template, 'App.closeAppMenu(); App.showTutorial()', 'App menu should expose Help');
   assertContains(template, 'aria-label="Toggle map panel"', 'Map nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle party panel"', 'Party nav button should expose accessible label');
   assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
+  const navStart = template.indexOf('<nav class="app-nav">');
+  const navHtml = template.slice(navStart, template.indexOf('</nav>', navStart));
+  assertContains(navHtml, 'data-i18n="ui.map"', 'Visible header nav should keep Map as a play shortcut');
+  assertContains(navHtml, 'data-i18n="ui.party"', 'Visible header nav should keep Party as a play shortcut');
+  assertContains(navHtml, 'data-i18n="ui.enemies"', 'Visible header nav should keep Enemies as a play shortcut');
+  assertContains(navHtml, 'data-i18n="ui.stats"', 'Visible header nav should keep Stats as a play shortcut');
+  assertNotContains(navHtml, 'data-i18n="save.save"', 'Visible header nav should not include Save');
+  assertNotContains(navHtml, 'data-i18n="save.load"', 'Visible header nav should not include Load');
+  assertNotContains(navHtml, 'data-i18n="ui.menu.settings"', 'Visible header nav should not include Settings');
+  assertNotContains(navHtml, 'data-i18n="ui.menu.market"', 'Visible header nav should not include Market');
+  assertNotContains(navHtml, 'data-i18n="ui.menu.mods"', 'Visible header nav should not include Mods');
+  assertNotContains(navHtml, 'data-i18n="ui.help"', 'Visible header nav should not include Help');
   assertContains(appContent, "showMarketScreen() { this.showScreen('market'); }", 'Market helper should open the overlay screen, not only render hidden content');
+  assertContains(appContent, 'initAppMenu()', 'App should install app-menu dismissal handlers');
+  assertContains(appContent, "event?.key === 'Escape'", 'App menu should close on Escape');
+  assertContains(appContent, 'closeAppMenu()', 'App should expose app-menu close behavior');
+  assertContains(settingsNavContent, "if (document.getElementById('app-menu')) return;", 'Injected settings nav should be fallback-only when the app menu exists');
   assertContains(settingsNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize accessible label');
   assertContains(settingsNavContent, "setAttribute('data-i18n-title', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize title');
+  assertContains(marketNavContent, "if (document.getElementById('app-menu')) return;", 'Injected market nav should be fallback-only when the app menu exists');
   assertContains(marketNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.marketTitle')", 'Injected market nav button should localize accessible label');
   assertContains(marketNavContent, "setAttribute('data-i18n-title', 'ui.menu.marketTitle')", 'Injected market nav button should localize title');
   assertContains(marketNavContent, "marketBtn.onclick = () => App.showScreen('market')", 'Injected market nav should use the shared overlay route');
+  assertContains(modUiContent, "if (document.getElementById('app-menu')) return;", 'Injected mods nav should be fallback-only when the app menu exists');
   assertContains(modUiContent, "setAttribute('data-i18n-aria-label', 'ui.menu.modsTitle')", 'Injected mods nav button should localize accessible label');
   assertContains(modUiContent, "setAttribute('data-i18n-title', 'ui.menu.modsTitle')", 'Injected mods nav button should localize title');
   assertContains(template, 'aria-label="Expand or collapse party cards"', 'Party panel expand control should expose accessible label');
@@ -3630,8 +3657,8 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n="ui.scene.wildernessIntro"', 'Initial scene description should opt into localization');
   assertContains(template, 'data-i18n="ui.scene.wildernessAmbient"', 'Initial scene ambient copy should opt into localization');
   assertContains(template, 'data-i18n="ui.log.createdCharacter"', 'Initial character-created log should opt into localization');
-  assertContains(template, 'data-i18n-title="action.search"', 'Static search action title should opt into localization');
-  assertContains(template, 'data-i18n-aria-label="action.rest"', 'Static rest action accessible label should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.menu.appMenuTitle"', 'Static app menu title should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="ui.locationActions"', 'Static location-action belt label should opt into localization');
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'Legacy mobile combat shell should not ship static fallback buttons');
   assertContains(mobileCombatToolbeltContent, 'app._combatActionButtons(actor', 'Mobile combat toolbelt should use the shared localized combat action helper');
   assertNotContains(template, 'onclick="App.showInventory()"', 'Static shell should not expose carried inventory from center context');
@@ -3806,13 +3833,13 @@ test('Mobile game shell prevents horizontal overflow', () => {
 test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, 'transform: translateX(-110%)', 'mobile map panel should use transform overlay');
   assertContains(template, 'transform: translateX(110%)', 'mobile side panels should use transform overlay');
-  assertContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'mobile actions should expose character stats');
-  assertContains(centerContextContent, "['stats', 'map', 'party', 'enemies']", 'mobile panel actions should include stats before map and party panels');
-  assertContains(template, "togglePanel('enemies')", 'mobile actions should expose enemies panel');
+  assertContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'shared context action helper should still know panel shortcut handlers for compatibility');
+  assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
+  assertContains(template, "onclick=\"togglePanel('enemies')\"", 'mobile dock should expose creatures panel');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
   assertContains(template, 'onclick="App.showCharacterStats()"', 'Mobile panel dock should expose stats without the bottom exploration bar');
-  assertContains(centerContextContent, 'mobileExplore.innerHTML = this.renderActions(app, false)', 'Mobile scene actions should avoid duplicating panel shortcuts');
+  assertContains(centerContextContent, 'mobileExplore.innerHTML = html', 'Mobile location actions should share tile-action HTML without duplicating panel shortcuts');
   assertContains(template, '.panel-map:not(.active),\n            .panel-party:not(.active),\n            .panel-enemies:not(.active) {\n                display: none;', 'inactive mobile overlay panels should not contribute to horizontal overflow');
   assertContains(appContent, 'closeAllPanels()', 'panel backdrop close handler should exist');
   assertContains(appContent, 'syncPanelBackdrop()', 'panel backdrop sync handler should exist');
@@ -3950,6 +3977,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="desktop-play-surface"', 'desktop play surface missing');
   assertContains(template, 'id="desktop-play-surface" data-surface-role="play-traversal"', 'desktop play surface should share the traversal surface role with mobile');
   assertContains(template, 'id="desktop-play-cell-center"', 'desktop play surface should have a center tile');
+  assertContains(template, 'id="desktop-context-belt"', 'desktop play surface should expose a context action belt below the 3x3 surface');
+  assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-context-belt"'), 'Desktop context belt should sit below the 3x3 play surface');
   assertContains(template, 'id="desktop-play-cell-n"', 'desktop play surface should expose north movement');
   assertContains(template, 'id="desktop-play-cell-s"', 'desktop play surface should expose south movement');
   assertContains(template, '.desktop-play-surface', 'desktop play surface styles missing');
@@ -3958,6 +3987,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(appContent, "_updateDesktopCenterTile", 'desktop play surface should preserve center content while annotating the current tile');
   assertContains(appContent, "_directionLabel", 'desktop play surface should label directional movement cells');
   assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
+  assertContains(template, '.desktop-context-belt', 'desktop context belt styles missing');
   assertContains(template, '.scene-actions .target-action-row', 'desktop target actions should be bounded inside the scene action area');
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');
@@ -6068,12 +6098,13 @@ test('Resource-site search is deterministic visible and one-time', () => {
     App.worldMap = new Map([['2,0', { ...App.getBaseTile(2, 0), x: 2, y: 0, explored: true, biome: 'grove', description: 'A berry thicket.', creatures: [], items: [], overlays: { poi: { category: 'resourceSite' } } }]]);
     App.exploredTiles = new Set(['2,0']);
     App.renderExplorationActions();
-    assertContains(elements.get('scene-actions').innerHTML, 'App.search()', 'Resource-site center context should expose Search');
+    assertEqual(elements.get('scene-actions').innerHTML, '', 'Resource-site center presentation should not own Search');
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
     App.search();
     assertEqual(App.inventory.length, 1, 'Resource-site search should grant exactly one item');
     assertEqual(App.getTile(2, 0).resourceSearched, true, 'Resource-site search should mark the tile consumed');
     assertEqual(App.getTileDelta(2, 0).resourceSearched, true, 'Resource-site search state should persist as a tile delta');
-    assertNotContains(elements.get('scene-actions').innerHTML, 'App.search()', 'Consumed resource sites should stop exposing Search');
+    assertNotContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Consumed resource sites should stop exposing Search');
   }
   assertEqual(lowRandom.App.inventory[0].name, highRandom.App.inventory[0].name, 'Resource-site search item should not depend on ambient Math.random');
   assertNotContains(lowRandom.App.search.toString(), 'Math.random', 'Resource-site search should not use raw Math.random');
@@ -6386,7 +6417,7 @@ test('Exploration context keeps creature interaction in panels', () => {
   App.combatState.active = false;
   App.renderExplorationActions();
   App.renderCreatures();
-  const actionsHtml = elements.get('scene-actions').innerHTML;
+  const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Main context should not duplicate panel creature interactions');
   assertNotContains(actionsHtml, 'App.search()', 'Search should be hidden when the current tile has no searchable resource');
   assertNotContains(actionsHtml, 'App.showInventory()', 'Inventory should stay out of center context actions');
@@ -6518,9 +6549,10 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'grove', explored: true, structure: 'camp', overlays: { poi: { category: 'restSite' } }, creatures: [] }]]);
   App.combatState.active = false;
   App.renderExplorationActions();
-  const exploreHtml = elements.get('scene-actions').innerHTML;
-  assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop exploration should keep real Rest button');
-  assertContains(exploreHtml, 'aria-label="Enter"', 'Desktop exploration should keep real Enter button');
+  const exploreHtml = elements.get('desktop-context-belt').innerHTML;
+  assertEqual(elements.get('scene-actions').innerHTML, '', 'Desktop center presentation should not own exploration action buttons');
+  assertContains(exploreHtml, 'aria-label="Rest"', 'Desktop context belt should keep real Rest button');
+  assertContains(exploreHtml, 'aria-label="Enter"', 'Desktop context belt should keep real Enter button');
   assertNotContains(exploreHtml, 'aria-label="Items"', 'Desktop exploration should not duplicate player inventory in center');
   assertNotContains(exploreHtml, 'action-legend', 'Desktop exploration should not render a duplicate tiny icon legend beside real buttons');
 
@@ -6529,8 +6561,10 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   App.activeActor = App.player;
   App.showActorActions(App.player);
   const combatHtml = elements.get('scene-actions').innerHTML;
+  const combatBeltHtml = elements.get('desktop-context-belt').innerHTML;
   const partyHtml = elements.get('party-content').innerHTML;
   assertEqual(combatHtml, '', 'Desktop combat should clear stale exploration center actions instead of rendering prompt controls');
+  assertEqual(combatBeltHtml, '', 'Desktop combat should clear stale exploration context belt actions');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
@@ -6723,7 +6757,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   App.combatState.active = true;
   App.showActorActions(player);
   App.renderCreatures();
-  const actionsHtml = elements.get('scene-actions').innerHTML;
+  const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
   assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should not duplicate panel-first guidance');
   assertNotContains(actionsHtml, "executeCombatIntent('fight')", 'Combat center should not expose enemy action targeting');
@@ -7777,7 +7811,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(mobileCreatureChip, 'class="mobile-unit-chip selected selected-target"', 'Mobile selected target chip should expose selected target class');
   assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
   assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
-  const actionsHtml = elements.get('scene-actions').innerHTML;
+  const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   const trayHtml = elements.get('party-content').innerHTML;
   assertNotContains(actionsHtml, 'selected-target-summary', 'Context actions should not include actor-target controls');
   assertContains(trayHtml, 'selected-target-summary', 'Panel tray should include a selected-target summary');
@@ -7802,8 +7836,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(template, '.mobile-unit-chip.selected-actor', 'Mobile actor selection should have distinct styling');
   assertContains(template, '.mobile-unit-chip.selected-target', 'Mobile target selection should have distinct styling');
   assertContains(template, 'overflow-wrap: anywhere;', 'Long selected actor and target names should wrap instead of forcing horizontal scroll');
-  assertContains(template, '.scene-actions .action-caption', 'Scene action captions should be constrained independently');
-  assertContains(template, '.scene-actions .target-action-row .action-icon', 'Selected-target action icons should be block-level compact controls');
+  assertContains(template, '.desktop-context-belt .action-caption', 'Desktop context belt action captions should be constrained independently');
+  assertContains(template, '.scene-actions .target-action-row .action-icon', 'Legacy selected-target action icons should remain block-level compact controls');
   assertContains(template, 'max-width: calc(100vw - 36px);', 'Desktop intent popup should clamp to viewport width');
   assertNotContains(trayHtml, 'aria-label="Limpiar objetivos" aria-haspopup="dialog"', 'Selected-target clear action should remain a direct button');
   assertNotContains(trayHtml, 'target.count', 'Selected-target actions should not render raw target count locale keys');
@@ -7926,7 +7960,7 @@ test('Direct multi-target actions normalize stale target selections', () => {
   assertEqual(actor.stomach.length, 2, 'Direct multi-target feast should consume both area creatures');
   assertEqual(App.creatures.length, 0, 'Consumed area creatures should leave the active creature list');
   assertEqual(App.explorationTargetIds.length, 0, 'Direct multi-target action should clear stale selected creature ids');
-  assertNotContains(elements.get('scene-actions').innerHTML, 'selected-target-summary', 'Context action UI should not show stale target summary after direct multi-target action');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'selected-target-summary', 'Context action UI should not show stale target summary after direct multi-target action');
 });
 
 test('Multi-target feed does not consume the acting party member', () => {
@@ -8454,8 +8488,9 @@ test('Rest only appears and heals at safe structures', () => {
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, creatures: [], structure: null }]]);
   App.updateLanguage('es');
   App.renderExplorationActions();
-  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should be hidden outside safe rest structures');
-  assertNotContains(elements.get('scene-actions').innerHTML, 'App.showInventory()', 'Center tile context should not expose inventory; player card owns carried items');
+  const contextBelt = () => elements.get('desktop-context-belt').innerHTML;
+  assertNotContains(contextBelt(), 'App.rest()', 'Rest should be hidden outside safe rest structures');
+  assertNotContains(contextBelt(), 'App.showInventory()', 'Context belt should not expose inventory; player card owns carried items');
   App.rest();
   assertEqual(player.CPun, 50, 'Rest should not heal outside safe rest structures');
   assertEqual(App.timeHour, 20, 'Unsafe rest should not advance time');
@@ -8463,18 +8498,18 @@ test('Rest only appears and heals at safe structures', () => {
   assertContains(App.log[App.log.length - 1].text, 'No hay un lugar seguro para descansar aqui.', 'Unsafe rest log should localize');
   App.worldMap.get('0,0').structure = 'tree';
   App.renderExplorationActions();
-  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Threat-free scenery should not imply safe rest');
+  assertNotContains(contextBelt(), 'App.rest()', 'Threat-free scenery should not imply safe rest');
   App.worldMap.get('0,0').structure = 'camp';
   App.worldMap.get('0,0').overlays = {};
   App.renderExplorationActions();
-  assertNotContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Ordinary camps should not imply safe rest unless generated as rest sites');
+  assertNotContains(contextBelt(), 'App.rest()', 'Ordinary camps should not imply safe rest unless generated as rest sites');
   App.worldMap.get('0,0').overlays = { poi: { category: 'restSite' } };
   App.renderExplorationActions();
-  assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest-site camps should expose rest');
+  assertContains(contextBelt(), 'App.rest()', 'Rest-site camps should expose rest');
   App.worldMap.get('0,0').overlays = {};
   App.worldMap.get('0,0').structure = 'cabin';
   App.renderExplorationActions();
-  assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', 'Rest should appear at safe rest structures');
+  assertContains(contextBelt(), 'App.rest()', 'Rest should appear at safe rest structures');
   App.rest();
   assertEqual(player.CPun, 80, 'Rest should heal at safe rest structures');
   assertEqual(App.timeHour, 4, 'Safe rest should advance the in-game clock');
@@ -8518,7 +8553,7 @@ test('Structures expose enter action and create persistent interiors', () => {
   assertContains(App._contextActionKeys().join(','), 'enter', 'Structure center context should include enter action key');
   assertContains(App._renderContextActions(false), 'App.enterStructure()', 'Structure center context should generate enter action');
   App.showExplorationActions();
-  assertNotContains(elements.get('scene-actions').innerHTML, 'App.showInventory()', 'Structure center context should not expose carried inventory');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'App.showInventory()', 'Structure context belt should not expose carried inventory');
   App.enterStructure();
   assertEqual(App.inInterior, true, 'Entering structure should switch to interior mode');
   assertEqual(App.log[App.log.length - 1].text, 'Entraste en Cabin.', 'Enter structure feedback should localize');
@@ -9147,7 +9182,7 @@ test('Versioned start area validation guarantees early route and rest access', (
     App.party = [App.player];
     App.location = { x: 4, y: 0 };
     App.renderExplorationActions();
-    assertContains(elements.get('scene-actions').innerHTML, 'App.rest()', `Starter rest site should expose Rest for seed ${seed}`);
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'App.rest()', `Starter rest site should expose Rest for seed ${seed}`);
     App.rest();
     assert(App.player.CPun > 30, `Starter rest site should recover the player for seed ${seed}`);
 
@@ -9159,7 +9194,7 @@ test('Versioned start area validation guarantees early route and rest access', (
     App.location = { x: -2, y: 0 };
     App.exploreTile(-2, 0);
     App.renderExplorationActions();
-    assertContains(elements.get('scene-actions').innerHTML, 'App.search()', `Starter resource site should expose Search for seed ${seed}`);
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', `Starter resource site should expose Search for seed ${seed}`);
     App.search();
     assertEqual(App.inventory.length, 1, `Starter resource site search should grant one item for seed ${seed}`);
     assertEqual(App.getTile(-2, 0).resourceSearched, true, `Starter resource site should persist consumed state for seed ${seed}`);

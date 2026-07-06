@@ -648,20 +648,20 @@ async function runCenterResourceSearchFlow(page) {
     App.renderDesktopPlaySurface();
   });
 
-  const search = page.locator(`#scene-actions button[onclick*="App.search()"]`).first();
-  await assert.doesNotReject(() => search.waitFor({ state: 'visible', timeout: 1000 }), 'Search should render on a searchable resource-site center tile');
+  const search = page.locator(`#desktop-context-belt button[onclick*="App.search()"]`).first();
+  await assert.doesNotReject(() => search.waitFor({ state: 'visible', timeout: 1000 }), 'Search should render in the desktop context belt on a searchable resource-site tile');
 
   let state = await page.evaluate(() => ({
     contextTitle: document.querySelector('#scene-title')?.textContent || '',
     contextDescription: document.querySelector('#scene-description')?.textContent || '',
-    desktopSearchVisible: Boolean(document.querySelector('#scene-actions button[onclick*="App.search()"]')),
+    desktopSearchVisible: Boolean(document.querySelector('#desktop-context-belt button[onclick*="App.search()"]')),
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
     centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.contextTitle.includes('Grove') || state.contextTitle.includes('Road') || state.contextTitle.includes('Tile'), 'Center context should continue to own the current tile title');
   assert(state.contextDescription.includes('berry thicket'), 'Center context should describe the searchable resource tile');
-  assert.strictEqual(state.desktopSearchVisible, true, 'Desktop center actions should expose Search before resource-site consumption');
-  assert.strictEqual(state.mobileSearchVisible, true, 'Mobile center actions should expose Search before resource-site consumption');
+  assert.strictEqual(state.desktopSearchVisible, true, 'Desktop context belt should expose Search before resource-site consumption');
+  assert.strictEqual(state.mobileSearchVisible, true, 'Mobile location actions should expose Search before resource-site consumption');
   assert.strictEqual(state.centerHasActorControls, false, 'Resource-site center context should not expose actor controls');
 
   await search.click();
@@ -671,7 +671,7 @@ async function runCenterResourceSearchFlow(page) {
     inventoryName: App.inventory[0]?.name || '',
     tileSearched: App.getTile(4, 0)?.resourceSearched === true,
     deltaSearched: App.getTileDelta(4, 0)?.resourceSearched === true,
-    desktopSearchVisible: Boolean(document.querySelector('#scene-actions button[onclick*="App.search()"]')),
+    desktopSearchVisible: Boolean(document.querySelector('#desktop-context-belt button[onclick*="App.search()"]')),
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
     latestLog: App.log[App.log.length - 1]?.text || '',
     latestEvent: App.tileEvents[App.tileEvents.length - 1]?.text || '',

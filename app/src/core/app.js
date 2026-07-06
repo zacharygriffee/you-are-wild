@@ -1002,6 +1002,7 @@
                 this.loadLogViewPreferences();
                 this.applyAccessibilitySettings();
                 this.applyStaticLocalization();
+                this.initAppMenu();
                 this.updateTierButtons();
                 this.initSpeciesGrid();
                 this.selectedSpecies = 'human';
@@ -4079,7 +4080,40 @@
             _restoreFocusTrap(options = {}) {
                 return YAW_FOCUS_TRAP.restore(this, options);
             },
+            initAppMenu() {
+                if (this.appMenuInitialized) return;
+                this.appMenuInitialized = true;
+                document.addEventListener('click', event => {
+                    const menu = document.getElementById('app-menu');
+                    const toggle = document.getElementById('app-menu-toggle');
+                    if (!menu?.classList?.contains('open')) return;
+                    const target = event?.target;
+                    if (menu.contains?.(target) || toggle?.contains?.(target)) return;
+                    this.closeAppMenu();
+                });
+                document.addEventListener('keydown', event => {
+                    if (event?.key === 'Escape') this.closeAppMenu();
+                });
+            },
+            setAppMenuOpen(open) {
+                const menu = document.getElementById('app-menu');
+                const toggle = document.getElementById('app-menu-toggle');
+                if (!menu || !toggle) return false;
+                menu.classList.toggle('open', Boolean(open));
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                return Boolean(open);
+            },
+            toggleAppMenu(event = null) {
+                event?.stopPropagation?.();
+                const menu = document.getElementById('app-menu');
+                const isOpen = menu?.classList?.contains('open');
+                return this.setAppMenuOpen(!isOpen);
+            },
+            closeAppMenu() {
+                return this.setAppMenuOpen(false);
+            },
             showScreen(name) {
+                this.closeAppMenu();
                 this.screen = name;
                 this._restoreFocusTrap({ restoreFocus: false });
                 document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });

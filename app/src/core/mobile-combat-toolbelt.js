@@ -76,7 +76,11 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (!app.combatState?.active || typeof YAW_INTERACTION_STATE === 'undefined') return '';
         const parts = YAW_INTERACTION_STATE.combatSentence(app);
         const html = YAW_INTERACTION_STATE.sentenceHtml(app, parts);
-        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" data-command-surface="command-sentence" data-command-mode="combat" aria-live="polite">${html}</div>` : '';
+        const meta = YAW_INTERACTION_STATE.sentenceMeta(parts);
+        const attrs = html
+            ? `data-command-surface="command-sentence" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(meta.actorCount ?? 0))}" data-command-target-count="${app._escapeHtml(String(meta.targetCount ?? 0))}" data-command-intent="${app._escapeHtml(meta.intent || 'choose')}"`
+            : '';
+        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" ${attrs} aria-live="polite">${html}</div>` : '';
     },
 
     render(app) {

@@ -59,10 +59,11 @@ const YAW_INTERACTION_STATE = {
         const actorText = actorState.valid
             ? this.unitNames(app, actorState.actors, app._label('target.none', 'None'))
             : app._label('target.invalidActorSummary', 'Select a living actor');
-        const parts = [{ slot: 'actor', label: actorLabel, value: actorText }];
+        const actorCount = actorState.valid ? (actorState.actors?.length || 0) : 0;
+        const parts = [{ slot: 'actor', label: actorLabel, value: actorText, count: actorCount }];
         if (targets.length > 0) {
-            parts.push({ slot: 'target', label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')) });
-            parts.push({ slot: 'intent', label: intentLabel, value: app._label('ui.chooseAction', 'Choose') });
+            parts.push({ slot: 'target', label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')), count: targets.length });
+            parts.push({ slot: 'intent', label: intentLabel, value: app._label('ui.chooseAction', 'Choose'), intent: 'choose' });
         }
         return parts;
     },
@@ -78,29 +79,36 @@ const YAW_INTERACTION_STATE = {
         const parts = [{
             slot: 'actor',
             label: this.actorLabel(app, actorCount || 1),
-            value: this.unitNames(app, [actor].filter(Boolean), app._label('target.none', 'None'))
+            value: this.unitNames(app, [actor].filter(Boolean), app._label('target.none', 'None')),
+            count: actorCount
         }];
         let targetText = '';
+        let targetCount = 0;
         let intentText = app._label('ui.chooseAction', 'Choose');
+        let intentId = 'choose';
         if (app.syncSelection?.active) {
             const participants = this.syncSelectedParticipants(app);
             if (participants.length > 0) {
                 actorCount = participants.length;
                 parts[0].label = this.actorLabel(app, actorCount);
                 parts[0].value = this.unitNames(app, participants, parts[0].value);
+                parts[0].count = actorCount;
             }
+            intentId = app.syncSelection.type || 'sync';
             intentText = this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
             if (app.syncSelection.phase === 'target') {
                 targetText = app._label('target.pickTarget', 'Pick target');
             }
         } else if (app.feedSelection?.active) {
+            intentId = 'feed';
             intentText = app._label('feed.optionsTitle', 'Feed Options');
         } else if (app.targetSelection?.source === 'combat') {
+            intentId = app.targetSelection.action || 'choose';
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
             targetText = app._label('target.pickTarget', 'Pick target');
         }
-        if (targetText) parts.push({ slot: 'target', label: this.targetLabel(app, 1), value: targetText });
-        parts.push({ slot: 'intent', label: intentLabel, value: intentText });
+        if (targetText) parts.push({ slot: 'target', label: this.targetLabel(app, 1), value: targetText, count: targetCount });
+        parts.push({ slot: 'intent', label: intentLabel, value: intentText, intent: intentId });
         return parts;
     },
 
@@ -113,24 +121,47 @@ const YAW_INTERACTION_STATE = {
         return parts.map((part, index) => {
             const arrow = index === 0 ? '' : '<span class="selection-sentence-arrow" aria-hidden="true">-&gt;</span>';
             const slot = app._escapeHtml(part.slot || 'unknown');
-            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
+            const countAttr = Number.isFinite(part.count) ? ` data-command-count="${app._escapeHtml(String(part.count))}"` : '';
+            const intentAttr = part.intent ? ` data-command-intent="${app._escapeHtml(part.intent)}"` : '';
+            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"${countAttr}${intentAttr}><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
         }).join('');
     },
 
-    setSentenceSlot(slot, html, mode) {
+    sentenceMeta(parts = []) {
+        const actor = parts.find(part => part.slot === 'actor');
+        const target = parts.find(part => part.slot === 'target');
+        const intent = parts.find(part => part.slot === 'intent');
+        return {
+            actorCount: Number.isFinite(actor?.count) ? actor.count : 0,
+            targetCount: Number.isFinite(target?.count) ? target.count : 0,
+            intent: intent?.intent || 'choose'
+        };
+    },
+
+    setSentenceSlot(slot, html, mode, meta = {}) {
         if (!slot) return;
         slot.innerHTML = html || '';
         if (html) {
             slot.setAttribute('data-command-surface', 'command-sentence');
             slot.setAttribute('data-command-mode', mode);
+            slot.setAttribute('data-command-grammar', 'actor-target-intent');
+            slot.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0));
+            slot.setAttribute('data-command-target-count', String(meta.targetCount ?? 0));
+            slot.setAttribute('data-command-intent', meta.intent || 'choose');
         } else {
             slot.removeAttribute('data-command-surface');
             slot.removeAttribute('data-command-mode');
+            slot.removeAttribute('data-command-grammar');
+            slot.removeAttribute('data-command-actor-count');
+            slot.removeAttribute('data-command-target-count');
+            slot.removeAttribute('data-command-intent');
         }
     },
 
     renderSelectionSentence(app) {
-        const html = this.sentenceHtml(app, this.selectionSentence(app));
+        const parts = this.selectionSentence(app);
+        const html = this.sentenceHtml(app, parts);
+        const meta = this.sentenceMeta(parts);
         const desktop = document.getElementById('selection-sentence');
         const mode = app.combatState?.active ? 'combat' : 'exploration';
         const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
@@ -145,9 +176,9 @@ const YAW_INTERACTION_STATE = {
             app.feedSelection?.active
         ));
         const hasCombatTurn = Boolean(app.combatState?.active && this.combatActor(app));
-        this.setSentenceSlot(desktop, hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode);
+        this.setSentenceSlot(desktop, hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
         const mobile = document.getElementById('mobile-selection-sentence');
-        this.setSentenceSlot(mobile, hasTargets || hasExplicitActors || hasInvalidActors ? html : '', 'exploration');
+        this.setSentenceSlot(mobile, hasTargets || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
         return html;
     },
 

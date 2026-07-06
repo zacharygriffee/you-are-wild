@@ -3990,26 +3990,26 @@
             <!-- Header -->
             <header class="app-header">
                 <div class="app-brand-wrap">
-                    <button type="button" class="app-brand" id="app-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" title="Open app menu" aria-label="Open app menu" data-i18n-title="ui.menu.appMenuTitle" data-i18n-aria-label="ui.menu.appMenuTitle" onclick="App.toggleAppMenu(event)">
+                    <button type="button" class="app-brand" id="app-menu-toggle" data-command-surface="app-system" data-command-mode="system" data-command-control="toggle-app-menu" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" title="Open app menu" aria-label="Open app menu" data-i18n-title="ui.menu.appMenuTitle" data-i18n-aria-label="ui.menu.appMenuTitle" onclick="App.toggleAppMenu(event)">
                         <span class="app-logo">🐺</span>
                         <span class="app-title">You Are Wild</span>
                         <span class="app-menu-caret" aria-hidden="true">▾</span>
                     </button>
-                    <div class="app-menu" id="app-menu" role="menu" aria-label="App menu" data-i18n-aria-label="ui.menu.appMenu">
-                        <button class="nav-btn" role="menuitem" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
-                        <button class="nav-btn" role="menuitem" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
-                        <button class="nav-btn" role="menuitem" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.closeAppMenu(); App.showScreen('settings'); App.showSettings();">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
-                        <button class="nav-btn" role="menuitem" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
-                        <button class="nav-btn" role="menuitem" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
-                        <button class="nav-btn" role="menuitem" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
+                    <div class="app-menu" id="app-menu" role="menu" data-surface-role="system-menu" data-command-surface="app-system" data-command-mode="system" aria-label="App menu" data-i18n-aria-label="ui.menu.appMenu">
+                        <button class="nav-btn" role="menuitem" data-command-control="open-save-slots" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.closeAppMenu(); App.showScreen('settings'); App.showSettings();">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-control="open-market" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
                     </div>
                 </div>
                 <div class="time-display" id="time-display">☀️ 08:00</div>
-                <nav class="app-nav">
-                    <button class="nav-btn" title="Toggle map panel" aria-label="Toggle map panel" data-i18n-title="ui.nav.mapTitle" data-i18n-aria-label="ui.nav.mapTitle" onclick="togglePanel('map')">🗺️ <span data-i18n="ui.map">Map</span></button>
-                    <button class="nav-btn" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
-                    <button class="nav-btn" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
-                    <button class="nav-btn" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
+                <nav class="app-nav" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation">
+                    <button class="nav-btn" data-command-control="open-review-map" title="Toggle map panel" aria-label="Toggle map panel" data-i18n-title="ui.nav.mapTitle" data-i18n-aria-label="ui.nav.mapTitle" onclick="togglePanel('map')">🗺️ <span data-i18n="ui.map">Map</span></button>
+                    <button class="nav-btn" data-command-control="open-actor-drawer" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
+                    <button class="nav-btn" data-command-control="open-target-drawer" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
+                    <button class="nav-btn" data-command-control="open-stats-drawer" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
                 </nav>
             </header>
 
@@ -4020,7 +4020,7 @@
 	                    <div class="panel-header">
 	                        <span>🗺️ <span data-i18n="ui.reviewMap">Review Map</span></span>
 	                        <span id="coords" style="font-family: var(--font-mono); color: var(--text-muted);">0, 0</span>
-	                        <button class="nav-btn" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
+		                        <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" style="padding:2px 8px;font-size:11px;" title="Close map" aria-label="Close map" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="togglePanel('map')">×</button>
 	                    </div>
 	                    <div class="panel-content">
 	                    <div class="tile-info" id="tile-info" aria-live="polite" style="padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-tertiary);font-size:12px;line-height:1.5;color:var(--text-secondary);">
@@ -4084,7 +4084,7 @@
 	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
-	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
+		                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('party')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
 	                                </div>
@@ -4092,7 +4092,7 @@
 	                                <div class="mobile-strip-card" id="mobile-creature-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span id="mobile-creature-title">Creatures</span>
-	                                        <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
+		                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" onclick="togglePanel('enemies')">All</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
 	                                </div>
@@ -4111,11 +4111,11 @@
 	                                    <div class="mobile-log-list" id="mobile-log-list" aria-live="polite" aria-relevant="additions text"></div>
 	                                </details>
 	                            </div>
-	                            <div class="mobile-panel-dock" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
-	                                <button class="nav-btn" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
-	                                <button class="nav-btn" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
-	                                <button class="nav-btn" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
-	                                <button class="nav-btn" id="mobile-creatures-dock-btn" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>
+	                            <div class="mobile-panel-dock" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
+	                                <button class="nav-btn" data-command-control="open-stats-drawer" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
+	                                <button class="nav-btn" data-command-control="open-review-map" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
+	                                <button class="nav-btn" data-command-control="open-actor-drawer" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
+	                                <button class="nav-btn" id="mobile-creatures-dock-btn" data-command-control="open-target-drawer" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>
 	                            </div>
 	                        </div>
 	                        <div class="scene-display" id="scene-display">
@@ -4153,8 +4153,8 @@
                     <div class="panel-header">
                         <span>👥 <span data-i18n="ui.party">Party</span></span>
                         <span class="panel-header-actions">
-                            <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
-                            <button class="nav-btn mobile-panel-close" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+	                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse party cards" aria-label="Expand or collapse party cards" data-i18n-title="ui.expandPartyCardsTitle" data-i18n-aria-label="ui.expandPartyCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('party')">Expand</button>
+	                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-actor-drawer" title="Close party" aria-label="Close party" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>
                     <div class="panel-content" id="party-content">
@@ -4167,8 +4167,8 @@
                     <div class="panel-header">
                         <span id="enemies-title">⚔️ <span data-i18n="ui.enemies">Enemies</span></span>
                         <span class="panel-header-actions">
-                            <button class="nav-btn" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
-                            <button class="nav-btn mobile-panel-close" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
+	                            <button class="nav-btn" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="expand-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Expand or collapse creature cards" aria-label="Expand or collapse creature cards" data-i18n-title="ui.expandCreatureCardsTitle" data-i18n-aria-label="ui.expandCreatureCardsTitle" data-i18n="ui.expandCards" onclick="expandAll('enemies')">Expand</button>
+	                            <button class="nav-btn mobile-panel-close" data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-target-drawer" title="Close creatures" aria-label="Close creatures" data-i18n-title="ui.close" data-i18n-aria-label="ui.close" onclick="App.closeAllPanels()">×</button>
                         </span>
                     </div>
                     <div class="panel-content" id="enemies-content">

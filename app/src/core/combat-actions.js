@@ -43,6 +43,7 @@ const YAW_COMBAT_ACTIONS = {
         if (!app._isCurrentCombatActor(actor)) return '';
         const compact = Boolean(options.compact);
         const enemies = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
+        const corpses = app.creatures.filter(c => app._canScavengeCorpse(c));
         const allies = app.party.filter(p => p.CPun > 0 && p.name !== actor.name);
         const buttons = [];
         if (app.cheats.overpowered && actor?.name === app.player?.name) {
@@ -58,6 +59,9 @@ const YAW_COMBAT_ACTIONS = {
         }
         if (allies.length > 0) {
             buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')"));
+        }
+        if (corpses.length > 0) {
+            buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')"));
         }
         if (enemies.length > 0) {
             buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')"));

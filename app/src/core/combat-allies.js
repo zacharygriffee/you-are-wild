@@ -31,19 +31,7 @@ const YAW_COMBAT_ALLIES = {
         const scavengers = app.party.filter(p => p.CPun > 0 && app._getPartyAIOrder(p) === 'scavenger');
         if (scavengers.length === 0) return;
         for (const ally of scavengers) {
-            const corpse = app.creatures.find(c => app._isCorpse(c) && app._canFitPrey(ally, c, 'stomach'));
-            if (!corpse) continue;
-            if (!ally.stomach) ally.stomach = [];
-            ally.stomach.push({
-                name: corpse.name, species: corpse.species, size: corpse.size || 1,
-                alive: false, inStomach: true, digestionState: 'digested', digestionProgress: 100
-            });
-            ally.hunger = Math.max(0, (ally.hunger || 0) - 30);
-            app.creatures = app.creatures.filter(c => c !== corpse);
-            app.log.push({ text: app._label('combat.allyScavenges', "{ally} scavenges {target}'s remains after the fight.", {
-                ally: ally.name,
-                target: corpse.name
-            }), type: 'discovery' });
+            app._combatScavengeRemains(ally, 'postCombat');
         }
         app._syncCurrentTileCreatures();
         app.renderParty();
@@ -63,6 +51,10 @@ const YAW_COMBAT_ALLIES = {
             return;
         }
         if (order === 'healer' && app._allyHealWounded(ally)) return;
+        if (((ally.hunger || 0) > 60 || ally.CPun < ally.MPun * 0.7) && app._combatScavengeRemains(ally, 'combat')) {
+            app.nextTurn();
+            return;
+        }
         if (ally.dumbAI) {
             if (ally.CPle >= ally.MPle * 0.9) {
                 if (ally.obedient && app._combatStateRoll('combat-ally-dumb-ai', ally, 'pleasure-disobey') < 0.7) {

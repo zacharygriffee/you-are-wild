@@ -2302,6 +2302,26 @@
             _runPostCombatScavengers() {
                 return YAW_COMBAT_ALLIES.runPostCombatScavengers(this);
             },
+            _combatScavengeRemains(actor, source = 'combat') {
+                if (!actor || !this._isLivingCreature(actor)) return false;
+                const corpse = (this.creatures || []).find(c => this._canScavengeCorpse(c) && this._canFitPrey(actor, c, 'stomach'));
+                if (!corpse) return false;
+                const consumed = this._consumeCorpsePortions(corpse, [actor]);
+                if (consumed.length === 0) return false;
+                const portions = consumed[0].consumed;
+                const text = this._label('combat.scavengeRemains', '{actor} uses {count} portion(s) from {target}.', {
+                    actor: actor.name || this._label('ui.creatures', 'Creature'),
+                    target: corpse.corpseName || corpse.name,
+                    count: portions
+                });
+                this.log.push({ text, type: source === 'postCombat' ? 'discovery' : 'combat' });
+                this._emitCombatAction('scavenge', actor, corpse, text);
+                this._syncCurrentTileCreatures();
+                this.renderLog();
+                this.renderCreatures();
+                this.renderParty();
+                return true;
+            },
             allyTurn(ally) {
                 return YAW_COMBAT_ALLIES.takeTurn(this, ally);
             },
@@ -3256,6 +3276,65 @@
                 return this.creatures.find(c => this._isCorpse(c) && String(c.id || c.name) === String(targetId));
             },
 
+            _initializeCorpsePortions(corpse) {
+                if (!corpse || !this._isCorpse(corpse)) return 0;
+                if (corpse.remainingPortions === undefined || corpse.remainingPortions === null) {
+                    corpse.remainingPortions = corpse.scavenged ? 0 : Math.max(1, Math.ceil(Number(corpse.size || 1)));
+                }
+                const portions = Math.max(0, Math.floor(Number(corpse.remainingPortions) || 0));
+                corpse.remainingPortions = portions;
+                if (portions <= 0) corpse.scavenged = true;
+                return portions;
+            },
+
+            _corpseRemainingPortions(corpse) {
+                return this._initializeCorpsePortions(corpse);
+            },
+
+            _canScavengeCorpse(corpse) {
+                return Boolean(corpse && this._isCorpse(corpse) && this._corpseRemainingPortions(corpse) > 0);
+            },
+
+            _corpseScavengeLabel(corpse) {
+                return this._canScavengeCorpse(corpse)
+                    ? this._uiLabel('scavenge')
+                    : this._label('action.scavenged', 'Scavenged');
+            },
+
+            _corpseScavengeStatus(corpse) {
+                const remaining = this._corpseRemainingPortions(corpse);
+                return remaining > 0
+                    ? this._label('corpse.portionsRemaining', '{count} portions left', { count: remaining })
+                    : this._label('corpse.depleted', 'Scavenged');
+            },
+
+            _corpsePortionDemand(actor) {
+                return Math.max(1, Math.ceil(Number(actor?.size || 4) / 4));
+            },
+
+            _consumeCorpsePortion(corpse, actor) {
+                if (!corpse || !actor || !this._isLivingCreature(actor)) return null;
+                const remaining = this._corpseRemainingPortions(corpse);
+                if (remaining <= 0) return null;
+                const consumed = Math.min(remaining, this._corpsePortionDemand(actor));
+                corpse.remainingPortions = Math.max(0, remaining - consumed);
+                if (corpse.remainingPortions <= 0) corpse.scavenged = true;
+                const maxPun = Number.isFinite(Number(actor.MPun)) ? Number(actor.MPun) : (actor.CPun || 0);
+                actor.hunger = Math.max(0, (actor.hunger || 0) - 10 * consumed);
+                actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5 * consumed);
+                return { actor, consumed, remaining: corpse.remainingPortions };
+            },
+
+            _consumeCorpsePortions(corpse, actors = []) {
+                const results = [];
+                for (const actor of actors || []) {
+                    const result = this._consumeCorpsePortion(corpse, actor);
+                    if (!result) break;
+                    results.push(result);
+                }
+                return results;
+            },
+
             _lootItemNameFromTable(tableId, namespace = 'loot-table', x = 0, y = 0, ...parts) {
                 const table = this.EQUIPMENT_LOOT_TABLES[tableId];
                 if (!table || table.length === 0) return null;
@@ -3305,6 +3384,11 @@
             scavengeCorpse(targetId, actors = null) {
                 const corpse = this._findCorpseById(targetId);
                 if (!corpse) return false;
+                if (!this._canScavengeCorpse(corpse)) {
+                    this.renderCreatures();
+                    this.renderExplorationActions();
+                    return true;
+                }
                 const actorPool = Array.isArray(actors) && actors.length > 0 ? actors : this._getExplorationActors();
                 const seenActorIds = new Set();
                 const scavengers = (actorPool || []).filter(actor => {
@@ -3315,18 +3399,17 @@
                     return true;
                 });
                 if (scavengers.length === 0) return false;
-                corpse.scavenged = true;
-                scavengers.forEach(actor => {
-                    const maxPun = Number.isFinite(Number(actor.MPun)) ? Number(actor.MPun) : (actor.CPun || 0);
-                    actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
-                    actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5);
-                });
-                const actorText = YAW_INTERACTION_STATE.unitNames(this, scavengers, this.player?.name || this._label('party.you', 'You'));
-                const singularNamedActor = scavengers.length === 1 && scavengers[0] !== this.player;
+                const consumed = this._consumeCorpsePortions(corpse, scavengers);
+                if (consumed.length === 0) return true;
+                const consumedActors = consumed.map(entry => entry.actor);
+                const totalPortions = consumed.reduce((sum, entry) => sum + entry.consumed, 0);
+                const actorText = YAW_INTERACTION_STATE.unitNames(this, consumedActors, this.player?.name || this._label('party.you', 'You'));
+                const singularNamedActor = consumedActors.length === 1 && consumedActors[0] !== this.player;
                 const text = CONTENT.actionResult('corpseScavenge', {
                     target: corpse.corpseName || corpse.name,
                     actor: actorText,
-                    actors: scavengers.map(actor => actor.name || actor.species || this._label('ui.unknown', 'Unknown')).filter(Boolean),
+                    actors: consumedActors.map(actor => actor.name || actor.species || this._label('ui.unknown', 'Unknown')).filter(Boolean),
+                    portions: totalPortions,
                     scavengeVerb: singularNamedActor ? 'scavenges' : 'scavenge',
                     carveVerb: singularNamedActor ? 'carves' : 'carve',
                     feastVerb: singularNamedActor ? 'feasts' : 'feast',

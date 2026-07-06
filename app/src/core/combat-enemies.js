@@ -77,6 +77,10 @@ const YAW_COMBAT_ENEMIES = {
             app.log.push({ text: app._label('combat.enemyRage', '{name} enters a rage!', { name: enemy.name }), type: 'combat' });
         }
         app._enemyCallReinforcement(enemy);
+        if (((enemy.hunger || 0) > 60 || enemy.CPun < enemy.MPun * 0.7) && app._combatScavengeRemains(enemy, 'combat')) {
+            app.nextTurn();
+            return;
+        }
         if (app._enemyShouldFlee(enemy, targets)) {
             app.log.push({ text: app._label('combat.enemyFlees', '{name} flees in terror!', { name: enemy.name }), type: 'combat' });
             enemy.fledCombat = true;

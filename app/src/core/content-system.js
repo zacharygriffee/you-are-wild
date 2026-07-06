@@ -58,6 +58,7 @@ const CONTENT_SYSTEM = {
             'action.tradeWith': 'Trade with {name}',
             'action.loot': 'Loot',
             'action.scavenge': 'Scavenge',
+            'action.scavenged': 'Scavenged',
             'action.interact': 'Interact',
             'action.inspect': 'Inspect',
             'action.recruit': 'Recruit',
@@ -506,6 +507,9 @@ const CONTENT_SYSTEM = {
             'combat.instantWinRequiresOverpowered': 'Instant Win requires Overpowered mode.',
             'combat.instantWinSuccess': 'Instant Win! All enemies are defeated.',
             'combat.allyScavenges': "{ally} scavenges {target}'s remains after the fight.",
+            'combat.scavengeRemains': '{actor} uses {count} portion(s) from {target}.',
+            'corpse.portionsRemaining': '{count} portions left',
+            'corpse.depleted': 'Scavenged',
             'combat.allyHolds': '{name} holds position.',
             'combat.allyCannotReach': '{name} cannot reach any target.',
             'combat.enemyReinforces': '{enemy} calls for help! {reinforcement} joins the fight.',
@@ -791,6 +795,7 @@ const CONTENT_SYSTEM = {
             'action.tradeWith': 'Comerciar con {name}',
             'action.loot': 'Saquear',
             'action.scavenge': 'Rebuscar',
+            'action.scavenged': 'Rebuscado',
             'action.interact': 'Interactuar',
             'action.inspect': 'Inspeccionar',
             'action.recruit': 'Reclutar',
@@ -1239,6 +1244,9 @@ const CONTENT_SYSTEM = {
             'combat.instantWinRequiresOverpowered': 'Victoria instantanea requiere modo Sobrepotenciado.',
             'combat.instantWinSuccess': 'Victoria instantanea! Todos los enemigos fueron derrotados.',
             'combat.allyScavenges': '{ally} rebusca los restos de {target} despues del combate.',
+            'combat.scavengeRemains': '{actor} usa {count} porcion(es) de {target}.',
+            'corpse.portionsRemaining': '{count} porciones restantes',
+            'corpse.depleted': 'Rebuscado',
             'combat.allyHolds': '{name} mantiene la posicion.',
             'combat.allyCannotReach': '{name} no puede alcanzar ningun objetivo.',
             'combat.enemyReinforces': '{enemy} pide ayuda! {reinforcement} se une al combate.',
@@ -1705,9 +1713,9 @@ const CONTENT_SYSTEM = {
                 adult: (ctx) => ctx.item ? `You pick over the remains of ${ctx.target}, recovering ${ctx.item}.` : `You pick over the remains of ${ctx.target}, finding nothing but cooling flesh.`
             },
             corpseScavenge: {
-                safe: (ctx) => `${ctx.actor || 'You'} carefully ${ctx.scavengeVerb || 'scavenge'} the remains of ${ctx.target}.`,
-                mature: (ctx) => `${ctx.actor || 'You'} ${ctx.carveVerb || 'carve'} useful scraps from ${ctx.target}'s remains.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor || 'You'} ${ctx.feastVerb || 'feast'} from ${ctx.target}'s remains, taking what the battle left behind.` : null
+                safe: (ctx) => `${ctx.actor || 'You'} carefully ${ctx.scavengeVerb || 'scavenge'} ${ctx.portions || 1} portion(s) from the remains of ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor || 'You'} ${ctx.carveVerb || 'carve'} ${ctx.portions || 1} useful portion(s) from ${ctx.target}'s remains.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor || 'You'} ${ctx.feastVerb || 'feast'} from ${ctx.target}'s remains, taking ${ctx.portions || 1} portion(s) from what the battle left behind.` : null
             }
         }
     },

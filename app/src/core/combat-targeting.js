@@ -22,7 +22,7 @@ const YAW_COMBAT_TARGETING = {
     },
 
     canSelectCreatureTarget(app, unit) {
-        if (!unit || unit.CPun <= 0) return false;
+        if (!unit) return false;
         if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
             const participants = app._syncParticipants || app._syncSelectedParticipants();
             return this.canSyncTarget(app, participants, unit, app.syncSelection.type);
@@ -30,8 +30,11 @@ const YAW_COMBAT_TARGETING = {
         if (!app.targetSelection) return false;
         if (app.targetSelection.source === 'combat') {
             const actor = app.activeActor || app.player;
+            if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
+            if (unit.CPun <= 0) return false;
             return unit.disposition === app.DISPOSITION.ENEMY && app._canReachCombatTarget(actor, unit, app.targetSelection.action);
         }
+        if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
         return unit.disposition !== app.DISPOSITION.PARTY;
     },
 
@@ -63,7 +66,7 @@ const YAW_COMBAT_TARGETING = {
             targets: [target],
             action,
             source: 'panel-card',
-            constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+            constraints: { requireCurrentTurn: true, hostileOnly: action !== 'scavenge', checkReach: action !== 'scavenge', checkRows: action !== 'scavenge' }
         });
         return app._dispatchInteractionCommand(command);
     },

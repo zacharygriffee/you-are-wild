@@ -25,7 +25,7 @@ const YAW_COMBAT_INTENTS = {
             return false;
         }
         app.activeActor = current;
-        if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast') {
+        if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
             const currentActorId = app._unitSelectionId(current);
             if (app.targetSelection?.source === 'combat'
                 && app.targetSelection.action === action

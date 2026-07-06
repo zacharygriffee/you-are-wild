@@ -32,6 +32,7 @@ const YAW_INTERACTION_DISPATCH = {
         if (action === 'close') return false;
         const target = this.intentTarget(app, type, targetRef);
         if (!target) return false;
+        if (app.combatState?.active && ['loot', 'scavenge'].includes(action)) return false;
         app.lastIntentCommand = {
             ...command,
             mode: 'adventure',
@@ -152,6 +153,11 @@ const YAW_INTERACTION_DISPATCH = {
             const current = app._currentCombatActor() || app.activeActor || command.actors[0];
             const actor = command.actors[0];
             if (!current || !actor || app._unitSelectionId(current) !== app._unitSelectionId(actor)) return { ok: false, reason: 'not-current-actor' };
+            if (command.action === 'scavenge') {
+                const target = command.targets?.[0];
+                if (!target || !app._canScavengeCorpse(target)) return { ok: false, reason: 'invalid-combat-target' };
+                return { ok: true };
+            }
             if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
                 const target = command.targets[0];
                 if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };

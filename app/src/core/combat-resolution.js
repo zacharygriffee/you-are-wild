@@ -15,11 +15,25 @@ const YAW_COMBAT_RESOLUTION = {
     executeActionAgainstTarget(app, action, actor, target) {
         app.combatState.processing = true;
         try {
-            if (!target || target.CPun <= 0 || !actor) { app.combatState.processing = false; app.nextTurn(); return false; }
+            if (!target || !actor || (target.CPun <= 0 && !app._isCorpse(target))) { app.combatState.processing = false; app.nextTurn(); return false; }
             const actorName = actor.name === app.player?.name ? 'You' : actor.name;
             const actorVerb = actor.name === app.player?.name ? '' : 's';
             let result = '';
             switch (action) {
+            case 'scavenge': {
+                const consumed = app._consumeCorpsePortions(target, [actor]);
+                if (consumed.length === 0) {
+                    result = app._label('corpse.depleted', 'Scavenged');
+                } else {
+                    const portions = consumed[0].consumed;
+                    result = app._label('combat.scavengeRemains', '{actor} uses {count} portion(s) from {target}.', {
+                        actor: actorName,
+                        target: target.corpseName || target.name,
+                        count: portions
+                    });
+                }
+                break;
+            }
             case 'fight': {
                 if (app._terrainCausesMiss(actor, target, action)) {
                     result = `${actorName} miss${actorVerb} ${target.name}.`;

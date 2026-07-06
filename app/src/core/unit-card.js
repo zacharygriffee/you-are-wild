@@ -87,8 +87,27 @@ const YAW_UNIT_CARD = {
             const panelIntent = action => `event.stopPropagation();App.selectIntent('creature','${targetKey}','${action}','panel-card')`;
             const corpseLabel = app._escapeHtml(unit.corpseName || unit.name || 'remains');
             const lootLabel = app._escapeHtml(app._uiLabel('loot'));
-            const scavengeLabel = app._escapeHtml(app._uiLabel('scavenge'));
-            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button><button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button></div>`;
+            const scavengeLabel = app._escapeHtml(app._corpseScavengeLabel(unit));
+            const scavengeStatus = app._escapeHtml(app._corpseScavengeStatus(unit));
+            if (app.combatState.active) {
+                if (app.targetSelection?.source === 'combat' && app.targetSelection.action === 'scavenge') {
+                    const canTarget = app.canSelectCreatureTarget(unit);
+                    const disabledClass = canTarget ? '' : ' disabled';
+                    const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
+                    const targetHint = app._escapeHtml(canTarget
+                        ? app._label('target.selectAs', 'Select {name} as {action} target', { name: unit.name || 'remains', action: scavengeLabel })
+                        : app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name: unit.name || 'remains', action: scavengeLabel }));
+                    const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
+                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')">${targetLabel}</button></div>`;
+                } else {
+                    actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn disabled" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button></div>`;
+                }
+            } else {
+                const scavengeButton = app._canScavengeCorpse(unit)
+                ? `<button class="action-btn" title="${scavengeLabel} ${corpseLabel}" aria-label="${scavengeLabel} ${corpseLabel}" onclick="${panelIntent('scavenge')}">${scavengeLabel}</button>`
+                : `<button class="action-btn disabled" title="${scavengeStatus} ${corpseLabel}" aria-label="${scavengeStatus} ${corpseLabel}" disabled aria-disabled="true">${scavengeLabel}</button>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('corpse-utility', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn" title="${lootLabel} ${corpseLabel}" aria-label="${lootLabel} ${corpseLabel}" onclick="${panelIntent('loot')}">${lootLabel}</button>${scavengeButton}</div>`;
+            }
         }
         if (!isParty && unit.CPun > 0 && !isCorpse) {
             const targetKey = app._unitKey(unit);

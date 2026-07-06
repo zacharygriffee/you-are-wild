@@ -25,6 +25,7 @@ const YAW_INTENT_MENU = {
         const isCorpse = app._isCorpse(target);
         app.closeIntentMenu();
         if (!isCorpse) return false;
+        if (app.combatState?.active) return false;
         const targetName = target.name || (isParty ? 'party member' : 'creature');
         const menuLabel = app._label(isParty ? 'ui.partyActions' : 'ui.creatureActions', isParty ? 'Party actions' : 'Creature actions');
         const targetLabel = app._escapeHtml(targetName);
@@ -42,7 +43,13 @@ const YAW_INTENT_MENU = {
         };
         let html = `<div class="${surface.rootClass}" id="${surface.id}" role="dialog" aria-modal="true" aria-label="${app._escapeHtml(menuLabel)}" aria-labelledby="${surface.titleId}" data-intent-presentation="${surface.presentation}"><div class="${surface.titleClass}" id="${surface.titleId}">${target.icon || ''} ${targetLabel}</div><div class="${surface.actionsClass}" role="menu">`;
         html += actionButton('loot');
-        html += actionButton('scavenge');
+        if (app._canScavengeCorpse(target)) {
+            html += actionButton('scavenge');
+        } else {
+            const label = app._corpseScavengeLabel(target);
+            const title = `${app._corpseScavengeStatus(target)} ${targetName}`;
+            html += `<button class="action-btn intent-menu-item disabled" role="menuitem" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" disabled aria-disabled="true">${app._escapeHtml(label)}</button>`;
+        }
         html += actionButton('inspect');
         html += actionButton('close', 'close');
         html += '</div></div>';

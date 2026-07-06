@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** 633/633 tests pass, 93/93 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
+- **Build:** 638/638 tests pass, 93/93 lint modules clean, viewport and combat interaction smoke checks pass, dist fresh
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 93-script modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -71,6 +71,7 @@
 - Corpse cards expose `Loot` and `Scavenge`
 - Corpse loot/scavenge has safe/mature/adult content templates
 - Corpse actions do not start combat and preserve the corpse on the tile
+- Remains scavenge is finite: corpse size initializes bounded portions, actor size controls per-use consumption/recovery, depleted remains disable `Scavenge` while keeping Loot/inspection separate, and combat scavenge consumes the current actor turn
 
 ### Capacity, Flee, Persistence, and Map UX
 - Stomach capacity is `predator.size + predator.appetite`

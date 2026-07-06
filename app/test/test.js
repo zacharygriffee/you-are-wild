@@ -3872,6 +3872,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
+  assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
+  assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad should be opened through a compact control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
@@ -3909,6 +3911,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
+  assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');

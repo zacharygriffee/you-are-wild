@@ -3757,6 +3757,9 @@
             renderMobileExplorationControls() {
                 return YAW_MOBILE_UNIT_STRIPS.explorationControls(this);
             },
+            focusMobileCreaturePresence() {
+                return YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this);
+            },
             toggleMobileMovePad() {
                 this.mobileMovePadOpen = !this.mobileMovePadOpen;
                 this.renderMobileExplorationControls();

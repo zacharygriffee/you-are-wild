@@ -2249,10 +2249,13 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'const YAW_MOBILE_UNIT_STRIPS = {', 'Mobile unit strip helper should expose the strip service');
   assertContains(mobileUnitStripsContent, 'party(app)', 'Mobile unit strip helper should own party strip rendering');
   assertContains(mobileUnitStripsContent, 'creatures(app)', 'Mobile unit strip helper should own creature strip rendering');
+  assertContains(mobileUnitStripsContent, 'creaturePresenceCue(app)', 'Mobile unit strip helper should own the compact creature presence cue');
+  assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.creatures(this)', 'App mobile creature strip wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this)', 'App mobile creature presence focus should delegate to the helper');
 });
 
 test('Panel rendering helper module is registered before app code', () => {
@@ -3900,6 +3903,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
+  assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
+  assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
+  assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-explore-actions"'), 'Mobile creature cue should sit near the top of the control belt');
   assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar"', 'mobile location actions should render in the control belt');
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('id="mobile-move-toggle"'), 'Mobile location actions should sit above movement controls in the control belt');
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('class="mobile-scene-sheet"'), 'Mobile location actions should not be buried below presentation content');
@@ -10012,10 +10018,15 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'focusMobileCreaturePresence()', 'Mobile creature cue should focus/open creature details on tap');
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Hidden exploration party card should not be the only marked-target action host');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile target action tray should be empty before a target is marked');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile actor belt should stay collapsed until selection state needs it');
   assertEqual(document.getElementById('mobile-selection-sentence').innerHTML, '', 'Mobile selection sentence should stay hidden for implicit player state');
+  assertEqual(App.focusMobileCreaturePresence(), true, 'Mobile creature cue should use the existing creature focus path');
+  assertEqual(guide.expanded, true, 'Mobile creature cue should expand the matching creature card');
+  assertContains(document.getElementById('enemies-content').innerHTML, 'Guide', 'Mobile creature cue should render creature details in the creature panel');
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), true, 'Dormant mobile move pad behavior should remain restorable');

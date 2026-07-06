@@ -149,15 +149,19 @@ async function checkViewport(browser, name, width, height) {
       clientWidth: document.documentElement.clientWidth
     }));
     assert(largeFontShell.scrollWidth <= largeFontShell.clientWidth + 1, `${name}: large font/high contrast mobile shell should not horizontally overflow`);
+    await page.evaluate(() => App.closeAllPanels());
 
     const mobileControls = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
       const belt = document.getElementById('mobile-control-belt');
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
+      const creatureCue = document.getElementById('mobile-creature-presence-cue');
+      const cueButton = creatureCue?.querySelector('button');
       const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
+      const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       return {
         dockPosition: getComputedStyle(dock).position,
@@ -171,6 +175,11 @@ async function checkViewport(browser, name, width, height) {
         locationActionsText: actions?.innerText || '',
         locationActionsInSheet: Boolean(sheet?.querySelector('#mobile-explore-actions')),
         sheetActionButtons: sheet ? sheet.querySelectorAll('.action-btn').length : 0,
+        creatureCueText: creatureCue?.innerText || '',
+        creatureCueVisible: Boolean(cueButton) && getComputedStyle(creatureCue).display !== 'none' && cueRect.width > 0 && cueRect.height > 0,
+        creatureCueTop: cueRect.top,
+        creatureCueBottom: cueRect.bottom,
+        creatureCueInSheet: Boolean(sheet?.querySelector('#mobile-creature-presence-cue')),
         moveToggleHidden: Boolean(moveToggle?.hidden),
         moveToggleHeight: moveToggleRect.height,
         moveExpanded: document.getElementById('mobile-move-pad')?.classList.contains('expanded') || false,
@@ -185,6 +194,11 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
     assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
+    assert.strictEqual(mobileControls.creatureCueVisible, true, `${name}: tile with a living creature should expose a visible mobile creature cue without scrolling`);
+    assert(mobileControls.creatureCueText.includes('Here: Creature'), `${name}: mobile creature cue should summarize the first visible creature`);
+    assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
+    assert(mobileControls.creatureCueTop >= 0, `${name}: mobile creature cue should not start above the viewport`);
+    assert(mobileControls.creatureCueBottom <= mobileControls.dockTop + 1, `${name}: mobile creature cue should stay above the fixed dock`);
     assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
     assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);

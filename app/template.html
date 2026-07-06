@@ -2740,6 +2740,46 @@
                 display: none;
             }
 
+            .mobile-creature-presence-cue {
+                display: flex;
+                align-items: center;
+                min-width: 0;
+            }
+
+            .mobile-creature-presence-cue:empty {
+                display: none;
+            }
+
+            .mobile-creature-presence-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                max-width: 100%;
+                min-height: 28px;
+                padding: 5px 9px;
+                border: 1px solid rgba(255, 107, 157, 0.4);
+                border-radius: var(--radius-sm);
+                background: rgba(255, 107, 157, 0.1);
+                color: var(--text-secondary);
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.2;
+                cursor: pointer;
+            }
+
+            .mobile-creature-presence-btn:hover,
+            .mobile-creature-presence-btn:focus-visible {
+                border-color: var(--accent-secondary);
+                color: var(--text-primary);
+            }
+
+            .mobile-creature-presence-text {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
             .mobile-location-actions .action-btn {
                 flex: 0 0 auto;
                 min-width: 64px;
@@ -3855,6 +3895,7 @@
 	                            </div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt">
 	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
+	                                <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
 	                                <div class="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>

@@ -52,5 +52,44 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 ? app.party.map((unit, i) => app.renderMobileUnitChip(unit, i, 'party')).join('')
                 : '';
         }
+        this.creaturePresenceCue(app);
+    },
+
+    livingCreatures(app) {
+        return (app.creatures || []).filter(unit => unit && (unit.CPun ?? 1) > 0 && !app._isCorpse(unit));
+    },
+
+    creaturePresenceCue(app) {
+        const cue = document.getElementById('mobile-creature-presence-cue');
+        if (!cue) return;
+        if (app.combatState?.active) {
+            cue.innerHTML = '';
+            return;
+        }
+        const living = this.livingCreatures(app);
+        if (!living.length) {
+            cue.innerHTML = '';
+            return;
+        }
+        const first = living[0] || {};
+        const icon = app._escapeHtml(first.icon || '👤');
+        const text = living.length === 1
+            ? app._label('ui.creatureCue.single', 'Here: {name}', { name: first.name || app._label('ui.unknown', 'Unknown') })
+            : app._label('ui.creatureCue.count', '{count} creatures here', { count: living.length });
+        const escapedText = app._escapeHtml(text);
+        cue.innerHTML = `<button type="button" class="mobile-creature-presence-btn" onclick="App.focusMobileCreaturePresence()" aria-label="${escapedText}" title="${escapedText}"><span aria-hidden="true">${icon}</span><span class="mobile-creature-presence-text">${escapedText}</span></button>`;
+    },
+
+    focusCreaturePresence(app) {
+        if (app.combatState?.active) return false;
+        const living = this.livingCreatures(app);
+        if (!living.length) return false;
+        if (living.length === 1) {
+            const ref = app._explorationTargetUnitId('creature', living[0]);
+            return app.focusPresence('creature', ref);
+        }
+        app.renderCreatures();
+        app.openPanel('enemies');
+        return true;
     }
 };

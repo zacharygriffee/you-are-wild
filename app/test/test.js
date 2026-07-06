@@ -2600,6 +2600,14 @@ test('Dialog flow helper module is registered before app code', () => {
   assertContains(dialogFlowContent, 'resolveSaveRecovery(app, action, fallbackSlotName = null, fallbackSaveData = null)', 'Dialog flow helper should own save-recovery actions');
   assertContains(dialogFlowContent, "app._activateFocusTrap(dialog", 'Dialog flow should preserve focus trapping for dialogs');
   assertContains(dialogFlowContent, "app._label('save.recovery.prompt'", 'Save recovery prompt should remain localized in the helper');
+  assertContains(dialogFlowContent, 'data-command-surface="system-dialog" data-command-mode="system"', 'Confirm dialogs should identify as system command surfaces');
+  assertContains(dialogFlowContent, 'data-command-control="cancel-dialog"', 'Confirm dialog cancel should expose a system exit');
+  assertContains(dialogFlowContent, 'data-command-control="confirm-dialog"', 'Confirm dialog approval should expose a system action');
+  assertContains(dialogFlowContent, 'data-command-surface="save-recovery-dialog" data-command-mode="system"', 'Save recovery dialogs should identify as system command surfaces');
+  assertContains(dialogFlowContent, 'data-command-control="cancel-save-recovery"', 'Save recovery cancel should expose a system exit');
+  assertContains(dialogFlowContent, 'data-command-control="backup-save"', 'Save recovery backup should expose a system action');
+  assertContains(dialogFlowContent, 'data-command-control="delete-save"', 'Save recovery delete should expose a system action');
+  assertContains(dialogFlowContent, 'showSaveRecoveryStatus(app, kind, message)', 'Save recovery should surface outcomes through in-app status');
   assertContains(appContent, 'YAW_DIALOG_FLOW.showConfirm(this, options)', 'App confirm wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_DIALOG_FLOW.resolveConfirm(this, confirmed)', 'App confirm resolver should delegate to the helper');
   assertContains(appContent, 'YAW_DIALOG_FLOW.showSaveRecovery(this, slotName, saveData)', 'App save-recovery wrapper should delegate to the helper');
@@ -15188,10 +15196,14 @@ test('Incompatible save recovery prompt localizes and scopes actions', async () 
   assertEqual(deleteResult, false, 'Corrupted save recovery should not continue loading');
   assertEqual(deleteRecovery.prompts.length, 0, 'Recovery should use the in-app modal instead of native prompt');
   assertEqual(deleteRecovery.App.pendingSaveRecovery.message, 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'Recovery prompt copy should use active locale');
+  assertEqual(deleteRecovery.document.getElementById('save-recovery-dialog').getAttribute('data-command-surface'), 'save-recovery-dialog', 'Recovery dialog should identify its system command surface');
+  assertContains(deleteRecovery.document.getElementById('save-recovery-dialog').innerHTML, 'data-command-control="delete-save"', 'Recovery dialog should expose delete as a system action');
   await deleteRecovery.App.resolveSaveRecoveryDialog('delete');
   assertEqual(deleted.join(','), 'slot3', 'Delete recovery should remove only the selected corrupted slot');
   assertEqual(deleteRecovery.storage.has('yaw-save-time-slot3'), false, 'Delete recovery should remove selected slot timestamp');
-  assertEqual(deleteRecovery.alerts[0], 'Partida borrada.', 'Delete recovery alert should localize');
+  assertEqual(deleteRecovery.alerts.length, 0, 'Delete recovery should not use a browser-native alert');
+  assertEqual(deleteRecovery.App.saveManagerStatus.message, 'Partida borrada.', 'Delete recovery status should localize');
+  assertContains(deleteRecovery.elements.get('save-manager').innerHTML, 'Partida borrada.', 'Delete recovery should surface completion in the save manager');
 
   const backupRecovery = loadAppForCombat(() => 0.5, {
     prompt: '2',
@@ -15207,7 +15219,9 @@ test('Incompatible save recovery prompt localizes and scopes actions', async () 
   await backupRecovery.App.resolveSaveRecoveryDialog('backup');
   assertEqual(backupDeletes.length, 0, 'Backup recovery should preserve the corrupted save slot');
   assertEqual(backupRecovery.storage.get('yaw-save-time-slot4'), '1710000000000', 'Backup recovery should keep selected slot timestamp');
-  assertEqual(backupRecovery.alerts[0], 'Respaldo descargado. La partida queda intacta.', 'Backup recovery alert should localize');
+  assertEqual(backupRecovery.alerts.length, 0, 'Backup recovery should not use a browser-native alert');
+  assertEqual(backupRecovery.App.saveManagerStatus.message, 'Respaldo descargado. La partida queda intacta.', 'Backup recovery status should localize');
+  assertContains(backupRecovery.elements.get('save-manager').innerHTML, 'Respaldo descargado. La partida queda intacta.', 'Backup recovery should surface completion in the save manager');
 
   const cancelRecovery = loadAppForCombat(() => 0.5, {
     binary: { saveGame: () => new Uint8Array(), loadGame: () => { throw new Error('bad save'); } }

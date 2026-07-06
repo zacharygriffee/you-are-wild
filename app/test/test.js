@@ -13664,8 +13664,19 @@ test('Perk state persists through binary saves', () => {
 
 test('Activity log template exposes filters search export and mobile controls', () => {
   assertContains(template, 'data-i18n="ui.activityLog">Activity Log', 'Desktop log should be labeled as the general activity log');
+  assertContains(template, 'class="panel-log" data-surface-role="history-drawer"', 'Desktop log should identify as a secondary history drawer');
   assertContains(template, 'id="mobile-activity-log"', 'Mobile should expose a collapsible activity log');
+  assertContains(template, 'id="mobile-activity-log" data-surface-role="history-drawer"', 'Mobile activity log should identify as a secondary history drawer');
+  assertContains(template, 'data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history"', 'Mobile activity log summary should identify its history toggle control');
   assertContains(template, 'id="mobile-log-list"', 'Mobile activity log should expose recent entries');
+  assertContains(template, 'class="log-header-actions" data-command-surface="history-controls" data-command-mode="history"', 'Desktop log header actions should identify as history controls');
+  assertContains(template, 'data-command-control="minimize-history"', 'Log should identify the minimize history control');
+  assertContains(template, 'data-command-control="expand-history"', 'Log should identify the expand history control');
+  assertContains(template, 'data-command-control="export-history"', 'Log should identify the export history control');
+  assertContains(template, 'data-command-control="clear-history"', 'Log should identify the clear history control');
+  assertContains(template, 'id="log-controls" data-command-surface="history-filter" data-command-mode="history"', 'Log filters should identify as history filter controls');
+  assertContains(template, 'data-command-control="filter-history" data-log-filter="combat"', 'Combat filter should identify as a history filter command');
+  assertContains(template, 'data-command-control="search-history"', 'Search should identify as a history search control');
   assertContains(template, 'data-log-filter="all"', 'Log should expose All filter');
   assertContains(template, 'data-log-filter="combat"', 'Log should expose Combat filter');
   assertContains(template, 'id="log-search"', 'Log should expose search input');

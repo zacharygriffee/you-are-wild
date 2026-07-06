@@ -42,13 +42,15 @@ const YAW_LOCAL_MAP = {
                 ? app._targetToggleLabel(unit, app._isExplorationTargetUnit('creature', unit))
                 : app._actorToggleLabel(unit, app._getExplorationActors().includes(unit));
             const escapedLabel = app._escapeHtml(label);
+            const escapedRef = app._escapeHtml(ref);
             const jsType = app._escapeJsString(presenceType);
             const jsRef = app._escapeJsString(ref);
-            return `<button type="button" class="mobile-play-presence-dot ${tone}" title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
+            const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
+            return `<button type="button" class="mobile-play-presence-dot ${tone}" data-stage-surface="presence" data-command-control="${control}" data-command-mode="exploration" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
         const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const more = extra > 0
-            ? `<button type="button" class="mobile-play-presence-more" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
+            ? `<button type="button" class="mobile-play-presence-more" data-stage-surface="presence" data-command-control="open-details" data-command-mode="exploration" title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow()">${app._escapeHtml(`+${extra}`)}</button>`
             : '';
         return `<span class="mobile-play-presence">${icons}${more}</span>`;
     },

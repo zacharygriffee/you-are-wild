@@ -2580,6 +2580,9 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
   assertContains(localMapContent, 'app._actorToggleLabel(unit', 'Mobile center party presence should announce add/remove actor semantics');
   assertContains(localMapContent, 'app._targetToggleLabel(unit', 'Mobile center creature presence should announce mark/remove target semantics');
+  assertContains(localMapContent, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
+  assertContains(localMapContent, 'data-command-control="${control}"', 'Mobile center presence should identify its actor/target composer route');
+  assertContains(localMapContent, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
   assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
   assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
@@ -9153,11 +9156,18 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
+  assertContains(html, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
+  assertContains(html, 'data-command-control="focus-actor"', 'Mobile center party presence should identify actor composer routing');
+  assertContains(html, 'data-command-control="focus-target"', 'Mobile center creature presence should identify target composer routing');
+  assertContains(html, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
+  assertContains(html, 'data-presence-type="party"', 'Mobile center party presence should identify its presence type');
+  assertContains(html, 'data-presence-type="creature"', 'Mobile center creature presence should identify its presence type');
   assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should select party actors through the composer');
   assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
   assertContains(html, 'aria-label="Add Ally as actor"', 'Mobile center party presence should advertise add-actor semantics');
   assertContains(html, 'aria-label="Mark Guide as target"', 'Mobile center creature presence should advertise mark-target semantics');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
+  assertContains(html, 'data-command-control="open-details"', 'Mobile center presence overflow should identify detail-drawer routing');
   assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
   assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');

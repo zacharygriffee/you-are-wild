@@ -2723,7 +2723,7 @@
 
             .mobile-control-belt {
                 order: 3;
-                display: grid;
+                display: none;
                 gap: 8px;
                 padding: 8px;
                 border: 1px solid var(--border-default);
@@ -2733,6 +2733,10 @@
                 bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
                 z-index: 90;
                 align-self: stretch;
+            }
+
+            .mobile-control-belt.has-controls {
+                display: grid;
             }
 
             .mobile-play-surface.combat-active .mobile-control-belt:not(.has-controls) {

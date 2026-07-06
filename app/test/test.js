@@ -3930,6 +3930,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar"', 'mobile location actions should render in the control belt');
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('id="mobile-move-toggle"'), 'Mobile location actions should sit above movement controls in the control belt');
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('class="mobile-scene-sheet"'), 'Mobile location actions should not be buried below presentation content');
+  assertContains(template, '.mobile-control-belt.has-controls {\n                display: grid;', 'mobile control belt should only display when real controls are present');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
@@ -10158,6 +10159,35 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertNotContains(elements.get('mobile-party-strip').innerHTML, 'adventure-interaction-tray', 'Marked target actions should not fall back to the hidden party strip');
   assertContains(actorHtml, 'Ally', 'Mobile actor belt should expose party members when a marked target needs actor selection');
   assertContains(actorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
+});
+
+test('Mobile exploration hides empty control belt over traversal map', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 12, y: 2 };
+  App.worldMap = new Map([['12,2', { ...App.getBaseTile(12, 2), x: 12, y: 2, explored: true, biome: 'plains', items: [] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['12,2']);
+  App.inventory = [];
+  App.combatState.active = false;
+  App.mobileMovePadOpen = false;
+  App.explorationActorIds = [];
+  App.explorationActorSelectionExplicit = false;
+  App.explorationTargets = [];
+
+  App.renderParty();
+  App.renderCreatures();
+  App.renderExplorationActions();
+  App.renderMobileExplorationControls();
+
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Empty mobile control belt should not become an overlay during plain traversal');
+  assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Plain traversal should not leave hidden location actions behind');
+  assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Plain traversal without creatures should not leave an empty cue overlay');
+  assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Plain traversal should not leave target controls behind');
+  assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {

@@ -56,10 +56,9 @@ const YAW_CENTER_CONTEXT = {
         const ref = presenceType === 'creature'
             ? app._explorationTargetUnitId('creature', unit)
             : app._unitSelectionId(unit);
-        const panelLabel = presenceType === 'creature'
-            ? app._label('ui.creatures', 'Creatures')
-            : app._label('ui.party', 'Party');
-        const focusTitle = app._escapeHtml(app._label('ui.presence.focus', 'Focus {name} in {panel}', { name: unit.name || app._label('ui.unknown', 'Unknown'), panel: panelLabel }));
+        const focusTitle = app._escapeHtml(presenceType === 'creature'
+            ? app._label('ui.presence.selectTarget', 'Select {name} as target', { name: unit.name || app._label('ui.unknown', 'Unknown') })
+            : app._label('ui.presence.selectActor', 'Select {name} as actor', { name: unit.name || app._label('ui.unknown', 'Unknown') }));
         const escapedType = app._escapeHtml(entry.type);
         const escapedTone = app._escapeHtml(entry.tone);
         const escapedRef = app._escapeHtml(ref);
@@ -73,17 +72,13 @@ const YAW_CENTER_CONTEXT = {
         if (type === 'party') {
             const index = (app.party || []).findIndex(unit => app._unitSelectionId(unit) === String(ref) || unit?.id === ref || unit?.name === ref);
             if (index < 0) return false;
-            app.party[index].expanded = true;
-            app.renderParty();
-            app.openPanel('party');
+            app.selectExplorationActor(index);
             return true;
         }
         if (type === 'creature') {
             const index = (app.creatures || []).findIndex(unit => app._explorationTargetUnitId('creature', unit) === String(ref) || app._unitKey(unit) === String(ref) || unit?.id === ref || unit?.name === ref);
             if (index < 0) return false;
-            app.creatures[index].expanded = true;
-            app.renderCreatures();
-            app.openPanel('enemies');
+            app.toggleExplorationTarget('creature', app._explorationTargetUnitId('creature', app.creatures[index]));
             return true;
         }
         return false;

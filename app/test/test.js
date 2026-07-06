@@ -2561,7 +2561,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
-  assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should focus detail drawers through the shared presence path');
+  assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
   assertContains(localMapContent, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should open the relevant detail drawer');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
@@ -2592,7 +2592,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own desktop stage presence rendering');
   assertContains(centerContextContent, "document.getElementById('desktop-presence-rail')", 'Center context helper should render presence into the desktop stage rail');
   assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
-  assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should focus presence chips into detail panels');
+  assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should route presence chips into actor/target selection');
   assertContains(centerContextContent, 'focusPresenceOverflow(app)', 'Center context helper should focus overflow presence into detail panels');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
@@ -6798,22 +6798,23 @@ test('Center tile stays traversal and context only across interaction states', (
   App.renderCenterPresence();
   assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence inside the presentation tile');
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
-  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should focus party presence through detail panels');
-  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should focus creature presence through detail panels');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should select creature presence through the composer');
   assertContains(el('desktop-presence-rail').innerHTML, 'App.focusPresenceOverflow()', 'Desktop stage rail overflow should focus detail panels instead of staying inert');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'selectIntent(', 'Desktop stage rail should not duplicate intent controls');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
 
-  assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the detail panel path');
-  assertEqual(ally.expanded, true, 'Party presence focus should expand the matching party card');
-  assertContains(el('party-content').innerHTML, 'Ally', 'Party presence focus should render the party panel');
-  assertEqual(el('panel-party').focused, true, 'Desktop party presence focus should focus the party panel');
-  assertEqual(App.focusPresence('creature', 'friendly-1'), true, 'Creature presence focus should resolve through the detail panel path');
-  assertEqual(friendly.expanded, true, 'Creature presence focus should expand the matching creature card');
-  assertContains(el('enemies-content').innerHTML, 'Friendly', 'Creature presence focus should render the creature panel');
-  assertEqual(el('panel-enemies').focused, true, 'Desktop creature presence focus should focus the creature panel');
+  assertEqual(App.focusPresence('party', 'ally-1'), true, 'Party presence focus should resolve through the composer selection path');
+  assertEqual(App.explorationActorIds[0], 'ally-1', 'Party presence focus should select the party actor for the composer');
+  assertContains(el('selection-sentence').innerHTML, 'Ally', 'Party presence focus should update the desktop actor-target-intent sentence');
+  assert(el('panel-party').focused !== true, 'Desktop party presence focus should not force-open the detail panel');
+  assertEqual(App.focusPresence('creature', 'friendly-1'), true, 'Creature presence focus should resolve through the composer selection path');
+  assert(App.explorationTargetIds.includes('creature:friendly-1'), 'Creature presence focus should mark the creature as the composer target');
+  assertContains(el('selection-sentence').innerHTML, 'Friendly', 'Creature presence focus should update the desktop target sentence');
+  assertContains(el('desktop-context-belt').innerHTML, "resolveExplorationTargetAction('fight'", 'Creature presence focus should expose target actions through the desktop composer belt');
+  assert(el('panel-enemies').focused !== true, 'Desktop creature presence focus should not force-open the detail panel');
   assertEqual(App.focusPresenceOverflow(), true, 'Presence overflow focus should resolve through the detail panel path');
   assertEqual(el('panel-enemies').focused, true, 'Presence overflow should prefer the creature detail panel when creatures are present');
 
@@ -6857,6 +6858,7 @@ test('Center tile stays traversal and context only across interaction states', (
 
   App.combatState.active = false;
   App.targetSelection = null;
+  App.clearExplorationTargets();
   App.showInteractMenu();
   assertCenterOnly('fallback interact wrapper');
   App.showCreatureInteract('creature', 0);
@@ -6888,7 +6890,7 @@ test('Stage presence dedupes party references and preserves duplicate creature r
   assertContains(mobileHtml, "App.focusPresence('creature','@creature:1:guide-shared')", 'Mobile center presence should focus the second duplicate-id creature');
 });
 
-test('Center presence focus opens mobile detail drawers without action dispatch', () => {
+test('Center presence focus selects mobile composer state without opening drawers', () => {
   const panels = {};
   const { App, document } = loadAppForCombat(() => 0.5, {
     window: { innerWidth: 390 },
@@ -6915,16 +6917,17 @@ test('Center presence focus opens mobile detail drawers without action dispatch'
   App.combatState.active = false;
 
   assertEqual(App.focusPresence('party', 'ally-1'), true, 'Mobile party presence focus should resolve');
-  assertEqual(document.getElementById('panel-party').classList.contains('active'), true, 'Mobile party presence focus should open the party drawer');
-  assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), true, 'Mobile party presence focus should enable the backdrop');
-  assertContains(document.getElementById('party-content').innerHTML, 'Ally', 'Mobile party presence focus should render party detail cards');
-  assertNotContains(document.getElementById('party-content').innerHTML, 'showIntentMenu(', 'Mobile party presence focus should not open an action menu');
+  assertEqual(App.explorationActorIds[0], 'ally-1', 'Mobile party presence focus should select the party actor');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile party presence focus should update the composer sentence');
+  assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile party presence focus should not open the party drawer');
+  assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile party presence focus should not enable the backdrop');
 
   assertEqual(App.focusPresence('creature', 'guide-1'), true, 'Mobile creature presence focus should resolve');
-  assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile creature presence focus should close the previous drawer');
-  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), true, 'Mobile creature presence focus should open the creature drawer');
-  assertContains(document.getElementById('enemies-content').innerHTML, 'Guide', 'Mobile creature presence focus should render creature detail cards');
-  assertNotContains(document.getElementById('enemies-content').innerHTML, 'showIntentMenu(', 'Mobile creature presence focus should not open an action menu');
+  assert(App.explorationTargetIds.includes('creature:guide-1'), 'Mobile creature presence focus should mark the target');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile creature presence focus should update the target sentence');
+  assertContains(document.getElementById('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile creature presence focus should expose target actions in the visible tray');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile creature presence focus should not open the creature drawer');
+  assertNotContains(document.getElementById('mobile-target-action-tray').innerHTML, 'showIntentMenu(', 'Mobile creature presence focus should not open an action menu');
 });
 
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {
@@ -9071,8 +9074,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
-  assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should focus the party detail drawer');
-  assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should focus the creature detail drawer');
+  assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should select party actors through the composer');
+  assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should select creature targets through the composer');
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
   assertContains(html, 'App.focusPresenceOverflow()', 'Mobile center presence overflow should focus a detail drawer');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');

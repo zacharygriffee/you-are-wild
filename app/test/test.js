@@ -2507,6 +2507,14 @@ test('Save manager helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/save-manager.js'") < buildContent.indexOf("'src/core/app.js'"), 'Save manager helper should load before app.js');
   assertContains(saveManagerContent, 'const YAW_SAVE_MANAGER = {', 'Save manager helper should expose the save manager service');
   assertContains(saveManagerContent, 'slotCard(app', 'Save manager helper should own slot card rendering');
+  assertContains(saveManagerContent, 'data-command-surface="save-manager"', 'Save manager should identify as a system command surface');
+  assertContains(saveManagerContent, 'data-command-mode="system"', 'Save manager controls should identify as system mode');
+  assertContains(saveManagerContent, "'new-game-manager'", 'Save manager toolbar should expose its new-game route');
+  assertContains(saveManagerContent, "'load-slot'", 'Save manager load actions should expose slot route metadata');
+  assertContains(saveManagerContent, "'save-slot'", 'Save manager save actions should expose slot route metadata');
+  assertContains(saveManagerContent, "'delete-slot'", 'Save manager delete actions should expose slot route metadata');
+  assertContains(saveManagerContent, "'delete-slot-locked'", 'Save manager locked delete actions should expose slot route metadata');
+  assertContains(saveManagerContent, "'close-save-manager'", 'Save manager close action should expose its system exit');
   assertContains(appContent, 'YAW_SAVE_MANAGER.render(this, mode)', 'App save manager renderer should delegate to the helper');
 });
 
@@ -3716,6 +3724,9 @@ test('New game flow is slot-aware and warns before destructive slot changes', ()
   assertContains(contentContent, "'save.slotActions.occupiedLoad': 'Actions: Load, New Run, Delete'", 'Slot cards should summarize load-mode actions');
   assertContains(template, '.save-slot-summary', 'Save slot cards should have compact action-summary styling');
   assertContains(saveManagerContent, 'aria-label="${app._escapeHtml(titleText)}"', 'Generated save slot buttons should expose accessible names');
+  assertContains(saveManagerContent, 'data-command-surface="save-manager"', 'Save manager actions should identify the system drawer surface');
+  assertContains(saveManagerContent, 'data-command-mode="system"', 'Save manager actions should identify system command mode');
+  assertContains(saveManagerContent, 'data-save-slot="', 'Save slot cards should expose stable slot metadata');
   assertContains(saveSlotFlowContent, "app._label('save.confirm.newGameOverwrite'", 'New game overwrite warning should come from localized copy');
   assertContains(saveSlotFlowContent, "app._label('save.confirm.manualOverwrite'", 'Manual save overwrite warning should come from localized copy');
   assertContains(saveSlotFlowContent, "app._label('save.confirm.deleteSlot'", 'Delete slot warning should come from localized copy');
@@ -3738,6 +3749,12 @@ test('Save manager separates save and load mode actions', () => {
   assertContains(loadHtml, 'New Game', 'Load mode should keep new-game entry points');
   assertContains(loadHtml, 'New Run', 'Load mode should allow occupied slot takeover');
   assertContains(loadHtml, 'Load', 'Load mode should expose load actions for occupied slots');
+  assertContains(loadHtml, 'data-command-surface="save-manager"', 'Load mode should render as a save-manager system surface');
+  assertContains(loadHtml, 'data-command-mode="system"', 'Load mode controls should identify system command mode');
+  assertContains(loadHtml, 'data-command-control="new-game-manager"', 'Load mode toolbar should expose its new-game route');
+  assertContains(loadHtml, 'data-command-control="new-run-slot"', 'Load mode new-run controls should expose slot route metadata');
+  assertContains(loadHtml, 'data-command-control="load-slot"', 'Load mode load controls should expose slot route metadata');
+  assertContains(loadHtml, 'data-command-control="delete-slot"', 'Load mode delete controls should expose slot route metadata');
   assertNotContains(loadHtml, 'Save and continue in Slot 2', 'Load mode should not crowd cards with save actions');
 
   App.showSaveManager('save');
@@ -3747,6 +3764,8 @@ test('Save manager separates save and load mode actions', () => {
   assertContains(saveHtml, 'Choose the slot that will continue this run', 'Save mode should render save-specific guidance');
   assertContains(saveHtml, 'Save and continue in Slot 1', 'Save mode should expose save action for empty/current slots');
   assertContains(saveHtml, 'Save and continue in Slot 2', 'Save mode should expose save action for occupied slots');
+  assertContains(saveHtml, 'data-command-control="save-slot"', 'Save mode save controls should expose slot route metadata');
+  assertContains(saveHtml, 'data-command-control="close-save-manager"', 'Save manager close should expose its system exit');
   assertContains(saveHtml, 'Occupied slot: saving here makes this the active auto-save slot.', 'Save mode should use save-specific occupied hints');
   assertNotContains(saveHtml, 'Start a new run in Slot 2', 'Save mode should not crowd cards with new-run actions');
   assertNotContains(saveHtml, 'Load Slot 2', 'Save mode should not crowd cards with load actions');
@@ -14801,6 +14820,10 @@ test('Save manager renders localized accessible slot actions', () => {
   assertContains(html, 'Acciones: Cargar, Nueva partida, Borrar', 'Occupied load-mode action summary should localize');
   assertContains(html, 'Acciones: Nueva partida', 'Empty load-mode action summary should localize');
   assertContains(html, 'aria-label="Iniciar una nueva partida en Slot 1"', 'New run action should expose localized accessible label');
+  assertContains(html, 'data-command-surface="save-manager"', 'Save manager should render as a system detail surface');
+  assertContains(html, 'data-command-control="new-run-slot"', 'New run action should expose system route metadata');
+  assertContains(html, 'data-command-control="load-slot"', 'Load action should expose system route metadata');
+  assertContains(html, 'data-command-control="delete-slot"', 'Delete action should expose system route metadata');
   assertContains(html, 'aria-label="Cargar Slot 1"', 'Load action should expose localized accessible label');
   assertContains(html, 'aria-label="Borrar Slot 1"', 'Delete action should expose localized accessible label');
   assertContains(html, 'aria-label="Iniciar partida nueva en Slot 2"', 'Empty slot new-game action should expose localized accessible label');
@@ -14813,6 +14836,7 @@ test('Save manager renders localized accessible slot actions', () => {
   assertContains(saveHtml, 'Acciones: Guardar, Borrar', 'Occupied save-mode action summary should localize');
   assertContains(saveHtml, 'Acciones: Guardar', 'Empty save-mode action summary should localize');
   assertContains(saveHtml, 'aria-label="Guardar y continuar en Slot 1"', 'Save mode should expose localized save action labels');
+  assertContains(saveHtml, 'data-command-control="save-slot"', 'Save mode save action should expose system route metadata');
   assertNotContains(saveHtml, 'aria-label="Cargar Slot 1"', 'Save mode should not include load actions');
   App.renderSaveManager('new');
   const newHtml = elements.get('save-manager').innerHTML;
@@ -14821,6 +14845,8 @@ test('Save manager renders localized accessible slot actions', () => {
   assertContains(newHtml, 'Slot vacio: listo para una nueva partida.', 'Empty new-mode slot hint should describe direct new-run use');
   assertContains(newHtml, 'Acciones: Sobrescribir, Borrar', 'Occupied new-mode action summary should localize');
   assertContains(newHtml, 'Acciones: Usar slot vacio', 'Empty new-mode action summary should localize');
+  assertContains(newHtml, 'data-command-control="overwrite-slot"', 'New mode occupied slot should expose overwrite route metadata');
+  assertContains(newHtml, 'data-command-control="use-empty-slot"', 'New mode empty slot should expose empty-slot route metadata');
 });
 
 test('New-game slot takeover warns before overwriting occupied slots', () => {

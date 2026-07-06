@@ -151,6 +151,48 @@ async function checkViewport(browser, name, width, height) {
     assert(largeFontShell.scrollWidth <= largeFontShell.clientWidth + 1, `${name}: large font/high contrast mobile shell should not horizontally overflow`);
     await page.evaluate(() => App.closeAllPanels());
 
+    await page.evaluate(() => {
+      App.closeTutorial?.();
+      App.returnToGame?.();
+      App.closeAllPanels?.();
+    });
+    await page.locator('#app-menu-toggle').click();
+    await page.waitForTimeout(50);
+    const appMenu = await page.evaluate(() => {
+      const menu = document.getElementById('app-menu');
+      const toggle = document.getElementById('app-menu-toggle');
+      const rect = menu.getBoundingClientRect();
+      const style = getComputedStyle(menu);
+      const visibleItems = Array.from(menu.querySelectorAll('button')).filter(btn => {
+        const r = btn.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      }).map(btn => btn.textContent.trim());
+      return {
+        open: menu.classList.contains('open'),
+        expanded: toggle.getAttribute('aria-expanded'),
+        position: style.position,
+        display: style.display,
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        visibleItems
+      };
+    });
+    assert.strictEqual(appMenu.open, true, `${name}: mobile brand button should open the app menu`);
+    assert.strictEqual(appMenu.expanded, 'true', `${name}: mobile app menu toggle should expose expanded state`);
+    assert.strictEqual(appMenu.position, 'fixed', `${name}: mobile app menu should escape the clipped header`);
+    assert.notStrictEqual(appMenu.display, 'none', `${name}: mobile app menu should be visible after opening`);
+    assert(appMenu.top >= 52, `${name}: mobile app menu should render below the header`);
+    assert(appMenu.left >= -1 && appMenu.right <= appMenu.viewportWidth + 1, `${name}: mobile app menu should stay inside viewport horizontally`);
+    assert(appMenu.bottom <= appMenu.viewportHeight + 1, `${name}: mobile app menu should stay inside viewport vertically`);
+    assert(appMenu.visibleItems.some(label => label.includes('Save')), `${name}: mobile app menu should expose Save`);
+    assert(appMenu.visibleItems.some(label => label.includes('Load')), `${name}: mobile app menu should expose Load`);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(50);
+
     const mobileControls = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
       const belt = document.getElementById('mobile-control-belt');

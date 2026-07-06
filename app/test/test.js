@@ -10460,6 +10460,15 @@ test('Selection sentence mirrors combat target-pick state without changing actio
     syncActions: [],
     processing: false
   };
+
+  App.renderSelectionSentence();
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Actors', 'Desktop combat composer should show the current actor before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'You', 'Desktop combat composer should name the current combat actor before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Intent', 'Desktop combat composer should show pending intent before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Choose', 'Desktop combat composer should tell the player to choose an intent before target selection');
+  assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain normal combat command sentence state');
+  assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should keep the exploration control-belt sentence empty before target selection');
+
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
 
   const html = App.renderSelectionSentence();

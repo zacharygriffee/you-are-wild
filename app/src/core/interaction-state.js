@@ -119,7 +119,8 @@ const YAW_INTERACTION_STATE = {
             app.syncSelection?.active ||
             app.feedSelection?.active
         ));
-        if (desktop) desktop.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient ? html : '';
+        const hasCombatTurn = Boolean(app.combatState?.active && this.combatActor(app));
+        if (desktop) desktop.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '';
         const mobile = document.getElementById('mobile-selection-sentence');
         if (mobile) {
             mobile.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors ? html : '';

@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD MOBILE COMBAT TOOLBELT
- * Renders the compact combat status surface while panels keep action controls.
+ * Renders the compact mobile combat command composer, status, and phase controls.
  */
 
 const YAW_MOBILE_COMBAT_TOOLBELT = {

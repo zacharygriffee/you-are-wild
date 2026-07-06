@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD INTERACTION STATE
- * Shared transient selection and refresh helpers for panel-first controls.
+ * Shared actor-target-intent selection and command composer refresh helpers.
  */
 
 const YAW_INTERACTION_STATE = {

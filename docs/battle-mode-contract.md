@@ -4,10 +4,11 @@ Battle mode is not a separate action model. It is the normal actor, target, and 
 
 ## Control Surface
 
-- Party cards/chips own actor intent.
+- The command composer/toolbelt owns intent buttons and phase controls.
+- Party cards/chips route actor selection, participant selection, and party detail access.
 - Creature and enemy cards/chips own target selection.
 - The center play surface presents current events, prompts, and tile-scoped combat context.
-- Center combat buttons are compatibility-only if they exist at all; new combat controls should be panel-first.
+- Center combat buttons are compatibility-only if they exist at all; new combat controls should route through the shared composer grammar.
 
 ## What Combat Adds
 

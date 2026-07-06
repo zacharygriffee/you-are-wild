@@ -35,7 +35,7 @@ The browser-style checks cover:
 - viewport layout regressions
 - combat interaction behavior
 - center play-surface constraints
-- panel-first combat behavior
+- composer-first combat behavior
 
 These checks are still targeted rather than exhaustive. Add focused tests when changing shared mechanics, persistence, module validation, content gating, panel interactions, or generated-template structure.
 

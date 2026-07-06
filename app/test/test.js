@@ -4202,15 +4202,22 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(localMapContent, 'moveable: !isCenter && isVisible', 'mobile 3x3 movement cells should dispatch through normal movement');
 });
 
-test('Battle mode contract keeps combat panel-first', () => {
+test('Battle mode contract keeps combat composer-first', () => {
   const contract = fs.readFileSync(BATTLE_MODE_CONTRACT, 'utf8');
   assertContains(contract, 'Battle mode is not a separate action model', 'Battle mode should be documented as an extension of actor target intent flow');
-  assertContains(contract, 'Party cards/chips own actor intent', 'Battle mode contract should keep actor intent in panels');
+  assertContains(contract, 'The command composer/toolbelt owns intent buttons and phase controls', 'Battle mode contract should keep combat intents in the shared composer');
+  assertContains(contract, 'Party cards/chips route actor selection', 'Battle mode contract should keep party cards as routing surfaces');
   assertContains(contract, 'Creature and enemy cards/chips own target selection', 'Battle mode contract should keep target selection in panels');
+  assertContains(contract, 'new combat controls should route through the shared composer grammar', 'Battle mode contract should reject new panel-first combat controls');
   assertContains(contract, 'Initiative queue decides whose actor card is active', 'Battle mode contract should define initiative as a combat constraint');
   assertContains(appContent, 'executeCombatIntent(action', 'Combat intent should route through a shared dispatcher');
   assertContains(appContent, 'combatAction(action) {\n                return this.executeCombatIntent', 'Legacy combatAction wrapper should delegate to the shared dispatcher');
-  assertContains(combatActionsContent, "app._combatIntentButton('fight'", 'Panel combat buttons should dispatch through the shared combat intent path');
+  assertContains(combatActionsContent, "app._combatIntentButton('fight'", 'Combat intent buttons should dispatch through the shared combat intent path');
+  assertNotContains(contract, 'new combat controls should be panel-first', 'Battle mode contract should not preserve the old panel-first control doctrine');
+  assertNotContains(interactionStateContent, 'panel-first controls', 'Interaction state helper should describe composer refresh, not panel-first controls');
+  assertNotContains(explorationSelectionContent, 'panel-first exploration controls', 'Exploration selection helper should describe composer selection, not panel-first controls');
+  assertNotContains(mobileCombatToolbeltContent, 'panels keep action controls', 'Mobile combat toolbelt should describe its composer role');
+  assertNotContains(mobileUnitChipContent, 'panel-first interaction semantics', 'Mobile unit chips should describe routing/detail roles');
   assertNotContains(contentSystemContent, 'combat.panelFirst', 'Combat should not retain obsolete center prompt locale keys');
 });
 
@@ -7452,7 +7459,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   App.renderCreatures();
   const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   assertNotContains(actionsHtml, 'showInteractMenu', 'Combat action bar should not duplicate panel creature interactions');
-  assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should not duplicate panel-first guidance');
+  assertNotContains(actionsHtml, 'panel-first-combat-prompt', 'Combat center should not duplicate obsolete center guidance');
   assertContains(actionsHtml, "executeCombatIntent('fight')", 'Desktop combat composer should expose enemy action targeting');
   assertContains(actionsHtml, "App.executeCombatIntent('feed')", 'Desktop combat composer should still expose party feed action');
   assertNotContains(elements.get('party-content').innerHTML, "executeCombatIntent('fight')", 'Active party card should not duplicate composer-owned enemy action targeting');

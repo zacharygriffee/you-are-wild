@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD MOBILE UNIT CHIP
- * Renders mobile party and creature chips while preserving panel-first interaction semantics.
+ * Renders mobile party and creature chips for actor/target routing and detail drawers.
  */
 
 const YAW_MOBILE_UNIT_CHIP = {

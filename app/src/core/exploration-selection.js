@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD EXPLORATION SELECTION
- * Actor and marked-target state helpers for panel-first exploration controls.
+ * Actor and marked-target state helpers for exploration command composition.
  */
 
 const YAW_EXPLORATION_SELECTION = {

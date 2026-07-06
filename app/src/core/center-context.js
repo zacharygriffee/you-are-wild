@@ -159,7 +159,7 @@ const YAW_CENTER_CONTEXT = {
             exit: 'App.exitStructure()'
         };
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-intent="${intent}"`);
+        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"`);
     },
 
     renderActions(app) {
@@ -185,9 +185,11 @@ const YAW_CENTER_CONTEXT = {
             if (commandSurface) {
                 desktopBelt.setAttribute('data-command-surface', commandSurface);
                 desktopBelt.setAttribute('data-command-mode', 'exploration');
+                desktopBelt.setAttribute('data-command-grammar', 'actor-target-intent');
             } else {
                 desktopBelt.removeAttribute('data-command-surface');
                 desktopBelt.removeAttribute('data-command-mode');
+                desktopBelt.removeAttribute('data-command-grammar');
             }
         }
         const mobileExplore = document.getElementById('mobile-explore-actions');
@@ -196,9 +198,11 @@ const YAW_CENTER_CONTEXT = {
             if (commandSurface) {
                 mobileExplore.setAttribute('data-command-surface', commandSurface);
                 mobileExplore.setAttribute('data-command-mode', 'exploration');
+                mobileExplore.setAttribute('data-command-grammar', 'actor-target-intent');
             } else {
                 mobileExplore.removeAttribute('data-command-surface');
                 mobileExplore.removeAttribute('data-command-mode');
+                mobileExplore.removeAttribute('data-command-grammar');
             }
         }
         app.renderMobileExplorationControls?.();

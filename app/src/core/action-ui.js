@@ -18,7 +18,7 @@ const YAW_ACTION_UI = {
             && (!app.targetSelection.actorId || app.targetSelection.actorId === actorId || app.targetSelection.actorId === actor?.id || app.targetSelection.actorId === actor?.name);
         const classes = [extraClass, isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-mode="combat" data-command-intent="${intent}"`);
+        return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent"`);
     },
 
     legend(app, keys) {

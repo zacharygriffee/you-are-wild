@@ -62,20 +62,20 @@ const YAW_COMBAT_ACTIONS = {
             buttons.push(app._combatIntentButton('fuck', actor));
         }
         if (allies.length > 0) {
-            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", '', 'data-command-mode="combat" data-command-intent="feed"'));
+            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", '', 'data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent"'));
         }
         if (corpses.length > 0) {
-            buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-mode="combat" data-command-intent="scavenge"'));
+            buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-mode="combat" data-command-intent="scavenge" data-command-grammar="actor-target-intent"'));
         }
         if (enemies.length > 0) {
-            buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-mode="combat" data-command-intent="sync"'));
+            buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent"'));
             const moveRowLabel = app._escapeHtml(app._label('action.moveRow', 'Move Row'));
-            buttons.push(`<button class="action-btn" data-command-mode="combat" data-command-intent="moveRow" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
+            buttons.push(`<button class="action-btn" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
         }
         if (actor?.name === app.player?.name) {
-            buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-mode="combat" data-command-intent="flee"'));
+            buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent"'));
         } else {
-            buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-mode="combat" data-command-intent="skip"'));
+            buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent"'));
         }
         if (buttons.length === 0) return '';
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);

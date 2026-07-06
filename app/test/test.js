@@ -2556,6 +2556,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
+  assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should focus detail drawers through the shared presence path');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
   assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
@@ -8960,7 +8961,9 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   const { App, elements } = loadAppForCombat(() => 0);
   App.player = makeUnit('You');
   const ally = makeUnit('Ally', { id: 'ally-1', icon: '🧭' });
+  const guide = makeUnit('Guide', { id: 'guide-1', icon: '👤', disposition: App.DISPOSITION.FRIENDLY });
   App.party = [App.player, ally];
+  App.creatures = [guide];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map();
   App.exploredTiles = new Set(['0,0']);
@@ -8975,6 +8978,10 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
+  assertContains(html, "App.focusPresence('party','ally-1')", 'Mobile center party presence should focus the party detail drawer');
+  assertContains(html, "App.focusPresence('creature','guide-1')", 'Mobile center creature presence should focus the creature detail drawer');
+  assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
+  assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');
   assertContains(html, 'onclick="App.move(1,0)"', 'Mobile east cell should use normal movement dispatch');
   assertContains(html, adjacentBiome.icon, 'Adjacent tile biome icon should render on mobile play surface');

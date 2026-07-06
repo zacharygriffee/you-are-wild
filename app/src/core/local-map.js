@@ -35,12 +35,18 @@ const YAW_LOCAL_MAP = {
             const unit = entry.unit || {};
             const label = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
             const tone = app._escapeHtml(entry.tone || entry.type || 'party');
-            return `<span class="mobile-play-presence-dot ${tone}" title="${label}" aria-hidden="true">${app._escapeHtml(unit.icon || '👤')}</span>`;
+            const presenceType = entry.type === 'creature' ? 'creature' : 'party';
+            const ref = presenceType === 'creature'
+                ? app._explorationTargetUnitId('creature', unit)
+                : app._unitSelectionId(unit);
+            const jsType = app._escapeJsString(presenceType);
+            const jsRef = app._escapeJsString(ref);
+            return `<button type="button" class="mobile-play-presence-dot ${tone}" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
         const more = extra > 0
             ? `<span class="mobile-play-presence-more" aria-hidden="true">+${extra}</span>`
             : '';
-        return `<span class="mobile-play-presence" aria-hidden="true">${icons}${more}</span>`;
+        return `<span class="mobile-play-presence">${icons}${more}</span>`;
     },
 
     cellHtml(app, { classes, visual, title, dx, dy, key, moveable }) {

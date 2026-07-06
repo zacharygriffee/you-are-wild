@@ -35,6 +35,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const surface = document.getElementById('mobile-play-surface');
         const exploreActions = document.getElementById('mobile-explore-actions');
         const creatureCue = document.getElementById('mobile-creature-presence-cue');
+        const selectionSentence = document.getElementById('mobile-selection-sentence');
         const inCombat = Boolean(app.combatState?.active);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
         if (inCombat || !hasTargets) app.mobileActorBeltOpen = false;
@@ -86,17 +87,25 @@ const YAW_MOBILE_UNIT_STRIPS = {
         }
         this.creaturePresenceCue(app);
         if (controlBelt) {
+            const hasSelectionSentence = Boolean((selectionSentence?.innerHTML || '').trim());
+            const hasTargetActions = Boolean((targetTray?.innerHTML || '').trim());
+            const hasActorControls = Boolean((actorBelt?.innerHTML || '').trim());
+            const hasLocationActions = !hasTargets && Boolean((exploreActions?.innerHTML || '').trim());
+            const hasCreatureCue = !hasTargets && Boolean((creatureCue?.innerHTML || '').trim());
+            const hasMovePad = Boolean(movePad?.classList?.contains('expanded'));
             const hasContent = !inCombat && Boolean(
-                (exploreActions?.innerHTML || '').trim()
-                || (targetTray?.innerHTML || '').trim()
-                || (actorBelt?.innerHTML || '').trim()
-                || (creatureCue?.innerHTML || '').trim()
-                || (movePad?.classList?.contains('expanded'))
+                hasSelectionSentence
+                || hasLocationActions
+                || hasTargetActions
+                || hasActorControls
+                || hasCreatureCue
+                || hasMovePad
             );
             const expandedControls = hasContent && Boolean(
-                hasTargets
+                hasTargetActions
+                || hasActorControls
                 || actorSelectionOpen
-                || (movePad?.classList?.contains('expanded'))
+                || hasMovePad
             );
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);

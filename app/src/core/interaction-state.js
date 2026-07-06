@@ -186,6 +186,7 @@ const YAW_INTERACTION_STATE = {
         this.setSentenceSlot(desktop, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
         const mobile = document.getElementById('mobile-selection-sentence');
         this.setSentenceSlot(mobile, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
+        if (!app.combatState?.active) app.renderMobileExplorationControls?.();
         return html;
     },
 

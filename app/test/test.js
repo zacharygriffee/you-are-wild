@@ -4182,6 +4182,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
   assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('has-control-belt', hasContent)", 'mobile exploration controls should toggle scroll padding for the fixed context belt');
   assertContains(mobileUnitStripsContent, "const expandedControls = hasContent && Boolean(", 'mobile exploration controls should distinguish compact and expanded composer reservation');
+  assertContains(mobileUnitStripsContent, 'const hasSelectionSentence = Boolean', 'mobile exploration controls should count the visible command sentence as belt content');
+  assertContains(mobileUnitStripsContent, 'const hasLocationActions = !hasTargets', 'mobile exploration controls should not count target-hidden location actions as visible belt content');
+  assertContains(mobileUnitStripsContent, 'const hasCreatureCue = !hasTargets', 'mobile exploration controls should not count target-hidden creature cues as visible belt content');
+  assertContains(mobileUnitStripsContent, 'hasTargetActions', 'mobile exploration controls should count marked-target actions as expanded belt content');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('expanded-controls-open', expandedControls)", 'mobile control belt should mark expanded composer states structurally');
   assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('control-belt-expanded', expandedControls)", 'mobile play surface should reserve maximum belt space only for expanded states');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
@@ -10967,6 +10971,43 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Plain traversal should not leave target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
   assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');
+});
+
+test('Mobile control belt ignores rows hidden by target-priority state', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const guide = makeUnit('Guide', {
+    id: 'guide-1',
+    disposition: 'neutral',
+    icon: '🧭',
+    species: 'human',
+    CPun: 25,
+    MPun: 25
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [guide];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', items: [{ id: 'berry', name: 'Berry' }] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['0,0']);
+  App.combatState.active = false;
+  App.explorationTargetIds = ['creature:guide-1'];
+  App._renderExplorationTargetActions = () => '';
+
+  App.renderExplorationActions();
+  App.renderMobileExplorationControls();
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'takeItems', 'Setup should leave lower-priority location actions populated');
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Setup should leave lower-priority creature cue populated');
+  assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Setup should simulate no visible marked-target actions');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), true, 'Target state should still mark target-priority mode');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Hidden location/cue rows should not create an empty fixed belt');
+  assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Hidden location/cue rows should not reserve empty belt space');
+
+  App.renderSelectionSentence();
+  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Guide', 'Marked target should render the mobile command sentence');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Visible command sentence should activate the fixed belt even without target action buttons');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Sentence-only belt state should stay compact rather than reserving action-row height');
 });
 
 test('Combat action clearing removes stale mobile exploration belt controls', () => {

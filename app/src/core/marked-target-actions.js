@@ -20,21 +20,23 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
         const buttons = keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
+            const intent = app._escapeHtml(key);
             const actionSource = source === 'desktop' ? 'desktop-target' : (source === 'panel-tray' || source === 'mobile-target' ? 'panel-tray' : 'target-bar');
             const defaultSubAction = app.SUB_ACTIONS[key] ? app._getDefaultSubAction(key) : null;
             const safeSubAction = defaultSubAction ? String(defaultSubAction).replace(/'/g, "\\'") : '';
             const handler = defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
-            return `<button class="action-btn" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
+            return `<button class="action-btn" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
         });
         if (singleCreatureTarget) {
             const targetName = singleCreatureTarget.name || app._label('ui.creatures', 'Creatures');
             const utilityButton = (labelAction, dispatchAction = labelAction, icon = '') => {
                 const title = app._escapeHtml(`${app._uiLabel(labelAction)} ${targetName}`);
                 const caption = app._escapeHtml(app._uiLabel(labelAction));
+                const intent = app._escapeHtml(dispatchAction);
                 const iconHtml = icon ? `<span class="action-icon" aria-hidden="true">${icon}</span>` : `<span class="action-icon" aria-hidden="true">${app._actionIcon(labelAction)}</span>`;
-                return `<button class="action-btn contextual-utility" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
+                return `<button class="action-btn contextual-utility" data-command-intent="${intent}" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
             };
             buttons.push(utilityButton('inspect', 'inspect', '👁️'));
             const actor = primaryActor || app._getExplorationActor();
@@ -45,7 +47,8 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const buttonHtml = buttons.join('');
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
-        const actionRow = `<div class="target-action-row">${buttonHtml}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
+        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;

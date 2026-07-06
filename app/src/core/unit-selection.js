@@ -96,8 +96,26 @@ const YAW_UNIT_SELECTION = {
             'combat-target': app._label('unit.row.combatTarget', 'Combat target controls for {name}', { name }),
             'creature-selection': app._label('unit.row.creatureSelection', 'Target controls for {name}', { name })
         };
+        const commandSurfaces = {
+            'party-selection': 'actor-target-routing',
+            'creature-selection': 'target-routing',
+            'sync-participants': 'sync-participants',
+            'combat-actions': 'combat-intents',
+            'corpse-utility': 'utility-actions',
+            'combat-target': 'combat-targeting',
+            'party-management': 'detail-management'
+        };
+        const commandModes = {
+            'sync-participants': 'combat',
+            'combat-actions': 'combat',
+            'combat-target': 'combat'
+        };
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
-        return `data-action-scope="${safeScope}" aria-label="${label}"`;
+        const surface = commandSurfaces[scope];
+        const commandAttrs = surface
+            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandModes[scope] || 'exploration'}"`
+            : '';
+        return `data-action-scope="${safeScope}" aria-label="${label}"${commandAttrs}`;
     },
 
     chips(app, unit, type) {

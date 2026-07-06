@@ -6864,6 +6864,30 @@ test('Center tile stays traversal and context only across interaction states', (
   assertContains(el('enemies-content').innerHTML, 'selected selected-target', 'Creature interaction wrapper should mark the panel target instead of rendering center actions');
 });
 
+test('Stage presence dedupes party references and preserves duplicate creature refs', () => {
+  const { App, document } = loadAppForCombat();
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: '' });
+  const duplicateA = makeUnit('Guide A', { id: 'guide-shared', disposition: App.DISPOSITION.FRIENDLY });
+  const duplicateB = makeUnit('Guide B', { id: 'guide-shared', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [duplicateA, duplicateB];
+  App.combatState.active = false;
+
+  App.renderCenterPresence();
+  const html = el('desktop-presence-rail').innerHTML;
+  assertEqual((html.match(/data-presence-type="player"/g) || []).length, 1, 'Stage presence should not duplicate the player when party contains the same object');
+  assertContains(html, "App.focusPresence('creature','@creature:0:guide-shared')", 'First duplicate-id creature should keep an index-qualified presence ref');
+  assertContains(html, "App.focusPresence('creature','@creature:1:guide-shared')", 'Second duplicate-id creature should keep an index-qualified presence ref');
+
+  App.renderMap();
+  const mobileHtml = el('mobile-mini-map').innerHTML;
+  assertEqual((mobileHtml.match(/mobile-play-presence-dot party/g) || []).length, 1, 'Mobile center presence should not duplicate the player dot');
+  assertContains(mobileHtml, "App.focusPresence('creature','@creature:0:guide-shared')", 'Mobile center presence should focus the first duplicate-id creature');
+  assertContains(mobileHtml, "App.focusPresence('creature','@creature:1:guide-shared')", 'Mobile center presence should focus the second duplicate-id creature');
+});
+
 test('Center presence focus opens mobile detail drawers without action dispatch', () => {
   const panels = {};
   const { App, document } = loadAppForCombat(() => 0.5, {

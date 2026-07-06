@@ -8,16 +8,28 @@ const YAW_CENTER_CONTEXT = {
         if (app.combatState?.active) return [];
         const entries = [];
         const seen = new Set();
+        const seenUnits = new Set();
         const isLiving = unit => {
             if (!unit) return false;
             if (typeof app._isCorpse === 'function' && app._isCorpse(unit)) return false;
             if (typeof app._isLivingCreature === 'function') return app._isLivingCreature(unit);
             return (unit.CPun ?? 1) > 0;
         };
+        const keyFor = (unit, type) => {
+            if (type === 'creature' && typeof app._explorationTargetUnitId === 'function') {
+                return `creature:${app._explorationTargetUnitId('creature', unit)}`;
+            }
+            if (typeof app._unitSelectionId === 'function') {
+                return `${type}:${app._unitSelectionId(unit)}`;
+            }
+            return `${type}:${unit?.id || unit?.name || entries.length}`;
+        };
         const add = (unit, type, meta, tone = type) => {
             if (!unit || !isLiving(unit)) return;
-            const key = unit.id || `${type}:${unit.name || entries.length}`;
+            if (seenUnits.has(unit)) return;
+            const key = keyFor(unit, type);
             if (seen.has(key)) return;
+            seenUnits.add(unit);
             seen.add(key);
             entries.push({ unit, type, meta, tone });
         };

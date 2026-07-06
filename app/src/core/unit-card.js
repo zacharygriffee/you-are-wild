@@ -44,7 +44,9 @@ const YAW_UNIT_CARD = {
                 const inventoryTitle = app._escapeHtml(app._label('action.inventory', 'Items'));
                 detailControls.push(`<button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-inventory" title="${inventoryTitle}" aria-label="${inventoryTitle}" onclick="event.stopPropagation();App.showInventory()">${inventoryLabel}</button>`);
             }
-            detailButtons = `<div class="unit-actions unit-detail-actions" ${app._unitActionRowAttrs('party-details', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${detailControls.join('')}</div>`;
+            if (isExpanded) {
+                detailButtons = `<div class="unit-actions unit-detail-actions" ${app._unitActionRowAttrs('party-details', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${detailControls.join('')}</div>`;
+            }
             const managementAttrs = 'data-command-surface="detail-management" data-command-mode="exploration"';
             if (!isLeader) {
                 const leadLabel = app._escapeHtml(app._label('party.makeLeader', 'Make Leader'));

@@ -8,7 +8,7 @@ const YAW_PANEL_RENDERING = {
         if (app.combatState?.active || !(app.quests || []).length) return '';
         const label = app._escapeHtml(app._label('quest.title', 'Quests'));
         const title = app._escapeHtml(app._label('quest.openLog', 'Open quest log'));
-        return `<div class="panel-interaction-tray party-panel-utilities" role="toolbar" aria-label="${label}"><div class="target-action-row"><button class="action-btn" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
+        return `<div class="panel-interaction-tray party-panel-utilities" data-surface-role="drawer-utility" role="toolbar" aria-label="${label}"><div class="target-action-row" data-command-surface="detail-management" data-command-mode="exploration"><button class="action-btn" data-command-control="open-quest-log" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
     },
 
     party(app) {
@@ -24,7 +24,7 @@ const YAW_PANEL_RENDERING = {
 
     showPartyDetail(app, title, html) {
         const label = app._escapeHtml(title || app._label('ui.party', 'Party'));
-        const detail = `<div class="party-panel-detail" role="region" aria-label="${label}">${html || ''}</div>`;
+        const detail = `<div class="party-panel-detail" data-surface-role="actor-detail" role="region" aria-label="${label}">${html || ''}</div>`;
         const container = document.getElementById('party-content');
         const mobileStrip = document.getElementById('mobile-party-strip');
         if (container) container.innerHTML = detail;
@@ -102,7 +102,7 @@ const YAW_PANEL_RENDERING = {
 
     showCreatureDetail(app, title, html) {
         const label = app._escapeHtml(title || app._label('ui.creatures', 'Creatures'));
-        const detail = `<div class="party-panel-detail creature-panel-detail" role="region" aria-label="${label}">${html || ''}</div>`;
+        const detail = `<div class="party-panel-detail creature-panel-detail" data-surface-role="target-detail" role="region" aria-label="${label}">${html || ''}</div>`;
         const container = document.getElementById('enemies-content');
         const mobileStrip = document.getElementById('mobile-creature-strip');
         const mobileCard = document.getElementById('mobile-creature-card');

@@ -1588,6 +1588,7 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, 'focusAttrs(app, unit, expanded = false)', 'Unit selection helper should own focus-toggle semantics');
   assertContains(unitSelectionContent, 'actionRowAttrs(app, scope, unit = null)', 'Unit selection helper should own action row semantics');
   assertContains(unitSelectionContent, "'party-selection': 'actor-target-routing'", 'Party selection rows should declare actor/target composer routing');
+  assertContains(unitSelectionContent, "'party-details': 'detail-management'", 'Party detail rows should declare detail-management routing separately from actor/target selection');
   assertContains(unitSelectionContent, "'creature-selection': 'target-routing'", 'Creature selection rows should declare target composer routing');
   assertContains(unitSelectionContent, "'corpse-utility': 'utility-actions'", 'Corpse utility rows should declare utility command routing');
   assertContains(unitSelectionContent, "'corpse-utility',", 'Corpse utility rows should identify the shared command grammar');
@@ -2162,6 +2163,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
+  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-details', unit)", 'Mobile party chip should label detail utility row semantics separately from actor/target selection');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Mobile creature chip should label target-only row semantics');
   assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile party Actor chip should identify button-level actor routing');
   assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile party Mark chip should identify button-level target routing');
@@ -2180,6 +2182,7 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Unit card helper should retain exact creature target marking');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','panel-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
+  assertContains(unitCardContent, "app._unitActionRowAttrs('party-details', unit)", 'Unit card helper should label detail utility row semantics separately from actor/target selection');
   assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Unit card helper should label creature target-only row semantics');
   assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Desktop party Actor button should identify button-level actor routing');
   assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Desktop party Mark button should identify button-level target routing');
@@ -13450,6 +13453,13 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(playerCard, 'aria-label="Focus You card"', 'Desktop card container should keep focus copy separate from actor selection');
   assertContains(playerCard, 'aria-expanded="false"', 'Desktop collapsed card should expose collapsed detail state');
   assertContains(playerCard, 'data-action-scope="party-selection" aria-label="Actor and target controls for You"', 'Desktop party action row should identify actor/target selection scope');
+  assertContains(playerCard, 'data-action-scope="party-details" aria-label="Detail controls for You"', 'Desktop party detail row should identify detail-management scope');
+  const playerSelectionStart = playerCard.indexOf('data-action-scope="party-selection"');
+  const playerDetailsStart = playerCard.indexOf('data-action-scope="party-details"');
+  assert(playerSelectionStart >= 0 && playerDetailsStart > playerSelectionStart, 'Desktop party detail row should render after actor/target selection row');
+  const playerSelectionRow = playerCard.slice(playerSelectionStart, playerDetailsStart);
+  assertNotContains(playerSelectionRow, 'open-party-stats', 'Desktop party selection row should not mix in Stats detail controls');
+  assertNotContains(playerSelectionRow, 'open-inventory', 'Desktop party selection row should not mix in inventory detail controls');
   assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Desktop party action row should identify actor-target composer routing');
   assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop party action row should identify the shared command grammar');
   assertContains(playerCard, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" data-selection-control="actor"', 'Desktop party Actor button should expose button-level actor routing');
@@ -13482,6 +13492,12 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-card-state="collapsed"', 'Mobile chip should expose collapsed focus/detail state separately from selection state');
   assertContains(mobilePlayerChip, 'aria-expanded="false"', 'Mobile collapsed chip should expose collapsed detail state');
   assertContains(mobilePlayerChip, 'data-action-scope="party-selection" aria-label="Actor and target controls for You"', 'Mobile party action row should identify actor/target selection scope');
+  assertContains(mobilePlayerChip, 'data-action-scope="party-details" aria-label="Detail controls for You"', 'Mobile party detail row should identify detail-management scope');
+  const mobileSelectionStart = mobilePlayerChip.indexOf('data-action-scope="party-selection"');
+  const mobileDetailsStart = mobilePlayerChip.indexOf('data-action-scope="party-details"');
+  assert(mobileSelectionStart >= 0 && mobileDetailsStart > mobileSelectionStart, 'Mobile party detail row should render after actor/target selection row');
+  const mobileSelectionRow = mobilePlayerChip.slice(mobileSelectionStart, mobileDetailsStart);
+  assertNotContains(mobileSelectionRow, 'open-party-stats', 'Mobile party selection row should not mix in Stats detail controls');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Mobile party action row should identify actor-target composer routing');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile party action row should identify the shared command grammar');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" data-selection-control="actor"', 'Mobile party Actor chip should expose button-level actor routing');

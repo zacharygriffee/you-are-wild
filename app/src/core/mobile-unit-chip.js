@@ -19,6 +19,7 @@ const YAW_MOBILE_UNIT_CHIP = {
         const chipButton = (classes, label, title, onclick, attrs = '') => `<button class="${classes}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}"${attrs ? ' ' + attrs : ''} onclick="${onclick}">${app._escapeHtml(label)}</button>`;
         const mobileIntent = action => `event.stopPropagation();App.selectIntent('creature','${explorationTargetKey}','${action}','mobile-chip')`;
         let actionButtons = '';
+        let detailButtons = '';
         if (isParty && !app.combatState.active) {
             const selectedActors = app._getExplorationActors();
             const selectedClass = selectedActors.includes(unit) ? ' primary' : '';
@@ -27,7 +28,8 @@ const YAW_MOBILE_UNIT_CHIP = {
             const targetPressed = targetSelected;
             const actorCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', actorPressed)}`;
             const targetCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetPressed)}`;
-            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}${chipButton('action-btn', app._label('party.stats', 'Stats'), app._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"')}</div>`;
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${chipButton('action-btn' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`;
+            detailButtons = `<div class="unit-actions unit-detail-actions" ${app._unitActionRowAttrs('party-details', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${chipButton('action-btn', app._label('party.stats', 'Stats'), app._label('party.statsFor', 'Show stats for {name}', { name: unitName }), `event.stopPropagation();App.showPartyMemberStats(${index})`, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"')}</div>`;
         } else if (isParty && app.combatState.active) {
             if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('sync-participants', unit)} style="display:flex;gap:4px;flex-wrap:wrap;">${app._syncParticipantButton(unit, true)}</div>`;
@@ -95,6 +97,7 @@ const YAW_MOBILE_UNIT_CHIP = {
                     ${app._unitTraitChips(unit, type)}
                     ${app._unitSelectionChips(unit, type)}
                     ${actionButtons}
+                    ${detailButtons}
                 </div>`;
     }
 };

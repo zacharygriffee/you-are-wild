@@ -89,6 +89,7 @@ const YAW_UNIT_SELECTION = {
         const name = unit?.name || app._label('unit.generic', 'unit');
         const labels = {
             'party-selection': app._label('unit.row.partySelection', 'Actor and target controls for {name}', { name }),
+            'party-details': app._label('unit.row.partyDetails', 'Detail controls for {name}', { name }),
             'party-management': app._label('unit.row.partyManagement', 'Party management controls for {name}', { name }),
             'sync-participants': app._label('unit.row.syncParticipants', 'Sync participant controls for {name}', { name }),
             'combat-actions': app._label('unit.row.combatActions', 'Combat intent controls for {name}', { name }),
@@ -103,6 +104,7 @@ const YAW_UNIT_SELECTION = {
             'combat-actions': 'combat-intents',
             'corpse-utility': 'utility-actions',
             'combat-target': 'combat-targeting',
+            'party-details': 'detail-management',
             'party-management': 'detail-management'
         };
         const commandModes = {

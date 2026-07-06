@@ -78,15 +78,26 @@ const YAW_CENTER_CONTEXT = {
     },
 
     renderPresence(app) {
-        const slots = ['center-presence']
-            .map(id => document.getElementById(id))
-            .filter(Boolean);
-        slots.forEach(slot => { slot.innerHTML = ''; });
-        return '';
+        const centerSlot = document.getElementById('center-presence');
+        if (centerSlot) centerSlot.innerHTML = '';
+        const rail = document.getElementById('desktop-presence-rail');
+        if (!rail) return '';
+        rail.innerHTML = '';
+        const entries = this.presenceEntries(app);
+        if (!entries.length) return '';
+        const visible = entries.slice(0, 6);
+        const extra = entries.length - visible.length;
+        const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
+        const more = extra > 0
+            ? `<span class="center-presence-more">${app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }))}</span>`
+            : '';
+        const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
+        rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;
+        return rail.innerHTML;
     },
 
     clearPresence() {
-        ['center-presence'].forEach(id => {
+        ['center-presence', 'desktop-presence-rail'].forEach(id => {
             const slot = document.getElementById(id);
             if (slot) slot.innerHTML = '';
         });

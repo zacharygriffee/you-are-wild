@@ -2576,13 +2576,15 @@ test('Center context helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/center-context.js'", 'Center context helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/center-context.js'") < buildContent.indexOf("'src/core/app.js'"), 'Center context helper should load before app.js');
   assertContains(centerContextContent, 'const YAW_CENTER_CONTEXT = {', 'Center context helper should expose the center context service');
-  assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own clearing deprecated desktop presence rendering');
+  assertContains(centerContextContent, 'renderPresence(app)', 'Center context helper should own desktop stage presence rendering');
+  assertContains(centerContextContent, "document.getElementById('desktop-presence-rail')", 'Center context helper should render presence into the desktop stage rail');
+  assertContains(centerContextContent, "if (centerSlot) centerSlot.innerHTML = ''", 'Center context helper should keep the center presentation slot free of presence blocks');
   assertContains(centerContextContent, 'focusPresence(app, type, ref)', 'Center context helper should focus presence chips into detail panels');
-  assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear center tile presence for non-exploration views');
+  assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
-  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should clear deprecated center presence');
-  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear center tile presence');
+  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should refresh desktop stage presence');
+  assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.context(this)', 'App center tile context should delegate to the helper');
   assertContains(appContent, 'YAW_CENTER_CONTEXT.renderActions(this, includePanels)', 'App center context action renderer should delegate to the helper');
@@ -3910,6 +3912,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, 'id="center-presence"', 'desktop center presence slot missing');
+  assertContains(template, 'id="desktop-presence-rail"', 'desktop stage presence rail missing');
   assertNotContains(template, 'id="mobile-center-presence"', 'mobile scene sheet should not duplicate the full here/presence block');
   assertContains(template, '.center-presence-chip', 'center presence chips should have bounded styling');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
@@ -3918,6 +3921,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="selection-sentence"'), 'Desktop selection sentence should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-presence-rail"'), 'Desktop presence rail should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="desktop-presence-rail"') < template.indexOf('id="selection-sentence"'), 'Desktop presence rail should sit above the command sentence');
   assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
   assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
@@ -6741,7 +6746,12 @@ test('Center tile stays traversal and context only across interaction states', (
   App.combatState.active = false;
 
   App.renderCenterPresence();
-  assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence already shown in panels and traversal chips');
+  assertEqual(el('center-presence').innerHTML, '', 'Exploration center tile should not duplicate local presence inside the presentation tile');
+  assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should focus party presence through detail panels');
+  assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('creature','friendly-1')", 'Desktop stage rail should focus creature presence through detail panels');
+  assertNotContains(el('desktop-presence-rail').innerHTML, 'toggleExplorationTarget(', 'Desktop stage rail should not duplicate target marking controls');
+  assertNotContains(el('desktop-presence-rail').innerHTML, 'selectIntent(', 'Desktop stage rail should not duplicate intent controls');
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
 
@@ -6784,6 +6794,7 @@ test('Center tile stays traversal and context only across interaction states', (
   App.showActorActions(player);
   assertCenterOnly('combat actor actions');
   assertEqual(el('center-presence').innerHTML, '', 'Combat scene should clear exploration presence from the center tile');
+  assertEqual(el('desktop-presence-rail').innerHTML, '', 'Combat scene should clear exploration presence from the desktop stage rail');
   assertContains(el('desktop-context-belt').innerHTML, 'executeCombatIntent(', 'Combat actor controls should live in the desktop composer belt');
   assertNotContains(el('party-content').innerHTML, 'executeCombatIntent(', 'Combat party cards should not duplicate composer-owned intent controls');
 

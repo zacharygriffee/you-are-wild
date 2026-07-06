@@ -705,8 +705,20 @@
         }
 
         .center-presence:empty,
-        .center-presence-slot:empty {
+        .center-presence-slot:empty,
+        .desktop-presence-rail:empty {
             display: none;
+        }
+
+        .desktop-presence-rail {
+            width: 100%;
+            max-width: 720px;
+            margin: 8px auto 0;
+        }
+
+        .desktop-presence-rail .center-presence {
+            max-width: none;
+            padding: 6px;
         }
 
         .center-presence-title {
@@ -4093,6 +4105,7 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
+                            <div class="desktop-presence-rail" id="desktop-presence-rail" aria-live="polite"></div>
                             <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
                             <div class="desktop-context-belt" id="desktop-context-belt" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
                         </div>

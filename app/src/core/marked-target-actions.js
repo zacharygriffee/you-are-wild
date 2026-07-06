@@ -48,7 +48,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));
-        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-mode="exploration" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
+        const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-mode="exploration" data-command-control="clear-targets" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'panel-tray'
             ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
             : actionRow;

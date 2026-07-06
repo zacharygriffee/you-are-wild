@@ -10622,6 +10622,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, 'data-command-surface="target-intents"', 'Mobile target action tray should identify the composer intent surface');
   assertContains(trayHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Mobile target action tray should identify exploration command mode');
+  assertContains(trayHtml, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile target action tray should identify the shared command grammar');
   assertContains(trayHtml, 'aria-label="Target intent controls"', 'Mobile target action tray should expose the target intent surface label');
   assertContains(trayHtml, 'data-command-intent="fight"', 'Mobile target action tray should mark primary intent buttons with stable action ids');
   assertContains(trayHtml, 'data-command-mode="exploration" data-command-intent="fight"', 'Mobile target action tray should identify exploration command mode on intent buttons');
@@ -14781,6 +14782,7 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
 
   const html = App._renderExplorationTargetActions('desktop');
   assertContains(html, 'class="target-action-row"', 'Desktop marked-target actions should be wrapped in a bounded row');
+  assertContains(html, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target actions should identify the shared command grammar');
   assertContains(html, "App.resolveExplorationTargetAction('fight','attack','desktop-target')", 'Desktop marked-target Fight should dispatch the default attack directly');
   assertContains(html, "App.resolveExplorationTargetAction('feast','swallow','desktop-target')", 'Desktop marked-target Feast should dispatch the default swallow directly');
   assertNotContains(html, 'aria-controls="desktop-intent-menu"', 'Desktop marked-target default actions should not require a popup');

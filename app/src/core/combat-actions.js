@@ -33,7 +33,7 @@ const YAW_COMBAT_ACTIONS = {
         const actorLocked = id === app.syncSelection.actorId;
         const label = actorLocked
             ? app._label('target.actorRole', 'Actor')
-            : (selected ? app._label('target.targetRole', 'Target') : app._label('combat.sync.selectParticipants', 'Select participants for sync'));
+            : (selected ? app._label('combat.sync.participantRole', 'Participant') : app._label('combat.sync.selectParticipants', 'Select participants for sync'));
         const title = app._escapeHtml(app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name: unit.name || 'ally' }));
         const disabled = actorLocked ? ' disabled' : '';
         return `<button class="action-btn${selected ? ' primary' : ''}" title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${app._escapeHtml(compact ? (selected ? '✓' : '+') : label)}</button>`;

@@ -1318,6 +1318,11 @@
             box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
         }
 
+        .unit-card.selected-participant {
+            border-color: var(--accent-warning);
+            box-shadow: 0 0 0 1px rgba(255, 184, 0, 0.35);
+        }
+
         .unit-card.selected-actor.selected-target {
             border-color: var(--accent-warning);
             box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.45), 0 0 0 3px rgba(255, 0, 128, 0.22), var(--shadow-glow);
@@ -1686,6 +1691,12 @@
             color: var(--accent-secondary);
             border-color: rgba(255, 0, 128, 0.45);
             background: rgba(255, 0, 128, 0.12);
+        }
+
+        .unit-trait-chip.selection[data-selection-role="participant"] {
+            color: var(--accent-warning);
+            border-color: rgba(255, 184, 0, 0.45);
+            background: rgba(255, 184, 0, 0.12);
         }
 
 
@@ -3093,6 +3104,11 @@
             .mobile-unit-chip.selected-target {
                 border-color: var(--accent-secondary);
                 box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
+            }
+
+            .mobile-unit-chip.selected-participant {
+                border-color: var(--accent-warning);
+                box-shadow: 0 0 0 1px rgba(255, 184, 0, 0.35);
             }
 
             .mobile-unit-chip.selected-actor.selected-target {

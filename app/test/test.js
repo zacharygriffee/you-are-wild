@@ -8019,11 +8019,14 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertNotContains(template, '.selected-target-summary > span', 'Selected-target summary wrapping should not remain as dead styling');
   assertContains(template, '.unit-card.selected-actor', 'Actor-selected cards should have distinct styling');
   assertContains(template, '.unit-card.selected-target', 'Target-selected cards should have distinct styling');
+  assertContains(template, '.unit-card.selected-participant', 'Sync participant cards should have distinct styling');
   assertContains(template, '.unit-card.selected-actor.selected-target', 'Cards selected as actor and target should have combined styling');
   assertContains(template, '.unit-trait-chip.selection[data-selection-role="actor"]', 'Actor role chips should have distinct styling');
   assertContains(template, '.unit-trait-chip.selection[data-selection-role="target"]', 'Target role chips should have distinct styling');
+  assertContains(template, '.unit-trait-chip.selection[data-selection-role="participant"]', 'Sync participant role chips should have distinct styling');
   assertContains(template, '.mobile-unit-chip.selected-actor', 'Mobile actor selection should have distinct styling');
   assertContains(template, '.mobile-unit-chip.selected-target', 'Mobile target selection should have distinct styling');
+  assertContains(template, '.mobile-unit-chip.selected-participant', 'Mobile sync participant selection should have distinct styling');
   assertContains(template, 'overflow-wrap: anywhere;', 'Long selected actor and target names should wrap instead of forcing horizontal scroll');
   assertContains(template, '.desktop-context-belt .action-caption', 'Desktop context belt action captions should be constrained independently');
   assertContains(template, '.desktop-context-belt .target-action-row .action-icon', 'Selected-target action icons should be compact inside the desktop composer belt');
@@ -8071,6 +8074,50 @@ test('Exploration creature marks stay scoped to the selected card when ids colli
   assertContains(plantCard, 'selected selected-target', 'Marked duplicate-id creature card should render marked state');
   assertContains(plantCard, "toggleExplorationTarget('creature','@creature:1:shared-creature')", 'Desktop Mark control should target the exact duplicate creature ref');
   assertContains(plantChip, "toggleExplorationTarget('creature','@creature:1:shared-creature')", 'Mobile Mark control should target the exact duplicate creature ref');
+});
+
+test('Sync participant selection uses participant role instead of target role', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'sync-role-player' });
+  const ally = makeUnit('Ally', { id: 'sync-role-ally' });
+  const enemy = makeUnit('Enemy', { id: 'sync-role-enemy', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [
+      { unit: player, initiative: 20 },
+      { unit: ally, initiative: 10 },
+      { unit: enemy, initiative: 5 }
+    ],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.syncSelection = {
+    active: true,
+    phase: 'participants',
+    actorId: 'sync-role-player',
+    participantIds: ['sync-role-player', 'sync-role-ally'],
+    type: 'sync_fight'
+  };
+  App.updateLanguage('es');
+
+  const playerCard = App.renderUnitCard(player, 0, 'party');
+  const allyCard = App.renderUnitCard(ally, 1, 'party');
+  const allyChip = App.renderMobileUnitChip(ally, 1, 'party');
+
+  assertContains(playerCard, 'data-selection-role="actor" title="Actor">Actor</span>', 'Locked sync actor should keep the actor role chip');
+  assertContains(allyCard, 'class="unit-card selected selected-participant"', 'Selected sync helper card should expose participant selection state');
+  assertContains(allyCard, 'data-selection-role="participant" title="Participante">Participante</span>', 'Selected sync helper card should label participant state');
+  assertContains(allyCard, '>Participante</button>', 'Selected sync helper button should say Participant instead of Target');
+  assertNotContains(allyCard, 'data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected sync helper should not be presented as a target chip');
+  assertNotContains(allyCard, '>Objetivo</button>', 'Selected sync helper button should not say Target');
+  assertContains(allyChip, 'class="mobile-unit-chip selected selected-participant"', 'Mobile selected sync helper chip should expose participant state');
+  assertContains(allyChip, 'data-selection-role="participant" title="Participante">Participante</span>', 'Mobile selected sync helper chip should label participant state');
 });
 
 test('Desktop creature card action labels localize', () => {

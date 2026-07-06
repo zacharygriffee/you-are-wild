@@ -10,14 +10,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const actorState = app._selectedExplorationActorState();
         const actors = actorState.valid ? actorState.actors : [];
         const label = app._escapeHtml(app._t(targets.length === 1 ? 'target.count' : 'target.count_plural', { count: targets.length }));
-        const actorNames = actorState.valid
-            ? (actors.map(actor => actor.name).join(', ') || 'You')
-            : app._label('target.invalidActorSummary', 'Select a living actor');
-        const targetNames = targets.map(target => target.name).join(', ');
-        const summary = {
-            primaryActor: actorState.valid ? (actors[0] || app.player) : null,
-            helperNames: actorState.valid ? actors.slice(1).map(actor => actor.name) : []
-        };
+        const primaryActor = actorState.valid ? (actors[0] || app.player) : null;
         const singleTarget = targets.length === 1 ? targets[0] : null;
         const singleCreatureTarget = singleTarget && !app.party.includes(singleTarget) && !app._isCorpse(singleTarget)
             ? singleTarget
@@ -44,7 +37,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 return `<button class="action-btn contextual-utility" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
             };
             buttons.push(utilityButton('inspect', 'inspect', '👁️'));
-            const actor = summary.primaryActor || app._getExplorationActor();
+            const actor = primaryActor || app._getExplorationActor();
             if (app._canRecruit(actor, singleCreatureTarget)) buttons.push(utilityButton('recruit', 'recruit', '💕'));
             if (singleCreatureTarget.quest) buttons.push(utilityButton(singleCreatureTarget.questAccepted ? 'viewQuest' : 'acceptQuest', 'quest', '📜'));
             if (singleCreatureTarget.disposition === app.DISPOSITION.MERCHANT) buttons.push(utilityButton('trade', 'trade', '🪙'));
@@ -52,14 +45,10 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const buttonHtml = buttons.join('');
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
-        const primaryLine = summary.primaryActor ? `<span class="selected-target-primary">${app._escapeHtml(app._label('target.primaryActor', 'Primary'))}: ${app._escapeHtml(summary.primaryActor.name || 'You')}</span>` : '';
-        const helperLine = summary.helperNames?.length ? `<span class="selected-target-helpers">${app._escapeHtml(app._label('target.helpers', 'Helpers'))}: ${app._escapeHtml(summary.helperNames.join(', '))}</span>` : '';
-        const summaryHtml = `<div class="action-legend selected-target-summary" aria-label="${app._escapeHtml(app._label('target.selectedSummary', 'Selected exploration targets'))}"><span>${app._t('target.actors')}: ${app._escapeHtml(actorNames)}</span>${primaryLine}${helperLine}<span>${app._t('target.targets')}: ${app._escapeHtml(targetNames)}</span></div>`;
         const actionRow = `<div class="target-action-row">${buttonHtml}<button class="action-btn" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
-        const content = source === 'desktop' || source === 'mobile-target' ? actionRow : `${summaryHtml}${actionRow}`;
         return source === 'panel-tray'
-            ? `<div class="panel-interaction-tray adventure-interaction-tray">${content}</div>`
-            : content;
+            ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
+            : actionRow;
     },
 
     openSubActionSheet(app, action, source = 'target-bar') {

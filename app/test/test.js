@@ -7146,8 +7146,10 @@ test('Explicit player actor selection can remain primary in group interactions',
   assertEqual(App.explorationActorIds.join(','), 'player-1,ally-1', 'Explicit player selection should stay first when adding a helper');
   assertEqual(App.explorationActorSelectionExplicit, true, 'Clicking the default player actor should promote the selection to explicit');
   const trayHtml = App._renderExplorationTargetActions('panel-tray');
-  assertContains(trayHtml, 'Primary: You', 'Marked target tray should allow the player to be primary in a group interaction');
-  assertContains(trayHtml, 'Helpers: Ally', 'Marked target tray should show later selected party members as helpers');
+  assertNotContains(trayHtml, 'selected-target-summary', 'Marked target tray should leave group summaries to the composer sentence');
+  const sentenceHtml = App.renderSelectionSentence();
+  assertContains(sentenceHtml, 'You + Ally', 'Composer sentence should allow the player to remain first in a group interaction');
+  assertContains(sentenceHtml, 'Target', 'Composer sentence should show the marked target for the group interaction');
 });
 
 test('Multiple selected party actors can play-fight one party target nonlethally', () => {
@@ -7717,8 +7719,10 @@ test('Marked target action rejects stale selected actors without falling back to
   App.explorationActorId = 'missing-actor';
   App.toggleExplorationTarget('party', 'target-a');
   const trayHtml = App._renderExplorationTargetActions('panel-tray');
-  assertContains(trayHtml, 'Select a living actor', 'Marked target tray should explain stale actor selection instead of showing player fallback');
-  assertNotContains(trayHtml, 'Primary: Player', 'Marked target tray should not present the player as primary when explicit actor selection is stale');
+  assertNotContains(trayHtml, 'selected-target-summary', 'Marked target tray should leave stale actor correction to the composer sentence');
+  const sentenceHtml = App.renderSelectionSentence();
+  assertContains(sentenceHtml, 'Select a living actor', 'Composer sentence should explain stale actor selection instead of showing player fallback');
+  assertNotContains(sentenceHtml, 'Player', 'Composer sentence should not present the player as primary when explicit actor selection is stale');
 
   const resolved = App.resolveExplorationTargetAction('flirt', 'tease', 'panel-tray');
 
@@ -7984,8 +7988,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actionsHtml, 'aria-label="Limpiar objetivos"', 'Selected-target clear action should localize its accessible label');
   assertContains(actionsHtml, '>Limpiar<', 'Selected-target clear action should localize its visible label');
   assertContains(template, '.panel-interaction-tray .target-action-row', 'Selected-target action buttons should use bounded panel tray sizing');
-  assertContains(template, '.panel-interaction-tray .selected-target-summary', 'Selected-target summary should be constrained as a panel tray item');
-  assertContains(template, '.selected-target-summary > span', 'Selected-target summary labels should wrap individually');
+  assertNotContains(template, '.panel-interaction-tray .selected-target-summary', 'Panel trays should not carry duplicate selected-target summary styling');
+  assertNotContains(template, '.selected-target-summary > span', 'Selected-target summary wrapping should not remain as dead styling');
   assertContains(template, '.unit-card.selected-actor', 'Actor-selected cards should have distinct styling');
   assertContains(template, '.unit-card.selected-target', 'Target-selected cards should have distinct styling');
   assertContains(template, '.unit-card.selected-actor.selected-target', 'Cards selected as actor and target should have combined styling');

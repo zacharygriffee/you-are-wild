@@ -4860,6 +4860,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Sync fight should expose combat command mode');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
+  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync action composer should tag cancel as a combat-mode exit');
   assertContains(html, 'data-command-control="cancel-sync"', 'Sync action composer should expose a structural cancel control');
   assertContains(html, 'Cancel Sync', 'Sync tray should expose a mode-specific cancel exit');
   assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
@@ -4871,6 +4872,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'data-command-surface="sync-participants"', 'Sync participant composer should identify its participant surface');
   assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Sync participant composer should identify combat command mode');
   assertContains(html, 'data-command-control="confirm-sync-participants"', 'Sync participant composer should expose confirm as a structural control');
+  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync participant composer should tag cancel as a combat-mode exit');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
@@ -4883,6 +4885,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
   assertContains(html, 'data-command-surface="sync-targeting"', 'Sync target composer should identify its target-pick surface');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Sync target composer should identify combat command mode');
+  assertContains(html, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Sync target composer should tag cancel as a combat-mode exit');
   assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
@@ -5543,11 +5546,14 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat desktop command belt should identify the recovery surface');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'recovery', 'Defeat desktop command belt should identify recovery command mode');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="regenerate"', 'Defeat desktop command belt should expose Regenerate structurally');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="recovery" data-command-control="regenerate"', 'Defeat desktop Regenerate should identify recovery command mode');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'End Game', 'Defeat should offer end game in the desktop command belt');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="end-game"', 'Defeat desktop command belt should expose End Game structurally');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="recovery" data-command-control="end-game"', 'Defeat desktop End Game should identify recovery command mode');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat mobile command belt should identify the recovery surface');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), 'recovery', 'Defeat mobile command belt should identify recovery command mode');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the mobile command belt');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="recovery" data-command-control="regenerate"', 'Defeat mobile Regenerate should identify recovery command mode');
 });
 
 test('Defeat regeneration restores the safe anchor without clearing defeated tile enemies', () => {
@@ -5808,6 +5814,7 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   assertContains(composerHtml, 'data-command-intent="feed:heal"', 'Feed options should expose stable sub-action intent ids');
   assertContains(composerHtml, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Feed options should expose combat command mode on sub-action intents');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
+  assertContains(composerHtml, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Feed options should tag cancel as a combat-mode exit');
   assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
   assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
   assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
@@ -10374,6 +10381,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="fight"', 'Mobile combat target-pick sentence should expose selected intent metadata');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting"', 'Mobile combat target phase should identify the target-pick control surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target phase should identify combat command mode');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-targeting"', 'Mobile combat target phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
@@ -10388,6 +10396,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents" data-command-mode="combat"', 'Mobile Sync choose phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync_fight"', 'Mobile Sync choose phase should expose stable group intent ids');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="sync_fight"', 'Mobile Sync choose buttons should identify combat command mode on the action itself');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync choose phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
 
   App.syncSelection = null;
@@ -10395,6 +10404,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="feed-options"', 'Mobile Feed phase should identify the feed options surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-intent="feed:heal"', 'Mobile Feed option buttons should identify combat command mode on the sub-action itself');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-feed"', 'Mobile Feed phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-feed"', 'Mobile Feed phase should expose a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
@@ -10403,12 +10413,14 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants"', 'Mobile Sync participant phase should identify the participant surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Mobile Sync participant phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants"', 'Mobile Sync participant phase should expose confirm structurally');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync participant phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync participant phase should keep a structural cancel control');
 
   App.syncSelection = { active: true, phase: 'target', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting"', 'Mobile Sync target phase should identify the target surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Mobile Sync target phase should identify combat command mode');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat" data-command-control="cancel-sync"', 'Mobile Sync target phase should tag cancel as a combat-mode exit');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync target phase should keep a structural cancel control');
 
   App.combatState.active = false;

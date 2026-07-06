@@ -146,7 +146,7 @@ const YAW_DEFEAT_RECOVERY = {
     recoveryControlsHtml(app) {
         const regenerate = app._escapeHtml(app._label('recovery.regenerate', 'Regenerate'));
         const endGame = app._escapeHtml(app._label('recovery.endGame', 'End Game'));
-        return `<button class="action-btn primary" data-command-control="regenerate" onclick="App.regenerateFromDefeat()">${regenerate}</button><button class="action-btn danger" data-command-control="end-game" onclick="App.endDefeatedRun()">${endGame}</button>`;
+        return `<button class="action-btn primary" data-command-mode="recovery" data-command-control="regenerate" onclick="App.regenerateFromDefeat()">${regenerate}</button><button class="action-btn danger" data-command-mode="recovery" data-command-control="end-game" onclick="App.endDefeatedRun()">${endGame}</button>`;
     },
 
     renderRecoveryControls(app) {

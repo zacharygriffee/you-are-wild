@@ -7,7 +7,7 @@ const YAW_CREATE_FLOW = {
     initSpeciesGrid(app) {
         const grid = document.getElementById('species-grid');
         if (grid) {
-            grid.innerHTML = app.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
+            grid.innerHTML = app.species.map(s => `<div class="option-card ${s.id === 'human' ? 'selected' : ''}" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-species" data-create-option="${s.id}" data-species="${s.id}" onclick="App.selectSpecies('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div style="font-size:48px">${s.icon}</div><div style="font-weight:600;color:var(--text-primary)">${s.name}</div><div style="font-size:12px;color:var(--text-muted)">${s.desc}</div></div>`).join('');
         }
     },
 
@@ -152,15 +152,18 @@ const YAW_CREATE_FLOW = {
             const sectionId = section.dataset.accordion;
             const body = document.getElementById('body-' + sectionId);
             const arrow = document.getElementById('arrow-' + sectionId);
+            const header = section.querySelector?.('.accordion-header');
             if (!body || !arrow) return;
             if (sectionId === 'anatomy' && this.isSafeTier(app)) {
                 body.style.display = 'none';
                 arrow.textContent = '▶';
+                if (header) header.setAttribute('aria-expanded', 'false');
                 return;
             }
             const isSelected = sectionId === targetId;
             body.style.display = isSelected ? 'block' : 'none';
             arrow.textContent = isSelected ? '▼' : '▶';
+            if (header) header.setAttribute('aria-expanded', isSelected ? 'true' : 'false');
         });
     },
 
@@ -168,7 +171,7 @@ const YAW_CREATE_FLOW = {
         const grid = document.getElementById('body-parts-grid');
         if (!grid) return;
         grid.innerHTML = Object.entries(app.BODY_PARTS).map(([id, part]) =>
-            `<div class="option-card" data-part="${id}" onclick="App.toggleBodyPart('${id}');this.classList.toggle('selected');">
+            `<div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-trait" data-create-option="${id}" data-part="${id}" onclick="App.toggleBodyPart('${id}');this.classList.toggle('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                         <div style="font-weight:600;color:var(--text-primary)">${part.label}</div>
                         <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${part.desc}</div>
                     </div>`

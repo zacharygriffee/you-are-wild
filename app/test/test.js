@@ -3993,11 +3993,11 @@ test('Create screen is constrained for mobile scrolling', () => {
 test('Create screen defaults to safe identity-first creation', () => {
   assertContains(appContent, 'selectedGender: null', 'gender should not be selected by default');
   assertContains(appContent, 'selectedParts: []', 'anatomy should not be selected by default');
-  assertContains(template, '<div class="option-card" data-value="female"', 'female option should not be auto-selected in the template');
-  assertContains(template, '<div class="option-card" data-value="male"', 'male option should be available in the template');
-  assertContains(template, '<div class="option-card" data-value="nonbinary"', 'non-binary option should be available in the template');
-  assertContains(template, '<div class="option-card" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
-  assertContains(template, '<div class="option-card" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
+  assertContains(template, 'data-command-control="select-identity" data-create-option="female" data-value="female"', 'female identity option should be a tagged setup control');
+  assertContains(template, 'data-command-control="select-identity" data-create-option="male" data-value="male"', 'male identity option should be available as a tagged setup control');
+  assertContains(template, 'data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary"', 'non-binary identity option should be available as a tagged setup control');
+  assertContains(template, 'data-command-control="select-body-type" data-create-option="body-type-a" data-part="clit"', 'primary anatomy option should not be auto-selected in the template');
+  assertContains(template, 'data-command-control="select-body-type" data-create-option="chest-type-a" data-part="tits"', 'chest anatomy option should not be auto-selected in the template');
   assertNotContains(template, 'id="char-name" type="text" placeholder="Enter your name..." value="You"', 'Name input should not default to a pronoun-like player name');
   assert(template.indexOf('data-accordion="preferences"') < template.indexOf('id="char-name"'), 'Name input should appear after core identity and preference choices');
   assert(template.indexOf('id="char-name"') < template.indexOf('id="create-validation"'), 'Name input should remain near the final submit controls');
@@ -4106,8 +4106,8 @@ test('Create screen encounter preferences use dynamic identity percentages', () 
   assertContains(template, 'id="encounter-weight-male"', 'male encounter percentage control missing');
   assertContains(template, 'id="encounter-weight-nonbinary"', 'non-binary encounter percentage control missing');
   assertContains(template, "App.selectEncounterPreference('nonbinary')", 'non-binary preference preset missing');
-  assertContains(template, 'data-value="any" onclick="App.selectEncounterPreference(\'any\')"', 'Any preset should route through the preference helper');
-  assertContains(template, '<div class="option-card selected" data-value="any"', 'Any should be the default preferred-encounter preset');
+  assertContains(template, 'data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference(\'any\')"', 'Any preset should route through the preference helper');
+  assertContains(template, '<div class="option-card selected" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any"', 'Any should be the default preferred-encounter preset');
   assertContains(appContent, 'selectedEncounterWeights: { female: 34, male: 33, nonbinary: 33 }', 'default encounter weights should be explicit');
   assertContains(encounterPreferencesContent, "preset(value)", 'encounter preset helper missing');
   assertContains(encounterPreferencesContent, "pickIdentity(rollValue", 'encounter identity picker missing');
@@ -4117,9 +4117,19 @@ test('Create screen encounter preferences use dynamic identity percentages', () 
 });
 
 test('Species accordion is the default expanded section', () => {
+  assertContains(template, 'data-command-control="toggle-create-section" data-create-section="species" aria-controls="body-species" aria-expanded="true"', 'species accordion header should be a tagged setup toggle');
   assertContains(template, 'id="body-species" style="display:block;"', 'species body should be open by default');
   assertContains(template, 'id="arrow-species">▼</span>', 'species arrow should be open by default');
+  assertContains(template, 'data-command-control="toggle-create-section" data-create-section="gender" aria-controls="body-gender" aria-expanded="false"', 'collapsed create accordions should expose their collapsed state');
   assertContains(template, 'id="body-gender" style="display:none;"', 'gender should start collapsed');
+});
+
+test('Create setup option cards are tagged and keyboard operable', () => {
+  assertContains(template, 'role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity"', 'static create option cards should be classified as setup buttons');
+  assertContains(template, 'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}"', 'static create option cards should support keyboard activation');
+  assertContains(createFlowContent, 'data-command-control="select-species"', 'dynamic species option cards should be classified as setup controls');
+  assertContains(createFlowContent, 'data-command-control="toggle-trait"', 'dynamic trait option cards should be classified as setup controls');
+  assertContains(createFlowContent, "header.setAttribute('aria-expanded', isSelected ? 'true' : 'false')", 'accordion toggles should keep expanded state synchronized');
 });
 
 test('Mobile game shell prevents horizontal overflow', () => {

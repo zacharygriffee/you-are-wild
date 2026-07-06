@@ -3947,7 +3947,7 @@
 
             <!-- Species Selection -->
             <div class="accordion-section" data-accordion="species">
-                <div class="accordion-header" onclick="App.toggleAccordion('species')">
+                <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="species" aria-controls="body-species" aria-expanded="true" onclick="App.toggleAccordion('species')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('species')}">
                     <span>Choose Your Species</span>
                     <span class="accordion-arrow" id="arrow-species">▼</span>
                 </div>
@@ -3963,23 +3963,23 @@
 
             <!-- Gender Selection -->
             <div class="accordion-section" data-accordion="gender">
-                <div class="accordion-header" onclick="App.toggleAccordion('gender')">
+                <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="gender" aria-controls="body-gender" aria-expanded="false" onclick="App.toggleAccordion('gender')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('gender')}">
                     <span>Gender</span>
                     <span class="accordion-arrow" id="arrow-gender">▶</span>
                 </div>
                 <div class="accordion-body" id="body-gender" style="display:none;">
                     <div class="option-grid" id="gender-grid">
-                        <div class="option-card" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="female" data-value="female" onclick="App.selectGender('female');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
                             <div class="option-label">Female</div>
                             <div class="option-desc">Play as female</div>
                         </div>
-                        <div class="option-card" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="male" data-value="male" onclick="App.selectGender('male');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
                             <div class="option-label">Male</div>
                             <div class="option-desc">Play as male</div>
                         </div>
-                        <div class="option-card" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-identity" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectGender('nonbinary');document.querySelectorAll('#gender-grid .option-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
                             <div class="option-label">Non-Binary</div>
                             <div class="option-desc">Other gender identity</div>
@@ -3990,25 +3990,25 @@
 
             <!-- Body Type Selection -->
             <div class="accordion-section" data-accordion="anatomy">
-                <div class="accordion-header" onclick="App.toggleAccordion('anatomy')">
+                <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="anatomy" aria-controls="body-anatomy" aria-expanded="false" onclick="App.toggleAccordion('anatomy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('anatomy')}">
                     <span>Body Type</span>
                     <span class="accordion-arrow" id="arrow-anatomy">▶</span>
                 </div>
                 <div class="accordion-body" id="body-anatomy" style="display:none;">
                     <div class="option-grid" id="anatomy-grid">
-                        <div class="option-card" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-a" data-part="clit" onclick="App.selectPart('clit');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">◇</div>
                             <div class="option-label">Body Type A</div>
                         </div>
-                        <div class="option-card" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="body-type-b" data-part="cock" onclick="App.selectPart('cock');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">◆</div>
                             <div class="option-label">Body Type B</div>
                         </div>
-                        <div class="option-card" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-a" data-part="tits" onclick="App.selectPart('tits');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">△</div>
                             <div class="option-label">Chest Type A</div>
                         </div>
-                        <div class="option-card" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-body-type" data-create-option="chest-type-b" data-part="pecs" onclick="App.selectPart('pecs');App.updateAnatomyUI();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">💪</div>
                             <div class="option-label">Chest Type B</div>
                         </div>
@@ -4018,7 +4018,7 @@
 
             <!-- Trait Selection -->
             <div class="accordion-section" data-accordion="bodyparts">
-                <div class="accordion-header" onclick="App.toggleAccordion('bodyparts')">
+                <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="bodyparts" aria-controls="body-bodyparts" aria-expanded="false" onclick="App.toggleAccordion('bodyparts')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('bodyparts')}">
                     <span>Traits</span>
                     <span class="accordion-arrow" id="arrow-bodyparts">▶</span>
                 </div>
@@ -4031,28 +4031,28 @@
 
             <!-- Target Preferences -->
             <div class="accordion-section" data-accordion="preferences">
-                <div class="accordion-header" onclick="App.toggleAccordion('preferences')">
+                <div class="accordion-header" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="toggle-create-section" data-create-section="preferences" aria-controls="body-preferences" aria-expanded="false" onclick="App.toggleAccordion('preferences')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleAccordion('preferences')}">
                     <span>Preferred Encounters</span>
                     <span class="accordion-arrow" id="arrow-preferences">▶</span>
                 </div>
                 <div class="accordion-body" id="body-preferences" style="display:none;">
                     <div class="option-grid" id="preference-grid">
-                        <div class="option-card" data-value="female" onclick="App.selectEncounterPreference('female')">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="female" data-value="female" onclick="App.selectEncounterPreference('female')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♀️</div>
                             <div class="option-label">Females</div>
                             <div class="option-desc">75% bias</div>
                         </div>
-                        <div class="option-card" data-value="male" onclick="App.selectEncounterPreference('male')">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="male" data-value="male" onclick="App.selectEncounterPreference('male')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">♂️</div>
                             <div class="option-label">Males</div>
                             <div class="option-desc">75% bias</div>
                         </div>
-                        <div class="option-card" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')">
+                        <div class="option-card" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="nonbinary" data-value="nonbinary" onclick="App.selectEncounterPreference('nonbinary')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">⚧</div>
                             <div class="option-label">Non-Binary</div>
                             <div class="option-desc">75% bias</div>
                         </div>
-                        <div class="option-card selected" data-value="any" onclick="App.selectEncounterPreference('any')">
+                        <div class="option-card selected" role="button" tabindex="0" data-command-surface="character-creation" data-command-mode="setup" data-command-control="select-encounter-preference" data-create-option="any" data-value="any" onclick="App.selectEncounterPreference('any')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                             <div class="option-icon">🎲</div>
                             <div class="option-label">Any</div>
                             <div class="option-desc">Even mix</div>

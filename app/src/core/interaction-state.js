@@ -117,9 +117,22 @@ const YAW_INTERACTION_STATE = {
         }).join('');
     },
 
+    setSentenceSlot(slot, html, mode) {
+        if (!slot) return;
+        slot.innerHTML = html || '';
+        if (html) {
+            slot.setAttribute('data-command-surface', 'command-sentence');
+            slot.setAttribute('data-command-mode', mode);
+        } else {
+            slot.removeAttribute('data-command-surface');
+            slot.removeAttribute('data-command-mode');
+        }
+    },
+
     renderSelectionSentence(app) {
         const html = this.sentenceHtml(app, this.selectionSentence(app));
         const desktop = document.getElementById('selection-sentence');
+        const mode = app.combatState?.active ? 'combat' : 'exploration';
         const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
         const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
         const actorState = !app.combatState?.active && app._selectedExplorationActorState
@@ -132,11 +145,9 @@ const YAW_INTERACTION_STATE = {
             app.feedSelection?.active
         ));
         const hasCombatTurn = Boolean(app.combatState?.active && this.combatActor(app));
-        if (desktop) desktop.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '';
+        this.setSentenceSlot(desktop, hasTargets || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode);
         const mobile = document.getElementById('mobile-selection-sentence');
-        if (mobile) {
-            mobile.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors ? html : '';
-        }
+        this.setSentenceSlot(mobile, hasTargets || hasExplicitActors || hasInvalidActors ? html : '', 'exploration');
         return html;
     },
 

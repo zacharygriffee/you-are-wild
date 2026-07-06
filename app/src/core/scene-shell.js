@@ -40,7 +40,11 @@ const YAW_SCENE_SHELL = {
     clearCommandSentences() {
         ['selection-sentence', 'mobile-selection-sentence'].forEach(id => {
             const slot = document.getElementById(id);
-            if (slot) slot.innerHTML = '';
+            if (slot) {
+                slot.innerHTML = '';
+                slot.removeAttribute('data-command-surface');
+                slot.removeAttribute('data-command-mode');
+            }
         });
     },
 

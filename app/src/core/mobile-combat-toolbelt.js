@@ -76,7 +76,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (!app.combatState?.active || typeof YAW_INTERACTION_STATE === 'undefined') return '';
         const parts = YAW_INTERACTION_STATE.combatSentence(app);
         const html = YAW_INTERACTION_STATE.sentenceHtml(app, parts);
-        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" aria-live="polite">${html}</div>` : '';
+        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" data-command-surface="command-sentence" data-command-mode="combat" aria-live="polite">${html}</div>` : '';
     },
 
     render(app) {

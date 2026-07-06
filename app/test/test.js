@@ -1694,6 +1694,8 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'app.renderDesktopCombatComposer?.', 'Interaction state refresh should keep the desktop combat composer in sync');
   assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
   assertContains(interactionStateContent, 'selectionSentence(app)', 'Interaction state helper should derive the current selection sentence');
+  assertContains(interactionStateContent, 'setSentenceSlot(slot, html, mode)', 'Interaction state helper should own active command sentence surface metadata');
+  assertContains(interactionStateContent, "slot.setAttribute('data-command-surface', 'command-sentence')", 'Selection sentence slots should identify the command sentence surface when active');
   assertContains(interactionStateContent, 'data-command-slot="${slot}"', 'Selection sentence parts should expose canonical composer slots');
   assertContains(interactionStateContent, 'syncSelectedParticipants(app)', 'Interaction state helper should own sync participant lookup');
   assertContains(interactionStateContent, 'toggleSyncParticipantById(app, id)', 'Interaction state helper should own sync participant toggling');
@@ -10277,6 +10279,8 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-intents"', 'Mobile combat toolbelt should identify the shared combat intent surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-selection-sentence', 'Mobile combat toolbelt should show the current actor target intent sentence');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="command-sentence"', 'Mobile combat command sentence should identify its composer surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-mode="combat"', 'Mobile combat command sentence should identify combat mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actor', 'Mobile combat selection sentence should label the singular current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
@@ -10544,7 +10548,11 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('mobile-control-belt').classList.add('has-controls', 'target-controls-open');
   elements.get('mobile-play-surface').classList.add('has-control-belt');
   elements.get('selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
+  elements.get('selection-sentence').setAttribute('data-command-surface', 'command-sentence');
+  elements.get('selection-sentence').setAttribute('data-command-mode', 'exploration');
   elements.get('mobile-selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
+  elements.get('mobile-selection-sentence').setAttribute('data-command-surface', 'command-sentence');
+  elements.get('mobile-selection-sentence').setAttribute('data-command-mode', 'exploration');
 
   App._setRichSceneContent('Inventory', '<p>Carried items</p>');
 
@@ -10570,7 +10578,11 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(App.mobileMovePadOpen, false, 'Rich scene should reset the app move-pad flag');
   assertEqual(App.mobileActorBeltOpen, false, 'Rich scene should reset the app actor-belt flag');
   assertEqual(elements.get('selection-sentence').innerHTML, '', 'Rich scene should clear stale desktop actor-target-intent sentence');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command sentence metadata');
+  assertEqual(elements.get('selection-sentence').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command sentence mode');
   assertEqual(elements.get('mobile-selection-sentence').innerHTML, '', 'Rich scene should clear stale mobile actor-target-intent sentence');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile command sentence metadata');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-mode'), null, 'Rich scene should clear stale mobile command sentence mode');
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {
@@ -10587,8 +10599,12 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Long-Named Ally', 'Desktop composer sentence should show explicit actor state below the stage');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="actor"', 'Desktop explicit actor state should render in the actor slot');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-surface'), 'command-sentence', 'Desktop active selection sentence should identify the command sentence surface');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-mode'), 'exploration', 'Desktop active exploration sentence should identify exploration mode');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should show selected actor state in the control belt');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'data-command-slot="actor"', 'Mobile explicit actor state should render in the actor slot');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-surface'), 'command-sentence', 'Mobile active selection sentence should identify the command sentence surface');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-mode'), 'exploration', 'Mobile active exploration sentence should identify exploration mode');
 
   App.toggleExplorationTarget('creature', 'guide-1');
   const html = elements.get('mobile-selection-sentence').innerHTML;
@@ -10631,6 +10647,8 @@ test('Selection sentence mirrors combat target-pick state without changing actio
 
   App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Actor', 'Desktop combat composer should show the current actor before target selection');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-surface'), 'command-sentence', 'Desktop active combat sentence should identify the command sentence surface');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-mode'), 'combat', 'Desktop active combat sentence should identify combat mode');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="actor"', 'Desktop combat composer should mark the actor slot structurally');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'You', 'Desktop combat composer should name the current combat actor before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Intent', 'Desktop combat composer should show pending intent before target selection');

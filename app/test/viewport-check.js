@@ -212,13 +212,21 @@ async function checkViewport(browser, name, width, height) {
       const beltRect = belt.getBoundingClientRect();
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
+      const beltStyle = getComputedStyle(belt);
       return {
         dockPosition: getComputedStyle(dock).position,
         dockTop: dockRect.top,
         dockBottom: dockRect.bottom,
         dockLeft: dockRect.left,
         dockRight: dockRect.right,
+        beltPosition: beltStyle.position,
+        beltDisplay: beltStyle.display,
+        beltTop: beltRect.top,
         beltBottom: beltRect.bottom,
+        beltLeft: beltRect.left,
+        beltRight: beltRect.right,
+        beltHasControls: belt.classList.contains('has-controls'),
+        surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -239,6 +247,14 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.dockTop >= 0, `${name}: mobile dock should not clip above viewport`);
     assert(mobileControls.dockBottom <= mobileControls.viewportHeight + 1, `${name}: mobile dock should be visible without scrolling`);
     assert(mobileControls.dockLeft >= -1 && mobileControls.dockRight <= mobileControls.viewportWidth + 1, `${name}: mobile dock should stay inside viewport horizontally`);
+    assert.strictEqual(mobileControls.beltPosition, 'fixed', `${name}: mobile context belt should be fixed above the dock`);
+    assert.notStrictEqual(mobileControls.beltDisplay, 'none', `${name}: populated mobile context belt should be visible`);
+    assert.strictEqual(mobileControls.beltHasControls, true, `${name}: populated mobile context belt should mark real controls`);
+    assert.strictEqual(mobileControls.surfaceHasBeltPadding, true, `${name}: mobile play surface should reserve padding for the fixed context belt`);
+    assert(mobileControls.beltLeft >= -1 && mobileControls.beltRight <= mobileControls.viewportWidth + 1, `${name}: mobile context belt should stay inside viewport horizontally`);
+    assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
+    assert(mobileControls.beltBottom <= mobileControls.dockTop + 1, `${name}: mobile context belt should sit above the fixed dock`);
+    assert(mobileControls.dockTop - mobileControls.beltBottom <= 24, `${name}: mobile context belt should stay visually attached to the dock`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);

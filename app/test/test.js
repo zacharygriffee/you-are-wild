@@ -3931,6 +3931,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('id="mobile-move-toggle"'), 'Mobile location actions should sit above movement controls in the control belt');
   assert(template.indexOf('id="mobile-explore-actions"') < template.indexOf('class="mobile-scene-sheet"'), 'Mobile location actions should not be buried below presentation content');
   assertContains(template, '.mobile-control-belt.has-controls {\n                display: grid;', 'mobile control belt should only display when real controls are present');
+  assertContains(template, '.mobile-control-belt.target-controls-open .mobile-creature-presence-cue', 'mobile marked-target controls should suppress lower-priority cue rows inside the fixed belt');
+  assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space only when the fixed context belt is populated');
+  assertContains(template, 'bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 14px);', 'mobile control belt should sit directly above the fixed dock');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
@@ -3946,6 +3949,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-control-belt {\n                order: 3;', 'mobile exploration controls should sit below the navigation map');
+  assertContains(template, 'position: fixed;\n                left: 50%;\n                right: auto;\n                bottom: calc(var(--mobile-dock-height)', 'mobile context belt should be fixed above the bottom dock');
   assertContains(template, '.mobile-panel-dock {\n                order: 4;', 'mobile panel shortcuts should sit below the exploration control belt');
   assertContains(template, 'position: fixed;\n                left: 50%;', 'mobile panel dock should stay anchored to the viewport');
   assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'mobile panel dock should respect the safe-area inset');
@@ -3981,6 +3985,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, "targetTray.innerHTML = inCombat ? '' : app._renderExplorationTargetActions('mobile-target')", 'mobile marked-target actions should render into the visible exploration control belt');
   assertContains(mobileUnitStripsContent, "const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0", 'mobile actor strip should appear when marked targets need actor selection');
   assertContains(mobileUnitStripsContent, 'if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen)', 'mobile should keep the move pad closed while target or actor secondary rows are open');
+  assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('has-control-belt', hasContent)", 'mobile exploration controls should toggle scroll padding for the fixed context belt');
+  assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
   assertContains(appContent, 'renderMobilePartyStrip()', 'mobile party renderer missing');
@@ -10131,6 +10137,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should be collapsed by default');
   assertEqual(Boolean(elements.get('mobile-move-toggle').hidden), true, 'Mobile move toggle should be hidden while the 3x3 traversal map is in thumb reach');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Mobile control belt should become fixed-visible when location or target controls exist');
+  assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), true, 'Mobile play surface should reserve space for the fixed control belt while controls are visible');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
@@ -10152,6 +10160,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   const actorHtml = elements.get('mobile-actor-belt').innerHTML;
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should collapse when marked-target controls open');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state while target controls are active');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), true, 'Mobile target state should prioritize marked-target controls in the fixed belt');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Targets', 'Mobile selection sentence should move into the control belt when a target is marked');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
@@ -10184,6 +10193,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   App.renderMobileExplorationControls();
 
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Empty mobile control belt should not become an overlay during plain traversal');
+  assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Plain traversal should not reserve fixed control-belt space when no controls are visible');
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Plain traversal should not leave hidden location actions behind');
   assertEqual(elements.get('mobile-creature-presence-cue').innerHTML, '', 'Plain traversal without creatures should not leave an empty cue overlay');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Plain traversal should not leave target controls behind');

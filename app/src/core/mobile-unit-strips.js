@@ -30,6 +30,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
         const controlBelt = document.getElementById('mobile-control-belt');
+        const surface = document.getElementById('mobile-play-surface');
         const exploreActions = document.getElementById('mobile-explore-actions');
         const creatureCue = document.getElementById('mobile-creature-presence-cue');
         const inCombat = Boolean(app.combatState?.active);
@@ -65,6 +66,10 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 || (movePad?.classList?.contains('expanded'))
             );
             controlBelt.classList.toggle('has-controls', hasContent);
+            controlBelt.classList.toggle('target-controls-open', hasTargets);
+            surface?.classList?.toggle('has-control-belt', hasContent);
+        } else {
+            surface?.classList?.remove('has-control-belt');
         }
     },
 

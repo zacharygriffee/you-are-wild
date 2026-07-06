@@ -290,7 +290,7 @@ async function checkViewport(browser, name, width, height) {
       };
     });
     assert(markedControls.trayText.includes('Fight') && markedControls.trayText.includes('Clear'), `${name}: marked target tray should be visible above the dock`);
-    assert(markedControls.sentenceText.toLowerCase().includes('targets'), `${name}: mobile actor target sentence should move into the control belt when target state exists`);
+    assert(markedControls.sentenceText.toLowerCase().includes('target'), `${name}: mobile actor target sentence should move into the control belt when target state exists`);
     assert(markedControls.trayBottom <= markedControls.dockTop + 1, `${name}: marked target tray should stay above the fixed dock`);
     assert.strictEqual(markedControls.moveExpanded, false, `${name}: move pad should close when target tray opens`);
     assert.strictEqual(markedControls.moveAria, 'false', `${name}: move toggle aria state should reflect collapsed target-tray mode`);

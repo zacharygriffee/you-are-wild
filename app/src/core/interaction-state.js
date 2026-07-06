@@ -36,13 +36,25 @@ const YAW_INTERACTION_STATE = {
         return app._uiLabel ? app._uiLabel(action) : action;
     },
 
+    actorLabel(app, count = 1) {
+        return count === 1
+            ? app._label('target.actorRole', 'Actor')
+            : app._label('target.actors', 'Actors');
+    },
+
+    targetLabel(app, count = 1) {
+        return count === 1
+            ? app._label('target.targetRole', 'Target')
+            : app._label('target.targets', 'Targets');
+    },
+
     explorationSentence(app) {
         const actorState = app._selectedExplorationActorState
             ? app._selectedExplorationActorState({ allowFallback: true })
             : { actors: [app.player].filter(Boolean), valid: Boolean(app.player) };
         const targets = app._getExplorationTargets ? app._getExplorationTargets() : [];
-        const actorLabel = app._label('target.actors', 'Actors');
-        const targetLabel = app._label('target.targets', 'Targets');
+        const actorLabel = this.actorLabel(app, actorState.actors?.length || 1);
+        const targetLabel = this.targetLabel(app, targets.length || 1);
         const intentLabel = app._label('target.intent', 'Intent');
         const actorText = actorState.valid
             ? this.unitNames(app, actorState.actors, app._label('target.none', 'None'))
@@ -61,11 +73,10 @@ const YAW_INTERACTION_STATE = {
 
     combatSentence(app) {
         const actor = this.combatActor(app);
-        const actorLabel = app._label('target.actors', 'Actors');
-        const targetLabel = app._label('target.targets', 'Targets');
         const intentLabel = app._label('target.intent', 'Intent');
+        let actorCount = actor ? 1 : 0;
         const parts = [{
-            label: actorLabel,
+            label: this.actorLabel(app, actorCount || 1),
             value: this.unitNames(app, [actor].filter(Boolean), app._label('target.none', 'None'))
         }];
         let targetText = '';
@@ -73,6 +84,8 @@ const YAW_INTERACTION_STATE = {
         if (app.syncSelection?.active) {
             const participants = this.syncSelectedParticipants(app);
             if (participants.length > 0) {
+                actorCount = participants.length;
+                parts[0].label = this.actorLabel(app, actorCount);
                 parts[0].value = this.unitNames(app, participants, parts[0].value);
             }
             intentText = this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
@@ -85,7 +98,7 @@ const YAW_INTERACTION_STATE = {
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
             targetText = app._label('target.pickTarget', 'Pick target');
         }
-        if (targetText) parts.push({ label: targetLabel, value: targetText });
+        if (targetText) parts.push({ label: this.targetLabel(app, 1), value: targetText });
         parts.push({ label: intentLabel, value: intentText });
         return parts;
     },

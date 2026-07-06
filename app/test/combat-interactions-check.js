@@ -421,8 +421,8 @@ async function runAdventureMarkedTargetFlow(page) {
     return {
       partyHasTray: Boolean(partyContent?.querySelector('.panel-interaction-tray')),
       hasDesktopSource: beltEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','desktop-target')") || false,
-      actorSummary: sentenceEl?.textContent?.includes('ActorsAlly') || false,
-      targetSummary: sentenceEl?.textContent?.includes('TargetsFriendly') || false,
+      actorSummary: sentenceEl?.textContent?.includes('ActorAlly') || false,
+      targetSummary: sentenceEl?.textContent?.includes('TargetFriendly') || false,
       centerHasSentence: Boolean(document.querySelector('#desktop-play-cell-center #selection-sentence')),
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
@@ -980,7 +980,7 @@ async function runMobileSelectionAndCombatFlow(page) {
     cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[onclick*="cancelTargetSelection"]'))
   }));
   assert.strictEqual(state.phase, 'choose', 'Mobile Sync should enter choose phase');
-  assert(state.sentence.toLowerCase().includes('actors') && state.sentence.toLowerCase().includes('intent'), 'Mobile Sync choose phase should keep Actor -> Intent sentence visible');
+  assert(state.sentence.toLowerCase().includes('actor') && state.sentence.toLowerCase().includes('intent'), 'Mobile Sync choose phase should keep Actor -> Intent sentence visible');
   assert(state.controls.includes('Group Fight') && state.controls.includes('Cancel Sync'), 'Mobile Sync choose controls should expose sync choices and Cancel Sync');
   assert.strictEqual(state.intentButtonsVisible, true, 'Mobile Sync choose phase should have visible next action buttons');
   assert.strictEqual(state.cancelVisible, true, 'Mobile Sync choose phase should have a visible cancel');

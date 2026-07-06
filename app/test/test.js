@@ -4010,7 +4010,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');
   assertNotContains(template, 'onclick="combatAction(\'fight\')"', 'legacy mobile action bar should not ship duplicate Fight controls');
   assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
-  assertContains(interactionStateContent, "mobile.innerHTML = hasTargets || hasExplicitActors ? html : ''", 'mobile selection sentence should appear only when exploration selection state exists');
+  assertContains(interactionStateContent, 'actorLabel(app, count = 1)', 'selection sentence should choose singular/plural actor labels from state');
+  assertContains(interactionStateContent, 'targetLabel(app, count = 1)', 'selection sentence should choose singular/plural target labels from state');
+  assertContains(interactionStateContent, "mobile.innerHTML = hasTargets || hasExplicitActors || hasInvalidActors ? html : ''", 'mobile selection sentence should appear only when exploration selection state needs correction or controls');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
@@ -10158,7 +10160,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-selection-sentence', 'Mobile combat toolbelt should show the current actor target intent sentence');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actors', 'Mobile combat selection sentence should label the actor');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actor', 'Mobile combat selection sentence should label the singular current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('fight')", 'Mobile combat intent belt should expose Fight through the shared dispatcher');
@@ -10170,7 +10172,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.selectTarget('fight');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should not duplicate selected target guidance');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick a target in the enemy strip', 'Mobile combat toolbelt should not prompt target selection from strips');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targets', 'Mobile combat selected intent should make target state visible');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Target', 'Mobile combat selected intent should make target state visible');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick target', 'Mobile combat selected intent should tell the player target selection is pending');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Fight', 'Mobile combat selected intent should show the safe visible action label');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
@@ -10259,7 +10261,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Mobile move pad should collapse when marked-target controls open');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state while target controls are active');
   assertEqual(elements.get('mobile-control-belt').classList.contains('target-controls-open'), true, 'Mobile target state should prioritize marked-target controls in the fixed belt');
-  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Targets', 'Mobile selection sentence should move into the control belt when a target is marked');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Target', 'Mobile selection sentence should move into the control belt when one target is marked');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, "resolveExplorationTargetAction('fight'", 'Marked mobile creature should expose Fight in the visible target-action tray');
   assertContains(trayHtml, "resolveExplorationTargetAction('flirt'", 'Marked mobile creature should expose Talk in the visible target-action tray');
@@ -10430,10 +10432,10 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   const html = elements.get('mobile-selection-sentence').innerHTML;
   const desktopHtml = document.getElementById('selection-sentence').innerHTML;
   assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain the command sentence slot');
-  assertContains(desktopHtml, 'Targets', 'Desktop composer sentence should show marked target state');
+  assertContains(desktopHtml, 'Target', 'Desktop composer sentence should show singular marked target state');
   assertContains(desktopHtml, 'Guide', 'Desktop composer sentence should name the marked target');
   assertContains(desktopHtml, 'Intent', 'Desktop composer sentence should expose pending intent state');
-  assertContains(html, 'Targets', 'Marked exploration targets should be visible in the mobile control-belt sentence');
+  assertContains(html, 'Target', 'Marked exploration target should be visible in the mobile control-belt sentence');
   assertContains(html, 'Guide', 'Marked exploration target name should be visible in the mobile control-belt sentence');
   assertContains(html, 'Intent', 'Marked exploration targets should expose a pending intent field');
   assertContains(html, 'Choose', 'Pending marked-target intent should tell the player to choose an action');
@@ -10462,7 +10464,7 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   };
 
   App.renderSelectionSentence();
-  assertContains(document.getElementById('selection-sentence').innerHTML, 'Actors', 'Desktop combat composer should show the current actor before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'Actor', 'Desktop combat composer should show the current actor before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'You', 'Desktop combat composer should name the current combat actor before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Intent', 'Desktop combat composer should show pending intent before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Choose', 'Desktop combat composer should tell the player to choose an intent before target selection');
@@ -10474,9 +10476,9 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   const html = App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Pick target', 'Desktop composer sentence should show combat target-pick state below the stage');
   assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain combat command sentence state');
-  assertContains(html, 'Actors', 'Combat sentence should label current actor state');
+  assertContains(html, 'Actor', 'Combat sentence should label current actor state');
   assertContains(html, 'You', 'Combat sentence should name the active actor');
-  assertContains(html, 'Targets', 'Combat target picking should expose target state');
+  assertContains(html, 'Target', 'Combat target picking should expose target state');
   assertContains(html, 'Pick target', 'Combat target picking should tell the player to pick a target');
   assertContains(html, 'Intent', 'Combat target picking should expose the selected intent');
   assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
@@ -10506,6 +10508,7 @@ test('Combat command sentence reserves target state for real target picking', ()
 
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-command-grammar', participantIds: ['player-command-grammar', 'ally-command-grammar'] };
   let html = App.renderSelectionSentence();
+  assertContains(html, 'Actors', 'Sync participant sentence should use a plural actor label for multiple participants');
   assertContains(html, 'You + Ally', 'Sync participant sentence should show selected actors in the actor slot');
   assertContains(html, 'Group Fight', 'Sync participant sentence should show the chosen group intent');
   assertNotContains(html, 'Targets', 'Sync participant selection should not be presented as a target state');

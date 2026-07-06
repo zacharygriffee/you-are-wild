@@ -59,10 +59,10 @@ const YAW_INTERACTION_STATE = {
         const actorText = actorState.valid
             ? this.unitNames(app, actorState.actors, app._label('target.none', 'None'))
             : app._label('target.invalidActorSummary', 'Select a living actor');
-        const parts = [{ label: actorLabel, value: actorText }];
+        const parts = [{ slot: 'actor', label: actorLabel, value: actorText }];
         if (targets.length > 0) {
-            parts.push({ label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')) });
-            parts.push({ label: intentLabel, value: app._label('ui.chooseAction', 'Choose') });
+            parts.push({ slot: 'target', label: targetLabel, value: this.unitNames(app, targets, app._label('target.none', 'None')) });
+            parts.push({ slot: 'intent', label: intentLabel, value: app._label('ui.chooseAction', 'Choose') });
         }
         return parts;
     },
@@ -76,6 +76,7 @@ const YAW_INTERACTION_STATE = {
         const intentLabel = app._label('target.intent', 'Intent');
         let actorCount = actor ? 1 : 0;
         const parts = [{
+            slot: 'actor',
             label: this.actorLabel(app, actorCount || 1),
             value: this.unitNames(app, [actor].filter(Boolean), app._label('target.none', 'None'))
         }];
@@ -98,8 +99,8 @@ const YAW_INTERACTION_STATE = {
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
             targetText = app._label('target.pickTarget', 'Pick target');
         }
-        if (targetText) parts.push({ label: this.targetLabel(app, 1), value: targetText });
-        parts.push({ label: intentLabel, value: intentText });
+        if (targetText) parts.push({ slot: 'target', label: this.targetLabel(app, 1), value: targetText });
+        parts.push({ slot: 'intent', label: intentLabel, value: intentText });
         return parts;
     },
 
@@ -111,7 +112,8 @@ const YAW_INTERACTION_STATE = {
         if (!parts.length) return '';
         return parts.map((part, index) => {
             const arrow = index === 0 ? '' : '<span class="selection-sentence-arrow" aria-hidden="true">-&gt;</span>';
-            return `${arrow}<span class="selection-sentence-part"><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
+            const slot = app._escapeHtml(part.slot || 'unknown');
+            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
         }).join('');
     },
 

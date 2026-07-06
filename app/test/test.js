@@ -1694,6 +1694,7 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'app.renderDesktopCombatComposer?.', 'Interaction state refresh should keep the desktop combat composer in sync');
   assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
   assertContains(interactionStateContent, 'selectionSentence(app)', 'Interaction state helper should derive the current selection sentence');
+  assertContains(interactionStateContent, 'data-command-slot="${slot}"', 'Selection sentence parts should expose canonical composer slots');
   assertContains(interactionStateContent, 'syncSelectedParticipants(app)', 'Interaction state helper should own sync participant lookup');
   assertContains(interactionStateContent, 'toggleSyncParticipantById(app, id)', 'Interaction state helper should own sync participant toggling');
   assertContains(appContent, 'YAW_INTERACTION_STATE.clearTransient(this)', 'App transient cleanup wrapper should delegate to the helper');
@@ -8039,6 +8040,9 @@ test('Exploration cards expose multi-target selection and context actions', () =
   const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   const partyPanelHtml = elements.get('party-content').innerHTML;
   assertContains(selectionHtml, 'selection-sentence-part', 'Desktop command composer should include the canonical actor-target sentence');
+  assertContains(selectionHtml, 'data-command-slot="actor"', 'Composer sentence should mark the actor slot structurally');
+  assertContains(selectionHtml, 'data-command-slot="target"', 'Composer sentence should mark the target slot structurally');
+  assertContains(selectionHtml, 'data-command-slot="intent"', 'Composer sentence should mark the intent slot structurally');
   assertNotContains(actionsHtml, 'selected-target-summary', 'Desktop marked-target action row should not duplicate the canonical sentence');
   assertNotContains(partyPanelHtml, 'selected-target-summary', 'Party panel should not duplicate composer target summary');
   assertContains(selectionHtml, 'Actores', 'Composer target sentence should localize the actor label');
@@ -10523,18 +10527,24 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
 
   App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Long-Named Ally', 'Desktop composer sentence should show explicit actor state below the stage');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="actor"', 'Desktop explicit actor state should render in the actor slot');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should show selected actor state in the control belt');
+  assertContains(elements.get('mobile-selection-sentence').innerHTML, 'data-command-slot="actor"', 'Mobile explicit actor state should render in the actor slot');
 
   App.toggleExplorationTarget('creature', 'guide-1');
   const html = elements.get('mobile-selection-sentence').innerHTML;
   const desktopHtml = document.getElementById('selection-sentence').innerHTML;
   assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain the command sentence slot');
   assertContains(desktopHtml, 'Target', 'Desktop composer sentence should show singular marked target state');
+  assertContains(desktopHtml, 'data-command-slot="target"', 'Desktop marked target state should render in the target slot');
   assertContains(desktopHtml, 'Guide', 'Desktop composer sentence should name the marked target');
   assertContains(desktopHtml, 'Intent', 'Desktop composer sentence should expose pending intent state');
+  assertContains(desktopHtml, 'data-command-slot="intent"', 'Desktop marked target state should render a pending intent slot');
   assertContains(html, 'Target', 'Marked exploration target should be visible in the mobile control-belt sentence');
+  assertContains(html, 'data-command-slot="target"', 'Mobile marked target state should render in the target slot');
   assertContains(html, 'Guide', 'Marked exploration target name should be visible in the mobile control-belt sentence');
   assertContains(html, 'Intent', 'Marked exploration targets should expose a pending intent field');
+  assertContains(html, 'data-command-slot="intent"', 'Mobile marked target state should render a pending intent slot');
   assertContains(html, 'Choose', 'Pending marked-target intent should tell the player to choose an action');
 
   App.explorationActorIds = ['missing-actor'];
@@ -10562,8 +10572,10 @@ test('Selection sentence mirrors combat target-pick state without changing actio
 
   App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Actor', 'Desktop combat composer should show the current actor before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="actor"', 'Desktop combat composer should mark the actor slot structurally');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'You', 'Desktop combat composer should name the current combat actor before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Intent', 'Desktop combat composer should show pending intent before target selection');
+  assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="intent"', 'Desktop combat composer should mark the intent slot structurally');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Choose', 'Desktop combat composer should tell the player to choose an intent before target selection');
   assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain normal combat command sentence state');
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should keep the exploration control-belt sentence empty before target selection');
@@ -10576,6 +10588,7 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertContains(html, 'Actor', 'Combat sentence should label current actor state');
   assertContains(html, 'You', 'Combat sentence should name the active actor');
   assertContains(html, 'Target', 'Combat target picking should expose target state');
+  assertContains(html, 'data-command-slot="target"', 'Combat target picking should mark the target slot structurally');
   assertContains(html, 'Pick target', 'Combat target picking should tell the player to pick a target');
   assertContains(html, 'Intent', 'Combat target picking should expose the selected intent');
   assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
@@ -10606,8 +10619,10 @@ test('Combat command sentence reserves target state for real target picking', ()
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-command-grammar', participantIds: ['player-command-grammar', 'ally-command-grammar'] };
   let html = App.renderSelectionSentence();
   assertContains(html, 'Actors', 'Sync participant sentence should use a plural actor label for multiple participants');
+  assertContains(html, 'data-command-slot="actor"', 'Sync participant sentence should keep participants in the actor slot');
   assertContains(html, 'You + Ally', 'Sync participant sentence should show selected actors in the actor slot');
   assertContains(html, 'Group Fight', 'Sync participant sentence should show the chosen group intent');
+  assertContains(html, 'data-command-slot="intent"', 'Sync participant sentence should keep sync type in the intent slot');
   assertNotContains(html, 'Targets', 'Sync participant selection should not be presented as a target state');
   assertNotContains(html, 'Select participants for sync', 'Sync participant instruction belongs to phase controls, not the target slot');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Group Fight', 'Desktop sentence should render sync participant intent below the stage');

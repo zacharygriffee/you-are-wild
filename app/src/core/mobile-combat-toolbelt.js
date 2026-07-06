@@ -21,53 +21,53 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const buttons = app._combatActionButtons(actor, { compact: false });
         if (!buttons) return '';
         const label = app._escapeHtml(app._label('mobile.combat.intents', 'Combat intents'));
-        return `<div class="mobile-combat-intents" role="group" aria-label="${label}">${buttons}</div>`;
+        return `<div class="mobile-combat-intents" data-command-surface="combat-intents" role="group" aria-label="${label}">${buttons}</div>`;
     },
 
     phaseControls(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active || !actor || !(actor === app.player || app.party.includes(actor))) return '';
-        const button = (label, onclick, classes = 'action-btn', title = label) => `<button class="${classes}" title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${onclick}">${app._escapeHtml(label)}</button>`;
-        const row = (label, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact">${buttons}</div></div>`;
+        const button = (label, onclick, classes = 'action-btn', title = label, attrs = '') => `<button class="${classes}"${attrs ? ` ${attrs}` : ''} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${onclick}">${app._escapeHtml(label)}</button>`;
+        const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
         if (app.syncSelection?.active) {
             const cancelSync = app._label('combat.sync.cancel', 'Cancel Sync');
             if (app.syncSelection.phase === 'choose') {
                 const syncButton = (type, icon, key, fallback) => {
                     const label = app._label(key, fallback);
-                    return button(`${icon} ${label}`, `event.stopPropagation();App.selectSyncParticipants('${type}')`, 'action-btn', label);
+                    return button(`${icon} ${label}`, `event.stopPropagation();App.selectSyncParticipants('${type}')`, 'action-btn', label, `data-command-intent="${app._escapeHtml(type)}"`);
                 };
                 const buttons = [
                     syncButton('sync_fight', '⚔️', 'combat.sync.action.fight', 'Group Fight'),
                     syncButton('sync_flirt', '😘', 'combat.sync.action.flirt', 'Group Talk'),
                     syncButton('sync_fuck', '🔥', 'combat.sync.action.fuck', 'Group Play'),
                     syncButton('sync_feed', '🍽️', 'combat.sync.action.feed', 'Group Feed'),
-                    button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()')
+                    button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelSync, 'data-command-control="cancel-sync"')
                 ].join('');
-                return row(app._label('combat.sync.chooseAction', 'Choose Sync Action'), buttons);
+                return row(app._label('combat.sync.chooseAction', 'Choose Sync Action'), 'sync-intents', buttons);
             }
             if (app.syncSelection.phase === 'participants') {
                 const participants = app._syncSelectedParticipants();
                 const confirmLabel = app._label('combat.sync.confirmParticipants', 'Confirm Participants');
                 const confirmDisabled = participants.length < 2 ? ' disabled aria-disabled="true"' : '';
-                const confirm = `<button class="action-btn primary${participants.length < 2 ? ' disabled' : ''}" title="${app._escapeHtml(confirmLabel)}" aria-label="${app._escapeHtml(confirmLabel)}"${confirmDisabled} onclick="event.stopPropagation();App.confirmSyncParticipants('${app._escapeJsString(app.syncSelection.type || 'sync_fight')}')">${app._escapeHtml(confirmLabel)}</button>`;
-                return row(app._label('combat.sync.selectParticipants', 'Select participants for sync'), confirm + button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()'));
+                const confirm = `<button class="action-btn primary${participants.length < 2 ? ' disabled' : ''}" data-command-control="confirm-sync-participants" title="${app._escapeHtml(confirmLabel)}" aria-label="${app._escapeHtml(confirmLabel)}"${confirmDisabled} onclick="event.stopPropagation();App.confirmSyncParticipants('${app._escapeJsString(app.syncSelection.type || 'sync_fight')}')">${app._escapeHtml(confirmLabel)}</button>`;
+                return row(app._label('combat.sync.selectParticipants', 'Select participants for sync'), 'sync-participants', confirm + button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelSync, 'data-command-control="cancel-sync"'));
             }
-            return row(app._label('combat.sync.selectTarget', 'Select sync target'), button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()'));
+            return row(app._label('combat.sync.selectTarget', 'Select sync target'), 'sync-targeting', button(cancelSync, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelSync, 'data-command-control="cancel-sync"'));
         }
         if (app.feedSelection?.active) {
             const feedLabel = app._label('feed.optionsTitle', 'Feed Options');
             const buttons = (app.feedSelection.subIds || []).map(subId => {
                 const subDef = app.SUB_ACTIONS.feed?.[subId] || {};
                 const subLabel = app._getActionLabel('feed', subId);
-                return button(`${subDef.icon || ''} ${subLabel}`.trim(), `event.stopPropagation();App._executeFeedSubAction('${app._escapeJsString(subId)}', App.activeActor || App._currentCombatActor() || App.player)`, 'action-btn', subLabel);
+                return button(`${subDef.icon || ''} ${subLabel}`.trim(), `event.stopPropagation();App._executeFeedSubAction('${app._escapeJsString(subId)}', App.activeActor || App._currentCombatActor() || App.player)`, 'action-btn', subLabel, `data-command-intent="feed:${app._escapeHtml(subId)}"`);
             });
-            buttons.push(button(app._label('feed.cancel', 'Cancel Feed'), 'event.stopPropagation();App.cancelTargetSelection()'));
-            return row(feedLabel, buttons.join(''));
+            buttons.push(button(app._label('feed.cancel', 'Cancel Feed'), 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', app._label('feed.cancel', 'Cancel Feed'), 'data-command-control="cancel-feed"'));
+            return row(feedLabel, 'feed-options', buttons.join(''));
         }
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
-            return row(app._label('target.controls', 'Target controls'), button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()'));
+            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelAction, 'data-command-control="cancel-targeting"'));
         }
         return '';
     },

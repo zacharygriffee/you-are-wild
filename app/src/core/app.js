@@ -165,8 +165,8 @@
                 const isPlayer = actor && actor.name === this.player?.name;
                 return { actorName: isPlayer ? this._label('party.you', 'You') : actor?.name || 'Someone', actorVerb: isPlayer ? '' : 's' };
             },
-            _iconActionButton(key, icon, onclick, extraClass = '') {
-                return YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass);
+            _iconActionButton(key, icon, onclick, extraClass = '', attrs = '') {
+                return YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass, attrs);
             },
             _combatIntentButton(key, actor, extraClass = '') {
                 return YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass);

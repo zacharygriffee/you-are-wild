@@ -4,10 +4,11 @@
  */
 
 const YAW_ACTION_UI = {
-    iconButton(app, key, icon, onclick, extraClass = '') {
+    iconButton(app, key, icon, onclick, extraClass = '', attrs = '') {
         const label = app._uiLabel(key);
         const className = `action-btn${extraClass ? ' ' + extraClass : ''}`;
-        return `<button class="${className}" title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
+        const attrText = attrs ? ` ${attrs}` : '';
+        return `<button class="${className}"${attrText} title="${label}" aria-label="${label}" onclick="${onclick}"><span class="action-icon" aria-hidden="true">${icon}</span><span class="action-caption">${label}</span></button>`;
     },
 
     combatIntentButton(app, key, actor, extraClass = '') {
@@ -16,7 +17,8 @@ const YAW_ACTION_UI = {
             && app.targetSelection.action === key
             && (!app.targetSelection.actorId || app.targetSelection.actorId === actorId || app.targetSelection.actorId === actor?.id || app.targetSelection.actorId === actor?.name);
         const classes = [extraClass, isSelected ? 'selected' : ''].filter(Boolean).join(' ');
-        return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes);
+        const intent = app._escapeHtml(key);
+        return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-intent="${intent}"`);
     },
 
     legend(app, keys) {

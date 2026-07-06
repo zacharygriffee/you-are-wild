@@ -1736,11 +1736,11 @@ test('Action UI helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/app.js'"), 'Action UI helper should load before app.js');
   assert(buildContent.indexOf("'src/core/action-ui.js'") < buildContent.indexOf("'src/core/combat-actions.js'"), 'Action UI helper should load before combat actions that reuse action wrappers');
   assertContains(actionUiContent, 'const YAW_ACTION_UI = {', 'Action UI helper should expose the action UI service');
-  assertContains(actionUiContent, 'iconButton(app, key, icon, onclick, extraClass = \'\')', 'Action UI helper should own icon action buttons');
+  assertContains(actionUiContent, "iconButton(app, key, icon, onclick, extraClass = '', attrs = '')", 'Action UI helper should own icon action buttons');
   assertContains(actionUiContent, 'combatIntentButton(app, key, actor, extraClass = \'\')', 'Action UI helper should own combat intent button selected-state rendering');
   assertContains(actionUiContent, 'legend(app, keys)', 'Action UI helper should own action legends');
   assertContains(actionUiContent, 'icon(key)', 'Action UI helper should own action icons');
-  assertContains(appContent, 'YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass)', 'App icon action wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass, attrs)', 'App icon action wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.combatIntentButton(this, key, actor, extraClass)', 'App combat intent button wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.legend(this, keys)', 'App action legend wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_ACTION_UI.icon(key)', 'App action icon wrapper should delegate to the helper');
@@ -4812,8 +4812,11 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.showSyncMenu();
   let html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
+  assertContains(html, 'data-command-surface="sync-intents"', 'Sync action composer should identify the sync intent surface');
+  assertContains(html, 'data-command-intent="sync_fight"', 'Sync fight should expose its stable group intent id');
   assertNotContains(html, 'selected-target-summary', 'Sync action tray should leave actor intent summary to the composer sentence');
   assertContains(html, 'aria-label="Ataque grupal"', 'Sync fight action should expose localized accessible label');
+  assertContains(html, 'data-command-control="cancel-sync"', 'Sync action composer should expose a structural cancel control');
   assertContains(html, 'Cancel Sync', 'Sync tray should expose a mode-specific cancel exit');
   assertNotContains(elements.get('party-content').innerHTML, 'Elegir accion sincronizada', 'Party panel should not duplicate composer-owned sync action controls');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Elegir accion sincronizada', 'Sync action menu should not render in center scene');
@@ -4821,6 +4824,8 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.selectSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
+  assertContains(html, 'data-command-surface="sync-participants"', 'Sync participant composer should identify its participant surface');
+  assertContains(html, 'data-command-control="confirm-sync-participants"', 'Sync participant composer should expose confirm as a structural control');
   assertContains(html, 'Confirmar participantes', 'Sync participant composer should expose confirm');
   assertContains(html, 'Cancel Sync', 'Sync participant composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync participant tray should leave actor intent summary to the composer sentence');
@@ -4831,6 +4836,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.confirmSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
+  assertContains(html, 'data-command-surface="sync-targeting"', 'Sync target composer should identify its target-pick surface');
   assertContains(html, 'Cancel Sync', 'Sync target composer should keep a mode-specific cancel exit');
   assertNotContains(html, 'selected-target-summary', 'Sync target tray should leave actor intent summary to the composer sentence');
   html = elements.get('enemies-content').innerHTML;
@@ -5744,8 +5750,11 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
+  assertContains(composerHtml, 'data-command-surface="feed-options"', 'Feed options composer should identify the feed sub-action surface');
   assertContains(composerHtml, 'aria-label="Feed Options"', 'Feed options tray should keep an accessible phase label');
+  assertContains(composerHtml, 'data-command-intent="feed:heal"', 'Feed options should expose stable sub-action intent ids');
   assertContains(composerHtml, 'Heal', 'Feed options tray should expose sub-action controls');
+  assertContains(composerHtml, 'data-command-control="cancel-feed"', 'Feed options should expose Cancel Feed as a structural exit');
   assertContains(composerHtml, 'Cancel Feed', 'Feed options tray should expose a mode-specific cancel exit');
   assertNotContains(composerHtml, 'selected-target-summary', 'Feed options tray should leave actor intent summary to the composer sentence');
   assertNotContains(partyHtml, 'combat-feed-tray', 'Party panel should not duplicate composer-owned feed options');
@@ -6742,11 +6751,14 @@ test('Desktop action bars do not duplicate large buttons with tiny legends', () 
   const partyHtml = elements.get('party-content').innerHTML;
   assertEqual(combatHtml, '', 'Desktop combat should clear stale exploration center actions instead of rendering prompt controls');
   assertContains(combatBeltHtml, 'unit-combat-actions', 'Desktop combat should replace stale exploration actions with composer intents');
+  assertContains(combatBeltHtml, 'data-command-surface="combat-intents"', 'Desktop combat composer should identify its intent surface');
   assertNotContains(combatHtml, 'panel-first-combat-prompt', 'Desktop combat center should not show redundant targeting guidance');
   assertNotContains(combatHtml, 'aria-label="Rest"', 'Desktop combat center should clear stale Rest actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Enter"', 'Desktop combat center should clear stale Enter actions from exploration');
   assertNotContains(combatHtml, 'aria-label="Fight"', 'Desktop combat center should not duplicate panel action buttons');
+  assertContains(combatBeltHtml, 'data-command-intent="fight"', 'Desktop combat composer should tag Fight with its stable internal intent id');
   assertContains(combatBeltHtml, 'aria-label="Fight"', 'Desktop combat should keep real Fight button in the composer belt');
+  assertContains(combatBeltHtml, 'data-command-intent="flee"', 'Desktop combat composer should tag Flee with its stable internal intent id');
   assertContains(combatBeltHtml, 'aria-label="Flee"', 'Desktop combat should keep real Flee button in the composer belt');
   assertNotContains(partyHtml, 'action-legend', 'Desktop combat should not render a duplicate tiny icon legend beside real buttons');
 });
@@ -10238,14 +10250,15 @@ test('Combat target selection is rendered on creature panel cards', () => {
 test('Mobile combat toolbelt promotes enemy and party strips during targeting', () => {
   const { App, elements, document } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-mobile' });
   const enemy = makeUnit('Enemy', { id: 'enemy-mobile', disposition: App.DISPOSITION.ENEMY });
   App.player = player;
-  App.party = [player];
+  App.party = [player, ally];
   App.creatures = [enemy];
   App.combatState = {
     active: true,
     round: 2,
-    turnQueue: [{ unit: player, initiative: 10 }],
+    turnQueue: [{ unit: player, initiative: 10 }, { unit: ally, initiative: 5 }],
     currentTurn: 0,
     syncActions: [],
     processing: false
@@ -10256,11 +10269,14 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You to act', 'Mobile combat toolbelt should show current party actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-intents"', 'Mobile combat toolbelt should identify the shared combat intent surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-selection-sentence', 'Mobile combat toolbelt should show the current actor target intent sentence');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actor', 'Mobile combat selection sentence should label the singular current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="fight"', 'Mobile combat intent belt should tag Fight with its stable internal intent id');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('fight')", 'Mobile combat intent belt should expose Fight through the shared dispatcher');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="flee"', 'Mobile combat intent belt should tag Flee with its stable internal intent id');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, "executeCombatIntent('flee')", 'Mobile combat intent belt should expose Flee through the shared dispatcher');
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
   assertNotContains(mobilePartyChip, "executeCombatIntent('fight')", 'Mobile party chips should not duplicate combat intent controls');
@@ -10272,11 +10288,31 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Target', 'Mobile combat selected intent should make target state visible');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick target', 'Mobile combat selected intent should tell the player target selection is pending');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Fight', 'Mobile combat selected intent should show the safe visible action label');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting"', 'Mobile combat target phase should identify the target-pick control surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile exploration target tray should stay clear during combat');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile exploration actor belt should stay clear during combat');
   assertEqual(document.getElementById('mobile-combat-actions').innerHTML, '', 'Legacy mobile combat action bar should remain empty');
+
+  App.targetSelection = null;
+  App.syncSelection = { active: true, phase: 'choose', actorId: 'player-1', participantIds: ['player-1'], type: null };
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-intents"', 'Mobile Sync choose phase should identify the sync intent surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync_fight"', 'Mobile Sync choose phase should expose stable group intent ids');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync choose phase should expose a structural cancel control');
+
+  App.syncSelection = { active: true, phase: 'participants', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants"', 'Mobile Sync participant phase should identify the participant surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="confirm-sync-participants"', 'Mobile Sync participant phase should expose confirm structurally');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync participant phase should keep a structural cancel control');
+
+  App.syncSelection = { active: true, phase: 'target', actorId: 'player-1', participantIds: ['player-1', 'ally-mobile'], type: 'sync_fight' };
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-targeting"', 'Mobile Sync target phase should identify the target surface');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-sync"', 'Mobile Sync target phase should keep a structural cancel control');
 
   App.combatState.active = false;
   App.renderMobileCombatToolbelt();

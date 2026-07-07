@@ -4475,6 +4475,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'grid-template-columns: minmax(48px, 1fr) minmax(176px, 1.95fr) minmax(48px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
   assertContains(template, 'grid-template-rows: minmax(44px, 0.6fr) minmax(144px, 2.55fr) minmax(44px, 0.6fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
+  assertContains(template, 'width: clamp(80px, 20vw, 88px);', 'mobile center presence badges should keep large phone tap targets');
+  assertContains(template, 'font-size: clamp(34px, 8.5vw, 40px);', 'mobile center presence badges should keep readable visible symbols');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
   assertContains(template, '.mobile-play-presence-dot.place', 'mobile center presence should distinguish structure and landmark markers');

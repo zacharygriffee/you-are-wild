@@ -354,8 +354,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.centerTileHeight >= 144, `${name}: mobile current tile should leave room for larger presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
-    assert(mobileControls.minCenterPresenceWidth >= 72 && mobileControls.minCenterPresenceHeight >= 72, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
-    assert(mobileControls.minCenterPresenceFontSize >= 30, `${name}: mobile current tile presence badges should keep readable visible symbols`);
+    assert(mobileControls.minCenterPresenceWidth >= 80 && mobileControls.minCenterPresenceHeight >= 80, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
+    assert(mobileControls.minCenterPresenceFontSize >= 34, `${name}: mobile current tile presence badges should keep readable visible symbols`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);

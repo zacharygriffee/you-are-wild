@@ -4487,6 +4487,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'grid-template-areas: "main party enemies";', 'desktop stage should reserve columns for main play and actor panels only');
   assertContains(template, 'id="panel-party" data-surface-role="actor-drawer"', 'party panel should identify as an actor detail drawer');
   assertContains(template, 'id="panel-enemies" data-surface-role="target-drawer"', 'creature panel should identify as a target detail drawer');
+  assertContains(template, 'id="party-content" data-surface-role="actor-list" data-drawer-role="actors"', 'party panel content should identify as the actor drawer list, not a command composer');
+  assertContains(template, 'id="enemies-content" data-surface-role="target-list" data-drawer-role="targets"', 'creature panel content should identify as the target drawer list, not a command composer');
   assertContains(template, 'grid-template-columns: minmax(520px, 1fr) 260px 260px;', 'desktop stage should not reserve a permanent left map column');
   assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
   assertNotContains(template, 'id="mini-map"', 'desktop should not render a duplicate minimap now that movement lives in the center play surface');

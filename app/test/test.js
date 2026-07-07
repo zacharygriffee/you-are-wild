@@ -1722,6 +1722,7 @@ test('Marked target action helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}"', 'Marked target intent buttons should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets"', 'Marked target clear should identify the target composer surface');
   assertContains(markedTargetActionsContent, 'data-command-control="clear-targets" data-command-slot="exit"', 'Marked target clear should identify the exit slot');
+  assertContains(markedTargetActionsContent, 'data-intent-source="${app._escapeHtml(commandSource)}"', 'Marked target sub-action sheet should preserve its command source');
   assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-intent="${app._escapeHtml(`${action}:${defaultSub}`)}"', 'Marked target sub-action buttons should identify the sub-action composer surface');
   assertContains(markedTargetActionsContent, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-control="cancel-sub-action"', 'Marked target sub-action cancel should identify the sub-action composer surface');
   assertContains(markedTargetActionsContent, 'data-command-control="cancel-sub-action" data-command-slot="exit"', 'Marked target sub-action cancel should identify the exit slot');
@@ -16562,9 +16563,11 @@ test('Desktop card intent menus stay suppressed for composer-owned actions', () 
 });
 
 test('Desktop marked-target actions stay bounded and dispatch default actions directly', () => {
-  const { App, body } = loadAppForCombat();
+  const { App, body, document, listeners, elements } = loadAppForCombat();
+  const opener = makeElement();
   const actor = makeUnit('You', { id: 'player-1' });
   const target = makeUnit('Wolfkin Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY, CPun: 80, MPun: 100 });
+  document.activeElement = opener;
   App.player = actor;
   App.party = [actor];
   App.creatures = [target];
@@ -16583,9 +16586,20 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
 
   App.openExplorationTargetSubActionSheet('fight', 'desktop-target');
   assertContains(body.innerHTML, 'id="desktop-intent-menu"', 'Desktop marked-target sub-actions should use desktop popup');
+  assertContains(body.innerHTML, 'data-intent-source="desktop-target"', 'Desktop marked-target sub-actions should preserve their source on the popup');
   assertContains(body.innerHTML, 'data-command-surface="sub-action-options" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop marked-target sub-actions should identify the shared command grammar');
   assertContains(body.innerHTML, 'data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Desktop marked-target sub-actions should identify menu items as intent-slot controls');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Desktop marked-target sub-actions should not use mobile sheet');
+  assert(App._focusTrap, 'Desktop marked-target sub-actions should activate the shared focus trap');
+  assert(listeners.has('keydown'), 'Desktop marked-target sub-actions should register keyboard focus handling');
+  const desktopMenu = elements.get('desktop-intent-menu');
+  let prevented = false;
+  listeners.get('keydown')({ key: 'Escape', preventDefault() { prevented = true; } });
+  assertEqual(prevented, true, 'Escape should be consumed by the marked-target focus trap');
+  assertEqual(desktopMenu.removed, true, 'Escape should close the desktop marked-target sub-action menu');
+  assertEqual(opener.focused, true, 'Closing desktop marked-target sub-actions should restore focus to the opener');
+  assertEqual(App.explorationActorIds.join(','), 'player-1', 'Canceling marked-target sub-actions should preserve actor selection');
+  assertEqual(App.explorationTargetIds.join(','), 'creature:guide-1', 'Canceling marked-target sub-actions should preserve target selection');
 });
 
 test('Marked creature target Fight button resolves the default attack', () => {

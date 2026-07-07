@@ -42,10 +42,11 @@ function makeUnitScript() {
     ];
     App.combatState.active = false;
     App.location = { x: 0, y: 0 };
-    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'jungle', terrainTags: ['merchant', 'dense canopy', 'wet trail'], items: [{ id: 'test-item', name: 'Test Item' }] }]]);
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'jungle', terrainTags: ['merchant', 'dense canopy', 'wet trail'], creatures: App.creatures, items: [{ id: 'test-item', name: 'Test Item' }] }]]);
     App.tileDeltas = new Map();
     App.exploredTiles = new Set(['0,0']);
     App.inventory = [];
+    App.renderMap();
     App.renderParty();
     App.renderCreatures();
     App.renderExplorationActions();
@@ -206,6 +207,8 @@ async function checkViewport(browser, name, width, height) {
       const map = document.querySelector('.mobile-map-card');
       const tileInfo = document.getElementById('mobile-tile-info');
       const miniMap = document.getElementById('mobile-mini-map');
+      const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
+      const centerPresenceButtons = Array.from(document.querySelectorAll('#mobile-mini-map .map-tile.center .mobile-play-presence-dot, #mobile-mini-map .map-tile.center .mobile-play-presence-more'));
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
@@ -216,6 +219,11 @@ async function checkViewport(browser, name, width, height) {
       const mapRect = map.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
       const miniMapRect = miniMap.getBoundingClientRect();
+      const centerTileRect = centerTile.getBoundingClientRect();
+      const centerPresenceRects = centerPresenceButtons.map(button => {
+        const rect = button.getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+      });
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
@@ -238,6 +246,10 @@ async function checkViewport(browser, name, width, height) {
         tileInfoBottom: tileInfoRect.bottom,
         miniMapTop: miniMapRect.top,
         miniMapHeight: miniMapRect.height,
+        centerTileHeight: centerTileRect.height,
+        centerPresenceCount: centerPresenceRects.length,
+        minCenterPresenceWidth: Math.min(...centerPresenceRects.map(rect => rect.width)),
+        minCenterPresenceHeight: Math.min(...centerPresenceRects.map(rect => rect.height)),
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -269,7 +281,10 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.mapHeight <= Math.min(276, mobileControls.viewportHeight * 0.42) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 7, `${name}: mobile tile metadata should not overlap the traversal grid`);
-    assert(mobileControls.miniMapHeight >= 114, `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert(mobileControls.miniMapHeight >= 118, `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert(mobileControls.centerTileHeight >= 68, `${name}: mobile current tile should leave room for presence controls`);
+    assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
+    assert(mobileControls.minCenterPresenceWidth >= 24 && mobileControls.minCenterPresenceHeight >= 24, `${name}: mobile current tile presence badges should keep mobile-sized tap targets`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);

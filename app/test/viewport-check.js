@@ -326,13 +326,13 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
     assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
-    assert(mobileControls.miniMapHeight >= Math.min(196, mobileControls.viewportHeight * 0.27), `${name}: mobile traversal grid should keep a usable minimum height`);
-    assert(mobileControls.centerTileWidth >= 168, `${name}: mobile current tile should keep a broad target column for stage presence`);
-    assert(mobileControls.centerTileHeight >= 128, `${name}: mobile current tile should leave room for larger presence controls`);
+    assert(mobileControls.miniMapHeight >= Math.min(204, mobileControls.viewportHeight * 0.3), `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert(mobileControls.centerTileWidth >= 176, `${name}: mobile current tile should keep a broad target column for stage presence`);
+    assert(mobileControls.centerTileHeight >= 144, `${name}: mobile current tile should leave room for larger presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
-    assert(mobileControls.minCenterPresenceWidth >= 64 && mobileControls.minCenterPresenceHeight >= 64, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
-    assert(mobileControls.minCenterPresenceFontSize >= 28, `${name}: mobile current tile presence badges should keep readable visible symbols`);
+    assert(mobileControls.minCenterPresenceWidth >= 72 && mobileControls.minCenterPresenceHeight >= 72, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
+    assert(mobileControls.minCenterPresenceFontSize >= 30, `${name}: mobile current tile presence badges should keep readable visible symbols`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);

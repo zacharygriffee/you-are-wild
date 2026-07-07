@@ -1896,7 +1896,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.selectionState, 'marked', 'Selected center presence badge should expose marked target state');
   assert.strictEqual(state.ariaPressed, 'true', 'Selected center presence badge should expose pressed state to assistive tech');
   assert.strictEqual(state.targetRef, 'merchant-1', 'Selected center presence badge should point at the marked creature');
-  assert(state.width >= 52 && state.height >= 52, 'Selected center presence badge should keep a finger-sized mobile target');
+  assert(state.width >= 72 && state.height >= 72, 'Selected center presence badge should keep a roomy mobile target');
   assert.strictEqual(state.insideTile, true, 'Selected center presence badge should stay inside the current tile');
 
   await page.evaluate(() => App.focusPresence('items', 'tile-items'));
@@ -1935,7 +1935,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.railItemSelected, true, 'Focused stage item should repaint the compact target rail item chip');
   assert.strictEqual(state.clearFocusVisible, true, 'Focused stage item should expose a visible Clear focus exit in the mobile composer');
   assert.strictEqual(state.takeItemsVisible, true, 'Focused stage item should keep Take Items reachable through location intents');
-  assert(state.width >= 52 && state.height >= 52, 'Focused center presence badge should keep a finger-sized mobile target');
+  assert(state.width >= 72 && state.height >= 72, 'Focused center presence badge should keep a roomy mobile target');
   assert.strictEqual(state.insideTile, true, 'Focused center presence badge should stay inside the current tile');
 
   await page.evaluate(() => App.clearFocusedStageObject());

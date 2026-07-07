@@ -4513,11 +4513,16 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
   assertContains(template, '.mobile-target-action-tray .action-btn {\n                display: inline-flex;', 'mobile target tray buttons should use compact inline icon labels');
+  assertContains(template, '.mobile-target-action-tray .action-btn {\n                display: inline-flex;\n                align-items: center;\n                justify-content: center;\n                gap: 4px;\n                flex: 0 0 auto;\n                min-width: 70px;\n                min-height: 44px;', 'mobile target tray buttons should keep finger-sized tap targets');
   assertContains(template, '.mobile-target-action-tray .action-icon {\n                font-size: 14px;', 'mobile target tray icons should stay compact enough for short phones');
   assertContains(template, 'id="mobile-actor-toggle"', 'mobile actor row should open through an explicit composer control');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
+  assertContains(template, 'min-height: 52px;\n                padding: 7px 10px;', 'mobile actor rail chips should keep a stable touch height');
+  assertContains(template, '.mobile-actor-chip-btn {\n                min-width: 44px;\n                min-height: 44px;', 'mobile actor rail Actor and Mark buttons should keep finger-sized tap targets');
   assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
+  assertContains(template, '.mobile-unit-chip .tactical-card-selection-controls .action-btn {\n                pointer-events: auto;\n                flex: 0 0 auto;\n                min-width: 48px;', 'mobile target rail Mark controls should keep readable touch width');
+  assertContains(template, 'min-height: 44px;\n                padding: 6px 8px;', 'mobile target rail Mark controls should keep finger-sized tap targets');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
   assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');

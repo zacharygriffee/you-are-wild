@@ -263,6 +263,45 @@ function assertMobileCombatToolbeltTapTargets(metrics, label) {
   assert.strictEqual(metrics.toolbeltInsideViewport, true, `${label}: mobile combat toolbelt should stay inside the viewport`);
 }
 
+async function mobileExplorationRailMetrics(page) {
+  return page.evaluate(() => {
+    const rects = selector => Array.from(document.querySelectorAll(selector)).map(node => {
+      const rect = node.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }).filter(rect => rect.width > 0 && rect.height > 0);
+    const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
+    const targetTray = rects('#mobile-target-action-tray .action-btn');
+    const actorChips = rects('#mobile-actor-belt .mobile-actor-chip');
+    const actorButtons = rects('#mobile-actor-belt .mobile-actor-chip-btn');
+    const targetButtons = rects('#mobile-creature-strip .tactical-card-selection-controls .action-btn');
+    return {
+      targetTrayCount: targetTray.length,
+      minTargetTrayWidth: min(targetTray.map(rect => rect.width)),
+      minTargetTrayHeight: min(targetTray.map(rect => rect.height)),
+      actorChipCount: actorChips.length,
+      minActorChipHeight: min(actorChips.map(rect => rect.height)),
+      actorButtonCount: actorButtons.length,
+      minActorButtonHeight: min(actorButtons.map(rect => rect.height)),
+      targetButtonCount: targetButtons.length,
+      minTargetButtonWidth: min(targetButtons.map(rect => rect.width)),
+      minTargetButtonHeight: min(targetButtons.map(rect => rect.height))
+    };
+  });
+}
+
+function assertMobileExplorationRailTapTargets(metrics, label) {
+  assert(metrics.targetTrayCount >= 1, `${label}: marked target composer should expose visible intent controls`);
+  assert(metrics.minTargetTrayWidth >= 70, `${label}: marked target intents should keep readable thumb-width targets`);
+  assert(metrics.minTargetTrayHeight >= 44, `${label}: marked target intents should keep finger-sized tap targets`);
+  assert(metrics.actorChipCount >= 1, `${label}: actor rail should expose compact actor chips`);
+  assert(metrics.minActorChipHeight >= 52, `${label}: actor rail chips should keep a stable touch height`);
+  assert(metrics.actorButtonCount >= 1, `${label}: actor rail should expose Actor/Mark controls`);
+  assert(metrics.minActorButtonHeight >= 44, `${label}: actor rail Actor/Mark controls should keep finger-sized tap targets`);
+  assert(metrics.targetButtonCount >= 1, `${label}: target rail should expose compact Mark controls`);
+  assert(metrics.minTargetButtonWidth >= 48, `${label}: target rail Mark controls should keep readable touch width`);
+  assert(metrics.minTargetButtonHeight >= 44, `${label}: target rail Mark controls should keep finger-sized tap targets`);
+}
+
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
@@ -2331,6 +2370,7 @@ async function runCompactRailRoundTripFlow(page) {
   }, 'Compact actor rail Details should identify drawer navigation and return context');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Mobile composer sentence should summarize selected actors and targets');
   assert.strictEqual(state.fullPartyDrawerOpen, false, 'Party rail selection should not open the full Party drawer');
+  assertMobileExplorationRailTapTargets(await mobileExplorationRailMetrics(page), 'Compact exploration actor target flow');
 
   await page.locator(`#mobile-actor-belt .mobile-actor-details`).click();
   state = await page.evaluate(() => ({

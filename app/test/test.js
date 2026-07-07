@@ -1763,6 +1763,7 @@ test('Interaction state helper module is registered before app code', () => {
   assertContains(interactionStateContent, 'selectionSentence(app)', 'Interaction state helper should derive the current selection sentence');
   assertContains(interactionStateContent, 'setSentenceSlot(slot, html, mode, meta = {})', 'Interaction state helper should own active command sentence surface metadata');
   assertContains(interactionStateContent, 'sentenceMeta(parts = [])', 'Interaction state helper should derive structural composer sentence metadata');
+  assertContains(interactionStateContent, 'commandMeta(app, parts = this.selectionSentence(app))', 'Interaction state helper should expose reusable command metadata for composer roots');
   assertContains(interactionStateContent, "slot.setAttribute('data-command-surface', 'command-sentence')", 'Selection sentence slots should identify the command sentence surface when active');
   assertContains(interactionStateContent, "slot.setAttribute('data-command-grammar', 'actor-target-intent')", 'Selection sentence slots should identify the actor-target-intent grammar');
   assertContains(interactionStateContent, "slot.setAttribute('data-command-actor-count'", 'Selection sentence slots should expose actor counts');
@@ -1997,6 +1998,10 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, 'desktopComposer(app, actor =', 'Combat action helper should own desktop composer rendering');
   assertContains(combatActionsContent, 'renderDesktopComposer(app, actor =', 'Combat action helper should render into the desktop context belt');
   assertContains(combatActionsContent, 'app._clearCenterActionsForCombat()', 'Combat action helper should keep center actions cleared for combat');
+  assertContains(combatActionsContent, 'YAW_INTERACTION_STATE.commandMeta(app)', 'Desktop combat composer root should reuse shared command metadata');
+  assertContains(combatActionsContent, "belt.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0))", 'Desktop combat composer root should expose actor count metadata');
+  assertContains(combatActionsContent, "belt.setAttribute('data-command-target-count', String(meta.targetCount ?? 0))", 'Desktop combat composer root should expose target count metadata');
+  assertContains(combatActionsContent, "belt.setAttribute('data-command-intent', meta.intent || 'choose')", 'Desktop combat composer root should expose current intent metadata');
   assertContains(combatActionsContent, "app._combatIntentButton('fight', actor, 'primary')", 'Combat action helper should keep fight on the shared combat intent button path');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed"', 'Combat Feed button should identify the combat intent surface');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync"', 'Combat Sync button should identify the combat intent surface');
@@ -2167,6 +2172,11 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, 'selectionSentence(app)', 'Mobile combat toolbelt helper should own the combat actor target intent sentence');
   assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.combatSentence(app)', 'Mobile combat toolbelt sentence should reuse canonical combat selection state');
   assertContains(mobileCombatToolbeltContent, 'render(app)', 'Mobile combat toolbelt helper should own DOM rendering');
+  assertContains(mobileCombatToolbeltContent, 'YAW_INTERACTION_STATE.commandMeta(app)', 'Mobile combat toolbelt root should reuse shared command metadata');
+  assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0))", 'Mobile combat toolbelt root should expose actor count metadata');
+  assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-target-count', String(meta.targetCount ?? 0))", 'Mobile combat toolbelt root should expose target count metadata');
+  assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-intent', meta.intent || 'choose')", 'Mobile combat toolbelt root should expose current intent metadata');
+  assertContains(mobileCombatToolbeltContent, "belt.removeAttribute('data-command-actor-count')", 'Mobile combat toolbelt should clear root actor count metadata when inactive');
   assertContains(mobileCombatToolbeltContent, "app._combatActionButtons(actor", 'Mobile combat toolbelt should reuse the shared combat action button path');
   assertContains(combatSceneContent, 'mobileLatestHtml(app', 'Combat scene helper should render a compact mobile latest-exchange strip');
   assertContains(combatSceneContent, 'mobile-combat-latest-strip', 'Mobile combat scene should not reuse the full boxed desktop summary');
@@ -11370,6 +11380,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-surface'), 'combat-composer', 'Mobile combat toolbelt should identify the combat composer surface');
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-mode'), 'combat', 'Mobile combat toolbelt should identify combat command mode while active');
   assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile combat toolbelt should identify the shared command grammar while active');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-actor-count'), '1', 'Mobile combat toolbelt root should expose current actor count');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-target-count'), '0', 'Mobile combat toolbelt root should expose empty target count before target selection');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), 'choose', 'Mobile combat toolbelt root should expose pending intent state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You to act', 'Mobile combat toolbelt should show current party actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Round 2', 'Mobile combat toolbelt should show round state');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Mobile combat toolbelt should expose one shared intent belt');
@@ -11406,6 +11419,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Pick target', 'Mobile combat selected intent should tell the player target selection is pending');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Fight', 'Mobile combat selected intent should show the safe visible action label');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="fight"', 'Mobile combat target-pick sentence should expose selected intent metadata');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-actor-count'), '1', 'Mobile combat target phase root should keep current actor count');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-target-count'), '0', 'Mobile combat target phase root should expose unresolved target count');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), 'fight', 'Mobile combat target phase root should expose selected intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting"', 'Mobile combat target phase should identify the target-pick control surface');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target phase should identify the shared command grammar');
@@ -11453,6 +11469,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.feedSelection = null;
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants"', 'Mobile Sync participant phase should identify the participant surface');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-actor-count'), '2', 'Mobile Sync participant phase root should expose selected participant count');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-target-count'), '0', 'Mobile Sync participant phase root should expose unresolved target count');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), 'sync_fight', 'Mobile Sync participant phase root should expose stable sync intent');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Mobile Sync participant phase should identify combat command mode');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile Sync participant phase should identify the shared command grammar');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-control="confirm-sync-participants"', 'Mobile Sync participant confirm should identify the participant surface');
@@ -11477,6 +11496,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   App.renderMobileCombatToolbelt();
   assertEqual(elements.get('mobile-play-surface').classList.contains('combat-active'), false, 'Mobile play surface should leave combat layout mode after combat');
   assertEqual(elements.get('mobile-combat-toolbelt').innerHTML, '', 'Mobile combat toolbelt should clear after combat');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-actor-count'), null, 'Inactive mobile combat toolbelt should clear actor count metadata');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-target-count'), null, 'Inactive mobile combat toolbelt should clear target count metadata');
+  assertEqual(elements.get('mobile-combat-toolbelt').getAttribute('data-command-intent'), null, 'Inactive mobile combat toolbelt should clear intent metadata');
 });
 
 test('Mobile combat scene renders one latest-exchange strip instead of boxed summary', () => {

@@ -155,6 +155,10 @@ const YAW_INTERACTION_STATE = {
         };
     },
 
+    commandMeta(app, parts = this.selectionSentence(app)) {
+        return this.sentenceMeta(parts);
+    },
+
     setSentenceSlot(slot, html, mode, meta = {}) {
         if (!slot) return;
         slot.innerHTML = html || '';

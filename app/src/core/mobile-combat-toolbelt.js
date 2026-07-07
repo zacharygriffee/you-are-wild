@@ -114,6 +114,9 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
             belt.removeAttribute('data-command-surface');
             belt.removeAttribute('data-command-mode');
             belt.removeAttribute('data-command-grammar');
+            belt.removeAttribute('data-command-actor-count');
+            belt.removeAttribute('data-command-target-count');
+            belt.removeAttribute('data-command-intent');
             return '';
         }
         const actor = app._currentCombatActor();
@@ -133,6 +136,12 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         belt.setAttribute('data-command-surface', 'combat-composer');
         belt.setAttribute('data-command-mode', 'combat');
         belt.setAttribute('data-command-grammar', 'actor-target-intent');
+        const meta = typeof YAW_INTERACTION_STATE !== 'undefined' && YAW_INTERACTION_STATE.commandMeta
+            ? YAW_INTERACTION_STATE.commandMeta(app)
+            : { actorCount: actor ? 1 : 0, targetCount: 0, intent: 'choose' };
+        belt.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0));
+        belt.setAttribute('data-command-target-count', String(meta.targetCount ?? 0));
+        belt.setAttribute('data-command-intent', meta.intent || 'choose');
         belt.innerHTML = html;
         return html;
     }

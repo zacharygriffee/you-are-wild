@@ -688,6 +688,23 @@ async function runDesktopSyncComposerFlow(page) {
   assert(state.partyBadges.includes('Group'), 'Desktop queued Sync participants should expose group badges on compact cards');
   assert(state.enemyBadges.includes('Target'), 'Desktop queued Sync target should expose target badge on compact cards');
   assert.strictEqual(state.centerHasControls, false, 'Desktop queued Sync should keep center stage free of combat controls');
+
+  state = await page.evaluate(() => {
+    App.renderParty();
+    App.renderCreatures();
+    return {
+      partyBadges: Array.from(document.querySelectorAll('#party-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+      enemyBadges: Array.from(document.querySelectorAll('#enemies-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+      participantControls: document.querySelectorAll('#party-content button[data-selection-mode="sync-participant"]').length,
+      combatPickControls: document.querySelectorAll('#enemies-content button[data-selection-mode="combat-pick"]').length,
+      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert(state.partyBadges.includes('Group'), 'Desktop queued Sync group badges should survive compact party rerender');
+  assert(state.enemyBadges.includes('Target'), 'Desktop queued Sync target badge should survive compact target rerender');
+  assert.strictEqual(state.participantControls, 0, 'Desktop queued Sync should not leave helper-pick controls after compact rerender');
+  assert.strictEqual(state.combatPickControls, 0, 'Desktop queued Sync should not leave target-pick controls after compact rerender');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop queued Sync rerender should keep center stage free of combat controls');
 }
 
 async function runMobileSyncComposerFlow(page) {
@@ -904,6 +921,26 @@ async function runMobileSyncComposerFlow(page) {
   assert(state.enemyBadges.includes('Target'), 'Mobile queued Sync target should expose target badge on compact chips');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after queueing Sync');
   assert.strictEqual(state.centerHasControls, false, 'Mobile queued Sync should keep center stage free of combat controls');
+
+  state = await page.evaluate(() => {
+    App.renderParty();
+    App.renderCreatures();
+    App.renderMobileCombatToolbelt();
+    return {
+      partyBadges: Array.from(document.querySelectorAll('#mobile-party-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+      enemyBadges: Array.from(document.querySelectorAll('#mobile-creature-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+      participantControls: document.querySelectorAll('#mobile-party-strip button[data-selection-mode="sync-participant"]').length,
+      combatPickControls: document.querySelectorAll('#mobile-creature-strip button[data-selection-mode="combat-pick"]').length,
+      toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
+      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert(state.partyBadges.includes('Group'), 'Mobile queued Sync group badges should survive compact party rerender');
+  assert(state.enemyBadges.includes('Target'), 'Mobile queued Sync target badge should survive compact target rerender');
+  assert.strictEqual(state.participantControls, 0, 'Mobile queued Sync should not leave helper-pick controls after compact rerender');
+  assert.strictEqual(state.combatPickControls, 0, 'Mobile queued Sync should not leave target-pick controls after compact rerender');
+  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after queued Sync rerender');
+  assert.strictEqual(state.centerHasControls, false, 'Mobile queued Sync rerender should keep center stage free of combat controls');
 
   await page.setViewportSize({ width: 1365, height: 768 });
 }

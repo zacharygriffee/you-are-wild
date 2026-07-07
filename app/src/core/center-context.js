@@ -356,16 +356,17 @@ const YAW_CENTER_CONTEXT = {
 
     overflowCommandAttrs(app, overflow = []) {
         const info = this.overflowCommandInfo(overflow);
+        const overflowCountAttr = ` data-command-overflow-count="${app._escapeHtml(String(overflow.length))}"`;
         if (info.route === 'target') {
-            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"${overflowCountAttr}`;
         }
         if (info.route === 'actor') {
-            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="actor" data-command-actor-count="${app._escapeHtml(String(info.count))}"`;
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="actor" data-command-actor-count="${app._escapeHtml(String(info.count))}"${overflowCountAttr}`;
         }
         if (info.route === 'stage') {
-            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"${overflowCountAttr}`;
         }
-        return `data-command-control="${info.control}"`;
+        return `data-command-control="${info.control}"${overflowCountAttr}`;
     },
 
     overflowCommandRoute(overflow = []) {
@@ -380,8 +381,19 @@ const YAW_CENTER_CONTEXT = {
 
     overflowCommandLabel(app, overflow = []) {
         const info = this.overflowCommandInfo(overflow);
+        const total = overflow.length;
         if (info.route === 'stage') {
             return app._label('ui.presence.focusOverflow', 'Focus {count} more stage cue(s)', { count: info.count });
+        }
+        if (total > info.count) {
+            const kind = info.route === 'target'
+                ? app._label(info.count === 1 ? 'ui.target' : 'ui.targets', info.count === 1 ? 'target' : 'targets')
+                : app._label(info.count === 1 ? 'ui.actor' : 'ui.actors', info.count === 1 ? 'actor' : 'actors');
+            return app._label('ui.presence.openFilteredOverflow', 'Open {count} hidden {kind}; {total} total hidden', {
+                count: info.count,
+                kind,
+                total
+            });
         }
         return app._label('ui.presence.openDetails', 'Open {count} more in details', { count: info.count });
     },

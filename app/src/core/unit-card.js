@@ -17,6 +17,9 @@ const YAW_UNIT_CARD = {
         const canDragPartyMember = isAlly && !app.combatState.active;
         const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
         const cardClass = `unit-card${isExpanded ? ' expanded' : ''}${canDragPartyMember ? ' party-draggable' : ''}${app._unitSelectionClass(unit, type)}`;
+        const surfaceRoleAttrs = isParty
+            ? 'data-surface-role="actor-card" data-drawer-role="actors"'
+            : 'data-surface-role="target-card" data-drawer-role="targets"';
         let actionButtons = '';
         let detailButtons = '';
         let partyManagementControls = '';
@@ -159,7 +162,7 @@ const YAW_UNIT_CARD = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
         const cardContextMenuAttr = '';
-        return `<div class="${cardClass}" ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">

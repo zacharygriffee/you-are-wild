@@ -2207,6 +2207,8 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual creature utility dispatch');
   assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
   assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
+  assertContains(mobileUnitChipContent, 'data-surface-role="actor-presence-chip" data-drawer-role="actors"', 'Mobile party chip root should identify as an actor presence chip, not a command surface');
+  assertContains(mobileUnitChipContent, 'data-surface-role="target-presence-chip" data-drawer-role="targets"', 'Mobile creature chip root should identify as a target presence chip, not a command surface');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
   assertContains(mobileUnitChipContent, 'if (isExpanded) {', 'Mobile party detail controls should stay behind the chip detail expansion');
   assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-details', unit)", 'Mobile party chip should label detail utility row semantics separately from actor/target selection');
@@ -2226,6 +2228,8 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, 'const YAW_UNIT_CARD = {', 'Unit card helper should expose a renderer service');
   assertContains(unitCardContent, 'render(app, unit, index, type)', 'Unit card helper should own desktop card rendering');
   assertContains(unitCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Unit card helper should retain exact creature target marking');
+  assertContains(unitCardContent, 'data-surface-role="actor-card" data-drawer-role="actors"', 'Desktop party card root should identify as an actor drawer card, not a command surface');
+  assertContains(unitCardContent, 'data-surface-role="target-card" data-drawer-role="targets"', 'Desktop creature card root should identify as a target drawer card, not a command surface');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-details', unit)", 'Unit card helper should label detail utility row semantics separately from actor/target selection');
@@ -14193,6 +14197,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const mobileAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
 
+  assertContains(playerCard, 'data-surface-role="actor-card" data-drawer-role="actors"', 'Desktop party card should identify as an actor drawer card');
   assertContains(playerCard, 'data-card-purpose="detail-toggle"', 'Desktop card container should identify click/keyboard behavior as detail toggling');
   assertContains(playerCard, 'data-card-state="collapsed"', 'Desktop card should expose collapsed focus/detail state separately from selection state');
   assertContains(playerCard, 'aria-label="Show details for You"', 'Desktop card container should keep detail-toggle copy separate from actor selection');
@@ -14228,6 +14233,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(allyCard, 'data-selection-mode="mark-target" data-selection-state="available" data-command-slot="target"', 'Unmarked desktop party target control should identify the target slot');
   assertContains(allyCard, 'aria-label="Mark Ally as target"', 'Unmarked desktop party target control should advertise mark semantics');
   assertNotContains(allyCard, 'App.showInventory()', 'Non-player party cards should not duplicate inventory access');
+  assertContains(creatureCard, 'data-surface-role="target-card" data-drawer-role="targets"', 'Desktop creature card should identify as a target drawer card');
   assertContains(creatureCard, 'data-card-purpose="detail-toggle"', 'Creature card container should identify detail-toggle behavior');
   assertContains(creatureCard, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Desktop creature action row should identify target-only scope');
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Desktop creature action row should identify target composer routing');
@@ -14237,6 +14243,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Desktop creature Mark button should identify the target slot');
   assertContains(creatureCard, 'aria-label="Remove Guide from targets"', 'Marked desktop creature target control should advertise remove semantics');
+  assertContains(mobilePlayerChip, 'data-surface-role="actor-presence-chip" data-drawer-role="actors"', 'Mobile party chip should identify as an actor presence chip');
   assertContains(mobilePlayerChip, 'data-card-purpose="detail-toggle"', 'Mobile chip container should identify click/keyboard behavior as detail toggling');
   assertContains(mobilePlayerChip, 'data-card-state="collapsed"', 'Mobile chip should expose collapsed focus/detail state separately from selection state');
   assertContains(mobilePlayerChip, 'aria-expanded="false"', 'Mobile collapsed chip should expose collapsed detail state');
@@ -14264,6 +14271,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileAllyChip, 'aria-label="Remove Ally from actors"', 'Selected mobile actor control should advertise remove semantics');
   assertContains(mobileAllyChip, 'data-selection-mode="mark-target" data-selection-state="available" data-command-slot="target"', 'Unmarked mobile party target control should identify the target slot');
   assertContains(mobileAllyChip, 'aria-label="Mark Ally as target"', 'Unmarked mobile party target control should advertise mark semantics');
+  assertContains(mobileCreatureChip, 'data-surface-role="target-presence-chip" data-drawer-role="targets"', 'Mobile creature chip should identify as a target presence chip');
   assertContains(mobileCreatureChip, 'data-action-scope="creature-selection" aria-label="Target controls for Guide"', 'Mobile creature action row should identify target-only scope');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Mobile creature action row should identify target composer routing');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile creature action row should identify the shared command grammar');

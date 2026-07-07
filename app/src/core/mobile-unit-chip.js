@@ -84,8 +84,11 @@ const YAW_MOBILE_UNIT_CHIP = {
             ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
             : ` ontouchstart="App.startMobileCreaturePress(event,'${pressTargetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
         const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${app._unitSelectionClass(unit, type)}`;
+        const surfaceRoleAttrs = isParty
+            ? 'data-surface-role="actor-presence-chip" data-drawer-role="actors"'
+            : 'data-surface-role="target-presence-chip" data-drawer-role="targets"';
         const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
-        return `<div class="${chipClass}" ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
+        return `<div class="${chipClass}" ${surfaceRoleAttrs} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${contextMenuAttr}${pressHandlers}>
                     <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${app._escapeHtml(status)}${rowText}</div>

@@ -4543,7 +4543,7 @@
 	                            </div>
 	                            <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" data-surface-role="presence-rail" data-stage-surface="presence" aria-live="polite"></div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt" data-surface-role="command-composer">
-	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
+                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
 	                                <div class="mobile-control-row" id="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>
@@ -4625,7 +4625,7 @@
                             </div>
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>
-                                <div class="selection-sentence" id="selection-sentence" aria-live="polite"></div>
+                                <div class="selection-sentence" id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
                                 <div class="desktop-context-belt" id="desktop-context-belt" data-surface-role="command-composer" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
                             </div>
                             <div class="scene-actions" id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden></div>

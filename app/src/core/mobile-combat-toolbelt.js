@@ -96,7 +96,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const attrs = html
             ? `data-command-surface="command-sentence" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-actor-count="${app._escapeHtml(String(meta.actorCount ?? 0))}" data-command-target-count="${app._escapeHtml(String(meta.targetCount ?? 0))}" data-command-intent="${app._escapeHtml(meta.intent || 'choose')}"`
             : '';
-        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" ${attrs} aria-live="polite">${html}</div>` : '';
+        return html ? `<div class="selection-sentence mobile-combat-selection-sentence" ${attrs} role="status" aria-live="polite" aria-atomic="true">${html}</div>` : '';
     },
 
     render(app) {

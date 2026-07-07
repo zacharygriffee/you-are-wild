@@ -4449,6 +4449,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.center-presence-chip.place', 'desktop stage presence should distinguish structure and landmark cues');
   assertContains(template, 'id="mobile-selection-sentence"', 'mobile actor target intent sentence slot missing');
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
+  assertContains(template, 'id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Mobile command sentence should announce actor-target-intent changes as an atomic status');
+  assertContains(template, 'id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Desktop command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
@@ -4567,6 +4569,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');
   assertNotContains(template, 'onclick="combatAction(\'fight\')"', 'legacy mobile action bar should not ship duplicate Fight controls');
   assertContains(template, '.mobile-combat-selection-sentence', 'mobile combat toolbelt should show actor target intent state near combat controls');
+  assertContains(mobileCombatToolbeltContent, 'class="selection-sentence mobile-combat-selection-sentence" ${attrs} role="status" aria-live="polite" aria-atomic="true"', 'mobile combat command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(interactionStateContent, 'actorLabel(app, count = 1)', 'selection sentence should choose singular/plural actor labels from state');
   assertContains(interactionStateContent, 'targetLabel(app, count = 1)', 'selection sentence should choose singular/plural target labels from state');
   assertContains(interactionStateContent, "hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : ''", 'mobile selection sentence should appear only when exploration selection state needs correction or controls');
@@ -11586,6 +11589,9 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-actor-count="1"', 'Mobile combat command sentence should expose current actor count metadata');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-target-count="0"', 'Mobile combat command sentence should expose target count metadata before target-pick');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="choose"', 'Mobile combat command sentence should expose pending intent metadata');
+  const combatSentence = document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence');
+  assertEqual(combatSentence?.getAttribute('role'), 'status', 'Mobile combat command sentence should render as a live status');
+  assertEqual(combatSentence?.getAttribute('aria-atomic'), 'true', 'Mobile combat command sentence should announce the full actor-target-intent sentence atomically');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Actor', 'Mobile combat selection sentence should label the singular current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'You', 'Mobile combat selection sentence should name the current actor');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Intent', 'Mobile combat selection sentence should label pending intent');
@@ -12321,6 +12327,8 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-actor-count'), '1', 'Desktop explicit actor sentence should expose actor count metadata');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '0', 'Desktop explicit actor sentence should expose zero selected targets');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Desktop explicit actor sentence should expose pending intent metadata');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('role'), 'status', 'Desktop command sentence should render as a live status');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('aria-atomic'), 'true', 'Desktop command sentence should announce the full actor-target-intent sentence atomically');
   assertEqual(document.getElementById('desktop-command-composer').classList.contains('has-controls'), true, 'Desktop command composer shell should become active when the command sentence is active');
   assertEqual(Boolean(document.getElementById('desktop-command-composer').hidden), false, 'Desktop command composer shell should unhide when the command sentence is active');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('aria-hidden'), 'false', 'Desktop active command composer shell should be available to assistive tech');
@@ -12339,6 +12347,8 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-actor-count'), '1', 'Mobile active exploration sentence should expose actor count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-target-count'), '0', 'Mobile active exploration sentence should expose target count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-intent'), 'choose', 'Mobile active exploration sentence should expose pending intent metadata');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('role'), 'status', 'Mobile exploration command sentence should render as a live status');
+  assertEqual(elements.get('mobile-selection-sentence').getAttribute('aria-atomic'), 'true', 'Mobile exploration command sentence should announce the full actor-target-intent sentence atomically');
   App.renderExplorationActions();
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors"', 'Desktop composer belt should expose a clear-actors exit for explicit actor state');
   assertContains(document.getElementById('desktop-context-belt').innerHTML, 'data-command-control="clear-actors" data-command-slot="exit"', 'Desktop clear-actors exit should identify the exit slot');

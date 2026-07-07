@@ -91,7 +91,7 @@ const YAW_COMBAT_TARGETING = {
             actors: [actor],
             targets: [target],
             action,
-            source: 'panel-card',
+            source: 'combat-targeting',
             constraints: { requireCurrentTurn: true, hostileOnly: action !== 'scavenge', checkReach: action !== 'scavenge', checkRows: action !== 'scavenge' }
         });
         return app._dispatchInteractionCommand(command);

@@ -1805,6 +1805,7 @@ test('Action UI helper module is registered before app code', () => {
   assertContains(actionUiContent, "iconButton(app, key, icon, onclick, extraClass = '', attrs = '')", 'Action UI helper should own icon action buttons');
   assertContains(actionUiContent, 'combatIntentButton(app, key, actor, extraClass = \'\')', 'Action UI helper should own combat intent button selected-state rendering');
   assertContains(actionUiContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}"', 'Shared combat intent buttons should identify the combat composer surface');
+  assertContains(combatIntentsContent, "source: 'combat-composer'", 'Combat intent dispatcher should identify composer-owned non-target combat utilities');
   assertContains(actionUiContent, 'legend(app, keys)', 'Action UI helper should own action legends');
   assertContains(actionUiContent, 'icon(key)', 'Action UI helper should own action icons');
   assertContains(appContent, 'YAW_ACTION_UI.iconButton(this, key, icon, onclick, extraClass, attrs)', 'App icon action wrapper should delegate to the helper');
@@ -2009,6 +2010,8 @@ test('Combat targeting helper module is registered before app code', () => {
   assertContains(combatTargetingContent, 'canSelectCreatureTarget(app, unit)', 'Combat targeting helper should own target validation');
   assertContains(combatTargetingContent, 'targetPickHint(app, unit, action', 'Combat targeting helper should own target-pick explanation text');
   assertContains(combatTargetingContent, 'executeActionOnTarget(app, action, targetId)', 'Combat targeting helper should own panel target dispatch');
+  assertContains(combatTargetingContent, "source: 'combat-targeting'", 'Combat targeting helper should identify target picks as the combat target-picker surface');
+  assertNotContains(combatTargetingContent, "source: 'panel-card'", 'Combat target picks should not preserve legacy panel-card command source metadata');
   assertContains(combatTargetingContent, 'requireCurrentTurn: true', 'Combat targeting helper should preserve current-turn constraints');
   assertContains(combatTargetingContent, "hostileOnly: action !== 'scavenge'", 'Combat targeting helper should relax hostile-only targeting only for corpse scavenge');
   assertContains(combatTargetingContent, "checkReach: action !== 'scavenge'", 'Combat targeting helper should relax reach checks only for corpse scavenge');
@@ -8816,7 +8819,7 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(App.executeActionOnTarget('fight', 'enemy-combat-panel-dispatch'), true, 'Combat target card should resolve through shared panel dispatch');
   assertEqual(seen.length, 1, 'Combat target click should hit the same dispatcher once');
   assertEqual(seen[0].mode, 'combat', 'Combat target click should build a combat command');
-  assertEqual(seen[0].source, 'panel-card', 'Combat target click should keep panel-card source metadata');
+  assertEqual(seen[0].source, 'combat-targeting', 'Combat target click should identify the combat target-picker command surface');
   assertEqual(seen[0].actorIds[0], 'player-combat-panel-dispatch', 'Combat command should record active actor id');
   assertEqual(seen[0].targetIds[0], 'enemy-combat-panel-dispatch', 'Combat command should record clicked target id');
 
@@ -8826,7 +8829,7 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   App.targetSelection = null;
   assertEqual(App.executeAction('fight', 0), true, 'Legacy filtered-index combat wrapper should still resolve');
   assertEqual(seen.length, 2, 'Legacy combat wrapper should delegate through the same dispatcher once');
-  assertEqual(seen[1].source, 'panel-card', 'Legacy combat wrapper should not keep a separate legacy command source');
+  assertEqual(seen[1].source, 'combat-targeting', 'Legacy combat wrapper should delegate through the combat target-picker command surface');
   assertEqual(seen[1].targetIds[0], 'enemy-combat-panel-dispatch', 'Legacy combat wrapper should resolve the same target id before dispatch');
 });
 

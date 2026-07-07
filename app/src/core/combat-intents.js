@@ -42,7 +42,7 @@ const YAW_COMBAT_INTENTS = {
                 actors: [current],
                 targets: [],
                 action: 'feed',
-                source: 'panel-card',
+                source: 'combat-composer',
                 targetType: 'party'
             });
         }

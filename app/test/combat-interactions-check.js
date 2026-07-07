@@ -1084,7 +1084,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   }));
   assert(state.enemyPun < 100, 'Mobile combat pick should resolve the selected fight target');
   assert.strictEqual(state.targetSelection, null, 'Mobile combat pick should clear target selection after resolving');
-  assert.strictEqual(state.commandSource, 'panel-card', 'Mobile combat pick should preserve panel-card command source metadata');
+  assert.strictEqual(state.commandSource, 'combat-targeting', 'Mobile combat pick should identify the combat target-picker command surface');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile combat resolution');
 
   await page.setViewportSize({ width: 1365, height: 768 });

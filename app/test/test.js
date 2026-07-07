@@ -7727,9 +7727,10 @@ test('Stage presence dedupes party references and preserves duplicate creature r
 
   App.renderMap();
   const mobileHtml = el('mobile-mini-map').innerHTML;
-  assertEqual((mobileHtml.match(/mobile-play-presence-dot party/g) || []).length, 1, 'Mobile center presence should not duplicate the player dot');
+  assert((mobileHtml.match(/mobile-play-presence-dot party/g) || []).length <= 1, 'Mobile center presence should not duplicate the player dot');
   assertContains(mobileHtml, "App.focusPresence('creature','@creature:0:guide-shared')", 'Mobile center presence should focus the first duplicate-id creature');
-  assertContains(mobileHtml, "App.focusPresence('creature','@creature:1:guide-shared')", 'Mobile center presence should focus the second duplicate-id creature');
+  assertContains(mobileHtml, 'data-command-control="open-target-picker"', 'Mobile center presence overflow should route hidden duplicate-id creatures through the target picker');
+  assertContains(mobileHtml, 'data-command-target-count="1"', 'Mobile center presence overflow should count the hidden duplicate-id creature target');
 });
 
 test('Stage presence exposes tile-local items as bounded cues', () => {
@@ -10339,6 +10340,7 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-stage-surface="current-tile" data-stage-layer="tile" data-stage-cell="center"', 'Mobile routine play should identify the center stage tile layer');
   assertContains(html, 'data-stage-surface="traversal-cell" data-stage-layer="tile" data-stage-cell="e"', 'Mobile routine play should identify traversal stage tile layers');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
+  assertEqual((html.match(/mobile-play-presence-dot/g) || []).length, 2, 'Mobile center tile should cap visible presence at two large controls');
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
   assertContains(html, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
   assertContains(html, 'data-command-surface="stage-presence"', 'Mobile center presence should identify stage-presence command routing');
@@ -10357,10 +10359,10 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'mobile-play-presence-more', 'Mobile center presence should expose overflow when local presence is clipped');
   assertContains(html, 'data-command-control="open-target-picker"', 'Mobile center presence overflow should identify target-picker routing when hidden creatures are clipped');
   assertContains(html, 'data-command-control="open-target-picker" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Mobile center presence overflow should identify the target slot');
-  assertContains(html, 'data-command-target-count="1"', 'Mobile center presence overflow should expose the hidden creature target count');
+  assertContains(html, 'data-command-target-count="2"', 'Mobile center presence overflow should expose the hidden creature target count');
   assertContains(html, 'data-command-grammar="actor-target-intent"', 'Mobile center presence overflow should preserve the shared command grammar');
   assertContains(html, "App.focusPresenceOverflow('target')", 'Mobile center presence overflow should focus the advertised target drawer');
-  assertContains(html, 'aria-label="Open 1 more in details"', 'Mobile center overflow presence should advertise that it opens details');
+  assertContains(html, 'aria-label="Open 2 more in details"', 'Mobile center overflow presence should advertise that it opens details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');

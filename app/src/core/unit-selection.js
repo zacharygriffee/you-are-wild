@@ -44,11 +44,22 @@ const YAW_UNIT_SELECTION = {
         return app._label('target.mark', 'Mark');
     },
 
+    combatTargetMarkLabel(app) {
+        return app._label('target.combatTarget', 'Target');
+    },
+
     targetToggleLabel(app, unit, selected = false) {
         const name = unit?.name || app._label('unit.generic', 'unit');
         return selected
             ? app._label('target.removeTargetFor', 'Remove {name} from targets', { name })
             : app._label('target.markFor', 'Mark {name} as target', { name });
+    },
+
+    combatTargetToggleLabel(app, unit, selected = false) {
+        const name = unit?.name || app._label('unit.generic', 'unit');
+        return selected
+            ? app._label('target.clearCombatTargetFor', 'Clear {name} combat target', { name })
+            : app._label('target.setCombatTargetFor', 'Set {name} as combat target', { name });
     },
 
     actorToggleLabel(app, unit, selected = false) {
@@ -71,6 +82,9 @@ const YAW_UNIT_SELECTION = {
         }
         if (kind === 'combat-target') {
             return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}" data-command-slot="target"`;
+        }
+        if (kind === 'combat-mark-target') {
+            return `data-selection-control="combat-target" aria-pressed="${Boolean(active)}" data-selection-mode="combat-target" data-selection-state="${active ? 'selected' : 'available'}" data-command-slot="target"`;
         }
         return `data-selection-control="${app._escapeHtml(String(kind || 'unknown'))}"`;
     },

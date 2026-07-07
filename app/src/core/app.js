@@ -3971,8 +3971,14 @@
             _targetMarkLabel() {
                 return YAW_UNIT_SELECTION.targetMarkLabel(this);
             },
+            _combatTargetMarkLabel() {
+                return YAW_UNIT_SELECTION.combatTargetMarkLabel(this);
+            },
             _targetToggleLabel(unit, selected = false) {
                 return YAW_UNIT_SELECTION.targetToggleLabel(this, unit, selected);
+            },
+            _combatTargetToggleLabel(unit, selected = false) {
+                return YAW_UNIT_SELECTION.combatTargetToggleLabel(this, unit, selected);
             },
             _actorToggleLabel(unit, selected = false) {
                 return YAW_UNIT_SELECTION.actorToggleLabel(this, unit, selected);

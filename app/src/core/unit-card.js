@@ -129,9 +129,9 @@ const YAW_UNIT_CARD = {
             } else if (app.combatState.active && unit.disposition === app.DISPOSITION.ENEMY && !app.feedSelection?.active) {
                 const targetPressed = app._isCombatMarkedTarget?.(unit);
                 const targetClass = targetPressed ? ' primary' : '';
-                const markLabel = app._escapeHtml(app._targetMarkLabel());
-                const markTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target-mark', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleCombatTarget('${targetKey}')">${markLabel}</button></div>`;
+                const markLabel = app._escapeHtml(app._combatTargetMarkLabel());
+                const markTitle = app._escapeHtml(app._combatTargetToggleLabel(unit, targetPressed));
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target-mark', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('combat-mark-target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleCombatTarget('${targetKey}')">${markLabel}</button></div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';
                 const markLabel = app._escapeHtml(app._targetMarkLabel());

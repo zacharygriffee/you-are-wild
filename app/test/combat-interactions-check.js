@@ -488,6 +488,166 @@ async function runStaleSyncParticipantFlow(page) {
   assert(state.lastLog.includes('Participants are no longer in the turn queue'), 'Rejected stale sync should explain the correction');
 }
 
+async function runDesktopSyncComposerFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  const prepare = async () => {
+    await setupCombat(page, {
+      withAlly: true,
+      allyOverrides: { combatRow: 'front', Figh: 80 },
+      enemyOverrides: { combatRow: 'front', CPun: 100, MPun: 100 }
+    });
+    await page.evaluate(() => {
+      const ally = App.party.find(unit => unit.id === 'ally-1');
+      const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+      if (ally && !App.combatState.turnQueue.some(entry => entry.unit === ally)) {
+        App.combatState.turnQueue.splice(1, 0, { unit: ally, initiative: 15 });
+      }
+      App.combatState.currentTurn = 0;
+      App.activeActor = App.player;
+      App._advancedTurn = false;
+      if (enemy) enemy.combatRow = 'front';
+      App.showActorActions(App.player);
+    });
+  };
+
+  await prepare();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('sync')"]`).first().click();
+  let state = await page.evaluate(() => {
+    const tray = document.querySelector('#desktop-context-belt .combat-sync-tray');
+    const row = tray?.querySelector('.target-action-row');
+    return {
+      phase: App.syncSelection?.phase || null,
+      surface: tray?.getAttribute('data-command-surface') || '',
+      rowSurface: row?.getAttribute('data-command-surface') || '',
+      mode: tray?.getAttribute('data-command-mode') || '',
+      grammar: tray?.getAttribute('data-command-grammar') || '',
+      controls: tray?.innerText || '',
+      shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
+      beltIntent: document.querySelector('#desktop-context-belt')?.getAttribute('data-command-intent') || '',
+      cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="cancel-sync"]')),
+      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.phase, 'choose', 'Desktop Sync should enter choose phase');
+  assert.strictEqual(state.surface, 'sync-intents', 'Desktop Sync choose tray should identify the sync intent surface');
+  assert.strictEqual(state.rowSurface, 'sync-intents', 'Desktop Sync choose row should identify the sync intent surface');
+  assert.strictEqual(state.mode, 'combat', 'Desktop Sync choose tray should identify combat mode');
+  assert.strictEqual(state.grammar, 'actor-target-intent', 'Desktop Sync choose tray should preserve shared command grammar');
+  assert(state.controls.includes('Group Fight') && state.controls.includes('Cancel Sync'), 'Desktop Sync choose tray should expose group intents and Cancel Sync');
+  assert.strictEqual(state.shellIntent, 'sync', 'Desktop command shell should expose Sync as the pending intent');
+  assert.strictEqual(state.beltIntent, 'sync', 'Desktop command belt should expose Sync as the pending intent');
+  assert.strictEqual(state.cancelVisible, true, 'Desktop Sync choose phase should expose visible Cancel Sync');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop Sync choose phase should keep center stage free of combat controls');
+
+  await page.locator(`#desktop-context-belt button[data-command-intent="sync_fight"]`).first().click();
+  const allyParticipant = page.locator(`#party-content button[data-selection-mode="sync-participant"][onclick*="ally-1"]`).first();
+  await assert.doesNotReject(() => allyParticipant.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop Sync participant phase should expose ally participant controls');
+  state = await page.evaluate(() => {
+    const tray = document.querySelector('#desktop-context-belt .combat-sync-tray');
+    const confirm = document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]');
+    return {
+      phase: App.syncSelection?.phase || null,
+      surface: tray?.getAttribute('data-command-surface') || '',
+      controls: tray?.innerText || '',
+      participantButtons: document.querySelectorAll('#party-content button[data-selection-mode="sync-participant"]').length,
+      confirmDisabled: confirm?.hasAttribute('disabled') || false,
+      confirmSlot: confirm?.getAttribute('data-command-slot') || '',
+      cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="cancel-sync"]')),
+      shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
+      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.phase, 'participants', 'Desktop Sync should enter participant phase');
+  assert.strictEqual(state.surface, 'sync-participants', 'Desktop Sync participant tray should identify actor selection surface');
+  assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Desktop Sync participant tray should expose Confirm and Cancel Sync');
+  assert(state.participantButtons >= 2, 'Desktop Sync participant phase should expose party participant controls');
+  assert.strictEqual(state.confirmDisabled, true, 'Desktop Sync confirm should stay disabled until a helper is selected');
+  assert.strictEqual(state.confirmSlot, 'actor', 'Desktop Sync confirm should identify actor slot completion');
+  assert.strictEqual(state.cancelVisible, true, 'Desktop Sync participant phase should expose visible Cancel Sync');
+  assert.strictEqual(state.shellIntent, 'sync_fight', 'Desktop command shell should expose chosen group intent during participant phase');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop Sync participant phase should keep center stage free of combat controls');
+
+  await allyParticipant.click();
+  state = await page.evaluate(() => ({
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    confirmDisabled: document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]')?.hasAttribute('disabled') || false,
+    allySelected: document.querySelector('#party-content button[data-selection-mode="sync-participant"][onclick*="ally-1"]')?.getAttribute('data-selection-state') || '',
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop Sync participant click should add the ally helper');
+  assert.strictEqual(state.confirmDisabled, false, 'Desktop Sync confirm should enable after helper selection');
+  assert.strictEqual(state.allySelected, 'selected', 'Desktop Sync helper button should expose selected participant state');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop Sync helper selection should keep center stage free of combat controls');
+
+  await page.locator(`#desktop-context-belt button[data-command-control="cancel-sync"]`).click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    targetSelection: App.targetSelection,
+    syncVisible: (document.querySelector('#desktop-context-belt')?.innerHTML || '').includes("executeCombatIntent('sync')"),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Desktop Cancel Sync should clear sync selection');
+  assert.strictEqual(state.targetSelection, null, 'Desktop Cancel Sync should leave no target selection');
+  assert.strictEqual(state.syncVisible, true, 'Desktop combat intents should be reachable again after cancelling Sync');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop Cancel Sync should keep center stage free of combat controls');
+
+  await prepare();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('sync')"]`).first().click();
+  await page.locator(`#desktop-context-belt button[data-command-intent="sync_fight"]`).first().click();
+  await page.locator(`#party-content button[data-selection-mode="sync-participant"][onclick*="ally-1"]`).first().click();
+  await page.locator(`#desktop-context-belt button[data-command-control="confirm-sync-participants"]`).click();
+  const syncPick = page.locator('#enemies-content button[data-selection-mode="combat-pick"]').first();
+  await assert.doesNotReject(() => syncPick.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop Sync target phase should expose enemy Pick controls');
+  state = await page.evaluate(() => {
+    const tray = document.querySelector('#desktop-context-belt .combat-sync-tray');
+    const pick = document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]');
+    return {
+      phase: App.syncSelection?.phase || null,
+      surface: tray?.getAttribute('data-command-surface') || '',
+      controls: tray?.innerText || '',
+      sentence: document.querySelector('#selection-sentence')?.innerText || '',
+      pickVisible: Boolean(pick),
+      pickSurface: pick?.getAttribute('data-command-surface') || '',
+      pickSlot: pick?.getAttribute('data-command-slot') || '',
+      shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
+      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.phase, 'target', 'Desktop Sync should enter target phase after confirming participants');
+  assert.strictEqual(state.surface, 'sync-targeting', 'Desktop Sync target tray should identify target-pick surface');
+  assert(state.controls.includes('Cancel Sync'), 'Desktop Sync target tray should expose Cancel Sync');
+  assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.toLowerCase().includes('pick target'), 'Desktop Sync target phase should show group actor and target sentence');
+  assert.strictEqual(state.pickVisible, true, 'Desktop Sync target phase should keep enemy Pick visible');
+  assert.strictEqual(state.pickSurface, 'combat-targeting', 'Desktop Sync Pick button should route through combat targeting');
+  assert.strictEqual(state.pickSlot, 'target', 'Desktop Sync Pick button should identify the target slot');
+  assert.strictEqual(state.shellIntent, 'sync_fight', 'Desktop command shell should preserve group intent during Sync targeting');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop Sync target phase should keep center stage free of combat controls');
+
+  await syncPick.click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    targetSelection: App.targetSelection,
+    syncCount: App.combatState.syncActions.length,
+    advanced: App._advancedTurn === true,
+    queuedType: App.combatState.syncActions[0]?.type || '',
+    queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
+    queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
+    partyBadges: Array.from(document.querySelectorAll('#party-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+    enemyBadges: Array.from(document.querySelectorAll('#enemies-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Desktop Sync queue should clear sync selection after target pick');
+  assert.strictEqual(state.targetSelection, null, 'Desktop Sync queue should leave no target selection after target pick');
+  assert.strictEqual(state.syncCount, 1, 'Desktop Sync target pick should queue one group action');
+  assert.strictEqual(state.advanced, true, 'Desktop Sync queue should advance the active turn');
+  assert.strictEqual(state.queuedType, 'sync_fight', 'Desktop Sync queue should preserve the selected group intent');
+  assert.strictEqual(state.queuedTarget, 'enemy-1', 'Desktop Sync queue should preserve the picked enemy target');
+  assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1'], 'Desktop Sync queue should preserve selected participants');
+  assert(state.partyBadges.includes('Group'), 'Desktop queued Sync participants should expose group badges on compact cards');
+  assert(state.enemyBadges.includes('Target'), 'Desktop queued Sync target should expose target badge on compact cards');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop queued Sync should keep center stage free of combat controls');
+}
+
 async function runCombatNonTargetClearFlow(page) {
   await setupCombat(page);
   let state = await page.evaluate(() => {
@@ -1997,6 +2157,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
     await runStaleSyncParticipantFlow(page);
+    await runDesktopSyncComposerFlow(page);
     await runCombatNonTargetClearFlow(page);
     await runAdventureMarkedTargetFlow(page);
     await runStaleMarkedActorFlow(page);

@@ -2833,11 +2833,11 @@
 
             .mobile-map-card .mini-map {
                 flex: 1 1 auto;
-                min-height: clamp(170px, 22dvh, 184px);
+                min-height: clamp(196px, 24dvh, 212px);
                 display: grid;
-                grid-template-columns: minmax(44px, 1fr) minmax(150px, 1.8fr) minmax(44px, 1fr);
-                grid-template-rows: minmax(24px, 0.55fr) minmax(112px, 2.55fr) minmax(24px, 0.55fr);
-                gap: 5px;
+                grid-template-columns: minmax(48px, 1fr) minmax(168px, 1.95fr) minmax(48px, 1fr);
+                grid-template-rows: minmax(28px, 0.52fr) minmax(128px, 2.7fr) minmax(28px, 0.52fr);
+                gap: 6px;
                 align-items: stretch;
                 justify-content: center;
                 align-content: stretch;
@@ -2861,9 +2861,9 @@
             }
 
             .mobile-map-card .map-tile.center {
-                font-size: 28px;
+                font-size: 30px;
                 flex-direction: column;
-                gap: 4px;
+                gap: 6px;
                 overflow: hidden;
             }
 
@@ -2876,10 +2876,10 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 5px;
+                gap: 6px;
                 flex-wrap: wrap;
                 max-width: 100%;
-                min-height: 52px;
+                min-height: 64px;
                 overflow: hidden;
                 line-height: 1;
             }
@@ -2889,16 +2889,17 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 52px;
-                height: 52px;
-                border: 1px solid rgba(255, 255, 255, 0.28);
-                border-radius: 999px;
+                width: 62px;
+                height: 62px;
+                border: 2px solid rgba(255, 255, 255, 0.32);
+                border-radius: 18px;
                 background: rgba(20, 20, 40, 0.72);
                 color: var(--text-primary);
-                font-size: 20px;
+                font-size: 24px;
                 flex: 0 0 auto;
                 padding: 0;
                 line-height: 1;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
                 touch-action: manipulation;
             }
 

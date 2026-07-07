@@ -34,6 +34,78 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         return directions[`${dx},${dy}`] || '';
     },
 
+    keyDirection(event = {}) {
+        const key = String(event.key || '');
+        const code = String(event.code || '');
+        const normalizedKey = key.length === 1 ? key.toLowerCase() : key;
+        const candidates = [code, normalizedKey].filter(Boolean);
+        const directions = {
+            ArrowUp: [0, -1],
+            ArrowDown: [0, 1],
+            ArrowLeft: [-1, 0],
+            ArrowRight: [1, 0],
+            KeyW: [0, -1],
+            KeyS: [0, 1],
+            KeyA: [-1, 0],
+            KeyD: [1, 0],
+            KeyQ: [-1, -1],
+            KeyE: [1, -1],
+            KeyZ: [-1, 1],
+            KeyC: [1, 1],
+            Numpad8: [0, -1],
+            Numpad2: [0, 1],
+            Numpad4: [-1, 0],
+            Numpad6: [1, 0],
+            Numpad7: [-1, -1],
+            Numpad9: [1, -1],
+            Numpad1: [-1, 1],
+            Numpad3: [1, 1],
+            Home: [-1, -1],
+            PageUp: [1, -1],
+            End: [-1, 1],
+            PageDown: [1, 1],
+            w: [0, -1],
+            s: [0, 1],
+            a: [-1, 0],
+            d: [1, 0],
+            q: [-1, -1],
+            e: [1, -1],
+            z: [-1, 1],
+            c: [1, 1]
+        };
+        for (const candidate of candidates) {
+            if (directions[candidate]) return directions[candidate];
+        }
+        return null;
+    },
+
+    isEditableEventTarget(target) {
+        const tag = String(target?.tagName || target?.nodeName || '').toLowerCase();
+        return Boolean(target?.isContentEditable) || ['input', 'textarea', 'select'].includes(tag);
+    },
+
+    hasBlockingOverlay(app) {
+        const menu = document.getElementById('app-menu');
+        if (menu?.classList?.contains('open')) return true;
+        if (document.querySelector?.('#app-confirm-dialog, #save-recovery-dialog, #mobile-context-menu, #desktop-intent-menu')) return true;
+        const tutorial = document.getElementById('tutorial-overlay');
+        if (tutorial && tutorial.style?.display && tutorial.style.display !== 'none') return true;
+        if (['settings', 'mods', 'market', 'save-manager'].includes(app.screen)) return true;
+        return false;
+    },
+
+    handleTraversalKey(app, event = {}) {
+        if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return false;
+        if (this.isEditableEventTarget(event.target || document.activeElement)) return false;
+        if (app.screen !== 'game' || !app.player || app.combatState?.active || app.mode === app.GAME_MODE.COMBAT) return false;
+        if (this.hasBlockingOverlay(app)) return false;
+        const direction = this.keyDirection(event);
+        if (!direction) return false;
+        event.preventDefault?.();
+        app.move(direction[0], direction[1]);
+        return true;
+    },
+
     updateCenter(app, visual, label) {
         const el = document.getElementById('desktop-play-cell-center');
         if (!el) return;

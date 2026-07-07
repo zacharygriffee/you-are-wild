@@ -16379,6 +16379,88 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertEqual(center.getAttribute('data-stage-cell'), 'center', 'Desktop center tile should identify its stable stage cell');
 });
 
+test('Desktop traversal hotkeys dispatch through the stage movement command', () => {
+  const { App, listeners } = loadAppForCombat();
+  const moves = [];
+  App.player = makeUnit('You', { id: 'player-1' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.combatState.active = false;
+  App.mode = App.GAME_MODE.NORMAL;
+  App.move = (dx, dy) => moves.push([dx, dy]);
+  App.initAppMenu();
+  assert(listeners.has('keydown'), 'App menu initialization should install the shared keydown handler');
+
+  const keyEvent = (event) => ({
+    preventDefault() { this.prevented = true; },
+    target: { tagName: 'BODY' },
+    ...event
+  });
+  const east = keyEvent({ key: 'ArrowRight' });
+  listeners.get('keydown')(east);
+  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([1, 0]), 'ArrowRight should move east through App.move');
+  assertEqual(east.prevented, true, 'Handled traversal hotkey should prevent page scrolling');
+
+  const north = keyEvent({ code: 'KeyW', key: 'w' });
+  listeners.get('keydown')(north);
+  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([0, -1]), 'W should move north through App.move');
+
+  const southeast = keyEvent({ code: 'Numpad3', key: '3' });
+  listeners.get('keydown')(southeast);
+  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([1, 1]), 'Numpad3 should move southeast through App.move');
+
+  const northwest = keyEvent({ key: 'Home' });
+  assertEqual(App._handleTraversalHotkey(northwest), true, 'Home should be accepted as a diagonal traversal hotkey');
+  assertEqual(JSON.stringify(moves.pop()), JSON.stringify([-1, -1]), 'Home should move northwest through App.move');
+});
+
+test('Desktop traversal hotkeys ignore editing overlay and non-exploration states', () => {
+  const overlay = makeElement();
+  const { App } = loadAppForCombat(() => 0.5, {
+    querySelector(selector) {
+      return selector.includes('#app-confirm-dialog') ? overlay : null;
+    }
+  });
+  const moves = [];
+  App.player = makeUnit('You', { id: 'player-1' });
+  App.party = [App.player];
+  App.screen = 'game';
+  App.combatState.active = false;
+  App.mode = App.GAME_MODE.NORMAL;
+  App.move = (dx, dy) => moves.push([dx, dy]);
+
+  assertEqual(App._handleTraversalHotkey({
+    key: 'ArrowRight',
+    target: { tagName: 'INPUT' },
+    preventDefault() { this.prevented = true; }
+  }), false, 'Traversal hotkeys should not move while typing in an input');
+  assertEqual(moves.length, 0, 'Input keypress should not dispatch movement');
+
+  assertEqual(App._handleTraversalHotkey({
+    key: 'ArrowRight',
+    target: { tagName: 'BODY' },
+    preventDefault() { this.prevented = true; }
+  }), false, 'Traversal hotkeys should not move while a blocking dialog is open');
+  assertEqual(moves.length, 0, 'Dialog keypress should not dispatch movement');
+
+  App.screen = 'settings';
+  assertEqual(App._handleTraversalHotkey({
+    key: 'ArrowRight',
+    target: { tagName: 'BODY' },
+    preventDefault() { this.prevented = true; }
+  }), false, 'Traversal hotkeys should not move outside the game screen');
+  assertEqual(moves.length, 0, 'Settings keypress should not dispatch movement');
+
+  App.screen = 'game';
+  App.combatState.active = true;
+  assertEqual(App._handleTraversalHotkey({
+    key: 'ArrowRight',
+    target: { tagName: 'BODY' },
+    preventDefault() { this.prevented = true; }
+  }), false, 'Traversal hotkeys should not move while combat owns the command surface');
+  assertEqual(moves.length, 0, 'Combat keypress should not dispatch traversal movement');
+});
+
 test('Desktop panel lists default to compact tactical cards and preserve full detail mode', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { id: 'player-1' });

@@ -4080,6 +4080,9 @@
             _directionLabel(dx, dy) {
                 return YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy);
             },
+            _handleTraversalHotkey(event) {
+                return YAW_DESKTOP_PLAY_SURFACE.handleTraversalKey(this, event);
+            },
             _updateDesktopCenterTile(visual, label) {
                 return YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label);
             },
@@ -4274,6 +4277,7 @@
                 });
                 document.addEventListener('keydown', event => {
                     if (event?.key === 'Escape') this.closeAppMenu();
+                    this._handleTraversalHotkey(event);
                 });
             },
             setAppMenuOpen(open) {

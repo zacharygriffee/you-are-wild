@@ -88,7 +88,7 @@ const YAW_INTERACTION_DISPATCH = {
             targetType: context.targetType || inferredTargetType,
             action: context.action || null,
             subAction: context.subAction || null,
-            source: this.normalizeSource(context.source || 'panel-card'),
+            source: this.normalizeSource(context.source || 'command-composer'),
             timing: context.timing || 'immediate',
             resolveAt: context.resolveAt || null,
             constraints: context.constraints || {},
@@ -237,7 +237,7 @@ const YAW_INTERACTION_DISPATCH = {
             targetId: targets[0]?.id || targets[0]?.name,
             targetIds: targets.map(target => target.id || target.name),
             targetType: command.targetType || 'marked',
-            source: command.source || 'panel-card',
+            source: command.source || 'command-composer',
             mode: 'adventure',
             timing: command.timing || 'immediate'
         };

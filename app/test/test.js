@@ -1731,6 +1731,9 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(interactionDispatchContent, 'selectIntent(app, type, targetRef, action', 'Interaction dispatch helper should own intent selection routing');
   assertContains(interactionDispatchContent, 'buildCommand(app, context = {})', 'Interaction dispatch helper should own generic command building');
   assertContains(interactionDispatchContent, 'buildPanelCommand(app, context = {})', 'Interaction dispatch helper should own panel command building');
+  assertContains(interactionDispatchContent, "context.source || 'command-composer'", 'Unspecified interaction commands should default to the composer command source');
+  assertContains(interactionDispatchContent, "command.source || 'command-composer'", 'Adventure dispatch should keep composer provenance when command source is omitted');
+  assertNotContains(interactionDispatchContent, "|| 'panel-card'", 'Interaction dispatch should not default unidentified commands to legacy panel-card provenance');
   assertContains(interactionDispatchContent, 'dispatch(app, command)', 'Interaction dispatch helper should own shared command routing');
   assertContains(interactionDispatchContent, 'dispatchCombat(app, command)', 'Interaction dispatch helper should own combat command routing');
   assertContains(interactionDispatchContent, 'dispatchAdventure(app, command)', 'Interaction dispatch helper should own adventure command routing');
@@ -8696,6 +8699,16 @@ test('Composer tray and intent menu use one adventure interaction dispatcher', (
   assertEqual(menu.App.lastIntentCommand.actorIds.join(','), 'goat-1', 'Intent menu route should record the selected actor');
   assertEqual(menu.App.lastIntentCommand.targetIds.join(','), 'player-1', 'Intent menu route should record the selected target');
   assertContains(menu.App.log[menu.App.log.length - 1].text, 'Goatfolk', 'Intent menu route should log the selected actor, not fall back to player');
+
+  const fallback = setup();
+  fallback.App.toggleExplorationTarget('party', 'player-1');
+  assertEqual(fallback.App._dispatchPanelInteraction({
+    mode: 'adventure',
+    actors: [fallback.actor],
+    targets: [fallback.player],
+    action: 'flirt'
+  }), true, 'Unspecified panel dispatch should still resolve through the shared adventure dispatcher');
+  assertEqual(fallback.App.lastIntentCommand.source, 'command-composer', 'Unspecified panel dispatch should record the command composer as the source of truth');
 });
 
 test('Resisted single-target panel interaction does not emit bogus multi-target completion', () => {

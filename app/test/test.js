@@ -2808,6 +2808,8 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'renderOverworld(app)', 'Local map helper should own overworld local-map rendering');
   assertContains(localMapContent, "document.getElementById('mobile-mini-map')", 'Local map helper should target the mobile local map only');
   assertContains(localMapContent, 'centerPresenceHtml(app)', 'Local map helper should render compact center-cell presence');
+  assertContains(localMapContent, 'visibleCenterPresenceEntries(app, presence = [])', 'Local map helper should choose visible center presence dots by explicit priority');
+  assertContains(localMapContent, 'isPresenceSelected(app, entry)', 'Local map helper should prioritize selected actor target and focused stage cues');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.presenceEntries(app)', 'Local map center presence should reuse center context presence data');
   assertContains(localMapContent, 'app._actorToggleLabel(unit', 'Mobile center party presence should announce add/remove actor semantics');
   assertContains(localMapContent, 'app._targetToggleLabel(unit', 'Mobile center creature presence should announce mark/remove target semantics');

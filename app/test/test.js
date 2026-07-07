@@ -4448,8 +4448,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-mini-map" role="group" aria-label="3x3 traversal surface"', 'mobile traversal grid should expose its 3x3 role');
   assertContains(template, 'id="mobile-move-pad"', 'mobile movement pad should mirror traversal near the thumb zone');
   assertContains(template, 'id="mobile-party-card"', 'mobile party strip card should be addressable for combat ordering');
+  assertContains(template, '<span data-i18n="ui.party">Party</span>', 'Mobile party strip heading should opt into localization');
   assertContains(template, 'id="mobile-party-strip"', 'mobile party strip missing');
   assertContains(template, 'id="mobile-creature-strip"', 'mobile creature strip missing');
+  assertContains(template, '<span id="mobile-creature-title" data-i18n="ui.creatures">Creatures</span>', 'Mobile creature strip heading should opt into localization');
   assertContains(template, 'id="mobile-combat-toolbelt"', 'mobile combat toolbelt status slot missing');
   assertContains(template, 'id="center-presence"', 'desktop center presence slot missing');
   assertContains(template, 'id="center-presence" data-stage-layer="presence"', 'Desktop center presence slot should identify the stage presence layer');

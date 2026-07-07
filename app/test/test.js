@@ -2744,6 +2744,9 @@ test('Desktop play surface helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.updateCenter(this, visual, label)', 'App desktop center updater should delegate to the helper');
   assertContains(appContent, 'YAW_DESKTOP_PLAY_SURFACE.directionLabel(this, dx, dy)', 'App direction labels should delegate to the helper');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'current-tile')", 'Desktop center tile should identify as the current stage tile');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-layer', 'tile')", 'Desktop play cells should identify the tile stage layer for future graphics layers');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-cell', 'center')", 'Desktop center tile should identify its stable stage cell');
+  assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-cell', `${dx},${dy}`)", 'Desktop movement cells should identify their stable stage cell');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-stage-surface', 'traversal-cell')", 'Desktop movement cells should identify as traversal stage cells');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-command-surface', 'stage-traversal')", 'Desktop movement cells should route through the stage traversal command surface');
   assertContains(desktopPlaySurfaceContent, "el.setAttribute('data-command-control', 'move')", 'Desktop movement cells should identify movement as the command control');
@@ -2765,6 +2768,7 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
   assertContains(localMapContent, 'data-selection-mode="stage-focus" data-selection-state="${selected ? \'focused\' : \'available\'}" data-command-slot="target"', 'Mobile center item/place focus should identify the target slot');
   assertContains(localMapContent, 'data-stage-surface="${stageSurface}"', 'Mobile play cells should identify current-tile versus traversal-cell stage surfaces');
+  assertContains(localMapContent, 'data-stage-layer="tile" data-stage-cell="${key}"', 'Mobile play cells should identify stable stage tile layer and cell keys');
   assertContains(localMapContent, "const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell'", 'Mobile local map should classify the center tile separately from traversal cells');
   assertContains(localMapContent, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move"', 'Mobile movement cells should identify stage traversal command routing');
   assertContains(localMapContent, 'data-command-direction="${key}"', 'Mobile movement cells should expose their direction for stage routing');
@@ -9969,6 +9973,8 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   const html = elements.get('mobile-mini-map').innerHTML;
   assertEqual((html.match(/data-mobile-play-cell=/g) || []).length, 9, 'Mobile routine play should render exactly 9 traversal cells');
   assertContains(html, 'data-mobile-play-cell="center"', 'Mobile routine play should expose a center tile');
+  assertContains(html, 'data-stage-surface="current-tile" data-stage-layer="tile" data-stage-cell="center"', 'Mobile routine play should identify the center stage tile layer');
+  assertContains(html, 'data-stage-surface="traversal-cell" data-stage-layer="tile" data-stage-cell="e"', 'Mobile routine play should identify traversal stage tile layers');
   assertContains(html, 'mobile-play-presence', 'Mobile center tile should include compact local presence');
   assertContains(html, 'mobile-play-presence-dot party', 'Mobile center tile should expose party presence markers');
   assertContains(html, 'data-stage-surface="presence"', 'Mobile center presence should identify the stage presence surface');
@@ -16005,9 +16011,15 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertContains(north.innerHTML, 'North:', 'Desktop north cell should label its movement direction');
   assertEqual(north.getAttribute('onclick'), 'App.move(0,-1)', 'Desktop north cell should move north');
   assertEqual(north.getAttribute('onkeydown'), "if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(0,-1)}", 'Desktop north cell should support keyboard movement');
+  assertEqual(north.getAttribute('data-stage-surface'), 'traversal-cell', 'Desktop north cell should identify as a traversal stage cell');
+  assertEqual(north.getAttribute('data-stage-layer'), 'tile', 'Desktop north cell should identify the tile stage layer');
+  assertEqual(north.getAttribute('data-stage-cell'), '0,-1', 'Desktop north cell should identify its stable stage cell coordinates');
   const center = elements.get('desktop-play-cell-center');
   assertContains(center.className, 'center', 'Desktop play surface should preserve the center tile');
   assert(center.getAttribute('data-tileset-key'), 'Desktop center tile should expose tileset metadata');
+  assertEqual(center.getAttribute('data-stage-surface'), 'current-tile', 'Desktop center tile should identify as the current stage tile');
+  assertEqual(center.getAttribute('data-stage-layer'), 'tile', 'Desktop center tile should identify the tile stage layer');
+  assertEqual(center.getAttribute('data-stage-cell'), 'center', 'Desktop center tile should identify its stable stage cell');
 });
 
 test('Mobile party long-press menu exposes management actions', () => {

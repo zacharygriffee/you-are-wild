@@ -96,7 +96,7 @@ const YAW_LOCAL_MAP = {
             : 'tabindex="-1"';
         const presence = key === 'center' ? this.centerPresenceHtml(app) : '';
         const stageSurface = key === 'center' ? 'current-tile' : 'traversal-cell';
-        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
+        return `<div class="${classes}" data-stage-surface="${stageSurface}" data-stage-layer="tile" data-stage-cell="${key}" data-mobile-play-cell="${key}" data-direction="${key}" ${app._mapTileAttrs(visual)} title="${escapedTitle}" aria-label="${escapedTitle}" ${movementAttrs}><span class="mobile-play-tile-icon" aria-hidden="true">${app._escapeHtml(visual.icon)}</span>${presence}</div>`;
     },
 
     renderInterior(app) {

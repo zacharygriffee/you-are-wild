@@ -45,6 +45,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
             el.setAttribute('data-map-kind', visual?.kind || 'current');
             el.setAttribute('data-stage-surface', 'current-tile');
+            el.setAttribute('data-stage-layer', 'tile');
+            el.setAttribute('data-stage-cell', 'center');
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
         }
@@ -65,6 +67,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
             el.setAttribute('data-map-kind', visual?.kind || 'unknown');
             el.setAttribute('data-stage-surface', 'traversal-cell');
+            el.setAttribute('data-stage-layer', 'tile');
+            el.setAttribute('data-stage-cell', `${dx},${dy}`);
             el.setAttribute('data-stage-direction', `${dx},${dy}`);
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');

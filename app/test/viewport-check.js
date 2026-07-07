@@ -780,6 +780,7 @@ async function checkViewport(browser, name, width, height) {
       const shellRect = shell.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const sceneActionsRect = sceneActions.getBoundingClientRect();
+      const sceneActionsParent = sceneActions?.parentElement;
       const visibleButtons = selector => Array.from(document.querySelectorAll(selector)).filter(button => {
         const rect = button.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && getComputedStyle(button).visibility !== 'hidden';
@@ -831,6 +832,8 @@ async function checkViewport(browser, name, width, height) {
         storyCommands,
         centerHasStoryTitle: Boolean(center.querySelector('#scene-title')),
         centerHasPresenceVisual: Boolean(center.querySelector('#center-presence [data-stage-layer="presence"]')),
+        sceneActionsInsideCenter: Boolean(center.querySelector('#scene-actions')),
+        sceneActionsParentId: sceneActionsParent?.id || '',
         sceneActionsHidden: Boolean(sceneActions.hidden) && getComputedStyle(sceneActions).display === 'none' && sceneActionsRect.height === 0,
         sceneActionsEmpty: (sceneActions.innerHTML || '').trim() === '',
         partyCompactCards: partyPanel.querySelectorAll('[data-card-role="compact-tactical"]').length,
@@ -865,8 +868,10 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(desktopComposerOwnership.storyCommands, 0, `${name}: desktop story/event content should stay read-only`);
     assert.strictEqual(desktopComposerOwnership.centerHasStoryTitle, true, `${name}: desktop center should retain story presentation`);
     assert.strictEqual(desktopComposerOwnership.centerHasPresenceVisual, true, `${name}: desktop center should retain passive stage presence`);
-    assert.strictEqual(desktopComposerOwnership.sceneActionsHidden, true, `${name}: legacy center action slot should stay hard-hidden`);
-    assert.strictEqual(desktopComposerOwnership.sceneActionsEmpty, true, `${name}: legacy center action slot should stay empty`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsInsideCenter, false, `${name}: legacy action slot should live outside the center presentation tile`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsParentId, 'scene-display', `${name}: legacy action slot should be parked outside stage/story/composer surfaces`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsHidden, true, `${name}: legacy action slot should stay hard-hidden`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsEmpty, true, `${name}: legacy action slot should stay empty`);
     assert(desktopComposerOwnership.partyCompactCards >= 1, `${name}: desktop party panel should provide compact actor cards`);
     assert(desktopComposerOwnership.creatureCompactCards >= 1, `${name}: desktop creature panel should provide compact target cards`);
     assert.strictEqual(desktopComposerOwnership.partyHasActorRouting, true, `${name}: desktop party panel should own actor routing controls`);

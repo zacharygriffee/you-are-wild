@@ -4634,9 +4634,14 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(appContent, "_directionLabel", 'desktop play surface should label directional movement cells');
   assertContains(template, '.desktop-play-cell:focus-visible', 'desktop movement cells should expose keyboard focus styling');
   assertContains(template, '.desktop-context-belt', 'desktop context belt styles missing');
-  assertContains(template, '.scene-actions {\n            display: none;', 'center presentation action slot should stay hidden as a compatibility slot');
-  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"', 'center presentation action slot should identify as hidden legacy compatibility, not the composer');
-  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden', 'center presentation action slot should start hard-hidden while the composer owns controls');
+  assertContains(template, '.scene-actions {\n            display: none;', 'legacy action slot should stay hidden as a compatibility slot');
+  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"', 'legacy action slot should identify as hidden compatibility, not the composer');
+  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden', 'legacy action slot should start hard-hidden while the composer owns controls');
+  const centerStart = template.indexOf('id="desktop-play-cell-center"');
+  const centerEnd = template.indexOf('id="desktop-play-cell-e"', centerStart);
+  const centerMarkup = template.slice(centerStart, centerEnd);
+  assertNotContains(centerMarkup, 'id="scene-actions"', 'Desktop center tile should not contain the legacy action slot');
+  assert(template.indexOf('id="desktop-command-composer"') < template.indexOf('id="scene-actions"'), 'Legacy action slot should live after the command composer, outside the center presentation tile');
   assertContains(template, '.desktop-context-belt .target-action-row', 'desktop target actions should be bounded inside the composer belt');
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');

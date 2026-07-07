@@ -1479,6 +1479,58 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.targetPleasures[0] > 0, 'Resolved safe intent should affect the marked creature target');
   assert.strictEqual(state.centerHasActorControls, false, 'Compact rail resolution should keep center free of actor controls');
 
+  await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','corpse-rail')"]`).click();
+  state = await page.evaluate(() => {
+    const tray = document.querySelector('#mobile-target-action-tray');
+    const corpse = App.creatures.find(unit => unit.id === 'corpse-rail');
+    const corpseChip = Array.from(document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Remains'));
+    return {
+      targets: [...App.explorationTargetIds],
+      trayText: tray?.innerText || '',
+      trayHtml: tray?.innerHTML || '',
+      fullDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+      corpseSelectedTarget: corpseChip?.classList.contains('selected-target') || false,
+      corpseRemaining: App._corpseRemainingPortions(corpse),
+      chipHasDirectLoot: (corpseChip?.innerHTML || '').includes("selectIntent('creature','corpse-rail','loot'"),
+      chipHasDirectScavenge: (corpseChip?.innerHTML || '').includes("selectIntent('creature','corpse-rail','scavenge'"),
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.deepStrictEqual(state.targets, ['creature:corpse-rail'], 'Compact target rail should mark remains through the shared target state');
+  assert(state.trayText.includes('Loot') && state.trayText.includes('Scavenge'), 'Marked remains should expose Loot and Scavenge in the mobile composer tray');
+  assert(state.trayHtml.includes('data-command-intent="loot"') && state.trayHtml.includes('data-command-intent="scavenge"'), 'Marked remains utilities should identify composer-owned intents');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Marking remains from the compact rail should not open the full Creatures drawer');
+  assert.strictEqual(state.corpseSelectedTarget, true, 'Marked remains chip should expose selected-target state');
+  assert.strictEqual(state.corpseRemaining, 4, 'Marked remains test should start with finite scavenge portions');
+  assert.strictEqual(state.chipHasDirectLoot, false, 'Compact remains chip should not duplicate Loot outside the composer tray');
+  assert.strictEqual(state.chipHasDirectScavenge, false, 'Compact remains chip should not duplicate Scavenge outside the composer tray');
+  assert.strictEqual(state.centerHasActorControls, false, 'Marked remains should keep center free of actor controls');
+
+  await page.locator(`#mobile-target-action-tray button[data-command-intent="scavenge"]`).click();
+  state = await page.evaluate(() => {
+    const corpse = App.creatures.find(unit => unit.id === 'corpse-rail');
+    return {
+      action: App.lastIntentCommand?.action || '',
+      source: App.lastIntentCommand?.source || '',
+      targetId: App.lastIntentCommand?.targetId || '',
+      actorIds: App.lastIntentCommand?.actorIds || [],
+      remaining: corpse?.remainingPortions ?? null,
+      creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+      creatureRailOpen: App.mobileCreatureRailOpen,
+      creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.action, 'scavenge', 'Compact remains utility should resolve through shared contextual intent dispatch');
+  assert.strictEqual(state.source, 'composer-tray', 'Compact remains utility should preserve composer-tray source metadata');
+  assert.strictEqual(state.targetId, 'corpse-rail', 'Compact remains utility should record the remains target id');
+  assert.deepStrictEqual(state.actorIds, ['ally-1', 'scout-1'], 'Compact remains utility should use the selected compact rail actors');
+  assert(state.remaining < 4, 'Compact remains Scavenge should consume finite remains portions');
+  assert.strictEqual(state.creatureDrawerOpen, false, 'Resolving compact remains utility should not open the full Creatures drawer');
+  assert.strictEqual(state.creatureRailOpen, true, 'Resolving compact remains utility should keep the target rail context available');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Resolving compact remains utility should keep compact target rail visible');
+  assert.strictEqual(state.centerHasActorControls, false, 'Compact remains utility resolution should keep center free of actor controls');
+
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 

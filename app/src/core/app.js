@@ -2042,6 +2042,10 @@
             _combatTargetPickHint(unit, action, canTarget) {
                 return YAW_COMBAT_TARGETING.targetPickHint(this, unit, action, canTarget);
             },
+            _combatTargetPickLabel(unit = null, action = 'action', canTarget = true) {
+                if (unit) return YAW_COMBAT_TARGETING.targetPickLabel(this, unit, action, canTarget);
+                return YAW_UNIT_SELECTION.combatTargetPickLabel(this);
+            },
 
             _syncBaseAction(syncType) {
                 return YAW_COMBAT_TARGETING.syncBaseAction(syncType);
@@ -3969,9 +3973,6 @@
             },
             _actorToggleLabel(unit, selected = false) {
                 return YAW_UNIT_SELECTION.actorToggleLabel(this, unit, selected);
-            },
-            _combatTargetPickLabel() {
-                return YAW_UNIT_SELECTION.combatTargetPickLabel(this);
             },
             _selectionControlAttrs(kind, active = false) {
                 return YAW_UNIT_SELECTION.controlAttrs(this, kind, active);

@@ -128,6 +128,22 @@ const YAW_COMBAT_TARGETING = {
         return app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name, action: actionLabel });
     },
 
+    targetPickLabel(app, unit, action, canTarget = this.canSelectCreatureTarget(app, unit)) {
+        if (canTarget || !unit) return app._label('target.pick', 'Pick');
+        const syncActive = Boolean(app.syncSelection?.active && app.syncSelection.phase === 'target');
+        const effectiveAction = syncActive ? this.syncBaseAction(app.syncSelection.type) : action;
+        const actors = syncActive
+            ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
+            : [app.activeActor || app.player].filter(Boolean);
+        const physical = app._isPhysicalCombatAction?.(effectiveAction);
+        if (physical && unit?.CPun > 0 && unit.disposition === app.DISPOSITION.ENEMY) {
+            const anyRanged = actors.some(actor => actor?.flying || actor?.ranged || actor?.antiflying);
+            if (unit.flying && !anyRanged) return app._label('target.airborneShort', 'Airborne');
+            if (unit.combatRow === 'back' && !anyRanged) return app._label('target.outOfReach', 'Out of reach');
+        }
+        return app._label('target.unavailable', 'Unavailable');
+    },
+
     executeActionOnTarget(app, action, targetId) {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
         if (!target) {

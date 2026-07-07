@@ -99,7 +99,7 @@ const YAW_UNIT_CARD = {
                     const disabledClass = canTarget ? '' : ' disabled';
                     const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
                     const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, 'scavenge', canTarget));
-                    const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
+                    const targetLabel = app._escapeHtml(app._combatTargetPickLabel(unit, 'scavenge', canTarget));
                     actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('scavenge','${targetKey}')">${targetLabel}</button></div>`;
                 }
             } else {
@@ -118,13 +118,13 @@ const YAW_UNIT_CARD = {
                 const disabledClass = canTarget ? '' : ' disabled';
                 const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
                 const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.targetSelection.action || 'action', canTarget));
-                const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
+                const targetLabel = app._escapeHtml(app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', canTarget));
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabled = canTarget ? '' : ' disabled aria-disabled="true"';
                 const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', canTarget));
-                const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
+                const targetLabel = app._escapeHtml(app._combatTargetPickLabel(unit, app.syncSelection.type || 'sync_fight', canTarget));
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
             } else if (app.combatState.active && unit.disposition === app.DISPOSITION.ENEMY && !app.feedSelection?.active) {
                 const targetPressed = app._isCombatMarkedTarget?.(unit);

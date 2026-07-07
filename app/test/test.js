@@ -2015,6 +2015,7 @@ test('Combat targeting helper module is registered before app code', () => {
   assertContains(combatTargetingContent, 'selectTarget(app, action)', 'Combat targeting helper should own target-pick entry');
   assertContains(combatTargetingContent, 'canSelectCreatureTarget(app, unit)', 'Combat targeting helper should own target validation');
   assertContains(combatTargetingContent, 'targetPickHint(app, unit, action', 'Combat targeting helper should own target-pick explanation text');
+  assertContains(combatTargetingContent, 'targetPickLabel(app, unit, action', 'Combat targeting helper should own compact target-pick visible labels');
   assertContains(combatTargetingContent, 'executeActionOnTarget(app, action, targetId)', 'Combat targeting helper should own panel target dispatch');
   assertContains(combatTargetingContent, "source: 'combat-targeting'", 'Combat targeting helper should identify target picks as the combat target-picker surface');
   assertNotContains(combatTargetingContent, "source: 'panel-card'", 'Combat target picks should not preserve legacy panel-card command source metadata');
@@ -2023,6 +2024,7 @@ test('Combat targeting helper module is registered before app code', () => {
   assertContains(combatTargetingContent, "checkReach: action !== 'scavenge'", 'Combat targeting helper should relax reach checks only for corpse scavenge');
   assertContains(appContent, 'YAW_COMBAT_TARGETING.selectTarget(this, action)', 'App selectTarget wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_TARGETING.canSelectCreatureTarget(this, unit)', 'App combat target validation wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_TARGETING.targetPickLabel(this, unit, action, canTarget)', 'App combat target label wrapper should delegate to the helper for target-specific blocked labels');
   assertContains(appContent, 'YAW_COMBAT_TARGETING.executeActionOnTarget(this, action, targetId)', 'App target execution wrapper should delegate to the helper');
 });
 
@@ -2223,6 +2225,7 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assertContains(tacticalCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical party Mark button should identify button-level target routing');
   assertContains(tacticalCardContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical creature Mark button should identify button-level target routing');
   assertContains(tacticalCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Tactical combat Pick button should identify button-level combat target routing');
+  assertContains(tacticalCardContent, 'app._combatTargetPickLabel(unit, app.targetSelection.action || \'action\', isTargetable)', 'Tactical combat target labels should surface blocked reach state visibly');
   assertContains(appContent, 'YAW_TACTICAL_CARD.render(this, unit, index, type, options)', 'App tactical card wrapper should delegate to the shared helper');
   assertContains(templateContent, '.mobile-unit-chip.compact-tactical-card', 'Mobile tactical cards should have compact tactical card styling');
   assertContains(templateContent, '.mobile-unit-chip .tactical-card-selection-controls', 'Mobile tactical card controls should be positioned as compact card toggles');
@@ -14575,9 +14578,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop blocked combat target should be an actual disabled control');
   assertContains(blockedEnemyCard, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Desktop blocked combat target should expose blocked combat-pick state');
   assertContains(blockedEnemyCard, 'data-selection-mode="combat-pick" data-selection-state="blocked" data-command-slot="target"', 'Desktop blocked combat target should identify the target slot');
+  assertContains(blockedEnemyCard, '>Airborne</button>', 'Desktop blocked combat target should show a short visible reach reason');
   assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-pick state');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
+  assertContains(mobileBlockedEnemyChip, '>Airborne</button>', 'Mobile blocked combat target should show a short visible reach reason without relying on hover text');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });

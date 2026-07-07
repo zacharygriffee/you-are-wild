@@ -550,6 +550,9 @@ async function runDesktopSyncComposerFlow(page) {
       surface: tray?.getAttribute('data-command-surface') || '',
       controls: tray?.innerText || '',
       participantButtons: document.querySelectorAll('#party-content button[data-selection-mode="sync-participant"]').length,
+      lockedActorLabel: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.textContent.trim() || '',
+      lockedActorDisabled: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.hasAttribute('disabled') || false,
+      lockedActorAriaDisabled: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-disabled') || '',
       confirmDisabled: confirm?.hasAttribute('disabled') || false,
       confirmSlot: confirm?.getAttribute('data-command-slot') || '',
       cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="cancel-sync"]')),
@@ -561,6 +564,9 @@ async function runDesktopSyncComposerFlow(page) {
   assert.strictEqual(state.surface, 'sync-participants', 'Desktop Sync participant tray should identify actor selection surface');
   assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Desktop Sync participant tray should expose Confirm and Cancel Sync');
   assert(state.participantButtons >= 2, 'Desktop Sync participant phase should expose party participant controls');
+  assert.strictEqual(state.lockedActorLabel, 'Actor', 'Desktop Sync locked current actor should keep Actor copy');
+  assert.strictEqual(state.lockedActorDisabled, true, 'Desktop Sync locked current actor should be disabled');
+  assert.strictEqual(state.lockedActorAriaDisabled, 'true', 'Desktop Sync locked current actor should expose aria-disabled');
   assert.strictEqual(state.confirmDisabled, true, 'Desktop Sync confirm should stay disabled until a helper is selected');
   assert.strictEqual(state.confirmSlot, 'actor', 'Desktop Sync confirm should identify actor slot completion');
   assert.strictEqual(state.cancelVisible, true, 'Desktop Sync participant phase should expose visible Cancel Sync');
@@ -714,6 +720,9 @@ async function runMobileSyncComposerFlow(page) {
       surface: tray?.getAttribute('data-command-surface') || '',
       controls: tray?.innerText || '',
       participantButtons: document.querySelectorAll('#mobile-party-strip button[data-selection-mode="sync-participant"]').length,
+      lockedActorLabel: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.textContent.trim() || '',
+      lockedActorDisabled: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.hasAttribute('disabled') || false,
+      lockedActorAriaDisabled: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-disabled') || '',
       confirmDisabled: confirm?.hasAttribute('disabled') || false,
       confirmSlot: confirm?.getAttribute('data-command-slot') || '',
       cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="cancel-sync"]')),
@@ -726,6 +735,9 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.surface, 'sync-participants', 'Mobile Sync participant tray should identify actor selection surface');
   assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Mobile Sync participant tray should expose Confirm and Cancel Sync');
   assert(state.participantButtons >= 2, 'Mobile Sync participant phase should expose party participant controls');
+  assert.strictEqual(state.lockedActorLabel, 'Actor', 'Mobile Sync locked current actor should show Actor instead of selected-helper checkmark');
+  assert.strictEqual(state.lockedActorDisabled, true, 'Mobile Sync locked current actor should be disabled');
+  assert.strictEqual(state.lockedActorAriaDisabled, 'true', 'Mobile Sync locked current actor should expose aria-disabled');
   assert.strictEqual(state.confirmDisabled, true, 'Mobile Sync confirm should stay disabled until a helper is selected');
   assert.strictEqual(state.confirmSlot, 'actor', 'Mobile Sync confirm should identify actor slot completion');
   assert.strictEqual(state.cancelVisible, true, 'Mobile Sync participant phase should expose visible Cancel Sync');

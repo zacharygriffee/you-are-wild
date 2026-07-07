@@ -14736,8 +14736,16 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertNotContains(markedMobileCombatEnemyChip, 'data-selection-mode="mark-target"', 'Mobile marked combat target button should not reuse exploration mark-target mode');
   App.combatTargetId = null;
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1'] };
+  const syncActorCard = App.renderUnitCard(player, 0, 'party');
+  const mobileSyncActorChip = App.renderMobileUnitChip(player, 0, 'party');
   const syncAllyCard = App.renderUnitCard(ally, 1, 'party');
   const mobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(syncActorCard, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="locked"', 'Desktop Sync current actor button should expose locked participant state');
+  assertContains(syncActorCard, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Desktop Sync current actor should be a described disabled control');
+  assertContains(syncActorCard, '>Actor</button>', 'Desktop Sync current actor should keep Actor copy instead of helper selection copy');
+  assertContains(mobileSyncActorChip, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="locked"', 'Mobile Sync current actor button should expose locked participant state');
+  assertContains(mobileSyncActorChip, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Mobile Sync current actor should be a described disabled control');
+  assertContains(mobileSyncActorChip, '>Actor</button>', 'Mobile Sync current actor chip should show Actor instead of the selected-helper checkmark');
   assertContains(syncAllyCard, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Desktop sync participant row should identify group actor-selection scope');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop sync participant row should identify the shared command grammar');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');

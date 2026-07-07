@@ -175,7 +175,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         const detailsTitle = app._escapeHtml(app._label('ui.openPartyDetails', 'Open party details'));
         const details = `<button type="button" class="mobile-actor-chip mobile-actor-details" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('party','actor')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
-        return `${chips}${clear}${details}`;
+        return `${clear}${chips}${details}`;
     },
 
     livingCreatures(app) {

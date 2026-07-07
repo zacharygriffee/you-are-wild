@@ -379,6 +379,128 @@ async function checkViewport(browser, name, width, height) {
     assert(markedControls.trayBottom <= markedControls.dockTop + 1, `${name}: marked target tray should stay above the fixed dock`);
     assert.strictEqual(markedControls.moveExpanded, false, `${name}: move pad should close when target tray opens`);
     assert.strictEqual(markedControls.moveAria, 'false', `${name}: move toggle aria state should reflect collapsed target-tray mode`);
+
+    await page.evaluate(() => App.toggleMobileActorBelt());
+    await page.waitForTimeout(50);
+    const expandedComposer = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const surface = document.getElementById('mobile-play-surface');
+      const belt = document.getElementById('mobile-control-belt');
+      const row = document.getElementById('mobile-control-row');
+      const tray = document.getElementById('mobile-target-action-tray');
+      const actorBelt = document.getElementById('mobile-actor-belt');
+      const sentence = document.getElementById('mobile-selection-sentence');
+      const dockRect = dock.getBoundingClientRect();
+      const beltRect = belt.getBoundingClientRect();
+      const trayRect = tray.getBoundingClientRect();
+      const actorRect = actorBelt.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      const sentenceRect = sentence.getBoundingClientRect();
+      const beltViewportBottom = Math.min(beltRect.bottom, dockRect.top);
+      const visibleRect = rect => (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.right > 0 &&
+        rect.left < innerWidth &&
+        rect.bottom > 0 &&
+        rect.top < dockRect.top
+      );
+      const visibleInBelt = rect => (
+        visibleRect(rect) &&
+        rect.left >= -1 &&
+        rect.right <= innerWidth + 1 &&
+        rect.top >= beltRect.top - 1 &&
+        rect.bottom <= beltViewportBottom + 1
+      );
+      const readVisibleButtons = selector => Array.from(document.querySelectorAll(selector))
+        .map(button => {
+          const rect = button.getBoundingClientRect();
+          return {
+            label: button.textContent.trim(),
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height
+          };
+        })
+        .filter(item => visibleInBelt(item));
+      const trayButtons = readVisibleButtons('#mobile-target-action-tray button');
+      const initialScrollTop = belt.scrollTop;
+      belt.scrollTop = belt.scrollHeight;
+      const actorButtons = readVisibleButtons('#mobile-actor-belt button');
+      const actorChips = readVisibleButtons('#mobile-actor-belt .mobile-actor-chip');
+      const actorScrollTop = belt.scrollTop;
+      belt.scrollTop = initialScrollTop;
+      const everyUsable = (items, minWidth, minHeight) => items.every(item => (
+        item.left >= -1 &&
+        item.right <= innerWidth + 1 &&
+        item.top >= beltRect.top - 1 &&
+        item.bottom <= beltViewportBottom + 1 &&
+        item.width >= minWidth &&
+        item.height >= minHeight
+      ));
+      const overlapArea = (a, b) => {
+        const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return x * y;
+      };
+      return {
+        surfaceHasBelt: surface?.classList.contains('has-control-belt') || false,
+        surfaceExpanded: surface?.classList.contains('control-belt-expanded') || false,
+        beltHasControls: belt.classList.contains('has-controls'),
+        beltExpanded: belt.classList.contains('expanded-controls-open'),
+        beltSurface: belt.getAttribute('data-command-surface'),
+        beltMode: belt.getAttribute('data-command-mode'),
+        beltGrammar: belt.getAttribute('data-command-grammar'),
+        actorExpanded: document.getElementById('mobile-actor-toggle')?.getAttribute('aria-expanded') || '',
+        rowVisible: row.classList.contains('has-visible-controls') && rowRect.width > 0 && rowRect.height > 0,
+        sentenceText: sentence.innerText || '',
+        sentenceVisible: sentenceRect.width > 0 && sentenceRect.height > 0,
+        traySurface: tray.getAttribute('data-command-surface'),
+        trayGrammar: tray.getAttribute('data-command-grammar'),
+        actorSurface: actorBelt.getAttribute('data-command-surface'),
+        actorGrammar: actorBelt.getAttribute('data-command-grammar'),
+        beltInsideViewport: beltRect.left >= -1 && beltRect.right <= innerWidth + 1 && beltRect.top >= 0 && beltRect.bottom <= dockRect.top + 1,
+        trayInsideBelt: overlapArea(trayRect, beltRect) >= (trayRect.width * trayRect.height) - 2,
+        actorReachableInBelt: actorScrollTop > 0 || overlapArea(actorRect, beltRect) >= (actorRect.width * actorRect.height) - 2,
+        trayButtonCount: trayButtons.length,
+        actorButtonCount: actorButtons.length,
+        trayButtonsUsable: everyUsable(trayButtons, 44, 30),
+        actorButtonsUsable: everyUsable(actorButtons, 44, 34),
+        hasActorChip: actorChips.some(chip => /You|Ally/.test(chip.label)),
+        hasActorExit: actorButtons.some(button => /Close actors|Clear actors/i.test(button.label)),
+        hasClearTargetExit: trayButtons.some(button => /Clear/i.test(button.label)),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(expandedComposer.surfaceHasBelt, true, `${name}: active mobile composer should reserve control-belt space`);
+    assert.strictEqual(expandedComposer.surfaceExpanded, true, `${name}: active mobile composer should reserve expanded controls space`);
+    assert.strictEqual(expandedComposer.beltHasControls, true, `${name}: active mobile composer should identify real controls`);
+    assert.strictEqual(expandedComposer.beltExpanded, true, `${name}: active mobile composer should mark expanded control state`);
+    assert.strictEqual(expandedComposer.beltSurface, 'command-composer', `${name}: active mobile belt should identify composer ownership`);
+    assert.strictEqual(expandedComposer.beltMode, 'exploration', `${name}: active mobile belt should identify exploration mode`);
+    assert.strictEqual(expandedComposer.beltGrammar, 'actor-target-intent', `${name}: active mobile belt should identify shared grammar`);
+    assert.strictEqual(expandedComposer.actorExpanded, 'true', `${name}: mobile Actors toggle should expose expanded state`);
+    assert.strictEqual(expandedComposer.rowVisible, true, `${name}: active mobile composer row should be visible`);
+    assert.strictEqual(expandedComposer.sentenceVisible, true, `${name}: active mobile composer should keep the selection sentence visible`);
+    assert(expandedComposer.sentenceText.includes('You') && expandedComposer.sentenceText.includes('Creature'), `${name}: active mobile composer sentence should summarize actor and target`);
+    assert.strictEqual(expandedComposer.traySurface, 'target-intents', `${name}: active mobile target tray should identify target-intent ownership`);
+    assert.strictEqual(expandedComposer.trayGrammar, 'actor-target-intent', `${name}: active mobile target tray should identify shared grammar`);
+    assert.strictEqual(expandedComposer.actorSurface, 'actor-target-routing', `${name}: active mobile actor belt should identify actor routing ownership`);
+    assert.strictEqual(expandedComposer.actorGrammar, 'actor-target-intent', `${name}: active mobile actor belt should identify shared grammar`);
+    assert.strictEqual(expandedComposer.beltInsideViewport, true, `${name}: expanded mobile composer should stay inside the viewport and above the fixed dock`);
+    assert.strictEqual(expandedComposer.trayInsideBelt, true, `${name}: expanded mobile target tray should stay inside the composer belt`);
+    assert.strictEqual(expandedComposer.actorReachableInBelt, true, `${name}: expanded mobile actor rail should be reachable inside the composer belt`);
+    assert(expandedComposer.trayButtonCount >= 2, `${name}: expanded mobile target tray should expose visible target intents and an exit`);
+    assert(expandedComposer.actorButtonCount >= 2, `${name}: expanded mobile actor rail should expose visible actors and an exit`);
+    assert.strictEqual(expandedComposer.trayButtonsUsable, true, `${name}: visible mobile target intent controls should remain tappable`);
+    assert.strictEqual(expandedComposer.actorButtonsUsable, true, `${name}: visible mobile actor controls should remain tappable`);
+    assert.strictEqual(expandedComposer.hasActorChip, true, `${name}: expanded mobile actor rail should expose party actors`);
+    assert.strictEqual(expandedComposer.hasActorExit, true, `${name}: expanded mobile actor rail should expose a visible exit`);
+    assert.strictEqual(expandedComposer.hasClearTargetExit, true, `${name}: expanded mobile target tray should expose a clear-target exit`);
+    assert.strictEqual(expandedComposer.pageOverflow, false, `${name}: expanded mobile composer should not create horizontal overflow`);
     await page.evaluate(() => App.clearExplorationTargets());
 
     await page.evaluate(() => {

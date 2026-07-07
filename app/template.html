@@ -3028,7 +3028,7 @@
             }
 
             .mobile-control-belt.expanded-controls-open {
-                max-height: var(--mobile-control-belt-compact-height);
+                max-height: min(var(--mobile-control-belt-max-height), 18dvh);
             }
 
             .mobile-control-belt.target-controls-open .mobile-creature-presence-cue,
@@ -3240,7 +3240,10 @@
             .mobile-actor-chip.mobile-actor-clear {
                 border-color: rgba(255, 107, 157, 0.35);
                 color: var(--text-secondary);
-                min-width: 96px;
+                flex-basis: 78px;
+                width: 78px;
+                min-width: 78px;
+                max-width: 78px;
                 cursor: pointer;
             }
 
@@ -3284,9 +3287,9 @@
             }
 
             .mobile-actor-chip-btn {
-                min-width: 42px;
-                min-height: 26px;
-                padding: 4px 6px;
+                min-width: 44px;
+                min-height: 34px;
+                padding: 6px 7px;
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-sm);
                 background: rgba(26, 26, 46, 0.78);

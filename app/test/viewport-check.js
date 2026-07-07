@@ -222,7 +222,7 @@ async function checkViewport(browser, name, width, height) {
       const centerTileRect = centerTile.getBoundingClientRect();
       const centerPresenceRects = centerPresenceButtons.map(button => {
         const rect = button.getBoundingClientRect();
-        return { width: rect.width, height: rect.height };
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
       });
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
@@ -247,6 +247,12 @@ async function checkViewport(browser, name, width, height) {
         miniMapTop: miniMapRect.top,
         miniMapHeight: miniMapRect.height,
         centerTileHeight: centerTileRect.height,
+        centerPresenceInsideTile: centerPresenceRects.every(rect => (
+          rect.left >= centerTileRect.left - 1
+          && rect.right <= centerTileRect.right + 1
+          && rect.top >= centerTileRect.top - 1
+          && rect.bottom <= centerTileRect.bottom + 1
+        )),
         centerPresenceCount: centerPresenceRects.length,
         minCenterPresenceWidth: Math.min(...centerPresenceRects.map(rect => rect.width)),
         minCenterPresenceHeight: Math.min(...centerPresenceRects.map(rect => rect.height)),
@@ -284,7 +290,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.miniMapHeight >= 118, `${name}: mobile traversal grid should keep a usable minimum height`);
     assert(mobileControls.centerTileHeight >= 68, `${name}: mobile current tile should leave room for presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
-    assert(mobileControls.minCenterPresenceWidth >= 24 && mobileControls.minCenterPresenceHeight >= 24, `${name}: mobile current tile presence badges should keep mobile-sized tap targets`);
+    assert(mobileControls.minCenterPresenceWidth >= 28 && mobileControls.minCenterPresenceHeight >= 28, `${name}: mobile current tile presence badges should keep finger-sized tap targets`);
+    assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);

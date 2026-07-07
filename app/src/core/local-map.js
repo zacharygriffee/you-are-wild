@@ -29,7 +29,8 @@ const YAW_LOCAL_MAP = {
             ? YAW_CENTER_CONTEXT.presenceEntries(app)
             : [];
         if (!presence.length) return '';
-        const visible = presence.slice(0, 4);
+        const visibleLimit = presence.length > 3 ? 2 : 3;
+        const visible = presence.slice(0, visibleLimit);
         const overflow = presence.slice(visible.length);
         const extra = overflow.length;
         const icons = visible.map(entry => {

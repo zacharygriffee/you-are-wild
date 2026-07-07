@@ -35,6 +35,7 @@ const YAW_SCENE_SHELL = {
             mobileActorBelt.removeAttribute('data-command-mode');
             mobileActorBelt.removeAttribute('data-command-grammar');
         }
+        document.getElementById('mobile-control-row')?.classList?.remove('has-visible-controls');
         const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
         if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
         const mobileMovePad = document.getElementById('mobile-move-pad');

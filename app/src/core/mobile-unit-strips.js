@@ -32,6 +32,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
         const controlBelt = document.getElementById('mobile-control-belt');
+        const controlRow = document.getElementById('mobile-control-row');
         const surface = document.getElementById('mobile-play-surface');
         const exploreActions = document.getElementById('mobile-explore-actions');
         const creatureCue = document.getElementById('mobile-creature-presence-cue');
@@ -93,6 +94,11 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const hasLocationActions = !hasTargets && Boolean((exploreActions?.innerHTML || '').trim());
             const hasCreatureCue = !hasTargets && Boolean((creatureCue?.innerHTML || '').trim());
             const hasMovePad = Boolean(movePad?.classList?.contains('expanded'));
+            const hasControlRow = Boolean(
+                (!moveToggle?.hidden && moveToggle?.style?.display !== 'none')
+                || (!actorToggle?.hidden && actorToggle?.style?.display !== 'none')
+                || hasTargetActions
+            );
             const hasContent = !inCombat && Boolean(
                 hasSelectionSentence
                 || hasLocationActions
@@ -110,6 +116,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);
             controlBelt.classList.toggle('expanded-controls-open', expandedControls);
+            controlRow?.classList?.toggle('has-visible-controls', hasControlRow);
             if (hasContent) {
                 controlBelt.setAttribute('data-command-surface', 'command-composer');
                 controlBelt.setAttribute('data-command-mode', 'exploration');
@@ -124,6 +131,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         } else {
             surface?.classList?.remove('has-control-belt');
             surface?.classList?.remove('control-belt-expanded');
+            controlRow?.classList?.remove('has-visible-controls');
         }
     },
 

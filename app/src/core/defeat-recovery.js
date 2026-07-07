@@ -168,6 +168,7 @@ const YAW_DEFEAT_RECOVERY = {
         if (mobileTargetTray) mobileTargetTray.innerHTML = '';
         const mobileActorBelt = document.getElementById('mobile-actor-belt');
         if (mobileActorBelt) mobileActorBelt.innerHTML = '';
+        document.getElementById('mobile-control-row')?.classList?.remove('has-visible-controls');
         const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
         if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
         const mobileMovePad = document.getElementById('mobile-move-pad');

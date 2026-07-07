@@ -2960,10 +2960,14 @@
             }
 
             .mobile-control-row {
-                display: flex;
+                display: none;
                 gap: 6px;
                 align-items: flex-start;
                 min-width: 0;
+            }
+
+            .mobile-control-row.has-visible-controls {
+                display: flex;
             }
 
             .mobile-control-row > .nav-btn {
@@ -4214,7 +4218,7 @@
 	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
 	                                <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
-	                                <div class="mobile-control-row">
+	                                <div class="mobile-control-row" id="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>
 	                                    <button class="nav-btn" id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor" title="Actors" aria-label="Actors" aria-controls="mobile-actor-belt" aria-expanded="false" onclick="App.toggleMobileActorBelt()" hidden>👥 Actors</button>
 	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>

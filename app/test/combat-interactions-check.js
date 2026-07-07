@@ -368,6 +368,30 @@ async function runReachabilityMatrix(page) {
   assert.strictEqual(state.enemyPun, 100, 'Disabled fight target should not damage enemy');
   assert.strictEqual(state.targetSelectionAction, 'fight', 'Disabled fight target should preserve selected intent for correction');
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  target = page.locator('#mobile-creature-strip button[onclick*="executeActionOnTarget"]').first();
+  await target.waitFor({ state: 'visible', timeout: 1000 });
+  attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
+  state = await page.evaluate(() => {
+    const chip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
+    return {
+      chipMeta: chip?.querySelector('.mobile-chip-meta')?.innerText || '',
+      selectedTarget: chip?.classList.contains('selected-target') || false,
+      targetSelectionAction: App.targetSelection?.action || null,
+      enemyPun: App.creatures[0]?.CPun
+    };
+  });
+  assert.strictEqual(attrs.disabled, true, 'Mobile unreachable fight target should be an actual disabled chip control');
+  assert.strictEqual(attrs.ariaDisabled, 'true', 'Mobile unreachable fight target should expose disabled state accessibly');
+  assert(attrs.label.includes('Enemy is airborne'), 'Mobile unreachable fight target should explain the flying reach blocker');
+  assert(state.chipMeta.includes('Back'), 'Mobile compact enemy chip should show row feedback while targeting');
+  assert.strictEqual(state.selectedTarget, false, 'Mobile blocked combat target should not be styled as a pickable target');
+  assert.strictEqual(state.enemyPun, 100, 'Mobile disabled fight target should not damage enemy');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile disabled fight target should preserve selected intent for correction');
+  await page.setViewportSize({ width: 1365, height: 768 });
+
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 20, MPun: 100, size: 2 } });
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('feast')"]`).first().click();
   target = page.locator('#enemies-content button[onclick*="executeActionOnTarget"]').first();

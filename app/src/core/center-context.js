@@ -395,6 +395,12 @@ const YAW_CENTER_CONTEXT = {
                 total
             });
         }
+        if (info.route === 'target') {
+            return app._label('ui.presence.openTargetPicker', 'Open target picker ({count} hidden)', { count: info.count });
+        }
+        if (info.route === 'actor') {
+            return app._label('ui.presence.openActorPicker', 'Open actor picker ({count} hidden)', { count: info.count });
+        }
         return app._label('ui.presence.openDetails', 'Open {count} more in details', { count: info.count });
     },
 

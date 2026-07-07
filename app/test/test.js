@@ -2843,7 +2843,8 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)', 'Mobile center presence overflow should reuse shared actor/target/stage overflow metadata');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandRoute(overflow)', 'Mobile center presence overflow should reuse shared actor/target/stage overflow routing');
   assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandLabel(app, overflow)', 'Mobile center presence overflow should reuse shared overflow action labels');
-  assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
+  assertContains(centerContextContent, "'ui.presence.openTargetPicker'", 'Mobile center target overflow should announce the compact target picker route');
+  assertContains(centerContextContent, "'ui.presence.openActorPicker'", 'Mobile center actor overflow should announce the compact actor picker route');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
   assertContains(appContent, 'YAW_LOCAL_MAP.render(this)', 'App map renderer should delegate to the helper');
@@ -2889,7 +2890,8 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'overflowCommandLabel(app, overflow = [])', 'Center context helper should expose route-specific overflow labels');
   assertContains(centerContextContent, 'data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Stage overflow should focus hidden item/place cues through the target slot');
   assertContains(centerContextContent, "'ui.presence.focusOverflow'", 'Stage overflow should announce focus behavior instead of falsely promising drawers');
-  assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
+  assertContains(centerContextContent, "'ui.presence.openTargetPicker'", 'Center presence target overflow should announce compact target picker behavior');
+  assertContains(centerContextContent, "'ui.presence.openActorPicker'", 'Center presence actor overflow should announce compact actor picker behavior');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
@@ -10408,8 +10410,9 @@ test('Mobile play surface resolves only the 3x3 traversal neighborhood without e
   assertContains(html, 'data-command-control="open-target-picker" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Mobile center presence overflow should identify the target slot');
   assertContains(html, 'data-command-target-count="2"', 'Mobile center presence overflow should expose the hidden creature target count');
   assertContains(html, 'data-command-grammar="actor-target-intent"', 'Mobile center presence overflow should preserve the shared command grammar');
-  assertContains(html, "App.focusPresenceOverflow('target')", 'Mobile center presence overflow should focus the advertised target drawer');
-  assertContains(html, 'aria-label="Open 2 more in details"', 'Mobile center overflow presence should advertise that it opens details');
+  assertContains(html, "App.focusPresenceOverflow('target')", 'Mobile center presence overflow should focus the advertised target picker');
+  assertContains(html, 'aria-label="Open target picker (2 hidden)"', 'Mobile center overflow presence should advertise the compact target picker');
+  assertNotContains(html, 'aria-label="Open 2 more in details"', 'Mobile center target overflow should not advertise drawer details');
   assertNotContains(html, 'toggleExplorationTarget(', 'Mobile center presence should not duplicate target marking controls');
   assertNotContains(html, 'selectIntent(', 'Mobile center presence should not duplicate intent controls');
   assertContains(html, 'data-mobile-play-cell="e"', 'Mobile routine play should expose east movement');

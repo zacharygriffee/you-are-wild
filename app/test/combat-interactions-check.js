@@ -604,6 +604,42 @@ async function runDesktopSyncComposerFlow(page) {
   await page.locator(`#desktop-context-belt button[data-command-control="confirm-sync-participants"]`).click();
   const syncPick = page.locator('#enemies-content button[data-selection-mode="combat-pick"]').first();
   await assert.doesNotReject(() => syncPick.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop Sync target phase should expose enemy Pick controls');
+  await page.evaluate(() => {
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    if (enemy) {
+      enemy.combatRow = 'back';
+      enemy.flying = true;
+    }
+    App.renderCreatures();
+  });
+  state = await page.evaluate(() => {
+    const pick = document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]');
+    const card = document.querySelector('#enemies-content .compact-tactical-card');
+    return {
+      disabled: pick?.hasAttribute('disabled') || false,
+      ariaDisabled: pick?.getAttribute('aria-disabled') || '',
+      disabledClass: pick?.classList.contains('disabled') || false,
+      selectionState: pick?.getAttribute('data-selection-state') || '',
+      label: pick?.getAttribute('aria-label') || '',
+      cardSelectedTarget: card?.classList.contains('selected-target') || false,
+      rowFeedback: card?.innerText || ''
+    };
+  });
+  assert.strictEqual(state.disabled, true, 'Desktop unreachable Sync target should be an actual disabled control');
+  assert.strictEqual(state.ariaDisabled, 'true', 'Desktop unreachable Sync target should expose aria-disabled');
+  assert.strictEqual(state.disabledClass, true, 'Desktop unreachable Sync target should carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'blocked', 'Desktop unreachable Sync target should expose blocked selection state');
+  assert(state.label.includes('airborne'), 'Desktop unreachable Sync target should explain the reach blocker');
+  assert.strictEqual(state.cardSelectedTarget, false, 'Desktop unreachable Sync target should not look selected');
+  assert(state.rowFeedback.includes('Back'), 'Desktop unreachable Sync target card should still show row feedback');
+  await page.evaluate(() => {
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    if (enemy) {
+      enemy.combatRow = 'front';
+      enemy.flying = false;
+    }
+    App.renderCreatures();
+  });
   state = await page.evaluate(() => {
     const tray = document.querySelector('#desktop-context-belt .combat-sync-tray');
     const pick = document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]');
@@ -780,6 +816,42 @@ async function runMobileSyncComposerFlow(page) {
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="confirm-sync-participants"]`).click();
   const syncPick = page.locator('#mobile-creature-strip button[data-selection-mode="combat-pick"]').first();
   await assert.doesNotReject(() => syncPick.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile Sync target phase should expose enemy Pick controls');
+  await page.evaluate(() => {
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    if (enemy) {
+      enemy.combatRow = 'back';
+      enemy.flying = true;
+    }
+    App.renderCreatures();
+  });
+  state = await page.evaluate(() => {
+    const pick = document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]');
+    const chip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
+    return {
+      disabled: pick?.hasAttribute('disabled') || false,
+      ariaDisabled: pick?.getAttribute('aria-disabled') || '',
+      disabledClass: pick?.classList.contains('disabled') || false,
+      selectionState: pick?.getAttribute('data-selection-state') || '',
+      label: pick?.getAttribute('aria-label') || '',
+      chipSelectedTarget: chip?.classList.contains('selected-target') || false,
+      rowFeedback: chip?.innerText || ''
+    };
+  });
+  assert.strictEqual(state.disabled, true, 'Mobile unreachable Sync target should be an actual disabled control');
+  assert.strictEqual(state.ariaDisabled, 'true', 'Mobile unreachable Sync target should expose aria-disabled');
+  assert.strictEqual(state.disabledClass, true, 'Mobile unreachable Sync target should carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'blocked', 'Mobile unreachable Sync target should expose blocked selection state');
+  assert(state.label.includes('airborne'), 'Mobile unreachable Sync target should explain the reach blocker');
+  assert.strictEqual(state.chipSelectedTarget, false, 'Mobile unreachable Sync target should not look selected');
+  assert(state.rowFeedback.includes('Back'), 'Mobile unreachable Sync target chip should still show row feedback');
+  await page.evaluate(() => {
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    if (enemy) {
+      enemy.combatRow = 'front';
+      enemy.flying = false;
+    }
+    App.renderCreatures();
+  });
   state = await page.evaluate(() => {
     const tray = document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls');
     const pick = document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]');

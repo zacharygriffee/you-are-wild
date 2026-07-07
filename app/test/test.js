@@ -12574,6 +12574,7 @@ test('Sync combat target selection respects participant reach', () => {
   App.renderCreatures();
   assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should reject enemies no selected participant can reach');
   assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync target should render as a disabled control');
+  assertContains(elements.get('enemies-content').innerHTML, 'action-btn primary target-toggle disabled', 'Unreachable sync target should carry disabled visual styling');
   assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Unreachable sync target should expose blocked combat-pick state');
   assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Unreachable sync target should not queue');
   assertEqual(App.combatState.syncActions.length, 0, 'Unreachable sync target should not create a queued sync action');

@@ -1,4 +1,8 @@
 const YAW_MOBILE_UNIT_STRIPS = {
+    hasInteractiveMarkup(slot) {
+        return /<(button|a|input|select|textarea)\b/i.test(slot?.innerHTML || '');
+    },
+
     party(app) {
         const strip = document.getElementById('mobile-party-strip');
         if (!strip) return;
@@ -89,9 +93,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
         this.creaturePresenceCue(app);
         if (controlBelt) {
             const hasSelectionSentence = Boolean((selectionSentence?.innerHTML || '').trim());
-            const hasTargetActions = Boolean((targetTray?.innerHTML || '').trim());
-            const hasActorControls = Boolean((actorBelt?.innerHTML || '').trim());
-            const hasLocationActions = !hasTargets && Boolean((exploreActions?.innerHTML || '').trim());
+            const hasTargetActions = this.hasInteractiveMarkup(targetTray);
+            const hasActorControls = this.hasInteractiveMarkup(actorBelt);
+            const hasLocationActions = !hasTargets && this.hasInteractiveMarkup(exploreActions);
             const hasMovePad = Boolean(movePad?.classList?.contains('expanded'));
             const hasControlRow = Boolean(
                 (!moveToggle?.hidden && moveToggle?.style?.display !== 'none')
@@ -105,6 +109,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 || hasActorControls
                 || hasMovePad
             );
+            controlBelt.hidden = !hasContent;
+            controlBelt.setAttribute('aria-hidden', hasContent ? 'false' : 'true');
             const expandedControls = hasContent && Boolean(
                 hasTargetActions
                 || hasActorControls

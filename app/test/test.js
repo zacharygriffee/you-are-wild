@@ -4336,6 +4336,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
   assertContains(template, 'id="mobile-control-row"', 'mobile secondary control row should be addressable for stale-row cleanup');
+  assertContains(mobileUnitStripsContent, 'hasInteractiveMarkup(slot)', 'Mobile control belt should ignore stale wrapper markup without interactive controls');
+  assertContains(mobileUnitStripsContent, 'controlBelt.hidden = !hasContent', 'Mobile control belt should hard-hide itself when no real composer controls are present');
   assertContains(template, '.mobile-target-action-tray .target-action-row', 'mobile marked-target tray should use compact action-row sizing');
   assertContains(template, '.mobile-target-action-tray .target-action-row::-webkit-scrollbar', 'mobile marked-target tray should scroll horizontally instead of growing tall');
   assertContains(template, 'id="mobile-actor-toggle"', 'mobile actor row should open through an explicit composer control');
@@ -11275,6 +11277,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(Boolean(elements.get('mobile-move-toggle').hidden), true, 'Mobile move toggle should be hidden while the 3x3 traversal map is in thumb reach');
   assertEqual(elements.get('mobile-move-toggle').getAttribute('aria-expanded'), 'false', 'Move toggle should expose collapsed state');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Mobile control belt should become fixed-visible when location or target controls exist');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), false, 'Mobile control belt should be unhidden when location controls exist');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('aria-hidden'), 'false', 'Visible mobile control belt should not be hidden from assistive tech');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), 'command-composer', 'Active mobile control belt should identify the command composer surface');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), 'exploration', 'Active mobile control belt should identify exploration command mode');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Active mobile control belt should identify the shared command grammar');
@@ -11444,6 +11448,8 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   App.renderMobileExplorationControls();
 
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Empty mobile control belt should not become an overlay during plain traversal');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), true, 'Empty mobile control belt should be hard-hidden during plain traversal');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('aria-hidden'), 'true', 'Empty mobile control belt should be hidden from assistive tech');
   assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), false, 'Plain traversal should not display an empty secondary control row');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Empty mobile control belt should not keep command composer surface metadata');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Empty mobile control belt should not keep command mode metadata');
@@ -11469,6 +11475,7 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
 
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'A local creature should still expose the compact stage presence cue');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Creature presence alone should not open the fixed mobile command belt over the play surface');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), true, 'Creature presence alone should keep the fixed mobile command belt hard-hidden');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Creature presence alone should not assign command-composer metadata to the fixed belt');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Creature presence alone should not reserve fixed control-belt space');
 });

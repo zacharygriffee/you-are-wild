@@ -4461,7 +4461,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');
   assertContains(template, '.center-presence-chip.selected', 'Desktop stage presence should visibly mark selected actor and target chips');
   assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile semantics should sit above the thumb-zone map');
-  assertContains(template, '--mobile-scene-height: clamp(164px, 24dvh, 214px);', 'mobile scene and activity area should use a bounded responsive exploration height with log breathing room');
+  assertContains(template, '--mobile-scene-height: clamp(112px, 17dvh, 148px);', 'mobile story capsule should stay compact so the 3x3 stage remains the primary play surface');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
   assertContains(template, 'height: var(--mobile-scene-height);', 'mobile scene and activity area should lock map position');
   assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should scroll before pushing the map down');

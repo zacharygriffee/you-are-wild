@@ -221,6 +221,7 @@ async function checkViewport(browser, name, width, height) {
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
+      const sheetRect = sheet.getBoundingClientRect();
       const unitStripsRect = unitStrips.getBoundingClientRect();
       const creatureCardRect = creatureCard.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
@@ -272,7 +273,10 @@ async function checkViewport(browser, name, width, height) {
         beltHasControls: belt.classList.contains('has-controls'),
         surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
         mapHeight: mapRect.height,
+        mapTop: mapRect.top,
         mapBottom: mapRect.bottom,
+        sheetHeight: sheetRect.height,
+        sheetBottom: sheetRect.bottom,
         miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
         creatureCardTop: creatureCardRect.top,
@@ -335,6 +339,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
     assert.strictEqual(mobileControls.beltCreatureOverlap, 0, `${name}: mobile context belt should not cover compact creature rail`);
     assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
+    assert(mobileControls.sheetHeight <= 150, `${name}: mobile story capsule should stay compact above the traversal stage`);
+    assert(mobileControls.sheetBottom <= mobileControls.mapTop + 1, `${name}: mobile story capsule should not overlap the traversal map`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);

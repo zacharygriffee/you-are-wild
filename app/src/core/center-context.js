@@ -537,6 +537,7 @@ const YAW_CENTER_CONTEXT = {
     renderCenterActions(app) {
         if (app.combatState?.active) return;
         const hasMarkedTargets = (app._getExplorationTargets?.() || []).length > 0;
+        const hasActorRouting = Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);
         const locationHtml = this.renderActions(app);
         const actorExitHtml = this.actorExitButton(app);
         const focusedExitHtml = this.focusedObjectExitButton(app);
@@ -545,7 +546,7 @@ const YAW_CENTER_CONTEXT = {
             : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: true });
         const mobileHtml = hasMarkedTargets
             ? ''
-            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: false });
+            : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml: hasActorRouting ? '' : locationHtml, includeActorExit: false });
         const actions = document.getElementById('scene-actions');
         if (actions) {
             actions.innerHTML = '';

@@ -283,11 +283,15 @@
         .stage {
             grid-area: stage;
             display: grid;
-            grid-template-columns: minmax(520px, 1fr) 260px 260px;
+            grid-template-columns: minmax(620px, 1fr) minmax(192px, 220px) minmax(192px, 220px);
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
             overflow: hidden;
+        }
+
+        .stage.target-panel-empty {
+            grid-template-columns: minmax(680px, 1fr) minmax(188px, 220px) 0;
         }
 
         /* Panel Base */
@@ -1430,6 +1434,10 @@
         /* Party/Enemy Panels */
         .panel-party { grid-area: party; }
         .panel-enemies { grid-area: enemies; }
+
+        .stage.target-panel-empty .panel-enemies {
+            display: none;
+        }
 
         /* Unit Card (Accordion) */
         .unit-card {
@@ -2611,13 +2619,21 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: minmax(480px, 1fr) 240px 240px;
+                grid-template-columns: minmax(560px, 1fr) minmax(184px, 208px) minmax(184px, 208px);
+            }
+
+            .stage.target-panel-empty {
+                grid-template-columns: minmax(620px, 1fr) minmax(184px, 208px) 0;
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: minmax(420px, 1fr) 220px 220px;
+                grid-template-columns: minmax(480px, 1fr) minmax(176px, 196px) minmax(176px, 196px);
+            }
+
+            .stage.target-panel-empty {
+                grid-template-columns: minmax(540px, 1fr) minmax(176px, 196px) 0;
             }
         }
 
@@ -2789,6 +2805,13 @@
 	                overflow: visible;
 	                padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
 	            }
+
+            .mobile-play-surface.details-drawer-open .mobile-creature-presence-cue,
+            .mobile-play-surface.details-drawer-open .mobile-control-belt,
+            .mobile-play-surface.details-drawer-open .mobile-unit-strips {
+                visibility: hidden;
+                pointer-events: none;
+            }
 
             .mobile-play-surface.has-control-belt {
                 padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
@@ -3044,15 +3067,15 @@
             .mobile-control-belt {
                 order: 3;
                 display: none;
-                gap: 8px;
-                padding: 8px;
+                gap: 6px;
+                padding: 7px;
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-md);
                 background: rgba(26, 26, 46, 0.94);
                 position: static;
                 width: 100%;
                 max-height: var(--mobile-control-belt-compact-height);
-                overflow-y: auto;
+                overflow-y: visible;
                 overscroll-behavior: contain;
                 align-content: start;
             }
@@ -3067,6 +3090,12 @@
 
             .mobile-control-belt.actor-controls-open {
                 max-height: min(192px, 27dvh);
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-selection-sentence {
+                min-height: 0;
+                padding: 4px 7px;
+                line-height: 1.15;
             }
 
             .mobile-play-surface.target-controls-open .mobile-creature-presence-cue {
@@ -3174,7 +3203,7 @@
             .mobile-control-row {
                 display: none;
                 gap: 6px;
-                align-items: flex-start;
+                align-items: stretch;
                 min-width: 0;
             }
 
@@ -3184,6 +3213,7 @@
 
             .mobile-control-row > .nav-btn {
                 flex: 0 0 auto;
+                min-height: 44px;
             }
 
             .mobile-target-action-tray {
@@ -3241,6 +3271,7 @@
                 .mobile-control-belt {
                     gap: 4px;
                     padding: 6px;
+                    overflow-y: auto;
                 }
 
                 .mobile-control-belt.actor-controls-open {
@@ -3763,7 +3794,7 @@
                 height: var(--mobile-scene-height);
                 min-height: var(--mobile-scene-height);
                 max-height: var(--mobile-scene-height);
-                overflow: auto;
+                overflow: hidden;
                 overscroll-behavior: contain;
             }
 

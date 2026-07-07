@@ -4492,7 +4492,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '--mobile-scene-height: clamp(112px, 17dvh, 148px);', 'mobile story capsule should stay compact so the 3x3 stage remains the primary play surface');
   assertContains(template, 'flex: 0 0 var(--mobile-scene-height);', 'mobile scene and activity area should not resize with log content');
   assertContains(template, 'height: var(--mobile-scene-height);', 'mobile scene and activity area should lock map position');
-  assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should scroll before pushing the map down');
+  assertContains(template, 'max-height: var(--mobile-scene-height);', 'mobile scene and activity area should stay bounded before the map');
+  assertContains(template, '.mobile-scene-sheet {\n                order: 1;', 'mobile scene sheet should keep a stable story slot');
+  assertContains(template, 'overflow: hidden;\n                overscroll-behavior: contain;', 'normal mobile story should avoid a nested vertical scroll container');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
   assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile play surface should sit directly below semantics for thumb reach');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
@@ -4526,7 +4528,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.control-belt-expanded .mobile-map-card', 'mobile expanded composer states should preserve a usable 3x3 stage height');
   assertContains(template, '.mobile-control-belt.expanded-controls-open', 'mobile control belt should expose an expanded state for target/actor/move controls');
   assertContains(template, '.mobile-control-belt.actor-controls-open', 'mobile actor rail should get extra composer height to avoid clipping compact actor chips');
+  assertContains(template, '.mobile-control-belt.actor-controls-open .mobile-selection-sentence', 'mobile actor routing should compact the command sentence before the belt scrolls');
   assertContains(template, '.mobile-play-surface.target-controls-open .mobile-creature-presence-cue', 'mobile target composer should hide the separate cue sibling before it can push the belt under the dock');
+  assertContains(template, '.mobile-play-surface.details-drawer-open .mobile-control-belt', 'mobile details drawers should pause normal composer rails behind the drawer');
   assertContains(template, '.mobile-control-belt.target-controls-open .mobile-creature-presence-cue', 'mobile marked-target controls should suppress lower-priority cue rows inside the fixed belt');
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
   assertContains(template, '.mobile-control-belt {\n                order: 3;', 'mobile control belt should sit between stage traversal and compact cast rails');
@@ -4560,6 +4564,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-control-belt {\n                order: 3;', 'mobile exploration controls should sit below the navigation map');
   assertContains(template, 'position: static;\n                width: 100%;', 'mobile context belt should participate in layout instead of covering the stage or cast rails');
+  assertContains(template, 'overflow-y: visible;', 'normal mobile composer should avoid an internal vertical scroll container');
   assertContains(template, '.mobile-panel-dock {\n                order: 4;', 'mobile panel shortcuts should sit below the exploration control belt');
   assertContains(template, 'position: fixed;\n                left: 50%;', 'mobile panel dock should stay anchored to the viewport');
   assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'mobile panel dock should respect the safe-area inset');
@@ -4627,6 +4632,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
   assertContains(appContent, 'toggleMobileActorBelt()', 'App should expose a mobile actor-belt toggle');
+  assertContains(centerContextContent, "locationHtml: hasActorRouting ? '' : locationHtml", 'mobile actor routing should collapse lower-priority location actions');
+  assertContains(panelShellContent, "classList?.toggle('details-drawer-open'", 'mobile details drawers should pause normal play rails behind the drawer');
   assertContains(template, 'class="mobile-unit-strips" data-surface-role="presence-rails"', 'mobile unit strips should identify as compact presence rails');
   assertContains(template, 'class="mobile-scene-sheet" data-surface-role="story"', 'mobile scene sheet should identify as the story/semantics surface');
   assertContains(template, 'id="mobile-scene-description"', 'mobile scene sheet missing');
@@ -4696,8 +4703,12 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="panel-enemies" data-surface-role="target-drawer"', 'creature panel should identify as a target detail drawer');
   assertContains(template, 'id="party-content" data-surface-role="actor-list" data-drawer-role="actors"', 'party panel content should identify as the actor drawer list, not a command composer');
   assertContains(template, 'id="enemies-content" data-surface-role="target-list" data-drawer-role="targets"', 'creature panel content should identify as the target drawer list, not a command composer');
-  assertContains(template, 'grid-template-columns: minmax(520px, 1fr) 260px 260px;', 'desktop stage should not reserve a permanent left map column');
+  assertContains(template, 'grid-template-columns: minmax(620px, 1fr) minmax(192px, 220px) minmax(192px, 220px);', 'desktop stage should keep the center surface primary and side panels compact');
+  assertContains(template, '.stage.target-panel-empty', 'desktop stage should collapse the target side when no local targets or items exist');
+  assertContains(template, '.stage.target-panel-empty .panel-enemies', 'desktop empty target side should not remain a dominant panel');
   assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
+  assertContains(panelRenderingContent, "classList?.toggle('target-panel-empty'", 'creature rendering should own empty target panel demotion');
+  assertContains(panelRenderingContent, "app._label('ui.here', 'Here')", 'target side should be able to read as local Here/Cast context instead of a final primary panel');
   assertNotContains(template, 'id="mini-map"', 'desktop should not render a duplicate minimap now that movement lives in the center play surface');
   assertNotContains(appContent, "document.getElementById('mini-map')", 'renderMap should not target the removed desktop minimap');
 });

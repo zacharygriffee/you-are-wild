@@ -111,9 +111,13 @@ const YAW_PANEL_RENDERING = {
         const container = document.getElementById('enemies-content');
         const title = document.getElementById('enemies-title');
         const mobileTitle = document.getElementById('mobile-creature-title');
-        let titleText = app._label('ui.area', 'Area');
         const living = app.creatures.filter(c => !app._isCorpse(c));
         const corpses = app.creatures.filter(c => app._isCorpse(c));
+        const hasTileItems = !app.combatState?.active && Boolean(app._canTakeTileItems?.());
+        const hasTargetsHere = living.length > 0 || corpses.length > 0 || hasTileItems;
+        let titleText = hasTargetsHere ? app._label('ui.here', 'Here') : app._label('ui.area', 'Area');
+        document.querySelector('.stage')?.classList?.toggle('target-panel-empty', !app.combatState?.active && !hasTargetsHere);
+        document.getElementById('panel-enemies')?.classList?.toggle('empty-target-panel', !hasTargetsHere);
         if (title) {
             const enemies = living.filter(c => c.disposition === app.DISPOSITION.ENEMY);
             const friendlies = living.filter(c => c.disposition !== app.DISPOSITION.ENEMY);

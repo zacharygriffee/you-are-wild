@@ -121,9 +121,10 @@ const YAW_PANEL_SHELL = {
 
     syncBackdrop() {
         const backdrop = document.getElementById('panel-backdrop');
-        if (!backdrop) return;
         const hasActivePanel = Boolean(document.querySelector('.panel-map.active, .panel-party.active, .panel-enemies.active'));
-        backdrop.classList.toggle('active', hasActivePanel);
+        if (backdrop) backdrop.classList.toggle('active', hasActivePanel);
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 1024;
+        document.getElementById('mobile-play-surface')?.classList?.toggle('details-drawer-open', Boolean(isMobile && hasActivePanel));
     }
 };
 

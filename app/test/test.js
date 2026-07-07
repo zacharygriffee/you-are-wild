@@ -9952,8 +9952,8 @@ test('Moving between tiles does not copy carried inventory into ground items', (
   assertEqual(App.getTileDelta(0, 0).items[0].name, 'Healing Herb', 'Persisted tile delta should keep ground items separate from carried inventory');
 });
 
-test('Center tile exposes only tile-local item pickup', () => {
-  const { App } = loadAppForCombat(() => 1);
+test('Composer and stage presence expose tile-local item pickup', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
   const player = makeUnit('You');
   let autoSaveCalls = 0;
   App.player = player;
@@ -9965,9 +9965,13 @@ test('Center tile exposes only tile-local item pickup', () => {
   App.worldMap = new Map([['0,0', { x: 0, y: 0, biome: 'forest', explored: true, description: 'A saved clearing.', creatures: [], items: [{ id: 'ground-herb', name: 'Healing Herb' }] }]]);
 
   const context = App._centerTileContext();
-  assertContains(context.description, 'Items here: Healing Herb.', 'Center context should summarize tile-local items');
-  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Center context should expose tile-local pickup');
-  assertNotContains(App._renderContextActions(), 'App.showInventory()', 'Tile-local pickup should not expose carried inventory in the center');
+  assertContains(context.description, 'A saved clearing.', 'Center context should keep the tile prose');
+  assertNotContains(context.description, 'Items here: Healing Herb.', 'Center context should not duplicate tile-local item presence');
+  App.renderCenterPresence();
+  assertContains(elements.get('desktop-presence-rail').innerHTML, 'Healing Herb', 'Desktop presence rail should name tile-local items');
+  assertNotContains(elements.get('center-presence').innerHTML, 'Healing Herb', 'Center stage token should not duplicate named item presence');
+  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Composer belt should expose tile-local pickup');
+  assertNotContains(App._renderContextActions(), 'App.showInventory()', 'Tile-local pickup should not expose carried inventory in the composer');
 
   assertEqual(App.takeTileItems(), true, 'Taking tile items should report a handled action');
   assertEqual(App.inventory.length, 1, 'Tile-local pickup should move the item into carried inventory');
@@ -10015,8 +10019,9 @@ test('Dropping carried inventory creates tile-local pickup state', () => {
   assertEqual(App.worldMap.get('0,0').items.length, 2, 'Dropping should append to tile-local ground items');
   assertEqual(App.worldMap.get('0,0').items[1].name, 'Old Coin', 'Dropped item should keep its item identity on the tile');
   assertEqual(App.getTileDelta(0, 0).items[1].name, 'Old Coin', 'Dropped item should persist through sparse tile deltas');
-  assertContains(App._centerTileContext().description, 'Items here: Healing Herb, Old Coin.', 'Center context should summarize dropped tile-local items');
-  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the center');
+  assertContains(App._centerTileContext().description, 'A saved clearing.', 'Center context should keep the tile prose after a drop');
+  assertNotContains(App._centerTileContext().description, 'Items here: Healing Herb, Old Coin.', 'Center context should not duplicate dropped tile-local items');
+  assertContains(App._renderContextActions(), 'App.takeTileItems()', 'Dropped tile-local items should expose pickup from the composer belt');
   assertContains(App.log[App.log.length - 1].text, 'Dropped Old Coin.', 'Dropping should log the item transfer');
   assertEqual(autoSaveCalls, 1, 'Dropping should autosave changed world and inventory state');
 });
@@ -10045,7 +10050,7 @@ test('Interior item pickup and drop persist through structure tile deltas', () =
   assertEqual(App.inventory.length, 0, 'Interior drop should remove the carried item');
   assertEqual(App._currentExplorationTile().items[0].name, 'Room Key', 'Interior drop should place the item back in the current room');
   assertEqual(App.getTileDelta(0, 0).interior.tiles['0,0'].items[0].name, 'Room Key', 'Interior drop should persist through the origin structure tile delta');
-  assertContains(App._centerTileContext().description, 'Items here: Room Key.', 'Interior center context should summarize room-local dropped items');
+  assertNotContains(App._centerTileContext().description, 'Items here: Room Key.', 'Interior center context should not duplicate room-local item presence');
   assertEqual(autoSaveCalls, 2, 'Interior pickup and drop should each autosave changed world and inventory state');
 });
 

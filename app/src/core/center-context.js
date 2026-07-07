@@ -540,8 +540,6 @@ const YAW_CENTER_CONTEXT = {
                 : (app.activeInterior.structureName || app._label('ui.largeMap.interior', 'Interior'));
             const details = [room?.description ||
                 `${biome.icon || ''} ${app._label('ui.largeMap.interior', 'Interior')} (${app.interiorLocation.x}, ${app.interiorLocation.y})`];
-            const itemSummary = app._tileItemSummary(room);
-            if (itemSummary) details.push(itemSummary);
             const description = details.join(' ');
             return { title, description };
         }
@@ -555,8 +553,6 @@ const YAW_CENTER_CONTEXT = {
         if (tile?.description) details.push(tile.description);
         if (structure) details.push(`${structure.icon || '🚪'} ${structure.name}`);
         if (tile?.hasLandmark && tile.landmarkName) details.push(tile.landmarkName);
-        const itemSummary = app._tileItemSummary(tile);
-        if (itemSummary) details.push(itemSummary);
         const description = details.length
             ? details.join(' ')
             : `${biome.icon || ''} ${app._label('ui.chooseAction', 'Choose your next action.')}`;

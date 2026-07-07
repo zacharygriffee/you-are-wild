@@ -77,7 +77,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const targetCount = app._escapeHtml(String(targets.length));
         const actionRow = `<div class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}" aria-label="${controlsLabel}">${buttonHtml}<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-control="clear-targets" data-command-slot="exit" title="${clearTitle}" aria-label="${clearTitle}" onclick="App.clearExplorationTargets()">${clearLabel}</button></div>`;
         return source === 'composer-tray' || source === 'panel-tray'
-            ? `<div class="panel-interaction-tray adventure-interaction-tray">${actionRow}</div>`
+            ? `<div class="panel-interaction-tray adventure-interaction-tray" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-actor-count="${actorCount}" data-command-target-count="${targetCount}">${actionRow}</div>`
             : actionRow;
     },
 

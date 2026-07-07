@@ -92,7 +92,7 @@ const YAW_COMBAT_ACTIONS = {
             const actionText = app._uiLabel(app.targetSelection.action || 'action');
             const cancelLabel = app._escapeHtml(app._label('target.cancelAction', 'Cancel {action}', { action: actionText }));
             const label = app._escapeHtml(app._label('target.controls', 'Target controls'));
-            return `<div class="panel-interaction-tray combat-target-tray" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}"><button class="action-btn" data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
+            return `<div class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" role="region" aria-label="${label}"><div class="target-action-row" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" aria-label="${label}"><button class="action-btn" data-command-surface="combat-targeting" data-command-mode="combat" data-command-control="cancel-targeting" data-command-slot="exit" title="${cancelLabel}" aria-label="${cancelLabel}" onclick="App.cancelTargetSelection()">${cancelLabel}</button></div></div>`;
         }
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
         if (!actions) return '';

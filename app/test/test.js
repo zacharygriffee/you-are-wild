@@ -1637,6 +1637,10 @@ test('Panel interaction tray helper module is registered before app code', () =>
   assertContains(panelInteractionsContent, "app._label('feed.cancel', 'Cancel Feed')", 'Desktop feed tray should expose an explicit Cancel Feed exit');
   assertContains(panelInteractionsContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Desktop sync trays should expose an explicit Cancel Sync exit');
   assertContains(panelInteractionsContent, 'data-command-grammar="actor-target-intent"', 'Combat transient trays should identify the shared actor-target-intent grammar');
+  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed tray root should identify feed composer ownership');
+  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync choose tray root should identify sync composer ownership');
+  assertContains(panelInteractionsContent, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync phase tray root should identify the active sync composer surface');
+  assertContains(combatActionsContent, 'class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Combat target tray root should identify target-pick composer ownership');
   assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-intent="${intent}"', 'Feed option buttons should identify the feed composer surface');
   assertContains(panelInteractionsContent, 'data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Feed option buttons should identify the intent slot');
   assertContains(panelInteractionsContent, 'data-command-surface="feed-options" data-command-mode="combat" data-command-control="cancel-feed"', 'Feed cancel should identify the feed composer surface');
@@ -5313,6 +5317,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.showSyncMenu();
   let html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Elegir accion sincronizada', 'Sync action heading should localize');
+  assertContains(html, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync choose tray root should identify sync intent composer ownership');
   assertContains(html, 'data-command-surface="sync-intents"', 'Sync action composer should identify the sync intent surface');
   assertContains(html, 'data-command-surface="sync-intents" data-command-mode="combat"', 'Sync action composer should identify combat command mode');
   assertContains(html, 'data-command-surface="sync-intents" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync action composer should identify the shared command grammar');
@@ -5332,6 +5337,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.selectSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar participantes para sincronizar', 'Sync participant control should localize');
+  assertContains(html, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync participant tray root should identify participant composer ownership');
   assertContains(html, 'data-command-surface="sync-participants"', 'Sync participant composer should identify its participant surface');
   assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat"', 'Sync participant composer should identify combat command mode');
   assertContains(html, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync participant composer should identify the shared command grammar');
@@ -5352,6 +5358,7 @@ test('Sync action menus localize visible and accessible labels', () => {
   App.confirmSyncParticipants('sync_fight');
   html = elements.get('desktop-context-belt').innerHTML;
   assertContains(html, 'Seleccionar objetivo sincronizado', 'Sync target heading should localize');
+  assertContains(html, 'class="panel-interaction-tray combat-sync-tray" data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync target tray root should identify target-pick composer ownership');
   assertContains(html, 'data-command-surface="sync-targeting"', 'Sync target composer should identify its target-pick surface');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat"', 'Sync target composer should identify combat command mode');
   assertContains(html, 'data-command-surface="sync-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Sync target composer should identify the shared command grammar');
@@ -6285,6 +6292,7 @@ test('Combat feed sub-action picker renders in the desktop composer, not center 
   const composerHtml = elements.get('desktop-context-belt')?.innerHTML || App._renderCombatPanelTray();
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(composerHtml, 'combat-feed-tray', 'Feed options should render in the desktop composer tray');
+  assertContains(composerHtml, 'class="panel-interaction-tray combat-feed-tray" data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed options tray root should identify feed composer ownership');
   assertContains(composerHtml, 'data-command-surface="feed-options"', 'Feed options composer should identify the feed sub-action surface');
   assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat"', 'Feed options composer should identify combat command mode');
   assertContains(composerHtml, 'data-command-surface="feed-options" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Feed options composer should identify the shared command grammar');
@@ -9118,6 +9126,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(selectionHtml, 'Creature Target', 'Composer sentence should show selected creature target names');
   assertContains(selectionHtml, 'Intent', 'Composer target sentence should expose the pending intent label');
   assertContains(actionsHtml, 'aria-label="Hablar 2 objetivos"', 'Selected-target action labels should use localized target counts');
+  assertContains(actionsHtml, 'class="panel-interaction-tray adventure-interaction-tray" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Composer selected-target tray root should identify target-intent ownership');
   assertContains(actionsHtml, 'class="target-action-row"', 'Composer selected-target action buttons should be wrapped in a bounded row');
   assertContains(actionsHtml, 'data-command-surface="target-intents"', 'Composer selected-target action row should identify its command surface');
   assertContains(actionsHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Composer selected-target action row should identify exploration command mode');
@@ -12612,6 +12621,7 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertContains(composerHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
   App.executeCombatIntent('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'class="panel-interaction-tray combat-target-tray" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Combat target-pick tray root should identify target-pick composer ownership');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-surface="combat-targeting"', 'Selected combat intent should move the desktop composer into target-pick controls');
   assertContains(elements.get('selection-sentence').innerHTML, 'Luchar', 'Selected combat intent should remain visible in the command sentence');
   App.executeCombatIntent('fight');

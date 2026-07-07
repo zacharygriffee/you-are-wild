@@ -2464,9 +2464,9 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-mode', 'exploration')", 'Mobile actor belt should identify exploration command mode when open');
   assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile actor chips should identify their actor-routing composer surface');
   assertContains(mobileUnitStripsContent, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
-  assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear chip should identify actor-routing composer surface');
-  assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors"', 'Mobile actor belt should expose a structural clear-actors exit');
-  assertContains(mobileUnitStripsContent, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile actor clear chip should identify the exit slot');
+  assertContains(mobileUnitStripsContent, "const exitControl = hasExplicitActors ? 'clear-actors' : 'close-actors';", 'Mobile actor rail exit should distinguish clear-selected state from close-picker state');
+  assertContains(mobileUnitStripsContent, "const exitHandler = hasExplicitActors ? 'App.clearExplorationActors()' : 'App.toggleMobileActorBelt()';", 'Mobile actor rail exit should close the picker before explicit actors exist');
+  assertContains(mobileUnitStripsContent, 'data-command-control="${exitControl}" data-command-slot="exit"', 'Mobile actor rail exit should identify the exit slot structurally');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
@@ -11643,16 +11643,20 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
   assertContains(openedActorHtml, 'data-selection-mode="act-actor" data-selection-state="available" data-command-slot="actor"', 'Mobile actor belt chips should identify the actor slot');
   assertContains(openedActorHtml, 'data-command-mode="exploration"', 'Mobile actor chips should identify exploration command mode');
-  assertContains(openedActorHtml, 'clearExplorationActors()', 'Mobile actor belt should expose an explicit clear actor exit');
-  assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors"', 'Mobile actor clear exit should identify actor-routing composer surface');
-  assertContains(openedActorHtml, 'data-command-control="clear-actors"', 'Mobile actor clear exit should identify its command route');
-  assertContains(openedActorHtml, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile actor clear exit should identify the exit slot');
-  assertContains(openedActorHtml, 'Clear actors', 'Mobile actor clear exit should use a visible localized label');
+  assertContains(openedActorHtml, 'toggleMobileActorBelt()', 'Mobile actor belt should expose a close exit before actors are explicitly selected');
+  assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="close-actors"', 'Mobile actor close exit should identify actor-routing composer surface');
+  assertContains(openedActorHtml, 'data-command-control="close-actors"', 'Mobile actor close exit should identify its command route');
+  assertContains(openedActorHtml, 'data-command-control="close-actors" data-command-slot="exit"', 'Mobile actor close exit should identify the exit slot');
+  assertContains(openedActorHtml, 'Close actors', 'Mobile actor close exit should describe the picker state before explicit selection');
+  assertNotContains(openedActorHtml, 'Clear actors', 'Mobile actor belt should not claim selected actors are clearable before explicit actor selection');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
 
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, true, 'Selecting an ally from the mobile actor belt should create explicit actor state');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'clearExplorationActors()', 'Mobile actor belt should switch to a clear actor exit after explicit actor selection');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile explicit actor clear exit should identify the exit slot');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'Clear actors', 'Mobile explicit actor clear exit should use the clear label');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show the explicit actor before clearing');
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, false, 'Deselecting the last explicit actor should restore implicit player actor state');

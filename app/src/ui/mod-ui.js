@@ -239,6 +239,9 @@ const ModUI = {
     },
     
     showModScreen() {
+        if (typeof App !== 'undefined' && typeof App.showScreen === 'function') {
+            return App.showScreen('mods');
+        }
         document.querySelectorAll('.screen').forEach(s => {
             s.classList.remove('active');
             s.style.display = 'none';

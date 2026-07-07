@@ -4864,8 +4864,8 @@
 
     <!-- MODS OVERLAY -->
     <div id="screen-mods" class="screen screen-overlay">
-        <div style="max-width: 800px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
+        <div style="width:100%;max-width: 800px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 style="color: var(--accent-primary); margin: 0;">📦 <span data-i18n="mod.title">Mod Manager</span></h1>
                 <button class="nav-btn" data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit" title="Close mods" aria-label="Close mods" data-i18n="ui.close" data-i18n-title="mod.closeTitle" data-i18n-aria-label="mod.closeTitle" onclick="returnToGame()">Close</button>
             </div>
@@ -4890,13 +4890,13 @@
 
     <!-- MARKETPLACE OVERLAY -->
     <div id="screen-market" class="screen screen-overlay">
-        <div id="market-content" data-command-surface="marketplace" data-command-mode="system" style="max-width: 1200px; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;">
+        <div id="market-content" data-command-surface="marketplace" data-command-mode="system" style="width:100%;max-width: 1200px; box-sizing:border-box; margin: 0 auto; padding: 32px; overflow-y: auto; max-height: 90vh;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
                 <h1 style="color: var(--accent-primary); margin: 0;">🏪 <span data-i18n="market.title">Module Samples</span></h1>
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>
             </div>
             <p style="color: var(--text-muted); margin-bottom: 24px;" data-i18n="market.subtitle">Preview local sample module fixtures and modding workflows</p>
-            <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px;">
+            <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap;">
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="browse-marketplace-samples" title="Browse sample catalog" aria-label="Browse sample catalog" data-i18n="market.browse" data-i18n-title="market.browseTitle" data-i18n-aria-label="market.browseTitle" onclick="MODULE_MARKETPLACE.ui.showMarketplace()">Browse</button>
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="Open installed modules" aria-label="Open installed modules" data-i18n="market.myModules" data-i18n-title="market.myModulesTitle" data-i18n-aria-label="market.myModulesTitle" onclick="ModUI.showModScreen()">My Modules</button>
                 <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="close-marketplace" data-command-slot="exit" title="Close module samples" aria-label="Close module samples" data-i18n="ui.close" data-i18n-title="market.closeTitle" data-i18n-aria-label="market.closeTitle" onclick="returnToGame()">Close</button>

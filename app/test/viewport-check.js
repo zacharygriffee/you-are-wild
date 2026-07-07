@@ -408,6 +408,83 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedSaveMenu.actionsTappable, true, `${name}: returned menu actions after Save Manager should remain tappable`);
   assert.strictEqual(returnedSaveMenu.pageOverflow, false, `${name}: closing Save Manager should not introduce menu horizontal overflow`);
 
+  const checkMenuOverlayReturn = async ({ control, screenName, closeControl, label }) => {
+    await page.evaluate(() => App.showScreen('menu'));
+    await page.waitForTimeout(50);
+    await page.locator(`#screen-menu [data-command-control="${control}"]`).click();
+    await page.waitForTimeout(50);
+    const opened = await page.evaluate(({ screenName, closeControl }) => {
+      const overlay = document.getElementById(`screen-${screenName}`);
+      const close = overlay?.querySelector(`[data-command-control="${closeControl}"]`);
+      const app = document.getElementById('app');
+      const menu = document.getElementById('screen-menu');
+      const overlayRect = overlay.getBoundingClientRect();
+      const closeRect = close?.getBoundingClientRect();
+      return {
+        appScreen: App.screen,
+        overlayDisplay: getComputedStyle(overlay).display,
+        overlayActive: overlay.classList.contains('active'),
+        overlayInsideViewport: overlayRect.left >= -1 && overlayRect.right <= innerWidth + 1 && overlayRect.top >= -1 && overlayRect.bottom <= innerHeight + 1,
+        closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+        closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
+        closeSlot: close?.getAttribute('data-command-slot') || '',
+        appDisplay: getComputedStyle(app).display,
+        menuDisplay: getComputedStyle(menu).display,
+        focusTrapId: App._focusTrap?.container?.id || '',
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    }, { screenName, closeControl });
+    assert.strictEqual(opened.appScreen, screenName, `${name}: main-menu ${label} should enter ${screenName} screen state`);
+    assert.notStrictEqual(opened.overlayDisplay, 'none', `${name}: main-menu ${label} overlay should be visible`);
+    assert.strictEqual(opened.overlayActive, true, `${name}: main-menu ${label} overlay should become active`);
+    assert.strictEqual(opened.overlayInsideViewport, true, `${name}: main-menu ${label} overlay should stay bounded in the viewport`);
+    assert.strictEqual(opened.closeVisible, true, `${name}: main-menu ${label} should expose a visible close exit`);
+    assert.strictEqual(opened.closeInsideViewport, true, `${name}: main-menu ${label} close exit should stay inside the viewport`);
+    assert.strictEqual(opened.closeSlot, 'exit', `${name}: main-menu ${label} close should identify the exit slot`);
+    assert.strictEqual(opened.appDisplay, 'none', `${name}: game app shell should stay hidden while main-menu ${label} is open`);
+    assert.strictEqual(opened.menuDisplay, 'none', `${name}: main menu should hide behind main-menu ${label}`);
+    assert.strictEqual(opened.focusTrapId, `screen-${screenName}`, `${name}: main-menu ${label} should activate the shared focus trap`);
+    assert.strictEqual(opened.pageOverflow, false, `${name}: main-menu ${label} should not create horizontal overflow`);
+
+    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]`).first().click();
+    await page.waitForTimeout(50);
+    const returned = await page.evaluate(({ screenName }) => {
+      const overlay = document.getElementById(`screen-${screenName}`);
+      const app = document.getElementById('app');
+      const menu = document.getElementById('screen-menu');
+      const game = document.getElementById('screen-game');
+      const menuShell = menu?.querySelector('.menu-shell');
+      const shellRect = menuShell.getBoundingClientRect();
+      return {
+        appScreen: App.screen,
+        overlayDisplay: getComputedStyle(overlay).display,
+        overlayActive: overlay.classList.contains('active'),
+        appDisplay: getComputedStyle(app).display,
+        menuDisplay: getComputedStyle(menu).display,
+        menuActive: menu.classList.contains('active'),
+        gameDisplay: getComputedStyle(game).display,
+        gameActive: game.classList.contains('active'),
+        focusTrapCleared: !App._focusTrap,
+        menuShellInsideViewport: shellRect.left >= -1 && shellRect.right <= innerWidth + 1 && shellRect.top >= -1 && shellRect.bottom <= innerHeight + 1,
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    }, { screenName });
+    assert.strictEqual(returned.appScreen, 'menu', `${name}: closing main-menu ${label} should restore menu screen state`);
+    assert.strictEqual(returned.overlayDisplay, 'none', `${name}: main-menu ${label} overlay should hide after close`);
+    assert.strictEqual(returned.overlayActive, false, `${name}: main-menu ${label} overlay should clear active state after close`);
+    assert.strictEqual(returned.appDisplay, 'none', `${name}: game app shell should stay hidden after main-menu ${label} closes`);
+    assert.strictEqual(returned.menuDisplay, 'flex', `${name}: main menu should be visible after main-menu ${label} closes`);
+    assert.strictEqual(returned.menuActive, true, `${name}: main menu should regain active state after main-menu ${label} closes`);
+    assert.strictEqual(returned.gameDisplay, 'none', `${name}: closing main-menu ${label} should not activate the game screen`);
+    assert.strictEqual(returned.gameActive, false, `${name}: game screen should stay inactive after main-menu ${label} closes`);
+    assert.strictEqual(returned.focusTrapCleared, true, `${name}: main-menu ${label} should clear the shared focus trap on close`);
+    assert.strictEqual(returned.menuShellInsideViewport, true, `${name}: returned menu shell after ${label} should stay bounded`);
+    assert.strictEqual(returned.pageOverflow, false, `${name}: closing main-menu ${label} should not introduce horizontal overflow`);
+  };
+
+  await checkMenuOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
+  await checkMenuOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
+
   await page.evaluate(makeUnitScript());
   await page.waitForTimeout(50);
   await page.evaluate(() => App.showSaveManager('save'));
@@ -565,6 +642,97 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSettings.surfaceVisible, true, `${name}: play surface should be visible after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Settings closes`);
   assert.strictEqual(returnedGameSettings.pageOverflow, false, `${name}: closing live-game Settings should not introduce horizontal overflow`);
+
+  const checkLiveOverlayReturn = async ({ control, screenName, closeControl, label }) => {
+    await page.evaluate(({ control }) => {
+      App.setAppMenuOpen?.(true);
+      document.querySelector(`#app-menu [data-command-control="${control}"]`)?.click();
+    }, { control });
+    await page.waitForTimeout(50);
+    const opened = await page.evaluate(({ screenName, closeControl }) => {
+      const overlay = document.getElementById(`screen-${screenName}`);
+      const close = overlay?.querySelector(`[data-command-control="${closeControl}"]`);
+      const app = document.getElementById('app');
+      const game = document.getElementById('screen-game');
+      const appMenu = document.getElementById('app-menu');
+      const appMenuToggle = document.getElementById('app-menu-toggle');
+      const overlayRect = overlay.getBoundingClientRect();
+      const closeRect = close?.getBoundingClientRect();
+      return {
+        appScreen: App.screen,
+        overlayDisplay: getComputedStyle(overlay).display,
+        overlayActive: overlay.classList.contains('active'),
+        overlayInsideViewport: overlayRect.left >= -1 && overlayRect.right <= innerWidth + 1 && overlayRect.top >= -1 && overlayRect.bottom <= innerHeight + 1,
+        closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+        closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
+        closeSlot: close?.getAttribute('data-command-slot') || '',
+        appDisplay: getComputedStyle(app).display,
+        gameDisplay: getComputedStyle(game).display,
+        gameActive: game.classList.contains('active'),
+        appMenuOpen: appMenu?.classList.contains('open') || false,
+        appMenuExpanded: appMenuToggle?.getAttribute('aria-expanded') || '',
+        focusTrapId: App._focusTrap?.container?.id || '',
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    }, { screenName, closeControl });
+    assert.strictEqual(opened.appScreen, screenName, `${name}: live-game ${label} should enter ${screenName} screen state`);
+    assert.notStrictEqual(opened.overlayDisplay, 'none', `${name}: live-game ${label} overlay should be visible`);
+    assert.strictEqual(opened.overlayActive, true, `${name}: live-game ${label} overlay should become active`);
+    assert.strictEqual(opened.overlayInsideViewport, true, `${name}: live-game ${label} overlay should stay bounded in the viewport`);
+    assert.strictEqual(opened.closeVisible, true, `${name}: live-game ${label} should expose a visible close exit`);
+    assert.strictEqual(opened.closeInsideViewport, true, `${name}: live-game ${label} close exit should stay inside the viewport`);
+    assert.strictEqual(opened.closeSlot, 'exit', `${name}: live-game ${label} close should identify the exit slot`);
+    assert.strictEqual(opened.appDisplay, 'none', `${name}: game app shell should hide while live-game ${label} is open`);
+    assert.strictEqual(opened.gameDisplay, 'none', `${name}: game screen should hide behind live-game ${label}`);
+    assert.strictEqual(opened.gameActive, false, `${name}: game screen should not stay active behind live-game ${label}`);
+    assert.strictEqual(opened.appMenuOpen, false, `${name}: live-game ${label} should close the app menu`);
+    assert.strictEqual(opened.appMenuExpanded, 'false', `${name}: live-game ${label} should collapse the app-menu toggle state`);
+    assert.strictEqual(opened.focusTrapId, `screen-${screenName}`, `${name}: live-game ${label} should activate the shared focus trap`);
+    assert.strictEqual(opened.pageOverflow, false, `${name}: live-game ${label} should not create horizontal overflow`);
+
+    await page.locator(`#screen-${screenName} [data-command-control="${closeControl}"]`).first().click();
+    await page.waitForTimeout(50);
+    const returned = await page.evaluate(({ screenName }) => {
+      const overlay = document.getElementById(`screen-${screenName}`);
+      const app = document.getElementById('app');
+      const game = document.getElementById('screen-game');
+      const menu = document.getElementById('screen-menu');
+      const dock = document.querySelector('.mobile-panel-dock');
+      const playSurface = document.getElementById('mobile-play-surface');
+      const desktopSurface = document.querySelector('.desktop-play-surface');
+      const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+      const surfaceRect = activeSurface?.getBoundingClientRect();
+      return {
+        appScreen: App.screen,
+        overlayDisplay: getComputedStyle(overlay).display,
+        overlayActive: overlay.classList.contains('active'),
+        appDisplay: getComputedStyle(app).display,
+        gameDisplay: getComputedStyle(game).display,
+        gameActive: game.classList.contains('active'),
+        menuDisplay: getComputedStyle(menu).display,
+        focusTrapCleared: !App._focusTrap,
+        dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
+        surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
+        surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    }, { screenName });
+    assert.strictEqual(returned.appScreen, 'game', `${name}: closing live-game ${label} should restore game screen state`);
+    assert.strictEqual(returned.overlayDisplay, 'none', `${name}: live-game ${label} overlay should hide after close`);
+    assert.strictEqual(returned.overlayActive, false, `${name}: live-game ${label} overlay should clear active state after close`);
+    assert.strictEqual(returned.appDisplay, 'grid', `${name}: game app shell should be visible after live-game ${label} closes`);
+    assert.strictEqual(returned.gameDisplay, 'flex', `${name}: game screen should be visible after live-game ${label} closes`);
+    assert.strictEqual(returned.gameActive, true, `${name}: game screen should regain active state after live-game ${label} closes`);
+    assert.strictEqual(returned.menuDisplay, 'none', `${name}: closing live-game ${label} should not restore the main menu`);
+    assert.strictEqual(returned.focusTrapCleared, true, `${name}: live-game ${label} should clear the shared focus trap on close`);
+    if (width < 600) assert.strictEqual(returned.dockVisible, true, `${name}: mobile dock should be visible after live-game ${label} closes`);
+    assert.strictEqual(returned.surfaceVisible, true, `${name}: play surface should be visible after live-game ${label} closes`);
+    assert.strictEqual(returned.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game ${label} closes`);
+    assert.strictEqual(returned.pageOverflow, false, `${name}: closing live-game ${label} should not introduce horizontal overflow`);
+  };
+
+  await checkLiveOverlayReturn({ control: 'open-mods', screenName: 'mods', closeControl: 'close-modules', label: 'Mods' });
+  await checkLiveOverlayReturn({ control: 'open-market', screenName: 'market', closeControl: 'close-marketplace', label: 'Market' });
 
   if (width < 600) {
     await page.evaluate(() => togglePanel('party'));

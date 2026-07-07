@@ -145,15 +145,15 @@ const MODULE_MARKETPLACE = {
             const installTitle = this.escapeHtml(this.label('market.installSampleModule', 'Install fixture {name}', { name: sample.name || 'module' }));
             const sampleId = this.escapeHtml(this.jsString(sample.id || ''));
             const html = `
-                <div data-command-surface="marketplace" data-command-mode="system" style="max-width: 1000px; margin: 0 auto; padding: 24px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <div>
+                <div data-command-surface="marketplace" data-command-mode="system" style="width: 100%; max-width: 1000px; box-sizing: border-box; margin: 0 auto; padding: 24px; overflow-y: auto; max-height: 100dvh;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+                        <div style="min-width: 0;">
                             <h1 style="color: var(--accent-primary); margin: 0;">🏪 ${title}</h1>
                             <p style="color: var(--text-muted); margin: 8px 0 0 0;">
                                 ${subtitle}
                             </p>
                         </div>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                             <button class="nav-btn" data-command-surface="marketplace" data-command-mode="system" data-command-control="open-installed-modules" title="${myModules}" aria-label="${myModules}" onclick="MODULE_MARKETPLACE.ui.showInstalled()">
                                 📦 ${myModules}
                             </button>

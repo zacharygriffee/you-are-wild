@@ -4570,7 +4570,7 @@
             renderSaveManager(mode = this.saveManagerMode || 'load') {
                 return YAW_SAVE_MANAGER.render(this, mode);
             },
-            showModScreen() { ModUI.showModScreen(); },
+            showModScreen() { this.showScreen('mods'); },
             showMarketScreen() { this.showScreen('market'); },
             showTutorial() {
                 this.tutorialStep = 0;

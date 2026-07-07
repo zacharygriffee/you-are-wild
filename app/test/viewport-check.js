@@ -660,6 +660,8 @@ async function checkViewport(browser, name, width, height) {
   const browser = await chromium.launch({ headless: true });
   try {
     await checkViewport(browser, 'reported mobile', 412, 915);
+    await checkViewport(browser, 'handoff mobile 390', 390, 844);
+    await checkViewport(browser, 'narrow mobile 360', 360, 780);
     await checkViewport(browser, 'mobile', 393, 852);
     await checkViewport(browser, 'short mobile', 313, 670);
     await checkViewport(browser, 'desktop', 1365, 768);

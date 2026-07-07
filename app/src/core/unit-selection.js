@@ -68,6 +68,7 @@ const YAW_UNIT_SELECTION = {
     },
 
     roleLabel(app, role) {
+        if (role === 'actor' && app.combatState?.active) return app._label('combat.exchange.currentActor', 'Current');
         if (role === 'actor') return app._label('target.actorRole', 'Actor');
         if (role === 'participant') return app._label('combat.sync.participantRole', 'Participant');
         if (role === 'target' && app.combatState?.active) return app._label('target.targetRole', 'Target');

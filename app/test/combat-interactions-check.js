@@ -243,12 +243,16 @@ async function runCombatTargetFirstComposerFlow(page) {
     targetSelection: App.targetSelection,
     sentence: document.querySelector('#selection-sentence')?.innerText || '',
     enemySelectedTarget: document.querySelector('#enemies-content .compact-tactical-card')?.classList.contains('selected-target') || false,
+    currentActorBadge: document.querySelector('#party-content .compact-tactical-card.selected-actor .unit-selection-chips')?.innerText || '',
+    enemyTargetBadge: document.querySelector('#enemies-content .compact-tactical-card.selected-target .unit-selection-chips')?.innerText || '',
     hasCombatPick: Boolean(document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]'))
   }));
   assert.strictEqual(state.markedTargetId, 'enemy-1', 'Desktop combat Mark should store a combat target');
   assert.strictEqual(state.targetSelection, null, 'Desktop combat Mark should not enter intent-first target-pick state');
   assert(state.sentence.includes('You') && state.sentence.includes('Enemy') && state.sentence.includes('Choose'), 'Desktop sentence should show Actor -> Target -> Intent after combat Mark');
   assert.strictEqual(state.enemySelectedTarget, true, 'Desktop marked combat enemy should expose selected-target state');
+  assert(state.currentActorBadge.includes('Current'), 'Desktop compact combat actor card should show a visible Current badge');
+  assert(state.enemyTargetBadge.includes('Target'), 'Desktop marked combat enemy card should show a visible Target badge');
   assert.strictEqual(state.hasCombatPick, false, 'Desktop target-first Mark should not render combat-pick controls before intent');
 
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
@@ -277,6 +281,8 @@ async function runCombatTargetFirstComposerFlow(page) {
     targetSelection: App.targetSelection,
     sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
     enemySelectedTarget: document.querySelector('#mobile-creature-strip .mobile-unit-chip')?.classList.contains('selected-target') || false,
+    currentActorBadge: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-actor .unit-selection-chips')?.innerText || '',
+    enemyTargetBadge: document.querySelector('#mobile-creature-strip .mobile-unit-chip.selected-target .unit-selection-chips')?.innerText || '',
     hasCombatPick: Boolean(document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]')),
     hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'")
   }));
@@ -284,6 +290,8 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.targetSelection, null, 'Mobile combat Mark should not enter intent-first target-pick state');
   assert(state.sentence.includes('You') && state.sentence.includes('Enemy') && state.sentence.includes('Choose'), 'Mobile sentence should show Actor -> Target -> Intent after combat Mark');
   assert.strictEqual(state.enemySelectedTarget, true, 'Mobile marked combat enemy should expose selected-target state');
+  assert(state.currentActorBadge.includes('Current'), 'Mobile compact combat actor chip should show a visible Current badge');
+  assert(state.enemyTargetBadge.includes('Target'), 'Mobile marked combat enemy chip should show a visible Target badge');
   assert.strictEqual(state.hasCombatPick, false, 'Mobile target-first Mark should not render combat-pick controls before intent');
   assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat Mark should not render adventure target controls');
 

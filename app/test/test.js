@@ -1557,6 +1557,7 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, "mobileTargetTray.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile target tray command surface metadata');
   assertContains(sceneShellContent, "mobileActorBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile actor belt command surface metadata');
   assertContains(sceneShellContent, "mobileControlBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile composer belt command surface metadata');
+  assertContains(sceneShellContent, 'mobileControlBelt.hidden = true', 'Scene shell should hard-hide stale mobile composer overlays during cleanup');
   assertContains(sceneShellContent, "desktopBelt.removeAttribute('data-command-mode')", 'Scene shell should clear stale desktop command mode metadata');
   assertContains(appContent, 'YAW_SCENE_SHELL.clearCenterActionsForCombat(this)', 'App center-action clearing wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
@@ -5958,6 +5959,8 @@ test('Defeat ends combat into a durable recovery state', () => {
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the mobile command belt');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="recovery" data-command-control="regenerate"', 'Defeat mobile Regenerate should identify recovery command mode');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), true, 'Defeat recovery should show the mobile command belt');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), false, 'Defeat recovery should unhide the mobile command belt');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('aria-hidden'), 'false', 'Defeat recovery command belt should be available to assistive tech');
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Defeat recovery should use compact mobile command-belt reservation');
   assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), true, 'Defeat recovery should reserve mobile command-belt space');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), false, 'Defeat recovery should not reserve expanded composer space');
@@ -11611,6 +11614,8 @@ test('Combat action clearing removes stale mobile exploration belt controls', ()
   assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Combat clearing should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), false, 'Combat clearing should collapse the secondary mobile control row');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Combat clearing should remove fixed control-belt overlay state');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), true, 'Combat clearing should hard-hide the stale mobile command belt');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('aria-hidden'), 'true', 'Combat clearing should hide the stale mobile command belt from assistive tech');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Combat clearing should remove stale mobile composer surface metadata');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Combat clearing should remove stale mobile composer mode metadata');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), null, 'Combat clearing should remove stale mobile composer grammar metadata');
@@ -11717,6 +11722,8 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-actor-toggle').classList.contains('selected'), false, 'Rich scene should clear the mobile actor toggle visual state');
   assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), false, 'Rich scene should collapse the secondary mobile control row');
   assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Rich scene should remove fixed control-belt overlay state');
+  assertEqual(Boolean(elements.get('mobile-control-belt').hidden), true, 'Rich scene should hard-hide the stale mobile command belt');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('aria-hidden'), 'true', 'Rich scene should hide the stale mobile command belt from assistive tech');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile composer surface metadata');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale mobile composer mode metadata');
   assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale mobile composer grammar metadata');

@@ -81,6 +81,8 @@ const YAW_SCENE_SHELL = {
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
             mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'expanded-controls-open');
+            mobileControlBelt.hidden = true;
+            mobileControlBelt.setAttribute('aria-hidden', 'true');
             mobileControlBelt.removeAttribute('data-command-surface');
             mobileControlBelt.removeAttribute('data-command-mode');
             mobileControlBelt.removeAttribute('data-command-grammar');

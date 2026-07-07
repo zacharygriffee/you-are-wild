@@ -185,6 +185,8 @@ const YAW_DEFEAT_RECOVERY = {
         if (mobileControlBelt) {
             mobileControlBelt.classList?.add('has-controls');
             mobileControlBelt.classList?.remove('target-controls-open', 'expanded-controls-open');
+            mobileControlBelt.hidden = false;
+            mobileControlBelt.setAttribute('aria-hidden', 'false');
         }
         const surface = document.getElementById('mobile-play-surface');
         surface?.classList?.add('has-control-belt');

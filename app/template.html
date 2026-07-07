@@ -2610,7 +2610,7 @@
                 --mobile-control-belt-compact-height: 104px;
                 --mobile-control-belt-max-height: 164px;
                 --mobile-scene-height: clamp(104px, 17dvh, 160px);
-                --mobile-map-height: clamp(236px, 31dvh, 260px);
+                --mobile-map-height: clamp(312px, 35dvh, 320px);
             }
 
             :root.mobile-combat-active {
@@ -2788,10 +2788,10 @@
             }
 
             .mobile-play-surface.control-belt-expanded .mobile-map-card {
-                flex-basis: clamp(260px, 40dvh, 276px);
-                height: clamp(260px, 40dvh, 276px);
-                min-height: clamp(260px, 40dvh, 276px);
-                max-height: clamp(260px, 40dvh, 276px);
+                flex-basis: clamp(312px, 35dvh, 320px);
+                height: clamp(312px, 35dvh, 320px);
+                min-height: clamp(312px, 35dvh, 320px);
+                max-height: clamp(312px, 35dvh, 320px);
             }
 
             .mobile-map-card,
@@ -2858,6 +2858,22 @@
                 font-size: 11px;
                 line-height: 1.32;
                 color: var(--text-secondary);
+                max-height: 48px;
+                overflow: hidden;
+            }
+
+            .mobile-tile-info div {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .mobile-tile-info div:first-child {
+                margin-bottom: 2px !important;
+            }
+
+            .mobile-tile-info div:nth-child(n+4) {
+                display: none;
             }
 
             .mobile-map-card .map-tile {
@@ -2897,17 +2913,21 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 62px;
-                height: 62px;
-                border: 2px solid rgba(255, 255, 255, 0.32);
+                width: clamp(64px, 16vw, 72px);
+                height: clamp(64px, 16vw, 72px);
+                min-width: 64px;
+                min-height: 64px;
+                border: 2px solid rgba(255, 255, 255, 0.42);
                 border-radius: 18px;
                 background: rgba(20, 20, 40, 0.72);
                 color: var(--text-primary);
-                font-size: 24px;
+                font-size: clamp(28px, 7vw, 32px);
                 flex: 0 0 auto;
                 padding: 0;
                 line-height: 1;
-                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+                box-shadow:
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+                    0 6px 14px rgba(0, 0, 0, 0.16);
                 touch-action: manipulation;
             }
 
@@ -2945,6 +2965,42 @@
 
             .mobile-play-presence-dot.enemy {
                 border-color: rgba(255, 107, 157, 0.62);
+            }
+
+            @media (max-width: 380px) and (max-height: 700px) {
+                :root {
+                    --mobile-scene-height: 68px;
+                    --mobile-map-height: 284px;
+                }
+
+                .mobile-map-card {
+                    gap: 6px;
+                    padding: 8px;
+                }
+
+                .mobile-play-surface.control-belt-expanded .mobile-scene-sheet {
+                    flex-basis: 68px;
+                    height: 68px;
+                    min-height: 68px;
+                    max-height: 68px;
+                }
+
+                .mobile-play-surface.control-belt-expanded .mobile-map-card {
+                    flex-basis: 284px;
+                    height: 284px;
+                    min-height: 284px;
+                    max-height: 284px;
+                }
+
+                .mobile-map-card .mini-map {
+                    min-height: 184px;
+                    grid-template-rows: minmax(22px, 0.45fr) minmax(128px, 2.75fr) minmax(22px, 0.45fr);
+                    gap: 4px;
+                }
+
+                .mobile-tile-info {
+                    max-height: 44px;
+                }
             }
 
             .mobile-control-belt {

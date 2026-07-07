@@ -227,7 +227,15 @@ async function checkViewport(browser, name, width, height) {
       const centerTileRect = centerTile.getBoundingClientRect();
       const centerPresenceRects = centerPresenceButtons.map(button => {
         const rect = button.getBoundingClientRect();
-        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+        return {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          fontSize: parseFloat(getComputedStyle(button).fontSize) || 0
+        };
       });
       const detailButtonRects = detailButtons.map(button => {
         const rect = button.getBoundingClientRect();
@@ -260,6 +268,7 @@ async function checkViewport(browser, name, width, height) {
         surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
         mapHeight: mapRect.height,
         mapBottom: mapRect.bottom,
+        miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
         creatureCardTop: creatureCardRect.top,
         tileInfoBottom: tileInfoRect.bottom,
@@ -267,6 +276,7 @@ async function checkViewport(browser, name, width, height) {
         miniMapHeight: miniMapRect.height,
         centerTileWidth: centerTileRect.width,
         centerTileHeight: centerTileRect.height,
+        centerTileBottom: centerTileRect.bottom,
         centerPresenceInsideTile: centerPresenceRects.every(rect => (
           rect.left >= centerTileRect.left - 1
           && rect.right <= centerTileRect.right + 1
@@ -276,6 +286,7 @@ async function checkViewport(browser, name, width, height) {
         centerPresenceCount: centerPresenceRects.length,
         minCenterPresenceWidth: Math.min(...centerPresenceRects.map(rect => rect.width)),
         minCenterPresenceHeight: Math.min(...centerPresenceRects.map(rect => rect.height)),
+        minCenterPresenceFontSize: Math.min(...centerPresenceRects.map(rect => rect.fontSize)),
         detailButtonCount: detailButtonRects.length,
         visibleDetailButtonCount: visibleDetailButtonRects.length,
         minVisibleDetailButtonWidth: Math.min(...visibleDetailButtonRects.map(rect => rect.width)),
@@ -310,17 +321,20 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
     assert.strictEqual(mobileControls.beltCreatureOverlap, 0, `${name}: mobile context belt should not cover compact creature rail`);
     assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
-    assert(mobileControls.mapHeight <= Math.min(276, mobileControls.viewportHeight * 0.42) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
+    assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
+    assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
     assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
-    assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 7, `${name}: mobile tile metadata should not overlap the traversal grid`);
-    assert(mobileControls.miniMapHeight >= 196, `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
+    assert(mobileControls.miniMapHeight >= Math.min(196, mobileControls.viewportHeight * 0.27), `${name}: mobile traversal grid should keep a usable minimum height`);
     assert(mobileControls.centerTileWidth >= 168, `${name}: mobile current tile should keep a broad target column for stage presence`);
     assert(mobileControls.centerTileHeight >= 128, `${name}: mobile current tile should leave room for larger presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
-    assert(mobileControls.minCenterPresenceWidth >= 62 && mobileControls.minCenterPresenceHeight >= 62, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
+    assert(mobileControls.minCenterPresenceWidth >= 64 && mobileControls.minCenterPresenceHeight >= 64, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
+    assert(mobileControls.minCenterPresenceFontSize >= 28, `${name}: mobile current tile presence badges should keep readable visible symbols`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
+    assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
     assert(mobileControls.visibleDetailButtonCount >= 1, `${name}: visible mobile rail should expose an explicit Details route`);
     assert(mobileControls.minVisibleDetailButtonWidth >= 78 && mobileControls.minVisibleDetailButtonHeight >= 34, `${name}: visible mobile rail Details routes should keep usable tap targets`);

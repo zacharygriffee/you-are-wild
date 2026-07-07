@@ -438,7 +438,7 @@ const YAW_CENTER_CONTEXT = {
             exit: 'App.exitStructure()'
         };
         const intent = app._escapeHtml(key);
-        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}" data-command-slot="intent"`);
+        return app._iconActionButton(key, app._actionIcon(key), handlers[key] || '', '', `data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="${intent}" data-command-slot="intent"`);
     },
 
     actorExitButton(app) {
@@ -477,7 +477,7 @@ const YAW_CENTER_CONTEXT = {
             groups.push(`<div class="composer-control-group composer-state-actions" data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="selection-exits">${exits}</div>`);
         }
         if (locationHtml) {
-            groups.push(`<div class="composer-control-group location-action-group" data-command-surface="location-actions" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents">${locationHtml}</div>`);
+            groups.push(`<div class="composer-control-group location-action-group" data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents">${locationHtml}</div>`);
         }
         return groups.join('');
     },
@@ -501,8 +501,8 @@ const YAW_CENTER_CONTEXT = {
             actions.hidden = true;
             actions.setAttribute('aria-hidden', 'true');
         }
-        const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : (actorExitHtml || focusedExitHtml ? 'command-composer' : 'location-actions')) : '';
-        const mobileCommandSurface = mobileHtml ? (hasMarkedTargets ? 'target-intents' : (focusedExitHtml ? 'command-composer' : 'location-actions')) : '';
+        const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : 'command-composer') : '';
+        const mobileCommandSurface = mobileHtml ? (hasMarkedTargets ? 'target-intents' : 'command-composer') : '';
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = html;

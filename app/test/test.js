@@ -2895,7 +2895,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'showExplorationActions(app)', 'Center context helper should own center exploration scene restoration');
   assertContains(centerContextContent, "desktopBelt.setAttribute('data-command-mode', 'exploration')", 'Desktop exploration belt should expose exploration command mode');
   assertContains(centerContextContent, "mobileExplore.setAttribute('data-command-mode', 'exploration')", 'Mobile exploration belt should expose exploration command mode');
-  assertContains(centerContextContent, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="${intent}"', 'Location action buttons should expose exploration grammar with stable intent ids');
+  assertContains(centerContextContent, 'data-command-surface="command-composer" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="${intent}"', 'Location action buttons should expose composer-owned exploration grammar with stable intent ids');
   assertContains(centerContextContent, 'actorExitButton(app)', 'Center context helper should provide a desktop composer exit for explicit actor state');
   assertContains(centerContextContent, 'data-command-control="clear-actors"', 'Desktop actor exit should expose the clear-actors command control');
   assertContains(centerContextContent, 'data-command-control="clear-actors" data-command-slot="exit"', 'Desktop actor exit should identify the exit slot');
@@ -6824,12 +6824,12 @@ test('Resource-site search is deterministic visible and one-time', () => {
     App.exploredTiles = new Set(['2,0']);
     App.renderExplorationActions();
     assertEqual(elements.get('scene-actions').innerHTML, '', 'Resource-site center presentation should not own Search');
-    assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'location-actions', 'Resource-site desktop belt should identify location actions');
+    assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'command-composer', 'Resource-site desktop belt should identify composer ownership for location actions');
     assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'exploration', 'Resource-site desktop belt should identify exploration command mode');
     assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Resource-site desktop belt should identify the shared command grammar');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-group="location-intents"', 'Resource-site Search should render in the location intent group');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search"', 'Resource-site Search should expose its stable location intent id');
-    assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="search"', 'Resource-site Search should expose exploration grammar and stable intent metadata');
+    assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="search"', 'Resource-site Search should expose composer-owned exploration grammar and stable intent metadata');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="search" data-command-slot="intent"', 'Resource-site Search should identify itself as the intent slot in the command composer');
     assertContains(elements.get('desktop-context-belt').innerHTML, 'App.search()', 'Resource-site context belt should expose Search');
     App.search();
@@ -11646,11 +11646,11 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), false, 'Simple mobile location/cue controls should use compact belt reservation');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), false, 'Simple mobile location/cue controls should not reserve maximum belt space');
   assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), false, 'Simple cue/location state should not display the empty secondary control row');
-  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'location-actions', 'Mobile location action row should identify the location action surface');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'command-composer', 'Mobile location action row should identify composer ownership');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), 'exploration', 'Mobile location action row should identify exploration command mode');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile location action row should identify the shared command grammar');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-intent="takeItems"', 'Mobile Take Items should expose its stable location intent id');
-  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="takeItems"', 'Mobile Take Items should expose exploration grammar and stable intent metadata');
+  assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="takeItems"', 'Mobile Take Items should expose composer-owned exploration grammar and stable intent metadata');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
   assertEqual(elements.get('mobile-creature-card').style.display, 'block', 'Mobile compact creature rail should be visible by default when targets are present');
@@ -12177,7 +12177,7 @@ test('Desktop exploration composer refreshes stale belt command metadata', () =>
   App.renderExplorationActions();
 
   assertContains(belt.innerHTML, 'data-command-intent="takeItems"', 'Desktop exploration belt should render current location intents after stale combat state');
-  assertEqual(belt.getAttribute('data-command-surface'), 'location-actions', 'Desktop exploration belt should identify the current location action surface');
+  assertEqual(belt.getAttribute('data-command-surface'), 'command-composer', 'Desktop exploration belt should identify composer ownership for current location actions');
   assertEqual(belt.getAttribute('data-command-mode'), 'exploration', 'Desktop exploration belt should replace stale combat mode');
   assertEqual(belt.getAttribute('data-command-grammar'), 'actor-target-intent', 'Desktop exploration belt should keep the shared command grammar');
   assertEqual(belt.getAttribute('data-command-actor-count'), '1', 'Desktop exploration belt should refresh actor count from current command state');

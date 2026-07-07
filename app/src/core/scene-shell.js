@@ -4,6 +4,20 @@
  */
 
 const YAW_SCENE_SHELL = {
+    commandMetadataAttrs: [
+        'data-command-surface',
+        'data-command-mode',
+        'data-command-grammar',
+        'data-command-actor-count',
+        'data-command-target-count',
+        'data-command-intent'
+    ],
+
+    clearCommandMetadata(el) {
+        if (!el) return;
+        this.commandMetadataAttrs.forEach(attr => el.removeAttribute(attr));
+    },
+
     syncDesktopCommandComposer() {
         const shell = document.getElementById('desktop-command-composer');
         if (!shell) return;
@@ -16,12 +30,7 @@ const YAW_SCENE_SHELL = {
         if (!active) {
             shell.hidden = true;
             shell.setAttribute('aria-hidden', 'true');
-            shell.removeAttribute('data-command-surface');
-            shell.removeAttribute('data-command-mode');
-            shell.removeAttribute('data-command-grammar');
-            shell.removeAttribute('data-command-actor-count');
-            shell.removeAttribute('data-command-target-count');
-            shell.removeAttribute('data-command-intent');
+            this.clearCommandMetadata(shell);
             return;
         }
         shell.hidden = false;
@@ -107,19 +116,11 @@ const YAW_SCENE_SHELL = {
     },
 
     clearCommandSentences() {
-        const attrs = [
-            'data-command-surface',
-            'data-command-mode',
-            'data-command-grammar',
-            'data-command-actor-count',
-            'data-command-target-count',
-            'data-command-intent'
-        ];
         ['selection-sentence', 'mobile-selection-sentence'].forEach(id => {
             const slot = document.getElementById(id);
             if (slot) {
                 slot.innerHTML = '';
-                attrs.forEach(attr => slot.removeAttribute(attr));
+                this.clearCommandMetadata(slot);
             }
         });
         this.syncDesktopCommandComposer();
@@ -130,9 +131,7 @@ const YAW_SCENE_SHELL = {
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = '';
-            desktopBelt.removeAttribute('data-command-surface');
-            desktopBelt.removeAttribute('data-command-mode');
-            desktopBelt.removeAttribute('data-command-grammar');
+            this.clearCommandMetadata(desktopBelt);
         }
         this.syncDesktopCommandComposer();
         this.clearMobileExplorationControls(app);
@@ -154,9 +153,7 @@ const YAW_SCENE_SHELL = {
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {
             desktopBelt.innerHTML = '';
-            desktopBelt.removeAttribute('data-command-surface');
-            desktopBelt.removeAttribute('data-command-mode');
-            desktopBelt.removeAttribute('data-command-grammar');
+            this.clearCommandMetadata(desktopBelt);
         }
         this.syncDesktopCommandComposer();
         this.clearMobileExplorationControls(app);

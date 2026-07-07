@@ -502,13 +502,28 @@ const YAW_CENTER_CONTEXT = {
         if (desktopBelt) {
             desktopBelt.innerHTML = html;
             if (commandSurface) {
+                const meta = typeof YAW_INTERACTION_STATE !== 'undefined' && YAW_INTERACTION_STATE.commandMeta
+                    ? YAW_INTERACTION_STATE.commandMeta(app)
+                    : { actorCount: 0, targetCount: 0, intent: 'choose' };
                 desktopBelt.setAttribute('data-command-surface', commandSurface);
                 desktopBelt.setAttribute('data-command-mode', 'exploration');
                 desktopBelt.setAttribute('data-command-grammar', 'actor-target-intent');
+                desktopBelt.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0));
+                desktopBelt.setAttribute('data-command-target-count', String(meta.targetCount ?? 0));
+                desktopBelt.setAttribute('data-command-intent', meta.intent || 'choose');
             } else {
-                desktopBelt.removeAttribute('data-command-surface');
-                desktopBelt.removeAttribute('data-command-mode');
-                desktopBelt.removeAttribute('data-command-grammar');
+                if (typeof YAW_SCENE_SHELL !== 'undefined' && YAW_SCENE_SHELL.clearCommandMetadata) {
+                    YAW_SCENE_SHELL.clearCommandMetadata(desktopBelt);
+                } else {
+                    [
+                        'data-command-surface',
+                        'data-command-mode',
+                        'data-command-grammar',
+                        'data-command-actor-count',
+                        'data-command-target-count',
+                        'data-command-intent'
+                    ].forEach(attr => desktopBelt.removeAttribute(attr));
+                }
             }
         }
         if (typeof YAW_SCENE_SHELL !== 'undefined') YAW_SCENE_SHELL.syncDesktopCommandComposer?.();

@@ -1539,6 +1539,10 @@ test('Scene shell helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/scene-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Scene shell helper should load before app.js');
   assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
   assertContains(sceneShellContent, 'clearLegacyCenterActions()', 'Scene shell helper should own hidden legacy center action cleanup');
+  assertContains(sceneShellContent, 'clearCommandMetadata(el)', 'Scene shell helper should own full command metadata cleanup');
+  assertContains(sceneShellContent, "'data-command-actor-count'", 'Scene shell command metadata cleanup should include actor count metadata');
+  assertContains(sceneShellContent, "'data-command-target-count'", 'Scene shell command metadata cleanup should include target count metadata');
+  assertContains(sceneShellContent, "'data-command-intent'", 'Scene shell command metadata cleanup should include intent metadata');
   assertContains(sceneShellContent, 'syncDesktopCommandComposer()', 'Scene shell helper should own desktop command composer shell synchronization');
   assertContains(sceneShellContent, 'shell.hidden = true;', 'Empty desktop command composer shell should hard-hide itself');
   assertContains(sceneShellContent, "shell.setAttribute('aria-hidden', 'true')", 'Empty desktop command composer shell should leave the accessibility tree');
@@ -1567,7 +1571,7 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, "mobileActorBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile actor belt command surface metadata');
   assertContains(sceneShellContent, "mobileControlBelt.removeAttribute('data-command-surface')", 'Scene shell should clear stale mobile composer belt command surface metadata');
   assertContains(sceneShellContent, 'mobileControlBelt.hidden = true', 'Scene shell should hard-hide stale mobile composer overlays during cleanup');
-  assertContains(sceneShellContent, "desktopBelt.removeAttribute('data-command-mode')", 'Scene shell should clear stale desktop command mode metadata');
+  assertContains(sceneShellContent, 'this.clearCommandMetadata(desktopBelt)', 'Scene shell should clear all stale desktop belt command metadata');
   assertContains(appContent, 'YAW_SCENE_SHELL.clearCenterActionsForCombat(this)', 'App center-action clearing wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.setRichContent(this, title, html)', 'App rich scene wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_SCENE_SHELL.update(this, title, description, inCombat)', 'App scene update wrapper should delegate to the helper');
@@ -12005,6 +12009,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('desktop-context-belt').setAttribute('data-command-surface', 'location-actions');
   elements.get('desktop-context-belt').setAttribute('data-command-mode', 'exploration');
   elements.get('desktop-context-belt').setAttribute('data-command-grammar', 'actor-target-intent');
+  elements.get('desktop-context-belt').setAttribute('data-command-actor-count', '9');
+  elements.get('desktop-context-belt').setAttribute('data-command-target-count', '7');
+  elements.get('desktop-context-belt').setAttribute('data-command-intent', 'fight');
   elements.get('mobile-explore-actions').innerHTML = '<button>Rest</button>';
   elements.get('mobile-explore-actions').setAttribute('data-command-surface', 'location-actions');
   elements.get('mobile-explore-actions').setAttribute('data-command-mode', 'exploration');
@@ -12065,6 +12072,9 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command-surface metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command-mode metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop command grammar metadata');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale desktop belt actor count metadata');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale desktop belt target count metadata');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-intent'), null, 'Rich scene should clear stale desktop belt intent metadata');
   assertEqual(elements.get('desktop-command-composer').classList.contains('has-controls'), false, 'Rich scene should clear active desktop composer shell state');
   assertEqual(Boolean(elements.get('desktop-command-composer').hidden), true, 'Rich scene should hard-hide the empty desktop composer shell');
   assertEqual(elements.get('desktop-command-composer').getAttribute('aria-hidden'), 'true', 'Rich scene should hide the empty desktop composer shell from assistive tech');
@@ -12120,6 +12130,53 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale mobile actor count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale mobile target count metadata');
   assertEqual(elements.get('mobile-selection-sentence').getAttribute('data-command-intent'), null, 'Rich scene should clear stale mobile intent metadata');
+});
+
+test('Desktop exploration composer refreshes stale belt command metadata', () => {
+  const { App, elements, document } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.location = { x: 3, y: 4 };
+  App.worldMap = new Map([['3,4', { ...App.getBaseTile(3, 4), x: 3, y: 4, explored: true, biome: 'grove', items: [{ id: 'berry', name: 'Berry' }] }]]);
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set(['3,4']);
+  App.combatState.active = false;
+  App.explorationActorIds = [];
+  App.explorationActorSelectionExplicit = false;
+  App.explorationTargetIds = [];
+  App.focusedStageObject = null;
+  const belt = elements.get('desktop-context-belt');
+  const shell = document.getElementById('desktop-command-composer');
+  belt.innerHTML = '<button>Stale Fight</button>';
+  belt.setAttribute('data-command-surface', 'combat-intents');
+  belt.setAttribute('data-command-mode', 'combat');
+  belt.setAttribute('data-command-grammar', 'actor-target-intent');
+  belt.setAttribute('data-command-actor-count', '9');
+  belt.setAttribute('data-command-target-count', '7');
+  belt.setAttribute('data-command-intent', 'fight');
+
+  App.renderExplorationActions();
+
+  assertContains(belt.innerHTML, 'data-command-intent="takeItems"', 'Desktop exploration belt should render current location intents after stale combat state');
+  assertEqual(belt.getAttribute('data-command-surface'), 'location-actions', 'Desktop exploration belt should identify the current location action surface');
+  assertEqual(belt.getAttribute('data-command-mode'), 'exploration', 'Desktop exploration belt should replace stale combat mode');
+  assertEqual(belt.getAttribute('data-command-grammar'), 'actor-target-intent', 'Desktop exploration belt should keep the shared command grammar');
+  assertEqual(belt.getAttribute('data-command-actor-count'), '1', 'Desktop exploration belt should refresh actor count from current command state');
+  assertEqual(belt.getAttribute('data-command-target-count'), '0', 'Desktop exploration belt should clear stale target count when no target is selected');
+  assertEqual(belt.getAttribute('data-command-intent'), 'choose', 'Desktop exploration belt root should expose pending intent instead of stale combat intent');
+  assertEqual(shell.getAttribute('data-command-mode'), 'exploration', 'Desktop command shell should mirror refreshed exploration mode');
+  assertEqual(shell.getAttribute('data-command-actor-count'), '1', 'Desktop command shell should mirror refreshed actor count');
+  assertEqual(shell.getAttribute('data-command-target-count'), '0', 'Desktop command shell should mirror refreshed target count');
+  assertEqual(shell.getAttribute('data-command-intent'), 'choose', 'Desktop command shell should mirror refreshed pending intent');
+
+  assertEqual(App.focusPresence('items', 'tile-items'), true, 'Stage item focus should route item actions into the composer');
+  assertEqual(belt.getAttribute('data-command-surface'), 'command-composer', 'Focused stage object should route exits and intents through the command composer');
+  assertEqual(belt.getAttribute('data-command-target-count'), '1', 'Focused stage object should expose one target-like stage focus');
+  assertEqual(belt.getAttribute('data-command-intent'), 'takeItems', 'Focused stage object should expose the focused item intent');
+  assertEqual(shell.getAttribute('data-command-target-count'), '1', 'Desktop command shell should mirror focused stage target count');
+  assertEqual(shell.getAttribute('data-command-intent'), 'takeItems', 'Desktop command shell should mirror focused stage intent');
 });
 
 test('Selection sentence mirrors exploration actor target and pending intent', () => {

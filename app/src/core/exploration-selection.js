@@ -110,6 +110,7 @@ const YAW_EXPLORATION_SELECTION = {
         if (app.explorationActorIds.length === 0) {
             app.explorationActorIds = [app._unitSelectionId(app.player)];
             app.explorationActorSelectionExplicit = false;
+            app.mobileActorBeltOpen = false;
         }
         app.explorationActorId = app.explorationActorIds[0];
         app._renderInteractionState({ exploration: true, toolbelt: false });

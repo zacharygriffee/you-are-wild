@@ -11360,6 +11360,16 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, true, 'Selecting an ally from the mobile actor belt should create explicit actor state');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show the explicit actor before clearing');
+  App.selectExplorationActor(1);
+  assertEqual(App.explorationActorSelectionExplicit, false, 'Deselecting the last explicit actor should restore implicit player actor state');
+  assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Deselecting the last explicit actor should close the mobile actor belt');
+  assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'false', 'Deselecting the last explicit actor should collapse the Actors toggle');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'You', 'Marked-target composer sentence should show the implicit player after actor deselection');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Deselecting the last actor should preserve the marked target');
+
+  App.toggleMobileActorBelt();
+  App.selectExplorationActor(1);
+  assertEqual(App.explorationActorSelectionExplicit, true, 'Reopening actor belt should still allow selecting an explicit actor');
   App.clearExplorationActors();
   assertEqual(App.explorationActorSelectionExplicit, false, 'Clearing actors should restore implicit player actor state');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Clearing actors should close the mobile actor belt');

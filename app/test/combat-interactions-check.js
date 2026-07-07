@@ -1342,6 +1342,17 @@ async function runCompactRailRoundTripFlow(page) {
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     actorBeltText: document.querySelector('#mobile-actor-belt')?.innerText || '',
+    actorDetailsAttrs: (() => {
+      const details = document.querySelector('#mobile-actor-belt .mobile-actor-details');
+      return {
+        surface: details?.getAttribute('data-command-surface') || '',
+        mode: details?.getAttribute('data-command-mode') || '',
+        control: details?.getAttribute('data-command-control') || '',
+        drawer: details?.getAttribute('data-drawer-role') || '',
+        returnRail: details?.getAttribute('data-return-rail') || '',
+        slot: details?.getAttribute('data-command-slot') || ''
+      };
+    })(),
     sentence: document.querySelector('#mobile-selection-sentence')?.innerText || '',
     fullPartyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false
   }));
@@ -1349,6 +1360,14 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Compact actor rail should support multiple selected party actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Compact actor rail should allow marking a party member as target without losing creature target');
   assert(state.actorBeltText.includes('Ally') && state.actorBeltText.includes('Scout'), 'Compact actor rail should show selected party choices');
+  assert.deepStrictEqual(state.actorDetailsAttrs, {
+    surface: 'drawer-shortcuts',
+    mode: 'navigation',
+    control: 'open-actor-drawer',
+    drawer: 'actors',
+    returnRail: 'actor',
+    slot: 'details'
+  }, 'Compact actor rail Details should identify drawer navigation and return context');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Mobile composer sentence should summarize selected actors and targets');
   assert.strictEqual(state.fullPartyDrawerOpen, false, 'Party rail selection should not open the full Party drawer');
 
@@ -1380,6 +1399,27 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Party details should keep marked targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Party details should keep the mobile composer sentence visible');
 
+  state = await page.evaluate(() => {
+    const details = document.querySelector('#mobile-creature-card button[data-command-control="open-target-drawer"]');
+    return {
+      targetDetailsAttrs: {
+        surface: details?.getAttribute('data-command-surface') || '',
+        mode: details?.getAttribute('data-command-mode') || '',
+        control: details?.getAttribute('data-command-control') || '',
+        drawer: details?.getAttribute('data-drawer-role') || '',
+        returnRail: details?.getAttribute('data-return-rail') || '',
+        slot: details?.getAttribute('data-command-slot') || ''
+      }
+    };
+  });
+  assert.deepStrictEqual(state.targetDetailsAttrs, {
+    surface: 'drawer-shortcuts',
+    mode: 'navigation',
+    control: 'open-target-drawer',
+    drawer: 'targets',
+    returnRail: 'target',
+    slot: 'details'
+  }, 'Compact target rail Details should identify drawer navigation and return context');
   await page.locator(`#mobile-creature-card button[data-command-control="open-target-drawer"]`).click();
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,

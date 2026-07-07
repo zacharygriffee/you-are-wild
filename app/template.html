@@ -2922,6 +2922,8 @@
                 display: flex;
                 align-items: center;
                 min-width: 0;
+                order: 3;
+                padding: 0 2px;
             }
 
             .mobile-creature-presence-cue:empty {
@@ -2956,6 +2958,10 @@
                 background: rgba(0, 212, 170, 0.18);
                 color: var(--text-primary);
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.3);
+            }
+
+            .mobile-play-surface.combat-active .mobile-creature-presence-cue {
+                display: none;
             }
 
             .mobile-creature-presence-text {
@@ -4227,9 +4233,9 @@
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
+	                            <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt" data-surface-role="command-composer">
 	                                <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" aria-live="polite"></div>
-	                                <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" aria-live="polite"></div>
 	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
 	                                <div class="mobile-control-row" id="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ Move</button>

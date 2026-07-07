@@ -92,7 +92,6 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const hasTargetActions = Boolean((targetTray?.innerHTML || '').trim());
             const hasActorControls = Boolean((actorBelt?.innerHTML || '').trim());
             const hasLocationActions = !hasTargets && Boolean((exploreActions?.innerHTML || '').trim());
-            const hasCreatureCue = !hasTargets && Boolean((creatureCue?.innerHTML || '').trim());
             const hasMovePad = Boolean(movePad?.classList?.contains('expanded'));
             const hasControlRow = Boolean(
                 (!moveToggle?.hidden && moveToggle?.style?.display !== 'none')
@@ -104,7 +103,6 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 || hasLocationActions
                 || hasTargetActions
                 || hasActorControls
-                || hasCreatureCue
                 || hasMovePad
             );
             const expandedControls = hasContent && Boolean(

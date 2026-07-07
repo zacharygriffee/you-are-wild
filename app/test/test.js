@@ -4280,6 +4280,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
+  assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
+  assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-control-belt"'), 'Mobile creature presence cue should stay outside the fixed command belt');
   assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="selection-sentence"'), 'Desktop selection sentence should live below the stage, not inside the center tile');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-presence-rail"'), 'Desktop presence rail should live below the stage, not inside the center tile');
@@ -11447,6 +11449,17 @@ test('Mobile exploration hides empty control belt over traversal map', () => {
   assertEqual(elements.get('mobile-target-action-tray').getAttribute('data-command-grammar'), null, 'Plain traversal should not leave target tray command grammar metadata');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Plain traversal should not leave actor controls behind');
   assertEqual(Boolean(elements.get('mobile-actor-toggle').hidden), true, 'Plain traversal should not expose the actor-row toggle');
+
+  const guide = makeUnit('Guide', { id: 'guide-cue-only', disposition: App.DISPOSITION.FRIENDLY });
+  App.creatures = [guide];
+  App.renderCreatures();
+  App.renderExplorationActions();
+  App.renderMobileExplorationControls();
+
+  assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'A local creature should still expose the compact stage presence cue');
+  assertEqual(elements.get('mobile-control-belt').classList.contains('has-controls'), false, 'Creature presence alone should not open the fixed mobile command belt over the play surface');
+  assertEqual(elements.get('mobile-control-belt').getAttribute('data-command-surface'), null, 'Creature presence alone should not assign command-composer metadata to the fixed belt');
+  assertEqual(elements.get('mobile-play-surface').classList.contains('has-control-belt'), false, 'Creature presence alone should not reserve fixed control-belt space');
 });
 
 test('Mobile multi-creature cue opens target picker without selecting all targets', () => {

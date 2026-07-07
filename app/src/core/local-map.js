@@ -77,7 +77,9 @@ const YAW_LOCAL_MAP = {
             const control = presenceType === 'creature' ? 'focus-target' : 'focus-actor';
             return `<button type="button" class="mobile-play-presence-dot ${tone}${selectedClass}" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${control}" data-presence-type="${presenceType}" data-presence-ref="${escapedRef}" ${selectionAttrs} title="${escapedLabel}" aria-label="${escapedLabel}" onclick="event.stopPropagation();App.focusPresence('${jsType}','${jsRef}')">${app._escapeHtml(unit.icon || '👤')}</button>`;
         }).join('');
-        const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
+        const moreLabel = app._escapeHtml(typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.overflowCommandLabel
+            ? YAW_CENTER_CONTEXT.overflowCommandLabel(app, overflow)
+            : app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
         const commandAttrs = typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.overflowCommandAttrs
             ? YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)
             : 'data-command-control="open-details"';

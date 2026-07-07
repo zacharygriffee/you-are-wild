@@ -287,8 +287,18 @@ const YAW_CENTER_CONTEXT = {
         const entries = this.presenceEntries(app);
         const hasCreature = entries.some(entry => entry.type === 'creature');
         const hasParty = entries.some(entry => entry.type === 'player' || entry.type === 'party');
+        const stageEntry = entries.find(entry => entry.type === 'items' || entry.type === 'place');
         const preferTarget = String(route || '') === 'target';
         const preferActor = String(route || '') === 'actor';
+        const stageRoute = String(route || '').match(/^stage:([^:]+):(.+)$/);
+        const preferStage = String(route || '') === 'stage' || Boolean(stageRoute);
+        const focusStage = (entry = stageEntry, explicitRef = '') => {
+            if (!entry) return false;
+            const ref = explicitRef || (entry.type === 'items'
+                ? 'tile-items'
+                : (entry.unit?.id || ''));
+            return this.focusPresence(app, entry.type, ref);
+        };
         const openTargets = () => {
             app.renderCreatures();
             app.openPanel('enemies');
@@ -309,16 +319,21 @@ const YAW_CENTER_CONTEXT = {
         };
         if (preferTarget && hasCreature) return openTargets();
         if (preferActor && hasParty) return openActors();
+        if (stageRoute) return this.focusPresence(app, stageRoute[1], stageRoute[2]);
+        if (preferStage && stageEntry) return focusStage();
         if (hasCreature) return openTargets();
         if (hasParty) return openActors();
+        if (stageEntry) return focusStage();
         return false;
     },
 
     overflowCommandInfo(overflow = []) {
         const creatureCount = overflow.filter(entry => entry?.type === 'creature').length;
         const actorCount = overflow.filter(entry => entry?.type === 'player' || entry?.type === 'party').length;
+        const stageCount = overflow.filter(entry => entry?.type === 'items' || entry?.type === 'place').length;
         if (creatureCount > 0) return { route: 'target', control: 'open-target-picker', count: creatureCount };
         if (actorCount > 0) return { route: 'actor', control: 'open-actor-picker', count: actorCount };
+        if (stageCount > 0) return { route: 'stage', control: 'focus-stage-presence', count: stageCount };
         return { route: 'details', control: 'open-details', count: 0 };
     },
 
@@ -330,11 +345,28 @@ const YAW_CENTER_CONTEXT = {
         if (info.route === 'actor') {
             return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="actor" data-command-actor-count="${app._escapeHtml(String(info.count))}"`;
         }
+        if (info.route === 'stage') {
+            return `data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target" data-command-target-count="${app._escapeHtml(String(info.count))}"`;
+        }
         return `data-command-control="${info.control}"`;
     },
 
     overflowCommandRoute(overflow = []) {
-        return this.overflowCommandInfo(overflow).route;
+        const info = this.overflowCommandInfo(overflow);
+        if (info.route === 'stage') {
+            const entry = overflow.find(item => item?.type === 'items' || item?.type === 'place');
+            const ref = entry?.type === 'items' ? 'tile-items' : (entry?.unit?.id || '');
+            if (entry?.type && ref) return `stage:${entry.type}:${ref}`;
+        }
+        return info.route;
+    },
+
+    overflowCommandLabel(app, overflow = []) {
+        const info = this.overflowCommandInfo(overflow);
+        if (info.route === 'stage') {
+            return app._label('ui.presence.focusOverflow', 'Focus {count} more stage cue(s)', { count: info.count });
+        }
+        return app._label('ui.presence.openDetails', 'Open {count} more in details', { count: info.count });
     },
 
     renderPresence(app) {
@@ -349,7 +381,7 @@ const YAW_CENTER_CONTEXT = {
         const extra = overflow.length;
         const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
         const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));
-        const moreLabel = app._escapeHtml(app._label('ui.presence.openDetails', 'Open {count} more in details', { count: extra }));
+        const moreLabel = app._escapeHtml(this.overflowCommandLabel(app, overflow));
         const commandAttrs = this.overflowCommandAttrs(app, overflow);
         const commandRoute = app._escapeJsString(this.overflowCommandRoute(overflow));
         const more = extra > 0

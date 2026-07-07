@@ -2802,9 +2802,10 @@ test('Local map helper module is registered before app code', () => {
   assertContains(localMapContent, 'data-command-control="${control}"', 'Mobile center presence should identify its actor/target composer route');
   assertContains(localMapContent, 'data-command-mode="exploration"', 'Mobile center presence should identify exploration command mode');
   assertContains(localMapContent, "App.focusPresence('${jsType}','${jsRef}')", 'Mobile center presence should feed actor/target selection through the shared presence path');
-  assertContains(localMapContent, "App.focusPresenceOverflow('${commandRoute}')", 'Mobile center presence overflow should pass the advertised actor/target drawer route');
-  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)', 'Mobile center presence overflow should reuse shared actor/target overflow metadata');
-  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandRoute(overflow)', 'Mobile center presence overflow should reuse shared actor/target overflow routing');
+  assertContains(localMapContent, "App.focusPresenceOverflow('${commandRoute}')", 'Mobile center presence overflow should pass the advertised actor/target/stage route');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandAttrs(app, overflow)', 'Mobile center presence overflow should reuse shared actor/target/stage overflow metadata');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandRoute(overflow)', 'Mobile center presence overflow should reuse shared actor/target/stage overflow routing');
+  assertContains(localMapContent, 'YAW_CENTER_CONTEXT.overflowCommandLabel(app, overflow)', 'Mobile center presence overflow should reuse shared overflow action labels');
   assertContains(localMapContent, "'ui.presence.openDetails'", 'Mobile center presence overflow should announce the detail drawer action');
   assertNotContains(localMapContent, "document.getElementById('mini-map')", 'Local map helper should not restore the removed desktop minimap');
   assertContains(localMapContent, 'app.renderDesktopPlaySurface()', 'Local map refresh should keep the desktop traversal surface current');
@@ -2846,6 +2847,9 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'overflowCommandInfo(overflow = [])', 'Center context helper should derive shared overflow command metadata');
   assertContains(centerContextContent, 'overflowCommandAttrs(app, overflow = [])', 'Center context helper should describe overflow actor/target picker routing');
   assertContains(centerContextContent, 'overflowCommandRoute(overflow = [])', 'Center context helper should expose the overflow route used by click handlers');
+  assertContains(centerContextContent, 'overflowCommandLabel(app, overflow = [])', 'Center context helper should expose route-specific overflow labels');
+  assertContains(centerContextContent, 'data-command-control="${info.control}" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Stage overflow should focus hidden item/place cues through the target slot');
+  assertContains(centerContextContent, "'ui.presence.focusOverflow'", 'Stage overflow should announce focus behavior instead of falsely promising drawers');
   assertContains(centerContextContent, "'ui.presence.openDetails'", 'Center presence overflow should announce the detail drawer action');
   assertContains(centerContextContent, 'clearPresence()', 'Center context helper should clear stage presence for non-exploration views');
   assertContains(centerContextContent, 'renderCenterActions(app)', 'Center context helper should own center action DOM rendering');
@@ -7808,6 +7812,61 @@ test('Presence overflow click route matches advertised actor or target picker', 
   assertEqual(App.focusPresenceOverflow('target'), true, 'Target overflow route should open the target picker path');
   assertEqual(document.getElementById('panel-enemies').focused, true, 'Target overflow route should focus the creature panel');
   assertEqual(Boolean(document.getElementById('panel-party').focused), false, 'Target overflow route should not drift into the actor panel');
+});
+
+test('Presence overflow routes hidden stage cues into composer focus', () => {
+  const { App, document } = loadAppForCombat(() => 0.5);
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: 'player-1' });
+  const allies = [1, 2, 3, 4].map(index => makeUnit(`Ally ${index}`, { id: `ally-${index}` }));
+  App.player = player;
+  App.party = [player, ...allies];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', {
+    ...App.getBaseTile(0, 0),
+    x: 0,
+    y: 0,
+    biome: 'grove',
+    explored: true,
+    structure: 'camp',
+    creatures: [],
+    items: [{ id: 'hidden-herb', name: 'Hidden Herb' }]
+  }]]);
+  App.combatState.active = false;
+
+  App.renderCenterPresence();
+  const desktopPresence = el('desktop-presence-rail').innerHTML;
+  assertContains(desktopPresence, "App.focusPresenceOverflow('stage:items:tile-items')", 'Desktop stage-only overflow should route to the hidden tile item cue');
+  assertContains(desktopPresence, 'data-command-control="focus-stage-presence"', 'Desktop stage-only overflow should identify stage-presence focus routing');
+  assertContains(desktopPresence, 'data-command-control="focus-stage-presence" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Desktop stage-only overflow should identify the composer target slot');
+  assertContains(desktopPresence, 'data-command-target-count="1"', 'Desktop stage-only overflow should expose hidden stage cue count');
+  assertContains(desktopPresence, 'aria-label="Focus 1 more stage cue(s)"', 'Desktop stage-only overflow should not claim it opens a drawer');
+  assertNotContains(desktopPresence, 'data-command-control="open-details"', 'Desktop stage-only overflow should not render a dead generic details route');
+
+  assertEqual(App.focusPresenceOverflow('stage:items:tile-items'), true, 'Stage overflow route should focus the hidden tile item');
+  assertEqual(App.focusedStageObject?.type, 'items', 'Stage overflow should store item focus in shared composer state');
+  assertContains(el('selection-sentence').innerHTML, 'Hidden Herb', 'Stage overflow item focus should update the desktop command sentence');
+  assertContains(el('desktop-context-belt').innerHTML, 'data-command-intent="takeItems"', 'Stage overflow item focus should expose Take Items in the desktop composer');
+  assertEqual(Boolean(el('panel-party').focused), false, 'Stage overflow item focus should not open the party drawer');
+  assertEqual(Boolean(el('panel-enemies').focused), false, 'Stage overflow item focus should not open the creature drawer');
+
+  App.focusedStageObject = null;
+  App.mobileCreatureRailOpen = false;
+  App.renderMap();
+  const mobileHtml = el('mobile-mini-map').innerHTML;
+  assertContains(mobileHtml, "App.focusPresenceOverflow('stage:place:structure:camp')", 'Mobile stage-only overflow should route to the hidden place cue');
+  assertContains(mobileHtml, 'data-command-control="focus-stage-presence"', 'Mobile stage-only overflow should identify stage-presence focus routing');
+  assertContains(mobileHtml, 'data-command-control="focus-stage-presence" data-command-grammar="actor-target-intent" data-command-slot="target"', 'Mobile stage-only overflow should identify the composer target slot');
+  assertContains(mobileHtml, 'aria-label="Focus 2 more stage cue(s)"', 'Mobile stage-only overflow should announce composer focus instead of drawer navigation');
+  assertNotContains(mobileHtml, 'data-command-control="open-details"', 'Mobile stage-only overflow should not render a dead generic details route');
+
+  assertEqual(App.focusPresenceOverflow('stage:place:structure:camp'), true, 'Mobile stage overflow route should focus the hidden place cue');
+  assertEqual(App.focusedStageObject?.type, 'place', 'Stage overflow should store place focus in shared composer state');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Camp', 'Stage overflow place focus should update the mobile command sentence');
+  assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Stage overflow place focus should expose a mobile composer exit');
+  assertEqual(el('panel-party').classList.contains('active'), false, 'Mobile stage overflow place focus should not open the party drawer');
+  assertEqual(el('panel-enemies').classList.contains('active'), false, 'Mobile stage overflow place focus should not open the creature drawer');
 });
 
 test('Fallback interact menu localizes labels and keeps target indexes stable', () => {

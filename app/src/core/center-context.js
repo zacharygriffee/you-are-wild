@@ -395,7 +395,7 @@ const YAW_CENTER_CONTEXT = {
             ? `<button type="button" class="center-presence-more" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" ${commandAttrs} title="${moreLabel}" aria-label="${moreLabel}" onclick="event.stopPropagation();App.focusPresenceOverflow('${commandRoute}')">${moreText}</button>`
             : '';
         const label = app._escapeHtml(app._label('ui.presence.stage', 'Stage presence'));
-        rail.innerHTML = `<div class="center-presence center-presence-rail" role="group" aria-label="${label}"><div class="center-presence-list">${chips}${more}</div></div>`;
+        rail.innerHTML = `<div class="center-presence center-presence-rail" data-stage-surface="presence" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent" role="group" aria-label="${label}"><div class="center-presence-list" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent">${chips}${more}</div></div>`;
         return rail.innerHTML;
     },
 

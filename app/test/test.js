@@ -7479,6 +7479,8 @@ test('Center tile stays traversal and context only across interaction states', (
   assertNotContains(centerPresenceHtml, 'App.focusPresence(', 'Center visual presence should leave selection routing to the rail/composer');
   assertNotContains(centerPresenceHtml, 'data-command-surface=', 'Center visual presence should not expose command metadata');
   assertContains(el('desktop-presence-rail').innerHTML, 'center-presence-chip', 'Desktop stage rail should expose local presence outside the center presentation tile');
+  assertContains(el('desktop-presence-rail').innerHTML, 'class="center-presence center-presence-rail" data-stage-surface="presence" data-command-surface="stage-presence"', 'Desktop stage rail group should identify stage-presence ownership');
+  assertContains(el('desktop-presence-rail').innerHTML, 'class="center-presence-list" data-command-surface="stage-presence" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop stage rail list should identify shared composer grammar');
   assertContains(el('desktop-presence-rail').innerHTML, "App.focusPresence('party','ally-1')", 'Desktop stage rail should select party presence through the composer');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'selected selected-actor', 'Implicit player fallback should not visibly mark desktop actor presence as explicitly selected');
   assertNotContains(el('desktop-presence-rail').innerHTML, 'data-selection-mode="act-actor" data-selection-state="selected"', 'Implicit player fallback should not expose selected actor state in desktop presence');

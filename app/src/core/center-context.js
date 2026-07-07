@@ -440,7 +440,7 @@ const YAW_CENTER_CONTEXT = {
             ? app._renderExplorationTargetActions('desktop')
             : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: true });
         const mobileHtml = hasMarkedTargets
-            ? app._renderExplorationTargetActions('mobile-target')
+            ? ''
             : this.groupedActionRows(app, { actorExitHtml, focusedExitHtml, locationHtml, includeActorExit: false });
         const actions = document.getElementById('scene-actions');
         if (actions) {

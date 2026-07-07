@@ -2838,6 +2838,7 @@ test('Center context helper module is registered before app code', () => {
   assertContains(centerContextContent, 'groupedActionRows(app', 'Center context helper should separate composer exits from location intents');
   assertContains(centerContextContent, 'data-command-group="selection-exits"', 'Composer exit controls should render as a distinct command group');
   assertContains(centerContextContent, 'data-command-group="location-intents"', 'Location actions should render as a distinct command group');
+  assertContains(centerContextContent, "const mobileHtml = hasMarkedTargets\n            ? ''", 'Mobile marked-target actions should not duplicate into the location action row');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.renderPresence(app)', 'Exploration scene updates should refresh desktop stage presence');
   assertContains(sceneShellContent, 'YAW_CENTER_CONTEXT.clearPresence()', 'Combat and rich scene updates should clear desktop stage presence');
   assertContains(panelShellContent, 'open(app, panelName)', 'Panel shell helper should own explicit panel opening for detail focus');
@@ -11384,6 +11385,8 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-control-belt').classList.contains('expanded-controls-open'), true, 'Marked-target controls should expand the fixed belt only when needed');
   assertEqual(elements.get('mobile-control-row').classList.contains('has-visible-controls'), true, 'Marked-target controls should display the secondary control row');
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), true, 'Marked-target controls should reserve expanded composer space');
+  assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Marked-target controls should not duplicate target intents in the mobile location row');
+  assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Marked-target controls should clear mobile location row command surface metadata');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Target', 'Mobile selection sentence should move into the control belt when one target is marked');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, 'data-command-surface="target-intents"', 'Mobile target action tray should identify the composer intent surface');

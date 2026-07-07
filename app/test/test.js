@@ -4068,6 +4068,10 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(appContent, "event?.key === 'Escape'", 'App menu should close on Escape');
   assertContains(appContent, 'closeAppMenu()', 'App should expose app-menu close behavior');
   assertContains(settingsNavContent, "if (document.getElementById('app-menu')) return;", 'Injected settings nav should be fallback-only when the app menu exists');
+  assertContains(settingsNavContent, "setAttribute('data-command-surface', 'app-system')", 'Injected settings nav should identify as a system route');
+  assertContains(settingsNavContent, "setAttribute('data-command-control', 'open-settings')", 'Injected settings nav should identify its settings route');
+  assertContains(settingsNavContent, 'App.openSettingsFromGame()', 'Injected settings nav should preserve live-game return context');
+  assertNotContains(settingsNavContent, "App.showScreen('settings')", 'Injected settings nav should not bypass settings return context');
   assertContains(settingsNavContent, "setAttribute('data-i18n-aria-label', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize accessible label');
   assertContains(settingsNavContent, "setAttribute('data-i18n-title', 'ui.menu.settingsTitle')", 'Injected settings nav button should localize title');
   assertContains(marketNavContent, "if (document.getElementById('app-menu')) return;", 'Injected market nav should be fallback-only when the app menu exists');

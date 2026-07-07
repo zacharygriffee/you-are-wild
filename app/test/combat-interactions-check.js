@@ -148,6 +148,7 @@ async function setupCombat(page, options = {}) {
     App._normalizeExplorationSelections({ resetTargets: true });
     App.nextTurn = function() { this._advancedTurn = true; };
     App.showActorActions(App.player);
+    App.renderDesktopPlaySurface();
   }, options);
 }
 
@@ -235,6 +236,36 @@ async function clickIntentAndTarget(page, action) {
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
+  const stageState = await page.evaluate(() => {
+    const surface = document.querySelector('#desktop-play-surface');
+    const north = document.querySelector('#desktop-play-cell-n');
+    const center = document.querySelector('#desktop-play-cell-center');
+    const movementCommands = Array.from(document.querySelectorAll('#desktop-play-surface [data-command-surface="stage-traversal"]'));
+    return {
+      surfaceMode: surface?.getAttribute('data-surface-mode') || '',
+      combatClass: surface?.classList.contains('combat-active') || false,
+      northMoveable: north?.classList.contains('moveable') || false,
+      northRole: north?.getAttribute('role') || null,
+      northTabIndex: north?.getAttribute('tabindex') || null,
+      northCommand: north?.getAttribute('data-command-surface') || null,
+      northControl: north?.getAttribute('data-command-control') || null,
+      northOnClick: north?.getAttribute('onclick') || null,
+      movementCommandCount: movementCommands.length,
+      centerStage: center?.getAttribute('data-stage-surface') || '',
+      centerCommandCount: center?.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length || 0
+    };
+  });
+  assert.strictEqual(stageState.surfaceMode, 'combat', 'Desktop play surface should identify combat mode during browser combat smoke');
+  assert.strictEqual(stageState.combatClass, true, 'Desktop play surface should expose combat-active layout state');
+  assert.strictEqual(stageState.northMoveable, false, 'Desktop combat surrounding cells should not present as moveable');
+  assert.strictEqual(stageState.northRole, null, 'Desktop combat surrounding cells should not expose button semantics');
+  assert.strictEqual(stageState.northTabIndex, '-1', 'Desktop combat surrounding cells should leave focus for combat controls');
+  assert.strictEqual(stageState.northCommand, null, 'Desktop combat surrounding cells should not advertise traversal command ownership');
+  assert.strictEqual(stageState.northControl, null, 'Desktop combat surrounding cells should not advertise movement controls');
+  assert.strictEqual(stageState.northOnClick, null, 'Desktop combat surrounding cells should not dispatch movement clicks');
+  assert.strictEqual(stageState.movementCommandCount, 0, 'Desktop combat surface should not expose routine stage-traversal commands');
+  assert.strictEqual(stageState.centerStage, 'current-tile', 'Desktop combat center should remain the current stage tile');
+  assert.strictEqual(stageState.centerCommandCount, 0, 'Desktop combat center should stay free of command controls');
   const desktopMark = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop combat enemy card should expose target-first Mark');
   await desktopMark.click();

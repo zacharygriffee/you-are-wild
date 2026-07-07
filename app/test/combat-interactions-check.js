@@ -1416,6 +1416,197 @@ async function runAdventureMarkedTargetFlow(page) {
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
 }
 
+async function runDesktopCompactCardRoundTripFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await setupAdventure(page);
+  await page.evaluate(() => {
+    const makeUnit = (name, id, overrides = {}) => ({
+      id,
+      name,
+      species: 'human',
+      icon: 'X',
+      level: 1,
+      CPun: 100,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      Figh: 80,
+      Feas: 80,
+      Flir: 80,
+      Fuck: 40,
+      Flee: 80,
+      Feed: 40,
+      str: 10,
+      con: 10,
+      spd: 10,
+      int: 10,
+      wis: 10,
+      cha: 10,
+      size: 4,
+      appetite: 4,
+      stomach: [],
+      womb: [],
+      balls: [],
+      bodyParts: [],
+      tags: ['Person'],
+      status: {},
+      disposition: 'party',
+      ...overrides
+    });
+    App.party.push(makeUnit('Scout', 'scout-1', { Figh: 70, Flir: 90 }));
+    App.creatures = [
+      makeUnit('Friendly', 'friendly-1', { disposition: App.DISPOSITION.FRIENDLY, CPle: 0, con: 1, wis: 1 }),
+      makeUnit('Merchant', 'merchant-1', { disposition: App.DISPOSITION.MERCHANT || App.DISPOSITION.FRIENDLY, merchant: true, CPle: 0 }),
+      makeUnit('Remains', 'corpse-desktop', { disposition: App.DISPOSITION.CORPSE, CPun: 0, corpseIcon: 'R', remainingPortions: 4 })
+    ];
+    const tile = App.getTile(0, 0);
+    tile.items = [{ id: 'desktop-herb', name: 'Desktop Herb', type: 'resource' }];
+    App.explorationActorIds = [App._unitSelectionId(App.player)];
+    App.explorationActorId = App.explorationActorIds[0];
+    App.explorationActorSelectionExplicit = false;
+    App.explorationTargetIds = [];
+    App.focusedStageObject = null;
+    App.renderDesktopPlaySurface();
+    App.renderParty();
+    App.renderCreatures();
+    App.renderCenterPresence();
+    App.renderExplorationActions();
+  });
+
+  let state = await page.evaluate(() => ({
+    partyCards: document.querySelectorAll('#party-content .compact-tactical-card').length,
+    targetCards: document.querySelectorAll('#enemies-content .compact-tactical-card').length,
+    desktopPresence: document.querySelector('#desktop-presence-rail')?.innerText || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || ''),
+    directIntentControls: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${document.querySelector('#party-content')?.innerHTML || ''}${document.querySelector('#enemies-content')?.innerHTML || ''}`)
+  }));
+  assert(state.partyCards >= 3, 'Desktop compact flow should expose compact party cards for actor selection');
+  assert(state.targetCards >= 3, 'Desktop compact flow should expose compact target cards for local creatures and remains');
+  assert(state.desktopPresence.includes('Desktop Herb'), 'Desktop presence rail should expose tile items outside the center tile');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop compact flow should start with center free of actor and target controls');
+  assert.strictEqual(state.directIntentControls, false, 'Desktop compact cards should not expose direct primary intent controls');
+
+  await page.locator(`#party-content button[onclick*="selectExplorationActor(1)"]`).first().click();
+  await page.locator(`#party-content button[onclick*="selectExplorationActor(2)"]`).first().click();
+  await page.locator(`#party-content button[onclick*="toggleExplorationTarget('party','player-1')"]`).first().click();
+  await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+
+  state = await page.evaluate(() => {
+    const partyHtml = document.querySelector('#party-content')?.innerHTML || '';
+    const targetHtml = document.querySelector('#enemies-content')?.innerHTML || '';
+    const sentence = document.querySelector('#selection-sentence');
+    const belt = document.querySelector('#desktop-context-belt');
+    return {
+      actors: App._getExplorationActors().map(unit => unit.id),
+      targets: [...App.explorationTargetIds].sort(),
+      sentenceText: sentence?.innerText || '',
+      sentenceActors: sentence?.getAttribute('data-command-actor-count') || '',
+      sentenceTargets: sentence?.getAttribute('data-command-target-count') || '',
+      beltSurface: belt?.getAttribute('data-command-surface') || '',
+      beltActorCount: belt?.getAttribute('data-command-actor-count') || '',
+      beltTargetCount: belt?.getAttribute('data-command-target-count') || '',
+      trayText: belt?.innerText || '',
+      allySelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('Ally'))?.classList.contains('selected-actor')),
+      scoutSelected: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('Scout'))?.classList.contains('selected-actor')),
+      playerTargeted: Boolean(Array.from(document.querySelectorAll('#party-content .compact-tactical-card')).find(card => card.textContent.includes('You'))?.classList.contains('selected-target')),
+      friendlyTargeted: Boolean(Array.from(document.querySelectorAll('#enemies-content .compact-tactical-card')).find(card => card.textContent.includes('Friendly'))?.classList.contains('selected-target')),
+      partyDetailOpen: Boolean(document.querySelector('#party-content .party-panel-detail')),
+      targetDetailOpen: Boolean(document.querySelector('#enemies-content .creature-panel-detail')),
+      sidePanelDirectIntents: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${partyHtml}${targetHtml}`),
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Desktop compact cards should support multiple selected party actors');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Desktop compact cards should support mixed creature and party targets');
+  assert.strictEqual(state.sentenceActors, '2', 'Desktop command sentence should expose selected actor count');
+  assert.strictEqual(state.sentenceTargets, '2', 'Desktop command sentence should expose selected target count');
+  assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Desktop command sentence should summarize selected actors and targets');
+  assert.strictEqual(state.beltSurface, 'target-intents', 'Desktop marked-target controls should live in the composer belt');
+  assert.strictEqual(state.beltActorCount, '2', 'Desktop composer belt should mirror selected actor count');
+  assert.strictEqual(state.beltTargetCount, '2', 'Desktop composer belt should mirror selected target count');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Desktop composer belt should expose valid target intents and exits');
+  assert.strictEqual(state.allySelected, true, 'Desktop Ally compact card should show selected actor state');
+  assert.strictEqual(state.scoutSelected, true, 'Desktop Scout compact card should show selected actor state');
+  assert.strictEqual(state.playerTargeted, true, 'Desktop player compact card should show selected target state');
+  assert.strictEqual(state.friendlyTargeted, true, 'Desktop creature compact card should show selected target state');
+  assert.strictEqual(state.partyDetailOpen, false, 'Desktop compact selection should not open Party details');
+  assert.strictEqual(state.targetDetailOpen, false, 'Desktop compact selection should not open Creature details');
+  assert.strictEqual(state.sidePanelDirectIntents, false, 'Desktop compact side panels should not duplicate composer-owned target intents');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop compact selection should keep center free of actor controls');
+
+  await page.locator(`#party-content .compact-tactical-card[onclick="App.toggleUnit(1,'party')"]`).click();
+  state = await page.evaluate(() => ({
+    allyExpanded: Boolean(App.party.find(unit => unit.id === 'ally-1')?.expanded),
+    statsVisible: Boolean(document.querySelector('#party-content button[data-command-control="open-party-stats"]')),
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.allyExpanded, true, 'Desktop card body click should open opt-in party details');
+  assert.strictEqual(state.statsVisible, true, 'Expanded desktop party card should expose Stats as a detail command');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening desktop party card details should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Opening desktop party card details should preserve marked targets');
+  assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Expanded desktop party card should leave the composer sentence intact');
+  assert.strictEqual(state.centerHasActorControls, false, 'Expanded desktop party details should keep center free of actor controls');
+
+  await page.locator(`#party-content button[data-command-control="open-party-stats"]`).first().click();
+  state = await page.evaluate(() => ({
+    statsDetailOpen: Boolean(document.querySelector('#party-content .party-stats-view')),
+    partyPanelFocused: document.querySelector('#panel-party')?.classList.contains('nav-focus') || false,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
+    trayText: document.querySelector('#desktop-context-belt')?.innerText || '',
+    centerLeak: (document.querySelector('#scene-description')?.innerHTML || '').includes('party-stats-view'),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.statsDetailOpen, true, 'Desktop Stats should open as a Party detail surface');
+  assert.strictEqual(state.partyPanelFocused, true, 'Desktop Stats should focus the Party detail panel without opening mobile drawers');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening desktop Stats should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Opening desktop Stats should preserve marked targets');
+  assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Desktop Stats should leave the composer sentence intact');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Desktop Stats should leave composer target intents reachable');
+  assert.strictEqual(state.centerLeak, false, 'Desktop Stats should not leak detail markup into center presentation');
+  assert.strictEqual(state.centerHasActorControls, false, 'Desktop Stats should keep center free of actor controls');
+
+  await page.locator(`#party-content button[data-command-control="close-stats"]`).first().click();
+  state = await page.evaluate(() => ({
+    statsDetailOpen: Boolean(document.querySelector('#party-content .party-stats-view')),
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    partyCompactCards: document.querySelectorAll('#party-content .compact-tactical-card').length,
+    sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
+    trayText: document.querySelector('#desktop-context-belt')?.innerText || ''
+  }));
+  assert.strictEqual(state.statsDetailOpen, false, 'Closing desktop Stats should return to the Party card surface');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing desktop Stats should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:friendly-1', 'party:player-1'], 'Closing desktop Stats should preserve marked targets');
+  assert(state.partyCompactCards >= 2, 'Closing desktop Stats should restore compact party cards');
+  assert(state.sentenceText.includes('Ally') && state.sentenceText.includes('Friendly'), 'Closing desktop Stats should keep the composer sentence visible');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing desktop Stats should keep composer target intents visible');
+
+  await page.locator(`#desktop-context-belt button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).first().click();
+  state = await page.evaluate(() => ({
+    commandAction: App.lastIntentCommand?.action || '',
+    commandSubAction: App.lastIntentCommand?.subAction || '',
+    commandSource: App.lastIntentCommand?.source || '',
+    commandActors: App.lastIntentCommand?.actorIds || [],
+    commandTargets: App.lastIntentCommand?.targetIds || [],
+    targetsRemaining: [...App.explorationTargetIds],
+    friendlyPleasure: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle || 0,
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.commandAction, 'flirt', 'Desktop compact-card intent should resolve through shared intent dispatch');
+  assert.strictEqual(state.commandSubAction, 'tease', 'Desktop compact-card intent should preserve the selected safe sub-action');
+  assert.strictEqual(state.commandSource, 'composer-tray', 'Desktop compact-card intent should preserve composer source metadata');
+  assert.deepStrictEqual(state.commandActors, ['ally-1', 'scout-1'], 'Desktop compact-card intent should record selected actors');
+  assert(state.commandTargets.includes('friendly-1') && state.commandTargets.includes('player-1'), 'Desktop compact-card intent should record mixed party and creature targets');
+  assert.strictEqual(state.targetsRemaining.length, 0, 'Resolving desktop compact-card intent should intentionally clear marked targets');
+  assert(state.friendlyPleasure > 0, 'Desktop compact-card safe intent should affect the marked creature');
+  assert.strictEqual(state.centerHasActorControls, false, 'Resolving desktop compact-card intent should keep center free of actor controls');
+}
+
 async function runStaleMarkedActorFlow(page) {
   await setupAdventure(page);
   await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
@@ -3055,6 +3246,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runCombatNonTargetClearFlow(page);
     await runCombatFleeComposerFlow(page);
     await runAdventureMarkedTargetFlow(page);
+    await runDesktopCompactCardRoundTripFlow(page);
     await runStaleMarkedActorFlow(page);
     await runSelectionSemanticsFlow(page);
     await runCenterResourceSearchFlow(page);

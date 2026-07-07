@@ -1510,6 +1510,62 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   assert.strictEqual(state.hasMobileMenu, false, 'Desktop sub-action sheet should not create a mobile menu');
   assert.strictEqual(state.centerHasActorControls, false, 'Opening a desktop sub-action sheet should not move actor controls into center');
 
+  await page.evaluate(() => {
+    const oldProbe = document.getElementById('desktop-intent-edge-probe');
+    if (oldProbe) oldProbe.remove();
+    const opener = document.createElement('button');
+    opener.id = 'desktop-intent-edge-probe';
+    opener.textContent = 'Bottom right intent probe';
+    opener.style.position = 'fixed';
+    opener.style.right = '4px';
+    opener.style.bottom = '4px';
+    opener.style.width = '96px';
+    opener.style.height = '40px';
+    document.body.appendChild(opener);
+    opener.focus();
+    App.openIntentSubActionSheet('creature', 'friendly-1', 'fight', 'desktop', { currentTarget: opener });
+  });
+  menu = page.locator('#desktop-intent-menu');
+  await assert.doesNotReject(() => menu.waitFor({ state: 'visible', timeout: 1000 }), 'Anchored desktop sub-action sheet should render near the opener');
+  state = await page.evaluate(() => {
+    const menuEl = document.querySelector('#desktop-intent-menu');
+    const opener = document.getElementById('desktop-intent-edge-probe');
+    const rect = menuEl?.getBoundingClientRect();
+    const openerRect = opener?.getBoundingClientRect();
+    return {
+      positioned: menuEl?.getAttribute('data-intent-position') || '',
+      presentation: menuEl?.getAttribute('data-intent-presentation') || '',
+      hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
+      role: menuEl?.getAttribute('role') || '',
+      ariaModal: menuEl?.getAttribute('aria-modal') || '',
+      hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
+      left: rect?.left ?? 0,
+      top: rect?.top ?? 0,
+      right: rect?.right ?? 0,
+      bottom: rect?.bottom ?? 0,
+      width: rect?.width ?? 0,
+      height: rect?.height ?? 0,
+      openerRight: openerRect?.right ?? 0,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
+      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.positioned, 'anchored', 'Desktop sub-action sheet should mark anchored positioning when opened from an edge control');
+  assert.strictEqual(state.presentation, 'desktop', 'Anchored sub-action sheet should keep desktop presentation metadata');
+  assert.strictEqual(state.hasDesktopClass, true, 'Anchored sub-action sheet should keep desktop layout class');
+  assert.strictEqual(state.role, 'dialog', 'Anchored sub-action sheet should remain a dialog');
+  assert.strictEqual(state.ariaModal, 'true', 'Anchored sub-action sheet should remain modal for focus trapping');
+  assert.strictEqual(state.hasMobileMenu, false, 'Anchored desktop sub-action sheet should not create a mobile sheet');
+  assert(state.width > 0 && state.height > 0, 'Anchored desktop sub-action sheet should have rendered dimensions');
+  assert(state.left >= -1 && state.top >= -1, 'Anchored desktop sub-action sheet should not clip above or left of the viewport');
+  assert(state.right <= state.viewportWidth + 1, 'Anchored desktop sub-action sheet should not clip past the right viewport edge');
+  assert(state.bottom <= state.viewportHeight + 1, 'Anchored desktop sub-action sheet should not clip past the bottom viewport edge');
+  assert(state.left < state.openerRight, 'Anchored desktop sub-action sheet should stay visually related to the opener instead of defaulting to a distant sheet');
+  assert.strictEqual(state.hasAttackButton, true, 'Anchored desktop sub-action sheet should still dispatch through selectIntent with a sub-action');
+  assert.strictEqual(state.centerHasActorControls, false, 'Anchored desktop sub-action sheet should not move actor controls into center');
+
   await page.locator(`#desktop-intent-menu button[onclick*="selectIntent('creature','friendly-1','fight','desktop','attack')"]`).first().click();
 
   state = await page.evaluate(() => ({

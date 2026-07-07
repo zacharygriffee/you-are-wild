@@ -1540,6 +1540,10 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
   assertContains(sceneShellContent, 'clearLegacyCenterActions()', 'Scene shell helper should own hidden legacy center action cleanup');
   assertContains(sceneShellContent, 'syncDesktopCommandComposer()', 'Scene shell helper should own desktop command composer shell synchronization');
+  assertContains(sceneShellContent, 'shell.hidden = true;', 'Empty desktop command composer shell should hard-hide itself');
+  assertContains(sceneShellContent, "shell.setAttribute('aria-hidden', 'true')", 'Empty desktop command composer shell should leave the accessibility tree');
+  assertContains(sceneShellContent, 'shell.hidden = false;', 'Active desktop command composer shell should unhide itself');
+  assertContains(sceneShellContent, "shell.setAttribute('aria-hidden', 'false')", 'Active desktop command composer shell should re-enter the accessibility tree');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-surface', 'command-composer')", 'Desktop command composer shell should identify itself as the authoritative composer surface when active');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-mode', mode)", 'Desktop command composer shell should mirror the active command mode');
   assertContains(sceneShellContent, "belt?.getAttribute('data-command-actor-count')", 'Desktop command composer shell should fall back to active belt actor metadata');
@@ -4370,6 +4374,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
+  assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden until it has real controls');
   assertContains(template, '.desktop-command-composer .selection-sentence', 'Desktop command composer should scope the command sentence inside the composer shell');
   assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
   assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
@@ -12015,6 +12020,8 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command-mode metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop command grammar metadata');
   assertEqual(elements.get('desktop-command-composer').classList.contains('has-controls'), false, 'Rich scene should clear active desktop composer shell state');
+  assertEqual(Boolean(elements.get('desktop-command-composer').hidden), true, 'Rich scene should hard-hide the empty desktop composer shell');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('aria-hidden'), 'true', 'Rich scene should hide the empty desktop composer shell from assistive tech');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop composer shell surface metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop composer shell mode metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop composer shell grammar metadata');
@@ -12090,6 +12097,8 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '0', 'Desktop explicit actor sentence should expose zero selected targets');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Desktop explicit actor sentence should expose pending intent metadata');
   assertEqual(document.getElementById('desktop-command-composer').classList.contains('has-controls'), true, 'Desktop command composer shell should become active when the command sentence is active');
+  assertEqual(Boolean(document.getElementById('desktop-command-composer').hidden), false, 'Desktop command composer shell should unhide when the command sentence is active');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('aria-hidden'), 'false', 'Desktop active command composer shell should be available to assistive tech');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-surface'), 'command-composer', 'Desktop command composer shell should identify the authoritative composer surface when active');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-mode'), 'exploration', 'Desktop command composer shell should mirror exploration mode');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-grammar'), 'actor-target-intent', 'Desktop command composer shell should mirror the shared command grammar');
@@ -12281,6 +12290,8 @@ test('Desktop composer shell mirrors combat belt metadata without a sentence slo
   assertEqual(belt.getAttribute('data-command-actor-count'), '1', 'Desktop combat belt should expose actor count when it owns visible controls');
   assertEqual(belt.getAttribute('data-command-target-count'), '0', 'Desktop combat belt should expose unresolved target count before targeting');
   assertEqual(belt.getAttribute('data-command-intent'), 'choose', 'Desktop combat belt should expose pending intent before targeting');
+  assertEqual(Boolean(shell.hidden), false, 'Desktop composer shell should unhide when the combat belt owns visible controls');
+  assertEqual(shell.getAttribute('aria-hidden'), 'false', 'Desktop belt-only composer state should be available to assistive tech');
   assertEqual(shell.getAttribute('data-command-actor-count'), '1', 'Desktop composer shell should mirror belt actor count without a sentence');
   assertEqual(shell.getAttribute('data-command-target-count'), '0', 'Desktop composer shell should mirror belt target count without a sentence');
   assertEqual(shell.getAttribute('data-command-intent'), 'choose', 'Desktop composer shell should mirror belt pending intent without a sentence');

@@ -14,6 +14,8 @@ const YAW_SCENE_SHELL = {
         const active = sentenceActive || beltActive;
         shell.classList?.toggle('has-controls', active);
         if (!active) {
+            shell.hidden = true;
+            shell.setAttribute('aria-hidden', 'true');
             shell.removeAttribute('data-command-surface');
             shell.removeAttribute('data-command-mode');
             shell.removeAttribute('data-command-grammar');
@@ -22,6 +24,8 @@ const YAW_SCENE_SHELL = {
             shell.removeAttribute('data-command-intent');
             return;
         }
+        shell.hidden = false;
+        shell.setAttribute('aria-hidden', 'false');
         const mode = belt?.getAttribute('data-command-mode') || sentence?.getAttribute('data-command-mode') || 'exploration';
         const actorCount = sentence?.getAttribute('data-command-actor-count')
             || belt?.getAttribute('data-command-actor-count')

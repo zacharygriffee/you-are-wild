@@ -16,6 +16,7 @@ const YAW_SCENE_SHELL = {
         if (!active) {
             shell.removeAttribute('data-command-surface');
             shell.removeAttribute('data-command-mode');
+            shell.removeAttribute('data-command-grammar');
             shell.removeAttribute('data-command-actor-count');
             shell.removeAttribute('data-command-target-count');
             shell.removeAttribute('data-command-intent');

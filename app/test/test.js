@@ -11718,6 +11718,7 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('desktop-command-composer').classList.contains('has-controls'), false, 'Rich scene should clear active desktop composer shell state');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop composer shell surface metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop composer shell mode metadata');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop composer shell grammar metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale desktop composer shell actor metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale desktop composer shell target metadata');
   assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-intent'), null, 'Rich scene should clear stale desktop composer shell intent metadata');
@@ -11792,6 +11793,7 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(document.getElementById('desktop-command-composer').classList.contains('has-controls'), true, 'Desktop command composer shell should become active when the command sentence is active');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-surface'), 'command-composer', 'Desktop command composer shell should identify the authoritative composer surface when active');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-mode'), 'exploration', 'Desktop command composer shell should mirror exploration mode');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-grammar'), 'actor-target-intent', 'Desktop command composer shell should mirror the shared command grammar');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-actor-count'), '1', 'Desktop command composer shell should mirror actor count metadata');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-target-count'), '0', 'Desktop command composer shell should mirror target count metadata');
   assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-intent'), 'choose', 'Desktop command composer shell should mirror pending intent metadata');

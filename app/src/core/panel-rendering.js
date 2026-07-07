@@ -75,10 +75,27 @@ const YAW_PANEL_RENDERING = {
         return true;
     },
 
+    closeMobileDetailPanel(app, panel = 'party') {
+        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
+        if (!isMobile) return false;
+        const panelId = panel === 'creature' ? 'panel-enemies' : 'panel-party';
+        const activePanel = document.getElementById(panelId);
+        if (!activePanel?.classList?.contains('active')) return false;
+        activePanel.classList.remove('active');
+        app.syncPanelBackdrop?.();
+        if (typeof YAW_PANEL_SHELL !== 'undefined' && YAW_PANEL_SHELL.restoreMobileRailContext) {
+            YAW_PANEL_SHELL.restoreMobileRailContext(app);
+        } else {
+            app._mobilePanelReturnRail = null;
+        }
+        return true;
+    },
+
     closeDetails(app, panel = 'party') {
         this.clearLegacyCenterActions();
         if (panel === 'party') app.renderParty();
         if (panel === 'creature') app.renderCreatures();
+        this.closeMobileDetailPanel(app, panel);
         if (app.combatState?.active) {
             const actor = app._currentCombatActor?.() || app.activeActor;
             if (actor === app.player || app.party.includes(actor)) {

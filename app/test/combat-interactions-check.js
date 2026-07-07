@@ -2325,6 +2325,37 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Party details should keep marked targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Party details should keep the mobile composer sentence visible');
 
+  await page.evaluate(() => {
+    App._mobilePanelReturnRail = 'actor';
+    App.showPartyMemberStats(1);
+  });
+  state = await page.evaluate(() => ({
+    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    statsVisible: Boolean(document.querySelector('#mobile-party-strip .party-stats-view')),
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort()
+  }));
+  assert.strictEqual(state.partyDrawerOpen, true, 'Mobile party stats detail should open the Party drawer');
+  assert.strictEqual(state.statsVisible, true, 'Mobile party stats detail should replace the compact actor rail temporarily');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening party stats detail should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening party stats detail should preserve marked targets');
+  await page.evaluate(() => App.closePanelDetails('party'));
+  state = await page.evaluate(() => ({
+    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    actorRailOpen: App.mobileActorBeltOpen,
+    actorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
+    actorDetailsVisible: Boolean(document.querySelector('#mobile-actor-belt .mobile-actor-details')),
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    sentence: document.querySelector('#mobile-selection-sentence')?.innerText || ''
+  }));
+  assert.strictEqual(state.partyDrawerOpen, false, 'Party stats Back should close the Party drawer on mobile');
+  assert.strictEqual(state.actorRailOpen, true, 'Party stats Back should restore the compact actor rail');
+  assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Party stats Back should restore actor controls and Details');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Party stats Back should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Party stats Back should keep marked targets');
+  assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Party stats Back should keep the composer sentence visible');
+
   state = await page.evaluate(() => {
     const details = document.querySelector('#mobile-creature-card button[data-command-control="open-target-drawer"]');
     return {
@@ -2374,6 +2405,38 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Creature details should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Creature details should keep marked targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing Creature details should keep shared composer intents visible');
+
+  await page.evaluate(() => {
+    App._mobilePanelReturnRail = 'target';
+    App.selectIntent('creature', 'merchant-1', 'trade', 'composer-tray');
+  });
+  state = await page.evaluate(() => ({
+    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    tradeVisible: Boolean(document.querySelector('#mobile-creature-strip .trade-drawer')),
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort()
+  }));
+  assert.strictEqual(state.creatureDrawerOpen, true, 'Mobile target detail should open the Creatures drawer');
+  assert.strictEqual(state.tradeVisible, true, 'Mobile target detail should replace the compact target rail temporarily');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening target detail should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening target detail should preserve marked targets');
+  await page.evaluate(() => App.closePanelDetails('creature'));
+  state = await page.evaluate(() => ({
+    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    creatureRailOpen: App.mobileCreatureRailOpen,
+    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targetButtons: document.querySelectorAll('#mobile-creature-strip button[data-command-control="focus-target"]').length,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
+  }));
+  assert.strictEqual(state.creatureDrawerOpen, false, 'Target detail Back should close the Creatures drawer on mobile');
+  assert.strictEqual(state.creatureRailOpen, true, 'Target detail Back should restore the compact target rail');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Target detail Back should keep the compact target rail visible');
+  assert(state.targetButtons >= 2, 'Target detail Back should restore target controls');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Target detail Back should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Target detail Back should keep marked targets');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Target detail Back should keep shared composer intents visible');
 
   await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
   state = await page.evaluate(() => ({

@@ -3903,6 +3903,9 @@
             renderMobileExplorationControls() {
                 return YAW_MOBILE_UNIT_STRIPS.explorationControls(this);
             },
+            focusMobileActorRail() {
+                return YAW_MOBILE_UNIT_STRIPS.focusActorRail(this);
+            },
             focusMobileCreaturePresence() {
                 return YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this);
             },

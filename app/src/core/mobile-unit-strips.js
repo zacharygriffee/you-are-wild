@@ -45,7 +45,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         surface?.classList?.toggle('combat-active', inCombat);
         document.documentElement?.classList?.toggle('mobile-combat-active', inCombat);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
-        if (inCombat || !hasTargets) app.mobileActorBeltOpen = false;
+        if (inCombat) app.mobileActorBeltOpen = false;
         const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);
         if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen) {
             app.mobileMovePadOpen = false;
@@ -248,6 +248,20 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+        }
+        return true;
+    },
+
+    focusActorRail(app) {
+        if (app.combatState?.active) return app.openPanel('party');
+        app.mobileActorBeltOpen = true;
+        app.mobileMovePadOpen = false;
+        app.renderParty();
+        app.renderMobileExplorationControls?.();
+        if (typeof document !== 'undefined') {
+            const belt = document.getElementById('mobile-actor-belt');
+            const actor = belt?.querySelector?.('[data-command-control="focus-actor"]');
+            if (actor && typeof actor.focus === 'function') actor.focus({ preventScroll: true });
         }
         return true;
     },

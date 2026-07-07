@@ -4362,8 +4362,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
   assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile play surface should sit directly below semantics for thumb reach');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
-  assertContains(template, 'grid-template-columns: minmax(44px, 1fr) minmax(112px, 1.55fr) minmax(44px, 1fr);', 'mobile routine play should use a true 3x3 surface with a larger center');
-  assertContains(template, 'grid-template-rows: minmax(24px, 0.85fr) minmax(76px, 1.9fr) minmax(24px, 0.85fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
+  assertContains(template, 'grid-template-columns: minmax(40px, 1fr) minmax(144px, 1.6fr) minmax(40px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
+  assertContains(template, 'grid-template-rows: minmax(24px, 0.75fr) minmax(84px, 2fr) minmax(24px, 0.75fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
@@ -7873,6 +7873,33 @@ test('Presence overflow click route matches advertised actor or target picker', 
   assertEqual(App.focusPresenceOverflow('target'), true, 'Target overflow route should open the target picker path');
   assertEqual(document.getElementById('panel-enemies').focused, true, 'Target overflow route should focus the creature panel');
   assertEqual(Boolean(document.getElementById('panel-party').focused), false, 'Target overflow route should not drift into the actor panel');
+});
+
+test('Mobile presence overflow opens compact rails instead of drawers', () => {
+  const { App, document } = loadAppForCombat(() => 0.5, { window: { innerWidth: 390 } });
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const scout = makeUnit('Scout', { id: 'scout-1' });
+  const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  const merchant = makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT });
+  App.player = player;
+  App.party = [player, ally, scout];
+  App.creatures = [guide, merchant];
+  App.combatState.active = false;
+
+  assertEqual(App.focusPresenceOverflow('target'), true, 'Mobile target overflow should resolve');
+  assertEqual(App.mobileCreatureRailOpen, true, 'Mobile target overflow should open the compact target rail');
+  assertContains(document.getElementById('mobile-creature-strip').innerHTML, 'mobile-unit-chip', 'Mobile target overflow should render compact target chips');
+  assertContains(document.getElementById('mobile-creature-strip').innerHTML, 'data-command-control="focus-target"', 'Mobile target overflow should expose target focus controls');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Mobile target overflow should not open the full Creatures drawer');
+  assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile target overflow should not enable the drawer backdrop');
+
+  assertEqual(App.focusPresenceOverflow('actor'), true, 'Mobile actor overflow should resolve');
+  assertEqual(App.mobileActorBeltOpen, true, 'Mobile actor overflow should open the compact actor rail');
+  assertContains(document.getElementById('mobile-actor-belt').innerHTML, 'mobile-actor-chip', 'Mobile actor overflow should render compact actor chips');
+  assertContains(document.getElementById('mobile-actor-belt').innerHTML, 'data-command-control="focus-actor"', 'Mobile actor overflow should expose actor focus controls');
+  assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile actor overflow should not open the full Party drawer');
+  assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile actor overflow should leave the drawer backdrop closed');
 });
 
 test('Presence overflow routes hidden stage cues into composer focus', () => {

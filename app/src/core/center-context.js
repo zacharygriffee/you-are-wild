@@ -292,6 +292,7 @@ const YAW_CENTER_CONTEXT = {
         const preferActor = String(route || '') === 'actor';
         const stageRoute = String(route || '').match(/^stage:([^:]+):(.+)$/);
         const preferStage = String(route || '') === 'stage' || Boolean(stageRoute);
+        const isMobile = typeof window !== 'undefined' && Number(window.innerWidth || 0) > 0 && window.innerWidth <= 1024;
         const focusStage = (entry = stageEntry, explicitRef = '') => {
             if (!entry) return false;
             const ref = explicitRef || (entry.type === 'items'
@@ -300,6 +301,9 @@ const YAW_CENTER_CONTEXT = {
             return this.focusPresence(app, entry.type, ref);
         };
         const openTargets = () => {
+            if (isMobile && typeof app.focusMobileCreatureRail === 'function') {
+                return app.focusMobileCreatureRail();
+            }
             app.renderCreatures();
             app.openPanel('enemies');
             if (typeof document !== 'undefined') {
@@ -309,6 +313,9 @@ const YAW_CENTER_CONTEXT = {
             return true;
         };
         const openActors = () => {
+            if (isMobile && typeof app.focusMobileActorRail === 'function') {
+                return app.focusMobileActorRail();
+            }
             app.renderParty();
             app.openPanel('party');
             if (typeof document !== 'undefined') {

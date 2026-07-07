@@ -4299,6 +4299,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
   assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-control-belt"'), 'Mobile creature presence cue should stay outside the fixed command belt');
+  assertContains(template, 'id="mobile-creature-presence-cue" data-surface-role="presence-rail" data-stage-surface="presence"', 'Mobile creature cue container should identify as a compact stage presence rail');
   assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="selection-sentence"'), 'Desktop selection sentence should live below the stage, not inside the center tile');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-command-composer"'), 'Desktop command composer should live below the stage, not inside the center tile');
@@ -4326,6 +4327,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
   assertContains(template, 'id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor"', 'Mobile actor toggle should identify as an actor-slot composer control');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
+  assertContains(template, 'id="mobile-creature-presence-cue" data-surface-role="presence-rail"', 'mobile creature cue should identify as a presence rail rather than a command composer');
   assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-explore-actions"'), 'Mobile creature cue should sit near the top of the control belt');
   assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar"', 'mobile location actions should render in the control belt');

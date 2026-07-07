@@ -225,12 +225,14 @@ const YAW_CENTER_CONTEXT = {
             const tile = app._currentExplorationTile?.();
             const items = Array.isArray(tile?.items) ? tile.items : [];
             const first = items[0] ? app._tileItemLabel(items[0]) : app._label('action.takeItems', 'Take Items');
+            app.explorationTargetIds = [];
             app.focusedStageObject = {
                 type: 'items',
                 id: 'tile-items',
                 name: items.length === 1 ? first : app._label('ui.tileItems.count', '{count} items', { count: items.length }),
                 intent: 'takeItems'
             };
+            app.renderMap?.();
             app.renderExplorationActions?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
@@ -254,7 +256,9 @@ const YAW_CENTER_CONTEXT = {
                 if (!tile?.hasLandmark || tile.landmarkName !== landmarkName) return false;
                 name = landmarkName;
             }
+            app.explorationTargetIds = [];
             app.focusedStageObject = { type: 'place', id: String(ref), name, intent };
+            app.renderMap?.();
             app.renderExplorationActions?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
@@ -447,6 +451,7 @@ const YAW_CENTER_CONTEXT = {
     clearFocusedStageObject(app) {
         if (!app.focusedStageObject) return false;
         app.focusedStageObject = null;
+        app.renderMap?.();
         app.renderExplorationActions?.();
         this.renderPresence(app);
         return true;

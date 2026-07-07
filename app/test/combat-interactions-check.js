@@ -1605,6 +1605,78 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Marked merchant should expose safe primary and contextual intents in the composer tray');
   assert.strictEqual(state.fullDrawerOpen, false, 'Creature rail marking should not open the full Creatures drawer');
 
+  state = await page.evaluate(() => {
+    const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
+    const selectedTarget = centerTile?.querySelector('.mobile-play-presence-dot.selected-target');
+    const rect = selectedTarget?.getBoundingClientRect();
+    const tileRect = centerTile?.getBoundingClientRect();
+    return {
+      control: selectedTarget?.getAttribute('data-command-control') || '',
+      mode: selectedTarget?.getAttribute('data-command-mode') || '',
+      grammar: selectedTarget?.getAttribute('data-command-grammar') || '',
+      selectionMode: selectedTarget?.getAttribute('data-selection-mode') || '',
+      selectionState: selectedTarget?.getAttribute('data-selection-state') || '',
+      ariaPressed: selectedTarget?.getAttribute('aria-pressed') || '',
+      targetRef: selectedTarget?.getAttribute('data-presence-ref') || '',
+      width: rect?.width || 0,
+      height: rect?.height || 0,
+      insideTile: Boolean(rect && tileRect
+        && rect.left >= tileRect.left - 1
+        && rect.right <= tileRect.right + 1
+        && rect.top >= tileRect.top - 1
+        && rect.bottom <= tileRect.bottom + 1)
+    };
+  });
+  assert.strictEqual(state.control, 'focus-target', 'Selected center presence badge should remain a target control');
+  assert.strictEqual(state.mode, 'exploration', 'Selected center presence badge should declare exploration command mode');
+  assert.strictEqual(state.grammar, 'actor-target-intent', 'Selected center presence badge should keep shared composer grammar');
+  assert.strictEqual(state.selectionMode, 'mark-target', 'Selected center presence badge should expose target selection semantics');
+  assert.strictEqual(state.selectionState, 'marked', 'Selected center presence badge should expose marked target state');
+  assert.strictEqual(state.ariaPressed, 'true', 'Selected center presence badge should expose pressed state to assistive tech');
+  assert.strictEqual(state.targetRef, 'merchant-1', 'Selected center presence badge should point at the marked creature');
+  assert(state.width >= 52 && state.height >= 52, 'Selected center presence badge should keep a finger-sized mobile target');
+  assert.strictEqual(state.insideTile, true, 'Selected center presence badge should stay inside the current tile');
+
+  await page.evaluate(() => App.focusPresence('items', 'tile-items'));
+  state = await page.evaluate(() => {
+    const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
+    const focusedStage = centerTile?.querySelector('.mobile-play-presence-dot.selected-stage-focus');
+    const rect = focusedStage?.getBoundingClientRect();
+    const tileRect = centerTile?.getBoundingClientRect();
+    return {
+      focusedType: App.focusedStageObject?.type || '',
+      focusedIntent: App.focusedStageObject?.intent || '',
+      control: focusedStage?.getAttribute('data-command-control') || '',
+      intent: focusedStage?.getAttribute('data-command-intent') || '',
+      selectionMode: focusedStage?.getAttribute('data-selection-mode') || '',
+      selectionState: focusedStage?.getAttribute('data-selection-state') || '',
+      ariaPressed: focusedStage?.getAttribute('aria-pressed') || '',
+      clearFocusVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-control="clear-focused-object"]')),
+      takeItemsVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-intent="takeItems"]')),
+      width: rect?.width || 0,
+      height: rect?.height || 0,
+      insideTile: Boolean(rect && tileRect
+        && rect.left >= tileRect.left - 1
+        && rect.right <= tileRect.right + 1
+        && rect.top >= tileRect.top - 1
+        && rect.bottom <= tileRect.bottom + 1)
+    };
+  });
+  assert.strictEqual(state.focusedType, 'items', 'Focusing center tile items should set stage focus');
+  assert.strictEqual(state.focusedIntent, 'takeItems', 'Focused item badge should route to the tile item intent');
+  assert.strictEqual(state.control, 'focus-items', 'Focused center presence badge should remain an item focus control');
+  assert.strictEqual(state.intent, 'takeItems', 'Focused center presence badge should declare the item intent');
+  assert.strictEqual(state.selectionMode, 'stage-focus', 'Focused center presence badge should expose stage-focus semantics');
+  assert.strictEqual(state.selectionState, 'focused', 'Focused center presence badge should expose focused state');
+  assert.strictEqual(state.ariaPressed, 'true', 'Focused center presence badge should expose pressed state to assistive tech');
+  assert.strictEqual(state.clearFocusVisible, true, 'Focused stage item should expose a visible Clear focus exit in the mobile composer');
+  assert.strictEqual(state.takeItemsVisible, true, 'Focused stage item should keep Take Items reachable through location intents');
+  assert(state.width >= 52 && state.height >= 52, 'Focused center presence badge should keep a finger-sized mobile target');
+  assert.strictEqual(state.insideTile, true, 'Focused center presence badge should stay inside the current tile');
+
+  await page.evaluate(() => App.clearFocusedStageObject());
+  await page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
+
   await page.locator(`.mobile-panel-dock button[data-command-control="toggle-actor-rail"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(1)"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(2)"]`).click();

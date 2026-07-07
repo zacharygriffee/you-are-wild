@@ -19,7 +19,11 @@ const YAW_INTERACTION_STATE = {
         const includeToolbelt = options.toolbelt ?? Boolean(app.combatState?.active);
         app.renderParty();
         app.renderCreatures();
-        if (includeExploration) app.renderExplorationActions();
+        if (includeExploration) {
+            app.renderMap?.();
+            app.renderCenterPresence?.();
+            app.renderExplorationActions();
+        }
         if (includeToolbelt) app.renderMobileCombatToolbelt();
         if (app.combatState?.active) app.renderDesktopCombatComposer?.(this.combatActor(app));
         this.renderSelectionSentence(app);

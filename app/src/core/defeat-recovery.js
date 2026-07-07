@@ -190,7 +190,7 @@ const YAW_DEFEAT_RECOVERY = {
         }
         const surface = document.getElementById('mobile-play-surface');
         surface?.classList?.add('has-control-belt');
-        surface?.classList?.remove('control-belt-expanded');
+        surface?.classList?.remove('control-belt-expanded', 'target-controls-open', 'actor-controls-open');
         app.mobileMovePadOpen = false;
         app.mobileActorBeltOpen = false;
     },

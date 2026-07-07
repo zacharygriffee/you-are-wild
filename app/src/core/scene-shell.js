@@ -103,14 +103,14 @@ const YAW_SCENE_SHELL = {
         }
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
-            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'expanded-controls-open');
+            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'actor-controls-open', 'expanded-controls-open');
             mobileControlBelt.hidden = true;
             mobileControlBelt.setAttribute('aria-hidden', 'true');
             mobileControlBelt.removeAttribute('data-command-surface');
             mobileControlBelt.removeAttribute('data-command-mode');
             mobileControlBelt.removeAttribute('data-command-grammar');
         }
-        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded');
+        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded', 'target-controls-open', 'actor-controls-open');
         app.mobileMovePadOpen = false;
         app.mobileActorBeltOpen = false;
     },

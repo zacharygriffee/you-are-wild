@@ -124,6 +124,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             );
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);
+            controlBelt.classList.toggle('actor-controls-open', actorSelectionOpen);
             controlBelt.classList.toggle('expanded-controls-open', expandedControls);
             controlRow?.classList?.toggle('has-visible-controls', hasControlRow);
             if (hasContent) {
@@ -137,10 +138,21 @@ const YAW_MOBILE_UNIT_STRIPS = {
             }
             surface?.classList?.toggle('has-control-belt', hasContent);
             surface?.classList?.toggle('control-belt-expanded', expandedControls);
+            surface?.classList?.toggle('target-controls-open', hasTargets);
+            surface?.classList?.toggle('actor-controls-open', actorSelectionOpen);
         } else {
             surface?.classList?.remove('has-control-belt');
-            surface?.classList?.remove('control-belt-expanded');
+            surface?.classList?.remove('control-belt-expanded', 'target-controls-open', 'actor-controls-open');
             controlRow?.classList?.remove('has-visible-controls');
+        }
+        if (actorSelectionOpen && actorBelt && typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => {
+                controlBelt.scrollTop = controlBelt.scrollHeight;
+                const selected = actorBelt.querySelector('.mobile-actor-chip.selected-actor, .mobile-actor-chip.selected-target');
+                if (selected && typeof selected.scrollIntoView === 'function') {
+                    selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }
+            });
         }
     },
 

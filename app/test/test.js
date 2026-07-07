@@ -4525,6 +4525,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.control-belt-expanded .mobile-scene-sheet', 'mobile expanded composer states should compress story height before sacrificing composer reach');
   assertContains(template, '.mobile-play-surface.control-belt-expanded .mobile-map-card', 'mobile expanded composer states should preserve a usable 3x3 stage height');
   assertContains(template, '.mobile-control-belt.expanded-controls-open', 'mobile control belt should expose an expanded state for target/actor/move controls');
+  assertContains(template, '.mobile-control-belt.actor-controls-open', 'mobile actor rail should get extra composer height to avoid clipping compact actor chips');
+  assertContains(template, '.mobile-play-surface.target-controls-open .mobile-creature-presence-cue', 'mobile target composer should hide the separate cue sibling before it can push the belt under the dock');
   assertContains(template, '.mobile-control-belt.target-controls-open .mobile-creature-presence-cue', 'mobile marked-target controls should suppress lower-priority cue rows inside the fixed belt');
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
   assertContains(template, '.mobile-control-belt {\n                order: 3;', 'mobile control belt should sit between stage traversal and compact cast rails');
@@ -4542,6 +4544,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-actor-toggle"', 'mobile actor row should open through an explicit composer control');
   assertContains(template, 'id="mobile-actor-belt"', 'mobile actor controls should have a visible conditional exploration strip');
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
+  assertContains(template, 'scroll-padding-inline: 10px;', 'mobile actor belt should keep selected chips from clipping against horizontal scroll edges');
   assertContains(template, 'min-height: 52px;\n                padding: 7px 10px;', 'mobile actor rail chips should keep a stable touch height');
   assertContains(template, '.mobile-actor-chip-btn {\n                min-width: 44px;\n                min-height: 44px;', 'mobile actor rail Actor and Mark buttons should keep finger-sized tap targets');
   assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
@@ -4617,7 +4620,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileUnitStripsContent, 'const hasCreatureCue = !hasTargets', 'mobile exploration controls should not count target-hidden creature cues as visible belt content');
   assertContains(mobileUnitStripsContent, 'hasTargetActions', 'mobile exploration controls should count marked-target actions as expanded belt content');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('expanded-controls-open', expandedControls)", 'mobile control belt should mark expanded composer states structurally');
+  assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('actor-controls-open', actorSelectionOpen)", 'mobile actor rail should opt into the taller non-clipping control belt state');
+  assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('target-controls-open', hasTargets)", 'mobile play surface should hide sibling creature cues when target controls own the composer');
   assertContains(mobileUnitStripsContent, "surface?.classList?.toggle('control-belt-expanded', expandedControls)", 'mobile play surface should reserve maximum belt space only for expanded states');
+  assertContains(mobileUnitStripsContent, 'controlBelt.scrollTop = controlBelt.scrollHeight', 'mobile actor rail should scroll the composer belt to the actor controls on short screens');
   assertContains(mobileUnitStripsContent, "controlBelt.classList.toggle('target-controls-open', hasTargets)", 'mobile marked-target state should prioritize target controls in the fixed context belt');
   assertContains(appContent, 'toggleMobileMovePad()', 'App should expose a mobile move-pad toggle');
   assertContains(appContent, 'toggleMobileActorBelt()', 'App should expose a mobile actor-belt toggle');

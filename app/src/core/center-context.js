@@ -446,6 +446,8 @@ const YAW_CENTER_CONTEXT = {
         if (actions) {
             actions.innerHTML = '';
             actions.style.display = 'none';
+            actions.hidden = true;
+            actions.setAttribute('aria-hidden', 'true');
         }
         const commandSurface = html ? (hasMarkedTargets ? 'target-intents' : (actorExitHtml || focusedExitHtml ? 'command-composer' : 'location-actions')) : '';
         const mobileCommandSurface = mobileHtml ? (hasMarkedTargets ? 'target-intents' : (focusedExitHtml ? 'command-composer' : 'location-actions')) : '';

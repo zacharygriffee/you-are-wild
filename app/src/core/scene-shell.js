@@ -38,6 +38,8 @@ const YAW_SCENE_SHELL = {
         if (!actions) return;
         actions.innerHTML = '';
         actions.style.display = 'none';
+        actions.hidden = true;
+        actions.setAttribute('aria-hidden', 'true');
         if (actions.dataset?.richHidden) delete actions.dataset.richHidden;
     },
 
@@ -134,6 +136,8 @@ const YAW_SCENE_SHELL = {
             actions.innerHTML = '';
             actions.dataset.richHidden = 'true';
             actions.style.display = 'none';
+            actions.hidden = true;
+            actions.setAttribute('aria-hidden', 'true');
         }
         const desktopBelt = document.getElementById('desktop-context-belt');
         if (desktopBelt) {

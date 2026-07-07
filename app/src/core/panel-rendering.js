@@ -9,6 +9,8 @@ const YAW_PANEL_RENDERING = {
         if (!actions) return;
         actions.innerHTML = '';
         actions.style.display = 'none';
+        actions.hidden = true;
+        actions.setAttribute('aria-hidden', 'true');
         if (actions.dataset?.richHidden) delete actions.dataset.richHidden;
     },
 

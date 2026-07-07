@@ -4472,6 +4472,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, '.desktop-context-belt', 'desktop context belt styles missing');
   assertContains(template, '.scene-actions {\n            display: none;', 'center presentation action slot should stay hidden as a compatibility slot');
   assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true"', 'center presentation action slot should identify as hidden legacy compatibility, not the composer');
+  assertContains(template, 'id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden', 'center presentation action slot should start hard-hidden while the composer owns controls');
   assertContains(template, '.desktop-context-belt .target-action-row', 'desktop target actions should be bounded inside the composer belt');
   assertContains(template, 'width: min(100%, 560px);', 'desktop target action row should have a compact maximum width');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 82px));', 'desktop target actions should use compact grid tracks');
@@ -11707,6 +11708,8 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('scene-title').textContent, 'Inventory', 'Rich scene should update the desktop presentation title');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'Carried items', 'Rich scene should update the mobile presentation sheet');
   assertEqual(elements.get('scene-actions').style.display, 'none', 'Rich scene should hide legacy center actions');
+  assertEqual(elements.get('scene-actions').hidden, true, 'Rich scene should hard-hide legacy center actions');
+  assertEqual(elements.get('scene-actions').getAttribute('aria-hidden'), 'true', 'Rich scene should keep legacy center actions out of accessibility flow');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Rich scene should clear stale legacy center actions');
   assertEqual(elements.get('desktop-context-belt').innerHTML, '', 'Rich scene should clear stale desktop composer actions');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command-surface metadata');
@@ -12387,8 +12390,10 @@ test('Player combat action controls localize in desktop composer', () => {
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
   assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while the composer owns controls');
+  assertEqual(elements.get('scene-actions').hidden, true, 'showActorActions should hard-hide center actions while the composer owns controls');
   App.updateScene('Combat', 'Panel first', true);
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Combat scene updates should keep center actions empty');
+  assertEqual(elements.get('scene-actions').hidden, true, 'Combat scene updates should keep center actions hard-hidden');
   assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
   assertEqual(elements.get('mobile-combat-actions').style.display, 'none', 'Mobile combat action bar should stay hidden while toolbelt and panels handle combat');
 });
@@ -14588,6 +14593,7 @@ test('Closing party-panel stats during combat restores cards and keeps center ac
   assertContains(elements.get('party-content').innerHTML, 'class="party-stats-view character-stats-view"', 'Combat stats should render in party panel');
   assertEqual(document.getElementById('scene-actions').innerHTML, '', 'Combat stats should clear stale center actions');
   assertEqual(document.getElementById('scene-actions').style.display, 'none', 'Combat stats should keep center actions hidden');
+  assertEqual(document.getElementById('scene-actions').hidden, true, 'Combat stats should keep center actions hard-hidden');
   App.closePanelDetails('party');
   assertEqual(App.combatState.active, true, 'Closing combat stats should not leave combat mode');
   assertContains(document.getElementById('scene-title').textContent, "Round 2 - You's turn", 'Closing combat stats should leave the combat turn title intact');
@@ -14620,6 +14626,7 @@ test('Closing party-panel stats during an enemy turn does not reveal stale playe
   assertNotContains(elements.get('party-content').innerHTML, 'executeCombatIntent', 'Enemy-turn party cards should not expose player combat actions');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'Party-panel stats close should clear stale center actions');
   assertEqual(elements.get('scene-actions').style.display, 'none', 'Party-panel stats close should keep center actions hidden');
+  assertEqual(elements.get('scene-actions').hidden, true, 'Party-panel stats close should keep center actions hard-hidden');
 });
 
 test('Party member stats labels localize and escape names', () => {

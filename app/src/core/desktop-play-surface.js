@@ -94,10 +94,22 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         return false;
     },
 
+    isCombatActive(app) {
+        return Boolean(app.combatState?.active || app.mode === app.GAME_MODE.COMBAT);
+    },
+
+    syncSurfaceMode(app) {
+        const surface = document.getElementById('desktop-play-surface');
+        if (!surface) return;
+        const inCombat = this.isCombatActive(app);
+        surface.classList?.toggle('combat-active', inCombat);
+        surface.setAttribute?.('data-surface-mode', inCombat ? 'combat' : 'exploration');
+    },
+
     handleTraversalKey(app, event = {}) {
         if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return false;
         if (this.isEditableEventTarget(event.target || document.activeElement)) return false;
-        if (app.screen !== 'game' || !app.player || app.combatState?.active || app.mode === app.GAME_MODE.COMBAT) return false;
+        if (app.screen !== 'game' || !app.player || this.isCombatActive(app)) return false;
         if (this.hasBlockingOverlay(app)) return false;
         const direction = this.keyDirection(event);
         if (!direction) return false;
@@ -133,7 +145,6 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         if (typeof el.setAttribute === 'function') {
             el.setAttribute('title', escapedLabel);
             el.setAttribute('aria-label', escapedLabel);
-            el.setAttribute('role', 'button');
             el.setAttribute('tabindex', moveable ? '0' : '-1');
             el.setAttribute('data-tileset-key', visual?.tilesetKey || 'unknown');
             el.setAttribute('data-base-tileset-key', visual?.baseTilesetKey || visual?.tilesetKey || 'unknown');
@@ -145,6 +156,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             if (visual?.routeShape) el.setAttribute('data-route-shape', visual.routeShape);
             else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-route-shape');
             if (moveable) {
+                el.setAttribute('role', 'button');
                 el.setAttribute('data-command-surface', 'stage-traversal');
                 el.setAttribute('data-command-mode', 'exploration');
                 el.setAttribute('data-command-control', 'move');
@@ -152,6 +164,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
                 el.setAttribute('onclick', `App.move(${dx},${dy})`);
                 el.setAttribute('onkeydown', `if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(${dx},${dy})}`);
             } else if (typeof el.removeAttribute === 'function') {
+                el.removeAttribute('role');
                 el.removeAttribute('data-command-surface');
                 el.removeAttribute('data-command-mode');
                 el.removeAttribute('data-command-control');
@@ -166,6 +179,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
     renderInterior(app) {
         const cx = app.interiorLocation.x;
         const cy = app.interiorLocation.y;
+        const inCombat = this.isCombatActive(app);
         this.cells.forEach(cell => {
             const el = document.getElementById(cell.id);
             if (!el) return;
@@ -175,7 +189,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             const visual = app._interiorTileVisual(room);
             const direction = this.directionLabel(app, cell.dx, cell.dy);
             const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-            this.updateCell(app, el, visual, label, cell.dx, cell.dy, Boolean(room));
+            this.updateCell(app, el, visual, label, cell.dx, cell.dy, Boolean(room) && !inCombat);
         });
         const currentRoom = app.activeInterior.tiles[`${cx},${cy}`];
         const currentVisual = app._interiorTileVisual(currentRoom);
@@ -185,6 +199,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
     renderExploration(app) {
         const cx = app.location.x;
         const cy = app.location.y;
+        const inCombat = this.isCombatActive(app);
         this.cells.forEach(cell => {
             const el = document.getElementById(cell.id);
             if (!el) return;
@@ -196,7 +211,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             });
             const direction = this.directionLabel(app, cell.dx, cell.dy);
             const label = `${direction}: ${visual.label} (${tx}, ${ty})`;
-            this.updateCell(app, el, visual, label, cell.dx, cell.dy, true);
+            this.updateCell(app, el, visual, label, cell.dx, cell.dy, !inCombat);
         });
         const currentTile = app.getTile(cx, cy);
         const currentVisual = app._mapTileVisual(currentTile, {
@@ -206,6 +221,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
     },
 
     render(app) {
+        this.syncSurfaceMode(app);
         if (app.inInterior && app.activeInterior) {
             this.renderInterior(app);
             return;

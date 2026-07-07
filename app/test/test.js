@@ -16567,6 +16567,7 @@ test('Marked creature target Feast button resolves default swallow and removes c
 test('Desktop play surface renders adjacent movement cells', () => {
   const { App, elements } = loadAppForCombat();
   const ids = ['nw', 'n', 'ne', 'w', 'center', 'e', 'sw', 's', 'se'];
+  elements.set('desktop-play-surface', makeElement());
   ids.forEach(id => elements.set(`desktop-play-cell-${id}`, makeElement()));
   elements.get('desktop-play-cell-center').className = 'desktop-play-cell center';
   App.location = { x: 0, y: 0 };
@@ -16580,6 +16581,9 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertContains(north.innerHTML, 'North:', 'Desktop north cell should label its movement direction');
   assertEqual(north.getAttribute('onclick'), 'App.move(0,-1)', 'Desktop north cell should move north');
   assertEqual(north.getAttribute('onkeydown'), "if(event.key==='Enter'||event.key===' '){event.preventDefault();App.move(0,-1)}", 'Desktop north cell should support keyboard movement');
+  assertEqual(north.getAttribute('role'), 'button', 'Desktop north cell should expose button semantics while movement is available');
+  assertEqual(north.getAttribute('tabindex'), '0', 'Desktop north cell should be keyboard reachable while movement is available');
+  assertEqual(north.getAttribute('data-command-surface'), 'stage-traversal', 'Desktop north cell should identify the movement command surface');
   assertEqual(north.getAttribute('data-stage-surface'), 'traversal-cell', 'Desktop north cell should identify as a traversal stage cell');
   assertEqual(north.getAttribute('data-stage-layer'), 'tile', 'Desktop north cell should identify the tile stage layer');
   assertEqual(north.getAttribute('data-stage-cell'), '0,-1', 'Desktop north cell should identify its stable stage cell coordinates');
@@ -16589,6 +16593,24 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertEqual(center.getAttribute('data-stage-surface'), 'current-tile', 'Desktop center tile should identify as the current stage tile');
   assertEqual(center.getAttribute('data-stage-layer'), 'tile', 'Desktop center tile should identify the tile stage layer');
   assertEqual(center.getAttribute('data-stage-cell'), 'center', 'Desktop center tile should identify its stable stage cell');
+  assertEqual(center.getAttribute('data-command-surface'), null, 'Desktop center tile should not own normal command controls');
+
+  App.combatState.active = true;
+  App.mode = App.GAME_MODE.COMBAT;
+  App.renderMap();
+  assertEqual(elements.get('desktop-play-surface').classList.contains('combat-active'), true, 'Desktop play surface should expose combat layout state');
+  assertEqual(elements.get('desktop-play-surface').getAttribute('data-surface-mode'), 'combat', 'Desktop play surface should identify combat mode');
+  assertContains(north.innerHTML, 'desktop-play-cell-icon', 'Combat desktop north cell should remain visible as tactical context');
+  assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
+  assertEqual(north.getAttribute('role'), null, 'Combat desktop north cell should not expose button semantics');
+  assertEqual(north.getAttribute('tabindex'), '-1', 'Combat desktop north cell should leave keyboard focus for combat controls');
+  assertEqual(north.getAttribute('onclick'), null, 'Combat desktop north cell should not dispatch movement clicks');
+  assertEqual(north.getAttribute('onkeydown'), null, 'Combat desktop north cell should not dispatch movement keys');
+  assertEqual(north.getAttribute('data-command-surface'), null, 'Combat desktop north cell should not advertise a traversal command surface');
+  assertEqual(north.getAttribute('data-command-control'), null, 'Combat desktop north cell should not advertise movement commands');
+  assertEqual(north.getAttribute('data-command-direction'), null, 'Combat desktop north cell should not advertise a movement direction');
+  assertEqual(north.onclick, null, 'Combat desktop north cell should clear its click handler');
+  assertEqual(center.getAttribute('data-stage-surface'), 'current-tile', 'Desktop center tile should remain the current stage tile in combat');
 });
 
 test('Desktop traversal hotkeys dispatch through the stage movement command', () => {

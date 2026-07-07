@@ -3428,14 +3428,20 @@
                 padding: 0;
                 border-top: 0;
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
                 gap: 6px;
             }
 
             .mobile-combat-intents .action-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
                 min-width: 0;
-                padding: 6px;
+                min-height: 44px;
+                padding: 8px;
                 font-size: 11px;
+                line-height: 1.12;
+                text-align: center;
             }
 
             .mobile-play-surface.combat-active .mobile-map-card {

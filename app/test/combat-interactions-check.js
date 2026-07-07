@@ -233,6 +233,36 @@ async function clickIntentAndTarget(page, action) {
   await target.click();
 }
 
+async function mobileCombatToolbeltMetrics(page) {
+  return page.evaluate(() => {
+    const belt = document.querySelector('#mobile-combat-toolbelt');
+    const beltRect = belt?.getBoundingClientRect();
+    const buttons = Array.from(document.querySelectorAll('#mobile-combat-toolbelt .mobile-combat-intents .action-btn'));
+    const rects = buttons.map(button => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    });
+    const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
+    return {
+      buttonCount: rects.length,
+      minButtonWidth: min(rects.map(rect => rect.width)),
+      minButtonHeight: min(rects.map(rect => rect.height)),
+      buttonsInsideViewport: rects.every(rect => rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      toolbeltVisible: Boolean(beltRect && beltRect.width > 0 && beltRect.height > 0 && getComputedStyle(belt).display !== 'none'),
+      toolbeltInsideViewport: Boolean(beltRect && beltRect.left >= -1 && beltRect.right <= innerWidth + 1 && beltRect.top >= -1 && beltRect.bottom <= innerHeight + 1)
+    };
+  });
+}
+
+function assertMobileCombatToolbeltTapTargets(metrics, label) {
+  assert(metrics.toolbeltVisible, `${label}: mobile combat toolbelt should be visible`);
+  assert(metrics.buttonCount >= 1, `${label}: mobile combat toolbelt should expose at least one control`);
+  assert(metrics.minButtonWidth >= 70, `${label}: mobile combat controls should keep readable thumb-width targets`);
+  assert(metrics.minButtonHeight >= 44, `${label}: mobile combat controls should keep finger-sized tap targets`);
+  assert.strictEqual(metrics.buttonsInsideViewport, true, `${label}: mobile combat controls should stay inside the viewport`);
+  assert.strictEqual(metrics.toolbeltInsideViewport, true, `${label}: mobile combat toolbelt should stay inside the viewport`);
+}
+
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
@@ -949,6 +979,7 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.cancelVisible, true, 'Mobile Sync choose phase should expose visible Cancel Sync');
   assert.strictEqual(state.legacyActionsHidden, true, 'Mobile Sync should not revive the legacy combat action bar');
   assert.strictEqual(state.centerHasControls, false, 'Mobile Sync choose phase should keep center stage free of combat controls');
+  assertMobileCombatToolbeltTapTargets(await mobileCombatToolbeltMetrics(page), 'Mobile Sync choose phase');
 
   await page.locator(`#mobile-combat-toolbelt button[data-command-intent="sync_fight"]`).first().click();
   const allyParticipant = page.locator(`#mobile-party-strip button[data-selection-mode="sync-participant"][onclick*="ally-1"]`).first();
@@ -985,6 +1016,7 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.toolbeltIntent, 'sync_fight', 'Mobile toolbelt should expose chosen group intent during participant phase');
   assert(state.sentence.includes('You') && state.sentence.includes('Group Fight'), 'Mobile Sync participant phase should show actor and group intent sentence');
   assert.strictEqual(state.centerHasControls, false, 'Mobile Sync participant phase should keep center stage free of combat controls');
+  assertMobileCombatToolbeltTapTargets(await mobileCombatToolbeltMetrics(page), 'Mobile Sync participant phase');
 
   await allyParticipant.click();
   state = await page.evaluate(() => ({
@@ -1083,6 +1115,7 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.toolbeltIntent, 'sync_fight', 'Mobile toolbelt should preserve group intent during Sync targeting');
   assert.strictEqual(state.enemySelectedTarget, true, 'Mobile Sync target phase should visually mark the pickable enemy');
   assert.strictEqual(state.centerHasControls, false, 'Mobile Sync target phase should keep center stage free of combat controls');
+  assertMobileCombatToolbeltTapTargets(await mobileCombatToolbeltMetrics(page), 'Mobile Sync target phase');
 
   await syncPick.click();
   state = await page.evaluate(() => ({
@@ -1254,6 +1287,7 @@ async function runCombatFleeComposerFlow(page) {
   assert.strictEqual(state.partyChipHasFlee, false, 'Mobile party chips should not duplicate Flee outside the toolbelt');
   assert.strictEqual(state.creatureChipHasFlee, false, 'Mobile creature chips should not duplicate Flee outside the toolbelt');
   assert.strictEqual(state.centerHasControls, false, 'Mobile combat center stage should not own Flee controls');
+  assertMobileCombatToolbeltTapTargets(await mobileCombatToolbeltMetrics(page), 'Mobile Flee intent phase');
 
   await page.locator(`#mobile-combat-toolbelt button[data-command-intent="flee"]`).click();
   state = await page.evaluate(() => ({
@@ -1276,6 +1310,7 @@ async function runCombatFleeComposerFlow(page) {
   assert.strictEqual(state.fleeVisible, true, 'Mobile combat toolbelt should remain reachable after failed Flee');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should stay active after failed Flee');
   assert.strictEqual(state.centerHasControls, false, 'Mobile failed Flee should keep center stage free of combat controls');
+  assertMobileCombatToolbeltTapTargets(await mobileCombatToolbeltMetrics(page), 'Mobile failed Flee recovery');
 
   await page.setViewportSize({ width: 1365, height: 768 });
 }

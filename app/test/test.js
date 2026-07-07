@@ -4553,6 +4553,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
   assertContains(template, '.mobile-combat-intents .unit-actions', 'mobile combat toolbelt should own a shared intent action row');
+  assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));', 'mobile combat toolbelt buttons should keep readable thumb-width tracks');
+  assertContains(template, 'min-height: 44px;', 'mobile combat toolbelt buttons should keep finger-sized tap targets');
   assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-surface-role', 'command-composer')", 'mobile combat toolbelt should identify as the combat command composer when active');
   assertContains(mobileCombatToolbeltContent, "belt.setAttribute('data-command-grammar', 'actor-target-intent')", 'mobile combat toolbelt should identify the shared actor-target-intent grammar when active');
   assertContains(template, '<div id="mobile-combat-actions" class="action-bar" style="display: none;"></div>', 'legacy mobile combat action bar should ship empty while the toolbelt owns intents');

@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD PANEL COMMANDS
- * Compatibility commands that keep actor/target intents routed through panels.
+ * Compatibility commands that route older panel entrypoints into the command composer dispatcher.
  */
 
 const YAW_PANEL_COMMANDS = {
@@ -43,7 +43,7 @@ const YAW_PANEL_COMMANDS = {
             targets: [target],
             action,
             subAction: options.subAction || null,
-            source: 'party-wrapper',
+            source: 'command-composer',
             targetType: 'party'
         });
     },
@@ -55,7 +55,7 @@ const YAW_PANEL_COMMANDS = {
             targetRef: targetId,
             action,
             subAction: options.subAction || null,
-            source: 'creature-wrapper'
+            source: 'command-composer'
         });
     },
 
@@ -70,7 +70,7 @@ const YAW_PANEL_COMMANDS = {
             targets: [target],
             action,
             subAction: options.subAction || null,
-            source: 'creature-wrapper',
+            source: 'command-composer',
             targetType: 'creature'
         });
     },
@@ -85,7 +85,7 @@ const YAW_PANEL_COMMANDS = {
             targets,
             action,
             subAction: options.subAction || null,
-            source: 'party-target-wrapper',
+            source: 'command-composer',
             targetType: 'party'
         });
     },
@@ -107,7 +107,7 @@ const YAW_PANEL_COMMANDS = {
             targets,
             action,
             subAction: options.subAction || null,
-            source: 'creature-target-wrapper',
+            source: 'command-composer',
             targetType: 'creature'
         });
     }

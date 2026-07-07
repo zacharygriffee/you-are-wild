@@ -4564,7 +4564,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-control-belt:not(.has-controls)', 'combat should hide the floating exploration belt when it has no real controls');
   assertContains(template, '.mobile-combat-latest-strip', 'combat scene summary should become a single compact latest-exchange strip on mobile');
-  assertContains(template, '.mobile-play-surface.combat-active .mobile-activity-log[open]', 'mobile combat activity log should expand as an overlay sheet instead of pushing controls');
+  assertContains(template, '.mobile-activity-log[open]', 'mobile activity log should expand as an overlay drawer instead of pushing story, stage, or combat controls');
   assertContains(sceneShellContent, "if (mobileActions) mobileActions.style.display = 'none';", 'mobile combat should not show an empty bottom action bar');
   assertContains(mobileUnitStripsContent, "app.combatState?.active\n            ? app._label('ui.enemies', 'Enemies')", 'mobile combat creature strip should be labeled as enemies');
   assertNotContains(mobileUnitStripsContent, "strip.innerHTML = `${app._renderPanelInteractionTray()}", 'mobile marked-target actions should not render only inside the hidden party strip');

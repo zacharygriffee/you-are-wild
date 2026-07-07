@@ -376,6 +376,36 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);
 
+    const openHistoryDrawer = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const log = document.getElementById('mobile-activity-log');
+      const sheet = document.querySelector('.mobile-scene-sheet');
+      log.open = true;
+      const dockRect = dock.getBoundingClientRect();
+      const logRect = log.getBoundingClientRect();
+      const sheetRect = sheet.getBoundingClientRect();
+      return {
+        position: getComputedStyle(log).position,
+        top: logRect.top,
+        right: logRect.right,
+        bottom: logRect.bottom,
+        left: logRect.left,
+        height: logRect.height,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        dockTop: dockRect.top,
+        sheetHeightWhileOpen: sheetRect.height
+      };
+    });
+    assert.strictEqual(openHistoryDrawer.position, 'fixed', `${name}: open mobile activity log should become an opt-in history drawer overlay`);
+    assert(openHistoryDrawer.left >= -1 && openHistoryDrawer.right <= openHistoryDrawer.viewportWidth + 1, `${name}: open mobile activity log should stay inside viewport horizontally`);
+    assert(openHistoryDrawer.top >= -1 && openHistoryDrawer.bottom <= openHistoryDrawer.viewportHeight + 1, `${name}: open mobile activity log should stay inside viewport vertically`);
+    assert(openHistoryDrawer.bottom <= openHistoryDrawer.dockTop + 1, `${name}: open mobile activity log should stay above the fixed dock`);
+    assert(openHistoryDrawer.sheetHeightWhileOpen <= 150, `${name}: opening mobile history should not expand the compact story capsule`);
+    await page.evaluate(() => {
+      document.getElementById('mobile-activity-log').open = false;
+    });
+
     await page.evaluate(() => {
       App.toggleMobileMovePad();
       App.toggleExplorationTarget('creature', 'creature-1');

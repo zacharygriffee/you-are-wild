@@ -454,6 +454,163 @@ async function runReachabilityMatrix(page) {
   assert(state.enemyPle > 0, 'Social combat action should still target flying back-row enemies because it is not physical reach');
 }
 
+async function runMultiEnemyCombatTargetingFlow(page) {
+  const prepare = async () => {
+    await setupCombat(page, { enemyOverrides: { id: 'front-enemy', name: 'Frontline', combatRow: 'front', CPun: 100, MPun: 100, flying: false } });
+    await page.evaluate(() => {
+      const front = App.creatures[0];
+      front.id = 'front-enemy';
+      front.name = 'Frontline';
+      front.CPun = 100;
+      front.MPun = 100;
+      front.combatRow = 'front';
+      front.flying = false;
+      front.disposition = App.DISPOSITION.ENEMY;
+      const back = {
+        ...front,
+        id: 'back-enemy',
+        name: 'Backline',
+        CPun: 100,
+        MPun: 100,
+        combatRow: 'back',
+        flying: false,
+        status: {},
+        stomach: [],
+        womb: [],
+        balls: []
+      };
+      App.creatures = [front, back];
+      App.worldMap.set('0,0', { ...App.worldMap.get('0,0'), creatures: App.creatures });
+      App.showActorActions(App.player);
+    });
+  };
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await prepare();
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  let state = await page.evaluate(() => {
+    const frontButton = document.querySelector('#enemies-content button[onclick*="front-enemy"]');
+    const backButton = document.querySelector('#enemies-content button[onclick*="back-enemy"]');
+    const cards = Array.from(document.querySelectorAll('#enemies-content .compact-tactical-card')).map(card => ({
+      text: card.innerText || '',
+      selectedTarget: card.classList.contains('selected-target'),
+      pickState: card.querySelector('[data-selection-mode="combat-pick"]')?.getAttribute('data-selection-state') || ''
+    }));
+    return {
+      targetSelection: App.targetSelection?.action || null,
+      frontDisabled: frontButton?.hasAttribute('disabled') || false,
+      frontAriaDisabled: frontButton?.getAttribute('aria-disabled') || '',
+      frontState: frontButton?.getAttribute('data-selection-state') || '',
+      frontLabel: frontButton?.getAttribute('aria-label') || '',
+      backDisabled: backButton?.hasAttribute('disabled') || false,
+      backAriaDisabled: backButton?.getAttribute('aria-disabled') || '',
+      backState: backButton?.getAttribute('data-selection-state') || '',
+      backLabel: backButton?.getAttribute('aria-label') || '',
+      frontCard: cards.find(card => card.text.includes('Frontline')) || null,
+      backCard: cards.find(card => card.text.includes('Backline')) || null,
+      pickCount: document.querySelectorAll('#enemies-content button[data-selection-mode="combat-pick"]').length,
+      centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.targetSelection, 'fight', 'Desktop multi-enemy setup should enter Fight target-pick state');
+  assert.strictEqual(state.pickCount, 2, 'Desktop multi-enemy target-pick should expose one pick control per enemy');
+  assert.strictEqual(state.frontDisabled, false, 'Desktop front-row enemy should be pickable');
+  assert.strictEqual(state.frontAriaDisabled, '', 'Desktop front-row enemy should not expose disabled state');
+  assert.strictEqual(state.frontState, 'pickable', 'Desktop front-row enemy should expose pickable state');
+  assert(state.frontLabel.includes('Frontline'), 'Desktop front-row pick label should name the target');
+  assert.strictEqual(state.backDisabled, true, 'Desktop back-row enemy should be disabled for melee Fight');
+  assert.strictEqual(state.backAriaDisabled, 'true', 'Desktop back-row enemy should expose aria-disabled');
+  assert.strictEqual(state.backState, 'blocked', 'Desktop back-row enemy should expose blocked target state');
+  assert(state.backLabel.includes('back row'), 'Desktop back-row enemy should explain row reach blocker');
+  assert(state.frontCard?.text.includes('Front'), 'Desktop front-row card should show row feedback');
+  assert(state.backCard?.text.includes('Back'), 'Desktop back-row card should show row feedback');
+  assert.strictEqual(state.frontCard?.selectedTarget, true, 'Desktop pickable front-row card should expose selected-target state while picking');
+  assert.strictEqual(state.backCard?.selectedTarget, false, 'Desktop blocked back-row card should not look selected');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop multi-enemy target picking should keep center free of controls');
+
+  await page.locator(`#enemies-content button[onclick*="front-enemy"]`).click();
+  state = await page.evaluate(() => ({
+    frontPun: App.creatures.find(unit => unit.id === 'front-enemy')?.CPun,
+    backPun: App.creatures.find(unit => unit.id === 'back-enemy')?.CPun,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || '',
+    commandTargets: App.lastIntentCommand?.targetIds || [],
+    centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(state.frontPun < 100, 'Desktop front-row pick should damage the selected front enemy');
+  assert.strictEqual(state.backPun, 100, 'Desktop front-row pick should not drift to the back enemy');
+  assert.strictEqual(state.targetSelection, null, 'Desktop front-row pick should clear target-pick state');
+  assert.strictEqual(state.commandSource, 'combat-targeting', 'Desktop front-row pick should preserve combat-targeting source');
+  assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Desktop front-row pick should record the selected enemy id');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop multi-enemy resolution should keep center free of controls');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare();
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  state = await page.evaluate(() => {
+    const frontButton = document.querySelector('#mobile-creature-strip button[onclick*="front-enemy"]');
+    const backButton = document.querySelector('#mobile-creature-strip button[onclick*="back-enemy"]');
+    const chips = Array.from(document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip')).map(chip => ({
+      text: chip.innerText || '',
+      selectedTarget: chip.classList.contains('selected-target'),
+      pickState: chip.querySelector('[data-selection-mode="combat-pick"]')?.getAttribute('data-selection-state') || ''
+    }));
+    return {
+      targetSelection: App.targetSelection?.action || null,
+      frontDisabled: frontButton?.hasAttribute('disabled') || false,
+      frontAriaDisabled: frontButton?.getAttribute('aria-disabled') || '',
+      frontState: frontButton?.getAttribute('data-selection-state') || '',
+      frontLabel: frontButton?.getAttribute('aria-label') || '',
+      backDisabled: backButton?.hasAttribute('disabled') || false,
+      backAriaDisabled: backButton?.getAttribute('aria-disabled') || '',
+      backState: backButton?.getAttribute('data-selection-state') || '',
+      backLabel: backButton?.getAttribute('aria-label') || '',
+      frontChip: chips.find(chip => chip.text.includes('Frontline')) || null,
+      backChip: chips.find(chip => chip.text.includes('Backline')) || null,
+      pickCount: document.querySelectorAll('#mobile-creature-strip button[data-selection-mode="combat-pick"]').length,
+      toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
+      hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'"),
+      centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    };
+  });
+  assert.strictEqual(state.targetSelection, 'fight', 'Mobile multi-enemy setup should enter Fight target-pick state');
+  assert.strictEqual(state.pickCount, 2, 'Mobile multi-enemy target-pick should expose one pick control per enemy');
+  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should stay active during multi-enemy target-pick');
+  assert.strictEqual(state.frontDisabled, false, 'Mobile front-row enemy should be pickable');
+  assert.strictEqual(state.frontAriaDisabled, '', 'Mobile front-row enemy should not expose disabled state');
+  assert.strictEqual(state.frontState, 'pickable', 'Mobile front-row enemy should expose pickable state');
+  assert(state.frontLabel.includes('Frontline'), 'Mobile front-row pick label should name the target');
+  assert.strictEqual(state.backDisabled, true, 'Mobile back-row enemy should be disabled for melee Fight');
+  assert.strictEqual(state.backAriaDisabled, 'true', 'Mobile back-row enemy should expose aria-disabled');
+  assert.strictEqual(state.backState, 'blocked', 'Mobile back-row enemy should expose blocked target state');
+  assert(state.backLabel.includes('back row'), 'Mobile back-row enemy should explain row reach blocker');
+  assert(state.frontChip?.text.includes('Front'), 'Mobile front-row chip should show row feedback');
+  assert(state.backChip?.text.includes('Back'), 'Mobile back-row chip should show row feedback');
+  assert.strictEqual(state.frontChip?.selectedTarget, true, 'Mobile pickable front-row chip should expose selected-target state while picking');
+  assert.strictEqual(state.backChip?.selectedTarget, false, 'Mobile blocked back-row chip should not look selected');
+  assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat target-pick should not render adventure target controls');
+  assert.strictEqual(state.centerHasControls, false, 'Mobile multi-enemy target picking should keep center free of controls');
+
+  await page.locator(`#mobile-creature-strip button[onclick*="front-enemy"]`).click();
+  state = await page.evaluate(() => ({
+    frontPun: App.creatures.find(unit => unit.id === 'front-enemy')?.CPun,
+    backPun: App.creatures.find(unit => unit.id === 'back-enemy')?.CPun,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || '',
+    commandTargets: App.lastIntentCommand?.targetIds || [],
+    toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
+    centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert(state.frontPun < 100, 'Mobile front-row pick should damage the selected front enemy');
+  assert.strictEqual(state.backPun, 100, 'Mobile front-row pick should not drift to the back enemy');
+  assert.strictEqual(state.targetSelection, null, 'Mobile front-row pick should clear target-pick state');
+  assert.strictEqual(state.commandSource, 'combat-targeting', 'Mobile front-row pick should preserve combat-targeting source');
+  assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Mobile front-row pick should record the selected enemy id');
+  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after multi-enemy resolution');
+  assert.strictEqual(state.centerHasControls, false, 'Mobile multi-enemy resolution should keep center free of controls');
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runStaleSyncParticipantFlow(page) {
   await setupCombat(page, { withAlly: true, allyOverrides: { combatRow: 'front' }, enemyOverrides: { combatRow: 'front' } });
   const state = await page.evaluate(() => {
@@ -2685,6 +2842,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runCombatTargetFirstComposerFlow(page);
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
+    await runMultiEnemyCombatTargetingFlow(page);
     await runStaleSyncParticipantFlow(page);
     await runDesktopSyncComposerFlow(page);
     await runMobileSyncComposerFlow(page);

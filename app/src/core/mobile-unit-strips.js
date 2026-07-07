@@ -93,6 +93,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
             }
         }
         this.creaturePresenceCue(app);
+        const hasCreatureCue = !hasTargets && this.hasInteractiveMarkup(creatureCue);
+        creatureCue?.classList?.toggle('has-visible-cue', hasCreatureCue);
         if (controlBelt) {
             const hasSelectionSentence = Boolean((selectionSentence?.innerHTML || '').trim());
             const hasTargetActions = this.hasInteractiveMarkup(targetTray);

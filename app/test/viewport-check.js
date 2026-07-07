@@ -211,12 +211,16 @@ async function checkViewport(browser, name, width, height) {
       const centerPresenceButtons = Array.from(document.querySelectorAll('#mobile-mini-map .map-tile.center .mobile-play-presence-dot, #mobile-mini-map .map-tile.center .mobile-play-presence-more'));
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
+      const unitStrips = document.querySelector('.mobile-unit-strips');
+      const creatureCard = document.getElementById('mobile-creature-card');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
       const cueButton = creatureCue?.querySelector('button');
       const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
+      const unitStripsRect = unitStrips.getBoundingClientRect();
+      const creatureCardRect = creatureCard.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
       const miniMapRect = miniMap.getBoundingClientRect();
       const centerTileRect = centerTile.getBoundingClientRect();
@@ -227,6 +231,11 @@ async function checkViewport(browser, name, width, height) {
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
+      const overlapArea = (a, b) => {
+        const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return x * y;
+      };
       return {
         dockPosition: getComputedStyle(dock).position,
         dockTop: dockRect.top,
@@ -239,10 +248,14 @@ async function checkViewport(browser, name, width, height) {
         beltBottom: beltRect.bottom,
         beltLeft: beltRect.left,
         beltRight: beltRect.right,
+        beltCreatureOverlap: overlapArea(beltRect, creatureCardRect),
+        beltUnitStripOverlap: overlapArea(beltRect, unitStripsRect),
         beltHasControls: belt.classList.contains('has-controls'),
         surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
         mapHeight: mapRect.height,
         mapBottom: mapRect.bottom,
+        unitStripsTop: unitStripsRect.top,
+        creatureCardTop: creatureCardRect.top,
         tileInfoBottom: tileInfoRect.bottom,
         miniMapTop: miniMapRect.top,
         miniMapHeight: miniMapRect.height,
@@ -276,16 +289,17 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.dockTop >= 0, `${name}: mobile dock should not clip above viewport`);
     assert(mobileControls.dockBottom <= mobileControls.viewportHeight + 1, `${name}: mobile dock should be visible without scrolling`);
     assert(mobileControls.dockLeft >= -1 && mobileControls.dockRight <= mobileControls.viewportWidth + 1, `${name}: mobile dock should stay inside viewport horizontally`);
-    assert.strictEqual(mobileControls.beltPosition, 'fixed', `${name}: mobile context belt should be fixed above the dock`);
+    assert.strictEqual(mobileControls.beltPosition, 'static', `${name}: mobile context belt should participate in layout without covering stage or cast rails`);
     assert.notStrictEqual(mobileControls.beltDisplay, 'none', `${name}: populated mobile context belt should be visible`);
     assert.strictEqual(mobileControls.beltHasControls, true, `${name}: populated mobile context belt should mark real controls`);
-    assert.strictEqual(mobileControls.surfaceHasBeltPadding, true, `${name}: mobile play surface should reserve padding for the fixed context belt`);
+    assert.strictEqual(mobileControls.surfaceHasBeltPadding, true, `${name}: mobile play surface should reserve dock space when the context belt is populated`);
     assert(mobileControls.beltLeft >= -1 && mobileControls.beltRight <= mobileControls.viewportWidth + 1, `${name}: mobile context belt should stay inside viewport horizontally`);
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
-    assert(mobileControls.beltBottom <= mobileControls.dockTop + 1, `${name}: mobile context belt should sit above the fixed dock`);
-    assert(mobileControls.dockTop - mobileControls.beltBottom <= 10, `${name}: mobile context belt should stay flush above the fixed dock`);
+    assert.strictEqual(mobileControls.beltCreatureOverlap, 0, `${name}: mobile context belt should not cover compact creature rail`);
+    assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
     assert(mobileControls.mapHeight <= Math.min(276, mobileControls.viewportHeight * 0.42) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
-    assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
+    assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
+    assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 7, `${name}: mobile tile metadata should not overlap the traversal grid`);
     assert(mobileControls.miniMapHeight >= 132, `${name}: mobile traversal grid should keep a usable minimum height`);
     assert(mobileControls.centerTileHeight >= 76, `${name}: mobile current tile should leave room for larger presence controls`);

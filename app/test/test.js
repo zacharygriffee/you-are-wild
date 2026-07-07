@@ -1542,6 +1542,9 @@ test('Scene shell helper module is registered before app code', () => {
   assertContains(sceneShellContent, 'syncDesktopCommandComposer()', 'Scene shell helper should own desktop command composer shell synchronization');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-surface', 'command-composer')", 'Desktop command composer shell should identify itself as the authoritative composer surface when active');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-mode', mode)", 'Desktop command composer shell should mirror the active command mode');
+  assertContains(sceneShellContent, "belt?.getAttribute('data-command-actor-count')", 'Desktop command composer shell should fall back to active belt actor metadata');
+  assertContains(sceneShellContent, "belt?.getAttribute('data-command-target-count')", 'Desktop command composer shell should fall back to active belt target metadata');
+  assertContains(sceneShellContent, "belt?.getAttribute('data-command-intent')", 'Desktop command composer shell should fall back to active belt intent metadata');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-actor-count', actorCount)", 'Desktop command composer shell should mirror actor count metadata');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-target-count', targetCount)", 'Desktop command composer shell should mirror target count metadata');
   assertContains(sceneShellContent, "shell.setAttribute('data-command-intent', intent)", 'Desktop command composer shell should mirror current intent metadata');
@@ -12229,6 +12232,53 @@ test('Combat command sentence reserves target state for real target picking', ()
   assertNotContains(html, 'Targets', 'Feed option selection should not fabricate a target state');
   assertNotContains(html, 'Choose feed option', 'Feed option instruction should not appear as a target value');
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should keep the exploration control-belt sentence empty for feed options');
+});
+
+test('Desktop composer shell mirrors combat belt metadata without a sentence slot', () => {
+  const { App, document } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-1' });
+  const enemy = makeUnit('Enemy', { id: 'enemy-shell-meta', disposition: App.DISPOSITION.ENEMY });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemy];
+  App.activeActor = player;
+  App.combatState = {
+    active: true,
+    round: 1,
+    turnQueue: [{ unit: player, initiative: 10 }],
+    currentTurn: 0,
+    syncActions: [],
+    processing: false
+  };
+
+  const sentence = document.getElementById('selection-sentence');
+  sentence.innerHTML = '';
+  [
+    'data-command-surface',
+    'data-command-mode',
+    'data-command-grammar',
+    'data-command-actor-count',
+    'data-command-target-count',
+    'data-command-intent'
+  ].forEach(attr => sentence.removeAttribute(attr));
+
+  App.renderDesktopCombatComposer(player);
+  const belt = document.getElementById('desktop-context-belt');
+  const shell = document.getElementById('desktop-command-composer');
+  assertEqual(belt.getAttribute('data-command-actor-count'), '1', 'Desktop combat belt should expose actor count when it owns visible controls');
+  assertEqual(belt.getAttribute('data-command-target-count'), '0', 'Desktop combat belt should expose unresolved target count before targeting');
+  assertEqual(belt.getAttribute('data-command-intent'), 'choose', 'Desktop combat belt should expose pending intent before targeting');
+  assertEqual(shell.getAttribute('data-command-actor-count'), '1', 'Desktop composer shell should mirror belt actor count without a sentence');
+  assertEqual(shell.getAttribute('data-command-target-count'), '0', 'Desktop composer shell should mirror belt target count without a sentence');
+  assertEqual(shell.getAttribute('data-command-intent'), 'choose', 'Desktop composer shell should mirror belt pending intent without a sentence');
+
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+  App.renderDesktopCombatComposer(player);
+  assertEqual(belt.getAttribute('data-command-intent'), 'fight', 'Desktop combat belt should expose selected target-pick intent');
+  assertEqual(shell.getAttribute('data-command-mode'), 'combat', 'Desktop composer shell should stay in combat mode from belt metadata');
+  assertEqual(shell.getAttribute('data-command-actor-count'), '1', 'Desktop composer shell should keep actor count during target picking');
+  assertEqual(shell.getAttribute('data-command-target-count'), '0', 'Desktop composer shell should expose unresolved target count during target picking');
+  assertEqual(shell.getAttribute('data-command-intent'), 'fight', 'Desktop composer shell should mirror target-pick intent from the belt');
 });
 
 test('Combat creature target button localizes visible and accessible labels', () => {

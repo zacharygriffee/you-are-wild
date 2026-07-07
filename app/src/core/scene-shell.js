@@ -23,9 +23,16 @@ const YAW_SCENE_SHELL = {
             return;
         }
         const mode = belt?.getAttribute('data-command-mode') || sentence?.getAttribute('data-command-mode') || 'exploration';
-        const actorCount = sentence?.getAttribute('data-command-actor-count') || '0';
-        const targetCount = sentence?.getAttribute('data-command-target-count') || '0';
-        const intent = sentence?.getAttribute('data-command-intent') || belt?.querySelector?.('[data-command-intent]')?.getAttribute('data-command-intent') || 'choose';
+        const actorCount = sentence?.getAttribute('data-command-actor-count')
+            || belt?.getAttribute('data-command-actor-count')
+            || '0';
+        const targetCount = sentence?.getAttribute('data-command-target-count')
+            || belt?.getAttribute('data-command-target-count')
+            || '0';
+        const intent = sentence?.getAttribute('data-command-intent')
+            || belt?.getAttribute('data-command-intent')
+            || belt?.querySelector?.('[data-command-intent]')?.getAttribute('data-command-intent')
+            || 'choose';
         shell.setAttribute('data-command-surface', 'command-composer');
         shell.setAttribute('data-command-mode', mode);
         shell.setAttribute('data-command-grammar', 'actor-target-intent');

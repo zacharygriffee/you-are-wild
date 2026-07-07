@@ -203,6 +203,7 @@ async function checkViewport(browser, name, width, height) {
     const mobileControls = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
       const belt = document.getElementById('mobile-control-belt');
+      const map = document.querySelector('.mobile-map-card');
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
@@ -210,6 +211,7 @@ async function checkViewport(browser, name, width, height) {
       const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
+      const mapRect = map.getBoundingClientRect();
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
@@ -227,6 +229,8 @@ async function checkViewport(browser, name, width, height) {
         beltRight: beltRect.right,
         beltHasControls: belt.classList.contains('has-controls'),
         surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
+        mapHeight: mapRect.height,
+        mapBottom: mapRect.bottom,
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -255,6 +259,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
     assert(mobileControls.beltBottom <= mobileControls.dockTop + 1, `${name}: mobile context belt should sit above the fixed dock`);
     assert(mobileControls.dockTop - mobileControls.beltBottom <= 10, `${name}: mobile context belt should stay flush above the fixed dock`);
+    assert(mobileControls.mapHeight <= Math.min(276, mobileControls.viewportHeight * 0.42) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
+    assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
@@ -606,6 +612,7 @@ async function checkViewport(browser, name, width, height) {
   const browser = await chromium.launch({ headless: true });
   try {
     await checkViewport(browser, 'mobile', 393, 852);
+    await checkViewport(browser, 'short mobile', 313, 670);
     await checkViewport(browser, 'desktop', 1365, 768);
   } finally {
     await browser.close();

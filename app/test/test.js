@@ -4703,12 +4703,15 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="panel-enemies" data-surface-role="target-drawer"', 'creature panel should identify as a target detail drawer');
   assertContains(template, 'id="party-content" data-surface-role="actor-list" data-drawer-role="actors"', 'party panel content should identify as the actor drawer list, not a command composer');
   assertContains(template, 'id="enemies-content" data-surface-role="target-list" data-drawer-role="targets"', 'creature panel content should identify as the target drawer list, not a command composer');
-  assertContains(template, 'grid-template-columns: minmax(620px, 1fr) minmax(192px, 220px) minmax(192px, 220px);', 'desktop stage should keep the center surface primary and side panels compact');
+  assertContains(template, 'grid-template-columns: minmax(680px, 1fr) minmax(164px, 184px) minmax(164px, 184px);', 'desktop stage should keep the center surface primary and side rails compact');
+  assertContains(template, '.panel-party,\n        .panel-enemies {\n            background: rgba(26, 26, 46, 0.56);', 'desktop side rails should read as quieter supporting context instead of primary panels');
+  assertContains(template, '.panel-party .panel-header,\n        .panel-enemies .panel-header', 'desktop side rail headers should be visually demoted');
   assertContains(template, '.stage.target-panel-empty', 'desktop stage should collapse the target side when no local targets or items exist');
   assertContains(template, '.stage.target-panel-empty .panel-enemies', 'desktop empty target side should not remain a dominant panel');
   assertContains(template, '.stage.target-panel-empty {\n                grid-template-columns: 1fr;', 'mobile empty target panel demotion should not inherit wider desktop grid columns');
   assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
   assertContains(panelRenderingContent, "classList?.toggle('target-panel-empty'", 'creature rendering should own empty target panel demotion');
+  assertContains(panelRenderingContent, "friendlies.length > 0) titleText = app.combatState?.active ? app._label('ui.creatures', 'Creatures') : app._label('ui.here', 'Here')", 'non-combat local target rail should read as Here instead of a final primary Creatures panel');
   assertContains(panelRenderingContent, "app._label('ui.here', 'Here')", 'target side should be able to read as local Here/Cast context instead of a final primary panel');
   assertNotContains(template, 'id="mini-map"', 'desktop should not render a duplicate minimap now that movement lives in the center play surface');
   assertNotContains(appContent, "document.getElementById('mini-map')", 'renderMap should not target the removed desktop minimap');

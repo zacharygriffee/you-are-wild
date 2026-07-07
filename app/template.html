@@ -283,7 +283,7 @@
         .stage {
             grid-area: stage;
             display: grid;
-            grid-template-columns: minmax(620px, 1fr) minmax(192px, 220px) minmax(192px, 220px);
+            grid-template-columns: minmax(680px, 1fr) minmax(164px, 184px) minmax(164px, 184px);
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
@@ -291,7 +291,7 @@
         }
 
         .stage.target-panel-empty {
-            grid-template-columns: minmax(680px, 1fr) minmax(188px, 220px) 0;
+            grid-template-columns: minmax(760px, 1fr) minmax(164px, 184px) 0;
         }
 
         /* Panel Base */
@@ -1434,6 +1434,30 @@
         /* Party/Enemy Panels */
         .panel-party { grid-area: party; }
         .panel-enemies { grid-area: enemies; }
+
+        .panel-party,
+        .panel-enemies {
+            background: rgba(26, 26, 46, 0.56);
+            border-color: var(--border-subtle);
+        }
+
+        .panel-party .panel-header,
+        .panel-enemies .panel-header {
+            background: transparent;
+            border-bottom-color: var(--border-subtle);
+            padding: 7px 10px;
+            font-size: 11px;
+        }
+
+        .panel-party .panel-content,
+        .panel-enemies .panel-content {
+            padding: 10px;
+        }
+
+        .panel-party .unit-card.compact-tactical-card,
+        .panel-enemies .unit-card.compact-tactical-card {
+            margin-bottom: 10px;
+        }
 
         .stage.target-panel-empty .panel-enemies {
             display: none;
@@ -2619,21 +2643,21 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: minmax(560px, 1fr) minmax(184px, 208px) minmax(184px, 208px);
+                grid-template-columns: minmax(620px, 1fr) minmax(156px, 176px) minmax(156px, 176px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(620px, 1fr) minmax(184px, 208px) 0;
+                grid-template-columns: minmax(700px, 1fr) minmax(156px, 176px) 0;
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: minmax(480px, 1fr) minmax(176px, 196px) minmax(176px, 196px);
+                grid-template-columns: minmax(540px, 1fr) minmax(148px, 168px) minmax(148px, 168px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(540px, 1fr) minmax(176px, 196px) 0;
+                grid-template-columns: minmax(620px, 1fr) minmax(148px, 168px) 0;
             }
         }
 

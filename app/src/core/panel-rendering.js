@@ -122,7 +122,7 @@ const YAW_PANEL_RENDERING = {
             const enemies = living.filter(c => c.disposition === app.DISPOSITION.ENEMY);
             const friendlies = living.filter(c => c.disposition !== app.DISPOSITION.ENEMY);
             if (enemies.length > 0) titleText = app._label('ui.enemies', 'Enemies');
-            else if (friendlies.length > 0) titleText = app._label('ui.creatures', 'Creatures');
+            else if (friendlies.length > 0) titleText = app.combatState?.active ? app._label('ui.creatures', 'Creatures') : app._label('ui.here', 'Here');
             else if (corpses.length > 0) titleText = app._label('disposition.remains', 'Remains');
             title.textContent = titleText;
         }

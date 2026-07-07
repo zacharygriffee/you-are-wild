@@ -4706,6 +4706,7 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'grid-template-columns: minmax(620px, 1fr) minmax(192px, 220px) minmax(192px, 220px);', 'desktop stage should keep the center surface primary and side panels compact');
   assertContains(template, '.stage.target-panel-empty', 'desktop stage should collapse the target side when no local targets or items exist');
   assertContains(template, '.stage.target-panel-empty .panel-enemies', 'desktop empty target side should not remain a dominant panel');
+  assertContains(template, '.stage.target-panel-empty {\n                grid-template-columns: 1fr;', 'mobile empty target panel demotion should not inherit wider desktop grid columns');
   assertContains(template, '.panel-map.active', 'desktop map should be a toggleable overlay instead of a permanent column');
   assertContains(panelRenderingContent, "classList?.toggle('target-panel-empty'", 'creature rendering should own empty target panel demotion');
   assertContains(panelRenderingContent, "app._label('ui.here', 'Here')", 'target side should be able to read as local Here/Cast context instead of a final primary panel');

@@ -3957,6 +3957,9 @@
             _unitSelectionChips(unit, type) {
                 return YAW_UNIT_SELECTION.chips(this, unit, type);
             },
+            renderTacticalCard(unit, index, type, options = {}) {
+                return YAW_TACTICAL_CARD.render(this, unit, index, type, options);
+            },
             renderMobileUnitChip(unit, index, type) {
                 return YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type);
             },

@@ -168,6 +168,7 @@ const combatFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-fee
 const combatIntentsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-intents.js'), 'utf8');
 const mobileCombatToolbeltContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-combat-toolbelt.js'), 'utf8');
 const combatActorStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-actor-state.js'), 'utf8');
+const tacticalCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tactical-card.js'), 'utf8');
 const mobileUnitChipContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-chip.js'), 'utf8');
 const unitCardContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-card.js'), 'utf8');
 const equipmentSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'equipment-system.js'), 'utf8');
@@ -217,6 +218,7 @@ const marketNavContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-nav.js
 const marketScreenContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'market-screen.js'), 'utf8');
 const modUiContent = fs.readFileSync(path.join(SRC_DIR, 'ui', 'mod-ui.js'), 'utf8');
 const buildContent = fs.readFileSync(path.join(__dirname, '..', 'build.js'), 'utf8');
+const templateContent = fs.readFileSync(TEMPLATE, 'utf8');
 
 function loadWorldGenForTest() {
   return new Function(`${worldGenerationContent}\nreturn WorldGen;`)();
@@ -2198,25 +2200,40 @@ test('Combat actor state helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_COMBAT_ACTOR_STATE.mobilePrompt(this, actor)', 'App mobile combat prompt wrapper should delegate to the helper');
 });
 
+test('Tactical card helper module is registered before mobile and desktop card renderers', () => {
+  assertContains(buildContent, "'src/core/tactical-card.js'", 'Tactical card helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/tactical-card.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Tactical card helper should load before mobile unit chips');
+  assert(buildContent.indexOf("'src/core/tactical-card.js'") < buildContent.indexOf("'src/core/unit-card.js'"), 'Tactical card helper should load before desktop unit cards can adopt tactical rails');
+  assertContains(tacticalCardContent, 'const YAW_TACTICAL_CARD = {', 'Tactical card helper should expose a shared compact renderer service');
+  assertContains(tacticalCardContent, 'data-card-role="compact-tactical"', 'Tactical cards should identify the compact tactical card role');
+  assertContains(tacticalCardContent, 'tactical-card-selection-controls', 'Tactical cards should put actor/target toggles into compact card controls');
+  assertContains(tacticalCardContent, 'actor-toggle', 'Tactical cards should expose a distinct actor/helper control');
+  assertContains(tacticalCardContent, 'target-toggle', 'Tactical cards should expose a distinct mark/target control');
+  assertContains(tacticalCardContent, "App.selectExplorationActor(${index})", 'Tactical party card should keep actor selection on the actor control');
+  assertContains(tacticalCardContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Tactical creature card should keep exact target marking on the Mark control');
+  assertContains(tacticalCardContent, 'data-surface-role="actor-presence-chip" data-drawer-role="actors"', 'Tactical party card root should identify actor presence without becoming an intent surface');
+  assertContains(tacticalCardContent, 'data-surface-role="target-presence-chip" data-drawer-role="targets"', 'Tactical creature card root should identify target presence without becoming an intent surface');
+  assertContains(tacticalCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Tactical party card should label actor/target row semantics');
+  assertContains(tacticalCardContent, 'if (isExpanded) {', 'Tactical party detail controls should stay behind detail expansion');
+  assertContains(tacticalCardContent, "app._unitActionRowAttrs('party-details', unit)", 'Tactical party detail row should stay separate from actor/target selection');
+  assertContains(tacticalCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Tactical creature card should label target-only row semantics');
+  assertContains(tacticalCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Tactical party Actor button should identify button-level actor routing');
+  assertContains(tacticalCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical party Mark button should identify button-level target routing');
+  assertContains(tacticalCardContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical creature Mark button should identify button-level target routing');
+  assertContains(tacticalCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Tactical combat Pick button should identify button-level combat target routing');
+  assertContains(appContent, 'YAW_TACTICAL_CARD.render(this, unit, index, type, options)', 'App tactical card wrapper should delegate to the shared helper');
+  assertContains(templateContent, '.mobile-unit-chip.compact-tactical-card', 'Mobile tactical cards should have compact tactical card styling');
+  assertContains(templateContent, '.mobile-unit-chip .tactical-card-selection-controls', 'Mobile tactical card controls should be positioned as compact card toggles');
+});
+
 test('Mobile unit chip helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/mobile-unit-chip.js'", 'Mobile unit chip helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/app.js'"), 'Mobile unit chip helper should load before app.js');
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
+  assertContains(mobileUnitChipContent, "YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile' })", 'Mobile unit chip helper should delegate normal rails to the shared tactical card renderer');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual creature utility dispatch');
-  assertContains(mobileUnitChipContent, "App.selectExplorationActor(${index})", 'Mobile party chip should keep actor selection on the actor control');
-  assertContains(mobileUnitChipContent, "App.toggleExplorationTarget('creature','${explorationTargetKey}')", 'Mobile creature chip should keep exact target marking on the Mark control');
-  assertContains(mobileUnitChipContent, 'data-surface-role="actor-presence-chip" data-drawer-role="actors"', 'Mobile party chip root should identify as an actor presence chip, not a command surface');
-  assertContains(mobileUnitChipContent, 'data-surface-role="target-presence-chip" data-drawer-role="targets"', 'Mobile creature chip root should identify as a target presence chip, not a command surface');
-  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-selection', unit)", 'Mobile party chip should label actor/target row semantics');
-  assertContains(mobileUnitChipContent, 'if (isExpanded) {', 'Mobile party detail controls should stay behind the chip detail expansion');
-  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('party-details', unit)", 'Mobile party chip should label detail utility row semantics separately from actor/target selection');
-  assertContains(mobileUnitChipContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Mobile creature chip should label target-only row semantics');
-  assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile party Actor chip should identify button-level actor routing');
-  assertContains(mobileUnitChipContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile party Mark chip should identify button-level target routing');
-  assertContains(mobileUnitChipContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Mobile creature Mark chip should identify button-level target routing');
-  assertContains(mobileUnitChipContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Mobile combat Pick chip should identify button-level combat target routing');
   assertNotContains(mobileUnitChipContent, 'showRadialIntentMenu', 'Mobile unit chips should not expose duplicate secondary-click intent menus');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
 });
@@ -4681,7 +4698,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },

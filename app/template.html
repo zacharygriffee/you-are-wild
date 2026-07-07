@@ -3272,6 +3272,11 @@
                 cursor: pointer;
             }
 
+            .mobile-unit-chip.compact-tactical-card {
+                position: relative;
+                padding-top: 34px;
+            }
+
             .mobile-play-surface.combat-active .mobile-unit-chip {
                 flex-basis: clamp(132px, 42vw, 172px);
             }
@@ -3308,13 +3313,47 @@
 
 
             .mobile-unit-chip .unit-actions {
-                margin-top: 6px !important;
+                margin-top: 6px;
             }
 
             .mobile-unit-chip .action-btn {
                 padding: 6px;
                 min-width: 34px;
                 font-size: 11px;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls {
+                position: absolute;
+                top: 6px;
+                left: 6px;
+                right: 6px;
+                display: flex;
+                justify-content: space-between;
+                gap: 6px;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                pointer-events: none;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn {
+                pointer-events: auto;
+                flex: 0 0 auto;
+                min-width: 34px;
+                max-width: calc(50% - 3px);
+                min-height: 24px;
+                padding: 4px 7px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .actor-toggle {
+                margin-right: auto;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .target-toggle {
+                margin-left: auto;
             }
 
             .mobile-chip-name {

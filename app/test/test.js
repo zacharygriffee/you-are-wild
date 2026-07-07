@@ -1603,6 +1603,9 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, 'focusAttrs(app, unit, expanded = false)', 'Unit selection helper should own detail-toggle semantics');
   assertContains(unitSelectionContent, 'detailLabel(app, unit, expanded = false)', 'Unit selection helper should own collapsed/expanded detail labels');
   assertContains(unitSelectionContent, 'data-card-purpose="detail-toggle"', 'Unit card containers should identify detail toggling instead of actor/target selection');
+  assertContains(unitSelectionContent, 'stateAttrs(app, unit, type)', 'Unit selection helper should own card-level selected-state metadata');
+  assertContains(unitSelectionContent, 'data-selection-roles="${roleList}" data-selection-state="selected"', 'Selected unit card roots should expose their selection roles');
+  assertContains(unitSelectionContent, 'aria-current="true"', 'Current combat actors should expose current-state metadata on the card root');
   assertContains(unitSelectionContent, 'actionRowAttrs(app, scope, unit = null)', 'Unit selection helper should own action row semantics');
   assertContains(unitSelectionContent, "'party-selection': 'actor-target-routing'", 'Party selection rows should declare actor/target composer routing');
   assertContains(unitSelectionContent, "'party-details': 'detail-management'", 'Party detail rows should declare detail-management routing separately from actor/target selection');
@@ -1623,6 +1626,7 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, 'data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? \'marked\' : \'available\'}" data-command-slot="target"', 'Target selection controls should identify the target slot');
   assertContains(unitSelectionContent, 'data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? \'pickable\' : \'blocked\'}" data-command-slot="target"', 'Combat target controls should identify the target slot');
   assertContains(appContent, 'YAW_UNIT_SELECTION.roles(this, unit, type)', 'App unit selection role wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_UNIT_SELECTION.stateAttrs(this, unit, type)', 'App unit selected-state wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.focusAttrs(this, unit, expanded)', 'App unit focus wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.actionRowAttrs(this, scope, unit)', 'App unit action row wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_UNIT_SELECTION.controlAttrs(this, kind, active)', 'App selection control wrapper should delegate to the helper');
@@ -2226,6 +2230,7 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assertContains(tacticalCardContent, 'const YAW_TACTICAL_CARD = {', 'Tactical card helper should expose a shared compact renderer service');
   assertContains(tacticalCardContent, 'desktop(app, unit, index, type)', 'Tactical card helper should expose a desktop compact presentation');
   assertContains(tacticalCardContent, 'data-card-role="compact-tactical"', 'Tactical cards should identify the compact tactical card role');
+  assertContains(tacticalCardContent, 'app._unitSelectionStateAttrs(unit, type)', 'Tactical card roots should expose centralized selection metadata');
   assertContains(tacticalCardContent, 'desktop-tactical-card', 'Desktop tactical cards should expose a desktop rail class');
   assertContains(tacticalCardContent, 'tactical-card-selection-controls', 'Tactical cards should put actor/target toggles into compact card controls');
   assertContains(tacticalCardContent, 'actor-toggle', 'Tactical cards should expose a distinct actor/helper control');
@@ -2272,6 +2277,7 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, 'data-surface-role="target-card" data-drawer-role="targets"', 'Desktop creature card root should identify as a target drawer card, not a command surface');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual utility intent dispatch');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-selection', unit)", 'Unit card helper should label party actor/target row semantics');
+  assertContains(unitCardContent, 'app._unitSelectionStateAttrs(unit, type)', 'Unit card roots should expose centralized selection metadata');
   assertContains(unitCardContent, "app._unitActionRowAttrs('party-details', unit)", 'Unit card helper should label detail utility row semantics separately from actor/target selection');
   assertContains(unitCardContent, "app._unitActionRowAttrs('creature-selection', unit)", 'Unit card helper should label creature target-only row semantics');
   assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Desktop party Actor button should identify button-level actor routing');
@@ -9113,16 +9119,21 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(partyHtml, 'aria-label="Quitar Actor de los actores"', 'Party actor button should label actor role selection instead of an action command');
   assertContains(partyHtml, '>Actor</button>', 'Party actor button should use a role label instead of ambiguous Act copy');
   assertContains(actorCard, 'class="unit-card selected selected-actor"', 'Selected actor card should expose selected actor class');
+  assertContains(actorCard, 'data-selection-roles="actor" data-selection-state="selected"', 'Selected actor card root should expose selected actor metadata');
   assertContains(allyTargetCard, 'selected selected-target', 'Selected party target card should expose selected target class');
+  assertContains(allyTargetCard, 'data-selection-roles="target" data-selection-state="selected"', 'Selected party target card root should expose selected target metadata');
   assertContains(creatureTargetCard, 'class="unit-card selected selected-target"', 'Selected creature target card should expose selected target class');
+  assertContains(creatureTargetCard, 'data-selection-roles="target" data-selection-state="selected"', 'Selected creature target card root should expose selected target metadata');
   assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="actor" title="Actor">Actor</span>', 'Selected party actor should render a localized card chip');
   assertContains(partyHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Marcado">Marcado</span>', 'Selected party target should render a localized card chip');
   assertContains(creatureHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Marcado">Marcado</span>', 'Selected creature target should render a localized card chip');
   const mobileActorChip = App.renderMobileUnitChip(actor, 0, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creatureTarget, 0, 'creature');
   assertContains(mobileActorChip, 'class="mobile-unit-chip selected selected-actor"', 'Mobile selected actor chip should expose selected actor class');
+  assertContains(mobileActorChip, 'data-selection-roles="actor" data-selection-state="selected"', 'Mobile selected actor chip root should expose selected actor metadata');
   assertContains(mobileActorChip, 'aria-label="Quitar Actor de los actores"', 'Mobile actor button should label actor role selection instead of an action command');
   assertContains(mobileCreatureChip, 'class="mobile-unit-chip selected selected-target"', 'Mobile selected target chip should expose selected target class');
+  assertContains(mobileCreatureChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile selected target chip root should expose selected target metadata');
   assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
   assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
   const selectionHtml = elements.get('selection-sentence').innerHTML;
@@ -14635,6 +14646,10 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
 
   App.combatState.active = true;
   App.activeActor = player;
+  const currentActorCard = App.renderUnitCard(player, 0, 'party');
+  const mobileCurrentActorChip = App.renderMobileUnitChip(player, 0, 'party');
+  assertContains(currentActorCard, 'data-selection-roles="actor" data-selection-state="selected" aria-current="true"', 'Desktop current combat actor card should expose current actor metadata');
+  assertContains(mobileCurrentActorChip, 'data-selection-roles="actor" data-selection-state="selected" aria-current="true"', 'Mobile current combat actor chip should expose current actor metadata');
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1'] };
   const syncAllyCard = App.renderUnitCard(ally, 1, 'party');
   const mobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
@@ -14647,6 +14662,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileSyncAllyChip, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Mobile sync participant row should identify group actor-selection scope');
   assertContains(mobileSyncAllyChip, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Mobile sync participant button should identify itself as a combat grammar control');
   assertContains(mobileSyncAllyChip, 'data-command-slot="actor" data-command-intent="sync_fight"', 'Mobile sync participant button should identify the actor slot and stable group intent');
+  App.syncSelection.participantIds = ['player-1', 'ally-1'];
+  const selectedSyncAllyCard = App.renderUnitCard(ally, 1, 'party');
+  const selectedMobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
+  assertContains(selectedSyncAllyCard, 'data-selection-roles="participant" data-selection-state="selected"', 'Desktop selected Sync helper card should expose participant metadata');
+  assertContains(selectedMobileSyncAllyChip, 'data-selection-roles="participant" data-selection-state="selected"', 'Mobile selected Sync helper chip should expose participant metadata');
   App.syncSelection = null;
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
   const enemyCard = App.renderUnitCard(enemy, 1, 'creature');
@@ -14654,6 +14674,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const blockedEnemyCard = App.renderUnitCard(blockedEnemy, 2, 'creature');
   const mobileBlockedEnemyChip = App.renderMobileUnitChip(blockedEnemy, 2, 'creature');
   assertContains(enemyCard, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Desktop combat target row should identify combat-pick scope');
+  assertContains(enemyCard, 'data-selection-roles="target" data-selection-state="selected"', 'Desktop pickable combat enemy card should expose target metadata');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Desktop combat target row should identify combat target-pick routing');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop combat target row should identify the shared command grammar');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Desktop combat Pick button should expose button-level combat target routing');
@@ -14661,6 +14682,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Desktop combat Pick button should expose combat-pick mode');
   assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable" data-command-slot="target"', 'Desktop combat Pick button should identify the target slot');
   assertContains(mobileEnemyChip, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Mobile combat target row should identify combat-pick scope');
+  assertContains(mobileEnemyChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile pickable combat enemy chip should expose target metadata');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target row should identify combat target-pick routing');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target row should identify the shared command grammar');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Mobile combat Pick button should expose button-level combat target routing');

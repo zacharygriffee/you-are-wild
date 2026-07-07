@@ -168,7 +168,7 @@ const YAW_UNIT_CARD = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
         const cardContextMenuAttr = '';
-        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
+        return `<div class="${cardClass}" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.toggleUnit(${index},'${type}')}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}${cardContextMenuAttr} onclick="App.toggleUnit(${index},'${type}')">
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
                         <div class="unit-info">

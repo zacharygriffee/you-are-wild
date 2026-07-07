@@ -3965,6 +3965,9 @@
             _unitSelectionClass(unit, type) {
                 return YAW_UNIT_SELECTION.className(this, unit, type);
             },
+            _unitSelectionStateAttrs(unit, type) {
+                return YAW_UNIT_SELECTION.stateAttrs(this, unit, type);
+            },
             _targetMarkLabel() {
                 return YAW_UNIT_SELECTION.targetMarkLabel(this);
             },

@@ -88,7 +88,7 @@ const YAW_TACTICAL_CARD = {
             ? 'data-surface-role="actor-card" data-drawer-role="actors"'
             : 'data-surface-role="target-card" data-drawer-role="targets"';
         const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitCardFocusAttrs(unit, false)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}">
+        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}">
                     ${actionButtons}
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
@@ -190,7 +190,7 @@ const YAW_TACTICAL_CARD = {
             ? 'data-surface-role="actor-presence-chip" data-drawer-role="actors"'
             : 'data-surface-role="target-presence-chip" data-drawer-role="targets"';
         const keyActivate = `if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}`;
-        return `<div class="${chipClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${pressHandlers}>
+        return `<div class="${chipClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, isExpanded)} onkeydown="${keyActivate}" onclick="${click}"${pressHandlers}>
                     ${actionButtons}
                     <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}

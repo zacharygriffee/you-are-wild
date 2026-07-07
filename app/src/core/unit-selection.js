@@ -32,6 +32,14 @@ const YAW_UNIT_SELECTION = {
         return roles.length ? ` selected ${roles.map(role => `selected-${role}`).join(' ')}` : '';
     },
 
+    stateAttrs(app, unit, type) {
+        const roles = this.roles(app, unit, type);
+        if (roles.length === 0) return '';
+        const roleList = app._escapeHtml(roles.join(' '));
+        const current = app.combatState?.active && roles.includes('actor') ? ' aria-current="true"' : '';
+        return `data-selection-roles="${roleList}" data-selection-state="selected"${current}`;
+    },
+
     targetMarkLabel(app) {
         return app._label('target.mark', 'Mark');
     },

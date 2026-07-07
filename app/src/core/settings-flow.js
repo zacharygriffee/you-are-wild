@@ -164,6 +164,12 @@ const YAW_SETTINGS_FLOW = {
         app._settingsFocusTimer = setTimeout(() => target.classList.remove('settings-focus'), 1600);
     },
 
+    openSettingsFromMenu(app) {
+        app.settingsReturnScreen = 'menu';
+        app.showScreen('settings');
+        app.showSettings();
+    },
+
     save(app) {
         app._setStoredValue('settings', JSON.stringify(app._settingsForStorage()));
         if (CONTENT?.preferences) {

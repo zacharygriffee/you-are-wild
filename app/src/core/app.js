@@ -4357,6 +4357,16 @@
                     this.syncCreateContentLevel();
                     return;
                 }
+                if (returnScreen === 'menu') {
+                    document.getElementById('app').style.display = 'none';
+                    document.getElementById('screen-game').style.display = 'none';
+                    document.getElementById('screen-game').classList.remove('active');
+                    document.getElementById('screen-menu').style.display = 'flex';
+                    document.getElementById('screen-menu').classList.add('active');
+                    this.screen = 'menu';
+                    this.refreshContinueButton();
+                    return;
+                }
                 if (this.player && this.player.CPun > 0) {
                     document.getElementById('screen-menu').style.display = 'none';
                     document.getElementById('app').style.display = 'grid';
@@ -4498,6 +4508,9 @@
             },
             openContentSettingsFromCreate() {
                 return YAW_SETTINGS_FLOW.openContentSettingsFromCreate(this);
+            },
+            openSettingsFromMenu() {
+                return YAW_SETTINGS_FLOW.openSettingsFromMenu(this);
             },
             saveSettings() {
                 return YAW_SETTINGS_FLOW.save(this);

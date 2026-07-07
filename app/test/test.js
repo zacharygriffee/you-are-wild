@@ -3830,11 +3830,14 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(globalNavContent, 'return App.returnToGame();', 'global return helper should preserve App-level return context');
   assertContains(appContent, "['screen-settings', 'screen-mods', 'screen-market', 'save-manager'].forEach", 'App returnToGame should close all overlay surfaces together');
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
+  assertContains(template, 'onclick="App.openSettingsFromMenu()"', 'Main menu Settings should preserve menu return context');
+  assertContains(settingsFlowContent, "settingsReturnScreen = 'menu'", 'Settings opened from the main menu should store an explicit menu return context');
+  assertContains(appContent, "returnScreen === 'menu'", 'App returnToGame should honor explicit main-menu settings return context');
   assertContains(appContent, "document.getElementById('screen-menu').classList.add('active');", 'App returnToGame should restore active menu state when no game is running');
   assertContains(appContent, "this.screen = 'menu';", 'App returnToGame should restore menu screen state when no game is running');
 });
 
-test('Settings overlay returns to a centered active main menu when no game is running', () => {
+test('Settings overlay returns to a centered active main menu from the menu route', () => {
   const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
   const { App, document } = loadAppForCombat(() => 0.5, {
     querySelectorAll(selector, elements) {
@@ -3846,20 +3849,32 @@ test('Settings overlay returns to a centered active main menu when no game is ru
     }
   });
   const appShell = document.getElementById('app');
+  const game = document.getElementById('screen-game');
   const menu = document.getElementById('screen-menu');
   const settings = document.getElementById('screen-settings');
-  App.player = null;
-  App.showScreen('settings');
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'menu';
+  menu.style.display = 'flex';
+  menu.classList.add('active');
+  game.style.display = 'none';
+  game.classList.remove('active');
+
+  App.openSettingsFromMenu();
   assertEqual(App.screen, 'settings', 'Settings should become the active screen');
+  assertEqual(App.settingsReturnScreen, 'menu', 'Settings opened from the menu should remember the menu return target');
   assertEqual(menu.style.display, 'none', 'Menu should be hidden while settings is open');
   assertEqual(menu.classList.contains('active'), false, 'Menu should not stay active behind settings');
 
   App.returnToGame();
-  assertEqual(App.screen, 'menu', 'Closing settings without a living player should restore menu screen state');
+  assertEqual(App.screen, 'menu', 'Closing settings from the main menu should restore menu screen state even with a living player');
   assertEqual(appShell.style.display, 'none', 'Game app shell should remain hidden on menu return');
+  assertEqual(game.style.display, 'none', 'Game screen should remain hidden on menu return');
+  assertEqual(game.classList.contains('active'), false, 'Game screen should not become active on menu return');
   assertEqual(menu.style.display, 'flex', 'Menu should become visible after closing settings');
   assertEqual(menu.classList.contains('active'), true, 'Menu should regain active class after closing settings');
   assertEqual(settings.classList.contains('active'), false, 'Settings overlay active class should be cleared on close');
+  assertEqual(App.settingsReturnScreen, null, 'Settings return target should clear after closing');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {

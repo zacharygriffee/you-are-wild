@@ -474,6 +474,98 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSave.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Save Manager closes`);
   assert.strictEqual(returnedGameSave.pageOverflow, false, `${name}: closing live-game Save Manager should not introduce horizontal overflow`);
 
+  await page.evaluate(() => {
+    App.setAppMenuOpen?.(true);
+    App.openSettingsFromGame();
+  });
+  await page.waitForTimeout(50);
+  const openGameSettings = await page.evaluate(() => {
+    const settings = document.getElementById('screen-settings');
+    const app = document.getElementById('app');
+    const game = document.getElementById('screen-game');
+    const appMenu = document.getElementById('app-menu');
+    const appMenuToggle = document.getElementById('app-menu-toggle');
+    const close = settings?.querySelector('[data-command-control="close-settings"]');
+    const settingsRect = settings.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      appDisplay: getComputedStyle(app).display,
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      settingsInsideViewport: settingsRect.left >= -1 && settingsRect.right <= innerWidth + 1 && settingsRect.top >= -1 && settingsRect.bottom <= innerHeight + 1,
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeControl: close?.getAttribute('data-command-control') || '',
+      closeSlot: close?.getAttribute('data-command-slot') || '',
+      appMenuOpen: appMenu?.classList.contains('open') || false,
+      appMenuExpanded: appMenuToggle?.getAttribute('aria-expanded') || '',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(openGameSettings.appScreen, 'settings', `${name}: live-game Settings should enter settings screen state`);
+  assert.strictEqual(openGameSettings.returnScreen, 'game', `${name}: live-game Settings should remember the game return target`);
+  assert.strictEqual(openGameSettings.appDisplay, 'none', `${name}: game app shell should hide while live-game Settings is open`);
+  assert.strictEqual(openGameSettings.gameDisplay, 'none', `${name}: game screen should hide behind live-game Settings`);
+  assert.strictEqual(openGameSettings.gameActive, false, `${name}: game screen should not stay active behind live-game Settings`);
+  assert.notStrictEqual(openGameSettings.settingsDisplay, 'none', `${name}: live-game Settings overlay should be visible`);
+  assert.strictEqual(openGameSettings.settingsActive, true, `${name}: live-game Settings overlay should become active`);
+  assert.strictEqual(openGameSettings.settingsInsideViewport, true, `${name}: live-game Settings overlay should stay bounded in the viewport`);
+  assert.strictEqual(openGameSettings.closeVisible, true, `${name}: live-game Settings should expose a visible close exit`);
+  assert.strictEqual(openGameSettings.closeControl, 'close-settings', `${name}: live-game Settings close should expose its command control`);
+  assert.strictEqual(openGameSettings.closeSlot, 'exit', `${name}: live-game Settings close should identify the exit slot`);
+  assert.strictEqual(openGameSettings.appMenuOpen, false, `${name}: live-game Settings should close the app menu`);
+  assert.strictEqual(openGameSettings.appMenuExpanded, 'false', `${name}: live-game Settings should collapse the app-menu toggle state`);
+  assert.strictEqual(openGameSettings.pageOverflow, false, `${name}: live-game Settings should not create horizontal overflow`);
+
+  await page.locator('#screen-settings [data-command-control="close-settings"]').click();
+  await page.waitForTimeout(50);
+  const returnedGameSettings = await page.evaluate(() => {
+    const settings = document.getElementById('screen-settings');
+    const app = document.getElementById('app');
+    const game = document.getElementById('screen-game');
+    const menu = document.getElementById('screen-menu');
+    const appMenu = document.getElementById('app-menu');
+    const appMenuToggle = document.getElementById('app-menu-toggle');
+    const dock = document.querySelector('.mobile-panel-dock');
+    const playSurface = document.getElementById('mobile-play-surface');
+    const desktopSurface = document.querySelector('.desktop-play-surface');
+    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const surfaceRect = activeSurface?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      menuDisplay: getComputedStyle(menu).display,
+      appMenuOpen: appMenu?.classList.contains('open') || false,
+      appMenuExpanded: appMenuToggle?.getAttribute('aria-expanded') || '',
+      dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
+      surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
+      surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(returnedGameSettings.appScreen, 'game', `${name}: closing live-game Settings should restore game screen state`);
+  assert.strictEqual(returnedGameSettings.returnScreen, null, `${name}: closing live-game Settings should clear return state`);
+  assert.strictEqual(returnedGameSettings.settingsDisplay, 'none', `${name}: live-game Settings should hide after close`);
+  assert.strictEqual(returnedGameSettings.settingsActive, false, `${name}: live-game Settings should clear active state after close`);
+  assert.strictEqual(returnedGameSettings.appDisplay, 'grid', `${name}: game app shell should be visible after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.gameDisplay, 'flex', `${name}: game screen should be visible after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.gameActive, true, `${name}: game screen should regain active state after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.menuDisplay, 'none', `${name}: closing live-game Settings should not restore the main menu`);
+  assert.strictEqual(returnedGameSettings.appMenuOpen, false, `${name}: app menu should stay closed after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.appMenuExpanded, 'false', `${name}: app-menu toggle should stay collapsed after live-game Settings closes`);
+  if (width < 600) assert.strictEqual(returnedGameSettings.dockVisible, true, `${name}: mobile dock should be visible after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.surfaceVisible, true, `${name}: play surface should be visible after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Settings closes`);
+  assert.strictEqual(returnedGameSettings.pageOverflow, false, `${name}: closing live-game Settings should not introduce horizontal overflow`);
+
   if (width < 600) {
     await page.evaluate(() => togglePanel('party'));
     await page.waitForTimeout(350);

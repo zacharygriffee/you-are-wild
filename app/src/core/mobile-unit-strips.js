@@ -233,9 +233,26 @@ const YAW_MOBILE_UNIT_STRIPS = {
             return app.focusPresence('creature', ref);
         }
         app.renderCreatures();
-        app.openPanel('enemies');
         if (typeof document !== 'undefined') {
-            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"], #enemies-content [data-command-control="focus-target"]');
+            const card = document.getElementById('mobile-creature-card');
+            if (card) card.style.display = 'block';
+            if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
+            if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+        }
+        return true;
+    },
+
+    focusCreatureRail(app) {
+        if (app.combatState?.active) return app.openPanel('enemies');
+        const living = this.livingCreatures(app);
+        if (!living.length) return app.openPanel('enemies');
+        app.renderCreatures();
+        if (typeof document !== 'undefined') {
+            const card = document.getElementById('mobile-creature-card');
+            if (card) card.style.display = 'block';
+            if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
         }
         return true;

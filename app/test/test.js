@@ -2449,12 +2449,13 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'creatures(app)', 'Mobile unit strip helper should own creature strip rendering');
   assertContains(mobileUnitStripsContent, 'creaturePresenceCue(app)', 'Mobile unit strip helper should own the compact creature presence cue');
   assertContains(mobileUnitStripsContent, 'app._targetToggleLabel(first', 'Single-creature mobile cue should announce mark/remove target semantics');
-  assertContains(mobileUnitStripsContent, "'ui.creatureCue.openPanel'", 'Multi-creature mobile cue should announce the creature drawer action');
+  assertContains(mobileUnitStripsContent, "'ui.creatureCue.openPanel'", 'Multi-creature mobile cue should announce the creature rail action');
   assertContains(mobileUnitStripsContent, 'data-command-surface="stage-presence"', 'Mobile creature cue should identify as stage-presence command routing');
   assertContains(mobileUnitStripsContent, 'data-command-grammar="actor-target-intent"', 'Mobile creature cue should identify the shared command grammar');
   assertContains(mobileUnitStripsContent, 'open-target-picker', 'Multi-creature mobile cue should identify target-picker routing');
   assertContains(mobileUnitStripsContent, 'data-command-target-count', 'Multi-creature mobile cue should expose target-count metadata');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
+  assertContains(mobileUnitStripsContent, 'focusCreatureRail(app)', 'Mobile unit strip helper should focus the compact creature rail from mobile shortcuts');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
   assertContains(mobileUnitStripsContent, "controlBelt.setAttribute('data-command-surface', 'command-composer')", 'Mobile control belt should identify as the active command composer when populated');
   assertContains(mobileUnitStripsContent, "targetTray.setAttribute('data-command-surface', 'target-intents')", 'Mobile target action tray should identify the active target-intent surface when populated');
@@ -4263,10 +4264,10 @@ test('Mobile panels and actions expose map party and enemies', () => {
   const mobileDockStart = template.indexOf('<div class="mobile-panel-dock"');
   const mobileDockHtml = template.slice(mobileDockStart, template.indexOf('</div>', mobileDockStart));
   assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map"', 'Mobile dock should identify the review-map drawer route');
-  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer"', 'Mobile dock should identify the actor drawer route');
-  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer"', 'Mobile dock should identify the target drawer route');
+  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-rail"', 'Mobile dock should identify the compact actor rail route');
+  assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-rail"', 'Mobile dock should identify the compact target rail route');
   assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer"', 'Mobile dock should identify the stats drawer route');
-  assertContains(template, "onclick=\"togglePanel('enemies')\"", 'mobile dock should expose creatures panel');
+  assertContains(template, "onclick=\"App.toggleMobileCreatureRail()\"", 'mobile dock should expose compact creatures rail');
   assertContains(template, 'id="mobile-creature-dock-badge"', 'mobile dock should expose a compact creature count badge');
   assertContains(template, '.mobile-panel-dock-badge[hidden]', 'mobile creature dock badge should collapse when no creatures are present');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
@@ -11591,9 +11592,9 @@ test('Mobile multi-creature cue opens target picker without selecting all target
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Multi-creature cue should not expose target actions before a target is picked');
 
   assertEqual(App.focusMobileCreaturePresence(), true, 'Multi-creature cue should open the visible creature picker');
-  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), true, 'Multi-creature cue should open the Creatures panel');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Multi-creature cue should not require the full Creatures drawer');
   assertContains(elements.get('mobile-creature-strip').innerHTML, 'data-command-control="focus-target"', 'Creature strip should expose target pick controls after opening');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="focus-target"', 'Creature drawer should expose target pick controls after opening');
+  assertNotContains(elements.get('enemies-content').innerHTML, 'data-command-control="focus-target"', 'Creature drawer should stay closed for compact target picking');
   assertEqual(App.explorationTargetIds.length, 0, 'Opening the target picker should not mark every creature');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Opening the target picker should wait for an explicit target selection before showing intents');
 });
@@ -16290,7 +16291,7 @@ test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
   assertContains(template, "onclick=\"App.toggleMobilePartyRail()\"", 'Mobile panel dock should open the compact party rail by tap during exploration');
-  assertContains(template, "onclick=\"togglePanel('enemies')\"", 'Mobile panel dock should open the creature panel by tap');
+  assertContains(template, "onclick=\"App.toggleMobileCreatureRail()\"", 'Mobile panel dock should open the compact creature rail by tap during exploration');
   assertNotContains(template, 'ontouchstart="App.handleTouchStart(event)"', 'Main play surface should not capture horizontal panel swipes');
   assertNotContains(template, 'ontouchend="App.handleTouchEnd(event)"', 'Main play surface should not complete horizontal panel swipes');
 });

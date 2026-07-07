@@ -3888,6 +3888,9 @@
             focusMobileCreaturePresence() {
                 return YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this);
             },
+            focusMobileCreatureRail() {
+                return YAW_MOBILE_UNIT_STRIPS.focusCreatureRail(this);
+            },
             toggleMobileMovePad() {
                 this.mobileMovePadOpen = !this.mobileMovePadOpen;
                 this.renderMobileExplorationControls();
@@ -3900,6 +3903,9 @@
             toggleMobilePartyRail() {
                 if (this.combatState?.active) return this.openPanel('party');
                 return this.toggleMobileActorBelt();
+            },
+            toggleMobileCreatureRail() {
+                return this.focusMobileCreatureRail();
             },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);

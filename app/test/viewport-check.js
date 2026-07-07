@@ -710,6 +710,130 @@ async function checkViewport(browser, name, width, height) {
     assert(desktopPanels.main.width > desktopPanels.party.width, `${name}: desktop main play area should be wider than side panels`);
     assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
 
+    await page.evaluate(() => App.toggleExplorationTarget('creature', 'creature-1'));
+    await page.waitForTimeout(50);
+    const desktopComposerOwnership = await page.evaluate(() => {
+      const center = document.getElementById('desktop-play-cell-center');
+      const title = document.getElementById('scene-title');
+      const description = document.getElementById('scene-description');
+      const eventFeed = document.getElementById('tile-event-feed');
+      const sceneActions = document.getElementById('scene-actions');
+      const shell = document.getElementById('desktop-command-composer');
+      const belt = document.getElementById('desktop-context-belt');
+      const sentence = document.getElementById('selection-sentence');
+      const partyPanel = document.getElementById('party-content');
+      const creaturePanel = document.getElementById('enemies-content');
+      const centerRect = center.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      const beltRect = belt.getBoundingClientRect();
+      const sceneActionsRect = sceneActions.getBoundingClientRect();
+      const visibleButtons = selector => Array.from(document.querySelectorAll(selector)).filter(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && getComputedStyle(button).visibility !== 'hidden';
+      }).map(button => {
+        const rect = button.getBoundingClientRect();
+        return {
+          label: button.textContent.trim(),
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+          height: rect.height,
+          control: button.getAttribute('data-command-control') || '',
+          intent: button.getAttribute('data-command-intent') || '',
+          surface: button.getAttribute('data-command-surface') || ''
+        };
+      });
+      const beltButtons = visibleButtons('#desktop-context-belt button');
+      const centerCommands = center.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length;
+      const storyCommands = [title, description, eventFeed].reduce((count, node) => {
+        if (!node) return count;
+        return count + node.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length;
+      }, 0);
+      const firstBeltButton = beltButtons[0] || null;
+      return {
+        markedTargets: [...App.explorationTargetIds],
+        shellDisplay: getComputedStyle(shell).display,
+        shellHidden: Boolean(shell.hidden),
+        shellAriaHidden: shell.getAttribute('aria-hidden'),
+        shellSurface: shell.getAttribute('data-command-surface'),
+        shellMode: shell.getAttribute('data-command-mode'),
+        shellGrammar: shell.getAttribute('data-command-grammar'),
+        shellTargetCount: shell.getAttribute('data-command-target-count'),
+        shellInsideMain: shellRect.left >= centerRect.left - 1 && shellRect.right <= centerRect.right + 1,
+        beltSurface: belt.getAttribute('data-command-surface'),
+        beltMode: belt.getAttribute('data-command-mode'),
+        beltGrammar: belt.getAttribute('data-command-grammar'),
+        beltTargetCount: belt.getAttribute('data-command-target-count'),
+        beltVisible: beltRect.width > 0 && beltRect.height > 0,
+        beltInsideViewport: beltRect.left >= -1 && beltRect.right <= innerWidth + 1 && beltRect.top >= -1 && beltRect.bottom <= innerHeight + 1,
+        sentenceText: sentence.innerText || '',
+        beltButtonCount: beltButtons.length,
+        firstBeltButton,
+        beltButtonsUsable: beltButtons.every(button => button.left >= -1 && button.right <= innerWidth + 1 && button.width >= 58 && button.height >= 38),
+        hasFightIntent: beltButtons.some(button => button.intent === 'fight'),
+        hasClearExit: beltButtons.some(button => button.control === 'clear-targets'),
+        centerCommands,
+        storyCommands,
+        centerHasStoryTitle: Boolean(center.querySelector('#scene-title')),
+        centerHasPresenceVisual: Boolean(center.querySelector('#center-presence [data-stage-layer="presence"]')),
+        sceneActionsHidden: Boolean(sceneActions.hidden) && getComputedStyle(sceneActions).display === 'none' && sceneActionsRect.height === 0,
+        sceneActionsEmpty: (sceneActions.innerHTML || '').trim() === '',
+        partyCompactCards: partyPanel.querySelectorAll('[data-card-role="compact-tactical"]').length,
+        creatureCompactCards: creaturePanel.querySelectorAll('[data-card-role="compact-tactical"]').length,
+        partyHasActorRouting: Boolean(partyPanel.querySelector('[data-command-control="focus-actor"]')),
+        creatureHasTargetRouting: Boolean(creaturePanel.querySelector('[data-command-control="focus-target"]')),
+        panelIntentSpam: Boolean(partyPanel.querySelector('[data-command-intent="fight"], [data-command-intent="flirt"], [data-command-intent="feed"]') || creaturePanel.querySelector('[data-command-intent="fight"], [data-command-intent="flirt"], [data-command-intent="feed"]')),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.deepStrictEqual(desktopComposerOwnership.markedTargets, ['creature:creature-1'], `${name}: desktop setup should mark the creature target`);
+    assert.notStrictEqual(desktopComposerOwnership.shellDisplay, 'none', `${name}: desktop command composer should become visible when a target is marked`);
+    assert.strictEqual(desktopComposerOwnership.shellHidden, false, `${name}: desktop command composer should unhide when active`);
+    assert.strictEqual(desktopComposerOwnership.shellAriaHidden, 'false', `${name}: active desktop command composer should be available to assistive tech`);
+    assert.strictEqual(desktopComposerOwnership.shellSurface, 'command-composer', `${name}: desktop command shell should identify composer ownership`);
+    assert.strictEqual(desktopComposerOwnership.shellMode, 'exploration', `${name}: desktop command shell should identify exploration mode`);
+    assert.strictEqual(desktopComposerOwnership.shellGrammar, 'actor-target-intent', `${name}: desktop command shell should identify shared grammar`);
+    assert.strictEqual(desktopComposerOwnership.shellTargetCount, '1', `${name}: desktop command shell should mirror target count`);
+    assert.strictEqual(desktopComposerOwnership.beltSurface, 'target-intents', `${name}: desktop belt should identify target-intent ownership`);
+    assert.strictEqual(desktopComposerOwnership.beltMode, 'exploration', `${name}: desktop belt should identify exploration mode`);
+    assert.strictEqual(desktopComposerOwnership.beltGrammar, 'actor-target-intent', `${name}: desktop belt should identify shared grammar`);
+    assert.strictEqual(desktopComposerOwnership.beltTargetCount, '1', `${name}: desktop belt should mirror target count`);
+    assert.strictEqual(desktopComposerOwnership.beltVisible, true, `${name}: desktop target-intent belt should be visible`);
+    assert.strictEqual(desktopComposerOwnership.beltInsideViewport, true, `${name}: desktop target-intent belt should stay inside the viewport`);
+    assert(desktopComposerOwnership.sentenceText.includes('You') && desktopComposerOwnership.sentenceText.includes('Creature'), `${name}: desktop composer sentence should summarize actor and target`);
+    assert(desktopComposerOwnership.beltButtonCount >= 2, `${name}: desktop target-intent belt should expose visible intents and an exit`);
+    assert.strictEqual(desktopComposerOwnership.firstBeltButton?.control, 'clear-targets', `${name}: desktop target-intent belt should put the clear-target exit first`);
+    assert.strictEqual(desktopComposerOwnership.beltButtonsUsable, true, `${name}: desktop target-intent belt buttons should remain usable and in bounds`);
+    assert.strictEqual(desktopComposerOwnership.hasFightIntent, true, `${name}: desktop target-intent belt should expose Fight`);
+    assert.strictEqual(desktopComposerOwnership.hasClearExit, true, `${name}: desktop target-intent belt should expose Clear`);
+    assert.strictEqual(desktopComposerOwnership.centerCommands, 0, `${name}: desktop center stage should not own command controls`);
+    assert.strictEqual(desktopComposerOwnership.storyCommands, 0, `${name}: desktop story/event content should stay read-only`);
+    assert.strictEqual(desktopComposerOwnership.centerHasStoryTitle, true, `${name}: desktop center should retain story presentation`);
+    assert.strictEqual(desktopComposerOwnership.centerHasPresenceVisual, true, `${name}: desktop center should retain passive stage presence`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsHidden, true, `${name}: legacy center action slot should stay hard-hidden`);
+    assert.strictEqual(desktopComposerOwnership.sceneActionsEmpty, true, `${name}: legacy center action slot should stay empty`);
+    assert(desktopComposerOwnership.partyCompactCards >= 1, `${name}: desktop party panel should provide compact actor cards`);
+    assert(desktopComposerOwnership.creatureCompactCards >= 1, `${name}: desktop creature panel should provide compact target cards`);
+    assert.strictEqual(desktopComposerOwnership.partyHasActorRouting, true, `${name}: desktop party panel should own actor routing controls`);
+    assert.strictEqual(desktopComposerOwnership.creatureHasTargetRouting, true, `${name}: desktop creature panel should own target routing controls`);
+    assert.strictEqual(desktopComposerOwnership.panelIntentSpam, false, `${name}: desktop compact panels should not duplicate primary intent buttons`);
+    assert.strictEqual(desktopComposerOwnership.pageOverflow, false, `${name}: active desktop composer should not create horizontal overflow`);
+    await page.evaluate(() => App.clearExplorationTargets());
+    const desktopCenterAfterComposer = await page.evaluate(() => {
+      const center = document.getElementById('desktop-play-cell-center');
+      const rect = center.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      };
+    });
+
     const readDesktopIntentBounds = async label => page.evaluate(menuLabel => {
       const menu = document.getElementById('desktop-intent-menu');
       if (!menu) return { label: menuLabel, exists: false };
@@ -793,7 +917,7 @@ async function checkViewport(browser, name, width, height) {
         center: read('desktop-play-cell-center'),
         previousCenter
       };
-    }, desktopPanels.center);
+    }, desktopCenterAfterComposer);
     assert.strictEqual(mapOverlay.map.active, true, `${name}: desktop Map toggle should activate the map overlay`);
     assert.notStrictEqual(mapOverlay.map.display, 'none', `${name}: desktop map overlay should become visible after toggling Map`);
     assert.strictEqual(mapOverlay.map.position, 'fixed', `${name}: desktop map should be a fixed overlay`);

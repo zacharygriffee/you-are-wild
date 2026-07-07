@@ -4187,8 +4187,13 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-aria-label="ui.movePad"', 'Mobile move-pad group label should opt into localization');
   assertContains(template, 'data-i18n-aria-label="direction.moveNorthwest"', 'Mobile move-pad directional labels should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.currentTile"', 'Mobile move-pad current-tile label should opt into localization');
+  assertContains(template, 'id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"', 'Mobile location-action row should opt into localization');
+  assertContains(template, 'data-i18n-title="target.actors" data-i18n-aria-label="target.actors"', 'Mobile actor toggle should opt into actor-label localization');
+  assertContains(template, 'id="mobile-actor-belt" aria-label="Party actor controls" data-i18n-aria-label="ui.partyActorControls"', 'Mobile actor belt group label should opt into localization');
   assertContains(contentSystemContent, "'direction.moveNorthwest': 'Move northwest'", 'Direction movement labels should be registered for English localization');
   assertContains(contentSystemContent, "'direction.moveNorthwest': 'Mover noroeste'", 'Direction movement labels should be registered for Spanish localization');
+  assertContains(contentSystemContent, "'ui.partyActorControls': 'Party actor controls'", 'Party actor belt label should be registered for English localization');
+  assertContains(contentSystemContent, "'ui.partyActorControls': 'Controles de actores del grupo'", 'Party actor belt label should be registered for Spanish localization');
   assertNotContains(template, 'swipe-hint-left', 'Mobile should not advertise edge swipe gestures');
   assertNotContains(template, 'swipe-hint-right', 'Mobile should not advertise edge swipe gestures');
   assertContains(template, 'data-i18n="ui.welcomeLog"', 'Welcome log fallback should opt into localization');

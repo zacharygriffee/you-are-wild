@@ -4544,10 +4544,10 @@
 	                            <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" data-surface-role="presence-rail" data-stage-surface="presence" aria-live="polite"></div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt" data-surface-role="command-composer">
                                 <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
-	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions"></div>
+	                                <div id="mobile-explore-actions" class="mobile-location-actions action-bar" aria-label="Location actions" data-i18n-aria-label="ui.locationActions"></div>
 	                                <div class="mobile-control-row" id="mobile-control-row">
 	                                    <button class="nav-btn" id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" data-i18n-title="ui.movePadToggle" data-i18n-aria-label="ui.movePadToggle" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden>↕ <span data-i18n="ui.move">Move</span></button>
-	                                    <button class="nav-btn" id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor" title="Actors" aria-label="Actors" aria-controls="mobile-actor-belt" aria-expanded="false" onclick="App.toggleMobileActorBelt()" hidden>👥 Actors</button>
+	                                    <button class="nav-btn" id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor" title="Actors" aria-label="Actors" data-i18n-title="target.actors" data-i18n-aria-label="target.actors" aria-controls="mobile-actor-belt" aria-expanded="false" onclick="App.toggleMobileActorBelt()" hidden>👥 <span data-i18n="target.actors">Actors</span></button>
 	                                    <div class="mobile-target-action-tray" id="mobile-target-action-tray" aria-live="polite"></div>
 	                                </div>
 	                                <div class="mobile-move-pad" id="mobile-move-pad" aria-label="Movement pad" data-i18n-aria-label="ui.movePad">
@@ -4561,7 +4561,7 @@
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="south" title="South" aria-label="Move south" data-i18n-title="direction.south" data-i18n-aria-label="direction.moveSouth" onclick="App.move(0,1)">↓</button>
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast" title="Southeast" aria-label="Move southeast" data-i18n-title="direction.southeast" data-i18n-aria-label="direction.moveSoutheast" onclick="App.move(1,1)">↘</button>
 	                                </div>
-	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls"></div>
+	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls" data-i18n-aria-label="ui.partyActorControls"></div>
 	                            </div>
 	                            <div class="mobile-unit-strips" data-surface-role="presence-rails">
 	                                <div class="mobile-strip-card" id="mobile-party-card">

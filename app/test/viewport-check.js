@@ -315,7 +315,10 @@ async function checkViewport(browser, name, width, height) {
   assert(accessibility.background === 'rgb(0, 0, 0)' || accessibility.background === '#000000', `${name}: high contrast should update rendered background`);
   assert(accessibility.transitionDuration.split(',').every(value => value.trim() === '0s'), `${name}: reduced motion should suppress button transitions`);
 
-  await page.evaluate(() => App.showScreen('menu'));
+  await page.evaluate(() => {
+    App.showScreen('menu');
+    App._setSaveTime?.('slot2', '1710000000000');
+  });
   await page.waitForTimeout(50);
   await page.locator('#screen-menu [data-command-control="open-load-slots"]').click();
   await page.waitForTimeout(50);
@@ -355,6 +358,91 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(save.closeSlot, 'exit', `${name}: save manager close should identify the exit slot`);
   assert(save.visibleButtons >= 2, `${name}: save manager should expose reachable actions`);
   assert.strictEqual(save.pageOverflow, false, `${name}: save manager should not create horizontal overflow`);
+
+  await page.locator('#save-manager [data-save-slot="slot2"] [data-command-control="new-run-slot"]').click();
+  await page.waitForTimeout(50);
+  const overwriteConfirm = await page.evaluate(() => {
+    const dialog = document.getElementById('app-confirm-dialog');
+    const card = dialog?.querySelector('.app-confirm-card');
+    const cancel = dialog?.querySelector('[data-command-control="cancel-dialog"]');
+    const confirm = dialog?.querySelector('[data-command-control="confirm-dialog"]');
+    const saveManager = document.getElementById('save-manager');
+    const create = document.getElementById('screen-create');
+    const dialogRect = dialog?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    const cancelRect = cancel?.getBoundingClientRect();
+    const confirmRect = confirm?.getBoundingClientRect();
+    return {
+      exists: Boolean(dialog),
+      pendingMessage: App.pendingConfirm?.message || '',
+      dialogSurface: dialog?.getAttribute('data-command-surface') || '',
+      dialogMode: dialog?.getAttribute('data-command-mode') || '',
+      dialogInsideViewport: Boolean(dialogRect && dialogRect.left >= -1 && dialogRect.right <= innerWidth + 1 && dialogRect.top >= -1 && dialogRect.bottom <= innerHeight + 1),
+      cardInsideViewport: Boolean(cardRect && cardRect.left >= -1 && cardRect.right <= innerWidth + 1 && cardRect.top >= -1 && cardRect.bottom <= innerHeight + 1),
+      cancelVisible: Boolean(cancelRect && cancelRect.width > 0 && cancelRect.height > 0),
+      cancelInsideViewport: Boolean(cancelRect && cancelRect.left >= -1 && cancelRect.right <= innerWidth + 1 && cancelRect.top >= -1 && cancelRect.bottom <= innerHeight + 1),
+      cancelSlot: cancel?.getAttribute('data-command-slot') || '',
+      confirmVisible: Boolean(confirmRect && confirmRect.width > 0 && confirmRect.height > 0),
+      confirmInsideViewport: Boolean(confirmRect && confirmRect.left >= -1 && confirmRect.right <= innerWidth + 1 && confirmRect.top >= -1 && confirmRect.bottom <= innerHeight + 1),
+      focusTrapId: App._focusTrap?.container?.id || '',
+      saveManagerDisplay: getComputedStyle(saveManager).display,
+      saveManagerActive: saveManager.classList.contains('active'),
+      createDisplay: getComputedStyle(create).display,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(overwriteConfirm.exists, true, `${name}: occupied-slot New Run should open the shared confirm dialog`);
+  assert(overwriteConfirm.pendingMessage.includes('Slot 2'), `${name}: occupied-slot confirmation should name the selected slot`);
+  assert.strictEqual(overwriteConfirm.dialogSurface, 'system-dialog', `${name}: confirm dialog should identify the system dialog surface`);
+  assert.strictEqual(overwriteConfirm.dialogMode, 'system', `${name}: confirm dialog should identify system mode`);
+  assert.strictEqual(overwriteConfirm.dialogInsideViewport, true, `${name}: confirm dialog backdrop should stay inside the viewport`);
+  assert.strictEqual(overwriteConfirm.cardInsideViewport, true, `${name}: confirm dialog card should stay inside the viewport`);
+  assert.strictEqual(overwriteConfirm.cancelVisible, true, `${name}: confirm dialog should expose a visible cancel exit`);
+  assert.strictEqual(overwriteConfirm.cancelInsideViewport, true, `${name}: confirm dialog cancel should stay inside the viewport`);
+  assert.strictEqual(overwriteConfirm.cancelSlot, 'exit', `${name}: confirm dialog cancel should identify the exit slot`);
+  assert.strictEqual(overwriteConfirm.confirmVisible, true, `${name}: confirm dialog should expose a visible confirm action`);
+  assert.strictEqual(overwriteConfirm.confirmInsideViewport, true, `${name}: confirm dialog confirm action should stay inside the viewport`);
+  assert.strictEqual(overwriteConfirm.focusTrapId, 'app-confirm-dialog', `${name}: confirm dialog should activate the shared focus trap`);
+  assert.notStrictEqual(overwriteConfirm.saveManagerDisplay, 'none', `${name}: save manager should remain visible behind its confirmation`);
+  assert.strictEqual(overwriteConfirm.saveManagerActive, true, `${name}: save manager should remain active behind its confirmation`);
+  assert.strictEqual(overwriteConfirm.createDisplay, 'none', `${name}: overwrite confirmation should not open character creation before approval`);
+  assert.strictEqual(overwriteConfirm.pageOverflow, false, `${name}: confirm dialog should not create horizontal overflow`);
+
+  await page.locator('#app-confirm-dialog [data-command-control="cancel-dialog"]').click();
+  await page.waitForTimeout(50);
+  const cancelledOverwrite = await page.evaluate(() => {
+    const dialog = document.getElementById('app-confirm-dialog');
+    const saveManager = document.getElementById('save-manager');
+    const create = document.getElementById('screen-create');
+    const close = saveManager?.querySelector('[data-command-control="close-save-manager"]');
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      dialogExists: Boolean(dialog),
+      pendingCleared: !App.pendingConfirm,
+      appScreen: App.screen,
+      activeSlot: App.activeSlot,
+      lastSlot: App._getStoredValue?.('lastSlot') || '',
+      saveManagerDisplay: getComputedStyle(saveManager).display,
+      saveManagerActive: saveManager.classList.contains('active'),
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
+      createDisplay: getComputedStyle(create).display,
+      focusTrapId: App._focusTrap?.container?.id || '',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(cancelledOverwrite.dialogExists, false, `${name}: cancelled overwrite confirmation should remove the dialog`);
+  assert.strictEqual(cancelledOverwrite.pendingCleared, true, `${name}: cancelled overwrite confirmation should clear pending state`);
+  assert.strictEqual(cancelledOverwrite.appScreen, 'save-manager', `${name}: cancelling overwrite should keep save manager screen state`);
+  assert.notStrictEqual(cancelledOverwrite.activeSlot, 'slot2', `${name}: cancelling overwrite should not switch the active slot`);
+  assert.notStrictEqual(cancelledOverwrite.lastSlot, 'slot2', `${name}: cancelling overwrite should not persist the selected slot`);
+  assert.notStrictEqual(cancelledOverwrite.saveManagerDisplay, 'none', `${name}: cancelling overwrite should return to the save manager`);
+  assert.strictEqual(cancelledOverwrite.saveManagerActive, true, `${name}: cancelling overwrite should keep save manager active`);
+  assert.strictEqual(cancelledOverwrite.closeVisible, true, `${name}: save manager close should remain visible after cancelling overwrite`);
+  assert.strictEqual(cancelledOverwrite.closeInsideViewport, true, `${name}: save manager close should remain inside the viewport after cancelling overwrite`);
+  assert.strictEqual(cancelledOverwrite.createDisplay, 'none', `${name}: cancelling overwrite should not open character creation`);
+  assert.strictEqual(cancelledOverwrite.focusTrapId, 'save-manager', `${name}: cancelling overwrite should restore save-manager focus trap`);
+  assert.strictEqual(cancelledOverwrite.pageOverflow, false, `${name}: cancelling overwrite should not introduce horizontal overflow`);
 
   await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
   await page.waitForTimeout(50);

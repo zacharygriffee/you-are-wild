@@ -13,7 +13,10 @@ const YAW_DIALOG_FLOW = {
             }
             return typeof options.onConfirm === 'function' ? options.onConfirm() : true;
         }
-        this.closeConfirm(app, { restoreFocus: false });
+        this.closeConfirm(app, { restoreFocus: false, restoreParentTrap: false });
+        const parentFocusTrap = app._focusTrap?.container
+            ? { container: app._focusTrap.container, close: app._focusTrap.close || null }
+            : null;
         const id = `confirm-${Date.now ? Date.now() : 'dialog'}`;
         const title = options.title || app._label('ui.confirm', 'Confirm');
         const confirmLabel = options.confirmLabel || app._label('ui.confirm', 'Confirm');
@@ -26,7 +29,8 @@ const YAW_DIALOG_FLOW = {
             cancelLabel,
             danger: Boolean(options.danger),
             onConfirm: options.onConfirm || null,
-            onCancel: options.onCancel || null
+            onCancel: options.onCancel || null,
+            parentFocusTrap
         };
         const dangerClass = options.danger ? ' danger' : '';
         const html = `<div class="app-confirm-backdrop" id="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message" data-command-surface="system-dialog" data-command-mode="system"><div class="app-confirm-card" data-command-surface="system-dialog" data-command-mode="system"><h3 id="app-confirm-title">${app._escapeHtml(title)}</h3><p id="app-confirm-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions" data-command-surface="system-dialog" data-command-mode="system"><button class="nav-btn" data-command-surface="system-dialog" data-command-mode="system" data-command-control="cancel-dialog" data-command-slot="exit" onclick="App.resolveConfirmDialog(false)">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn primary${dangerClass}" data-command-surface="system-dialog" data-command-mode="system" data-command-control="confirm-dialog" onclick="App.resolveConfirmDialog(true)">${app._escapeHtml(confirmLabel)}</button></div></div></div>`;
@@ -46,9 +50,19 @@ const YAW_DIALOG_FLOW = {
 
     closeConfirm(app, options = {}) {
         const dialog = typeof document !== 'undefined' ? document.getElementById('app-confirm-dialog') : null;
+        const pending = app.pendingConfirm;
+        const parentFocusTrap = pending?.parentFocusTrap || null;
+        const hadConfirm = Boolean(dialog || pending);
         if (dialog) dialog.remove();
         app.pendingConfirm = null;
+        if (!hadConfirm) return;
         app._restoreFocusTrap(options);
+        if (options.restoreParentTrap === false) return;
+        const parent = parentFocusTrap?.container;
+        if (!parent || !parent.isConnected) return;
+        const style = typeof getComputedStyle === 'function' ? getComputedStyle(parent) : null;
+        if (style && style.display === 'none') return;
+        app._activateFocusTrap(parent, { close: parentFocusTrap.close || null });
     },
 
     showSaveRecovery(app, slotName, saveData) {

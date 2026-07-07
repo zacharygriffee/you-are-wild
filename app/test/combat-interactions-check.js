@@ -695,6 +695,106 @@ async function runCombatNonTargetClearFlow(page) {
   assert(state.lastLog.includes('Flee failed'), 'Failed Flee should explain the failed escape');
 }
 
+async function runCombatFleeComposerFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await setupCombat(page, { playerOverrides: { Flee: 1 }, enemyOverrides: { spd: 80 } });
+  await page.evaluate(() => {
+    App._combatStateRoll = () => 1;
+    App._advancedTurn = false;
+    App.showActorActions(App.player);
+  });
+
+  let state = await page.evaluate(() => ({
+    fleeVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="flee"]')),
+    shellSurface: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-surface') || '',
+    shellMode: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-mode') || '',
+    shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
+    partyCardHasFlee: (document.querySelector('#party-content')?.innerHTML || '').includes("executeCombatIntent('flee')"),
+    creatureCardHasFlee: (document.querySelector('#enemies-content')?.innerHTML || '').includes("executeCombatIntent('flee')"),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.fleeVisible, true, 'Desktop combat composer should expose Flee as a visible intent');
+  assert.strictEqual(state.shellSurface, 'command-composer', 'Desktop Flee should live inside the command composer shell');
+  assert.strictEqual(state.shellMode, 'combat', 'Desktop Flee command shell should identify combat mode');
+  assert.strictEqual(state.shellIntent, 'choose', 'Desktop Flee should start from the pending-intent composer state');
+  assert.strictEqual(state.partyCardHasFlee, false, 'Desktop party cards should not duplicate Flee outside the composer');
+  assert.strictEqual(state.creatureCardHasFlee, false, 'Desktop creature cards should not duplicate Flee outside the composer');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop center stage should not own Flee controls');
+
+  await page.locator(`#desktop-context-belt button[data-command-intent="flee"]`).click();
+  state = await page.evaluate(() => ({
+    combatActive: App.combatState.active,
+    advanced: App._advancedTurn === true,
+    targetSelection: App.targetSelection,
+    syncSelection: App.syncSelection,
+    feedSelection: App.feedSelection,
+    lastLog: App.log[App.log.length - 1]?.text || '',
+    fleeVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="flee"]')),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.combatActive, true, 'Failed desktop Flee should keep combat active');
+  assert.strictEqual(state.advanced, true, 'Desktop Flee should consume the current actor turn on failure');
+  assert.strictEqual(state.targetSelection, null, 'Desktop Flee should leave no target selection');
+  assert.strictEqual(state.syncSelection, null, 'Desktop Flee should leave no sync selection');
+  assert.strictEqual(state.feedSelection, null, 'Desktop Flee should leave no feed selection');
+  assert(state.lastLog.includes('Flee failed'), 'Desktop Flee should report failed escape feedback');
+  assert.strictEqual(state.fleeVisible, true, 'Desktop combat composer should remain reachable after failed Flee');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop failed Flee should keep center stage free of combat controls');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCombat(page, { playerOverrides: { Flee: 1 }, enemyOverrides: { spd: 80 } });
+  await page.evaluate(() => {
+    App._combatStateRoll = () => 1;
+    App._advancedTurn = false;
+    App.showActorActions(App.player);
+  });
+
+  state = await page.evaluate(() => ({
+    fleeVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="flee"]')),
+    toolbeltSurface: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-surface') || '',
+    toolbeltMode: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-mode') || '',
+    toolbeltIntent: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-intent') || '',
+    oldMobileBarEmpty: (document.querySelector('#mobile-combat-actions')?.innerHTML || '') === '',
+    oldMobileBarDisplay: getComputedStyle(document.querySelector('#mobile-combat-actions')).display,
+    partyChipHasFlee: (document.querySelector('#mobile-party-strip')?.innerHTML || '').includes("executeCombatIntent('flee')"),
+    creatureChipHasFlee: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("executeCombatIntent('flee')"),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.fleeVisible, true, 'Mobile combat toolbelt should expose Flee as a visible intent');
+  assert.strictEqual(state.toolbeltSurface, 'combat-composer', 'Mobile Flee should live in the combat composer toolbelt');
+  assert.strictEqual(state.toolbeltMode, 'combat', 'Mobile Flee toolbelt should identify combat mode');
+  assert.strictEqual(state.toolbeltIntent, 'choose', 'Mobile Flee should start from the pending-intent composer state');
+  assert.strictEqual(state.oldMobileBarEmpty, true, 'Legacy mobile combat action bar should not duplicate Flee');
+  assert.strictEqual(state.oldMobileBarDisplay, 'none', 'Legacy mobile combat action bar should stay hidden');
+  assert.strictEqual(state.partyChipHasFlee, false, 'Mobile party chips should not duplicate Flee outside the toolbelt');
+  assert.strictEqual(state.creatureChipHasFlee, false, 'Mobile creature chips should not duplicate Flee outside the toolbelt');
+  assert.strictEqual(state.centerHasControls, false, 'Mobile combat center stage should not own Flee controls');
+
+  await page.locator(`#mobile-combat-toolbelt button[data-command-intent="flee"]`).click();
+  state = await page.evaluate(() => ({
+    combatActive: App.combatState.active,
+    advanced: App._advancedTurn === true,
+    targetSelection: App.targetSelection,
+    syncSelection: App.syncSelection,
+    feedSelection: App.feedSelection,
+    lastLog: App.log[App.log.length - 1]?.text || '',
+    fleeVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="flee"]')),
+    toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.combatActive, true, 'Failed mobile Flee should keep combat active');
+  assert.strictEqual(state.advanced, true, 'Mobile Flee should consume the current actor turn on failure');
+  assert.strictEqual(state.targetSelection, null, 'Mobile Flee should leave no target selection');
+  assert.strictEqual(state.syncSelection, null, 'Mobile Flee should leave no sync selection');
+  assert.strictEqual(state.feedSelection, null, 'Mobile Flee should leave no feed selection');
+  assert(state.lastLog.includes('Flee failed'), 'Mobile Flee should report failed escape feedback');
+  assert.strictEqual(state.fleeVisible, true, 'Mobile combat toolbelt should remain reachable after failed Flee');
+  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should stay active after failed Flee');
+  assert.strictEqual(state.centerHasControls, false, 'Mobile failed Flee should keep center stage free of combat controls');
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runAdventureMarkedTargetFlow(page) {
   await setupAdventure(page);
   let center = await page.evaluate(() => document.querySelector('#desktop-play-cell-center')?.innerHTML || '');
@@ -2159,6 +2259,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runStaleSyncParticipantFlow(page);
     await runDesktopSyncComposerFlow(page);
     await runCombatNonTargetClearFlow(page);
+    await runCombatFleeComposerFlow(page);
     await runAdventureMarkedTargetFlow(page);
     await runStaleMarkedActorFlow(page);
     await runSelectionSemanticsFlow(page);

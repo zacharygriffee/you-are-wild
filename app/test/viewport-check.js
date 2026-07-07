@@ -301,10 +301,11 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
     assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 7, `${name}: mobile tile metadata should not overlap the traversal grid`);
-    assert(mobileControls.miniMapHeight >= 132, `${name}: mobile traversal grid should keep a usable minimum height`);
-    assert(mobileControls.centerTileHeight >= 84, `${name}: mobile current tile should leave room for larger presence controls`);
+    assert(mobileControls.miniMapHeight >= 154, `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert(mobileControls.centerTileHeight >= 96, `${name}: mobile current tile should leave room for larger presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);
-    assert(mobileControls.minCenterPresenceWidth >= 44 && mobileControls.minCenterPresenceHeight >= 44, `${name}: mobile current tile presence badges should keep finger-sized tap targets`);
+    assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
+    assert(mobileControls.minCenterPresenceWidth >= 48 && mobileControls.minCenterPresenceHeight >= 48, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);

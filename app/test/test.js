@@ -4183,6 +4183,12 @@ test('Persistent shell controls opt into localization', () => {
   assertContains(template, 'data-i18n-title="ui.largeMap.zoomIn"', 'Large-map zoom-in title should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.largeMap.recenter"', 'Large-map recenter accessible label should opt into localization');
   assertContains(template, 'data-i18n-aria-label="ui.mobilePanels"', 'Mobile panel dock label should opt into localization');
+  assertContains(template, 'data-i18n-title="ui.movePadToggle"', 'Mobile move-pad toggle title should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="ui.movePad"', 'Mobile move-pad group label should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="direction.moveNorthwest"', 'Mobile move-pad directional labels should opt into localization');
+  assertContains(template, 'data-i18n-aria-label="ui.currentTile"', 'Mobile move-pad current-tile label should opt into localization');
+  assertContains(contentSystemContent, "'direction.moveNorthwest': 'Move northwest'", 'Direction movement labels should be registered for English localization');
+  assertContains(contentSystemContent, "'direction.moveNorthwest': 'Mover noroeste'", 'Direction movement labels should be registered for Spanish localization');
   assertNotContains(template, 'swipe-hint-left', 'Mobile should not advertise edge swipe gestures');
   assertNotContains(template, 'swipe-hint-right', 'Mobile should not advertise edge swipe gestures');
   assertContains(template, 'data-i18n="ui.welcomeLog"', 'Welcome log fallback should opt into localization');
@@ -4529,7 +4535,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-unit-chip .tactical-card-selection-controls .action-btn {\n                pointer-events: auto;\n                flex: 0 0 auto;\n                min-width: 48px;', 'mobile target rail Mark controls should keep readable touch width');
   assertContains(template, 'min-height: 44px;\n                padding: 6px 8px;', 'mobile target rail Mark controls should keep finger-sized tap targets');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
-  assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
+  assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" data-i18n-title="ui.movePadToggle" data-i18n-aria-label="ui.movePadToggle" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
   assertContains(template, '.mobile-move-pad.expanded {\n                display: grid;', 'dormant mobile movement pad should still be restorable without rebuilding the controls');
   assertContains(mobileUnitStripsContent, 'moveToggle.hidden = true;', 'mobile render refresh should keep the dormant move toggle hidden');

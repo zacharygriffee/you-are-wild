@@ -190,6 +190,7 @@ const YAW_INTERACTION_STATE = {
         this.setSentenceSlot(desktop, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
         const mobile = document.getElementById('mobile-selection-sentence');
         this.setSentenceSlot(mobile, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
+        if (typeof YAW_SCENE_SHELL !== 'undefined') YAW_SCENE_SHELL.syncDesktopCommandComposer?.();
         if (!app.combatState?.active) app.renderMobileExplorationControls?.();
         return html;
     },

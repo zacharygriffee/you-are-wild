@@ -4,6 +4,35 @@
  */
 
 const YAW_SCENE_SHELL = {
+    syncDesktopCommandComposer() {
+        const shell = document.getElementById('desktop-command-composer');
+        if (!shell) return;
+        const sentence = document.getElementById('selection-sentence');
+        const belt = document.getElementById('desktop-context-belt');
+        const sentenceActive = Boolean((sentence?.innerHTML || '').trim());
+        const beltActive = Boolean((belt?.innerHTML || '').trim());
+        const active = sentenceActive || beltActive;
+        shell.classList?.toggle('has-controls', active);
+        if (!active) {
+            shell.removeAttribute('data-command-surface');
+            shell.removeAttribute('data-command-mode');
+            shell.removeAttribute('data-command-actor-count');
+            shell.removeAttribute('data-command-target-count');
+            shell.removeAttribute('data-command-intent');
+            return;
+        }
+        const mode = belt?.getAttribute('data-command-mode') || sentence?.getAttribute('data-command-mode') || 'exploration';
+        const actorCount = sentence?.getAttribute('data-command-actor-count') || '0';
+        const targetCount = sentence?.getAttribute('data-command-target-count') || '0';
+        const intent = sentence?.getAttribute('data-command-intent') || belt?.querySelector?.('[data-command-intent]')?.getAttribute('data-command-intent') || 'choose';
+        shell.setAttribute('data-command-surface', 'command-composer');
+        shell.setAttribute('data-command-mode', mode);
+        shell.setAttribute('data-command-grammar', 'actor-target-intent');
+        shell.setAttribute('data-command-actor-count', actorCount);
+        shell.setAttribute('data-command-target-count', targetCount);
+        shell.setAttribute('data-command-intent', intent);
+    },
+
     clearLegacyCenterActions() {
         const actions = document.getElementById('scene-actions');
         if (!actions) return;
@@ -77,6 +106,7 @@ const YAW_SCENE_SHELL = {
                 attrs.forEach(attr => slot.removeAttribute(attr));
             }
         });
+        this.syncDesktopCommandComposer();
     },
 
     clearCenterActionsForCombat(app) {
@@ -88,6 +118,7 @@ const YAW_SCENE_SHELL = {
             desktopBelt.removeAttribute('data-command-mode');
             desktopBelt.removeAttribute('data-command-grammar');
         }
+        this.syncDesktopCommandComposer();
         this.clearMobileExplorationControls(app);
     },
 
@@ -109,6 +140,7 @@ const YAW_SCENE_SHELL = {
             desktopBelt.removeAttribute('data-command-mode');
             desktopBelt.removeAttribute('data-command-grammar');
         }
+        this.syncDesktopCommandComposer();
         this.clearMobileExplorationControls(app);
         const mobileTitle = document.getElementById('mobile-scene-title');
         const mobileDesc = document.getElementById('mobile-scene-description');

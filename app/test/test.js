@@ -1537,6 +1537,12 @@ test('Scene shell helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/scene-shell.js'") < buildContent.indexOf("'src/core/app.js'"), 'Scene shell helper should load before app.js');
   assertContains(sceneShellContent, 'const YAW_SCENE_SHELL = {', 'Scene shell helper should expose the scene shell service');
   assertContains(sceneShellContent, 'clearLegacyCenterActions()', 'Scene shell helper should own hidden legacy center action cleanup');
+  assertContains(sceneShellContent, 'syncDesktopCommandComposer()', 'Scene shell helper should own desktop command composer shell synchronization');
+  assertContains(sceneShellContent, "shell.setAttribute('data-command-surface', 'command-composer')", 'Desktop command composer shell should identify itself as the authoritative composer surface when active');
+  assertContains(sceneShellContent, "shell.setAttribute('data-command-mode', mode)", 'Desktop command composer shell should mirror the active command mode');
+  assertContains(sceneShellContent, "shell.setAttribute('data-command-actor-count', actorCount)", 'Desktop command composer shell should mirror actor count metadata');
+  assertContains(sceneShellContent, "shell.setAttribute('data-command-target-count', targetCount)", 'Desktop command composer shell should mirror target count metadata');
+  assertContains(sceneShellContent, "shell.setAttribute('data-command-intent', intent)", 'Desktop command composer shell should mirror current intent metadata');
   assertContains(sceneShellContent, 'clearCenterActionsForCombat(app)', 'Scene shell helper should own combat center action clearing');
   assertContains(sceneShellContent, 'clearMobileExplorationControls(app)', 'Scene shell helper should own stale mobile exploration control clearing');
   assertContains(sceneShellContent, 'clearCommandSentences()', 'Scene shell helper should own stale command sentence clearing');
@@ -4280,7 +4286,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
-  assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
+  assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
   assertContains(template, '.desktop-command-composer .selection-sentence', 'Desktop command composer should scope the command sentence inside the composer shell');
   assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
   assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
@@ -11652,6 +11658,13 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   elements.get('selection-sentence').setAttribute('data-command-actor-count', '1');
   elements.get('selection-sentence').setAttribute('data-command-target-count', '1');
   elements.get('selection-sentence').setAttribute('data-command-intent', 'fight');
+  elements.get('desktop-command-composer').classList.add('has-controls');
+  elements.get('desktop-command-composer').setAttribute('data-command-surface', 'command-composer');
+  elements.get('desktop-command-composer').setAttribute('data-command-mode', 'exploration');
+  elements.get('desktop-command-composer').setAttribute('data-command-grammar', 'actor-target-intent');
+  elements.get('desktop-command-composer').setAttribute('data-command-actor-count', '1');
+  elements.get('desktop-command-composer').setAttribute('data-command-target-count', '1');
+  elements.get('desktop-command-composer').setAttribute('data-command-intent', 'fight');
   elements.get('mobile-selection-sentence').innerHTML = '<span>Actor -&gt; Target</span>';
   elements.get('mobile-selection-sentence').setAttribute('data-command-surface', 'command-sentence');
   elements.get('mobile-selection-sentence').setAttribute('data-command-mode', 'exploration');
@@ -11670,6 +11683,12 @@ test('Rich scene content clears stale mobile exploration belt controls', () => {
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop command-surface metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop command-mode metadata');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-grammar'), null, 'Rich scene should clear stale desktop command grammar metadata');
+  assertEqual(elements.get('desktop-command-composer').classList.contains('has-controls'), false, 'Rich scene should clear active desktop composer shell state');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-surface'), null, 'Rich scene should clear stale desktop composer shell surface metadata');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-mode'), null, 'Rich scene should clear stale desktop composer shell mode metadata');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-actor-count'), null, 'Rich scene should clear stale desktop composer shell actor metadata');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-target-count'), null, 'Rich scene should clear stale desktop composer shell target metadata');
+  assertEqual(elements.get('desktop-command-composer').getAttribute('data-command-intent'), null, 'Rich scene should clear stale desktop composer shell intent metadata');
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Rich scene should remove stale mobile location actions');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Rich scene should clear stale mobile command-surface metadata');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), null, 'Rich scene should clear stale mobile command-mode metadata');
@@ -11736,6 +11755,12 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-actor-count'), '1', 'Desktop explicit actor sentence should expose actor count metadata');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '0', 'Desktop explicit actor sentence should expose zero selected targets');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Desktop explicit actor sentence should expose pending intent metadata');
+  assertEqual(document.getElementById('desktop-command-composer').classList.contains('has-controls'), true, 'Desktop command composer shell should become active when the command sentence is active');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-surface'), 'command-composer', 'Desktop command composer shell should identify the authoritative composer surface when active');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-mode'), 'exploration', 'Desktop command composer shell should mirror exploration mode');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-actor-count'), '1', 'Desktop command composer shell should mirror actor count metadata');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-target-count'), '0', 'Desktop command composer shell should mirror target count metadata');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-intent'), 'choose', 'Desktop command composer shell should mirror pending intent metadata');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'Long-Named Ally', 'Mobile sentence should show selected actor state in the control belt');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'data-command-slot="actor"', 'Mobile explicit actor state should render in the actor slot');
   assertContains(elements.get('mobile-selection-sentence').innerHTML, 'data-command-count="1"', 'Mobile explicit actor slot should expose actor count metadata');
@@ -11765,6 +11790,7 @@ test('Selection sentence mirrors exploration actor target and pending intent', (
   assertContains(desktopHtml, 'data-command-slot="intent"', 'Desktop marked target state should render a pending intent slot');
   assertContains(desktopHtml, 'data-command-intent="choose"', 'Desktop marked target intent slot should expose pending intent metadata');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '1', 'Desktop marked target sentence should expose selected target count metadata');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-target-count'), '1', 'Desktop command composer shell should mirror marked target count metadata');
   assertContains(html, 'Target', 'Marked exploration target should be visible in the mobile control-belt sentence');
   assertContains(html, 'data-command-slot="target"', 'Mobile marked target state should render in the target slot');
   assertContains(html, 'Guide', 'Marked exploration target name should be visible in the mobile control-belt sentence');
@@ -11807,6 +11833,9 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-actor-count'), '1', 'Desktop active combat sentence should expose current actor count metadata');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '0', 'Desktop active combat sentence should expose zero selected targets before target-pick');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-intent'), 'choose', 'Desktop active combat sentence should expose pending intent metadata');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-mode'), 'combat', 'Desktop command composer shell should mirror combat mode');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-actor-count'), '1', 'Desktop command composer shell should mirror the current combat actor count');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-intent'), 'choose', 'Desktop command composer shell should mirror pending combat intent metadata');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'data-command-slot="actor"', 'Desktop combat composer should mark the actor slot structurally');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'You', 'Desktop combat composer should name the current combat actor before target selection');
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Intent', 'Desktop combat composer should show pending intent before target selection');
@@ -11830,6 +11859,8 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertContains(html, 'Fight', 'Combat sentence should use safe visible labels for the selected action');
   assertContains(html, 'data-command-intent="fight"', 'Combat sentence should expose the selected stable intent id');
   assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-intent'), 'fight', 'Desktop combat target-pick sentence should expose selected intent metadata');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-mode'), 'combat', 'Desktop command composer shell should keep combat mode during target picking');
+  assertEqual(document.getElementById('desktop-command-composer').getAttribute('data-command-intent'), 'fight', 'Desktop command composer shell should mirror selected combat intent metadata');
   assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
   App.renderDesktopCombatComposer(player);
   assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancel Fight"', 'Desktop combat target tray should expose cancellation controls');

@@ -157,6 +157,7 @@ const YAW_DEFEAT_RECOVERY = {
             desktopBelt.setAttribute('data-command-surface', 'defeat-recovery');
             desktopBelt.setAttribute('data-command-mode', 'recovery');
         }
+        if (typeof YAW_SCENE_SHELL !== 'undefined') YAW_SCENE_SHELL.syncDesktopCommandComposer?.();
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = html;

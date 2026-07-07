@@ -114,6 +114,7 @@ const YAW_COMBAT_ACTIONS = {
             belt.removeAttribute('data-command-mode');
             belt.removeAttribute('data-command-grammar');
         }
+        if (typeof YAW_SCENE_SHELL !== 'undefined') YAW_SCENE_SHELL.syncDesktopCommandComposer?.();
         return html;
     }
 };

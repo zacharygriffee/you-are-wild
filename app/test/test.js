@@ -4280,10 +4280,15 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="selection-sentence"', 'desktop actor target intent sentence slot missing');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
+  assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
+  assertContains(template, '.desktop-command-composer .selection-sentence', 'Desktop command composer should scope the command sentence inside the composer shell');
+  assertContains(template, '.desktop-command-composer .desktop-context-belt', 'Desktop command composer should scope the action belt inside the composer shell');
   assert(template.indexOf('id="mobile-mini-map"') < template.indexOf('id="mobile-creature-presence-cue"'), 'Mobile creature presence cue should sit below the 3x3 stage');
   assert(template.indexOf('id="mobile-creature-presence-cue"') < template.indexOf('id="mobile-control-belt"'), 'Mobile creature presence cue should stay outside the fixed command belt');
   assert(template.indexOf('id="mobile-selection-sentence"') < template.indexOf('id="mobile-target-action-tray"'), 'Mobile selection sentence should live in the control belt above target actions');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="selection-sentence"'), 'Desktop selection sentence should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-command-composer"'), 'Desktop command composer should live below the stage, not inside the center tile');
+  assert(template.indexOf('id="desktop-command-composer"') < template.indexOf('id="selection-sentence"'), 'Desktop command composer shell should contain the command sentence');
   assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-presence-rail"'), 'Desktop presence rail should live below the stage, not inside the center tile');
   assert(template.indexOf('id="desktop-presence-rail"') < template.indexOf('id="selection-sentence"'), 'Desktop presence rail should sit above the command sentence');
   assert(template.indexOf('id="selection-sentence"') < template.indexOf('id="desktop-context-belt"'), 'Desktop selection sentence should sit above the desktop action belt');

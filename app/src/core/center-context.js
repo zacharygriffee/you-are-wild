@@ -122,6 +122,40 @@ const YAW_CENTER_CONTEXT = {
         return entries;
     },
 
+    isPresenceSelected(app, entry) {
+        const unit = entry?.unit || {};
+        const type = entry?.type || '';
+        if (type === 'items') return app.focusedStageObject?.type === 'items';
+        if (type === 'place') return app.focusedStageObject?.type === 'place' && app.focusedStageObject.id === unit.id;
+        if (type === 'creature') return app._isExplorationTargetUnit?.('creature', unit) || false;
+        return Boolean(app.explorationActorSelectionExplicit) && (app._getExplorationActors?.() || []).includes(unit);
+    },
+
+    presencePriority(app, entry, index = 0) {
+        if (this.isPresenceSelected(app, entry)) return 1000 - index;
+        if (entry?.type === 'place' && entry?.unit?.intent === 'enter') return 960 - index;
+        if (entry?.type === 'items') return 940 - index;
+        if (entry?.type === 'place') return 920 - index;
+        if (entry?.type === 'creature') return 860 - index;
+        if (entry?.type === 'party') return 720 - index;
+        if (entry?.type === 'player') return 680 - index;
+        return 100 - index;
+    },
+
+    prioritizedPresenceEntries(app, entries = [], limit = entries.length) {
+        if (!Array.isArray(entries) || entries.length <= limit) return { visible: entries || [], overflow: [] };
+        const visibleIndexes = entries
+            .map((entry, index) => ({ index, score: this.presencePriority(app, entry, index) }))
+            .sort((a, b) => b.score - a.score || a.index - b.index)
+            .slice(0, limit)
+            .map(item => item.index);
+        const visibleSet = new Set(visibleIndexes);
+        return {
+            visible: visibleIndexes.map(index => entries[index]),
+            overflow: entries.filter((_entry, index) => !visibleSet.has(index))
+        };
+    },
+
     presenceChip(app, entry) {
         const unit = entry.unit || {};
         const name = app._escapeHtml(unit.name || app._label('ui.unknown', 'Unknown'));
@@ -204,8 +238,8 @@ const YAW_CENTER_CONTEXT = {
         if (!centerSlot) return '';
         centerSlot.innerHTML = '';
         if (!entries.length) return '';
-        const visible = entries.slice(0, 8);
-        const extra = entries.length - visible.length;
+        const { visible, overflow } = this.prioritizedPresenceEntries(app, entries, 8);
+        const extra = overflow.length;
         const tokens = visible.map(entry => this.centerPresenceToken(app, entry)).join('');
         const extraLabel = extra > 0
             ? app._escapeHtml(app._label('ui.presence.moreGeneric', '+{count} more present', { count: extra }))

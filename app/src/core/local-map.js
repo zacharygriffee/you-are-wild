@@ -36,31 +36,11 @@ const YAW_LOCAL_MAP = {
 
     visibleCenterPresenceEntries(app, presence = []) {
         if (presence.length <= 2) return { visible: presence, overflow: [] };
-        const hasStageCue = presence.some(entry => entry?.type === 'items' || entry?.type === 'place');
-        const hasCreatureCue = presence.some(entry => entry?.type === 'creature');
-        const hasPartyCompanion = presence.some(entry => entry?.type === 'party');
-        const limit = hasStageCue && hasCreatureCue ? 1 : 2;
-        const priority = (entry, index) => {
-            if (this.isPresenceSelected(app, entry)) return 1000 - index;
-            if (entry?.type === 'party') return 900 - index;
-            if (entry?.type === 'player' && !hasPartyCompanion) return 900 - index;
-            if (entry?.type === 'place' && entry?.unit?.intent === 'enter') return 800 - index;
-            if (entry?.type === 'creature') return 700 - index;
-            if (entry?.type === 'items') return 600 - index;
-            if (entry?.type === 'place') return 500 - index;
-            if (entry?.type === 'player') return 400 - index;
-            return 100 - index;
-        };
-        const visibleIndexes = presence
-            .map((entry, index) => ({ index, score: priority(entry, index) }))
-            .sort((a, b) => b.score - a.score || a.index - b.index)
-            .slice(0, limit)
-            .map(item => item.index);
-        const visibleSet = new Set(visibleIndexes);
-        return {
-            visible: presence.filter((_entry, index) => visibleSet.has(index)),
-            overflow: presence.filter((_entry, index) => !visibleSet.has(index))
-        };
+        if (typeof YAW_CENTER_CONTEXT !== 'undefined' && YAW_CENTER_CONTEXT.prioritizedPresenceEntries) {
+            return YAW_CENTER_CONTEXT.prioritizedPresenceEntries(app, presence, 1);
+        }
+        const visible = presence.slice(0, 1);
+        return { visible, overflow: presence.slice(visible.length) };
     },
 
     centerPresenceHtml(app) {

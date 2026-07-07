@@ -7661,6 +7661,13 @@ test('Center tile stays traversal and context only across interaction states', (
   assertEqual(el('mobile-center-presence').innerHTML, '', 'Mobile scene should not mirror the full center presence block');
   assertCenterOnly('exploration structure');
 
+  App.renderMap();
+  const crowdedMobilePresence = el('mobile-mini-map').innerHTML;
+  assertContains(crowdedMobilePresence, 'mobile-play-presence-dot place', 'Crowded mobile center tile should keep structure presence visible before actor duplicates');
+  assertContains(crowdedMobilePresence, 'data-command-control="focus-place"', 'Crowded mobile structure presence should still focus location composer actions');
+  assertContains(crowdedMobilePresence, 'data-command-control="open-target-picker"', 'Crowded mobile center overflow should still route hidden creatures to the compact target rail');
+  assertNotContains(crowdedMobilePresence, 'data-command-control="focus-actor"', 'Crowded mobile center tile should leave actor selection to the compact cast rail');
+
   const crowdedCreatures = App.creatures;
   App.creatures = [];
   App.renderMap();
@@ -7781,9 +7788,10 @@ test('Mobile center overflow labels distinguish total hidden presence from route
   const player = makeUnit('You', { id: 'player-1' });
   const ally = makeUnit('Ally', { id: 'ally-1' });
   const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY });
+  const watcher = makeUnit('Watcher', { id: 'watcher-1', disposition: App.DISPOSITION.FRIENDLY });
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [guide];
+  App.creatures = [guide, watcher];
   App.location = { x: 0, y: 0 };
   App.worldMap = new Map([['0,0', {
     ...App.getBaseTile(0, 0),
@@ -7798,11 +7806,13 @@ test('Mobile center overflow labels distinguish total hidden presence from route
 
   App.renderMap();
   const mobileHtml = elements.get('mobile-mini-map').innerHTML;
-  assertContains(mobileHtml, '>+3</button>', 'Mobile mixed overflow badge should show the total hidden presence count');
+  assertContains(mobileHtml, 'mobile-play-presence-dot item', 'Mobile mixed presence should keep tile item stage cues visible');
+  assertNotContains(mobileHtml, 'mobile-play-presence-dot friendly', 'Mobile mixed presence should leave overflow local targets to the compact target rail');
+  assertContains(mobileHtml, '>+4</button>', 'Mobile mixed overflow badge should show the total hidden presence count');
   assertContains(mobileHtml, 'data-command-control="open-target-picker"', 'Mobile mixed overflow should still route to the hidden creature target picker');
-  assertContains(mobileHtml, 'data-command-target-count="1"', 'Mobile mixed overflow should keep the routed hidden target count for composer metadata');
-  assertContains(mobileHtml, 'data-command-overflow-count="3"', 'Mobile mixed overflow should expose the total hidden presence count');
-  assertContains(mobileHtml, 'aria-label="Open 1 hidden target; 3 total hidden"', 'Mobile mixed overflow label should not claim the +3 badge only opens one detail item');
+  assertContains(mobileHtml, 'data-command-target-count="2"', 'Mobile mixed overflow should keep the routed hidden target count for composer metadata');
+  assertContains(mobileHtml, 'data-command-overflow-count="4"', 'Mobile mixed overflow should expose the total hidden presence count');
+  assertContains(mobileHtml, 'aria-label="Open 2 hidden targets; 4 total hidden"', 'Mobile mixed overflow label should not claim the +4 badge only opens one detail item');
 });
 
 test('Stage presence exposes tile-local items as bounded cues', () => {

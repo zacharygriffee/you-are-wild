@@ -74,12 +74,15 @@ const YAW_DIALOG_FLOW = {
             return false;
         }
         this.closeConfirm(app, { restoreFocus: false });
-        this.closeSaveRecovery(app, { restoreFocus: false });
+        this.closeSaveRecovery(app, { restoreFocus: false, restoreParentTrap: false });
+        const parentFocusTrap = app._focusTrap?.container
+            ? { container: app._focusTrap.container, close: app._focusTrap.close || null }
+            : null;
         const title = app._label('save.recovery.title', 'Recover Save');
         const deleteLabel = app._label('save.recovery.delete', 'Delete Save');
         const backupLabel = app._label('save.recovery.backup', 'Download Backup');
         const cancelLabel = app._label('ui.cancel', 'Cancel');
-        app.pendingSaveRecovery = { slotName, saveData, message };
+        app.pendingSaveRecovery = { slotName, saveData, message, parentFocusTrap };
         const html = `<div class="app-confirm-backdrop" id="save-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="save-recovery-title" aria-describedby="save-recovery-message" data-command-surface="save-recovery-dialog" data-command-mode="system"><div class="app-confirm-card" data-command-surface="save-recovery-dialog" data-command-mode="system"><h3 id="save-recovery-title">${app._escapeHtml(title)}</h3><p id="save-recovery-message">${app._escapeHtml(message)}</p><div class="app-confirm-actions" data-command-surface="save-recovery-dialog" data-command-mode="system"><button class="nav-btn" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="cancel-save-recovery" data-command-slot="exit" onclick="App.resolveSaveRecoveryDialog('cancel')">${app._escapeHtml(cancelLabel)}</button><button class="nav-btn" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="backup-save" onclick="App.resolveSaveRecoveryDialog('backup')">${app._escapeHtml(backupLabel)}</button><button class="nav-btn primary danger" data-command-surface="save-recovery-dialog" data-command-mode="system" data-command-control="delete-save" onclick="App.resolveSaveRecoveryDialog('delete')">${app._escapeHtml(deleteLabel)}</button></div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
         const dialog = document.getElementById('save-recovery-dialog');
@@ -118,9 +121,19 @@ const YAW_DIALOG_FLOW = {
 
     closeSaveRecovery(app, options = {}) {
         const dialog = typeof document !== 'undefined' ? document.getElementById('save-recovery-dialog') : null;
+        const pending = app.pendingSaveRecovery;
+        const parentFocusTrap = pending?.parentFocusTrap || null;
+        const hadRecovery = Boolean(dialog || pending);
         if (dialog) dialog.remove();
         app.pendingSaveRecovery = null;
+        if (!hadRecovery) return;
         app._restoreFocusTrap(options);
+        if (options.restoreParentTrap === false) return;
+        const parent = parentFocusTrap?.container;
+        if (!parent || !parent.isConnected) return;
+        const style = typeof getComputedStyle === 'function' ? getComputedStyle(parent) : null;
+        if (style && style.display === 'none') return;
+        app._activateFocusTrap(parent, { close: parentFocusTrap.close || null });
     },
 
     downloadSaveBackup(slotName, saveData) {

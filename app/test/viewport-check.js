@@ -444,6 +444,88 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(cancelledOverwrite.focusTrapId, 'save-manager', `${name}: cancelling overwrite should restore save-manager focus trap`);
   assert.strictEqual(cancelledOverwrite.pageOverflow, false, `${name}: cancelling overwrite should not introduce horizontal overflow`);
 
+  await page.evaluate(() => App.showSaveRecoveryDialog('slot2', new Uint8Array([1, 2, 3, 4])));
+  await page.waitForTimeout(50);
+  const recoveryDialog = await page.evaluate(() => {
+    const dialog = document.getElementById('save-recovery-dialog');
+    const card = dialog?.querySelector('.app-confirm-card');
+    const cancel = dialog?.querySelector('[data-command-control="cancel-save-recovery"]');
+    const backup = dialog?.querySelector('[data-command-control="backup-save"]');
+    const deleteSave = dialog?.querySelector('[data-command-control="delete-save"]');
+    const saveManager = document.getElementById('save-manager');
+    const dialogRect = dialog?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    const cancelRect = cancel?.getBoundingClientRect();
+    const backupRect = backup?.getBoundingClientRect();
+    const deleteRect = deleteSave?.getBoundingClientRect();
+    const insideViewport = rect => Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1);
+    return {
+      exists: Boolean(dialog),
+      pendingSlot: App.pendingSaveRecovery?.slotName || '',
+      dialogSurface: dialog?.getAttribute('data-command-surface') || '',
+      dialogMode: dialog?.getAttribute('data-command-mode') || '',
+      dialogInsideViewport: insideViewport(dialogRect),
+      cardInsideViewport: insideViewport(cardRect),
+      cancelVisible: Boolean(cancelRect && cancelRect.width > 0 && cancelRect.height > 0),
+      cancelInsideViewport: insideViewport(cancelRect),
+      cancelSlot: cancel?.getAttribute('data-command-slot') || '',
+      backupVisible: Boolean(backupRect && backupRect.width > 0 && backupRect.height > 0),
+      backupInsideViewport: insideViewport(backupRect),
+      deleteVisible: Boolean(deleteRect && deleteRect.width > 0 && deleteRect.height > 0),
+      deleteInsideViewport: insideViewport(deleteRect),
+      focusTrapId: App._focusTrap?.container?.id || '',
+      saveManagerDisplay: getComputedStyle(saveManager).display,
+      saveManagerActive: saveManager.classList.contains('active'),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(recoveryDialog.exists, true, `${name}: save recovery should open the shared recovery dialog`);
+  assert.strictEqual(recoveryDialog.pendingSlot, 'slot2', `${name}: save recovery should remember the selected slot`);
+  assert.strictEqual(recoveryDialog.dialogSurface, 'save-recovery-dialog', `${name}: save recovery dialog should identify its command surface`);
+  assert.strictEqual(recoveryDialog.dialogMode, 'system', `${name}: save recovery dialog should identify system mode`);
+  assert.strictEqual(recoveryDialog.dialogInsideViewport, true, `${name}: save recovery backdrop should stay inside the viewport`);
+  assert.strictEqual(recoveryDialog.cardInsideViewport, true, `${name}: save recovery card should stay inside the viewport`);
+  assert.strictEqual(recoveryDialog.cancelVisible, true, `${name}: save recovery should expose a visible cancel exit`);
+  assert.strictEqual(recoveryDialog.cancelInsideViewport, true, `${name}: save recovery cancel should stay inside the viewport`);
+  assert.strictEqual(recoveryDialog.cancelSlot, 'exit', `${name}: save recovery cancel should identify the exit slot`);
+  assert.strictEqual(recoveryDialog.backupVisible, true, `${name}: save recovery should expose a visible backup action`);
+  assert.strictEqual(recoveryDialog.backupInsideViewport, true, `${name}: save recovery backup action should stay inside the viewport`);
+  assert.strictEqual(recoveryDialog.deleteVisible, true, `${name}: save recovery should expose a visible delete action`);
+  assert.strictEqual(recoveryDialog.deleteInsideViewport, true, `${name}: save recovery delete action should stay inside the viewport`);
+  assert.strictEqual(recoveryDialog.focusTrapId, 'save-recovery-dialog', `${name}: save recovery should activate the shared focus trap`);
+  assert.notStrictEqual(recoveryDialog.saveManagerDisplay, 'none', `${name}: save manager should remain visible behind save recovery`);
+  assert.strictEqual(recoveryDialog.saveManagerActive, true, `${name}: save manager should remain active behind save recovery`);
+  assert.strictEqual(recoveryDialog.pageOverflow, false, `${name}: save recovery should not create horizontal overflow`);
+
+  await page.locator('#save-recovery-dialog [data-command-control="cancel-save-recovery"]').click();
+  await page.waitForTimeout(50);
+  const cancelledRecovery = await page.evaluate(() => {
+    const dialog = document.getElementById('save-recovery-dialog');
+    const saveManager = document.getElementById('save-manager');
+    const close = saveManager?.querySelector('[data-command-control="close-save-manager"]');
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      dialogExists: Boolean(dialog),
+      pendingCleared: !App.pendingSaveRecovery,
+      appScreen: App.screen,
+      saveManagerDisplay: getComputedStyle(saveManager).display,
+      saveManagerActive: saveManager.classList.contains('active'),
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeInsideViewport: Boolean(closeRect && closeRect.left >= -1 && closeRect.right <= innerWidth + 1 && closeRect.top >= -1 && closeRect.bottom <= innerHeight + 1),
+      focusTrapId: App._focusTrap?.container?.id || '',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(cancelledRecovery.dialogExists, false, `${name}: cancelled save recovery should remove the dialog`);
+  assert.strictEqual(cancelledRecovery.pendingCleared, true, `${name}: cancelled save recovery should clear pending state`);
+  assert.strictEqual(cancelledRecovery.appScreen, 'save-manager', `${name}: cancelling save recovery should keep save manager screen state`);
+  assert.notStrictEqual(cancelledRecovery.saveManagerDisplay, 'none', `${name}: cancelling save recovery should return to the save manager`);
+  assert.strictEqual(cancelledRecovery.saveManagerActive, true, `${name}: cancelling save recovery should keep save manager active`);
+  assert.strictEqual(cancelledRecovery.closeVisible, true, `${name}: save manager close should remain visible after cancelling recovery`);
+  assert.strictEqual(cancelledRecovery.closeInsideViewport, true, `${name}: save manager close should remain inside the viewport after cancelling recovery`);
+  assert.strictEqual(cancelledRecovery.focusTrapId, 'save-manager', `${name}: cancelling save recovery should restore save-manager focus trap`);
+  assert.strictEqual(cancelledRecovery.pageOverflow, false, `${name}: cancelling save recovery should not introduce horizontal overflow`);
+
   await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
   await page.waitForTimeout(50);
   const returnedSaveMenu = await page.evaluate(() => {

@@ -215,6 +215,7 @@ async function checkViewport(browser, name, width, height) {
       const creatureCard = document.getElementById('mobile-creature-card');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
       const cueButton = creatureCue?.querySelector('button');
+      const detailButtons = Array.from(document.querySelectorAll('.mobile-strip-details-btn'));
       const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
@@ -228,6 +229,11 @@ async function checkViewport(browser, name, width, height) {
         const rect = button.getBoundingClientRect();
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
       });
+      const detailButtonRects = detailButtons.map(button => {
+        const rect = button.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+      });
+      const visibleDetailButtonRects = detailButtonRects.filter(rect => rect.width > 0 && rect.height > 0);
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
@@ -270,6 +276,12 @@ async function checkViewport(browser, name, width, height) {
         centerPresenceCount: centerPresenceRects.length,
         minCenterPresenceWidth: Math.min(...centerPresenceRects.map(rect => rect.width)),
         minCenterPresenceHeight: Math.min(...centerPresenceRects.map(rect => rect.height)),
+        detailButtonCount: detailButtonRects.length,
+        visibleDetailButtonCount: visibleDetailButtonRects.length,
+        minVisibleDetailButtonWidth: Math.min(...visibleDetailButtonRects.map(rect => rect.width)),
+        minVisibleDetailButtonHeight: Math.min(...visibleDetailButtonRects.map(rect => rect.height)),
+        visibleDetailsInsideViewport: visibleDetailButtonRects.every(rect => rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+        visibleDetailsAboveDock: visibleDetailButtonRects.every(rect => rect.bottom <= dockRect.top + 1),
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -309,6 +321,11 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.centerPresenceCount <= 2, `${name}: mobile current tile should summarize dense presence instead of wrapping controls out of the tile`);
     assert(mobileControls.minCenterPresenceWidth >= 62 && mobileControls.minCenterPresenceHeight >= 62, `${name}: mobile current tile presence badges should keep roomy finger-sized tap targets`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
+    assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
+    assert(mobileControls.visibleDetailButtonCount >= 1, `${name}: visible mobile rail should expose an explicit Details route`);
+    assert(mobileControls.minVisibleDetailButtonWidth >= 78 && mobileControls.minVisibleDetailButtonHeight >= 34, `${name}: visible mobile rail Details routes should keep usable tap targets`);
+    assert.strictEqual(mobileControls.visibleDetailsInsideViewport, true, `${name}: visible mobile rail Details routes should stay inside the viewport`);
+    assert.strictEqual(mobileControls.visibleDetailsAboveDock, true, `${name}: visible mobile rail Details routes should stay above the fixed dock`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);

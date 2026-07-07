@@ -168,6 +168,16 @@
 
 ## Open Objectives (Priority Order)
 
+## Handoff Review Objectives (2026-07-07)
+
+1. **Finish short/narrow mobile layout validation.** The oversized exploration map card has been capped for `313x670`-style viewports; follow up with real-device checks across browser chrome/safe-area variants and confirm the story sheet, fixed dock, and command belt still feel balanced on taller phones.
+2. **Human-playtest the compact rail flow.** Cover creature marking from the presence cue and rail, multi-actor party selection from the compact actor rail, party-member target marking, safe-labeled target intent resolution, and Details drawer round-trips without losing actor/target state.
+3. **Verify compact combat controls.** Confirm Sync/group combat is still reachable and cancellable, row/reach constraints are understandable from compact cards/chips, and combat does not need generic Actor/Mark controls restored unless a specific regression proves it.
+4. **Continue desktop center/presentation cleanup.** Keep location actions in the composer/belt rather than the center presentation, and keep routine "Here"/actor lists out of the center where side panels or presence rails already provide them.
+5. **Tighten composer ownership across surfaces.** Preserve the north-star split: story is read-only presentation, stage is 3x3 traversal/local presence, composer owns `Actor(s) -> Target(s) -> Intent`, and drawers remain opt-in details/management.
+6. **Expand short-viewport automated coverage only where it proves regressions.** The new `313x670` viewport check catches the map-height regression and one combat strip ordering issue; add more assertions only for repeated real layout failures to avoid brittle DevTools-only tuning.
+7. **Keep default behavior SFW and mod-friendly while polishing UI.** Do not expand explicit content during these slices; preserve safe labels, internal action IDs, content-tier gates, and mod extension points while improving controls.
+
 ## Next Execution Goals
 
 1. **Harden self-included multi-creature interactions.** Identical actor/target sets now have mutual-group handling; continue edge-case coverage for richer unequal non-asymmetric groups and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.

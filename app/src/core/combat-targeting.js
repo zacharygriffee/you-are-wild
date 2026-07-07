@@ -6,6 +6,7 @@
 const YAW_COMBAT_TARGETING = {
     selectTarget(app, action) {
         const actor = app.activeActor || app.player;
+        app.combatTargetId = null;
         app.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
         app._clearCenterActionsForCombat();
         app.renderCombatSceneForTurn(actor);
@@ -36,6 +37,57 @@ const YAW_COMBAT_TARGETING = {
         }
         if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
         return unit.disposition !== app.DISPOSITION.PARTY;
+    },
+
+    markedTarget(app) {
+        if (!app.combatState?.active || !app.combatTargetId) return null;
+        const targetId = String(app.combatTargetId);
+        return app.creatures.find(unit => {
+            if (!unit || unit.CPun <= 0 || unit.disposition !== app.DISPOSITION.ENEMY) return false;
+            return app._unitSelectionId(unit) === targetId || String(unit.id || unit.name) === targetId;
+        }) || null;
+    },
+
+    isMarkedTarget(app, unit) {
+        if (!unit || !app.combatTargetId) return false;
+        const targetId = String(app.combatTargetId);
+        return app._unitSelectionId(unit) === targetId || String(unit.id || unit.name) === targetId;
+    },
+
+    toggleMarkedTarget(app, targetId) {
+        if (!app.combatState?.active || app.targetSelection || app.syncSelection?.active || app.feedSelection?.active) return false;
+        const id = String(targetId || '');
+        const target = app.creatures.find(unit => unit
+            && unit.CPun > 0
+            && unit.disposition === app.DISPOSITION.ENEMY
+            && (app._unitSelectionId(unit) === id || String(unit.id || unit.name) === id));
+        if (!target) return false;
+        const unitId = app._unitSelectionId(target);
+        app.combatTargetId = app.combatTargetId === unitId ? null : unitId;
+        app._clearCenterActionsForCombat();
+        app._renderInteractionState({ exploration: false, toolbelt: true });
+        return true;
+    },
+
+    executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
+        const target = this.markedTarget(app);
+        if (!target) return false;
+        const command = app._buildPanelInteractionCommand({
+            mode: 'combat',
+            actors: [actor],
+            targets: [target],
+            action,
+            source: 'combat-composer',
+            constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+        });
+        const valid = app._validateInteractionCommand(command);
+        if (!valid.ok) {
+            app._reportInvalidCombatCommand(command, valid.reason);
+            return false;
+        }
+        app.combatTargetId = null;
+        app.targetSelection = null;
+        return app._dispatchInteractionCommand(command);
     },
 
     syncBaseAction(syncType) {

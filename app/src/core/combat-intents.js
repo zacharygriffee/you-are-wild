@@ -26,6 +26,9 @@ const YAW_COMBAT_INTENTS = {
         }
         app.activeActor = current;
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
+            if (action !== 'scavenge' && app._combatMarkedTarget?.()) {
+                return app._executeCombatIntentOnMarkedTarget(action, current);
+            }
             const currentActorId = app._unitSelectionId(current);
             if (app.targetSelection?.source === 'combat'
                 && app.targetSelection.action === action
@@ -37,6 +40,7 @@ const YAW_COMBAT_INTENTS = {
             return true;
         }
         if (action === 'feed') {
+            app.combatTargetId = null;
             return app._dispatchPanelInteraction({
                 mode: 'combat',
                 actors: [current],
@@ -47,18 +51,22 @@ const YAW_COMBAT_INTENTS = {
             });
         }
         if (action === 'sync') {
+            app.combatTargetId = null;
             app.showSyncMenu();
             return true;
         }
         if (action === 'moveRow') {
+            app.combatTargetId = null;
             app.moveCombatRow();
             return true;
         }
         if (action === 'flee' && current.name === app.player?.name) {
+            app.combatTargetId = null;
             app.attemptFlee();
             return true;
         }
         if (action === 'skip') {
+            app.combatTargetId = null;
             app.nextTurn();
             return true;
         }

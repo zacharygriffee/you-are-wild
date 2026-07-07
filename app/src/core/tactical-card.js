@@ -20,6 +20,7 @@ const YAW_TACTICAL_CARD = {
         const explorationTargetKey = isParty ? targetKey : app._escapeJsString(app._explorationTargetUnitId('creature', unit));
         const rawTargetId = app._unitSelectionId(unit);
         const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
+        const combatMarked = !isParty && app._isCombatMarkedTarget?.(unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
         const unitName = unit.name || (isParty ? 'party member' : 'creature');
         const unitLabel = app._escapeHtml(unitName);
@@ -62,6 +63,10 @@ const YAW_TACTICAL_CARD = {
                 const targetHint = app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', canTarget);
                 const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabled.trim()}${disabled.trim() ? ' ' : ''}${app._selectionControlAttrs('combat-target', canTarget)}`;
                 actionButtons = `<div class="unit-actions tactical-card-selection-controls" ${app._unitActionRowAttrs('combat-target', unit)}>${button('action-btn primary target-toggle', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
+            } else if (app.combatState.active && unit.disposition === app.DISPOSITION.ENEMY && !app.feedSelection?.active) {
+                const targetClass = combatMarked ? ' primary' : '';
+                const targetAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('target', combatMarked)}`;
+                actionButtons = `<div class="unit-actions tactical-card-selection-controls" ${app._unitActionRowAttrs('combat-target-mark', unit)}>${button('action-btn target-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, combatMarked), `event.stopPropagation();App.toggleCombatTarget('${targetKey}')`, targetAttrs)}</div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = targetSelected ? ' primary' : '';
                 const targetAttrs = `data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
@@ -108,6 +113,7 @@ const YAW_TACTICAL_CARD = {
         const explorationTargetKey = isParty ? targetKey : app._escapeJsString(app._explorationTargetUnitId('creature', unit));
         const rawTargetId = app._unitSelectionId(unit);
         const targetSelected = isParty ? app._isExplorationTarget(type, rawTargetId) : app._isExplorationTargetUnit('creature', unit);
+        const combatMarked = !isParty && app._isCombatMarkedTarget?.(unit);
         const isTargetable = !isParty && app.targetSelection && app.canSelectCreatureTarget(unit);
         const unitName = unit.name || (isParty ? 'party member' : 'creature');
         const unitLabel = app._escapeHtml(unitName);
@@ -158,6 +164,10 @@ const YAW_TACTICAL_CARD = {
                 const targetHint = app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', isSyncTargetable);
                 const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabled.trim()}${disabled.trim() ? ' ' : ''}${app._selectionControlAttrs('combat-target', isSyncTargetable)}`;
                 actionButtons = `<div class="unit-actions tactical-card-selection-controls" ${app._unitActionRowAttrs('combat-target', unit)}>${chipButton('action-btn primary target-toggle', app._combatTargetPickLabel(), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')`, pickAttrs)}</div>`;
+            } else if (app.combatState.active && unit.disposition === app.DISPOSITION.ENEMY && !app.feedSelection?.active) {
+                const targetClass = combatMarked ? ' primary' : '';
+                const targetCommandAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('target', combatMarked)}`;
+                actionButtons = `<div class="unit-actions tactical-card-selection-controls" ${app._unitActionRowAttrs('combat-target-mark', unit)}>${chipButton('action-btn target-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, combatMarked), `event.stopPropagation();App.toggleCombatTarget('${targetKey}')`, targetCommandAttrs)}</div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = targetSelected ? ' primary' : '';
                 const targetCommandAttrs = `data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;

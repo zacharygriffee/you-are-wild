@@ -10,6 +10,7 @@ const YAW_UNIT_SELECTION = {
         if (app.combatState?.active) {
             if (type === 'party' && app._isCurrentCombatActor(unit)) roles.push('actor');
             if (type === 'party' && app._isSyncParticipant(unit) && !roles.includes('actor')) roles.push('participant');
+            if (type === 'creature' && app._isCombatMarkedTarget?.(unit)) roles.push('target');
             if (type === 'creature' && app.targetSelection?.source === 'combat' && app.canSelectCreatureTarget(unit)) roles.push('target');
             if (type === 'creature' && app.syncSelection?.active && app.syncSelection.phase === 'target' && app.canSelectCreatureTarget(unit)) roles.push('target');
             return roles;

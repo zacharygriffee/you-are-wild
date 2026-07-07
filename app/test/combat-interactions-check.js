@@ -232,6 +232,77 @@ async function clickIntentAndTarget(page, action) {
   await target.click();
 }
 
+async function runCombatTargetFirstComposerFlow(page) {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await setupCombat(page);
+  const desktopMark = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
+  await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop combat enemy card should expose target-first Mark');
+  await desktopMark.click();
+  let state = await page.evaluate(() => ({
+    markedTargetId: App.combatTargetId,
+    targetSelection: App.targetSelection,
+    sentence: document.querySelector('#selection-sentence')?.innerText || '',
+    enemySelectedTarget: document.querySelector('#enemies-content .compact-tactical-card')?.classList.contains('selected-target') || false,
+    hasCombatPick: Boolean(document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]'))
+  }));
+  assert.strictEqual(state.markedTargetId, 'enemy-1', 'Desktop combat Mark should store a combat target');
+  assert.strictEqual(state.targetSelection, null, 'Desktop combat Mark should not enter intent-first target-pick state');
+  assert(state.sentence.includes('You') && state.sentence.includes('Enemy') && state.sentence.includes('Choose'), 'Desktop sentence should show Actor -> Target -> Intent after combat Mark');
+  assert.strictEqual(state.enemySelectedTarget, true, 'Desktop marked combat enemy should expose selected-target state');
+  assert.strictEqual(state.hasCombatPick, false, 'Desktop target-first Mark should not render combat-pick controls before intent');
+
+  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
+    combatTargetId: App.combatTargetId,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || '',
+    commandTargetIds: App.lastIntentCommand?.targetIds || [],
+    commandAction: App.lastIntentCommand?.action || ''
+  }));
+  assert(state.enemyPun < 100, 'Desktop target-first Fight should resolve against the marked enemy');
+  assert.strictEqual(state.combatTargetId, null, 'Desktop target-first Fight should clear the combat target after resolving');
+  assert.strictEqual(state.targetSelection, null, 'Desktop target-first Fight should not leave target-pick state active');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop target-first Fight should identify the composer command source');
+  assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Desktop target-first Fight should dispatch the marked enemy id');
+  assert.strictEqual(state.commandAction, 'fight', 'Desktop target-first Fight should dispatch the selected intent');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCombat(page);
+  const mobileMark = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
+  await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat enemy chip should expose target-first Mark');
+  await mobileMark.click();
+  state = await page.evaluate(() => ({
+    markedTargetId: App.combatTargetId,
+    targetSelection: App.targetSelection,
+    sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
+    enemySelectedTarget: document.querySelector('#mobile-creature-strip .mobile-unit-chip')?.classList.contains('selected-target') || false,
+    hasCombatPick: Boolean(document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]')),
+    hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'")
+  }));
+  assert.strictEqual(state.markedTargetId, 'enemy-1', 'Mobile combat Mark should store a combat target');
+  assert.strictEqual(state.targetSelection, null, 'Mobile combat Mark should not enter intent-first target-pick state');
+  assert(state.sentence.includes('You') && state.sentence.includes('Enemy') && state.sentence.includes('Choose'), 'Mobile sentence should show Actor -> Target -> Intent after combat Mark');
+  assert.strictEqual(state.enemySelectedTarget, true, 'Mobile marked combat enemy should expose selected-target state');
+  assert.strictEqual(state.hasCombatPick, false, 'Mobile target-first Mark should not render combat-pick controls before intent');
+  assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat Mark should not render adventure target controls');
+
+  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
+  state = await page.evaluate(() => ({
+    enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
+    combatTargetId: App.combatTargetId,
+    targetSelection: App.targetSelection,
+    commandSource: App.lastIntentCommand?.source || '',
+    commandTargetIds: App.lastIntentCommand?.targetIds || []
+  }));
+  assert(state.enemyPun < 100, 'Mobile target-first Fight should resolve against the marked enemy');
+  assert.strictEqual(state.combatTargetId, null, 'Mobile target-first Fight should clear the combat target after resolving');
+  assert.strictEqual(state.targetSelection, null, 'Mobile target-first Fight should not leave target-pick state active');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile target-first Fight should identify the composer command source');
+  assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Mobile target-first Fight should dispatch the marked enemy id');
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runActionMatrix(page) {
   await setupCombat(page);
   await clickIntentAndTarget(page, 'fight');
@@ -1735,6 +1806,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await clearBrowserStorage(page);
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
+    await runCombatTargetFirstComposerFlow(page);
     await runActionMatrix(page);
     await runReachabilityMatrix(page);
     await runStaleSyncParticipantFlow(page);

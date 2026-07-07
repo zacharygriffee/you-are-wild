@@ -709,6 +709,7 @@
                 syncActions: [], processing: false, xpEarned: 0
             },
             targetSelection: null,
+            combatTargetId: null,
             activeActor: null,
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,
@@ -2056,6 +2057,22 @@
 
             executeAction(action, creatureIndex) {
                 return YAW_COMBAT_TARGETING.executeAction(this, action, creatureIndex);
+            },
+
+            toggleCombatTarget(targetId) {
+                return YAW_COMBAT_TARGETING.toggleMarkedTarget(this, targetId);
+            },
+
+            _combatMarkedTarget() {
+                return YAW_COMBAT_TARGETING.markedTarget(this);
+            },
+
+            _isCombatMarkedTarget(unit) {
+                return YAW_COMBAT_TARGETING.isMarkedTarget(this, unit);
+            },
+
+            _executeCombatIntentOnMarkedTarget(action, actor = this.activeActor || this._currentCombatActor()) {
+                return YAW_COMBAT_TARGETING.executeIntentOnMarkedTarget(this, action, actor);
             },
 
             // ===== SYNCHRONIZED ACTIONS =====

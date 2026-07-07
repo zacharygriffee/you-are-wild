@@ -126,6 +126,12 @@ const YAW_UNIT_CARD = {
                 const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.syncSelection.type || 'sync_fight', canTarget));
                 const targetLabel = app._escapeHtml(app._combatTargetPickLabel());
                 actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabled} onclick="event.stopPropagation();App.executeActionOnTarget('${app.syncSelection.type || 'sync_fight'}','${targetKey}')">${targetLabel}</button></div>`;
+            } else if (app.combatState.active && unit.disposition === app.DISPOSITION.ENEMY && !app.feedSelection?.active) {
+                const targetPressed = app._isCombatMarkedTarget?.(unit);
+                const targetClass = targetPressed ? ' primary' : '';
+                const markLabel = app._escapeHtml(app._targetMarkLabel());
+                const markTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target-mark', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('target', targetPressed)} title="${markTitle}" aria-label="${markTitle}" onclick="event.stopPropagation();App.toggleCombatTarget('${targetKey}')">${markLabel}</button></div>`;
             } else if (!app.combatState.active || unit.disposition !== app.DISPOSITION.ENEMY) {
                 const targetClass = app._isExplorationTargetUnit('creature', unit) ? ' primary' : '';
                 const markLabel = app._escapeHtml(app._targetMarkLabel());

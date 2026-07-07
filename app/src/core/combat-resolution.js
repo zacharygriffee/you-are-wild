@@ -8,6 +8,7 @@ const YAW_COMBAT_RESOLUTION = {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command?.targets?.[0] || null;
         app.targetSelection = null;
+        app.combatTargetId = null;
         app.renderMobileCombatToolbelt();
         return app.executeActionAgainstTarget(command.action, actor, target);
     },

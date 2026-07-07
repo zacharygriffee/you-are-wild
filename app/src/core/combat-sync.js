@@ -14,6 +14,7 @@ const YAW_COMBAT_SYNC = {
         const actor = app.activeActor || app._currentCombatActor() || app.player;
         const actorId = app._unitSelectionId(actor);
         app.targetSelection = null;
+        app.combatTargetId = null;
         app.syncSelection = { active: true, phase: 'choose', actorId, participantIds: [actorId], type: null };
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
@@ -22,6 +23,7 @@ const YAW_COMBAT_SYNC = {
     selectParticipants(app, syncType) {
         const actor = app.activeActor || app._currentCombatActor() || app.player;
         const actorId = app._unitSelectionId(actor);
+        app.combatTargetId = null;
         app.syncSelection = { active: true, phase: 'participants', actorId, participantIds: [actorId], type: syncType };
         app._syncSelected = [app.party.indexOf(actor)].filter(index => index >= 0);
         app._renderInteractionState({ exploration: false, toolbelt: true });

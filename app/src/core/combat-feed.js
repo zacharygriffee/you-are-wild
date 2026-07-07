@@ -35,6 +35,7 @@ const YAW_COMBAT_FEED = {
             subIds: validSubs.map(sub => sub.id)
         };
         app.targetSelection = null;
+        app.combatTargetId = null;
         app.syncSelection = null;
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;

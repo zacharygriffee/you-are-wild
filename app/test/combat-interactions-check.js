@@ -2117,6 +2117,43 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Marked merchant should expose safe primary and contextual intents in the composer tray');
   assert.strictEqual(state.fullDrawerOpen, false, 'Creature rail marking should not open the full Creatures drawer');
 
+  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-target-rail"]`).click();
+  state = await page.evaluate(() => ({
+    creatureRailOpen: App.mobileCreatureRailOpen,
+    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targets: [...App.explorationTargetIds],
+    trayText: document.querySelector('#mobile-target-action-tray')?.innerText || '',
+    sentence: document.querySelector('#mobile-selection-sentence')?.innerText || '',
+    beltSurface: document.querySelector('#mobile-control-belt')?.getAttribute('data-command-surface') || '',
+    compactIntentButtons: document.querySelectorAll('[data-card-role="compact-tactical"] [data-command-slot="intent"]').length,
+    fullDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false
+  }));
+  assert.strictEqual(state.creatureRailOpen, false, 'Closing the compact target rail should update rail state');
+  assert.strictEqual(state.creatureRailDisplay, 'none', 'Closing the compact target rail should hide the target rail');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Closing the compact target rail should preserve marked target state');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Closing the target rail should keep marked-target composer intents reachable');
+  assert(state.sentence.includes('Merchant'), 'Closing the target rail should keep the mobile composer sentence tied to the marked target');
+  assert.strictEqual(state.beltSurface, 'command-composer', 'Closing the target rail should leave the composer as the active command surface');
+  assert.strictEqual(state.compactIntentButtons, 0, 'Closing the target rail should not move intent buttons onto compact cards');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Closing the target rail should not open the full Creatures drawer');
+
+  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-target-rail"]`).click();
+  state = await page.evaluate(() => {
+    const merchantChip = Array.from(document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Merchant'));
+    return {
+      creatureRailOpen: App.mobileCreatureRailOpen,
+      creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+      merchantSelectedTarget: merchantChip?.classList.contains('selected-target') || false,
+      targetButtonPressed: merchantChip?.querySelector('[data-selection-control="target"]')?.getAttribute('aria-pressed') || '',
+      targets: [...App.explorationTargetIds]
+    };
+  });
+  assert.strictEqual(state.creatureRailOpen, true, 'Reopening the compact target rail should restore rail state');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Reopening the compact target rail should show targets again');
+  assert.strictEqual(state.merchantSelectedTarget, true, 'Reopened compact target rail should preserve the marked merchant visual state');
+  assert.strictEqual(state.targetButtonPressed, 'true', 'Reopened compact target rail should preserve target button pressed state');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Reopening the compact target rail should preserve marked target ids');
+
   state = await page.evaluate(() => {
     const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
     const selectedTarget = centerTile?.querySelector('.mobile-play-presence-dot.selected-target');

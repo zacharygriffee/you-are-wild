@@ -42,7 +42,7 @@ function makeUnitScript() {
     ];
     App.combatState.active = false;
     App.location = { x: 0, y: 0 };
-    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'grove', items: [{ id: 'test-item', name: 'Test Item' }] }]]);
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), x: 0, y: 0, explored: true, biome: 'jungle', terrainTags: ['merchant', 'dense canopy', 'wet trail'], items: [{ id: 'test-item', name: 'Test Item' }] }]]);
     App.tileDeltas = new Map();
     App.exploredTiles = new Set(['0,0']);
     App.inventory = [];
@@ -204,6 +204,8 @@ async function checkViewport(browser, name, width, height) {
       const dock = document.querySelector('.mobile-panel-dock');
       const belt = document.getElementById('mobile-control-belt');
       const map = document.querySelector('.mobile-map-card');
+      const tileInfo = document.getElementById('mobile-tile-info');
+      const miniMap = document.getElementById('mobile-mini-map');
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
@@ -212,6 +214,8 @@ async function checkViewport(browser, name, width, height) {
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
+      const tileInfoRect = tileInfo.getBoundingClientRect();
+      const miniMapRect = miniMap.getBoundingClientRect();
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
@@ -231,6 +235,9 @@ async function checkViewport(browser, name, width, height) {
         surfaceHasBeltPadding: document.getElementById('mobile-play-surface')?.classList.contains('has-control-belt') || false,
         mapHeight: mapRect.height,
         mapBottom: mapRect.bottom,
+        tileInfoBottom: tileInfoRect.bottom,
+        miniMapTop: miniMapRect.top,
+        miniMapHeight: miniMapRect.height,
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -261,6 +268,8 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.dockTop - mobileControls.beltBottom <= 10, `${name}: mobile context belt should stay flush above the fixed dock`);
     assert(mobileControls.mapHeight <= Math.min(276, mobileControls.viewportHeight * 0.42) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
+    assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 7, `${name}: mobile tile metadata should not overlap the traversal grid`);
+    assert(mobileControls.miniMapHeight >= 114, `${name}: mobile traversal grid should keep a usable minimum height`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
@@ -611,6 +620,7 @@ async function checkViewport(browser, name, width, height) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await checkViewport(browser, 'reported mobile', 412, 915);
     await checkViewport(browser, 'mobile', 393, 852);
     await checkViewport(browser, 'short mobile', 313, 670);
     await checkViewport(browser, 'desktop', 1365, 768);

@@ -3948,8 +3948,8 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, 'aria-label="Toggle creatures panel"', 'Creature nav button should expose accessible label');
   assertContains(template, 'class="app-nav" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation"', 'Header play shortcuts should identify as drawer navigation, not the command composer');
   assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map"', 'Header Map shortcut should identify the review-map drawer route');
-  assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer"', 'Header Party shortcut should identify the actor drawer route');
-  assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer"', 'Header Enemies shortcut should identify the target drawer route');
+  assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-drawer"', 'Header Party shortcut should identify the actor drawer toggle route');
+  assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-drawer"', 'Header Enemies shortcut should identify the target drawer toggle route');
   assertContains(template, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer"', 'Header Stats shortcut should identify the stats drawer route');
   const navStart = template.indexOf('<nav class="app-nav"');
   const navHtml = template.slice(navStart, template.indexOf('</nav>', navStart));

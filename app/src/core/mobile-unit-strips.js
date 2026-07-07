@@ -173,7 +173,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${exitControl}" data-command-slot="exit" title="${exitTitle}" aria-label="${exitTitle}" onclick="event.stopPropagation();${exitHandler}"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${exitLabel}</strong></span></button>`;
         const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         const detailsTitle = app._escapeHtml(app._label('ui.openPartyDetails', 'Open party details'));
-        const details = `<button type="button" class="mobile-actor-chip mobile-actor-details" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanel('party')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
+        const details = `<button type="button" class="mobile-actor-chip mobile-actor-details" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('party','actor')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
         return `${chips}${clear}${details}`;
     },
 

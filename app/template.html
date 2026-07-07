@@ -4363,8 +4363,8 @@
                 <div class="time-display" id="time-display">☀️ 08:00</div>
                 <nav class="app-nav" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation">
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Toggle map panel" aria-label="Toggle map panel" data-i18n-title="ui.nav.mapTitle" data-i18n-aria-label="ui.nav.mapTitle" onclick="togglePanel('map')">🗺️ <span data-i18n="ui.map">Map</span></button>
-                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
-                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
+                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-drawer" title="Toggle party panel" aria-label="Toggle party panel" data-i18n-title="ui.nav.partyTitle" data-i18n-aria-label="ui.nav.partyTitle" onclick="togglePanel('party')">👥 <span data-i18n="ui.party">Party</span></button>
+                    <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-target-drawer" title="Toggle creatures panel" aria-label="Toggle creatures panel" data-i18n-title="ui.nav.creaturesTitle" data-i18n-aria-label="ui.nav.creaturesTitle" onclick="togglePanel('enemies')">⚔️ <span data-i18n="ui.enemies">Enemies</span></button>
                     <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer" title="Open character stats" aria-label="Open character stats" data-i18n-title="ui.nav.statsTitle" data-i18n-aria-label="ui.nav.statsTitle" onclick="App.showCharacterStats()">📊 <span data-i18n="ui.stats">Stats</span></button>
                 </nav>
             </header>
@@ -4440,7 +4440,7 @@
 	                                <div class="mobile-strip-card" id="mobile-party-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span>Party</span>
-	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open party details" aria-label="Open party details" data-i18n-title="ui.openPartyDetails" data-i18n-aria-label="ui.openPartyDetails" data-i18n="ui.details" onclick="togglePanel('party')">Details</button>
+	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open party details" aria-label="Open party details" data-i18n-title="ui.openPartyDetails" data-i18n-aria-label="ui.openPartyDetails" data-i18n="ui.details" onclick="App.openPanelFromRail('party','actor')">Details</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-party-strip"></div>
 	                                </div>
@@ -4448,7 +4448,7 @@
 	                                <div class="mobile-strip-card" id="mobile-creature-card">
 	                                    <div class="mobile-strip-header">
 	                                        <span id="mobile-creature-title">Creatures</span>
-	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open creature details" aria-label="Open creature details" data-i18n-title="ui.openCreatureDetails" data-i18n-aria-label="ui.openCreatureDetails" data-i18n="ui.details" onclick="togglePanel('enemies')">Details</button>
+	                                        <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open creature details" aria-label="Open creature details" data-i18n-title="ui.openCreatureDetails" data-i18n-aria-label="ui.openCreatureDetails" data-i18n="ui.details" onclick="App.openPanelFromRail('enemies','target')">Details</button>
 	                                    </div>
 	                                    <div class="mobile-unit-strip" id="mobile-creature-strip"></div>
 	                                </div>

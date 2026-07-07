@@ -45,6 +45,12 @@ const YAW_PANEL_SHELL = {
         return true;
     },
 
+    openFromRail(app, panelName, rail = '') {
+        const isMobile = window.innerWidth <= 1024;
+        if (isMobile && rail) app._mobilePanelReturnRail = rail;
+        return this.open(app, panelName);
+    },
+
     toggleDesktopMap(app, panel) {
         this.panels().forEach(panelEl => panelEl.classList.remove('nav-focus'));
         const isActive = panel.classList.toggle('active');
@@ -85,8 +91,32 @@ const YAW_PANEL_SHELL = {
     },
 
     closeAll(app) {
+        const hadActivePanel = Boolean(document.querySelector('.panel-map.active, .panel-party.active, .panel-enemies.active'));
         this.panels().forEach(panel => panel.classList.remove('active'));
         this.syncBackdrop(app);
+        if (hadActivePanel) this.restoreMobileRailContext(app);
+    },
+
+    restoreMobileRailContext(app) {
+        const isMobile = window.innerWidth <= 1024;
+        if (!isMobile || app.combatState?.active) {
+            app._mobilePanelReturnRail = null;
+            return false;
+        }
+        const rail = app._mobilePanelReturnRail || '';
+        app._mobilePanelReturnRail = null;
+        if (rail === 'actor') app.mobileActorBeltOpen = true;
+        if (rail === 'target') app.mobileCreatureRailOpen = true;
+        app.renderMobileExplorationControls?.();
+        if (rail === 'target') app.renderMobileCreatureStrip?.();
+        const focusSelectors = rail === 'target'
+            ? ['#mobile-creature-strip [data-command-control="focus-target"]', '#mobile-creature-card [data-command-control="open-target-drawer"]']
+            : ['#mobile-actor-belt [data-command-control="focus-actor"]', '#mobile-actor-belt button'];
+        const target = focusSelectors.map(selector => document.querySelector(selector)).find(Boolean);
+        if (target && typeof target.focus === 'function') {
+            try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
+        }
+        return Boolean(target);
     },
 
     syncBackdrop() {

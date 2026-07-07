@@ -4574,6 +4574,9 @@
             openPanel(p) {
                 return YAW_PANEL_SHELL.open(this, p);
             },
+            openPanelFromRail(p, rail = '') {
+                return YAW_PANEL_SHELL.openFromRail(this, p, rail);
+            },
             closeAllPanels() {
                 return YAW_PANEL_SHELL.closeAll(this);
             },

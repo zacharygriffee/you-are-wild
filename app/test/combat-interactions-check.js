@@ -1338,6 +1338,23 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Party details should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Party details should preserve marked targets');
   await page.evaluate(() => App.closeAllPanels());
+  state = await page.evaluate(() => ({
+    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    actorRailOpen: App.mobileActorBeltOpen,
+    actorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
+    actorDetailsVisible: Boolean(document.querySelector('#mobile-actor-belt .mobile-actor-details')),
+    activeControl: document.activeElement?.getAttribute('data-command-control') || '',
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    sentence: document.querySelector('#mobile-selection-sentence')?.innerText || ''
+  }));
+  assert.strictEqual(state.partyDrawerOpen, false, 'Closing Party details should return to normal mobile play');
+  assert.strictEqual(state.actorRailOpen, true, 'Closing Party details should restore the compact actor rail');
+  assert(state.actorButtons >= 3 && state.actorDetailsVisible, 'Returned actor rail should keep actor controls and Details reachable');
+  assert.strictEqual(state.activeControl, 'focus-actor', 'Closing Party details should return focus to the compact actor rail');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Party details should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Party details should keep marked targets');
+  assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Closing Party details should keep the mobile composer sentence visible');
 
   await page.locator(`#mobile-creature-card button[data-command-control="open-target-drawer"]`).click();
   state = await page.evaluate(() => ({
@@ -1349,6 +1366,24 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Creature details should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Creature details should preserve marked targets');
   await page.evaluate(() => App.closeAllPanels());
+  state = await page.evaluate(() => ({
+    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    creatureRailOpen: App.mobileCreatureRailOpen,
+    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targetButtons: document.querySelectorAll('#mobile-creature-strip button[data-command-control="focus-target"]').length,
+    activeControl: document.activeElement?.getAttribute('data-command-control') || '',
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
+  }));
+  assert.strictEqual(state.creatureDrawerOpen, false, 'Closing Creature details should return to normal mobile play');
+  assert.strictEqual(state.creatureRailOpen, true, 'Closing Creature details should restore the compact target rail');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Returned target rail should remain visible');
+  assert(state.targetButtons >= 2, 'Returned target rail should keep target controls reachable');
+  assert.strictEqual(state.activeControl, 'focus-target', 'Closing Creature details should return focus to the compact target rail');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Creature details should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Creature details should keep marked targets');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing Creature details should keep shared composer intents visible');
 
   await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
   state = await page.evaluate(() => ({

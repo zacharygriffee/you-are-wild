@@ -218,6 +218,10 @@ const YAW_CENTER_CONTEXT = {
         return centerSlot.innerHTML;
     },
 
+    desktopRailEntries(entries = []) {
+        return entries.filter(entry => entry?.type === 'items' || entry?.type === 'place');
+    },
+
     focusPresence(app, type, ref) {
         if (!ref || app.combatState?.active) return false;
         if (type === 'items') {
@@ -388,9 +392,10 @@ const YAW_CENTER_CONTEXT = {
         this.renderCenterPresenceSlot(app, entries);
         if (!rail) return '';
         rail.innerHTML = '';
-        if (!entries.length) return '';
-        const visible = entries.slice(0, 6);
-        const overflow = entries.slice(visible.length);
+        const railEntries = this.desktopRailEntries(entries);
+        if (!railEntries.length) return '';
+        const visible = railEntries.slice(0, 6);
+        const overflow = railEntries.slice(visible.length);
         const extra = overflow.length;
         const chips = visible.map(entry => this.presenceChip(app, entry)).join('');
         const moreText = app._escapeHtml(app._label('ui.presence.more', '+{count} more', { count: extra }));

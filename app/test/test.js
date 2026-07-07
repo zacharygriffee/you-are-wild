@@ -7477,14 +7477,23 @@ test('Center tile stays traversal and context only across interaction states', (
   const { App, document } = loadAppForCombat();
   const el = id => document.getElementById(id);
   const forbiddenCenterMarkers = [
+    '<button',
+    'onclick=',
+    'data-command-surface=',
+    'data-command-control=',
+    'data-command-slot=',
     'data-card-purpose="detail-toggle"',
     'data-selection-mode=',
     'data-selection-control=',
+    'desktop-context-belt',
+    'selection-sentence',
+    'target-action-row',
     'unit-card',
     'mobile-unit-chip',
     'panel-interaction-tray',
     'unit-combat-actions',
     'executeCombatIntent(',
+    'resolveExplorationTargetAction(',
     'executeActionOnTarget(',
     'showIntentMenu(',
     'showRadialIntentMenu(',
@@ -7498,6 +7507,7 @@ test('Center tile stays traversal and context only across interaction states', (
   ];
   const assertCenterOnly = label => {
     const html = [
+      el('desktop-play-cell-center').innerHTML || '',
       el('scene-title').innerHTML || '',
       el('scene-description').innerHTML || '',
       el('center-presence').innerHTML || '',

@@ -4358,6 +4358,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-control-belt"', 'mobile control belt should keep exploration controls near thumb reach');
   assertContains(template, 'id="mobile-control-belt" data-surface-role="command-composer"', 'mobile control belt should identify as the command composer surface');
   assertContains(template, 'id="mobile-actor-toggle" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="toggle-actors" data-command-slot="actor"', 'Mobile actor toggle should identify as an actor-slot composer control');
+  assertContains(appContent, 'toggleMobilePartyRail()', 'App should expose a mobile party rail shortcut for compact actor and target selection');
   assertContains(template, 'id="mobile-creature-presence-cue"', 'mobile control belt should expose a compact creature presence cue');
   assertContains(template, 'id="mobile-creature-presence-cue" data-surface-role="presence-rail"', 'mobile creature cue should identify as a presence rail rather than a command composer');
   assertContains(template, '.mobile-creature-presence-cue:empty', 'mobile creature presence cue should collapse when no creatures are here');
@@ -11389,9 +11390,26 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.toggleMobileActorBelt();
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add You as actor"', 'Mobile actor belt should advertise adding the implicit fallback actor until it is explicitly selected');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Add Ally as actor"', 'Mobile actor belt should advertise adding an available actor');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Mark Ally as target"', 'Mobile actor belt should expose party target marking without opening the full party drawer');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, "toggleExplorationTarget('party','ally-1')", 'Mobile actor belt should route party target marking through existing target selection');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'data-command-control="focus-target"', 'Mobile actor belt should identify party mark controls as target routing');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'Open party details', 'Mobile actor belt should preserve a path to the full party drawer');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), 'actor-target-routing', 'Mobile actor belt should identify actor-routing command surface when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), 'exploration', 'Mobile actor belt should identify exploration command mode when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile actor belt should identify the shared command grammar when opened');
+
+  App.clearExplorationTargets();
+  App.toggleMobileActorBelt();
+  assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Closing the actor belt should hide compact party controls before dock shortcut testing');
+  App.toggleMobilePartyRail();
+  assertContains(elements.get('mobile-actor-belt').innerHTML, "toggleExplorationTarget('party','ally-1')", 'Mobile Party dock should open compact party target controls instead of requiring the full drawer');
+  App.toggleExplorationTarget('party', 'ally-1');
+  assert(App.explorationTargetIds.includes('party:ally-1'), 'Mobile compact party rail should mark party members as targets');
+  assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show a party target chosen from the compact rail');
+  assertContains(elements.get('mobile-target-action-tray').innerHTML, "resolveExplorationTargetAction('fight'", 'Mobile compact party target should expose shared target actions');
+  App.clearExplorationTargets();
+  App.focusMobileCreaturePresence();
+  App.renderMobileExplorationControls();
 
   App.toggleMobileMovePad();
   assertEqual(elements.get('mobile-move-pad').classList.contains('expanded'), false, 'Marked target and actor controls should keep the dormant move pad collapsed');
@@ -16271,7 +16289,7 @@ test('Mobile panel dock replaces edge swipe panel gestures', () => {
   assertContains(template, 'bottom: calc(env(safe-area-inset-bottom) + 8px);', 'Mobile panel dock should respect the safe-area inset');
   assertContains(template, "onclick=\"App.showCharacterStats()\"", 'Mobile panel dock should open stats by tap');
   assertContains(template, "onclick=\"togglePanel('map')\"", 'Mobile panel dock should open the map panel by tap');
-  assertContains(template, "onclick=\"togglePanel('party')\"", 'Mobile panel dock should open the party panel by tap');
+  assertContains(template, "onclick=\"App.toggleMobilePartyRail()\"", 'Mobile panel dock should open the compact party rail by tap during exploration');
   assertContains(template, "onclick=\"togglePanel('enemies')\"", 'Mobile panel dock should open the creature panel by tap');
   assertNotContains(template, 'ontouchstart="App.handleTouchStart(event)"', 'Main play surface should not capture horizontal panel swipes');
   assertNotContains(template, 'ontouchend="App.handleTouchEnd(event)"', 'Main play surface should not complete horizontal panel swipes');

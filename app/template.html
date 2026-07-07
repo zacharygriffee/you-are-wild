@@ -3110,15 +3110,14 @@
                 display: inline-flex;
                 align-items: center;
                 gap: 7px;
-                min-width: 96px;
-                max-width: 156px;
+                min-width: 148px;
+                max-width: 196px;
                 min-height: 40px;
                 padding: 7px 10px;
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-sm);
                 background: rgba(42, 42, 74, 0.92);
                 color: var(--text-primary);
-                cursor: pointer;
             }
 
             .mobile-actor-chip.selected {
@@ -3126,9 +3125,26 @@
                 box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.35), var(--shadow-glow);
             }
 
+            .mobile-actor-chip.selected-target {
+                border-color: var(--accent-secondary);
+                box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
+            }
+
+            .mobile-actor-chip.selected-actor.selected-target {
+                border-color: var(--accent-warning);
+                box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.45), 0 0 0 3px rgba(255, 0, 128, 0.22), var(--shadow-glow);
+            }
+
             .mobile-actor-chip.mobile-actor-clear {
                 border-color: rgba(255, 107, 157, 0.35);
                 color: var(--text-secondary);
+                min-width: 96px;
+                cursor: pointer;
+            }
+
+            .mobile-actor-chip.mobile-actor-details {
+                min-width: 96px;
+                cursor: pointer;
             }
 
             .mobile-actor-chip-icon {
@@ -3156,6 +3172,36 @@
             .mobile-actor-chip-text span {
                 color: var(--text-muted);
                 font-size: 10px;
+            }
+
+            .mobile-actor-chip-controls {
+                display: flex;
+                gap: 4px;
+                margin-left: auto;
+                flex: 0 0 auto;
+            }
+
+            .mobile-actor-chip-btn {
+                min-width: 42px;
+                min-height: 26px;
+                padding: 4px 6px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                background: rgba(26, 26, 46, 0.78);
+                color: var(--text-secondary);
+                font-size: 10px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            .mobile-actor-chip-btn.actor-toggle.primary {
+                border-color: var(--accent-primary);
+                color: var(--accent-primary);
+            }
+
+            .mobile-actor-chip-btn.target-toggle.primary {
+                border-color: var(--accent-secondary);
+                color: var(--accent-secondary);
             }
 
             .mobile-move-pad {
@@ -4391,7 +4437,7 @@
 	                            <div class="mobile-panel-dock" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>
-	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="togglePanel('party')">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
+                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="toggle-actor-rail" title="Party" aria-label="Party" data-i18n-title="ui.party" data-i18n-aria-label="ui.party" onclick="App.toggleMobilePartyRail()">👥 <span class="mobile-panel-dock-label" data-i18n="ui.party">Party</span></button>
 	                                <button class="nav-btn" id="mobile-creatures-dock-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" title="Creatures" aria-label="Creatures" data-i18n-title="ui.creatures" data-i18n-aria-label="ui.creatures" onclick="togglePanel('enemies')">⚔️ <span class="mobile-panel-dock-label" data-i18n="ui.creatures">Creatures</span><span class="mobile-panel-dock-badge" id="mobile-creature-dock-badge" hidden aria-hidden="true"></span></button>
 	                            </div>
 	                        </div>

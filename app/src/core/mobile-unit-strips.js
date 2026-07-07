@@ -143,20 +143,27 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const chips = (app.party || []).map((unit, index) => {
             if (!unit || !app._isLivingCreature(unit)) return '';
             const selected = app._isExplicitExplorationActor?.(unit);
+            const targetKey = app._unitKey(unit);
+            const targetSelected = app._isExplorationTarget('party', app._unitSelectionId(unit));
             const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
             const role = unit === app.player ? app._label('party.you', 'You') : app._partyRoleLabel(app._getPartyRole(unit));
-            const title = app._escapeHtml(app._actorToggleLabel(unit, selected));
+            const actorTitle = app._escapeHtml(app._actorToggleLabel(unit, selected));
+            const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetSelected));
             const label = app._escapeHtml(unitName);
             const meta = app._escapeHtml(role || '');
             const icon = app._escapeHtml(unit.icon || '👤');
-            const selectedClass = selected ? ' selected selected-actor' : '';
+            const selectedClass = `${selected ? ' selected selected-actor' : ''}${targetSelected ? ' selected-target' : ''}`;
             const pressed = app._selectionControlAttrs('actor', selected);
-            return `<button type="button" class="mobile-actor-chip${selectedClass}" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" title="${title}" aria-label="${title}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></button>`;
+            const targetPressed = app._selectionControlAttrs('target', targetSelected);
+            return `<div class="mobile-actor-chip${selectedClass}" role="group" aria-label="${label} party selection"><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span><span class="mobile-actor-chip-controls"><button type="button" class="mobile-actor-chip-btn actor-toggle${selected ? ' primary' : ''}" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" title="${actorTitle}" aria-label="${actorTitle}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})">${app._escapeHtml(app._label('target.act', 'Actor'))}</button><button type="button" class="mobile-actor-chip-btn target-toggle${targetSelected ? ' primary' : ''}" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" title="${targetTitle}" aria-label="${targetTitle}" ${targetPressed} onclick="event.stopPropagation();App.toggleExplorationTarget('party','${app._escapeJsString(targetKey)}')">${app._escapeHtml(app._targetMarkLabel())}</button></span></div>`;
         }).join('');
         const clearLabel = app._escapeHtml(app._label('target.clearActors', 'Clear actors'));
         const clearTitle = app._escapeHtml(app._label('target.clearActorsTitle', 'Clear selected actors'));
         const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="clear-actors" data-command-slot="exit" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearExplorationActors()"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${clearLabel}</strong></span></button>`;
-        return `${chips}${clear}`;
+        const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
+        const detailsTitle = app._escapeHtml(app._label('ui.openPartyDetails', 'Open party details'));
+        const details = `<button type="button" class="mobile-actor-chip mobile-actor-details" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanel('party')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
+        return `${chips}${clear}${details}`;
     },
 
     livingCreatures(app) {

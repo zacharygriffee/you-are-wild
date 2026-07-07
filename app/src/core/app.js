@@ -3897,6 +3897,10 @@
                 if (this.mobileActorBeltOpen) this.mobileMovePadOpen = false;
                 this.renderMobileExplorationControls();
             },
+            toggleMobilePartyRail() {
+                if (this.combatState?.active) return this.openPanel('party');
+                return this.toggleMobileActorBelt();
+            },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);
             },

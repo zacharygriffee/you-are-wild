@@ -22,7 +22,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const corpses = app.creatures.filter(c => app._isCorpse(c));
         const visible = [...living, ...corpses];
         this.updateCreatureDockBadge(app, living);
-        if (card) card.style.display = visible.length > 0 || app.combatState.active ? 'block' : 'none';
+        if (card) card.style.display = (app.combatState.active || (visible.length > 0 && app.mobileCreatureRailOpen !== false)) ? 'block' : 'none';
         strip.innerHTML = visible.length > 0
             ? visible.map(unit => app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')).join('')
             : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${app._escapeHtml(app._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
@@ -170,6 +170,10 @@ const YAW_MOBILE_UNIT_STRIPS = {
         return (app.creatures || []).filter(unit => unit && (unit.CPun ?? 1) > 0 && !app._isCorpse(unit));
     },
 
+    visibleTargets(app) {
+        return (app.creatures || []).filter(unit => unit && ((unit.CPun ?? 1) > 0 || app._isCorpse(unit)));
+    },
+
     updateCreatureDockBadge(app, living = this.livingCreatures(app)) {
         const badge = document.getElementById('mobile-creature-dock-badge');
         const button = document.getElementById('mobile-creatures-dock-btn');
@@ -232,6 +236,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const ref = app._explorationTargetUnitId('creature', living[0]);
             return app.focusPresence('creature', ref);
         }
+        app.mobileCreatureRailOpen = true;
         app.renderCreatures();
         if (typeof document !== 'undefined') {
             const card = document.getElementById('mobile-creature-card');
@@ -245,8 +250,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
 
     focusCreatureRail(app) {
         if (app.combatState?.active) return app.openPanel('enemies');
-        const living = this.livingCreatures(app);
-        if (!living.length) return app.openPanel('enemies');
+        const visible = this.visibleTargets(app);
+        if (!visible.length) return app.openPanel('enemies');
+        app.mobileCreatureRailOpen = true;
         app.renderCreatures();
         if (typeof document !== 'undefined') {
             const card = document.getElementById('mobile-creature-card');
@@ -256,5 +262,18 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
         }
         return true;
+    },
+
+    toggleCreatureRail(app) {
+        if (app.combatState?.active) return app.openPanel('enemies');
+        const visible = this.visibleTargets(app);
+        if (!visible.length) return app.openPanel('enemies');
+        if (app.mobileCreatureRailOpen !== false) {
+            app.mobileCreatureRailOpen = false;
+            const card = typeof document !== 'undefined' ? document.getElementById('mobile-creature-card') : null;
+            if (card) card.style.display = 'none';
+            return true;
+        }
+        return this.focusCreatureRail(app);
     }
 };

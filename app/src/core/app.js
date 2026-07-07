@@ -716,6 +716,7 @@
             focusedStageObject: null,
             mobileMovePadOpen: false,
             mobileActorBeltOpen: false,
+            mobileCreatureRailOpen: true,
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -3905,7 +3906,7 @@
                 return this.toggleMobileActorBelt();
             },
             toggleMobileCreatureRail() {
-                return this.focusMobileCreatureRail();
+                return YAW_MOBILE_UNIT_STRIPS.toggleCreatureRail(this);
             },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);

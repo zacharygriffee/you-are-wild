@@ -2456,6 +2456,7 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, 'data-command-target-count', 'Multi-creature mobile cue should expose target-count metadata');
   assertContains(mobileUnitStripsContent, 'focusCreaturePresence(app)', 'Mobile unit strip helper should focus/open creatures from the compact cue');
   assertContains(mobileUnitStripsContent, 'focusCreatureRail(app)', 'Mobile unit strip helper should focus the compact creature rail from mobile shortcuts');
+  assertContains(mobileUnitStripsContent, 'toggleCreatureRail(app)', 'Mobile unit strip helper should own the compact creature rail toggle');
   assertContains(mobileUnitStripsContent, 'updateCreatureDockBadge(app', 'Mobile unit strip helper should own the creature dock count badge');
   assertContains(mobileUnitStripsContent, "controlBelt.setAttribute('data-command-surface', 'command-composer')", 'Mobile control belt should identify as the active command composer when populated');
   assertContains(mobileUnitStripsContent, "targetTray.setAttribute('data-command-surface', 'target-intents')", 'Mobile target action tray should identify the active target-intent surface when populated');
@@ -3580,8 +3581,14 @@ test('Localization registry exposes English and Spanish labels', () => {
   assertContains(contentContent, "'create.namePlaceholder': 'Ingresa tu nombre...'", 'Spanish create name placeholder missing');
   assertContains(contentContent, "'ui.showDetails': 'Show Details'", 'English show-details label missing');
   assertContains(contentContent, "'ui.hideDetails': 'Hide Details'", 'English hide-details label missing');
+  assertContains(contentContent, "'ui.details': 'Details'", 'English compact rail details label missing');
+  assertContains(contentContent, "'ui.openPartyDetails': 'Open party details'", 'English party details route label missing');
+  assertContains(contentContent, "'ui.openCreatureDetails': 'Open creature details'", 'English creature details route label missing');
   assertContains(contentContent, "'ui.showDetails': 'Mostrar detalles'", 'Spanish show-details label missing');
   assertContains(contentContent, "'ui.hideDetails': 'Ocultar detalles'", 'Spanish hide-details label missing');
+  assertContains(contentContent, "'ui.details': 'Detalles'", 'Spanish compact rail details label missing');
+  assertContains(contentContent, "'ui.openPartyDetails': 'Abrir detalles del grupo'", 'Spanish party details route label missing');
+  assertContains(contentContent, "'ui.openCreatureDetails': 'Abrir detalles de criaturas'", 'Spanish creature details route label missing');
   assertContains(contentContent, "'mod.loading': 'Loading modules...'", 'English module loading fallback missing');
   assertContains(contentContent, "'mod.loading': 'Cargando modulos...'", 'Spanish module loading fallback missing');
 });
@@ -4269,6 +4276,8 @@ test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(mobileDockHtml, 'data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer"', 'Mobile dock should identify the stats drawer route');
   assertContains(template, "onclick=\"App.toggleMobileCreatureRail()\"", 'mobile dock should expose compact creatures rail');
   assertContains(template, 'id="mobile-creature-dock-badge"', 'mobile dock should expose a compact creature count badge');
+  assertContains(template, 'data-command-control="open-actor-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open party details" aria-label="Open party details" data-i18n-title="ui.openPartyDetails" data-i18n-aria-label="ui.openPartyDetails" data-i18n="ui.details"', 'Mobile party rail should expose full party management as an explicit Details route');
+  assertContains(template, 'data-command-control="open-target-drawer" style="padding: 2px 8px; font-size: 10px;" title="Open creature details" aria-label="Open creature details" data-i18n-title="ui.openCreatureDetails" data-i18n-aria-label="ui.openCreatureDetails" data-i18n="ui.details"', 'Mobile creature rail should expose full creature details as an explicit Details route');
   assertContains(template, '.mobile-panel-dock-badge[hidden]', 'mobile creature dock badge should collapse when no creatures are present');
   assertContains(template, 'class="mobile-panel-dock"', 'Mobile panel dock should provide tap shortcuts instead of edge swipes');
   assertContains(template, 'mobile-panel-dock-label', 'Mobile panel dock should label shortcut buttons');
@@ -11354,6 +11363,15 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="takeItems"', 'Mobile Take Items should expose exploration grammar and stable intent metadata');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
   assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Mobile creature strip should expose visible Mark control');
+  assertEqual(elements.get('mobile-creature-card').style.display, 'block', 'Mobile compact creature rail should be visible by default when targets are present');
+  App.toggleMobileCreatureRail();
+  assertEqual(App.mobileCreatureRailOpen, false, 'Mobile Creatures dock should close the compact target rail when it is open');
+  assertEqual(elements.get('mobile-creature-card').style.display, 'none', 'Closing the mobile target rail should hide the compact rail without opening the full drawer');
+  assertEqual(document.getElementById('panel-enemies').classList.contains('active'), false, 'Closing the compact target rail should not open the full creature drawer');
+  App.toggleMobileCreatureRail();
+  assertEqual(App.mobileCreatureRailOpen, true, 'Mobile Creatures dock should reopen the compact target rail when it is closed');
+  assertEqual(elements.get('mobile-creature-card').style.display, 'block', 'Reopening the mobile target rail should show compact target controls');
+  assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleExplorationTarget('creature','guide-1')", 'Reopened compact target rail should retain target controls');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'Here: Guide', 'Mobile creature cue should summarize the visible creature in the control belt');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'aria-label="Mark Guide as target"', 'Mobile creature cue should announce the composer target-selection action');
   assertContains(elements.get('mobile-creature-presence-cue').innerHTML, 'data-stage-surface="presence"', 'Mobile creature cue should identify the stage presence surface');

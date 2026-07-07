@@ -76,6 +76,8 @@ const YAW_TACTICAL_CARD = {
         }
         const dispLabel = isParty ? '' : app._unitDispositionLabel(unit);
         const roleLabel = isParty && unit.name !== app.player?.name ? app._partyRoleLabel(app._getPartyRole(unit)) : '';
+        const canDragPartyMember = isParty && unit !== app.player && !app.combatState.active;
+        const dragAttrs = canDragPartyMember ? ` draggable="true" data-party-index="${index}" ondragstart="event.stopPropagation();App.startPartyDrag(${index})" ondragover="App.dragPartyOver(event)" ondrop="event.stopPropagation();App.dropPartyMember(${index})" ondragend="App.clearPartyDrag()"` : '';
         const rowLabel = app.combatState.active && unit.combatRow ? ` ${app._label('combat.row', 'Row')}:${app._combatRowLabel(unit.combatRow)}` : '';
         const status = app._escapeHtml(`${isParty ? (unit === app.player ? app._label('party.you', 'You') : app._label('party.ally', 'Ally')) : dispLabel || app._unitDispositionLabel(unit)}${rowLabel ? ' | ' + rowLabel.trim() : ''}`);
         const unitMeta = [
@@ -84,12 +86,12 @@ const YAW_TACTICAL_CARD = {
             dispLabel ? `<span class="unit-meta-badge">${app._escapeHtml(dispLabel)}</span>` : '',
             app._turnOrderBadge(unit)
         ].filter(Boolean).join('');
-        const cardClass = `unit-card compact-tactical-card desktop-tactical-card${isTargetable ? ' targetable' : ''}${app._unitSelectionClass(unit, type)}`;
+        const cardClass = `unit-card compact-tactical-card desktop-tactical-card${canDragPartyMember ? ' party-draggable' : ''}${isTargetable ? ' targetable' : ''}${app._unitSelectionClass(unit, type)}`;
         const surfaceRoleAttrs = isParty
             ? 'data-surface-role="actor-card" data-drawer-role="actors"'
             : 'data-surface-role="target-card" data-drawer-role="targets"';
         const click = isParty ? `App.toggleUnit(${index},'party')` : `App.toggleUnit(${index},'creature')`;
-        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}">
+        return `<div class="${cardClass}" data-card-role="compact-tactical" ${surfaceRoleAttrs} ${app._unitSelectionStateAttrs(unit, type)} ${app._unitCardFocusAttrs(unit, false)} onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${click}}" onclick="${click}" style="${isCorpse ? 'opacity:0.58;' : ''}"${dragAttrs}>
                     ${actionButtons}
                     <div class="unit-header">
                         <span class="unit-icon">${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span>
@@ -187,7 +189,7 @@ const YAW_TACTICAL_CARD = {
         const pressHandlers = isParty
             ? ` ontouchstart="App.startMobilePartyPress(event,${index})" ontouchmove="App.cancelMobilePartyPress()" ontouchend="App.cancelMobilePartyPress()" ontouchcancel="App.cancelMobilePartyPress()"`
             : ` ontouchstart="App.startMobileCreaturePress(event,'${pressTargetKey}')" ontouchmove="App.cancelMobileCreaturePress()" ontouchend="App.cancelMobileCreaturePress()" ontouchcancel="App.cancelMobileCreaturePress()"`;
-        const chipClass = `mobile-unit-chip${isTargetable ? ' targetable' : ''}${app._unitSelectionClass(unit, type)} compact-tactical-card`;
+        const chipClass = `mobile-unit-chip${app._unitSelectionClass(unit, type)}${isTargetable ? ' targetable' : ''} compact-tactical-card`;
         const surfaceRoleAttrs = isParty
             ? 'data-surface-role="actor-presence-chip" data-drawer-role="actors"'
             : 'data-surface-role="target-presence-chip" data-drawer-role="targets"';

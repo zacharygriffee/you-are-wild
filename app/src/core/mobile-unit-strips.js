@@ -293,6 +293,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
         if (typeof document !== 'undefined') {
             const card = document.getElementById('mobile-creature-card');
             if (card) card.style.display = 'block';
+            const panel = document.getElementById('panel-enemies');
+            const drawer = document.getElementById('enemies-content');
+            if (drawer && !panel?.classList?.contains('active')) drawer.innerHTML = '';
             if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });

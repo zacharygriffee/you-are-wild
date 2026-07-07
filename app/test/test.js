@@ -3832,7 +3832,11 @@ test('Overlay close controls clear active overlay state', () => {
   assertContains(appContent, "el) { el.style.display = 'none'; el.classList.remove('active'); }", 'App returnToGame should clear active class from closed overlays');
   assertContains(template, 'onclick="App.openSettingsFromMenu()"', 'Main menu Settings should preserve menu return context');
   assertContains(settingsFlowContent, "settingsReturnScreen = 'menu'", 'Settings opened from the main menu should store an explicit menu return context');
+  assertContains(template, 'onclick="App.openSettingsFromGame()"', 'App menu Settings should preserve live-game return context');
+  assertContains(settingsFlowContent, "openSettingsFromGame(app)", 'Settings flow should expose an explicit live-game settings route');
+  assertContains(settingsFlowContent, "settingsReturnScreen = 'game'", 'Settings opened from the app menu should store an explicit game return context');
   assertContains(appContent, "returnScreen === 'menu'", 'App returnToGame should honor explicit main-menu settings return context');
+  assertContains(appContent, "returnScreen === 'game'", 'App returnToGame should honor explicit live-game settings return context');
   assertContains(appContent, "document.getElementById('screen-menu').classList.add('active');", 'App returnToGame should restore active menu state when no game is running');
   assertContains(appContent, "this.screen = 'menu';", 'App returnToGame should restore menu screen state when no game is running');
 });
@@ -3875,6 +3879,51 @@ test('Settings overlay returns to a centered active main menu from the menu rout
   assertEqual(menu.classList.contains('active'), true, 'Menu should regain active class after closing settings');
   assertEqual(settings.classList.contains('active'), false, 'Settings overlay active class should be cleared on close');
   assertEqual(App.settingsReturnScreen, null, 'Settings return target should clear after closing');
+});
+
+test('Settings overlay returns to live game from the app menu route', () => {
+  const screenIds = ['screen-menu', 'screen-settings', 'screen-game', 'screen-create', 'screen-mods', 'screen-market', 'save-manager'];
+  const { App, document } = loadAppForCombat(() => 0.5, {
+    querySelectorAll(selector, elements) {
+      if (selector !== '.screen') return [];
+      return screenIds.map(id => {
+        if (!elements.has(id)) elements.set(id, makeElement());
+        return elements.get(id);
+      });
+    }
+  });
+  const appShell = document.getElementById('app');
+  const game = document.getElementById('screen-game');
+  const menu = document.getElementById('screen-menu');
+  const settings = document.getElementById('screen-settings');
+  const appMenu = document.getElementById('app-menu');
+  const appMenuToggle = document.getElementById('app-menu-toggle');
+  App.player = makeUnit('Existing Player', { CPun: 80, MPun: 100 });
+  App.party = [App.player];
+  App.screen = 'game';
+  appShell.style.display = 'grid';
+  game.style.display = 'flex';
+  game.classList.add('active');
+  menu.style.display = 'none';
+  App.setAppMenuOpen(true);
+
+  App.openSettingsFromGame();
+  assertEqual(App.screen, 'settings', 'Game app menu Settings should open the settings overlay');
+  assertEqual(App.settingsReturnScreen, 'game', 'Game app menu Settings should remember the game return target');
+  assertEqual(appMenu.classList.contains('open'), false, 'Opening Settings from app menu should close the menu popover');
+  assertEqual(appMenuToggle.getAttribute('aria-expanded'), 'false', 'Opening Settings should collapse the app-menu toggle state');
+  assertEqual(appShell.style.display, 'none', 'Game shell should hide while settings is open');
+  assertEqual(game.classList.contains('active'), false, 'Game screen should not stay active behind settings');
+
+  App.returnToGame();
+  assertEqual(App.screen, 'game', 'Closing app-menu Settings should restore live game screen state');
+  assertEqual(appShell.style.display, 'grid', 'Game app shell should be visible after closing settings');
+  assertEqual(game.style.display, 'flex', 'Game screen should be visible after closing settings');
+  assertEqual(game.classList.contains('active'), true, 'Game screen should regain active class after closing settings');
+  assertEqual(menu.style.display, 'none', 'Main menu should stay hidden after returning to a live game');
+  assertEqual(settings.classList.contains('active'), false, 'Settings overlay active class should clear on game return');
+  assertEqual(appMenu.classList.contains('open'), false, 'App menu should remain closed after returning to game');
+  assertEqual(App.settingsReturnScreen, null, 'Game settings return target should clear after closing');
 });
 
 test('New game flow is slot-aware and warns before destructive slot changes', () => {
@@ -3984,7 +4033,7 @@ test('Persistent navigation controls expose accessible labels', () => {
   assertContains(template, '.app-nav {\n                display: none;', 'Mobile header should hide duplicated desktop play shortcuts');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('save')", 'App menu should expose Save without a top-level nav button');
   assertContains(template, "App.closeAppMenu(); App.showSaveManager('load')", 'App menu should expose Load without a top-level nav button');
-  assertContains(template, "App.closeAppMenu(); App.showScreen('settings'); App.showSettings();", 'App menu should expose Settings');
+  assertContains(template, 'App.openSettingsFromGame()', 'App menu should expose Settings through the live-game return route');
   assertContains(template, 'App.closeAppMenu(); App.showMarketScreen()', 'App menu should expose Market');
   assertContains(template, 'App.closeAppMenu(); App.showModScreen()', 'App menu should expose Mods');
   assertContains(template, 'App.closeAppMenu(); App.showTutorial()', 'App menu should expose Help');
@@ -4419,8 +4468,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
   assertContains(template, '.mobile-map-card {\n                order: 2;', 'mobile play surface should sit directly below semantics for thumb reach');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
-  assertContains(template, 'grid-template-columns: minmax(40px, 1fr) minmax(144px, 1.6fr) minmax(40px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
-  assertContains(template, 'grid-template-rows: minmax(24px, 0.75fr) minmax(84px, 2fr) minmax(24px, 0.75fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
+  assertContains(template, 'grid-template-columns: minmax(48px, 1fr) minmax(176px, 1.95fr) minmax(48px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
+  assertContains(template, 'grid-template-rows: minmax(44px, 0.6fr) minmax(144px, 2.55fr) minmax(44px, 0.6fr);', 'mobile routine play should reserve a larger center row while keeping edge movement cells visible');
   assertContains(template, '.mobile-play-presence {\n                display: flex;', 'mobile center tile should show bounded local presence');
   assertContains(template, '.mobile-play-presence-dot.party', 'mobile center presence should distinguish party markers');
   assertContains(template, '.mobile-play-presence-dot.item', 'mobile center presence should distinguish item markers');
@@ -4722,6 +4771,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'scene-description',
     'scene-actions',
     'desktop-context-belt',
+    'desktop-command-composer',
     'desktop-play-cell-center',
     'desktop-play-surface',
     'desktop-presence-rail',
@@ -9201,10 +9251,10 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(creatureHtml, 'class="unit-trait-chip selection" data-selection-role="target" title="Marcado">Marcado</span>', 'Selected creature target should render a localized card chip');
   const mobileActorChip = App.renderMobileUnitChip(actor, 0, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creatureTarget, 0, 'creature');
-  assertContains(mobileActorChip, 'class="mobile-unit-chip selected selected-actor"', 'Mobile selected actor chip should expose selected actor class');
+  assertContains(mobileActorChip, 'selected selected-actor', 'Mobile selected actor chip should expose selected actor class');
   assertContains(mobileActorChip, 'data-selection-roles="actor" data-selection-state="selected"', 'Mobile selected actor chip root should expose selected actor metadata');
   assertContains(mobileActorChip, 'aria-label="Quitar Actor de los actores"', 'Mobile actor button should label actor role selection instead of an action command');
-  assertContains(mobileCreatureChip, 'class="mobile-unit-chip selected selected-target"', 'Mobile selected target chip should expose selected target class');
+  assertContains(mobileCreatureChip, 'selected selected-target', 'Mobile selected target chip should expose selected target class');
   assertContains(mobileCreatureChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile selected target chip root should expose selected target metadata');
   assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
   assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
@@ -9225,7 +9275,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(selectionHtml, 'Creature Target', 'Composer sentence should show selected creature target names');
   assertContains(selectionHtml, 'Intent', 'Composer target sentence should expose the pending intent label');
   assertContains(actionsHtml, 'aria-label="Hablar 2 objetivos"', 'Selected-target action labels should use localized target counts');
-  assertContains(actionsHtml, 'class="panel-interaction-tray adventure-interaction-tray" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Composer selected-target tray root should identify target-intent ownership');
+  assertContains(actionsHtml, 'class="target-action-row" data-command-surface="target-intents" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Composer selected-target action row should identify target-intent ownership');
   assertContains(actionsHtml, 'class="target-action-row"', 'Composer selected-target action buttons should be wrapped in a bounded row');
   assertContains(actionsHtml, 'data-command-surface="target-intents"', 'Composer selected-target action row should identify its command surface');
   assertContains(actionsHtml, 'data-command-surface="target-intents" data-command-mode="exploration"', 'Composer selected-target action row should identify exploration command mode');
@@ -9269,7 +9319,7 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(actorTargetCard, 'class="unit-card selected selected-actor selected-target"', 'Actor can also be visibly marked as a target');
   assertContains(actorTargetCard, 'data-selection-role="actor" title="Actor">Actor</span>', 'Actor-target card should keep the actor role chip');
   assertContains(actorTargetCard, 'data-selection-role="target" title="Marcado">Marcado</span>', 'Actor-target card should add the target role chip');
-  assertContains(actorTargetChip, 'class="mobile-unit-chip selected selected-actor selected-target"', 'Mobile actor-target chip should expose combined selection classes');
+  assertContains(actorTargetChip, 'selected selected-actor selected-target', 'Mobile actor-target chip should expose combined selection classes');
 });
 
 test('Exploration creature marks stay scoped to the selected card when ids collide', () => {
@@ -9341,7 +9391,7 @@ test('Sync participant selection uses participant role instead of target role', 
   assertContains(allyCard, '>Participante</button>', 'Selected sync helper button should say Participant instead of Target');
   assertNotContains(allyCard, 'data-selection-role="target" title="Objetivo">Objetivo</span>', 'Selected sync helper should not be presented as a target chip');
   assertNotContains(allyCard, '>Objetivo</button>', 'Selected sync helper button should not say Target');
-  assertContains(allyChip, 'class="mobile-unit-chip selected selected-participant"', 'Mobile selected sync helper chip should expose participant state');
+  assertContains(allyChip, 'selected selected-participant', 'Mobile selected sync helper chip should expose participant state');
   assertContains(allyChip, 'data-selection-role="participant" title="Participante">Participante</span>', 'Mobile selected sync helper chip should label participant state');
 });
 

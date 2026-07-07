@@ -38,15 +38,17 @@ const YAW_LOCAL_MAP = {
         if (presence.length <= 3) return { visible: presence, overflow: [] };
         const hasStageCue = presence.some(entry => entry?.type === 'items' || entry?.type === 'place');
         const hasCreatureCue = presence.some(entry => entry?.type === 'creature');
+        const hasPartyCompanion = presence.some(entry => entry?.type === 'party');
         const limit = hasStageCue && hasCreatureCue ? 1 : (hasStageCue ? 2 : 3);
         const priority = (entry, index) => {
             if (this.isPresenceSelected(app, entry)) return 1000 - index;
-            if (entry?.type === 'player') return 900 - index;
+            if (entry?.type === 'party') return 900 - index;
+            if (entry?.type === 'player' && !hasPartyCompanion) return 900 - index;
             if (entry?.type === 'place' && entry?.unit?.intent === 'enter') return 800 - index;
             if (entry?.type === 'creature') return 700 - index;
             if (entry?.type === 'items') return 600 - index;
             if (entry?.type === 'place') return 500 - index;
-            if (entry?.type === 'party') return 400 - index;
+            if (entry?.type === 'player') return 400 - index;
             return 100 - index;
         };
         const visibleIndexes = presence

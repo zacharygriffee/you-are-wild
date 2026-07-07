@@ -170,6 +170,13 @@ const YAW_SETTINGS_FLOW = {
         app.showSettings();
     },
 
+    openSettingsFromGame(app) {
+        app.settingsReturnScreen = 'game';
+        app.closeAppMenu?.();
+        app.showScreen('settings');
+        app.showSettings();
+    },
+
     save(app) {
         app._setStoredValue('settings', JSON.stringify(app._settingsForStorage()));
         if (CONTENT?.preferences) {

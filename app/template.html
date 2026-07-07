@@ -2609,7 +2609,7 @@
                 --mobile-dock-height: 58px;
                 --mobile-control-belt-compact-height: 104px;
                 --mobile-control-belt-max-height: 164px;
-                --mobile-scene-height: clamp(104px, 17dvh, 160px);
+                --mobile-scene-height: clamp(164px, 24dvh, 214px);
                 --mobile-map-height: clamp(336px, 38dvh, 340px);
             }
 
@@ -2965,6 +2965,12 @@
 
             .mobile-play-presence-dot.enemy {
                 border-color: rgba(255, 107, 157, 0.62);
+            }
+
+            @media (max-width: 380px) and (max-height: 820px) {
+                :root {
+                    --mobile-scene-height: clamp(128px, 17dvh, 140px);
+                }
             }
 
             @media (max-width: 380px) and (max-height: 700px) {
@@ -4449,7 +4455,7 @@
                     <div class="app-menu" id="app-menu" role="menu" data-surface-role="system-menu" data-command-surface="app-system" data-command-mode="system" aria-label="App menu" data-i18n-aria-label="ui.menu.appMenu">
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-save-slots" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
-                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.closeAppMenu(); App.showScreen('settings'); App.showSettings();">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromGame()">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>

@@ -4367,6 +4367,24 @@
                     this.refreshContinueButton();
                     return;
                 }
+                if (returnScreen === 'game') {
+                    if (this.player && this.player.CPun > 0) {
+                        document.getElementById('screen-menu').style.display = 'none';
+                        document.getElementById('app').style.display = 'grid';
+                        document.getElementById('screen-game').style.display = 'flex';
+                        document.getElementById('screen-game').classList.add('active');
+                        this.screen = 'game';
+                    } else {
+                        document.getElementById('app').style.display = 'none';
+                        document.getElementById('screen-game').style.display = 'none';
+                        document.getElementById('screen-game').classList.remove('active');
+                        document.getElementById('screen-menu').style.display = 'flex';
+                        document.getElementById('screen-menu').classList.add('active');
+                        this.screen = 'menu';
+                        this.refreshContinueButton();
+                    }
+                    return;
+                }
                 if (this.player && this.player.CPun > 0) {
                     document.getElementById('screen-menu').style.display = 'none';
                     document.getElementById('app').style.display = 'grid';
@@ -4511,6 +4529,9 @@
             },
             openSettingsFromMenu() {
                 return YAW_SETTINGS_FLOW.openSettingsFromMenu(this);
+            },
+            openSettingsFromGame() {
+                return YAW_SETTINGS_FLOW.openSettingsFromGame(this);
             },
             saveSettings() {
                 return YAW_SETTINGS_FLOW.save(this);

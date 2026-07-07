@@ -535,6 +535,7 @@ const YAW_CENTER_CONTEXT = {
         const mobileExplore = document.getElementById('mobile-explore-actions');
         if (mobileExplore) {
             mobileExplore.innerHTML = mobileHtml;
+            mobileExplore.style.display = mobileHtml ? 'flex' : 'none';
             if (mobileCommandSurface) {
                 mobileExplore.setAttribute('data-command-surface', mobileCommandSurface);
                 mobileExplore.setAttribute('data-command-mode', 'exploration');

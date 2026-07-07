@@ -11680,6 +11680,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.inventory = [];
   App.combatState.active = false;
   App.mobileMovePadOpen = false;
+  elements.get('mobile-explore-actions').style.display = 'none';
 
   App.renderParty();
   App.renderCreatures();
@@ -11701,6 +11702,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), 'command-composer', 'Mobile location action row should identify composer ownership');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-mode'), 'exploration', 'Mobile location action row should identify exploration command mode');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile location action row should identify the shared command grammar');
+  assertEqual(elements.get('mobile-explore-actions').style.display, 'flex', 'Mobile location action row should restore visibility after a stale hidden cleanup state');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-intent="takeItems"', 'Mobile Take Items should expose its stable location intent id');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-group="location-intents" data-command-intent="takeItems"', 'Mobile Take Items should expose composer-owned exploration grammar and stable intent metadata');
   assertContains(elements.get('mobile-explore-actions').innerHTML, 'App.takeTileItems()', 'Mobile location actions should render in the control belt');
@@ -11789,6 +11791,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-play-surface').classList.contains('control-belt-expanded'), true, 'Marked-target controls should reserve expanded composer space');
   assertEqual(elements.get('mobile-explore-actions').innerHTML, '', 'Marked-target controls should not duplicate target intents in the mobile location row');
   assertEqual(elements.get('mobile-explore-actions').getAttribute('data-command-surface'), null, 'Marked-target controls should clear mobile location row command surface metadata');
+  assertEqual(elements.get('mobile-explore-actions').style.display, 'none', 'Marked-target controls should keep lower-priority mobile location row hidden');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Target', 'Mobile selection sentence should move into the control belt when one target is marked');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Guide', 'Mobile selection sentence should own the marked target summary');
   assertContains(trayHtml, 'data-command-surface="target-intents"', 'Mobile target action tray should identify the composer intent surface');

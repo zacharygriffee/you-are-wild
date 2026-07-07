@@ -208,6 +208,7 @@ async function checkViewport(browser, name, width, height) {
       const tileInfo = document.getElementById('mobile-tile-info');
       const miniMap = document.getElementById('mobile-mini-map');
       const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
+      const movementCells = Array.from(document.querySelectorAll('#mobile-mini-map .map-tile.moveable'));
       const centerPresenceButtons = Array.from(document.querySelectorAll('#mobile-mini-map .map-tile.center .mobile-play-presence-dot, #mobile-mini-map .map-tile.center .mobile-play-presence-more'));
       const sheet = document.querySelector('.mobile-scene-sheet');
       const actions = document.getElementById('mobile-explore-actions');
@@ -225,6 +226,10 @@ async function checkViewport(browser, name, width, height) {
       const tileInfoRect = tileInfo.getBoundingClientRect();
       const miniMapRect = miniMap.getBoundingClientRect();
       const centerTileRect = centerTile.getBoundingClientRect();
+      const movementCellRects = movementCells.map(cell => {
+        const rect = cell.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+      });
       const centerPresenceRects = centerPresenceButtons.map(button => {
         const rect = button.getBoundingClientRect();
         return {
@@ -276,6 +281,15 @@ async function checkViewport(browser, name, width, height) {
         miniMapHeight: miniMapRect.height,
         centerTileWidth: centerTileRect.width,
         centerTileHeight: centerTileRect.height,
+        movementCellCount: movementCellRects.length,
+        minMovementCellWidth: Math.min(...movementCellRects.map(rect => rect.width)),
+        minMovementCellHeight: Math.min(...movementCellRects.map(rect => rect.height)),
+        movementCellsInsideMap: movementCellRects.every(rect => (
+          rect.left >= miniMapRect.left - 1
+          && rect.right <= miniMapRect.right + 1
+          && rect.top >= miniMapRect.top - 1
+          && rect.bottom <= miniMapRect.bottom + 1
+        )),
         centerTileBottom: centerTileRect.bottom,
         centerPresenceInsideTile: centerPresenceRects.every(rect => (
           rect.left >= centerTileRect.left - 1
@@ -327,6 +341,9 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
     assert(mobileControls.miniMapHeight >= Math.min(204, mobileControls.viewportHeight * 0.3), `${name}: mobile traversal grid should keep a usable minimum height`);
+    assert.strictEqual(mobileControls.movementCellCount, 8, `${name}: mobile traversal grid should expose eight movement cells`);
+    assert(mobileControls.minMovementCellWidth >= 44 && mobileControls.minMovementCellHeight >= 44, `${name}: mobile movement cells should keep finger-sized tap targets`);
+    assert.strictEqual(mobileControls.movementCellsInsideMap, true, `${name}: mobile movement cells should stay inside the traversal grid`);
     assert(mobileControls.centerTileWidth >= 176, `${name}: mobile current tile should keep a broad target column for stage presence`);
     assert(mobileControls.centerTileHeight >= 144, `${name}: mobile current tile should leave room for larger presence controls`);
     assert(mobileControls.centerPresenceCount >= 1, `${name}: mobile current tile should expose clickable presence badges`);

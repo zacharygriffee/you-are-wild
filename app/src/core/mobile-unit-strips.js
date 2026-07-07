@@ -47,7 +47,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         document.documentElement?.classList?.toggle('mobile-combat-active', inCombat);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
         if (inCombat) app.mobileActorBeltOpen = false;
-        const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);
+        const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || (!hasTargets && app.explorationActorSelectionExplicit));
         if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen) {
             app.mobileMovePadOpen = false;
         }

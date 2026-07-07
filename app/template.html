@@ -2850,17 +2850,17 @@
             }
 
             .mobile-play-surface.control-belt-expanded .mobile-scene-sheet {
-                flex-basis: clamp(96px, 16dvh, 132px);
-                height: clamp(96px, 16dvh, 132px);
-                min-height: clamp(96px, 16dvh, 132px);
-                max-height: clamp(96px, 16dvh, 132px);
+                flex-basis: clamp(76px, 11dvh, 96px);
+                height: clamp(76px, 11dvh, 96px);
+                min-height: clamp(76px, 11dvh, 96px);
+                max-height: clamp(76px, 11dvh, 96px);
             }
 
             .mobile-play-surface.control-belt-expanded .mobile-map-card {
-                flex-basis: clamp(320px, 36dvh, 324px);
-                height: clamp(320px, 36dvh, 324px);
-                min-height: clamp(320px, 36dvh, 324px);
-                max-height: clamp(320px, 36dvh, 324px);
+                flex-basis: clamp(312px, 35dvh, 324px);
+                height: clamp(312px, 35dvh, 324px);
+                min-height: clamp(312px, 35dvh, 324px);
+                max-height: clamp(312px, 35dvh, 324px);
             }
 
             .mobile-map-card,
@@ -2901,7 +2901,7 @@
             }
 
             .mobile-strip-details-btn {
-                min-height: 34px;
+                min-height: 44px;
                 min-width: 78px;
                 padding: 6px 10px;
                 font-size: 12px;
@@ -3047,14 +3047,14 @@
 
             @media (max-width: 380px) and (max-height: 820px) {
                 :root {
-                    --mobile-scene-height: clamp(128px, 17dvh, 140px);
+                    --mobile-scene-height: 112px;
                 }
             }
 
             @media (max-width: 380px) and (max-height: 700px) {
                 :root {
                     --mobile-scene-height: 56px;
-                    --mobile-map-height: 332px;
+                    --mobile-map-height: 324px;
                 }
 
                 .mobile-play-surface {
@@ -3074,10 +3074,10 @@
                 }
 
                 .mobile-play-surface.control-belt-expanded .mobile-map-card {
-                    flex-basis: 304px;
-                    height: 304px;
-                    min-height: 304px;
-                    max-height: 304px;
+                    flex-basis: 292px;
+                    height: 292px;
+                    min-height: 292px;
+                    max-height: 292px;
                 }
 
                 .mobile-map-card .mini-map {
@@ -3133,6 +3133,17 @@
             .mobile-control-belt.target-controls-open .mobile-creature-presence-cue,
             .mobile-control-belt.target-controls-open .mobile-location-actions {
                 display: none;
+            }
+
+            .mobile-control-belt.target-controls-open {
+                gap: 4px;
+                padding: 6px;
+                max-height: min(208px, 28dvh);
+            }
+
+            .mobile-control-belt.target-controls-open .mobile-selection-sentence {
+                padding: 4px 6px;
+                line-height: 1.15;
             }
 
             .mobile-play-surface.combat-active .mobile-control-belt:not(.has-controls) {
@@ -3272,6 +3283,37 @@
                 display: none;
             }
 
+            .mobile-control-belt.target-controls-open .mobile-control-row.has-visible-controls {
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .mobile-control-belt.target-controls-open #mobile-actor-toggle {
+                justify-self: start;
+                width: 44px;
+                min-width: 44px;
+                padding-inline: 0;
+            }
+
+            .mobile-control-belt.target-controls-open #mobile-actor-toggle span {
+                display: none;
+            }
+
+            .mobile-control-belt.target-controls-open.actor-controls-open {
+                max-height: min(280px, 36dvh);
+            }
+
+            .mobile-control-belt.target-controls-open .mobile-target-action-tray {
+                width: 100%;
+            }
+
+            .mobile-control-belt.target-controls-open .mobile-target-action-tray .target-action-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+                overflow-x: visible;
+                padding-bottom: 0;
+            }
+
             .mobile-target-action-tray .action-btn {
                 display: inline-flex;
                 align-items: center;
@@ -3284,6 +3326,30 @@
                 font-size: 11px;
                 line-height: 1.12;
                 text-align: center;
+            }
+
+            .mobile-control-belt.target-controls-open .mobile-target-action-tray .action-btn {
+                width: 100%;
+                min-width: 0;
+            }
+
+            @media (max-width: 380px) {
+                .mobile-control-belt.target-controls-open {
+                    max-height: min(176px, 24dvh);
+                }
+
+                .mobile-control-belt.target-controls-open .mobile-control-row.has-visible-controls {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+
+                .mobile-control-belt.target-controls-open #mobile-actor-toggle {
+                    display: none !important;
+                }
+
+                .mobile-control-belt.target-controls-open .mobile-target-action-tray .target-action-row {
+                    gap: 4px;
+                    grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+                }
             }
 
             .mobile-target-action-tray .action-icon {
@@ -3319,6 +3385,14 @@
                 .mobile-creature-presence-btn {
                     min-height: 26px;
                     padding: 4px 8px;
+                }
+
+                .mobile-control-belt.target-controls-open .mobile-control-row.has-visible-controls {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+
+                .mobile-control-belt.target-controls-open #mobile-actor-toggle {
+                    display: none !important;
                 }
             }
 
@@ -3730,6 +3804,12 @@
             .mobile-unit-chip .unit-trait-chip {
                 padding: 1px 5px;
                 font-size: 9px;
+            }
+
+            .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-bars,
+            .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-traits,
+            .mobile-play-surface:not(.combat-active) .mobile-unit-chip .mobile-chip-meta {
+                display: none;
             }
 
             .mobile-context-menu {

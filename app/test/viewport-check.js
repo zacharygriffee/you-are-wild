@@ -1212,7 +1212,6 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(markedControls.moveExpanded, false, `${name}: move pad should close when target tray opens`);
     assert.strictEqual(markedControls.moveAria, 'false', `${name}: move toggle aria state should reflect collapsed target-tray mode`);
 
-    await page.evaluate(() => App.toggleMobileActorBelt());
     await page.waitForTimeout(50);
     const expandedComposer = await page.evaluate(() => {
       const dock = document.querySelector('.mobile-panel-dock');
@@ -1228,6 +1227,7 @@ async function checkViewport(browser, name, width, height) {
       const actorRect = actorBelt.getBoundingClientRect();
       const rowRect = row.getBoundingClientRect();
       const sentenceRect = sentence.getBoundingClientRect();
+      const targetActionRow = tray.querySelector('.target-action-row');
       const beltViewportBottom = Math.min(beltRect.bottom, dockRect.top);
       const visibleRect = rect => (
         rect.width > 0 &&
@@ -1294,12 +1294,14 @@ async function checkViewport(browser, name, width, height) {
         trayGrammar: tray.getAttribute('data-command-grammar'),
         actorSurface: actorBelt.getAttribute('data-command-surface'),
         actorGrammar: actorBelt.getAttribute('data-command-grammar'),
+        actorBeltCollapsed: actorRect.width === 0 && actorRect.height === 0 && getComputedStyle(actorBelt).display === 'none',
         beltInsideViewport: beltRect.left >= -1 && beltRect.right <= innerWidth + 1 && beltRect.top >= 0 && beltRect.bottom <= dockRect.top + 1,
         trayInsideBelt: overlapArea(trayRect, beltRect) >= (trayRect.width * trayRect.height) - 2,
+        targetActionsWrapped: Boolean(targetActionRow) && targetActionRow.scrollWidth <= targetActionRow.clientWidth + 1,
         actorReachableInBelt: actorScrollTop > 0 || overlapArea(actorRect, beltRect) >= (actorRect.width * actorRect.height) - 2,
         trayButtonCount: trayButtons.length,
         actorButtonCount: actorButtons.length,
-        trayButtonsUsable: everyUsable(trayButtons, 44, 30),
+        trayButtonsUsable: everyUsable(trayButtons, 44, 44),
         actorButtonsUsable: everyUsable(actorButtons, 44, 34),
         hasActorChip: actorChips.some(chip => /You|Ally/.test(chip.label)),
         hasActorExit: actorButtons.some(button => /Close actors|Clear actors/i.test(button.label)),
@@ -1314,23 +1316,25 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(expandedComposer.beltSurface, 'command-composer', `${name}: active mobile belt should identify composer ownership`);
     assert.strictEqual(expandedComposer.beltMode, 'exploration', `${name}: active mobile belt should identify exploration mode`);
     assert.strictEqual(expandedComposer.beltGrammar, 'actor-target-intent', `${name}: active mobile belt should identify shared grammar`);
-    assert.strictEqual(expandedComposer.actorExpanded, 'true', `${name}: mobile Actors toggle should expose expanded state`);
+    assert.strictEqual(expandedComposer.actorExpanded, 'false', `${name}: target-priority mobile composer should collapse the actor toggle instead of stacking actor controls`);
     assert.strictEqual(expandedComposer.rowVisible, true, `${name}: active mobile composer row should be visible`);
     assert.strictEqual(expandedComposer.sentenceVisible, true, `${name}: active mobile composer should keep the selection sentence visible`);
     assert(expandedComposer.sentenceText.includes('You') && expandedComposer.sentenceText.includes('Creature'), `${name}: active mobile composer sentence should summarize actor and target`);
     assert.strictEqual(expandedComposer.traySurface, 'target-intents', `${name}: active mobile target tray should identify target-intent ownership`);
     assert.strictEqual(expandedComposer.trayGrammar, 'actor-target-intent', `${name}: active mobile target tray should identify shared grammar`);
-    assert.strictEqual(expandedComposer.actorSurface, 'actor-target-routing', `${name}: active mobile actor belt should identify actor routing ownership`);
-    assert.strictEqual(expandedComposer.actorGrammar, 'actor-target-intent', `${name}: active mobile actor belt should identify shared grammar`);
+    assert.strictEqual(expandedComposer.actorSurface, null, `${name}: target-priority mobile composer should clear collapsed actor rail surface metadata`);
+    assert.strictEqual(expandedComposer.actorGrammar, null, `${name}: target-priority mobile composer should clear collapsed actor rail grammar metadata`);
+    assert.strictEqual(expandedComposer.actorBeltCollapsed, true, `${name}: target-priority mobile composer should collapse actor controls while target intents are active`);
     assert.strictEqual(expandedComposer.beltInsideViewport, true, `${name}: expanded mobile composer should stay inside the viewport and above the fixed dock`);
     assert.strictEqual(expandedComposer.trayInsideBelt, true, `${name}: expanded mobile target tray should stay inside the composer belt`);
-    assert.strictEqual(expandedComposer.actorReachableInBelt, true, `${name}: expanded mobile actor rail should be reachable inside the composer belt`);
+    assert.strictEqual(expandedComposer.targetActionsWrapped, true, `${name}: target-priority mobile intent controls should wrap instead of requiring horizontal scrolling`);
+    assert.strictEqual(expandedComposer.actorReachableInBelt, true, `${name}: collapsed mobile actor rail should not overflow the composer belt`);
     assert(expandedComposer.trayButtonCount >= 2, `${name}: expanded mobile target tray should expose visible target intents and an exit`);
-    assert(expandedComposer.actorButtonCount >= 2, `${name}: expanded mobile actor rail should expose visible actors and an exit`);
+    assert.strictEqual(expandedComposer.actorButtonCount, 0, `${name}: target-priority mobile composer should not stack actor controls under target intents`);
     assert.strictEqual(expandedComposer.trayButtonsUsable, true, `${name}: visible mobile target intent controls should remain tappable`);
     assert.strictEqual(expandedComposer.actorButtonsUsable, true, `${name}: visible mobile actor controls should remain tappable`);
-    assert.strictEqual(expandedComposer.hasActorChip, true, `${name}: expanded mobile actor rail should expose party actors`);
-    assert.strictEqual(expandedComposer.hasActorExit, true, `${name}: expanded mobile actor rail should expose a visible exit`);
+    assert.strictEqual(expandedComposer.hasActorChip, false, `${name}: target-priority mobile composer should summarize actors in the sentence instead of stacking chips`);
+    assert.strictEqual(expandedComposer.hasActorExit, false, `${name}: collapsed target-priority actor rail should not expose a redundant exit`);
     assert.strictEqual(expandedComposer.hasClearTargetExit, true, `${name}: expanded mobile target tray should expose a clear-target exit`);
     assert.strictEqual(expandedComposer.pageOverflow, false, `${name}: expanded mobile composer should not create horizontal overflow`);
 
@@ -1376,12 +1380,14 @@ async function checkViewport(browser, name, width, height) {
       const actorBelt = document.getElementById('mobile-actor-belt');
       const tray = document.getElementById('mobile-target-action-tray');
       const sentence = document.getElementById('mobile-selection-sentence');
+      const actorBeltRect = actorBelt?.getBoundingClientRect();
       return {
         panelActive: panel?.classList.contains('active') || false,
         backdropActive: backdrop?.classList.contains('active') || false,
         returnRail: App._mobilePanelReturnRail || '',
         actorBeltOpen: Boolean(App.mobileActorBeltOpen),
         actorBeltSurface: actorBelt?.getAttribute('data-command-surface') || '',
+        actorBeltCollapsed: Boolean(actorBeltRect && actorBeltRect.width === 0 && actorBeltRect.height === 0),
         actorIds: (App.explorationActorIds || []).join(','),
         actorExplicit: Boolean(App.explorationActorSelectionExplicit),
         targetIds: (App.explorationTargetIds || []).join(','),
@@ -1396,6 +1402,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(actorDrawerReturn.returnRail, '', `${name}: closing actor Details should clear the temporary return rail`);
     assert.strictEqual(actorDrawerReturn.actorBeltOpen, true, `${name}: closing actor Details should restore the compact actor rail`);
     assert.strictEqual(actorDrawerReturn.actorBeltSurface, 'actor-target-routing', `${name}: restored actor rail should keep actor-target routing ownership`);
+    assert.strictEqual(actorDrawerReturn.actorBeltCollapsed, false, `${name}: restored actor rail should be visible after returning from actor Details`);
     assert.strictEqual(actorDrawerReturn.actorIds, 'ally-1', `${name}: closing actor Details should preserve selected actors`);
     assert.strictEqual(actorDrawerReturn.actorExplicit, true, `${name}: closing actor Details should preserve explicit actor mode`);
     assert(actorDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing actor Details should preserve marked targets`);

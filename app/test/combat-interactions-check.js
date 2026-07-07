@@ -1090,6 +1090,192 @@ async function runMobileSelectionAndCombatFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
+async function runCompactRailRoundTripFlow(page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupAdventure(page);
+  await page.waitForTimeout(50);
+  await page.evaluate(() => {
+    const makeUnit = (name, id, overrides = {}) => ({
+      id,
+      name,
+      species: 'human',
+      icon: 'X',
+      level: 1,
+      CPun: 100,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      Figh: 80,
+      Feas: 80,
+      Flir: 80,
+      Fuck: 40,
+      Flee: 80,
+      Feed: 40,
+      str: 10,
+      con: 10,
+      spd: 10,
+      int: 10,
+      wis: 10,
+      cha: 10,
+      size: 4,
+      appetite: 4,
+      stomach: [],
+      womb: [],
+      balls: [],
+      bodyParts: [],
+      tags: ['Person'],
+      status: {},
+      disposition: 'party',
+      ...overrides
+    });
+    const scout = makeUnit('Scout', 'scout-1', { Flir: 90 });
+    App.party = [App.player, App.party[1], scout].filter(Boolean);
+    App.creatures = [
+      makeUnit('Guide', 'guide-1', { disposition: App.DISPOSITION.FRIENDLY }),
+      makeUnit('Merchant', 'merchant-1', { disposition: App.DISPOSITION.MERCHANT, stock: [{ id: 'ration', price: 2 }] }),
+      makeUnit('Remains', 'corpse-rail', { disposition: App.DISPOSITION.CORPSE, CPun: 0, portions: 2, inventory: [{ id: 'bone', name: 'Bone' }] })
+    ];
+    App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, biome: 'grove', creatures: App.creatures, items: [{ id: 'test-item', name: 'Test Item' }] }]]);
+    App.mobileCreatureRailOpen = false;
+    App.mobileActorBeltOpen = false;
+    App.explorationActorIds = [App._unitSelectionId(App.player)];
+    App.explorationActorSelectionExplicit = false;
+    App.explorationTargetIds = [];
+    App.renderDesktopPlaySurface();
+    App.renderParty();
+    App.renderCreatures();
+    App.renderExplorationActions();
+  });
+
+  let state = await page.evaluate(() => ({
+    cueText: document.querySelector('#mobile-creature-presence-cue')?.innerText || '',
+    cueBounds: (() => {
+      const cue = document.querySelector('#mobile-creature-presence-cue button');
+      const rect = cue?.getBoundingClientRect();
+      const style = cue ? getComputedStyle(cue) : null;
+      return rect && style ? {
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+        parentBounds: (() => {
+          const parent = cue.parentElement;
+          const parentRect = parent?.getBoundingClientRect();
+          const parentStyle = parent ? getComputedStyle(parent) : null;
+          return parentRect && parentStyle ? {
+            id: parent.id,
+            className: parent.className,
+            top: parentRect.top,
+            bottom: parentRect.bottom,
+            width: parentRect.width,
+            height: parentRect.height,
+            display: parentStyle.display,
+            visibility: parentStyle.visibility
+          } : null;
+        })(),
+        surfaceBounds: (() => {
+          const surface = document.querySelector('#mobile-play-surface');
+          const surfaceRect = surface?.getBoundingClientRect();
+          return surfaceRect ? { top: surfaceRect.top, bottom: surfaceRect.bottom, width: surfaceRect.width, height: surfaceRect.height } : null;
+        })(),
+        display: style.display,
+        visibility: style.visibility,
+        opacity: style.opacity,
+        mobileSurfaceDisplay: getComputedStyle(document.querySelector('#mobile-play-surface')).display,
+        screenGameDisplay: getComputedStyle(document.querySelector('#screen-game')).display
+      } : null;
+    })(),
+    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    creatureChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip').length,
+    partyActorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
+    targetIds: [...App.explorationTargetIds]
+  }));
+  assert(state.cueText.includes('2 creatures here'), 'Mobile presence cue should summarize multiple living creatures');
+  assert(state.cueBounds && state.cueBounds.width > 0 && state.cueBounds.height > 0 && state.cueBounds.mobileSurfaceDisplay !== 'none' && state.cueBounds.screenGameDisplay !== 'none', `Mobile presence cue should be visible before opening target rail: ${JSON.stringify(state.cueBounds)}`);
+  assert.strictEqual(state.creatureRailDisplay, 'none', 'Compact creature rail should start closed when explicitly toggled closed');
+  assert.strictEqual(state.creatureChipCount, 3, 'Closed compact creature rail should keep rendered targets ready for reopening');
+  assert.strictEqual(state.partyActorButtons, 0, 'Compact party actor rail should start closed');
+  assert.deepStrictEqual(state.targetIds, [], 'Compact rail scenario should start without marked targets');
+
+  const presenceCue = page.locator('#mobile-creature-presence-cue button[data-command-control="open-target-picker"]');
+  await presenceCue.scrollIntoViewIfNeeded();
+  await presenceCue.click();
+  await page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
+  state = await page.evaluate(() => ({
+    creatureRailOpen: App.mobileCreatureRailOpen,
+    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targets: [...App.explorationTargetIds],
+    trayText: document.querySelector('#mobile-target-action-tray')?.innerText || '',
+    fullDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false
+  }));
+  assert.strictEqual(state.creatureRailOpen, true, 'Presence cue should open the compact target rail for multiple creatures');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Compact target rail should be visible after cue activation');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Creature rail target control should mark the selected creature');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Marked merchant should expose safe primary and contextual intents in the composer tray');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Creature rail marking should not open the full Creatures drawer');
+
+  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-actor-rail"]`).click();
+  await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(1)"]`).click();
+  await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(2)"]`).click();
+  await page.locator(`#mobile-actor-belt button[onclick*="toggleExplorationTarget('party','player-1')"]`).click();
+  state = await page.evaluate(() => ({
+    actorRailOpen: App.mobileActorBeltOpen,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort(),
+    actorBeltText: document.querySelector('#mobile-actor-belt')?.innerText || '',
+    sentence: document.querySelector('#mobile-selection-sentence')?.innerText || '',
+    fullPartyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false
+  }));
+  assert.strictEqual(state.actorRailOpen, true, 'Party dock should open the compact actor rail');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Compact actor rail should support multiple selected party actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Compact actor rail should allow marking a party member as target without losing creature target');
+  assert(state.actorBeltText.includes('Ally') && state.actorBeltText.includes('Scout'), 'Compact actor rail should show selected party choices');
+  assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Mobile composer sentence should summarize selected actors and targets');
+  assert.strictEqual(state.fullPartyDrawerOpen, false, 'Party rail selection should not open the full Party drawer');
+
+  await page.locator(`#mobile-actor-belt .mobile-actor-details`).click();
+  state = await page.evaluate(() => ({
+    partyDrawerOpen: document.querySelector('#panel-party')?.classList.contains('active') || false,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort()
+  }));
+  assert.strictEqual(state.partyDrawerOpen, true, 'Compact actor rail Details should open the Party drawer');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Party details should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Party details should preserve marked targets');
+  await page.evaluate(() => App.closeAllPanels());
+
+  await page.locator(`#mobile-creature-card button[data-command-control="open-target-drawer"]`).click();
+  state = await page.evaluate(() => ({
+    creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    actors: App._getExplorationActors().map(unit => unit.id),
+    targets: [...App.explorationTargetIds].sort()
+  }));
+  assert.strictEqual(state.creatureDrawerOpen, true, 'Compact target rail Details should open the Creatures drawer');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Creature details should preserve selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Creature details should preserve marked targets');
+  await page.evaluate(() => App.closeAllPanels());
+
+  await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
+  state = await page.evaluate(() => ({
+    action: App.lastIntentCommand?.action || '',
+    subAction: App.lastIntentCommand?.subAction || '',
+    source: App.lastIntentCommand?.source || '',
+    targetIds: App.lastIntentCommand?.targetIds || [],
+    targetsRemaining: [...App.explorationTargetIds],
+    targetPleasures: App.creatures.filter(unit => unit.id === 'merchant-1').map(unit => unit.CPle),
+    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.action, 'flirt', 'Safe mobile target intent should route through shared intent dispatch');
+  assert.strictEqual(state.subAction, 'tease', 'Safe mobile target intent should preserve the selected sub-action');
+  assert.strictEqual(state.source, 'composer-tray', 'Resolved compact rail intent should preserve composer-tray source metadata');
+  assert(state.targetIds.includes('merchant-1') && state.targetIds.includes('player-1'), 'Resolved compact rail intent should record marked creature and party targets');
+  assert.strictEqual(state.targetsRemaining.length, 0, 'Resolved compact rail intent should clear marked targets intentionally');
+  assert(state.targetPleasures[0] > 0, 'Resolved safe intent should affect the marked creature target');
+  assert.strictEqual(state.centerHasActorControls, false, 'Compact rail resolution should keep center free of actor controls');
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+}
+
 async function runClearAllBrowserStorageFlow(page) {
   await clearBrowserStorage(page);
   await page.reload({ waitUntil: 'load' });
@@ -1561,6 +1747,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runDesktopIntentSubActionSheetFlow(page);
     await runRadialIntentSubActionPresentationFlow(page);
     await runMobileSelectionAndCombatFlow(page);
+    await runCompactRailRoundTripFlow(page);
     await runContentSettingsBrowserFlow(page);
     await runIndexedDbNamespaceBrowserFlow(page);
     await runSaveManagerSlotBrowserFlow(page);

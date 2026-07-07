@@ -42,6 +42,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const creatureCue = document.getElementById('mobile-creature-presence-cue');
         const selectionSentence = document.getElementById('mobile-selection-sentence');
         const inCombat = Boolean(app.combatState?.active);
+        surface?.classList?.toggle('combat-active', inCombat);
+        document.documentElement?.classList?.toggle('mobile-combat-active', inCombat);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
         if (inCombat || !hasTargets) app.mobileActorBeltOpen = false;
         const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || app.explorationActorSelectionExplicit);

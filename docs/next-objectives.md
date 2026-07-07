@@ -178,6 +178,14 @@
 6. **Expand short-viewport automated coverage only where it proves regressions.** The new `313x670` viewport check catches the map-height regression and one combat strip ordering issue; add more assertions only for repeated real layout failures to avoid brittle DevTools-only tuning.
 7. **Keep default behavior SFW and mod-friendly while polishing UI.** Do not expand explicit content during these slices; preserve safe labels, internal action IDs, content-tier gates, and mod extension points while improving controls.
 
+### Handoff Review Execution Plan
+
+1. **Real-device mobile layout pass.** Test `390x844`, `360x780`, and at least one real phone/browser-chrome case; adjust only if the story sheet, 3x3 stage, command belt, or dock clips/overlaps. Exit when automated viewport checks still pass and manual notes show the capped map does not make taller phones feel cramped.
+2. **Compact rail exploration playtest.** Script a short save/test state with multiple party members, multiple creatures, a corpse/remains target, and tile items; exercise cue marking, rail open/close, multi-actor selection, party target marking, target-intent resolution, and Details drawer return. Exit when selection state survives drawer/detail round-trips and common play no longer requires full Party/Creatures drawers.
+3. **Compact combat control audit.** Enter combat with multiple party members and at least two enemies across front/back rows; verify Sync/group actions, cancel paths, row/reach feedback, Flee, and current actor/target badges. Exit when combat remains reachable from compact cards/toolbelt without restoring duplicate generic controls.
+4. **Desktop composer cleanup slice.** Inspect desktop center, side panels, and composer during exploration and combat; remove only duplicated center action/list surfaces that side panels, rails, or the composer already own. Exit when location actions stay in the belt/composer and center presentation stays semantic/event-focused.
+5. **Regression hardening.** Convert only repeated manual failures into tests, preferring focused `test:viewport` or `test:interactions` assertions over broad screenshot dependence. Exit each code slice with `npm run full-build`, `npm run audit:branding`, `git diff --check`, and a browser smoke for any changed mobile/desktop surface.
+
 ## Next Execution Goals
 
 1. **Harden self-included multi-creature interactions.** Identical actor/target sets now have mutual-group handling; continue edge-case coverage for richer unequal non-asymmetric groups and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.

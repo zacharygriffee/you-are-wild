@@ -2549,6 +2549,7 @@ test('Save manager helper module is registered before app code', () => {
   assertContains(saveManagerContent, "'delete-slot'", 'Save manager delete actions should expose slot route metadata');
   assertContains(saveManagerContent, "'delete-slot-locked'", 'Save manager locked delete actions should expose slot route metadata');
   assertContains(saveManagerContent, "'close-save-manager'", 'Save manager close action should expose its system exit');
+  assertContains(saveManagerContent, '\'data-command-slot="exit"\', \'close-save-manager\'', 'Save manager close should identify the canonical exit slot');
   assertContains(appContent, 'YAW_SAVE_MANAGER.render(this, mode)', 'App save manager renderer should delegate to the helper');
 });
 
@@ -2636,9 +2637,11 @@ test('Dialog flow helper module is registered before app code', () => {
   assertContains(dialogFlowContent, "app._label('save.recovery.prompt'", 'Save recovery prompt should remain localized in the helper');
   assertContains(dialogFlowContent, 'data-command-surface="system-dialog" data-command-mode="system"', 'Confirm dialogs should identify as system command surfaces');
   assertContains(dialogFlowContent, 'data-command-control="cancel-dialog"', 'Confirm dialog cancel should expose a system exit');
+  assertContains(dialogFlowContent, 'data-command-control="cancel-dialog" data-command-slot="exit"', 'Confirm dialog cancel should identify the canonical exit slot');
   assertContains(dialogFlowContent, 'data-command-control="confirm-dialog"', 'Confirm dialog approval should expose a system action');
   assertContains(dialogFlowContent, 'data-command-surface="save-recovery-dialog" data-command-mode="system"', 'Save recovery dialogs should identify as system command surfaces');
   assertContains(dialogFlowContent, 'data-command-control="cancel-save-recovery"', 'Save recovery cancel should expose a system exit');
+  assertContains(dialogFlowContent, 'data-command-control="cancel-save-recovery" data-command-slot="exit"', 'Save recovery cancel should identify the canonical exit slot');
   assertContains(dialogFlowContent, 'data-command-control="backup-save"', 'Save recovery backup should expose a system action');
   assertContains(dialogFlowContent, 'data-command-control="delete-save"', 'Save recovery delete should expose a system action');
   assertContains(dialogFlowContent, 'showSaveRecoveryStatus(app, kind, message)', 'Save recovery should surface outcomes through in-app status');
@@ -3646,6 +3649,7 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
   assertContains(template, 'data-command-control="browse-marketplace-samples"', 'Marketplace fallback browse control should be classified');
   assertContains(template, 'data-command-control="open-installed-modules"', 'Marketplace fallback installed-modules control should be classified');
   assertContains(template, 'data-command-control="close-marketplace"', 'Marketplace fallback close controls should be classified');
+  assertContains(template, 'data-command-control="close-marketplace" data-command-slot="exit"', 'Marketplace fallback close controls should identify the canonical exit slot');
   assertContains(marketScreenContent, "label(key, fallback, vars = {})", 'Marketplace localization helper missing');
   assertContains(marketScreenContent, "escapeHtml(value)", 'Marketplace HTML escaping helper missing');
   assertContains(marketScreenContent, "this.label('market.title'", 'Marketplace title should localize');
@@ -3684,6 +3688,7 @@ test('Marketplace UI uses localized safe rendering for catalog metadata', () => 
   assertContains(marketScreenContent, 'data-command-control="open-installed-modules"', 'Marketplace dynamic installed-modules control should be classified');
   assertContains(marketScreenContent, 'data-command-control="open-module-tools"', 'Marketplace dynamic module-tools control should be classified');
   assertContains(marketScreenContent, 'data-command-control="close-marketplace"', 'Marketplace dynamic close control should be classified');
+  assertContains(marketScreenContent, 'data-command-control="close-marketplace" data-command-slot="exit"', 'Marketplace dynamic close control should identify the canonical exit slot');
   assertContains(marketScreenContent, 'data-command-control="search-marketplace"', 'Marketplace dynamic search control should be classified');
   assertContains(marketScreenContent, 'data-command-control="filter-marketplace-type"', 'Marketplace dynamic type filter should be classified');
   assertContains(marketScreenContent, 'data-command-control="sort-marketplace"', 'Marketplace dynamic sort control should be classified');
@@ -3828,6 +3833,7 @@ test('Save manager separates save and load mode actions', () => {
   assertContains(saveHtml, 'Save and continue in Slot 2', 'Save mode should expose save action for occupied slots');
   assertContains(saveHtml, 'data-command-control="save-slot"', 'Save mode save controls should expose slot route metadata');
   assertContains(saveHtml, 'data-command-control="close-save-manager"', 'Save manager close should expose its system exit');
+  assertContains(saveHtml, 'data-command-slot="exit"', 'Save manager close should expose the canonical exit slot');
   assertContains(saveHtml, 'Occupied slot: saving here makes this the active auto-save slot.', 'Save mode should use save-specific occupied hints');
   assertNotContains(saveHtml, 'Start a new run in Slot 2', 'Save mode should not crowd cards with new-run actions');
   assertNotContains(saveHtml, 'Load Slot 2', 'Save mode should not crowd cards with load actions');
@@ -3929,6 +3935,7 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="zoom-in"', 'Large map zoom-in should identify as review-map navigation');
   assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="pan-map" data-command-direction="north"', 'Large map pan controls should identify review-map navigation direction');
   assertContains(template, 'data-command-surface="review-map" data-command-mode="navigation" data-command-control="recenter-map"', 'Large map recenter should identify review-map navigation');
+  assertContains(template, 'data-command-surface="drawer-controls" data-command-mode="navigation" data-command-control="close-review-map" data-command-slot="exit"', 'Review map close should identify the canonical exit slot');
   assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad"', 'Dormant mobile move toggle should identify as traversal controls');
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast"', 'Dormant mobile move pad should classify directional traversal controls');
   assertContains(template, 'data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="current-tile"', 'Dormant mobile move pad center should classify the current-tile affordance');
@@ -3944,10 +3951,12 @@ test('Static setup review and system controls identify non-composer surfaces', (
   assertContains(template, 'id="cheat-instantWin" class="nav-btn" data-command-surface="settings-detail" data-command-mode="system" data-command-control="instant-win"', 'Instant win should identify as a settings system control');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="delete-all-saves"', 'Clear all saves should identify as a settings system control');
   assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings"', 'Settings close should identify as a settings system exit');
+  assertContains(template, 'data-command-surface="settings-detail" data-command-mode="system" data-command-control="close-settings" data-command-slot="exit"', 'Settings close should identify the canonical exit slot');
 
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="import-module"', 'Module import should identify as a module-manager system control');
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="create-example-module"', 'Create example module should identify as a module-manager system control');
   assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules"', 'Module manager close should identify as a module-manager system exit');
+  assertContains(template, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="close-modules" data-command-slot="exit"', 'Module manager close should identify the canonical exit slot');
   assertContains(modUiContent, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="toggle-module"', 'Dynamic module toggle buttons should identify as module-manager controls');
   assertContains(modUiContent, 'data-command-surface="module-manager" data-command-mode="system" data-command-control="delete-module"', 'Dynamic module delete buttons should identify as module-manager controls');
 });
@@ -4329,8 +4338,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'aria-label="Close creatures"', 'mobile creature panel should have an explicit close control');
   assertContains(template, 'data-command-control="toggle-actor-details"', 'Party drawer details should identify as a drawer control');
   assertContains(template, 'data-command-control="close-actor-drawer"', 'Party drawer close should identify as a drawer control');
+  assertContains(template, 'data-command-control="close-actor-drawer" data-command-slot="exit"', 'Party drawer close should identify the canonical exit slot');
   assertContains(template, 'data-command-control="toggle-target-details"', 'Creature drawer details should identify as a drawer control');
   assertContains(template, 'data-command-control="close-target-drawer"', 'Creature drawer close should identify as a drawer control');
+  assertContains(template, 'data-command-control="close-target-drawer" data-command-slot="exit"', 'Creature drawer close should identify the canonical exit slot');
   assertContains(template, 'onclick="App.closeAllPanels()">×</button>', 'mobile panel close controls should dismiss active drawers');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card', 'combat mode should be able to place enemies above party controls');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card', 'combat mode should be able to keep party controls near the thumb zone');

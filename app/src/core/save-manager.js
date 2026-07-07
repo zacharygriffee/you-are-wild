@@ -33,7 +33,7 @@ const YAW_SAVE_MANAGER = {
                 saveButton
             });
         }
-        html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;">' + saveButton('nav-btn save-manager-close', app._label('save.close', 'Close'), app._label('save.close', 'Close'), 'returnToGame()', '', '', 'close-save-manager') + '</div></div>';
+        html += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;">' + saveButton('nav-btn save-manager-close', app._label('save.close', 'Close'), app._label('save.close', 'Close'), 'returnToGame()', '', 'data-command-slot="exit"', 'close-save-manager') + '</div></div>';
         if (saveManager) {
             saveManager.innerHTML = html;
             saveManager.style.display = 'block';

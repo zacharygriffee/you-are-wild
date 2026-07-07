@@ -98,6 +98,7 @@ const YAW_UNIT_SELECTION = {
             'sync-participants': app._label('unit.row.syncParticipants', 'Sync participant controls for {name}', { name }),
             'combat-actions': app._label('unit.row.combatActions', 'Combat intent controls for {name}', { name }),
             'combat-target': app._label('unit.row.combatTarget', 'Combat target controls for {name}', { name }),
+            'combat-target-mark': app._label('unit.row.combatTargetMark', 'Combat target marking controls for {name}', { name }),
             'creature-selection': app._label('unit.row.creatureSelection', 'Target controls for {name}', { name })
         };
         const commandSurfaces = {
@@ -106,19 +107,22 @@ const YAW_UNIT_SELECTION = {
             'sync-participants': 'sync-participants',
             'combat-actions': 'combat-intents',
             'combat-target': 'combat-targeting',
+            'combat-target-mark': 'combat-targeting',
             'party-details': 'detail-management',
             'party-management': 'detail-management'
         };
         const commandModes = {
             'sync-participants': 'combat',
             'combat-actions': 'combat',
-            'combat-target': 'combat'
+            'combat-target': 'combat',
+            'combat-target-mark': 'combat'
         };
         const commandSlots = {
             'creature-selection': 'target',
             'sync-participants': 'actor',
             'combat-actions': 'intent',
-            'combat-target': 'target'
+            'combat-target': 'target',
+            'combat-target-mark': 'target'
         };
         const commandSlotGroups = {
             'party-selection': 'actor target'
@@ -128,7 +132,8 @@ const YAW_UNIT_SELECTION = {
             'creature-selection',
             'sync-participants',
             'combat-actions',
-            'combat-target'
+            'combat-target',
+            'combat-target-mark'
         ]);
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
         const surface = commandSurfaces[scope];

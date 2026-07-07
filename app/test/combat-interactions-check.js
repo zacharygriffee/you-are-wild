@@ -245,7 +245,11 @@ async function runCombatTargetFirstComposerFlow(page) {
     enemySelectedTarget: document.querySelector('#enemies-content .compact-tactical-card')?.classList.contains('selected-target') || false,
     currentActorBadge: document.querySelector('#party-content .compact-tactical-card.selected-actor .unit-selection-chips')?.innerText || '',
     enemyTargetBadge: document.querySelector('#enemies-content .compact-tactical-card.selected-target .unit-selection-chips')?.innerText || '',
-    hasCombatPick: Boolean(document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]'))
+    hasCombatPick: Boolean(document.querySelector('#enemies-content button[data-selection-mode="combat-pick"]')),
+    markRowSurface: document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-surface') || '',
+    markRowMode: document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-mode') || '',
+    markRowGrammar: document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-grammar') || '',
+    markRowSlot: document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-slot') || ''
   }));
   assert.strictEqual(state.markedTargetId, 'enemy-1', 'Desktop combat Mark should store a combat target');
   assert.strictEqual(state.targetSelection, null, 'Desktop combat Mark should not enter intent-first target-pick state');
@@ -254,6 +258,10 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert(state.currentActorBadge.includes('Current'), 'Desktop compact combat actor card should show a visible Current badge');
   assert(state.enemyTargetBadge.includes('Target'), 'Desktop marked combat enemy card should show a visible Target badge');
   assert.strictEqual(state.hasCombatPick, false, 'Desktop target-first Mark should not render combat-pick controls before intent');
+  assert.strictEqual(state.markRowSurface, 'combat-targeting', 'Desktop combat Mark row should identify the combat target composer surface');
+  assert.strictEqual(state.markRowMode, 'combat', 'Desktop combat Mark row should identify combat mode');
+  assert.strictEqual(state.markRowGrammar, 'actor-target-intent', 'Desktop combat Mark row should preserve composer grammar metadata');
+  assert.strictEqual(state.markRowSlot, 'target', 'Desktop combat Mark row should identify the target command slot');
 
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   state = await page.evaluate(() => ({
@@ -284,7 +292,11 @@ async function runCombatTargetFirstComposerFlow(page) {
     currentActorBadge: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-actor .unit-selection-chips')?.innerText || '',
     enemyTargetBadge: document.querySelector('#mobile-creature-strip .mobile-unit-chip.selected-target .unit-selection-chips')?.innerText || '',
     hasCombatPick: Boolean(document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]')),
-    hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'")
+    hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'"),
+    markRowSurface: document.querySelector('#mobile-creature-strip button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-surface') || '',
+    markRowMode: document.querySelector('#mobile-creature-strip button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-mode') || '',
+    markRowGrammar: document.querySelector('#mobile-creature-strip button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-grammar') || '',
+    markRowSlot: document.querySelector('#mobile-creature-strip button[data-command-control="mark-combat-target"]')?.closest('.unit-actions')?.getAttribute('data-command-slot') || ''
   }));
   assert.strictEqual(state.markedTargetId, 'enemy-1', 'Mobile combat Mark should store a combat target');
   assert.strictEqual(state.targetSelection, null, 'Mobile combat Mark should not enter intent-first target-pick state');
@@ -294,6 +306,10 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert(state.enemyTargetBadge.includes('Target'), 'Mobile marked combat enemy chip should show a visible Target badge');
   assert.strictEqual(state.hasCombatPick, false, 'Mobile target-first Mark should not render combat-pick controls before intent');
   assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat Mark should not render adventure target controls');
+  assert.strictEqual(state.markRowSurface, 'combat-targeting', 'Mobile combat Mark row should identify the combat target composer surface');
+  assert.strictEqual(state.markRowMode, 'combat', 'Mobile combat Mark row should identify combat mode');
+  assert.strictEqual(state.markRowGrammar, 'actor-target-intent', 'Mobile combat Mark row should preserve composer grammar metadata');
+  assert.strictEqual(state.markRowSlot, 'target', 'Mobile combat Mark row should identify the target command slot');
 
   await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
   state = await page.evaluate(() => ({

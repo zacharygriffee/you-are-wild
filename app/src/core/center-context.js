@@ -234,6 +234,7 @@ const YAW_CENTER_CONTEXT = {
             };
             app.renderMap?.();
             app.renderExplorationActions?.();
+            app.renderMobileCreatureStrip?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
                 const button = document.querySelector('#mobile-explore-actions [data-command-intent="takeItems"], #desktop-context-belt [data-command-intent="takeItems"]');
@@ -260,6 +261,7 @@ const YAW_CENTER_CONTEXT = {
             app.focusedStageObject = { type: 'place', id: String(ref), name, intent };
             app.renderMap?.();
             app.renderExplorationActions?.();
+            app.renderMobileCreatureStrip?.();
             this.renderPresence(app);
             if (typeof document !== 'undefined') {
                 const focusIntent = String(ref || '').startsWith('structure:') ? 'enter' : '';
@@ -453,6 +455,7 @@ const YAW_CENTER_CONTEXT = {
         app.focusedStageObject = null;
         app.renderMap?.();
         app.renderExplorationActions?.();
+        app.renderMobileCreatureStrip?.();
         this.renderPresence(app);
         return true;
     },

@@ -7724,6 +7724,50 @@ test('Stage presence exposes tile-local items as bounded cues', () => {
   assertEqual(el('mobile-selection-sentence').innerHTML, '', 'Depleted item focus should clear the mobile command sentence when no other selection exists');
 });
 
+test('Mobile compact target rail includes tile items as composer targets', () => {
+  const { App, document } = loadAppForCombat(() => 0.5, { window: { innerWidth: 390 } });
+  const el = id => document.getElementById(id);
+  const player = makeUnit('You', { id: 'player-1' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.inventory = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', {
+    ...App.getBaseTile(0, 0),
+    x: 0,
+    y: 0,
+    biome: 'grove',
+    explored: true,
+    creatures: [],
+    items: [{ id: 'rail-herb', name: 'Rail Herb' }]
+  }]]);
+  App.combatState.active = false;
+  App.mobileCreatureRailOpen = true;
+
+  App.renderMobileCreatureStrip();
+  const railHtml = el('mobile-creature-strip').innerHTML;
+  assertContains(railHtml, 'mobile-unit-chip item-target compact-tactical-card', 'Mobile target rail should render tile items as compact cast targets');
+  assertContains(railHtml, 'Rail Herb', 'Mobile item target chip should summarize tile-local items');
+  assertContains(railHtml, 'data-surface-role="target-presence-chip"', 'Mobile item target chip should identify as a target presence chip');
+  assertContains(railHtml, 'data-command-control="focus-items"', 'Mobile item target chip should focus item targets through the composer route');
+  assertContains(railHtml, 'data-command-intent="takeItems"', 'Mobile item target chip should advertise the stable Take Items intent');
+  assertContains(railHtml, 'data-selection-control="stage-focus" aria-pressed="false" data-selection-mode="stage-focus" data-selection-state="available" data-command-slot="target"', 'Mobile item target chip should expose available target-slot state');
+  assertNotContains(railHtml, 'App.takeTileItems()', 'Mobile item target chip should not duplicate pickup as an immediate card action');
+  assertNotContains(railHtml, 'selectIntent(', 'Mobile item target chip should leave intent resolution to the composer');
+
+  assertEqual(App.focusMobileCreatureRail(), true, 'Item-only mobile target rail should open without falling back to the full Creatures drawer');
+  assertEqual(el('panel-enemies').classList.contains('active'), false, 'Item-only mobile target rail should not open the full Creatures drawer');
+  assertContains(el('mobile-creature-strip').innerHTML, 'data-command-control="focus-items"', 'Item-only mobile target rail should remain focused on composer target controls');
+
+  assertEqual(App.focusPresence('items', 'tile-items'), true, 'Mobile item target chip route should focus tile items');
+  assertContains(el('mobile-creature-strip').innerHTML, 'selected selected-target selected-stage-focus', 'Focused item chip should visibly mark target focus');
+  assertContains(el('mobile-creature-strip').innerHTML, 'data-selection-control="stage-focus" aria-pressed="true" data-selection-mode="stage-focus" data-selection-state="focused" data-command-slot="target"', 'Focused item chip should expose pressed target-slot state');
+  assertContains(el('mobile-selection-sentence').innerHTML, 'Rail Herb', 'Focused item chip should update the mobile composer sentence');
+  assertContains(el('mobile-explore-actions').innerHTML, 'data-command-intent="takeItems"', 'Focused item chip should expose Take Items in the mobile composer');
+  assertContains(el('mobile-explore-actions').innerHTML, 'data-command-control="clear-focused-object"', 'Focused item chip should expose a composer exit');
+});
+
 test('Stage presence exposes landmarks as passive place cues', () => {
   const { App, document } = loadAppForCombat();
   const el = id => document.getElementById(id);

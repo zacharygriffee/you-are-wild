@@ -1753,7 +1753,8 @@ async function runCompactRailRoundTripFlow(page) {
       } : null;
     })(),
     creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
-    creatureChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip').length,
+    creatureChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip:not(.item-target)').length,
+    itemTargetChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip.item-target').length,
     partyActorButtons: document.querySelectorAll('#mobile-actor-belt button[data-selection-mode="act-actor"]').length,
     targetIds: [...App.explorationTargetIds]
   }));
@@ -1761,6 +1762,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.cueBounds && state.cueBounds.width > 0 && state.cueBounds.height > 0 && state.cueBounds.mobileSurfaceDisplay !== 'none' && state.cueBounds.screenGameDisplay !== 'none', `Mobile presence cue should be visible before opening target rail: ${JSON.stringify(state.cueBounds)}`);
   assert.strictEqual(state.creatureRailDisplay, 'none', 'Compact creature rail should start closed when explicitly toggled closed');
   assert.strictEqual(state.creatureChipCount, 3, 'Closed compact creature rail should keep rendered targets ready for reopening');
+  assert.strictEqual(state.itemTargetChipCount, 1, 'Closed compact creature rail should keep tile item targets ready for reopening');
   assert.strictEqual(state.partyActorButtons, 0, 'Compact party actor rail should start closed');
   assert.deepStrictEqual(state.targetIds, [], 'Compact rail scenario should start without marked targets');
 
@@ -1827,6 +1829,7 @@ async function runCompactRailRoundTripFlow(page) {
       selectionMode: focusedStage?.getAttribute('data-selection-mode') || '',
       selectionState: focusedStage?.getAttribute('data-selection-state') || '',
       ariaPressed: focusedStage?.getAttribute('aria-pressed') || '',
+      railItemSelected: Boolean(document.querySelector('#mobile-creature-strip .mobile-unit-chip.item-target.selected-stage-focus')),
       clearFocusVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-control="clear-focused-object"]')),
       takeItemsVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-intent="takeItems"]')),
       width: rect?.width || 0,
@@ -1845,6 +1848,7 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.selectionMode, 'stage-focus', 'Focused center presence badge should expose stage-focus semantics');
   assert.strictEqual(state.selectionState, 'focused', 'Focused center presence badge should expose focused state');
   assert.strictEqual(state.ariaPressed, 'true', 'Focused center presence badge should expose pressed state to assistive tech');
+  assert.strictEqual(state.railItemSelected, true, 'Focused stage item should repaint the compact target rail item chip');
   assert.strictEqual(state.clearFocusVisible, true, 'Focused stage item should expose a visible Clear focus exit in the mobile composer');
   assert.strictEqual(state.takeItemsVisible, true, 'Focused stage item should keep Take Items reachable through location intents');
   assert(state.width >= 52 && state.height >= 52, 'Focused center presence badge should keep a finger-sized mobile target');

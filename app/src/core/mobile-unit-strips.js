@@ -20,11 +20,12 @@ const YAW_MOBILE_UNIT_STRIPS = {
             : app._label('ui.creatures', 'Creatures');
         const living = app.creatures.filter(c => c.CPun > 0 && !app._isCorpse(c));
         const corpses = app.creatures.filter(c => app._isCorpse(c));
+        const itemChip = this.tileItemChip(app);
         const visible = [...living, ...corpses];
         this.updateCreatureDockBadge(app, living);
-        if (card) card.style.display = (app.combatState.active || (visible.length > 0 && app.mobileCreatureRailOpen !== false)) ? 'block' : 'none';
-        strip.innerHTML = visible.length > 0
-            ? visible.map(unit => app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')).join('')
+        if (card) card.style.display = (app.combatState.active || ((visible.length > 0 || itemChip) && app.mobileCreatureRailOpen !== false)) ? 'block' : 'none';
+        strip.innerHTML = visible.length > 0 || itemChip
+            ? `${visible.map(unit => app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')).join('')}${itemChip}`
             : `<div style="color:var(--text-muted);font-size:12px;padding:6px;">${app._escapeHtml(app._label('ui.noCreaturesHere', 'No creatures here'))}</div>`;
         this.explorationControls(app);
     },
@@ -185,6 +186,46 @@ const YAW_MOBILE_UNIT_STRIPS = {
         return (app.creatures || []).filter(unit => unit && ((unit.CPun ?? 1) > 0 || app._isCorpse(unit)));
     },
 
+    hasTileItems(app) {
+        return !app.combatState?.active && Boolean(app._canTakeTileItems?.());
+    },
+
+    tileItemSummary(app) {
+        const tile = app._currentExplorationTile?.();
+        const items = Array.isArray(tile?.items) ? tile.items : [];
+        if (!items.length) return null;
+        const first = app._tileItemLabel(items[0]);
+        return {
+            name: items.length === 1
+                ? first
+                : app._label('ui.tileItems.count', '{count} items', { count: items.length }),
+            count: items.length
+        };
+    },
+
+    tileItemChip(app) {
+        if (!this.hasTileItems(app)) return '';
+        const summary = this.tileItemSummary(app);
+        if (!summary) return '';
+        const selected = app.focusedStageObject?.type === 'items';
+        const selectedClass = selected ? ' selected selected-target selected-stage-focus' : '';
+        const selectionAttrs = `data-selection-control="stage-focus" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="stage-focus" data-selection-state="${selected ? 'focused' : 'available'}" data-command-slot="target"`;
+        const label = app._escapeHtml(summary.name);
+        const icon = app._escapeHtml(app._actionIcon('takeItems') || '🎒');
+        const meta = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
+        const targetTitle = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
+        const statusLabel = app._escapeHtml(app._label('ui.presence.itemsHere', 'Items here'));
+        const targetLabel = app._escapeHtml(app._targetMarkLabel());
+        return `<div class="mobile-unit-chip item-target compact-tactical-card${selectedClass}" data-card-role="compact-tactical" data-surface-role="target-presence-chip" data-drawer-role="targets" data-selection-state="${selected ? 'selected' : 'available'}" data-selection-roles="${selected ? 'target stage-focus' : 'none'}" data-command-intent="takeItems" role="group" aria-label="${label}" onclick="App.focusPresence('items','tile-items')" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();App.focusPresence('items','tile-items')}">
+                    <div class="unit-actions tactical-card-selection-controls" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-action-scope="stage-focus" aria-label="${targetTitle}">
+                        <button class="action-btn target-toggle${selected ? ' primary' : ''}" title="${targetTitle}" aria-label="${targetTitle}" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-intent="takeItems" ${selectionAttrs} onclick="event.stopPropagation();App.focusPresence('items','tile-items')">${targetLabel}</button>
+                    </div>
+                    <div class="mobile-chip-name"><span>${icon}</span><span>${label}</span></div>
+                    <div class="mobile-chip-meta">${statusLabel} · ${meta}</div>
+                    ${selected ? `<div class="unit-selection-chips"><span class="unit-selection-chip target">${app._escapeHtml(app._label('target.targetRole', 'Target'))}</span></div>` : ''}
+                </div>`;
+    },
+
     updateCreatureDockBadge(app, living = this.livingCreatures(app)) {
         const badge = document.getElementById('mobile-creature-dock-badge');
         const button = document.getElementById('mobile-creatures-dock-btn');
@@ -276,14 +317,14 @@ const YAW_MOBILE_UNIT_STRIPS = {
     focusCreatureRail(app) {
         if (app.combatState?.active) return app.openPanel('enemies');
         const visible = this.visibleTargets(app);
-        if (!visible.length) return app.openPanel('enemies');
+        if (!visible.length && !this.hasTileItems(app)) return app.openPanel('enemies');
         app.mobileCreatureRailOpen = true;
         app.renderCreatures();
         if (typeof document !== 'undefined') {
             const card = document.getElementById('mobile-creature-card');
             if (card) card.style.display = 'block';
             if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
+            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"], #mobile-creature-strip [data-command-control="focus-items"]');
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
         }
         return true;
@@ -292,7 +333,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
     toggleCreatureRail(app) {
         if (app.combatState?.active) return app.openPanel('enemies');
         const visible = this.visibleTargets(app);
-        if (!visible.length) return app.openPanel('enemies');
+        if (!visible.length && !this.hasTileItems(app)) return app.openPanel('enemies');
         if (app.mobileCreatureRailOpen !== false) {
             app.mobileCreatureRailOpen = false;
             const card = typeof document !== 'undefined' ? document.getElementById('mobile-creature-card') : null;

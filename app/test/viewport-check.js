@@ -315,32 +315,165 @@ async function checkViewport(browser, name, width, height) {
   assert(accessibility.background === 'rgb(0, 0, 0)' || accessibility.background === '#000000', `${name}: high contrast should update rendered background`);
   assert(accessibility.transitionDuration.split(',').every(value => value.trim() === '0s'), `${name}: reduced motion should suppress button transitions`);
 
-  await page.evaluate(() => App.showSaveManager('new'));
+  await page.evaluate(() => App.showScreen('menu'));
+  await page.waitForTimeout(50);
+  await page.locator('#screen-menu [data-command-control="open-load-slots"]').click();
   await page.waitForTimeout(50);
   const save = await page.evaluate(() => {
     const root = document.getElementById('save-manager');
     const box = root?.querySelector('.save-manager-modal, .modal-content, .save-manager-content') || root?.firstElementChild || root;
+    const close = root?.querySelector('[data-command-control="close-save-manager"]');
     const rect = box.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
     const visibleButtons = Array.from(root.querySelectorAll('button')).filter(btn => {
       const r = btn.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
     }).length;
     return {
+      appScreen: App.screen,
+      saveMode: App.saveManagerMode,
       display: getComputedStyle(root).display,
+      active: root.classList.contains('active'),
       overflowY: getComputedStyle(box).overflowY,
       top: rect.top,
       bottom: rect.bottom,
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeSlot: close?.getAttribute('data-command-slot') || '',
       visibleButtons,
-      viewportHeight: innerHeight
+      viewportHeight: innerHeight,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     };
   });
+  assert.strictEqual(save.appScreen, 'save-manager', `${name}: main-menu Load should enter save-manager screen state`);
+  assert.strictEqual(save.saveMode, 'load', `${name}: main-menu Load should open save manager in load mode`);
   assert.notStrictEqual(save.display, 'none', `${name}: save manager should be visible`);
+  assert.strictEqual(save.active, true, `${name}: save manager should become active`);
   assert(save.overflowY === 'auto' || save.overflowY === 'scroll', `${name}: save manager content should be scrollable`);
   assert(save.top >= -1, `${name}: save manager should not clip above viewport`);
   assert(save.bottom <= save.viewportHeight + 1, `${name}: save manager should not clip below viewport`);
+  assert.strictEqual(save.closeVisible, true, `${name}: save manager should expose a visible close exit`);
+  assert.strictEqual(save.closeSlot, 'exit', `${name}: save manager close should identify the exit slot`);
   assert(save.visibleButtons >= 2, `${name}: save manager should expose reachable actions`);
+  assert.strictEqual(save.pageOverflow, false, `${name}: save manager should not create horizontal overflow`);
+
+  await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
+  await page.waitForTimeout(50);
+  const returnedSaveMenu = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const menuShell = menu?.querySelector('.menu-shell');
+    const actions = menu?.querySelector('.menu-actions');
+    const saveManager = document.getElementById('save-manager');
+    const app = document.getElementById('app');
+    const game = document.getElementById('screen-game');
+    const shellRect = menuShell.getBoundingClientRect();
+    const actionsRect = actions.getBoundingClientRect();
+    const visibleActions = Array.from(actions.querySelectorAll('button')).filter(button => {
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(button).display !== 'none';
+    });
+    return {
+      appScreen: App.screen,
+      menuDisplay: getComputedStyle(menu).display,
+      menuActive: menu.classList.contains('active'),
+      saveDisplay: getComputedStyle(saveManager).display,
+      saveActive: saveManager.classList.contains('active'),
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      shellInsideViewport: shellRect.left >= -1 && shellRect.right <= innerWidth + 1 && shellRect.top >= -1 && shellRect.bottom <= innerHeight + 1,
+      actionsInsideViewport: actionsRect.left >= -1 && actionsRect.right <= innerWidth + 1,
+      actionsWidthBounded: actionsRect.width <= Math.min(400, innerWidth) + 1,
+      actionColumnCentered: Math.abs((actionsRect.left + actionsRect.width / 2) - innerWidth / 2) <= 2,
+      visibleActionCount: visibleActions.length,
+      actionsTappable: visibleActions.every(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.width >= 44 && rect.height >= 44;
+      }),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(returnedSaveMenu.appScreen, 'menu', `${name}: closing menu Save Manager should restore menu screen state`);
+  assert.strictEqual(returnedSaveMenu.menuDisplay, 'flex', `${name}: main menu should be visible after Save Manager closes`);
+  assert.strictEqual(returnedSaveMenu.menuActive, true, `${name}: main menu should regain active state after Save Manager closes`);
+  assert.strictEqual(returnedSaveMenu.saveDisplay, 'none', `${name}: Save Manager should hide after close`);
+  assert.strictEqual(returnedSaveMenu.saveActive, false, `${name}: Save Manager should clear active state after close`);
+  assert.strictEqual(returnedSaveMenu.gameDisplay, 'none', `${name}: closing menu Save Manager should not activate the game screen`);
+  assert.strictEqual(returnedSaveMenu.gameActive, false, `${name}: game screen should stay inactive after menu Save Manager closes`);
+  assert.strictEqual(returnedSaveMenu.appDisplay, 'none', `${name}: game app shell should stay hidden after menu Save Manager closes`);
+  assert.strictEqual(returnedSaveMenu.shellInsideViewport, true, `${name}: returned menu shell after Save Manager should stay bounded`);
+  assert.strictEqual(returnedSaveMenu.actionsInsideViewport, true, `${name}: returned menu actions after Save Manager should stay inside the viewport`);
+  assert.strictEqual(returnedSaveMenu.actionsWidthBounded, true, `${name}: returned menu actions after Save Manager should stay width-bounded`);
+  assert.strictEqual(returnedSaveMenu.actionColumnCentered, true, `${name}: returned menu actions after Save Manager should stay centered`);
+  assert(returnedSaveMenu.visibleActionCount >= 5, `${name}: returned menu after Save Manager should expose primary actions`);
+  assert.strictEqual(returnedSaveMenu.actionsTappable, true, `${name}: returned menu actions after Save Manager should remain tappable`);
+  assert.strictEqual(returnedSaveMenu.pageOverflow, false, `${name}: closing Save Manager should not introduce menu horizontal overflow`);
 
   await page.evaluate(makeUnitScript());
+  await page.waitForTimeout(50);
+  await page.evaluate(() => App.showSaveManager('save'));
+  await page.waitForTimeout(50);
+  const openGameSave = await page.evaluate(() => {
+    const root = document.getElementById('save-manager');
+    const close = root?.querySelector('[data-command-control="close-save-manager"]');
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      saveMode: App.saveManagerMode,
+      display: getComputedStyle(root).display,
+      active: root.classList.contains('active'),
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeSlot: close?.getAttribute('data-command-slot') || '',
+      appDisplay: getComputedStyle(document.getElementById('app')).display,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(openGameSave.appScreen, 'save-manager', `${name}: live-game Save should enter save-manager screen state`);
+  assert.strictEqual(openGameSave.saveMode, 'save', `${name}: live-game Save should open save manager in save mode`);
+  assert.notStrictEqual(openGameSave.display, 'none', `${name}: live-game Save Manager should be visible`);
+  assert.strictEqual(openGameSave.active, true, `${name}: live-game Save Manager should become active`);
+  assert.strictEqual(openGameSave.closeVisible, true, `${name}: live-game Save Manager should expose a visible close exit`);
+  assert.strictEqual(openGameSave.closeSlot, 'exit', `${name}: live-game Save Manager close should identify the exit slot`);
+  assert.strictEqual(openGameSave.appDisplay, 'grid', `${name}: live-game Save Manager should preserve the game shell behind the overlay`);
+  assert.strictEqual(openGameSave.pageOverflow, false, `${name}: live-game Save Manager should not create horizontal overflow`);
+
+  await page.locator('#save-manager [data-command-control="close-save-manager"]').click();
+  await page.waitForTimeout(50);
+  const returnedGameSave = await page.evaluate(() => {
+    const root = document.getElementById('save-manager');
+    const app = document.getElementById('app');
+    const game = document.getElementById('screen-game');
+    const menu = document.getElementById('screen-menu');
+    const dock = document.querySelector('.mobile-panel-dock');
+    const playSurface = document.getElementById('mobile-play-surface');
+    const desktopSurface = document.querySelector('.desktop-play-surface');
+    const activeSurface = innerWidth < 600 ? playSurface : desktopSurface;
+    const surfaceRect = activeSurface?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      saveDisplay: getComputedStyle(root).display,
+      saveActive: root.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      menuDisplay: getComputedStyle(menu).display,
+      dockVisible: Boolean(dock) && getComputedStyle(dock).display !== 'none' && dock.getBoundingClientRect().height > 0,
+      surfaceVisible: Boolean(surfaceRect && surfaceRect.width > 0 && surfaceRect.height > 0),
+      surfaceInsideViewport: !surfaceRect || (surfaceRect.left >= -1 && surfaceRect.right <= innerWidth + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(returnedGameSave.appScreen, 'game', `${name}: closing live-game Save Manager should restore game screen state`);
+  assert.strictEqual(returnedGameSave.saveDisplay, 'none', `${name}: live-game Save Manager should hide after close`);
+  assert.strictEqual(returnedGameSave.saveActive, false, `${name}: live-game Save Manager should clear active state after close`);
+  assert.strictEqual(returnedGameSave.appDisplay, 'grid', `${name}: game app shell should be visible after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.gameDisplay, 'flex', `${name}: game screen should be visible after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.gameActive, true, `${name}: game screen should regain active state after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.menuDisplay, 'none', `${name}: closing live-game Save Manager should not restore the main menu`);
+  if (width < 600) assert.strictEqual(returnedGameSave.dockVisible, true, `${name}: mobile dock should be visible after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.surfaceVisible, true, `${name}: play surface should be visible after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.surfaceInsideViewport, true, `${name}: play surface should stay horizontally bounded after live-game Save Manager closes`);
+  assert.strictEqual(returnedGameSave.pageOverflow, false, `${name}: closing live-game Save Manager should not introduce horizontal overflow`);
+
   if (width < 600) {
     await page.evaluate(() => togglePanel('party'));
     await page.waitForTimeout(350);

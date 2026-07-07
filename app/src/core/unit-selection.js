@@ -112,6 +112,15 @@ const YAW_UNIT_SELECTION = {
             'combat-actions': 'combat',
             'combat-target': 'combat'
         };
+        const commandSlots = {
+            'creature-selection': 'target',
+            'sync-participants': 'actor',
+            'combat-actions': 'intent',
+            'combat-target': 'target'
+        };
+        const commandSlotGroups = {
+            'party-selection': 'actor target'
+        };
         const grammarScopes = new Set([
             'party-selection',
             'creature-selection',
@@ -122,8 +131,13 @@ const YAW_UNIT_SELECTION = {
         const label = app._escapeHtml(labels[scope] || app._label('unit.row.actions', 'Actions for {name}', { name }));
         const surface = commandSurfaces[scope];
         const commandMode = commandModes[scope] || 'exploration';
+        const slot = commandSlots[scope];
+        const slotGroup = commandSlotGroups[scope];
+        const slotAttrs = slot
+            ? ` data-command-slot="${slot}"`
+            : (slotGroup ? ` data-command-slots="${slotGroup}"` : '');
         const commandAttrs = surface
-            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandMode}"${grammarScopes.has(scope) ? ' data-command-grammar="actor-target-intent"' : ''}`
+            ? ` data-command-surface="${app._escapeHtml(surface)}" data-command-mode="${commandMode}"${grammarScopes.has(scope) ? ' data-command-grammar="actor-target-intent"' : ''}${slotAttrs}`
             : '';
         return `data-action-scope="${safeScope}" aria-label="${label}"${commandAttrs}`;
     },

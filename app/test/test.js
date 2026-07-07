@@ -1595,11 +1595,18 @@ test('Unit selection helper module is registered before app code', () => {
   assertContains(unitSelectionContent, "'party-selection': 'actor-target-routing'", 'Party selection rows should declare actor/target composer routing');
   assertContains(unitSelectionContent, "'party-details': 'detail-management'", 'Party detail rows should declare detail-management routing separately from actor/target selection');
   assertContains(unitSelectionContent, "'creature-selection': 'target-routing'", 'Creature selection rows should declare target composer routing');
+  assertContains(unitSelectionContent, "'party-selection': 'actor target'", 'Party selection rows should expose their mixed actor/target slot responsibilities');
+  assertContains(unitSelectionContent, "'creature-selection': 'target'", 'Creature selection rows should expose target slot routing');
+  assertContains(unitSelectionContent, "'sync-participants': 'actor'", 'Sync participant rows should expose actor slot routing');
+  assertContains(unitSelectionContent, "'combat-actions': 'intent'", 'Combat action rows should expose intent slot routing');
+  assertContains(unitSelectionContent, "'combat-target': 'target'", 'Combat target rows should expose target slot routing');
   assertNotContains(unitSelectionContent, "'corpse-utility': 'utility-actions'", 'Corpse utility rows should not preserve a separate non-composer utility surface');
   assertNotContains(unitSelectionContent, "'corpse-utility',", 'Corpse utility rows should not preserve a separate grammar path');
   assertContains(unitSelectionContent, "'combat-target': 'combat-targeting'", 'Combat target rows should declare combat target-pick routing');
   assertContains(unitSelectionContent, "'party-selection',\n            'creature-selection',\n            'sync-participants',\n            'combat-actions',\n            'combat-target'", 'Composer-routing action rows should opt into the shared command grammar');
   assertContains(unitSelectionContent, 'data-command-grammar="actor-target-intent"', 'Composer-routing action rows should expose actor-target-intent grammar metadata');
+  assertContains(unitSelectionContent, 'data-command-slot="${slot}"', 'Single-slot composer rows should expose row-level command slot metadata');
+  assertContains(unitSelectionContent, 'data-command-slots="${slotGroup}"', 'Mixed actor/target composer rows should expose grouped command slot metadata');
   assertContains(unitSelectionContent, 'data-selection-control="actor" aria-pressed="${Boolean(active)}" data-selection-mode="act-actor" data-selection-state="${active ? \'selected\' : \'available\'}" data-command-slot="actor"', 'Actor selection controls should identify the actor slot');
   assertContains(unitSelectionContent, 'data-selection-control="target" aria-pressed="${Boolean(active)}" data-selection-mode="mark-target" data-selection-state="${active ? \'marked\' : \'available\'}" data-command-slot="target"', 'Target selection controls should identify the target slot');
   assertContains(unitSelectionContent, 'data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? \'pickable\' : \'blocked\'}" data-command-slot="target"', 'Combat target controls should identify the target slot');

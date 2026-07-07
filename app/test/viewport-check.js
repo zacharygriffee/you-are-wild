@@ -193,6 +193,103 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedMenu.pageOverflow, false, `${name}: closing Settings should not introduce menu horizontal overflow`);
 
   await page.evaluate(() => {
+    App.showScreen('create');
+    App.syncCreateContentLevel?.();
+  });
+  await page.waitForTimeout(50);
+  await page.locator('#screen-create [data-command-control="open-content-settings"]').click();
+  await page.waitForTimeout(50);
+  const openedCreateSettings = await page.evaluate(() => {
+    const create = document.getElementById('screen-create');
+    const menu = document.getElementById('screen-menu');
+    const settings = document.getElementById('screen-settings');
+    const app = document.getElementById('app');
+    const close = settings?.querySelector('[data-command-control="close-settings"]');
+    const contentLevel = document.getElementById('settings-content-level');
+    const settingsRect = settings.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      createDisplay: getComputedStyle(create).display,
+      createActive: create.classList.contains('active'),
+      menuDisplay: getComputedStyle(menu).display,
+      appDisplay: getComputedStyle(app).display,
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      settingsInsideViewport: settingsRect.left >= -1 && settingsRect.right <= innerWidth + 1 && settingsRect.top >= -1 && settingsRect.bottom <= innerHeight + 1,
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeControl: close?.getAttribute('data-command-control') || '',
+      closeSlot: close?.getAttribute('data-command-slot') || '',
+      contentFocused: contentLevel?.classList.contains('settings-focus') || false
+    };
+  });
+  assert.strictEqual(openedCreateSettings.appScreen, 'settings', `${name}: create content settings should enter settings screen state`);
+  assert.strictEqual(openedCreateSettings.returnScreen, 'create', `${name}: create content settings should remember the create return target`);
+  assert.strictEqual(openedCreateSettings.createDisplay, 'none', `${name}: create screen should hide behind content settings`);
+  assert.strictEqual(openedCreateSettings.createActive, false, `${name}: create screen should not stay active behind content settings`);
+  assert.strictEqual(openedCreateSettings.menuDisplay, 'none', `${name}: main menu should stay hidden while create content settings are open`);
+  assert.strictEqual(openedCreateSettings.appDisplay, 'none', `${name}: game app shell should stay hidden while create content settings are open`);
+  assert.notStrictEqual(openedCreateSettings.settingsDisplay, 'none', `${name}: Settings overlay should be visible from character creation`);
+  assert.strictEqual(openedCreateSettings.settingsActive, true, `${name}: Settings overlay should become active from character creation`);
+  assert.strictEqual(openedCreateSettings.settingsInsideViewport, true, `${name}: create Settings overlay should stay bounded in the viewport`);
+  assert.strictEqual(openedCreateSettings.closeVisible, true, `${name}: create Settings overlay should expose a visible close/back exit`);
+  assert.strictEqual(openedCreateSettings.closeControl, 'close-settings', `${name}: create Settings close should expose its command control`);
+  assert.strictEqual(openedCreateSettings.closeSlot, 'exit', `${name}: create Settings close should identify the exit slot`);
+  assert.strictEqual(openedCreateSettings.contentFocused, true, `${name}: create content settings should focus the content-level setting`);
+
+  await page.locator('#screen-settings [data-command-control="close-settings"]').click();
+  await page.waitForTimeout(50);
+  const returnedCreate = await page.evaluate(() => {
+    const create = document.getElementById('screen-create');
+    const container = create?.querySelector('.create-container');
+    const settings = document.getElementById('screen-settings');
+    const menu = document.getElementById('screen-menu');
+    const game = document.getElementById('screen-game');
+    const app = document.getElementById('app');
+    const contentButton = create?.querySelector('[data-command-control="open-content-settings"]');
+    const contentLabel = document.getElementById('create-content-level-label');
+    const containerRect = container.getBoundingClientRect();
+    const contentRect = contentButton?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      createDisplay: getComputedStyle(create).display,
+      createActive: create.classList.contains('active'),
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      menuDisplay: getComputedStyle(menu).display,
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      containerInsideViewport: containerRect.left >= -1 && containerRect.right <= innerWidth + 1 && containerRect.top >= -1 && containerRect.bottom <= innerHeight + 1,
+      contentVisible: Boolean(contentRect && contentRect.width > 0 && contentRect.height > 0),
+      contentTappable: Boolean(contentRect && contentRect.width >= 44 && contentRect.height >= 44),
+      contentControl: contentButton?.getAttribute('data-command-control') || '',
+      contentSurface: contentButton?.getAttribute('data-command-surface') || '',
+      contentLabel: contentLabel?.textContent?.trim() || '',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(returnedCreate.appScreen, 'create', `${name}: closing create Settings should restore create screen state`);
+  assert.strictEqual(returnedCreate.returnScreen, null, `${name}: closing create Settings should clear return state`);
+  assert.strictEqual(returnedCreate.createDisplay, 'flex', `${name}: create screen should be visible after content Settings closes`);
+  assert.strictEqual(returnedCreate.createActive, true, `${name}: create screen should regain active state after content Settings closes`);
+  assert.strictEqual(returnedCreate.settingsDisplay, 'none', `${name}: Settings overlay should hide after returning to character creation`);
+  assert.strictEqual(returnedCreate.settingsActive, false, `${name}: Settings overlay should clear active state after returning to character creation`);
+  assert.strictEqual(returnedCreate.menuDisplay, 'none', `${name}: closing create Settings should not restore the main menu`);
+  assert.strictEqual(returnedCreate.gameDisplay, 'none', `${name}: closing create Settings should not activate the game screen`);
+  assert.strictEqual(returnedCreate.gameActive, false, `${name}: game screen should stay inactive after create Settings closes`);
+  assert.strictEqual(returnedCreate.appDisplay, 'none', `${name}: game app shell should stay hidden after create Settings closes`);
+  assert.strictEqual(returnedCreate.containerInsideViewport, true, `${name}: returned create container should stay within the viewport`);
+  assert.strictEqual(returnedCreate.contentVisible, true, `${name}: returned create content-level shortcut should stay visible`);
+  assert.strictEqual(returnedCreate.contentTappable, true, `${name}: returned create content-level shortcut should remain tappable`);
+  assert.strictEqual(returnedCreate.contentControl, 'open-content-settings', `${name}: returned create content shortcut should keep its command control`);
+  assert.strictEqual(returnedCreate.contentSurface, 'character-creation', `${name}: returned create content shortcut should keep setup surface ownership`);
+  assert(returnedCreate.contentLabel.length > 0, `${name}: returned create content-level label should be populated`);
+  assert.strictEqual(returnedCreate.pageOverflow, false, `${name}: closing create Settings should not introduce horizontal overflow`);
+
+  await page.evaluate(() => {
     App.updateAccessibilitySetting('highContrast', true);
     App.updateAccessibilitySetting('reducedMotion', true);
     App.updateAccessibilitySetting('fontSize', 20);

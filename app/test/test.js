@@ -4246,10 +4246,12 @@ test('Tile event feed is ephemeral scene presentation', () => {
   assertContains(appContent, '_addTileEvent(text', 'Tile event feed should expose an append helper');
   assertContains(tileEventFeedContent, 'normalizeMeta(app, type', 'Tile events should normalize semantic presentation metadata');
   assertContains(appContent, 'renderTileEvents()', 'Tile event feed should render into scene slots');
-  assertContains(tileEventFeedContent, "document.getElementById('tile-event-feed')", 'Tile events should render the full desktop feed');
+  assertContains(tileEventFeedContent, "document.getElementById('tile-event-feed')", 'Tile events should render into the desktop scene slot');
   assertContains(tileEventFeedContent, "document.getElementById('mobile-tile-event-feed')", 'Tile events should render the compact mobile feed');
-  assertContains(tileEventFeedContent, "this.html(app, { limit: 1, compact: true })", 'Mobile tile events should show only the latest compact event');
+  assertContains(tileEventFeedContent, "const desktopHtml = this.html(app, { limit: 1, compact: true });", 'Desktop tile events should show only the latest compact event in the center stage');
+  assertContains(tileEventFeedContent, "const mobileHtml = this.html(app, { limit: 1, compact: true });", 'Mobile tile events should show only the latest compact event');
   assertContains(tileEventFeedContent, 'data-event-kind', 'Tile event entries should expose a safe semantic kind for presentation');
+  assertContains(template, '.tile-event-feed.compact', 'Compact tile event feed should have unboxed presentation styling');
   assertContains(template, '.tile-event-actor', 'Tile event feed should style actor labels');
   assertContains(template, '.tile-event-intent', 'Tile event feed should style intent labels');
   assertContains(contentSystemContent, "'ui.tileEvents.title': 'Here now'", 'Tile event feed title should be localized');
@@ -9533,6 +9535,13 @@ test('Moving tiles clears current tile event feed but keeps durable log', () => 
 test('Tile event feed renders safe actor intent and semantic metadata', () => {
   const { App, elements } = loadAppForCombat();
   App.location = { x: 2, y: -1 };
+  App._addTileEvent('older scene beat', 'discovery', {
+    actorName: 'Scout <One>',
+    intent: 'Scout',
+    semanticKind: 'speech',
+    icon: '💬',
+    label: 'Creature event'
+  });
   const event = App._addTileEvent('checks the trail ahead', 'discovery', {
     actorName: 'Scout <One>',
     intent: 'Scout',
@@ -9545,13 +9554,17 @@ test('Tile event feed renders safe actor intent and semantic metadata', () => {
   assertEqual(event.semanticKind, 'speech', 'Tile event should preserve semantic kind');
   const desktopHtml = elements.get('tile-event-feed').innerHTML;
   const mobileHtml = elements.get('mobile-tile-event-feed').innerHTML;
+  assertContains(desktopHtml, 'tile-event-feed compact', 'Desktop center tile should render the latest event as a compact presentation strip');
+  assertNotContains(desktopHtml, 'tile-event-title', 'Desktop compact center feed should not render a boxed Here now title');
   assertContains(desktopHtml, 'data-event-kind="speech"', 'Desktop tile feed should expose semantic kind');
   assertContains(desktopHtml, 'Scout &lt;One&gt;', 'Desktop tile feed should escape actor labels');
   assertContains(desktopHtml, 'Scout', 'Desktop tile feed should render intent labels');
   assertContains(desktopHtml, 'checks the trail ahead', 'Desktop tile feed should render event text');
+  assertNotContains(desktopHtml, 'older scene beat', 'Desktop center tile should show only the latest tile event');
   assertContains(desktopHtml, 'aria-label="Creature event"', 'Desktop tile feed should expose category label');
   assertContains(mobileHtml, 'data-event-kind="speech"', 'Mobile tile feed should mirror semantic kind');
   assertContains(mobileHtml, 'Scout &lt;One&gt;', 'Mobile tile feed should mirror escaped actor labels');
+  assertNotContains(mobileHtml, 'older scene beat', 'Mobile scene should show only the latest tile event');
 });
 
 test('Recruitment is gated by pleasure and willingness score', () => {

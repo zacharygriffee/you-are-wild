@@ -75,7 +75,7 @@ const YAW_TILE_EVENT_FEED = {
     },
 
     render(app) {
-        const desktopHtml = this.html(app);
+        const desktopHtml = this.html(app, { limit: 1, compact: true });
         const mobileHtml = this.html(app, { limit: 1, compact: true });
         const desktop = document.getElementById('tile-event-feed');
         const mobile = document.getElementById('mobile-tile-event-feed');

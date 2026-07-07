@@ -73,6 +73,125 @@ async function checkViewport(browser, name, width, height) {
   assert(shell.largeMapControlsLocalized, `${name}: large-map control group should expose localization hook`);
   assert(shell.zoomTitle.length > 0, `${name}: large-map zoom control should have a title`);
 
+  await page.evaluate(() => App.closeTutorial?.());
+  await page.waitForTimeout(50);
+  await page.locator('#screen-menu [data-command-control="open-settings"]').click();
+  await page.waitForTimeout(50);
+  const openedSettings = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const settings = document.getElementById('screen-settings');
+    const app = document.getElementById('app');
+    const close = settings?.querySelector('[data-command-control="close-settings"]');
+    const settingsRect = settings.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      menuDisplay: getComputedStyle(menu).display,
+      menuActive: menu.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      settingsInsideViewport: settingsRect.left >= -1 && settingsRect.right <= innerWidth + 1 && settingsRect.top >= -1 && settingsRect.bottom <= innerHeight + 1,
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      closeControl: close?.getAttribute('data-command-control') || '',
+      closeSlot: close?.getAttribute('data-command-slot') || ''
+    };
+  });
+  assert.strictEqual(openedSettings.appScreen, 'settings', `${name}: main-menu Settings should enter settings screen state`);
+  assert.strictEqual(openedSettings.returnScreen, 'menu', `${name}: main-menu Settings should remember the menu return target`);
+  assert.strictEqual(openedSettings.menuDisplay, 'none', `${name}: main menu should hide behind the settings overlay`);
+  assert.strictEqual(openedSettings.menuActive, false, `${name}: main menu should not stay active behind settings`);
+  assert.strictEqual(openedSettings.appDisplay, 'none', `${name}: game app shell should stay hidden while menu Settings is open`);
+  assert.notStrictEqual(openedSettings.settingsDisplay, 'none', `${name}: Settings overlay should be visible from the main menu`);
+  assert.strictEqual(openedSettings.settingsActive, true, `${name}: Settings overlay should become active from the main menu`);
+  assert.strictEqual(openedSettings.settingsInsideViewport, true, `${name}: Settings overlay should stay bounded in the viewport`);
+  assert.strictEqual(openedSettings.closeVisible, true, `${name}: Settings overlay should expose a visible close/back exit`);
+  assert.strictEqual(openedSettings.closeControl, 'close-settings', `${name}: Settings close should expose its command control`);
+  assert.strictEqual(openedSettings.closeSlot, 'exit', `${name}: Settings close should identify the exit slot`);
+
+  await page.locator('#screen-settings [data-command-control="close-settings"]').click();
+  await page.waitForTimeout(50);
+  const returnedMenu = await page.evaluate(() => {
+    const menu = document.getElementById('screen-menu');
+    const menuShell = menu?.querySelector('.menu-shell');
+    const actions = menu?.querySelector('.menu-actions');
+    const settings = document.getElementById('screen-settings');
+    const game = document.getElementById('screen-game');
+    const app = document.getElementById('app');
+    const shellRect = menuShell.getBoundingClientRect();
+    const actionsRect = actions.getBoundingClientRect();
+    const visibleActions = Array.from(actions.querySelectorAll('button')).filter(button => {
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(button).display !== 'none';
+    }).map(button => {
+      const rect = button.getBoundingClientRect();
+      return {
+        label: button.textContent.trim(),
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      };
+    });
+    const actionColumnCentered = Math.abs((actionsRect.left + actionsRect.width / 2) - innerWidth / 2) <= 2;
+    return {
+      appScreen: App.screen,
+      returnScreen: App.settingsReturnScreen,
+      menuDisplay: getComputedStyle(menu).display,
+      menuActive: menu.classList.contains('active'),
+      settingsDisplay: getComputedStyle(settings).display,
+      settingsActive: settings.classList.contains('active'),
+      gameDisplay: getComputedStyle(game).display,
+      gameActive: game.classList.contains('active'),
+      appDisplay: getComputedStyle(app).display,
+      shellClassed: menuShell.classList.contains('menu-shell'),
+      shellBounds: {
+        left: shellRect.left,
+        right: shellRect.right,
+        top: shellRect.top,
+        bottom: shellRect.bottom,
+        width: shellRect.width,
+        height: shellRect.height
+      },
+      actionsClassed: actions.classList.contains('menu-actions'),
+      actionsBounds: {
+        left: actionsRect.left,
+        right: actionsRect.right,
+        top: actionsRect.top,
+        bottom: actionsRect.bottom,
+        width: actionsRect.width,
+        height: actionsRect.height
+      },
+      actionColumnCentered,
+      visibleActions,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight
+    };
+  });
+  assert.strictEqual(returnedMenu.appScreen, 'menu', `${name}: closing menu Settings should restore menu screen state`);
+  assert.strictEqual(returnedMenu.returnScreen, null, `${name}: closing menu Settings should clear return state`);
+  assert.strictEqual(returnedMenu.menuDisplay, 'flex', `${name}: main menu should be visible after Settings closes`);
+  assert.strictEqual(returnedMenu.menuActive, true, `${name}: main menu should regain active state after Settings closes`);
+  assert.strictEqual(returnedMenu.settingsDisplay, 'none', `${name}: Settings overlay should be hidden after close`);
+  assert.strictEqual(returnedMenu.settingsActive, false, `${name}: Settings overlay should clear active state after close`);
+  assert.strictEqual(returnedMenu.gameDisplay, 'none', `${name}: closing menu Settings should not activate the game screen`);
+  assert.strictEqual(returnedMenu.gameActive, false, `${name}: game screen should stay inactive after menu Settings closes`);
+  assert.strictEqual(returnedMenu.appDisplay, 'none', `${name}: game app shell should stay hidden after menu Settings closes`);
+  assert.strictEqual(returnedMenu.shellClassed, true, `${name}: returned main menu should keep the centered menu shell class`);
+  assert(returnedMenu.shellBounds.left >= -1 && returnedMenu.shellBounds.right <= returnedMenu.viewportWidth + 1, `${name}: returned menu shell should stay horizontally bounded`);
+  assert(returnedMenu.shellBounds.top >= -1 && returnedMenu.shellBounds.bottom <= returnedMenu.viewportHeight + 1, `${name}: returned menu shell should stay vertically bounded`);
+  assert.strictEqual(returnedMenu.actionsClassed, true, `${name}: returned main menu actions should keep the bounded action column class`);
+  assert(returnedMenu.actionsBounds.width <= Math.min(400, returnedMenu.viewportWidth) + 1, `${name}: returned menu actions should stay width-bounded`);
+  assert(returnedMenu.actionsBounds.left >= -1 && returnedMenu.actionsBounds.right <= returnedMenu.viewportWidth + 1, `${name}: returned menu actions should stay inside the viewport`);
+  assert.strictEqual(returnedMenu.actionColumnCentered, true, `${name}: returned menu action column should be horizontally centered`);
+  assert(returnedMenu.visibleActions.length >= 5, `${name}: returned menu should expose primary menu actions`);
+  assert(returnedMenu.visibleActions.every(button => button.width >= 44 && button.height >= 44), `${name}: returned menu actions should remain tappable`);
+  assert.strictEqual(returnedMenu.pageOverflow, false, `${name}: closing Settings should not introduce menu horizontal overflow`);
+
   await page.evaluate(() => {
     App.updateAccessibilitySetting('highContrast', true);
     App.updateAccessibilitySetting('reducedMotion', true);

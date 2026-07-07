@@ -542,7 +542,7 @@ async function runSelectionSemanticsFlow(page) {
   assert(initial.partyCards[0]?.actorButtonLabel.includes('Add You as actor'), 'Implicit player actor button should promote explicit selection');
   assert.strictEqual(initial.partyCards[0]?.selectedTarget, false, 'Player card should not imply target state');
 
-  await page.locator('#party-content .unit-card').nth(1).click({ position: { x: 16, y: 16 } });
+  await page.locator('#party-content .unit-card').nth(1).click({ position: { x: 24, y: 64 } });
   let state = await page.evaluate(() => ({
     allyExpanded: Boolean(App.party.find(unit => unit.id === 'ally-1')?.expanded),
     actors: App._getExplorationActors().map(unit => unit.id || unit.name),
@@ -596,7 +596,7 @@ async function runSelectionSemanticsFlow(page) {
   assert.strictEqual(state.markPressed, 'true', 'Mark control should expose pressed state');
   assert.strictEqual(state.creatureHasVisibleIntentMenu, false, 'Living creature card should not expose a redundant visible action popup when marking owns shared actions');
 
-  await page.locator('#enemies-content .unit-card').first().click({ position: { x: 16, y: 16 } });
+  await page.locator('#enemies-content .unit-card').first().click({ position: { x: 24, y: 64 } });
   state = await page.evaluate(() => ({
     creatureExpanded: Boolean(App.creatures.find(unit => unit.id === 'friendly-1')?.expanded),
     actors: App._getExplorationActors().map(unit => unit.id || unit.name),

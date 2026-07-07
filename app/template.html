@@ -1468,6 +1468,20 @@
         .unit-card.expanded {
             border-color: var(--accent-secondary);
         }
+
+        .unit-card.compact-tactical-card {
+            position: relative;
+            padding: 34px 10px 10px;
+        }
+
+        .unit-card.compact-tactical-card .unit-header {
+            align-items: flex-start;
+        }
+
+        .unit-card.compact-tactical-card .unit-traits {
+            margin-top: 6px;
+        }
+
         .unit-combat-actions {
             display: flex;
             gap: 4px;
@@ -1519,6 +1533,40 @@
             min-width: 60px;
             padding: 6px 10px;
             font-size: 11px;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls {
+            position: absolute;
+            top: 7px;
+            left: 9px;
+            right: 9px;
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            pointer-events: none;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn {
+            pointer-events: auto;
+            flex: 0 0 auto;
+            min-width: 46px;
+            max-width: calc(50% - 3px);
+            min-height: 24px;
+            padding: 4px 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .actor-toggle {
+            margin-right: auto;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .target-toggle {
+            margin-left: auto;
         }
 
         .unit-actions [data-selection-mode] {

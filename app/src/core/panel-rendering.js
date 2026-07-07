@@ -21,13 +21,18 @@ const YAW_PANEL_RENDERING = {
         return `<div class="panel-interaction-tray party-panel-utilities" data-surface-role="drawer-utility" role="toolbar" aria-label="${label}"><div class="target-action-row" data-command-surface="detail-management" data-command-mode="exploration"><button class="action-btn" data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-quest-log" title="${title}" aria-label="${title}" onclick="App.showQuestLog()">📜 ${label}</button></div></div>`;
     },
 
+    listCard(app, unit, index, type) {
+        if (unit?.expanded) return app.renderUnitCard(unit, index, type);
+        return app.renderTacticalCard(unit, index, type, { presentation: 'desktop' });
+    },
+
     party(app) {
         app._syncPlayerPartyReference();
         const container = document.getElementById('party-content');
         if (container) {
             const tray = app._renderPanelInteractionTray();
             const utilities = this.partyUtilities(app);
-            container.innerHTML = `${utilities}${tray}${app.party.map((unit, i) => app.renderUnitCard(unit, i, 'party')).join('')}`;
+            container.innerHTML = `${utilities}${tray}${app.party.map((unit, i) => this.listCard(app, unit, i, 'party')).join('')}`;
         }
         this.syncDetailToggle(app, 'party');
         app.renderMobilePartyStrip();
@@ -102,10 +107,10 @@ const YAW_PANEL_RENDERING = {
         }
         if (mobileTitle) mobileTitle.textContent = titleText;
         if (container) {
-            let html = living.map(unit => app.renderUnitCard(unit, app.creatures.indexOf(unit), 'creature')).join('');
+            let html = living.map(unit => this.listCard(app, unit, app.creatures.indexOf(unit), 'creature')).join('');
             if (corpses.length > 0) {
                 html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="color:var(--text-muted);font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px;">${app._escapeHtml(app._label('disposition.remains', 'Remains'))}</div>`;
-                html += corpses.map(unit => app.renderUnitCard(unit, app.creatures.indexOf(unit), 'creature')).join('');
+                html += corpses.map(unit => this.listCard(app, unit, app.creatures.indexOf(unit), 'creature')).join('');
                 html += '</div>';
             }
             container.innerHTML = html || `<p style="color: var(--text-muted); text-align: center;">${app._escapeHtml(app._label('ui.noCreaturesPresent', 'No creatures present'))}</p>`;

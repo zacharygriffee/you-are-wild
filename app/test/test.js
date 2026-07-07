@@ -2205,7 +2205,9 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assert(buildContent.indexOf("'src/core/tactical-card.js'") < buildContent.indexOf("'src/core/mobile-unit-chip.js'"), 'Tactical card helper should load before mobile unit chips');
   assert(buildContent.indexOf("'src/core/tactical-card.js'") < buildContent.indexOf("'src/core/unit-card.js'"), 'Tactical card helper should load before desktop unit cards can adopt tactical rails');
   assertContains(tacticalCardContent, 'const YAW_TACTICAL_CARD = {', 'Tactical card helper should expose a shared compact renderer service');
+  assertContains(tacticalCardContent, 'desktop(app, unit, index, type)', 'Tactical card helper should expose a desktop compact presentation');
   assertContains(tacticalCardContent, 'data-card-role="compact-tactical"', 'Tactical cards should identify the compact tactical card role');
+  assertContains(tacticalCardContent, 'desktop-tactical-card', 'Desktop tactical cards should expose a desktop rail class');
   assertContains(tacticalCardContent, 'tactical-card-selection-controls', 'Tactical cards should put actor/target toggles into compact card controls');
   assertContains(tacticalCardContent, 'actor-toggle', 'Tactical cards should expose a distinct actor/helper control');
   assertContains(tacticalCardContent, 'target-toggle', 'Tactical cards should expose a distinct mark/target control');
@@ -2224,6 +2226,7 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assertContains(appContent, 'YAW_TACTICAL_CARD.render(this, unit, index, type, options)', 'App tactical card wrapper should delegate to the shared helper');
   assertContains(templateContent, '.mobile-unit-chip.compact-tactical-card', 'Mobile tactical cards should have compact tactical card styling');
   assertContains(templateContent, '.mobile-unit-chip .tactical-card-selection-controls', 'Mobile tactical card controls should be positioned as compact card toggles');
+  assertContains(templateContent, '.unit-card.compact-tactical-card', 'Desktop tactical cards should have compact tactical card styling');
 });
 
 test('Mobile unit chip helper module is registered before app code', () => {
@@ -2473,6 +2476,9 @@ test('Panel rendering helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/panel-rendering.js'", 'Panel rendering helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/panel-rendering.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel rendering helper should load before app.js');
   assertContains(panelRenderingContent, 'const YAW_PANEL_RENDERING = {', 'Panel rendering helper should expose the panel rendering service');
+  assertContains(panelRenderingContent, 'listCard(app, unit, index, type)', 'Panel rendering helper should choose compact cards for normal lists and full cards for details');
+  assertContains(panelRenderingContent, "app.renderTacticalCard(unit, index, type, { presentation: 'desktop' })", 'Normal desktop panel lists should render compact tactical cards');
+  assertContains(panelRenderingContent, 'if (unit?.expanded) return app.renderUnitCard(unit, index, type)', 'Expanded desktop panel lists should retain full cards for management/detail');
   assertContains(panelRenderingContent, 'partyUtilities(app)', 'Panel rendering helper should own party panel utility actions');
   assertContains(panelRenderingContent, 'party(app)', 'Panel rendering helper should own party panel refresh');
   assertContains(panelRenderingContent, 'showPartyDetail(app, title, html)', 'Panel rendering helper should own party detail presentation');
@@ -16040,6 +16046,40 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertEqual(center.getAttribute('data-stage-surface'), 'current-tile', 'Desktop center tile should identify as the current stage tile');
   assertEqual(center.getAttribute('data-stage-layer'), 'tile', 'Desktop center tile should identify the tile stage layer');
   assertEqual(center.getAttribute('data-stage-cell'), 'center', 'Desktop center tile should identify its stable stage cell');
+});
+
+test('Desktop panel lists default to compact tactical cards and preserve full detail mode', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1', partyRole: 'guard' });
+  const guide = makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.FRIENDLY, quest: { id: 'quest-1', title: 'Help' } });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [guide];
+
+  App.renderParty();
+  App.renderCreatures();
+
+  let partyHtml = elements.get('party-content').innerHTML;
+  let creatureHtml = elements.get('enemies-content').innerHTML;
+  assertContains(partyHtml, 'data-card-role="compact-tactical"', 'Default desktop party panel should render compact tactical cards');
+  assertContains(partyHtml, 'desktop-tactical-card', 'Default desktop party panel should expose desktop tactical card styling');
+  assertContains(partyHtml, "selectExplorationActor(1)", 'Compact desktop party card should expose actor selection');
+  assertContains(partyHtml, "toggleExplorationTarget('party','ally-1')", 'Compact desktop party card should expose party target marking');
+  assertNotContains(partyHtml, 'unit-management-actions', 'Default compact party cards should not expose full management controls');
+  assertNotContains(partyHtml, 'data-command-control="set-party-role"', 'Default compact party cards should not expose role management controls');
+  assertContains(creatureHtml, 'data-card-role="compact-tactical"', 'Default desktop creature panel should render compact tactical cards');
+  assertContains(creatureHtml, "toggleExplorationTarget('creature','guide-1')", 'Compact desktop creature card should expose target marking');
+  assertNotContains(creatureHtml, 'selectIntent(', 'Compact desktop creature cards should not own intent buttons');
+
+  App.expandAll('party');
+  App.expandAll('enemies');
+  partyHtml = elements.get('party-content').innerHTML;
+  creatureHtml = elements.get('enemies-content').innerHTML;
+  assertContains(partyHtml, 'unit-details', 'Expanded party panel should restore full card detail markup');
+  assertContains(partyHtml, 'unit-management-actions', 'Expanded party panel should restore management controls');
+  assertContains(partyHtml, 'data-command-control="set-party-role"', 'Expanded party panel should retain role management controls');
+  assertContains(creatureHtml, 'unit-card expanded', 'Expanded creature panel should restore full unit cards for details');
 });
 
 test('Mobile party long-press menu exposes management actions', () => {

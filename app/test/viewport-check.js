@@ -1333,6 +1333,145 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(expandedComposer.hasActorExit, true, `${name}: expanded mobile actor rail should expose a visible exit`);
     assert.strictEqual(expandedComposer.hasClearTargetExit, true, `${name}: expanded mobile target tray should expose a clear-target exit`);
     assert.strictEqual(expandedComposer.pageOverflow, false, `${name}: expanded mobile composer should not create horizontal overflow`);
+
+    await page.evaluate(() => App.selectExplorationActor(1));
+    await page.waitForTimeout(50);
+    await page.evaluate(() => App.openPanelFromRail('party', 'actor'));
+    await page.waitForTimeout(50);
+    const actorDrawer = await page.evaluate(() => {
+      const panel = document.getElementById('panel-party');
+      const backdrop = document.getElementById('panel-backdrop');
+      const close = panel?.querySelector('[data-command-control="close-actor-drawer"]');
+      const panelRect = panel?.getBoundingClientRect();
+      const closeRect = close?.getBoundingClientRect();
+      return {
+        panelActive: panel?.classList.contains('active') || false,
+        panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
+        backdropActive: backdrop?.classList.contains('active') || false,
+        returnRail: App._mobilePanelReturnRail || '',
+        actorIds: (App.explorationActorIds || []).join(','),
+        actorExplicit: Boolean(App.explorationActorSelectionExplicit),
+        targetIds: (App.explorationTargetIds || []).join(','),
+        closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+        closeSlot: close?.getAttribute('data-command-slot') || '',
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(actorDrawer.panelActive, true, `${name}: actor Details should open the full actor drawer`);
+    assert.strictEqual(actorDrawer.panelInsideViewport, true, `${name}: actor Details drawer should stay inside the mobile viewport`);
+    assert.strictEqual(actorDrawer.backdropActive, true, `${name}: actor Details drawer should activate the panel backdrop`);
+    assert.strictEqual(actorDrawer.returnRail, 'actor', `${name}: actor Details should remember the compact actor rail return target`);
+    assert.strictEqual(actorDrawer.actorIds, 'ally-1', `${name}: actor Details should preserve explicit actor selection`);
+    assert.strictEqual(actorDrawer.actorExplicit, true, `${name}: actor Details should preserve explicit actor mode`);
+    assert(actorDrawer.targetIds.includes('creature:creature-1'), `${name}: actor Details should preserve marked creature targets`);
+    assert.strictEqual(actorDrawer.closeVisible, true, `${name}: actor Details drawer should expose a visible close exit`);
+    assert.strictEqual(actorDrawer.closeSlot, 'exit', `${name}: actor Details close should identify the exit slot`);
+    assert.strictEqual(actorDrawer.pageOverflow, false, `${name}: actor Details drawer should not create horizontal overflow`);
+
+    await page.locator('#panel-party [data-command-control="close-actor-drawer"]').click();
+    await page.waitForTimeout(80);
+    const actorDrawerReturn = await page.evaluate(() => {
+      const panel = document.getElementById('panel-party');
+      const backdrop = document.getElementById('panel-backdrop');
+      const actorBelt = document.getElementById('mobile-actor-belt');
+      const tray = document.getElementById('mobile-target-action-tray');
+      const sentence = document.getElementById('mobile-selection-sentence');
+      return {
+        panelActive: panel?.classList.contains('active') || false,
+        backdropActive: backdrop?.classList.contains('active') || false,
+        returnRail: App._mobilePanelReturnRail || '',
+        actorBeltOpen: Boolean(App.mobileActorBeltOpen),
+        actorBeltSurface: actorBelt?.getAttribute('data-command-surface') || '',
+        actorIds: (App.explorationActorIds || []).join(','),
+        actorExplicit: Boolean(App.explorationActorSelectionExplicit),
+        targetIds: (App.explorationTargetIds || []).join(','),
+        sentenceText: sentence?.innerText || '',
+        trayText: tray?.innerText || '',
+        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-actor-belt')),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(actorDrawerReturn.panelActive, false, `${name}: closing actor Details should hide the full actor drawer`);
+    assert.strictEqual(actorDrawerReturn.backdropActive, false, `${name}: closing actor Details should clear the panel backdrop`);
+    assert.strictEqual(actorDrawerReturn.returnRail, '', `${name}: closing actor Details should clear the temporary return rail`);
+    assert.strictEqual(actorDrawerReturn.actorBeltOpen, true, `${name}: closing actor Details should restore the compact actor rail`);
+    assert.strictEqual(actorDrawerReturn.actorBeltSurface, 'actor-target-routing', `${name}: restored actor rail should keep actor-target routing ownership`);
+    assert.strictEqual(actorDrawerReturn.actorIds, 'ally-1', `${name}: closing actor Details should preserve selected actors`);
+    assert.strictEqual(actorDrawerReturn.actorExplicit, true, `${name}: closing actor Details should preserve explicit actor mode`);
+    assert(actorDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing actor Details should preserve marked targets`);
+    assert(actorDrawerReturn.sentenceText.includes('Ally') && actorDrawerReturn.sentenceText.includes('Creature'), `${name}: returned compact rail should keep the composer sentence intact`);
+    assert(actorDrawerReturn.trayText.includes('Fight') && actorDrawerReturn.trayText.includes('Clear'), `${name}: returned compact rail should keep target intents reachable`);
+    assert.strictEqual(actorDrawerReturn.focusReturnedToRail, true, `${name}: closing actor Details should return focus to the compact actor rail`);
+    assert.strictEqual(actorDrawerReturn.pageOverflow, false, `${name}: closing actor Details should not create horizontal overflow`);
+
+    await page.evaluate(() => App.openPanelFromRail('enemies', 'target'));
+    await page.waitForTimeout(50);
+    const targetDrawer = await page.evaluate(() => {
+      const panel = document.getElementById('panel-enemies');
+      const backdrop = document.getElementById('panel-backdrop');
+      const close = panel?.querySelector('[data-command-control="close-target-drawer"]');
+      const panelRect = panel?.getBoundingClientRect();
+      const closeRect = close?.getBoundingClientRect();
+      return {
+        panelActive: panel?.classList.contains('active') || false,
+        panelInsideViewport: Boolean(panelRect && panelRect.left >= -1 && panelRect.right <= innerWidth + 1 && panelRect.top >= -1 && panelRect.bottom <= innerHeight + 1),
+        backdropActive: backdrop?.classList.contains('active') || false,
+        returnRail: App._mobilePanelReturnRail || '',
+        actorIds: (App.explorationActorIds || []).join(','),
+        targetIds: (App.explorationTargetIds || []).join(','),
+        closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+        closeSlot: close?.getAttribute('data-command-slot') || '',
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(targetDrawer.panelActive, true, `${name}: target Details should open the full target drawer`);
+    assert.strictEqual(targetDrawer.panelInsideViewport, true, `${name}: target Details drawer should stay inside the mobile viewport`);
+    assert.strictEqual(targetDrawer.backdropActive, true, `${name}: target Details drawer should activate the panel backdrop`);
+    assert.strictEqual(targetDrawer.returnRail, 'target', `${name}: target Details should remember the compact target rail return target`);
+    assert.strictEqual(targetDrawer.actorIds, 'ally-1', `${name}: target Details should preserve selected actors`);
+    assert(targetDrawer.targetIds.includes('creature:creature-1'), `${name}: target Details should preserve marked targets`);
+    assert.strictEqual(targetDrawer.closeVisible, true, `${name}: target Details drawer should expose a visible close exit`);
+    assert.strictEqual(targetDrawer.closeSlot, 'exit', `${name}: target Details close should identify the exit slot`);
+    assert.strictEqual(targetDrawer.pageOverflow, false, `${name}: target Details drawer should not create horizontal overflow`);
+
+    await page.locator('#panel-enemies [data-command-control="close-target-drawer"]').click();
+    await page.waitForTimeout(80);
+    const targetDrawerReturn = await page.evaluate(() => {
+      const panel = document.getElementById('panel-enemies');
+      const backdrop = document.getElementById('panel-backdrop');
+      const creatureCard = document.getElementById('mobile-creature-card');
+      const targetStrip = document.getElementById('mobile-creature-strip');
+      const tray = document.getElementById('mobile-target-action-tray');
+      const sentence = document.getElementById('mobile-selection-sentence');
+      const cardRect = creatureCard?.getBoundingClientRect();
+      return {
+        panelActive: panel?.classList.contains('active') || false,
+        backdropActive: backdrop?.classList.contains('active') || false,
+        returnRail: App._mobilePanelReturnRail || '',
+        targetRailOpen: App.mobileCreatureRailOpen !== false,
+        targetRailVisible: Boolean(cardRect && cardRect.width > 0 && cardRect.height > 0 && getComputedStyle(creatureCard).display !== 'none'),
+        targetStripHasTargetControl: Boolean(targetStrip?.querySelector('[data-command-control="focus-target"]')),
+        actorIds: (App.explorationActorIds || []).join(','),
+        targetIds: (App.explorationTargetIds || []).join(','),
+        sentenceText: sentence?.innerText || '',
+        trayText: tray?.innerText || '',
+        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-creature-card')),
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+      };
+    });
+    assert.strictEqual(targetDrawerReturn.panelActive, false, `${name}: closing target Details should hide the full target drawer`);
+    assert.strictEqual(targetDrawerReturn.backdropActive, false, `${name}: closing target Details should clear the panel backdrop`);
+    assert.strictEqual(targetDrawerReturn.returnRail, '', `${name}: closing target Details should clear the temporary return rail`);
+    assert.strictEqual(targetDrawerReturn.targetRailOpen, true, `${name}: closing target Details should restore compact target rail state`);
+    assert.strictEqual(targetDrawerReturn.targetRailVisible, true, `${name}: closing target Details should leave the compact target rail visible`);
+    assert.strictEqual(targetDrawerReturn.targetStripHasTargetControl, true, `${name}: returned target rail should keep target controls reachable`);
+    assert.strictEqual(targetDrawerReturn.actorIds, 'ally-1', `${name}: closing target Details should preserve selected actors`);
+    assert(targetDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing target Details should preserve marked targets`);
+    assert(targetDrawerReturn.sentenceText.includes('Ally') && targetDrawerReturn.sentenceText.includes('Creature'), `${name}: returned target rail should keep the composer sentence intact`);
+    assert(targetDrawerReturn.trayText.includes('Fight') && targetDrawerReturn.trayText.includes('Clear'), `${name}: returned target rail should keep target intents reachable`);
+    assert.strictEqual(targetDrawerReturn.focusReturnedToRail, true, `${name}: closing target Details should return focus to the compact target rail`);
+    assert.strictEqual(targetDrawerReturn.pageOverflow, false, `${name}: closing target Details should not create horizontal overflow`);
+
     await page.evaluate(() => App.clearExplorationTargets());
 
     await page.evaluate(() => {

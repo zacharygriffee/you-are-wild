@@ -234,12 +234,57 @@ const YAW_MAP_VISUALS = {
             `<div><strong>${app._escapeHtml(app._label('ui.tileInfo.structure', 'Structure'))}:</strong> ${app._escapeHtml(structure)} · <strong>${app._escapeHtml(app._label('ui.tileInfo.landmark', 'Landmark'))}:</strong> ${app._escapeHtml(landmark)}</div>`;
     },
 
+    compactTileInfoHtml(app, tile = null) {
+        if (app.inInterior && app.activeInterior) {
+            const room = app._currentInteriorTile();
+            const biome = app.biomes[room?.biome] || app.biomes.indoors;
+            const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
+            return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome?.icon || '□'} ${app._escapeHtml(biome?.name || app._label('ui.largeMap.interior', 'Interior'))}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation();window.openTileDetails()">Details</button></div>`
+                + `<div class="mobile-tile-meta-row">${app._escapeHtml(app.activeInterior.structureName)} · ${app.interiorLocation.x}, ${app.interiorLocation.y} · ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)}</div>`;
+        }
+        const current = tile || app.getTile(app.location.x, app.location.y);
+        const biome = app.biomes[current.displayBiome || current.biome] || app.biomes[current.biome] || {};
+        const summary = this.tileMapSummary(app, current);
+        const phase = app._isNight() ? app._label('ui.tileInfo.night', 'Night') : app._label('ui.tileInfo.day', 'Day');
+        const danger = this.dangerPressureLabel(app, summary.danger === 'high' ? 0.66 : (summary.danger === 'elevated' ? 0.36 : 0));
+        return `<div class="mobile-tile-summary-row"><span><strong>${app._escapeHtml(app._label('ui.tileInfo.title', 'Current Tile'))}</strong> ${biome.icon || ''} ${app._escapeHtml(biome.name || current.biome)}</span><button class="nav-btn mobile-tile-details-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="open-tile-details" title="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" aria-label="${app._escapeHtml(app._label('ui.tileDetails.open', 'Open tile details'))}" onpointerdown="event.stopPropagation();window.openTileDetails()">Details</button></div>`
+            + `<div class="mobile-tile-meta-row">${current.x}, ${current.y} · ${app._escapeHtml(app._timeLabel())} ${app._escapeHtml(phase)} · ${app._escapeHtml(app._label('ui.tileInfo.danger', 'Danger'))}: ${app._escapeHtml(danger)}</div>`;
+    },
+
     renderTileInfo(app, tile = null) {
         const html = this.tileInfoHtml(app, tile);
-        ['tile-info', 'mobile-tile-info'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = html;
-        });
+        const tileInfo = document.getElementById('tile-info');
+        if (tileInfo) tileInfo.innerHTML = html;
+        const mobileTileInfo = document.getElementById('mobile-tile-info');
+        if (mobileTileInfo) {
+            mobileTileInfo.innerHTML = this.compactTileInfoHtml(app, tile);
+            mobileTileInfo.querySelector('[data-command-control="open-tile-details"]')?.addEventListener('click', event => {
+                event.preventDefault();
+                app.openTileDetails?.();
+            });
+        }
+        const mobileDetails = document.getElementById('mobile-tile-details-content');
+        if (mobileDetails) mobileDetails.innerHTML = html;
+    },
+
+    openTileDetails(app) {
+        this.renderTileInfo(app);
+        const sheet = document.getElementById('mobile-tile-details-sheet');
+        if (!sheet) return false;
+        sheet.hidden = false;
+        sheet.setAttribute('aria-hidden', 'false');
+        document.getElementById('mobile-play-surface')?.classList?.add('tile-details-open');
+        app._focusFirstIn?.(sheet);
+        return true;
+    },
+
+    closeTileDetails(app) {
+        const sheet = document.getElementById('mobile-tile-details-sheet');
+        if (!sheet) return false;
+        sheet.hidden = true;
+        sheet.setAttribute('aria-hidden', 'true');
+        document.getElementById('mobile-play-surface')?.classList?.remove('tile-details-open');
+        return true;
     }
 };
 

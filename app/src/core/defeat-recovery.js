@@ -131,11 +131,7 @@ const YAW_DEFEAT_RECOVERY = {
         const anchor = this.normalizeAnchor(app, state.safeAnchor || app.safeAnchor || this.startAnchor(app));
         const title = app._label('recovery.defeatTitle', 'Defeat');
         const message = app._label('recovery.defeatMessage', 'Your party has fallen. Regenerate at {label}, or end this run for now.', { label: anchor.label });
-        const html = `
-            <div class="scene-detail-panel">
-                <p>${app._escapeHtml(message)}</p>
-            </div>`;
-        app._setRichSceneContent(title, html);
+        app.updateScene(title, message, false);
         app.renderParty();
         app.renderCreatures();
         app.renderLog();

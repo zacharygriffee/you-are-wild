@@ -33,6 +33,7 @@ const SCRIPT_ORDER = [
   'src/core/center-context.js',
   'src/core/defeat-recovery.js',
   'src/core/log-view.js',
+  'src/core/story-events.js',
   'src/core/tile-event-feed.js',
   'src/core/structure-navigation.js',
   'src/core/movement-flow.js',

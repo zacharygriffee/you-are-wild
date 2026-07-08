@@ -165,6 +165,7 @@ const YAW_SCENE_SHELL = {
         if (mobileSheet) mobileSheet.classList.add('rich-content');
         YAW_CENTER_CONTEXT.clearPresence();
         app.renderTileEvents();
+        app.renderStoryEvents?.();
         this.clearCommandSentences();
     },
 
@@ -186,6 +187,7 @@ const YAW_SCENE_SHELL = {
         }
         if (mobileSheet) mobileSheet.classList.remove('rich-content');
         app.renderTileEvents();
+        app.renderStoryEvents?.();
 
         this.clearLegacyCenterActions();
         const mobileActions = document.getElementById('mobile-actions');

@@ -171,6 +171,7 @@ const YAW_COMBAT_SCENE = {
         if (mobileDesc) mobileDesc.innerHTML = mobileHtml;
         if (mobileSheet) mobileSheet.classList.remove('rich-content');
         app.renderTileEvents();
+        app.renderStoryEvents?.();
         return textDescription;
     }
 };

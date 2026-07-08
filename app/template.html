@@ -1314,6 +1314,137 @@
             margin: 0;
         }
 
+        .desktop-story-strip {
+            width: min(100%, 720px);
+            max-width: 100%;
+            margin: 8px auto 0;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(26, 26, 46, 0.7);
+            text-align: left;
+        }
+
+        .desktop-story-copy {
+            min-width: 0;
+            display: grid;
+            gap: 2px;
+        }
+
+        .desktop-story-kicker,
+        .story-sheet-kicker {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .desktop-story-strip .story-latest {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .desktop-story-expand-btn {
+            flex: 0 0 auto;
+            min-height: 34px;
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        .story-sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 180;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: rgba(3, 3, 12, 0.58);
+        }
+
+        .story-sheet[hidden] {
+            display: none;
+        }
+
+        .story-sheet-window {
+            width: min(760px, calc(100vw - 32px));
+            max-height: min(76dvh, 680px);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: rgba(26, 26, 46, 0.98);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .story-sheet-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .story-sheet-header h2 {
+            margin: 2px 0 0;
+            color: var(--text-primary);
+            font-size: 18px;
+            letter-spacing: 0;
+        }
+
+        .story-sheet-list {
+            min-height: 0;
+            overflow: auto;
+            padding: 12px 16px 16px;
+            display: grid;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .story-event {
+            padding: 10px 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.68);
+        }
+
+        .story-event-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .story-event h3 {
+            margin: 6px 0 4px;
+            color: var(--text-primary);
+            font-size: 14px;
+            letter-spacing: 0;
+        }
+
+        .story-event p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .story-deltas {
+            margin: 8px 0 0;
+            padding-left: 18px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
         .panel-interaction-tray {
             border: 1px solid var(--border-default);
             border-radius: var(--radius-sm);
@@ -3398,6 +3529,12 @@
                 pointer-events: none;
             }
 
+            .mobile-play-surface.tile-details-open .mobile-control-belt,
+            .mobile-play-surface.tile-details-open .mobile-unit-strips {
+                visibility: hidden;
+                pointer-events: none;
+            }
+
             .mobile-play-surface.has-control-belt {
                 padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
             }
@@ -3443,6 +3580,48 @@
 
             .mobile-map-card .mobile-map-header {
                 margin-bottom: 0;
+            }
+
+            .mobile-tile-details-sheet {
+                position: fixed;
+                left: 8px;
+                right: 8px;
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
+                z-index: 135;
+                max-height: min(62dvh, 520px);
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                background: rgba(26, 26, 46, 0.98);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+            }
+
+            .mobile-tile-details-sheet[hidden] {
+                display: none;
+            }
+
+            .mobile-tile-details-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border-default);
+                color: var(--text-primary);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .mobile-tile-details-content {
+                min-height: 0;
+                overflow: auto;
+                padding: 12px;
+                color: var(--text-secondary);
+                font-size: 12px;
+                line-height: 1.55;
             }
 
             .mobile-map-header,
@@ -3494,26 +3673,43 @@
                 font-size: 11px;
                 line-height: 1.32;
                 color: var(--text-secondary);
-                max-height: 48px;
+                max-height: 38px;
                 overflow: hidden;
             }
 
-            .mobile-tile-info div {
+            .mobile-tile-info div,
+            .mobile-tile-info span {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
 
-            .mobile-tile-info div:first-child {
-                margin-bottom: 2px !important;
+            .mobile-tile-summary-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                min-width: 0;
             }
 
-            .mobile-tile-info div:nth-child(n+4) {
-                display: none;
+            .mobile-tile-summary-row > span {
+                min-width: 0;
+            }
+
+            .mobile-tile-meta-row {
+                color: var(--text-muted);
+            }
+
+            .mobile-tile-details-btn {
+                flex: 0 0 auto;
+                min-height: 28px;
+                padding: 2px 8px;
+                font-size: 10px;
+                text-transform: uppercase;
             }
 
             .mobile-play-surface.control-belt-expanded .mobile-tile-info {
-                max-height: 34px;
+                max-height: 32px;
             }
 
             .mobile-play-surface.actor-controls-open .mobile-map-card .mini-map {
@@ -4894,6 +5090,22 @@
                 overscroll-behavior: contain;
             }
 
+            .mobile-scene-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 4px;
+            }
+
+            .mobile-story-expand-btn {
+                flex: 0 0 auto;
+                min-height: 30px;
+                padding: 3px 9px;
+                font-size: 10px;
+                text-transform: uppercase;
+            }
+
             .mobile-play-surface.combat-active .mobile-scene-sheet {
                 order: 1;
                 flex: 0 0 auto;
@@ -4997,13 +5209,83 @@
                 color: var(--text-accent);
                 font-weight: 700;
                 font-size: 15px;
-                margin-bottom: 6px;
+                margin-bottom: 0;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .mobile-scene-description {
                 color: var(--text-secondary);
                 font-size: 13px;
                 line-height: 1.45;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .story-latest {
+                min-width: 0;
+                color: var(--text-secondary);
+                font-size: 12px;
+                line-height: 1.35;
+            }
+
+            .mobile-story-latest {
+                margin-top: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .story-latest-line {
+                display: inline-flex;
+                align-items: baseline;
+                gap: 5px;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .story-actors,
+            .story-targets,
+            .story-summary {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .story-intent {
+                flex: 0 0 auto;
+                color: var(--accent-primary);
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+
+            .story-empty {
+                color: var(--text-muted);
+            }
+
+            .story-sheet {
+                align-items: end;
+                padding: 8px;
+                background: rgba(3, 3, 12, 0.62);
+            }
+
+            .story-sheet-window {
+                width: 100%;
+                max-height: min(70dvh, 620px);
+                border-radius: var(--radius-md) var(--radius-md) 0 0;
+            }
+
+            .story-sheet-header {
+                padding: 12px 12px 9px;
+            }
+
+            .story-sheet-list {
+                padding: 10px 12px calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
             }
 
             .mobile-scene-sheet .tile-event-feed.compact {
@@ -5690,6 +5972,13 @@
 	                                </div>
 	                                <div class="mini-map" id="mobile-mini-map" role="group" aria-label="3x3 traversal surface" data-i18n-aria-label="ui.playSurfaceTraversal" ontouchstart="App.handleMapTouchStart(event)" ontouchmove="App.handleMapTouchMove(event)" ontouchend="App.handleMapTouchEnd(event)"></div>
 	                            </div>
+                                <div class="mobile-tile-details-sheet" id="mobile-tile-details-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mobile-tile-details-title" hidden>
+                                    <div class="mobile-tile-details-header">
+                                        <span id="mobile-tile-details-title">Tile Details</span>
+                                        <button class="nav-btn" data-command-surface="tile-details" data-command-mode="navigation" data-command-control="close-tile-details" title="Close tile details" aria-label="Close tile details">×</button>
+                                    </div>
+                                    <div class="mobile-tile-details-content" id="mobile-tile-details-content"></div>
+                                </div>
 	                            <div class="mobile-creature-presence-cue" id="mobile-creature-presence-cue" data-surface-role="presence-rail" data-stage-surface="presence" aria-live="polite"></div>
 	                            <div class="mobile-control-belt" id="mobile-control-belt" data-surface-role="command-composer">
                                 <div class="selection-sentence mobile-selection-sentence" id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -5730,10 +6019,14 @@
 	                                </div>
 	                            </div>
 		                            <div class="mobile-scene-sheet" data-surface-role="story">
-		                                <div class="mobile-scene-title" id="mobile-scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
+		                                <div class="mobile-scene-header">
+                                            <div class="mobile-scene-title" id="mobile-scene-title" data-stage-layer="story-title" data-i18n="ui.scene.wildernessTitle">The Wilderness</div>
+                                            <button class="nav-btn mobile-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open story" aria-label="Open story">Story</button>
+                                        </div>
 		                                <div class="mobile-scene-description" id="mobile-scene-description" data-stage-layer="story-passage" data-i18n="ui.scene.wildernessIntro">
 		                                    You find yourself in an untamed land where predators roam and only the strong survive.
 		                                </div>
+                                        <div class="story-latest mobile-story-latest" id="mobile-story-latest" data-surface-role="story-latest" aria-live="polite"></div>
 		                                <div class="tile-event-feed-slot" id="mobile-tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
 	                                <details class="mobile-activity-log" id="mobile-activity-log" data-surface-role="history-drawer">
 	                                    <summary class="mobile-activity-log-summary" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history" aria-label="Open activity log" data-i18n-aria-label="ui.activityLog.open">
@@ -5772,6 +6065,13 @@
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
                             </div>
+                            <div class="desktop-story-strip" id="desktop-story-strip" data-surface-role="story" aria-live="polite">
+                                <div class="desktop-story-copy">
+                                    <span class="desktop-story-kicker">Story</span>
+                                    <div class="story-latest" id="desktop-story-latest" data-surface-role="story-latest"></div>
+                                </div>
+                                <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open story" aria-label="Open story">Expand</button>
+                            </div>
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>
                                 <div class="selection-sentence" id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -5779,6 +6079,19 @@
                             </div>
                             <div class="scene-actions" id="scene-actions" data-surface-role="legacy-action-slot" aria-hidden="true" hidden></div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="story-sheet" id="story-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="story-sheet-title" hidden>
+                    <div class="story-sheet-window">
+                        <div class="story-sheet-header">
+                            <div>
+                                <span class="story-sheet-kicker">Story</span>
+                                <h2 id="story-sheet-title">Recent Scene</h2>
+                            </div>
+                            <button class="nav-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="close-story-sheet" title="Close story" aria-label="Close story">×</button>
+                        </div>
+                        <div class="story-sheet-list" id="story-sheet-list" aria-live="polite"></div>
                     </div>
                 </div>
 

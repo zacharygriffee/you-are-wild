@@ -131,6 +131,7 @@ const tileResourcesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-re
 const centerContextContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'center-context.js'), 'utf8');
 const defeatRecoveryContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'defeat-recovery.js'), 'utf8');
 const logViewContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'log-view.js'), 'utf8');
+const storyEventsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'story-events.js'), 'utf8');
 const tileEventFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'tile-event-feed.js'), 'utf8');
 const structureNavigationContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'structure-navigation.js'), 'utf8');
 const movementFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'movement-flow.js'), 'utf8');
@@ -2970,6 +2971,18 @@ test('Log view helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_LOG_VIEW.render(this)', 'App renderLog wrapper should delegate to the helper');
 });
 
+test('Story event helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/story-events.js'", 'Story event helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/story-events.js'") < buildContent.indexOf("'src/core/app.js'"), 'Story event helper should load before app.js');
+  assertContains(storyEventsContent, 'const YAW_STORY_EVENTS = {', 'Story event helper should expose the story service');
+  assertContains(storyEventsContent, 'emit(app, input = {})', 'Story event helper should own story event insertion');
+  assertContains(storyEventsContent, 'render(app)', 'Story event helper should own story surface rendering');
+  assertContains(storyEventsContent, 'open(app)', 'Story event helper should own story sheet opening');
+  assertContains(appContent, 'YAW_STORY_EVENTS.emit(this, input)', 'App story event wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_STORY_EVENTS.open(this)', 'App story sheet opener should delegate to the helper');
+  assertContains(appContent, 'YAW_STORY_EVENTS.close(this)', 'App story sheet closer should delegate to the helper');
+});
+
 test('Tile event feed helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/tile-event-feed.js'", 'Tile event feed helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/tile-event-feed.js'") < buildContent.indexOf("'src/core/app.js'"), 'Tile event feed helper should load before app.js');
@@ -4862,13 +4875,18 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'desktop-command-composer',
     'desktop-play-cell-center',
     'desktop-play-surface',
+    'desktop-story-strip',
+    'desktop-story-latest',
     'desktop-presence-rail',
     'selection-sentence',
     'mobile-play-surface',
     'mobile-scene-title',
     'mobile-scene-description',
+    'mobile-story-latest',
     'mobile-mini-map',
     'mobile-tile-info',
+    'mobile-tile-details-sheet',
+    'mobile-tile-details-content',
     'mobile-control-belt',
     'mobile-selection-sentence',
     'mobile-creature-presence-cue',
@@ -4893,7 +4911,9 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'panel-enemies',
     'panel-party',
     'panel-map',
-    'transaction-window-root'
+    'transaction-window-root',
+    'story-sheet',
+    'story-sheet-list'
   ].forEach(id => {
     if (!elements.has(id)) elements.set(id, makeElement());
   });
@@ -4920,7 +4940,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -6209,6 +6229,7 @@ test('Defeat ends combat into a durable recovery state', () => {
   assert(hooks.some(hook => hook.event === 'onDefeat'), 'Defeat should emit an onDefeat module hook');
   assertContains(elements.get('scene-title').textContent, 'Defeat', 'Defeat should render a recovery title');
   assertNotContains(elements.get('scene-description').innerHTML, 'App.regenerateFromDefeat()', 'Defeat presentation should not embed recovery action controls');
+  assertEqual(elements.get('mobile-scene-sheet').classList.contains('rich-content'), false, 'Defeat mobile scene should not use the fixed rich-content sheet over recovery controls');
   assertContains(elements.get('desktop-context-belt').innerHTML, 'Regenerate', 'Defeat should offer regeneration in the desktop command belt');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-surface'), 'defeat-recovery', 'Defeat desktop command belt should identify the recovery surface');
   assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-mode'), 'recovery', 'Defeat desktop command belt should identify recovery command mode');
@@ -11161,11 +11182,20 @@ test('Map tile inspector renders safe biome and terrain details', () => {
   App.exploreTile(3, -2);
   App.renderMap();
   const html = elements.get('tile-info').innerHTML;
+  const mobileHtml = elements.get('mobile-tile-info').innerHTML;
   assertContains(html, 'Current Tile', 'Tile inspector should render a safe current tile heading');
   assertContains(html, 'Biome', 'Tile inspector should include biome label');
   assertContains(html, '3, -2', 'Tile inspector should include coordinates');
   assertContains(html, 'Danger', 'Tile inspector should include danger pressure');
-  assertContains(elements.get('mobile-tile-info').innerHTML, 'Current Tile', 'Mobile tile inspector should render the same safe summary');
+  assertContains(mobileHtml, 'Current Tile', 'Mobile tile inspector should render a compact safe heading');
+  assertContains(mobileHtml, '3, -2', 'Mobile tile inspector should include compact coordinates');
+  assertContains(mobileHtml, 'Details', 'Mobile tile inspector should expose a details affordance');
+  assertNotContains(mobileHtml, 'Structure', 'Mobile tile inspector should not show full metadata by default');
+  assertContains(elements.get('mobile-tile-details-content').innerHTML, 'Structure', 'Mobile tile details sheet should hold full metadata');
+  App.openTileDetails();
+  assertEqual(elements.get('mobile-tile-details-sheet').hidden, false, 'Tile details sheet should open from the compact affordance');
+  App.closeTileDetails();
+  assertEqual(elements.get('mobile-tile-details-sheet').hidden, true, 'Tile details sheet should close cleanly');
 });
 
 test('Loaded world state rebuilds tile deltas over deterministic base tiles', () => {
@@ -15669,6 +15699,45 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(template, '.mobile-activity-log', 'Mobile activity log style should exist');
   assertContains(template, '#app.log-collapsed', 'Log collapsed layout style should exist');
   assertContains(template, '#app.log-expanded', 'Log expanded layout style should exist');
+});
+
+test('Story template exposes expandable semantic story surfaces distinct from activity log', () => {
+  assertContains(template, 'id="mobile-story-latest"', 'Mobile story capsule should expose a latest story slot');
+  assertContains(template, 'data-command-control="open-story-sheet"', 'Story capsule should expose an open-story command');
+  assertContains(template, 'id="desktop-story-strip"', 'Desktop should expose a story strip outside the activity log');
+  assertContains(template, 'id="story-sheet"', 'Story should expose an expandable sheet');
+  assertContains(template, 'id="story-sheet-list"', 'Story sheet should expose recent story events');
+  assertContains(template, 'id="mobile-tile-details-sheet"', 'Mobile should expose a tile details sheet');
+  assertContains(template, 'id="mobile-tile-details-content"', 'Mobile tile details sheet should expose full metadata content');
+  assertContains(template, '.story-sheet-window', 'Story sheet should have bounded window styling');
+  assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
+});
+
+test('Story events render semantic interaction results without replacing activity log', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const bunny = makeUnit('Bunnyfolk', { id: 'bunny-1', icon: 'B' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [bunny];
+  App.log = [{ text: 'Technical combat order entry', type: 'combat' }];
+  App.renderLog();
+
+  App._emitCombatAction('enemy_fight', bunny, you, 'Bunnyfolk bumps You and forces a defensive step.');
+
+  assertEqual(App.storyEvents.length, 1, 'Combat interaction hook should emit one story event');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'Bunnyfolk', 'Mobile story capsule should name the creature actor');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'You', 'Mobile story capsule should name the party target');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'Bunnyfolk bumps You', 'Mobile story capsule should show readable semantic result');
+  assertContains(elements.get('desktop-story-latest').innerHTML, 'Bunnyfolk bumps You', 'Desktop story strip should mirror the semantic result');
+  assertContains(elements.get('log-content').innerHTML, 'Technical combat order entry', 'Activity Log should keep durable technical history');
+  assertNotContains(elements.get('log-content').innerHTML, 'Bunnyfolk bumps You', 'Story events should not silently duplicate into Activity Log');
+
+  App.openStorySheet();
+  assertEqual(elements.get('story-sheet').hidden, false, 'Story sheet should open');
+  assertContains(elements.get('story-sheet-list').innerHTML, 'Bunnyfolk bumps You', 'Story sheet should render recent story events');
+  App.closeStorySheet();
+  assertEqual(elements.get('story-sheet').hidden, true, 'Story sheet should close');
 });
 
 test('Combat log filters by type and search text', () => {

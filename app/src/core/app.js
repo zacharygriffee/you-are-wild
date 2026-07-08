@@ -669,6 +669,9 @@
             timeHour: 8,
             dayCount: 0,
             log: [],
+            storyEvents: [],
+            latestStoryEvent: null,
+            storyEventSeq: 0,
             tileEvents: [],
             logFilter: 'all',
             logSearch: '',
@@ -1510,6 +1513,14 @@
             },
 
             _emitCombatAction(action, actor, target, result) {
+                this.emitStoryEvent({
+                    mode: 'combat',
+                    actors: Array.isArray(actor) ? actor : [actor].filter(Boolean),
+                    targets: Array.isArray(target) ? target : [target].filter(Boolean),
+                    intent: action,
+                    summary: result,
+                    passage: result
+                });
                 this._emitModuleHook('onCombatAction', { action, actor, target, result });
             },
 
@@ -2811,6 +2822,7 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: [actor], targets: targetList, intent: action, summary, passage: summary });
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -2895,6 +2907,7 @@
                         return false;
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: living, targets: living, intent: action, summary: result, passage: result });
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -2936,6 +2949,7 @@
                     ? ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`
                     : '';
                 this.log.push({ text: summary + skippedText, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: livingActors, targets: targetList, intent: action, summary: summary + skippedText, passage: summary + skippedText });
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -3133,6 +3147,7 @@
                         return true;
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: livingActors, targets: [target], intent: action, summary: result, passage: result });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -3300,6 +3315,7 @@
                     }
                 }
                 this.log.push({ text: result, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: [actor], targets: [target], intent: action, summary: result, passage: result });
                 this.lastActionResolution = { action, actor, target, ok: affected, affected, message: result };
                 this.renderLog();
                 this.renderParty();
@@ -3423,6 +3439,7 @@
                     voreEnabled: this.settings.vore
                 });
                 this.log.push({ text, type: item || gold > 0 ? 'loot' : 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: [this._getExplorationActor?.() || this.player].filter(Boolean), targets: [corpse], intent: 'loot', summary: text, passage: text });
                 this.renderLog();
                 this.renderCreatures();
                 this.renderExplorationActions();
@@ -3466,6 +3483,7 @@
                     voreEnabled: this.settings.vore
                 });
                 this.log.push({ text, type: 'discovery' });
+                this.emitStoryEvent({ mode: 'adventure', actors: consumedActors, targets: [corpse], intent: 'scavenge', summary: text, passage: text });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -4097,6 +4115,12 @@
             renderTileInfo(tile = null) {
                 return YAW_MAP_VISUALS.renderTileInfo(this, tile);
             },
+            openTileDetails() {
+                return YAW_MAP_VISUALS.openTileDetails(this);
+            },
+            closeTileDetails() {
+                return YAW_MAP_VISUALS.closeTileDetails(this);
+            },
             _desktopPlayCellHtml(visual, label) {
                 return YAW_DESKTOP_PLAY_SURFACE.cellHtml(this, visual, label);
             },
@@ -4127,6 +4151,18 @@
 
             updateScene(title, description, inCombat) {
                 return YAW_SCENE_SHELL.update(this, title, description, inCombat);
+            },
+            emitStoryEvent(input = {}) {
+                return YAW_STORY_EVENTS.emit(this, input);
+            },
+            renderStoryEvents() {
+                return YAW_STORY_EVENTS.render(this);
+            },
+            openStorySheet() {
+                return YAW_STORY_EVENTS.open(this);
+            },
+            closeStorySheet() {
+                return YAW_STORY_EVENTS.close(this);
             },
             renderCenterTileActions() {
                 return YAW_CENTER_CONTEXT.renderCenterActions(this);
@@ -4291,6 +4327,28 @@
                 if (this.appMenuInitialized) return;
                 this.appMenuInitialized = true;
                 document.addEventListener('click', event => {
+                    const command = event?.target?.closest?.('[data-command-control]');
+                    const control = command?.dataset?.commandControl;
+                    if (control === 'open-tile-details') {
+                        event.preventDefault();
+                        this.openTileDetails();
+                        return;
+                    }
+                    if (control === 'close-tile-details') {
+                        event.preventDefault();
+                        this.closeTileDetails();
+                        return;
+                    }
+                    if (control === 'open-story-sheet') {
+                        event.preventDefault();
+                        this.openStorySheet();
+                        return;
+                    }
+                    if (control === 'close-story-sheet') {
+                        event.preventDefault();
+                        this.closeStorySheet();
+                        return;
+                    }
                     const menu = document.getElementById('app-menu');
                     const toggle = document.getElementById('app-menu-toggle');
                     if (!menu?.classList?.contains('open')) return;
@@ -4848,5 +4906,9 @@
         window.clearLog = () => App.clearLog();
         window.createCharacter = () => App.createCharacter();
         window.move = (dx, dy) => App.move(dx, dy);
+        window.openTileDetails = () => App.openTileDetails();
+        window.closeTileDetails = () => App.closeTileDetails();
+        window.openStorySheet = () => App.openStorySheet();
+        window.closeStorySheet = () => App.closeStorySheet();
         window.returnToGame = () => App.returnToGame();
         document.addEventListener('DOMContentLoaded', () => App.init());

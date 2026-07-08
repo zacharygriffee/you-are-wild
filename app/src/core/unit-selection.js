@@ -11,7 +11,7 @@ const YAW_UNIT_SELECTION = {
             if (type === 'party' && app._isCurrentCombatActor(unit)) roles.push('actor');
             if (type === 'party' && app._isSyncParticipant(unit) && !roles.includes('actor')) roles.push('participant');
             if (type === 'creature' && app._isCombatMarkedTarget?.(unit)) roles.push('target');
-            if (type === 'creature' && app.targetSelection?.source === 'combat' && app.canSelectCreatureTarget(unit)) roles.push('target');
+            if (type === 'creature' && app.targetSelection?.source === 'combat' && app._isCombatMarkedTarget?.(unit)) roles.push('target');
             if (type === 'creature' && app.syncSelection?.active && app.syncSelection.phase === 'target' && app.canSelectCreatureTarget(unit)) roles.push('target');
             return roles;
         }
@@ -84,7 +84,9 @@ const YAW_UNIT_SELECTION = {
             return `data-selection-control="combat-target" data-selection-mode="combat-pick" data-selection-state="${active ? 'pickable' : 'blocked'}" data-command-slot="target"`;
         }
         if (kind === 'combat-mark-target') {
-            return `data-selection-control="combat-target" aria-pressed="${Boolean(active)}" data-selection-mode="combat-target" data-selection-state="${active ? 'selected' : 'available'}" data-command-slot="target"`;
+            const blocked = active === 'blocked';
+            const selected = active === true;
+            return `data-selection-control="combat-target" aria-pressed="${selected ? 'true' : 'false'}" data-selection-mode="combat-target" data-selection-state="${blocked ? 'blocked' : (selected ? 'selected' : 'available')}" data-command-slot="target"`;
         }
         return `data-selection-control="${app._escapeHtml(String(kind || 'unknown'))}"`;
     },

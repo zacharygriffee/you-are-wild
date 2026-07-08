@@ -87,10 +87,11 @@ const YAW_INTERACTION_STATE = {
 
         if (app.targetSelection?.source === 'combat') {
             const targetActor = this.actorById(app, app.targetSelection.actorId) || actor;
+            const selectedTargets = app.targetSelection.action === 'scavenge' ? [] : (app._combatMarkedTargets?.() || []);
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors: [targetActor].filter(Boolean),
-                targets: [],
+                targets: selectedTargets,
                 action: app.targetSelection.action || null,
                 source: 'combat-targeting',
                 targetType: 'enemy',
@@ -102,7 +103,7 @@ const YAW_INTERACTION_STATE = {
                     checkRows: app.targetSelection.action !== 'scavenge',
                     minTargets: 1
                 },
-                metadata: { phase: 'target', targetException: app.targetSelection.action === 'scavenge' ? 'corpse' : null }
+                metadata: { phase: selectedTargets.length ? 'confirm' : 'target', targetException: app.targetSelection.action === 'scavenge' ? 'corpse' : null }
             });
         }
 
@@ -222,7 +223,13 @@ const YAW_INTERACTION_STATE = {
         } else if (app.targetSelection?.source === 'combat') {
             intentId = app.targetSelection.action || 'choose';
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
-            targetText = app._label('target.pickTarget', 'Pick target');
+            const markedTargets = app.targetSelection.action === 'scavenge' ? [] : (app._combatMarkedTargets?.() || []);
+            if (markedTargets.length) {
+                targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
+                targetCount = markedTargets.length;
+            } else {
+                targetText = app._label('target.pickTarget', 'Pick target');
+            }
         } else {
             const markedTargets = app._combatMarkedTargets?.() || [];
             if (markedTargets.length) {

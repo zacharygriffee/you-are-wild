@@ -74,13 +74,16 @@ const YAW_COMBAT_TARGETING = {
     },
 
     toggleMarkedTarget(app, targetId) {
-        if (!app.combatState?.active || app.targetSelection || app.syncSelection?.active || app.feedSelection?.active) return false;
+        const targetPickActive = app.targetSelection?.source === 'combat' && app.targetSelection.action !== 'scavenge';
+        if (!app.combatState?.active || app.syncSelection?.active || app.feedSelection?.active) return false;
+        if (app.targetSelection && !targetPickActive) return false;
         const id = String(targetId || '');
         const target = app.creatures.find(unit => unit
             && unit.CPun > 0
             && unit.disposition === app.DISPOSITION.ENEMY
             && (app._unitSelectionId(unit) === id || String(unit.id || unit.name) === id));
         if (!target) return false;
+        if (targetPickActive && !this.canSelectCreatureTarget(app, target)) return false;
         const unitId = app._unitSelectionId(target);
         const ids = this.targetIds(app);
         app.combatTargetIds = ids.includes(unitId)
@@ -90,6 +93,17 @@ const YAW_COMBAT_TARGETING = {
         app._clearCenterActionsForCombat();
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
+    },
+
+    confirmMarkedTargetSelection(app, actor = app.activeActor || app._currentCombatActor() || app.player) {
+        if (app.targetSelection?.source !== 'combat') return false;
+        const action = app.targetSelection.action;
+        if (!action || action === 'scavenge') return false;
+        if (!this.markedTargets(app).length) {
+            app._reportInvalidCombatCommand?.({ action, actors: [actor], targets: [] }, 'missing-target');
+            return false;
+        }
+        return this.executeIntentOnMarkedTarget(app, action, actor);
     },
 
     executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
@@ -201,6 +215,9 @@ const YAW_COMBAT_TARGETING = {
             return app._dispatchInteractionCommand(command);
         }
         const actor = app.activeActor || app.player;
+        if (app.targetSelection?.source === 'combat' && action !== 'scavenge') {
+            return this.toggleMarkedTarget(app, targetId);
+        }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor],

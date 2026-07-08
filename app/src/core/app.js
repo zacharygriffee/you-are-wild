@@ -2086,6 +2086,10 @@
                 return YAW_COMBAT_TARGETING.toggleMarkedTarget(this, targetId);
             },
 
+            confirmCombatTargets(actor = this.activeActor || this._currentCombatActor()) {
+                return YAW_COMBAT_TARGETING.confirmMarkedTargetSelection(this, actor);
+            },
+
             _combatMarkedTarget() {
                 return YAW_COMBAT_TARGETING.markedTarget(this);
             },

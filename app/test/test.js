@@ -2186,7 +2186,7 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, "app.syncSelection?.active", 'Mobile combat prompt should be phase-aware for Sync states');
   assertContains(mobileCombatToolbeltContent, "app.feedSelection?.active", 'Mobile combat prompt should be phase-aware for Feed states');
   assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source === 'combat'", 'Mobile combat prompt should be phase-aware for target-pick states');
-  assertContains(mobileCombatToolbeltContent, "app._label('mobile.combat.pickTarget'", 'Mobile combat target prompt should use shared target-pick wording');
+  assertContains(mobileCombatToolbeltContent, "app._label('mobile.combat.markTargets'", 'Mobile combat target prompt should use shared multi-mark target wording');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
   assertContains(mobileCombatToolbeltContent, "app._label('combat.sync.cancel', 'Cancel Sync')", 'Mobile Sync states should expose a visible Cancel Sync control');
@@ -2278,8 +2278,8 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assertContains(tacticalCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Tactical party Actor button should identify button-level actor routing');
   assertContains(tacticalCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical party Mark button should identify button-level target routing');
   assertContains(tacticalCardContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Tactical creature Mark button should identify button-level target routing');
-  assertContains(tacticalCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Tactical combat Pick button should identify button-level combat target routing');
-  assertContains(tacticalCardContent, 'app._combatTargetPickLabel(unit, app.targetSelection.action || \'action\', isTargetable)', 'Tactical combat target labels should surface blocked reach state visibly');
+  assertContains(tacticalCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target"', 'Tactical combat target-pick buttons should identify multi-mark target routing');
+  assertContains(tacticalCardContent, "App.toggleCombatTarget('${targetKey}')", 'Tactical combat target-pick buttons should toggle target marks instead of resolving immediately');
   assertContains(appContent, 'YAW_TACTICAL_CARD.render(this, unit, index, type, options)', 'App tactical card wrapper should delegate to the shared helper');
   assertContains(templateContent, '.mobile-unit-chip.compact-tactical-card', 'Mobile tactical cards should have compact tactical card styling');
   assertContains(templateContent, '.mobile-unit-chip .tactical-card-selection-controls', 'Mobile tactical card controls should be positioned as compact card toggles');
@@ -2315,7 +2315,7 @@ test('Unit card helper module is registered before app code', () => {
   assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Desktop party Actor button should identify button-level actor routing');
   assertContains(unitCardContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Desktop party Mark button should identify button-level target routing');
   assertContains(unitCardContent, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Desktop creature Mark button should identify button-level target routing');
-  assertContains(unitCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target"', 'Desktop combat Pick button should identify button-level combat target routing');
+  assertContains(unitCardContent, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target"', 'Desktop combat target-pick button should identify button-level target marking routing');
   assertContains(appContent, 'YAW_UNIT_CARD.render(this, unit, index, type)', 'App unit card wrapper should delegate to the helper');
 });
 
@@ -6500,8 +6500,12 @@ test('Combat target dispatch uses the clicked unit instead of filtered index dri
   const beforeFirst = first.CPun;
   const beforeSecond = second.CPun;
   App.executeActionOnTarget('fight', 'enemy-second');
-  assertEqual(first.CPun, beforeFirst, 'Direct target dispatch should not damage an earlier filtered enemy');
-  assert(second.CPun < beforeSecond, 'Direct target dispatch should damage the clicked enemy id');
+  assertEqual(App.combatTargetIds.join(','), 'enemy-second', 'Direct target click should mark the clicked enemy id');
+  assertEqual(first.CPun, beforeFirst, 'Direct target click should not damage an earlier filtered enemy before confirmation');
+  assertEqual(second.CPun, beforeSecond, 'Direct target click should not damage the clicked enemy before confirmation');
+  App.confirmCombatTargets();
+  assertEqual(first.CPun, beforeFirst, 'Confirmed target dispatch should not damage an earlier filtered enemy');
+  assert(second.CPun < beforeSecond, 'Confirmed target dispatch should damage the clicked enemy id');
 });
 
 test('Combat feed sub-action picker renders in the desktop composer, not center scene', () => {
@@ -7858,7 +7862,7 @@ test('Center tile stays traversal and context only across interaction states', (
 
   App.selectTarget('fight');
   assertCenterOnly('combat target pick');
-  assertContains(el('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Combat target pick should live on creature cards');
+  assertContains(el('enemies-content').innerHTML, "toggleCombatTarget('enemy-1')", 'Combat target pick should live on creature cards as target marking');
 
   App.combatState.active = false;
   App.targetSelection = null;
@@ -8367,7 +8371,7 @@ test('Combat context keeps non-enemy creature interaction in panels', () => {
   assertNotContains(elements.get('enemies-content').innerHTML, "selectIntent('creature','neutral-1','inspect','panel-card')", 'Neutral creature card should not duplicate inspect outside the marked-target tray');
   assertNotContains(elements.get('enemies-content').innerHTML, "showIntentMenu('creature','neutral-1','desktop')", 'Neutral creature card should not duplicate marked-target actions behind a visible menu');
   App.selectTarget('fight');
-  assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should keep combat target selection');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleCombatTarget('enemy-1')", 'Enemy card should keep combat target selection as marking');
   const sceneHtml = elements.get('scene-description')?.innerHTML || '';
   assertNotContains(sceneHtml, 'Cancel', 'Combat targeting should not inject a cancel control into the center scene');
   assertNotContains(sceneHtml, 'Select a target from the creature panel.', 'Combat targeting guidance should stay out of the center scene description');
@@ -9390,10 +9394,13 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
     return originalDispatch(command);
   };
   App.selectTarget('fight');
-  assertEqual(App.executeActionOnTarget('fight', 'enemy-combat-panel-dispatch'), true, 'Combat target card should resolve through shared panel dispatch');
-  assertEqual(seen.length, 1, 'Combat target click should hit the same dispatcher once');
+  assertEqual(App.executeActionOnTarget('fight', 'enemy-combat-panel-dispatch'), true, 'Combat target card should mark the target during target-pick');
+  assertEqual(seen.length, 0, 'Combat target click should not dispatch until the marked target is confirmed');
+  assertEqual(App.combatTargetIds.join(','), 'enemy-combat-panel-dispatch', 'Combat target click should preserve the marked target id');
+  assertEqual(App.confirmCombatTargets(), true, 'Combat target confirmation should resolve through shared panel dispatch');
+  assertEqual(seen.length, 1, 'Combat target confirmation should hit the same dispatcher once');
   assertEqual(seen[0].mode, 'combat', 'Combat target click should build a combat command');
-  assertEqual(seen[0].source, 'combat-targeting', 'Combat target click should identify the combat target-picker command surface');
+  assertEqual(seen[0].source, 'combat-composer', 'Combat target confirmation should identify the composer command surface');
   assertEqual(seen[0].actorIds[0], 'player-combat-panel-dispatch', 'Combat command should record active actor id');
   assertEqual(seen[0].targetIds[0], 'enemy-combat-panel-dispatch', 'Combat command should record clicked target id');
 
@@ -11931,10 +11938,13 @@ test('Combat target selection is rendered on creature panel cards', () => {
   assertContains(centerHtml, 'combat-selected-intent', 'Target picker should surface selected combat intent as passive center context');
   assertContains(centerHtml, 'Selected intent', 'Target picker should label the selected intent summary');
   assertContains(centerHtml, 'You selected Fight.', 'Target picker should summarize selected actor and action');
-  assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-1')", 'Enemy card should execute selected action');
+  assertContains(elements.get('enemies-content').innerHTML, "toggleCombatTarget('enemy-1')", 'Enemy card should mark selected targets');
   assertContains(elements.get('enemies-content').innerHTML, 'aria-label="Select Enemy as Fight target"', 'Target button should describe selected combat action');
   assertContains(elements.get('enemies-content').innerHTML, 'Enemy can be selected as the fight target.', 'Enemy card should expose targetability to screen readers');
   App.executeActionOnTarget('fight', 'enemy-1');
+  assertEqual(enemy.CPun, 100, 'Panel target action should mark before resolving selected enemy');
+  assertEqual(App.combatTargetIds.join(','), 'enemy-1', 'Panel target action should preserve selected target for confirmation');
+  assertEqual(App.confirmCombatTargets(), true, 'Confirmed target-pick should resolve selected target marks');
   assert(enemy.CPun < 100, 'Panel target action should damage selected enemy');
   centerHtml = elements.get('scene-description')?.innerHTML || '';
   assertContains(centerHtml, 'combat-scene-summary', 'Combat center should render a bounded current-exchange summary');
@@ -12020,7 +12030,7 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting" data-command-slot="exit"', 'Mobile combat target cancel should identify the exit slot');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-control="cancel-targeting"', 'Mobile combat target phase should expose a structural cancel control');
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'selected', 'Mobile combat intent belt should preserve selected intent state');
-  assertContains(elements.get('mobile-creature-strip').innerHTML, "executeActionOnTarget('fight','enemy-mobile')", 'Mobile enemy strip should expose combat target execution');
+  assertContains(elements.get('mobile-creature-strip').innerHTML, "toggleCombatTarget('enemy-mobile')", 'Mobile enemy strip should expose combat target marking');
   assertEqual(elements.get('mobile-target-action-tray').innerHTML, '', 'Mobile exploration target tray should stay clear during combat');
   assertEqual(elements.get('mobile-actor-belt').innerHTML, '', 'Mobile exploration actor belt should stay clear during combat');
   assertEqual(document.getElementById('mobile-combat-actions').innerHTML, '', 'Legacy mobile combat action bar should remain empty');
@@ -12819,7 +12829,7 @@ test('Selection sentence mirrors combat target-pick state without changing actio
 
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
 
-  const html = App.renderSelectionSentence();
+  let html = App.renderSelectionSentence();
   assertContains(document.getElementById('selection-sentence').innerHTML, 'Pick target', 'Desktop composer sentence should show combat target-pick state below the stage');
   assertNotContains(elements.get('desktop-play-cell-center')?.innerHTML || '', 'selection-sentence', 'Desktop center tile should not contain combat command sentence state');
   assertContains(html, 'Actor', 'Combat sentence should label current actor state');
@@ -12837,7 +12847,13 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
   App.renderDesktopCombatComposer(player);
   assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancel Fight"', 'Desktop combat target tray should expose cancellation controls');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="confirm-targets"', 'Desktop combat target tray should expose explicit target confirmation');
   assertNotContains(elements.get('desktop-context-belt').innerHTML, 'selected-target-summary', 'Desktop combat target tray should leave target-pick summary to the composer sentence');
+  App.toggleCombatTarget('enemy-sentence');
+  html = App.renderSelectionSentence();
+  assertContains(html, 'Enemy', 'Combat target-pick sentence should show marked target names before confirmation');
+  assertContains(html, 'data-command-count="1"', 'Combat target-pick sentence should expose marked target count metadata before confirmation');
+  assertEqual(document.getElementById('selection-sentence').getAttribute('data-command-target-count'), '1', 'Desktop combat target-pick sentence should expose selected target count metadata');
   assertEqual(elements.get('mobile-selection-sentence')?.innerHTML || '', '', 'Mobile combat should leave the exploration control-belt sentence empty');
 });
 
@@ -15332,6 +15348,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(markedMobileCombatEnemyChip, 'aria-label="Clear Enemy combat target"', 'Mobile marked combat target button should advertise clear-combat-target semantics');
   assertNotContains(markedMobileCombatEnemyChip, 'data-selection-mode="mark-target"', 'Mobile marked combat target button should not reuse exploration mark-target mode');
   App.combatTargetId = null;
+  App.combatTargetIds = [];
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1'] };
   const syncActorCard = App.renderUnitCard(player, 0, 'party');
   const syncCompactActorCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
@@ -15367,29 +15384,29 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const mobileEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');
   const blockedEnemyCard = App.renderUnitCard(blockedEnemy, 2, 'creature');
   const mobileBlockedEnemyChip = App.renderMobileUnitChip(blockedEnemy, 2, 'creature');
-  assertContains(enemyCard, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Desktop combat target row should identify combat-pick scope');
-  assertContains(enemyCard, 'data-selection-roles="target" data-selection-state="selected"', 'Desktop pickable combat enemy card should expose target metadata');
+  assertContains(enemyCard, 'data-action-scope="combat-target-mark" aria-label="Combat target marking controls for Enemy"', 'Desktop combat target row should identify target-marking scope');
+  assertNotContains(enemyCard, 'data-selection-roles="target" data-selection-state="selected"', 'Desktop unmarked combat enemy card should not expose selected target metadata');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Desktop combat target row should identify combat target-pick routing');
   assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop combat target row should identify the shared command grammar');
-  assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Desktop combat Pick button should expose button-level combat target routing');
-  assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat Pick button should identify combat target selection separately from exploration marking');
-  assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Desktop combat Pick button should expose combat-pick mode');
-  assertContains(enemyCard, 'data-selection-mode="combat-pick" data-selection-state="pickable" data-command-slot="target"', 'Desktop combat Pick button should identify the target slot');
-  assertContains(mobileEnemyChip, 'data-action-scope="combat-target" aria-label="Combat target controls for Enemy"', 'Mobile combat target row should identify combat-pick scope');
-  assertContains(mobileEnemyChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile pickable combat enemy chip should expose target metadata');
+  assertContains(enemyCard, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" data-selection-control="combat-target"', 'Desktop combat target button should expose button-level target marking');
+  assertContains(enemyCard, 'data-selection-control="combat-target"', 'Desktop combat target button should identify combat target selection separately from exploration marking');
+  assertContains(enemyCard, 'data-selection-mode="combat-target" data-selection-state="available"', 'Desktop combat target button should expose available combat-target mode');
+  assertContains(enemyCard, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Desktop combat target button should identify the target slot');
+  assertContains(mobileEnemyChip, 'data-action-scope="combat-target-mark" aria-label="Combat target marking controls for Enemy"', 'Mobile combat target row should identify target-marking scope');
+  assertNotContains(mobileEnemyChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile unmarked combat enemy chip should not expose selected target metadata');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat"', 'Mobile combat target row should identify combat target-pick routing');
   assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Mobile combat target row should identify the shared command grammar');
-  assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" data-selection-control="combat-target"', 'Mobile combat Pick button should expose button-level combat target routing');
-  assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat Pick button should identify combat target selection separately from exploration marking');
-  assertContains(mobileEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Mobile combat Pick button should expose combat-pick mode');
-  assertContains(mobileEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="pickable" data-command-slot="target"', 'Mobile combat Pick button should identify the target slot');
+  assertContains(mobileEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" data-selection-control="combat-target"', 'Mobile combat target button should expose button-level target marking');
+  assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat target button should identify combat target selection separately from exploration marking');
+  assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile combat target button should expose available combat-target mode');
+  assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile combat target button should identify the target slot');
   assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop blocked combat target should be an actual disabled control');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Desktop blocked combat target should expose blocked combat-pick state');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-pick" data-selection-state="blocked" data-command-slot="target"', 'Desktop blocked combat target should identify the target slot');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Desktop blocked combat target should expose blocked combat-target state');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Desktop blocked combat target should identify the target slot');
   assertContains(blockedEnemyCard, '>Airborne</button>', 'Desktop blocked combat target should show a short visible reach reason');
   assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-pick state');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-pick" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-target state');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
   assertContains(mobileBlockedEnemyChip, '>Airborne</button>', 'Mobile blocked combat target should show a short visible reach reason without relying on hover text');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');

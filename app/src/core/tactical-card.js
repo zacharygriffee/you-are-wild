@@ -60,8 +60,9 @@ const YAW_TACTICAL_CARD = {
                 const disabledClass = isTargetable ? '' : ' disabled';
                 const disabledAttr = isTargetable ? '' : 'disabled aria-disabled="true"';
                 const targetHint = app._combatTargetPickHint(unit, app.targetSelection.action || 'action', isTargetable);
-                const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', isTargetable)}`;
-                actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('combat-target', unit)}>${button('action-btn primary target-toggle corner-card-toggle target-corner-toggle' + disabledClass, app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', isTargetable), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
+                const targetLabel = isTargetable ? app._combatTargetMarkLabel() : app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', isTargetable);
+                const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-mark-target', isTargetable ? combatMarked : 'blocked')}`;
+                actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('combat-target-mark', unit)}>${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + (combatMarked ? ' primary' : '') + disabledClass, targetLabel, targetHint, `event.stopPropagation();App.toggleCombatTarget('${targetKey}')`, pickAttrs)}</div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';
@@ -172,8 +173,9 @@ const YAW_TACTICAL_CARD = {
                 const disabledClass = isTargetable ? '' : ' disabled';
                 const disabledAttr = isTargetable ? '' : 'disabled aria-disabled="true"';
                 const targetHint = app._combatTargetPickHint(unit, app.targetSelection.action || 'action', isTargetable);
-                const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-target', isTargetable)}`;
-                actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('combat-target', unit)}>${chipButton('action-btn primary target-toggle corner-card-toggle target-corner-toggle' + disabledClass, app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', isTargetable), targetHint, `event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')`, pickAttrs)}</div>`;
+                const targetLabel = isTargetable ? app._combatTargetMarkLabel() : app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', isTargetable);
+                const pickAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${disabledAttr}${disabledAttr ? ' ' : ''}${app._selectionControlAttrs('combat-mark-target', isTargetable ? combatMarked : 'blocked')}`;
+                actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('combat-target-mark', unit)}>${chipButton('action-btn target-toggle corner-card-toggle target-corner-toggle' + (combatMarked ? ' primary' : '') + disabledClass, targetLabel, targetHint, `event.stopPropagation();App.toggleCombatTarget('${targetKey}')`, pickAttrs)}</div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const isSyncTargetable = app.canSelectCreatureTarget(unit);
                 const disabledClass = isSyncTargetable ? '' : ' disabled';

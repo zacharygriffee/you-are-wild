@@ -20,7 +20,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         }
         if (app.targetSelection?.source === 'combat') {
             const action = app._uiLabel(app.targetSelection.action || 'action');
-            return app._label('mobile.combat.pickTarget', 'Pick a target for {action}.', { action });
+            return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action });
         }
         if (actor && (actor === app.player || app.party.includes(actor))) {
             return app._label('mobile.combat.chooseAction', 'Choose an action, then tap a target.');
@@ -83,7 +83,11 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
-            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"'));
+            const targetCount = (app._combatMarkedTargets?.() || []).length;
+            const confirmLabel = app._label('target.confirmAction', 'Confirm {action}', { action: actionLabel });
+            const confirmAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"${targetCount > 0 ? '' : ' disabled aria-disabled="true"'}`;
+            const confirm = button(confirmLabel, 'event.stopPropagation();App.confirmCombatTargets()', `action-btn primary${targetCount > 0 ? '' : ' disabled'}`, confirmLabel, confirmAttrs);
+            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', confirm + button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"'));
         }
         return '';
     },

@@ -118,8 +118,9 @@ const YAW_UNIT_CARD = {
                 const disabledClass = canTarget ? '' : ' disabled';
                 const disabledAttr = canTarget ? '' : 'disabled aria-disabled="true"';
                 const targetHint = app._escapeHtml(app._combatTargetPickHint(unit, app.targetSelection.action || 'action', canTarget));
-                const targetLabel = app._escapeHtml(app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', canTarget));
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn primary${disabledClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="pick-target" ${app._selectionControlAttrs('combat-target', canTarget)} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.executeActionOnTarget('${app.targetSelection.action}','${targetKey}')">${targetLabel}</button></div>`;
+                const targetPressed = app._isCombatMarkedTarget?.(unit);
+                const targetLabel = app._escapeHtml(canTarget ? app._combatTargetMarkLabel() : app._combatTargetPickLabel(unit, app.targetSelection.action || 'action', canTarget));
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('combat-target-mark', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetPressed ? ' primary' : ''}${disabledClass}" data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" ${app._selectionControlAttrs('combat-mark-target', canTarget ? targetPressed : 'blocked')} title="${targetHint}" aria-label="${targetHint}" ${disabledAttr} onclick="event.stopPropagation();App.toggleCombatTarget('${targetKey}')">${targetLabel}</button></div>`;
             } else if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';

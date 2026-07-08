@@ -15,6 +15,111 @@ const YAW_INTERACTION_STATE = {
         app._syncType = null;
     },
 
+    actorById(app, id) {
+        if (!id && id !== 0) return null;
+        const key = String(id);
+        return (app.party || []).find(unit => app._unitSelectionId(unit) === key || String(unit?.id || unit?.name) === key) || null;
+    },
+
+    combatActor(app) {
+        return app.activeActor || (app._currentCombatActor ? app._currentCombatActor() : null) || app.player || null;
+    },
+
+    currentPlan(app) {
+        if (!app.combatState?.active) {
+            const actors = app._getExplorationActors ? app._getExplorationActors() : [app.player].filter(Boolean);
+            const targets = app._getExplorationTargets ? app._getExplorationTargets() : [];
+            return app._buildInteractionPlan({
+                mode: 'exploration',
+                actors,
+                targets,
+                action: targets.length ? 'choose' : null,
+                source: 'selection-state',
+                targetType: targets.length ? null : undefined,
+                timing: 'immediate',
+                metadata: { phase: targets.length ? 'intent' : 'actor-target' }
+            });
+        }
+
+        const actor = this.combatActor(app);
+        if (app.syncSelection?.active) {
+            const participants = this.syncSelectedParticipants(app);
+            const actors = participants.length ? participants : [actor].filter(Boolean);
+            const targets = app.syncSelection.phase === 'target' ? (app._combatMarkedTargets?.() || []) : [];
+            const action = app.syncSelection.type || 'sync';
+            return app._buildInteractionPlan({
+                mode: 'combat',
+                actors,
+                targets,
+                action,
+                source: 'sync-selection',
+                targetType: 'enemy',
+                shape: actors.length > 1 ? 'many-to-one' : undefined,
+                timing: 'slowest-participant',
+                distribution: 'single',
+                constraints: {
+                    requireCurrentTurn: true,
+                    hostileOnly: true,
+                    checkReach: true,
+                    checkRows: true,
+                    minActors: 2,
+                    minTargets: 1,
+                    maxTargets: 1
+                },
+                metadata: { phase: app.syncSelection.phase || 'choose', baseAction: app._syncBaseAction?.(action) || action }
+            });
+        }
+
+        if (app.feedSelection?.active) {
+            const feedActor = this.actorById(app, app.feedSelection.actorId) || actor;
+            return app._buildInteractionPlan({
+                mode: 'combat',
+                actors: [feedActor].filter(Boolean),
+                targets: [],
+                action: 'feed',
+                source: 'feed-selection',
+                targetType: 'party',
+                timing: 'current-turn',
+                constraints: { requireCurrentTurn: true, hostileOnly: false, checkReach: false, checkRows: false },
+                metadata: { phase: 'sub-action', subIds: app.feedSelection.subIds || [] }
+            });
+        }
+
+        if (app.targetSelection?.source === 'combat') {
+            const targetActor = this.actorById(app, app.targetSelection.actorId) || actor;
+            return app._buildInteractionPlan({
+                mode: 'combat',
+                actors: [targetActor].filter(Boolean),
+                targets: [],
+                action: app.targetSelection.action || null,
+                source: 'combat-targeting',
+                targetType: 'enemy',
+                timing: 'current-turn',
+                constraints: {
+                    requireCurrentTurn: true,
+                    hostileOnly: app.targetSelection.action !== 'scavenge',
+                    checkReach: app.targetSelection.action !== 'scavenge',
+                    checkRows: app.targetSelection.action !== 'scavenge',
+                    minTargets: 1
+                },
+                metadata: { phase: 'target', targetException: app.targetSelection.action === 'scavenge' ? 'corpse' : null }
+            });
+        }
+
+        const markedTargets = app._combatMarkedTargets?.() || [];
+        return app._buildInteractionPlan({
+            mode: 'combat',
+            actors: [actor].filter(Boolean),
+            targets: markedTargets,
+            action: markedTargets.length ? 'choose' : null,
+            source: 'selection-state',
+            targetType: markedTargets.length ? 'enemy' : null,
+            timing: 'current-turn',
+            constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true },
+            metadata: { phase: markedTargets.length ? 'intent' : 'idle' }
+        });
+    },
+
     render(app, options = {}) {
         const includeExploration = options.exploration ?? !app.combatState?.active;
         const includeToolbelt = options.toolbelt ?? Boolean(app.combatState?.active);
@@ -82,10 +187,6 @@ const YAW_INTERACTION_STATE = {
             parts.push({ slot: 'intent', label: intentLabel, value: this.actionLabel(app, intent, app._label('ui.chooseAction', 'Choose')), intent });
         }
         return parts;
-    },
-
-    combatActor(app) {
-        return app.activeActor || (app._currentCombatActor ? app._currentCombatActor() : null) || app.player || null;
     },
 
     combatSentence(app) {

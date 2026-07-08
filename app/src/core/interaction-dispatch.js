@@ -171,18 +171,26 @@ const YAW_INTERACTION_DISPATCH = {
             }
         }
         if (command.mode === 'combat') {
+            const constraints = command.constraints || {};
+            if (Number.isFinite(constraints.minActors) && (command.actors?.length || 0) < constraints.minActors) return { ok: false, reason: 'missing-actor' };
+            if (Number.isFinite(constraints.maxActors) && (command.actors?.length || 0) > constraints.maxActors) return { ok: false, reason: 'too-many-actors' };
+            if (Number.isFinite(constraints.minTargets) && (command.targets?.length || 0) < constraints.minTargets) return { ok: false, reason: 'missing-target' };
+            if (Number.isFinite(constraints.maxTargets) && (command.targets?.length || 0) > constraints.maxTargets) return { ok: false, reason: 'too-many-targets' };
             const current = app._currentCombatActor() || app.activeActor || command.actors[0];
             const actor = command.actors[0];
-            if (!current || !actor || app._unitSelectionId(current) !== app._unitSelectionId(actor)) return { ok: false, reason: 'not-current-actor' };
-            if (command.action === 'scavenge') {
+            if (constraints.requireCurrentTurn !== false && (!current || !actor || app._unitSelectionId(current) !== app._unitSelectionId(actor))) return { ok: false, reason: 'not-current-actor' };
+            const normalizedCombatAction = String(command.action || '').replace(/^sync_/, '') || command.action;
+            if (normalizedCombatAction === 'scavenge') {
                 const target = command.targets?.[0];
                 if (!target || !app._canScavengeCorpse(target)) return { ok: false, reason: 'invalid-combat-target' };
                 return { ok: true };
             }
-            if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
+            if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(normalizedCombatAction)) {
+                const reachActors = command.timing === 'slowest-participant' ? command.actors : [actor];
                 for (const target of command.targets) {
-                    if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
-                    if (!app._canReachCombatTarget(actor, target, command.action)) return { ok: false, reason: 'cannot-reach' };
+                    if (!target || target.CPun <= 0) return { ok: false, reason: 'invalid-combat-target' };
+                    if (constraints.hostileOnly !== false && target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
+                    if (constraints.checkReach !== false && !reachActors.some(unit => app._canReachCombatTarget(unit, target, normalizedCombatAction))) return { ok: false, reason: 'cannot-reach' };
                 }
             }
         }

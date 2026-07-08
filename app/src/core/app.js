@@ -231,6 +231,9 @@
             _buildInteractionPlan(context = {}) {
                 return YAW_INTERACTION_PLAN.build(this, context);
             },
+            _currentInteractionPlan() {
+                return YAW_INTERACTION_STATE.currentPlan(this);
+            },
             _resolvePanelUnit(type, ref) {
                 return YAW_INTERACTION_DISPATCH.resolvePanelUnit(this, type, ref);
             },

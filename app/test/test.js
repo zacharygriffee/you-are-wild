@@ -1773,6 +1773,7 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(interactionDispatchContent, 'dispatchAdventure(app, command)', 'Interaction dispatch helper should own adventure command routing');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildCommand(this, context)', 'App generic command wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_PLAN.build(this, context)', 'App interaction plan wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_STATE.currentPlan(this)', 'App current plan wrapper should delegate to the interaction state helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildPanelCommand(this, context)', 'App panel command wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.selectIntent(this, type, targetRef, action, source, subAction)', 'App intent selection wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatch(this, command)', 'App dispatch wrapper should delegate to the helper');
@@ -1785,6 +1786,10 @@ test('Interaction state helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/interaction-state.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction state helper should load before app.js');
   assertContains(interactionStateContent, 'const YAW_INTERACTION_STATE = {', 'Interaction state helper should expose the interaction state service');
   assertContains(interactionStateContent, 'clearTransient(app)', 'Interaction state helper should own transient selection cleanup');
+  assertContains(interactionStateContent, 'currentPlan(app)', 'Interaction state helper should expose current selection state as an InteractionPlan');
+  assertContains(interactionStateContent, "source: 'sync-selection'", 'Sync transient state should be represented as a plan source');
+  assertContains(interactionStateContent, "source: 'combat-targeting'", 'Combat target-pick state should be represented as a plan source');
+  assertContains(interactionStateContent, "source: 'feed-selection'", 'Feed transient state should be represented as a plan source');
   assertContains(interactionStateContent, 'render(app, options = {})', 'Interaction state helper should own panel/toolbelt refresh orchestration');
   assertContains(interactionStateContent, 'app.renderDesktopCombatComposer?.', 'Interaction state refresh should keep the desktop combat composer in sync');
   assertContains(interactionStateContent, 'renderSelectionSentence(app)', 'Interaction state helper should own actor-target-intent sentence rendering');
@@ -9457,6 +9462,7 @@ test('InteractionPlan backs combat current-turn target plans and validation', ()
 
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [ally], targets: [frontEnemy], action: 'fight' })).ok, false, 'Combat plans should reject non-current actors');
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' })).reason, 'cannot-reach', 'Combat plans should reject unreachable back-row targets');
+  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [frontEnemy, backEnemy], action: 'fight', constraints: { maxTargets: 1 } })).reason, 'too-many-targets', 'Combat plans should enforce target count constraints when mechanics declare them');
 });
 
 test('Sync queues a slowest-participant InteractionPlan', () => {
@@ -9492,6 +9498,72 @@ test('Sync queues a slowest-participant InteractionPlan', () => {
   assertEqual(sync.plan.resolveAt, 2, 'Queued Sync plan should record the slowest participant index');
   assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should preserve minimum group actor constraint');
   assertEqual(sync.plan.metadata.baseAction, 'fight', 'Queued Sync plan should expose the base action seam');
+});
+
+test('Current InteractionPlan reflects exploration and combat selection side-state', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'current-plan-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'current-plan-ally', Figh: 18, combatRow: 'front' });
+  const creature = makeUnit('Creature', { id: 'current-plan-creature', disposition: App.DISPOSITION.FRIENDLY, CPun: 100, MPun: 100 });
+  const enemyA = makeUnit('Enemy A', { id: 'current-plan-enemy-a', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  const enemyB = makeUnit('Enemy B', { id: 'current-plan-enemy-b', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [creature, enemyA, enemyB];
+  App.explorationActorIds = ['current-plan-player', 'current-plan-ally'];
+  App.explorationActorSelectionExplicit = true;
+  App.toggleExplorationTarget('creature', 'current-plan-creature');
+
+  let plan = App._currentInteractionPlan();
+  assertEqual(plan.plan.mode, 'exploration', 'Current exploration selection should expose an exploration InteractionPlan');
+  assertEqual(plan.actorIds.join(','), 'current-plan-player,current-plan-ally', 'Current exploration plan should preserve selected actors');
+  assertEqual(plan.targetIds.join(','), 'current-plan-creature', 'Current exploration plan should preserve selected targets');
+  assertEqual(plan.shape, 'many-to-one', 'Current exploration plan should infer selected actor-target shape');
+  assertEqual(plan.timing, 'immediate', 'Current exploration plan should be immediate');
+
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemyA, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.targetSelection = { action: 'fight', source: 'combat', actorId: 'current-plan-player' };
+  plan = App._currentInteractionPlan();
+  assertEqual(plan.plan.mode, 'combat', 'Combat target-pick should expose a combat InteractionPlan');
+  assertEqual(plan.action, 'fight', 'Combat target-pick plan should preserve selected intent');
+  assertEqual(plan.targetIds.length, 0, 'Combat target-pick plan should remain incomplete until a target is chosen');
+  assertEqual(plan.constraints.minTargets, 1, 'Combat target-pick plan should declare that a target is required');
+  assertEqual(plan.metadata.phase, 'target', 'Combat target-pick plan should expose its correction phase');
+
+  App.targetSelection = null;
+  App.toggleCombatTarget('current-plan-enemy-a');
+  App.toggleCombatTarget('current-plan-enemy-b');
+  plan = App._currentInteractionPlan();
+  assertEqual(plan.targetIds.join(','), 'current-plan-enemy-a,current-plan-enemy-b', 'Marked combat target plan should preserve all selected targets');
+  assertEqual(plan.shape, 'one-to-many', 'Marked combat target plan should infer one actor to many targets');
+  assertEqual(plan.metadata.phase, 'intent', 'Marked combat target plan should wait for intent');
+
+  App.combatTargetId = null;
+  App.combatTargetIds = [];
+  App.feedSelection = { active: true, actorId: 'current-plan-player', subIds: ['heal', 'forceFeed'] };
+  plan = App._currentInteractionPlan();
+  assertEqual(plan.action, 'feed', 'Feed selection should expose a feed InteractionPlan');
+  assertEqual(plan.source, 'feed-selection', 'Feed selection should preserve its plan source');
+  assertEqual(plan.constraints.hostileOnly, false, 'Feed selection should not force hostile-only targeting');
+  assertEqual(plan.metadata.subIds.join(','), 'heal,forceFeed', 'Feed selection plan should expose available sub-actions as metadata');
+
+  App.feedSelection = null;
+  App.syncSelection = { active: true, phase: 'participants', actorId: 'current-plan-player', participantIds: ['current-plan-player', 'current-plan-ally'], type: 'sync_fight' };
+  App._syncSelected = [0, 1];
+  plan = App._currentInteractionPlan();
+  assertEqual(plan.action, 'sync_fight', 'Sync participant selection should expose the selected sync intent');
+  assertEqual(plan.actorIds.join(','), 'current-plan-player,current-plan-ally', 'Sync participant plan should preserve selected participants');
+  assertEqual(plan.timing, 'slowest-participant', 'Sync participant plan should use slowest-participant timing');
+  assertEqual(plan.constraints.minActors, 2, 'Sync participant plan should declare the group actor requirement');
 });
 
 test('Combat target-first marking supports multiple selected targets', () => {

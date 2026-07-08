@@ -32,6 +32,8 @@ Exploration and combat should differ by timing and constraints, not by unrelated
 
 Invalid or ambiguous plans must preserve actor/target selection state and return correction guidance. They must not silently choose a different actor, target, distribution, or intent.
 
+During migration, legacy transient UI state such as combat target-pick, marked combat targets, feed sub-action choice, and Sync participant choice must be readable as the current `InteractionPlan`. Those states may remain as compatibility storage while older renderers are being migrated, but UI sentences, tests, story/log metadata, and future resolvers should treat the plan snapshot as the shared semantic shape.
+
 ### Traversal mode
 
 Traversal mode owns movement through the world and structure interiors.

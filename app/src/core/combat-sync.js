@@ -53,12 +53,14 @@ const YAW_COMBAT_SYNC = {
         return true;
     },
 
-    queueAction(app, syncType, targetIndex) {
+    queueAction(app, syncType, targetIndex, command = null) {
         const target = typeof targetIndex === 'object'
             ? targetIndex
             : app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0)[targetIndex];
         if (!target) return;
-        const participants = app._syncParticipants || app._syncSelectedParticipants();
+        const selectedParticipants = command?.actors?.length ? command.actors : (app._syncParticipants || app._syncSelectedParticipants() || []);
+        const participants = selectedParticipants
+            .filter(unit => unit && unit.CPun > 0);
         if (!participants || participants.length < 2) {
             app.log.push({ text: app._label('combat.sync.needParticipants', 'Need at least 2 participants for a sync action.'), type: 'combat' });
             app.renderLog();
@@ -94,7 +96,7 @@ const YAW_COMBAT_SYNC = {
             actors: participants,
             targets: [target],
             action: syncType,
-            source: 'sync-composer',
+            source: command?.source || 'sync-composer',
             targetType: 'enemy',
             shape: 'many-to-one',
             timing: 'slowest-participant',

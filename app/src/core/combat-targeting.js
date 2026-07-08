@@ -175,7 +175,30 @@ const YAW_COMBAT_TARGETING = {
             return;
         }
         if (app.syncSelection?.active && app.syncSelection.phase === 'target') {
-            return app.queueSyncAction(app.syncSelection.type, target);
+            const participants = app._syncParticipants || app._syncSelectedParticipants();
+            const syncType = app.syncSelection.type || action || 'sync_fight';
+            const command = app._buildPanelInteractionCommand({
+                mode: 'combat',
+                actors: participants,
+                targets: [target],
+                action: syncType,
+                source: 'sync-targeting',
+                targetType: 'enemy',
+                shape: 'many-to-one',
+                timing: 'slowest-participant',
+                distribution: 'single',
+                constraints: {
+                    requireCurrentTurn: true,
+                    hostileOnly: true,
+                    checkReach: true,
+                    checkRows: true,
+                    minActors: 2,
+                    minTargets: 1,
+                    maxTargets: 1
+                },
+                metadata: { baseAction: app._syncBaseAction(syncType), phase: 'target' }
+            });
+            return app._dispatchInteractionCommand(command);
         }
         const actor = app.activeActor || app.player;
         const command = app._buildPanelInteractionCommand({

@@ -2126,14 +2126,14 @@ test('Combat sync helper module is registered before app code', () => {
   assertContains(combatSyncContent, 'const YAW_COMBAT_SYNC = {', 'Combat sync helper should expose the sync service');
   assertContains(combatSyncContent, 'showMenu(app)', 'Combat sync helper should own sync menu setup');
   assertContains(combatSyncContent, 'selectParticipants(app, syncType)', 'Combat sync helper should own participant selection setup');
-  assertContains(combatSyncContent, 'queueAction(app, syncType, targetIndex)', 'Combat sync helper should own delayed sync queueing');
+  assertContains(combatSyncContent, 'queueAction(app, syncType, targetIndex, command = null)', 'Combat sync helper should own delayed sync queueing');
   assertContains(combatSyncContent, 'resolveAction(app, sync)', 'Combat sync helper should own delayed sync resolution');
   assertContains(combatSyncContent, "app._label('combat.sync.failedIncapacitated'", 'Combat sync helper should preserve localized incapacitated failure');
   assertContains(combatSyncContent, "app._emitCombatAction(sync.type, sync.participants, sync.target, result)", 'Combat sync helper should preserve sync action event emission');
   assertContains(combatSyncContent, 'app.nextTurn()', 'Combat sync helper should continue advancing turns after resolution');
   assertContains(appContent, 'YAW_COMBAT_SYNC.showMenu(this)', 'App sync menu wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.selectParticipants(this, syncType)', 'App sync participant wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex)', 'App sync queue wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex, command)', 'App sync queue wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.resolveAction(this, sync)', 'App sync resolution wrapper should delegate to the helper');
 });
 
@@ -9498,6 +9498,41 @@ test('Sync queues a slowest-participant InteractionPlan', () => {
   assertEqual(sync.plan.resolveAt, 2, 'Queued Sync plan should record the slowest participant index');
   assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should preserve minimum group actor constraint');
   assertEqual(sync.plan.metadata.baseAction, 'fight', 'Queued Sync plan should expose the base action seam');
+});
+
+test('Sync target pick dispatches through a slowest-participant InteractionPlan', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'plan-sync-click-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'plan-sync-click-ally', Figh: 18, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'plan-sync-click-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 3,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: enemy, initiative: 20 }, { unit: ally, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.syncSelection = { active: true, phase: 'target', actorId: 'plan-sync-click-player', participantIds: ['plan-sync-click-player', 'plan-sync-click-ally'], type: 'sync_fight' };
+  App._syncParticipants = [player, ally];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.executeActionOnTarget('sync_fight', 'plan-sync-click-enemy'), true, 'Sync target click should queue through the shared interaction dispatcher');
+  assertEqual(advanced, 1, 'Plan-backed Sync target click should still advance after queueing');
+  assertEqual(App.combatState.syncActions.length, 1, 'Plan-backed Sync target click should queue one action');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(App.lastIntentCommand.source, 'sync-targeting', 'Sync target click should record dispatcher provenance');
+  assertEqual(App.lastIntentCommand.timing, 'slowest-participant', 'Sync target click command should use slowest-participant timing');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), 'plan-sync-click-player,plan-sync-click-ally', 'Sync target click command should preserve selected participants');
+  assertEqual(sync.plan.source, 'sync-targeting', 'Queued Sync plan should preserve the target-pick command source');
+  assertEqual(sync.plan.resolveAt, 2, 'Queued Sync plan should still resolve on the slowest participant');
+  assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should retain group actor constraints');
 });
 
 test('Current InteractionPlan reflects exploration and combat selection side-state', () => {

@@ -2119,8 +2119,8 @@
                 return YAW_COMBAT_SYNC.confirmParticipants(this, syncType);
             },
 
-            queueSyncAction(syncType, targetIndex) {
-                return YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex);
+            queueSyncAction(syncType, targetIndex, command = null) {
+                return YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex, command);
             },
 
             _resolveCombatAction(command) {

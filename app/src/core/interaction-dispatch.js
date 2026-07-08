@@ -240,7 +240,7 @@ const YAW_INTERACTION_DISPATCH = {
             resolveAt: command.resolveAt,
             planMode: command.planMode || command.plan?.mode || 'combat'
         };
-        if (command.timing === 'queued' || command.timing === 'slowest-participant') return app.queueSyncAction(command.action, command.targets?.[0]);
+        if (command.timing === 'queued' || command.timing === 'slowest-participant') return app.queueSyncAction(command.action, command.targets?.[0], command);
         if (command.action === 'feed' && !command.targets?.length) return app.executeFeedAction(command.actors[0]);
         if (command.targets?.length) return app._resolveCombatAction(command);
         return app.executeCombatIntent(command.action, command.actors[0]);

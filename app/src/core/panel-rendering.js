@@ -108,6 +108,7 @@ const YAW_PANEL_RENDERING = {
     },
 
     creatures(app) {
+        app.closeTransactionWindowIfTargetMissing?.();
         const container = document.getElementById('enemies-content');
         const title = document.getElementById('enemies-title');
         const mobileTitle = document.getElementById('mobile-creature-title');

@@ -5,6 +5,7 @@
 
 const YAW_COMBAT_LIFECYCLE = {
     start(app, enemies) {
+        app.closeTransactionWindow?.();
         app._clearTransientInteractionState();
         app._normalizeExplorationSelections({ resetTargets: true });
         app.mode = app.GAME_MODE.COMBAT;

@@ -718,6 +718,7 @@
             mobileMovePadOpen: false,
             mobileActorBeltOpen: false,
             mobileCreatureRailOpen: true,
+            transactionWindow: null,
             inInterior: false,
             activeInterior: null,
             interiorLocation: { x: 0, y: 0 },
@@ -3643,8 +3644,24 @@
                 return YAW_MERCHANT_SYSTEM.findById(this, targetId);
             },
 
+            openTransactionWindow(kind, targetId) {
+                return YAW_TRANSACTION_WINDOW.open(this, kind, targetId);
+            },
+
+            closeTransactionWindow() {
+                return YAW_TRANSACTION_WINDOW.close(this);
+            },
+
+            refreshTransactionWindow() {
+                return YAW_TRANSACTION_WINDOW.refresh(this);
+            },
+
+            closeTransactionWindowIfTargetMissing() {
+                return YAW_TRANSACTION_WINDOW.closeIfTargetMissing(this);
+            },
+
             showTrade(targetId) {
-                return YAW_TRADE_FLOW.show(this, targetId);
+                return this.openTransactionWindow('trade', targetId);
             },
 
             setTradeFilter(filter, targetId) {
@@ -3705,7 +3722,7 @@
             },
 
             previewQuestFromUnit(targetId) {
-                return YAW_QUEST_FLOW.previewFromUnit(this, targetId);
+                return this.openTransactionWindow('quest', targetId);
             },
 
             showQuestPreview(quest, giver = null) {

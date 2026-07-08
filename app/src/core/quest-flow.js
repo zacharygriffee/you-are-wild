@@ -153,11 +153,7 @@ const YAW_QUEST_FLOW = {
     previewFromUnit(app, targetId) {
         const giver = this.giverByKey(app, targetId);
         if (!giver) return false;
-        if (giver.questAccepted || this.byId(app, giver.quest?.id)) {
-            app.showQuestLog();
-            return true;
-        }
-        return app.showQuestPreview(giver.quest, giver);
+        return app.openTransactionWindow('quest', targetId);
     },
 
     showPreview(app, quest, giver = null) {
@@ -192,7 +188,7 @@ const YAW_QUEST_FLOW = {
         const existing = this.byId(app, normalized.id);
         if (existing) {
             app.log.push({ text: app._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existing.title }), type: 'discovery' });
-            app.showQuestLog();
+            if (!app.refreshTransactionWindow?.()) app.showQuestLog();
             app.renderLog();
             return existing;
         }
@@ -205,6 +201,10 @@ const YAW_QUEST_FLOW = {
         app.log.push({ text: app._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
         app.renderLog();
         app.renderCreatures();
+        if (app.refreshTransactionWindow?.()) {
+            app.autoSave();
+            return normalized;
+        }
         if (giver) {
             const title = app._escapeHtml(normalized.title);
             const closeLabel = app._escapeHtml(app._label('ui.close', 'Close'));
@@ -301,14 +301,14 @@ const YAW_QUEST_FLOW = {
         if (quest.rewardClaimed) {
             app.log.push({ text: app._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: quest.title }), type: 'discovery' });
             app.renderLog();
-            app.showQuestLog();
+            if (!app.refreshTransactionWindow?.()) app.showQuestLog();
             return false;
         }
         const granted = this.grantReward(app, quest);
         if (granted) app.log.push({ text: app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title }), type: 'loot' });
         app.renderLog();
         app.renderParty();
-        app.showQuestLog();
+        if (!app.refreshTransactionWindow?.()) app.showQuestLog();
         app.autoSave();
         return granted;
     },

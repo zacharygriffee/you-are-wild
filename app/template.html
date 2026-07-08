@@ -283,7 +283,7 @@
         .stage {
             grid-area: stage;
             display: grid;
-            grid-template-columns: minmax(720px, 1fr) minmax(144px, 164px) minmax(144px, 164px);
+            grid-template-columns: minmax(720px, 960px) minmax(144px, 164px) minmax(144px, 164px);
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
@@ -291,7 +291,7 @@
         }
 
         .stage.target-panel-empty {
-            grid-template-columns: minmax(800px, 1fr) minmax(144px, 164px) 0;
+            grid-template-columns: minmax(720px, 960px) minmax(144px, 164px) 0;
         }
 
         /* Panel Base */
@@ -1520,7 +1520,7 @@
 
         .unit-card.compact-tactical-card {
             position: relative;
-            padding: 34px 10px 10px;
+            padding: 48px 10px 10px;
         }
 
         .unit-card.compact-tactical-card .unit-header {
@@ -1599,15 +1599,48 @@
         }
 
         .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn {
+            --compact-card-icon-content: "•";
+            --compact-card-icon-color: var(--text-secondary);
+            --compact-card-icon-bg: rgba(160, 160, 176, 0.12);
+            --compact-card-icon-border: rgba(160, 160, 176, 0.38);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             pointer-events: auto;
             flex: 0 0 auto;
-            min-width: 46px;
-            max-width: calc(50% - 3px);
-            min-height: 24px;
-            padding: 4px 8px;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            width: 40px;
+            min-width: 40px;
+            max-width: 40px;
+            height: 34px;
+            min-height: 34px;
+            padding: 0;
+            color: var(--compact-card-icon-color);
+            font-size: 0;
+            line-height: 1;
+            overflow: visible;
             white-space: nowrap;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn::before {
+            content: var(--compact-card-icon-content);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--compact-card-icon-border);
+            border-radius: var(--radius-sm);
+            background: var(--compact-card-icon-bg);
+            color: var(--compact-card-icon-color);
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn.primary::before {
+            background: var(--compact-card-icon-active-bg, var(--compact-card-icon-bg));
+            border-color: var(--compact-card-icon-active-border, var(--compact-card-icon-border));
+            box-shadow: 0 0 0 1px var(--compact-card-icon-active-ring, rgba(160, 160, 176, 0.24));
         }
 
         .unit-card.compact-tactical-card .tactical-card-selection-controls .actor-toggle {
@@ -1616,6 +1649,47 @@
 
         .unit-card.compact-tactical-card .tactical-card-selection-controls .target-toggle {
             margin-left: auto;
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-actor"] {
+            --compact-card-icon-content: "👤";
+            --compact-card-icon-color: var(--accent-primary);
+            --compact-card-icon-bg: rgba(0, 212, 170, 0.1);
+            --compact-card-icon-border: rgba(0, 212, 170, 0.45);
+            --compact-card-icon-active-bg: rgba(0, 212, 170, 0.22);
+            --compact-card-icon-active-border: var(--accent-primary);
+            --compact-card-icon-active-ring: rgba(0, 212, 170, 0.28);
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-target"],
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="mark-combat-target"] {
+            --compact-card-icon-content: "⌖";
+            --compact-card-icon-color: var(--accent-secondary);
+            --compact-card-icon-bg: rgba(255, 107, 157, 0.1);
+            --compact-card-icon-border: rgba(255, 107, 157, 0.55);
+            --compact-card-icon-active-bg: rgba(255, 107, 157, 0.22);
+            --compact-card-icon-active-border: var(--accent-secondary);
+            --compact-card-icon-active-ring: rgba(255, 107, 157, 0.28);
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="pick-target"] {
+            --compact-card-icon-content: "⌖";
+            --compact-card-icon-color: var(--accent-warning);
+            --compact-card-icon-bg: rgba(255, 184, 0, 0.12);
+            --compact-card-icon-border: rgba(255, 184, 0, 0.58);
+            --compact-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+            --compact-card-icon-active-border: var(--accent-warning);
+            --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+        }
+
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
+            --compact-card-icon-content: "＋";
+            --compact-card-icon-color: var(--accent-warning);
+            --compact-card-icon-bg: rgba(255, 184, 0, 0.12);
+            --compact-card-icon-border: rgba(255, 184, 0, 0.55);
+            --compact-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+            --compact-card-icon-active-border: var(--accent-warning);
+            --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
         }
 
         .unit-actions [data-selection-mode] {
@@ -2591,6 +2665,255 @@
             background: rgba(0, 212, 170, 0.1);
         }
 
+        .transaction-window-root[hidden] {
+            display: none !important;
+        }
+
+        .transaction-window-root {
+            position: fixed;
+            inset: 0;
+            z-index: 1800;
+            display: grid;
+            place-items: center;
+            padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+
+        .transaction-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 5, 12, 0.72);
+            backdrop-filter: blur(4px);
+        }
+
+        .transaction-window {
+            position: relative;
+            width: min(920px, 100%);
+            max-height: min(86dvh, 720px);
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            overflow: hidden;
+            background: rgba(26, 26, 46, 0.96);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            color: var(--text-primary);
+        }
+
+        .transaction-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .transaction-header h2 {
+            margin: 2px 0 0;
+            color: var(--accent-primary);
+            font-size: 20px;
+            line-height: 1.2;
+        }
+
+        .transaction-eyebrow {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .transaction-close {
+            min-width: 72px;
+            min-height: 36px;
+        }
+
+        .transaction-summary {
+            display: grid;
+            grid-template-columns: 1.3fr 1.3fr 0.7fr 0.8fr;
+            gap: 8px;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(10, 20, 36, 0.48);
+        }
+
+        .transaction-summary div {
+            min-width: 0;
+            display: grid;
+            gap: 2px;
+        }
+
+        .transaction-summary span,
+        .transaction-summary small {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .transaction-summary strong {
+            overflow: hidden;
+            color: var(--text-primary);
+            font-size: 13px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .transaction-body {
+            min-height: 0;
+            overflow: auto;
+            padding: 14px 18px 18px;
+        }
+
+        .transaction-filters > div {
+            margin-top: 0 !important;
+        }
+
+        .transaction-columns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .transaction-columns.quest-columns {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .transaction-section {
+            min-width: 0;
+            display: grid;
+            align-content: start;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(15, 15, 30, 0.52);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+        }
+
+        .transaction-section h3 {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .transaction-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .transaction-item,
+        .transaction-quest {
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+        }
+
+        .transaction-item {
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            align-items: center;
+        }
+
+        .transaction-item strong,
+        .transaction-quest strong {
+            display: block;
+            color: var(--text-primary);
+        }
+
+        .transaction-item small,
+        .transaction-quest small,
+        .transaction-quest p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .transaction-item-meta {
+            display: grid;
+            gap: 3px;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .transaction-quest-progress {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .transaction-empty {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        #app.transaction-window-open .stage,
+        #app.transaction-window-open .panel-log,
+        #app.transaction-window-open .app-header {
+            pointer-events: none;
+        }
+
+        #app.transaction-window-open .desktop-command-composer,
+        #app.transaction-window-open .mobile-control-belt,
+        #app.transaction-window-open .mobile-unit-strips {
+            visibility: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            .transaction-window-root {
+                align-items: stretch;
+                justify-items: stretch;
+                padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+            }
+
+            .transaction-window {
+                width: 100%;
+                max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                border-radius: var(--radius-md);
+            }
+
+            .transaction-header {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .transaction-header h2 {
+                font-size: 18px;
+            }
+
+            .transaction-close {
+                min-width: 64px;
+                min-height: 44px;
+            }
+
+            .transaction-summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                padding: 10px 12px;
+            }
+
+            .transaction-body {
+                padding: 10px 12px 12px;
+            }
+
+            .transaction-columns,
+            .transaction-columns.quest-columns {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .transaction-item {
+                grid-template-columns: minmax(0, 1fr) auto;
+            }
+
+            .transaction-item .nav-btn {
+                grid-column: 1 / -1;
+                min-height: 44px;
+            }
+        }
+
         .option-icon {
             font-size: 32px;
             margin-bottom: var(--space-sm);
@@ -2654,21 +2977,21 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: minmax(660px, 1fr) minmax(140px, 156px) minmax(140px, 156px);
+                grid-template-columns: minmax(660px, 960px) minmax(140px, 156px) minmax(140px, 156px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(740px, 1fr) minmax(140px, 156px) 0;
+                grid-template-columns: minmax(660px, 960px) minmax(140px, 156px) 0;
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: minmax(560px, 1fr) minmax(136px, 148px) minmax(136px, 148px);
+                grid-template-columns: minmax(560px, 820px) minmax(136px, 148px) minmax(136px, 148px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(640px, 1fr) minmax(136px, 148px) 0;
+                grid-template-columns: minmax(560px, 820px) minmax(136px, 148px) 0;
             }
         }
 
@@ -2782,6 +3105,7 @@
                 bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
                 max-height: min(68dvh, 560px);
                 min-height: 0;
+                background: rgba(26, 26, 46, 0.5);
                 box-shadow: var(--shadow-lg);
                 transform: translateY(120%);
             }
@@ -2829,6 +3153,115 @@
                 min-height: 0;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
+            }
+
+            .panel-party .unit-card.compact-tactical-card,
+            .panel-enemies .unit-card.compact-tactical-card {
+                padding-top: 56px;
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn,
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn {
+                --mobile-card-icon-content: "•";
+                --mobile-card-icon-color: var(--text-secondary);
+                --mobile-card-icon-bg: rgba(160, 160, 176, 0.12);
+                --mobile-card-icon-border: rgba(160, 160, 176, 0.38);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: auto;
+                flex: 0 0 auto;
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                padding: 0;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+                color: var(--mobile-card-icon-color);
+                font-size: 0;
+                line-height: 1;
+                overflow: visible;
+                white-space: nowrap;
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn::before,
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn::before {
+                content: var(--mobile-card-icon-content);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border: 1px solid var(--mobile-card-icon-border);
+                border-radius: var(--radius-sm);
+                background: var(--mobile-card-icon-bg);
+                color: var(--mobile-card-icon-color);
+                font-size: 16px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn.primary,
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn.primary {
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn.primary::before,
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn.primary::before {
+                background: var(--mobile-card-icon-active-bg, var(--mobile-card-icon-bg));
+                border-color: var(--mobile-card-icon-active-border, var(--mobile-card-icon-border));
+                box-shadow: 0 0 0 1px var(--mobile-card-icon-active-ring, rgba(160, 160, 176, 0.24));
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-actor"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-actor"] {
+                --mobile-card-icon-content: "👤";
+                --mobile-card-icon-color: var(--accent-primary);
+                --mobile-card-icon-bg: rgba(0, 212, 170, 0.1);
+                --mobile-card-icon-border: rgba(0, 212, 170, 0.45);
+                --mobile-card-icon-active-bg: rgba(0, 212, 170, 0.22);
+                --mobile-card-icon-active-border: var(--accent-primary);
+                --mobile-card-icon-active-ring: rgba(0, 212, 170, 0.28);
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-target"],
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="mark-combat-target"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="focus-target"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="mark-combat-target"] {
+                --mobile-card-icon-content: "⌖";
+                --mobile-card-icon-color: var(--accent-secondary);
+                --mobile-card-icon-bg: rgba(255, 107, 157, 0.1);
+                --mobile-card-icon-border: rgba(255, 107, 157, 0.55);
+                --mobile-card-icon-active-bg: rgba(255, 107, 157, 0.22);
+                --mobile-card-icon-active-border: var(--accent-secondary);
+                --mobile-card-icon-active-ring: rgba(255, 107, 157, 0.28);
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="pick-target"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="pick-target"] {
+                --mobile-card-icon-content: "⌖";
+                --mobile-card-icon-color: var(--accent-warning);
+                --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
+                --mobile-card-icon-border: rgba(255, 184, 0, 0.58);
+                --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+                --mobile-card-icon-active-border: var(--accent-warning);
+                --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+            }
+
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
+                --mobile-card-icon-content: "＋";
+                --mobile-card-icon-color: var(--accent-warning);
+                --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
+                --mobile-card-icon-border: rgba(255, 184, 0, 0.55);
+                --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+                --mobile-card-icon-active-border: var(--accent-warning);
+                --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
             }
 
             .panel-main {
@@ -2948,10 +3381,20 @@
             }
 
             .mobile-strip-details-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
                 min-height: 44px;
-                min-width: 78px;
-                padding: 6px 10px;
-                font-size: 12px;
+                width: 44px;
+                min-width: 44px;
+                padding: 0;
+                font-size: 0;
+                line-height: 1;
+            }
+
+            .mobile-strip-details-btn::before {
+                content: "⛶";
+                font-size: 16px;
                 line-height: 1;
             }
 
@@ -3473,8 +3916,10 @@
                 }
 
                 .mobile-strip-details-btn {
-                    min-height: 34px;
-                    padding: 4px 8px;
+                    min-height: 40px;
+                    width: 40px;
+                    min-width: 40px;
+                    padding: 0;
                 }
 
                 .mobile-control-belt.target-controls-open .mobile-control-row.has-visible-controls {
@@ -3653,16 +4098,63 @@
             }
 
             .mobile-actor-chip-btn {
-                min-width: 44px;
+                --mobile-actor-icon-content: "•";
+                --mobile-actor-icon-color: var(--text-secondary);
+                --mobile-actor-icon-bg: rgba(160, 160, 176, 0.12);
+                --mobile-actor-icon-border: rgba(160, 160, 176, 0.38);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                min-width: 40px;
+                max-width: 40px;
+                height: 44px;
                 min-height: 44px;
-                padding: 6px 7px;
+                padding: 0;
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-sm);
                 background: rgba(26, 26, 46, 0.78);
-                color: var(--text-secondary);
-                font-size: 10px;
+                color: var(--mobile-actor-icon-color);
+                font-size: 0;
                 font-weight: 700;
+                line-height: 1;
                 cursor: pointer;
+            }
+
+            .mobile-actor-chip-btn::before {
+                content: var(--mobile-actor-icon-content);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                border: 1px solid var(--mobile-actor-icon-border);
+                border-radius: var(--radius-sm);
+                background: var(--mobile-actor-icon-bg);
+                color: var(--mobile-actor-icon-color);
+                font-size: 15px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .mobile-actor-chip-btn.actor-toggle {
+                --mobile-actor-icon-content: "👤";
+                --mobile-actor-icon-color: var(--accent-primary);
+                --mobile-actor-icon-bg: rgba(0, 212, 170, 0.1);
+                --mobile-actor-icon-border: rgba(0, 212, 170, 0.45);
+                --mobile-actor-icon-active-bg: rgba(0, 212, 170, 0.22);
+                --mobile-actor-icon-active-border: var(--accent-primary);
+                --mobile-actor-icon-active-ring: rgba(0, 212, 170, 0.28);
+            }
+
+            .mobile-actor-chip-btn.target-toggle {
+                --mobile-actor-icon-content: "⌖";
+                --mobile-actor-icon-color: var(--accent-secondary);
+                --mobile-actor-icon-bg: rgba(255, 107, 157, 0.1);
+                --mobile-actor-icon-border: rgba(255, 107, 157, 0.55);
+                --mobile-actor-icon-active-bg: rgba(255, 107, 157, 0.22);
+                --mobile-actor-icon-active-border: var(--accent-secondary);
+                --mobile-actor-icon-active-ring: rgba(255, 107, 157, 0.28);
             }
 
             .mobile-actor-chip-btn.actor-toggle.primary {
@@ -3673,6 +4165,12 @@
             .mobile-actor-chip-btn.target-toggle.primary {
                 border-color: var(--accent-secondary);
                 color: var(--accent-secondary);
+            }
+
+            .mobile-actor-chip-btn.primary::before {
+                background: var(--mobile-actor-icon-active-bg, var(--mobile-actor-icon-bg));
+                border-color: var(--mobile-actor-icon-active-border, var(--mobile-actor-icon-border));
+                box-shadow: 0 0 0 1px var(--mobile-actor-icon-active-ring, rgba(160, 160, 176, 0.24));
             }
 
             .mobile-move-pad {
@@ -3777,6 +4275,10 @@
                 font-size: 11px;
                 line-height: 1.12;
                 text-align: center;
+            }
+
+            .mobile-combat-intents .unit-actions.unit-combat-actions.compact .action-btn {
+                min-height: 44px;
             }
 
             .mobile-play-surface.combat-active .mobile-map-card {
@@ -3935,15 +4437,62 @@
             }
 
             .mobile-unit-chip .tactical-card-selection-controls .action-btn {
+                --mobile-card-icon-content: "•";
+                --mobile-card-icon-color: var(--text-secondary);
+                --mobile-card-icon-bg: rgba(160, 160, 176, 0.12);
+                --mobile-card-icon-border: rgba(160, 160, 176, 0.38);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
                 pointer-events: auto;
                 flex: 0 0 auto;
-                min-width: 48px;
-                max-width: calc(50% - 3px);
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
                 min-height: 44px;
-                padding: 6px 8px;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                padding: 0;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+                color: var(--mobile-card-icon-color);
+                font-size: 0;
+                line-height: 1;
+                overflow: visible;
                 white-space: nowrap;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn::before {
+                content: var(--mobile-card-icon-content);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border: 1px solid var(--mobile-card-icon-border);
+                border-radius: var(--radius-sm);
+                background: var(--mobile-card-icon-bg);
+                color: var(--mobile-card-icon-color);
+                font-size: 16px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn.primary {
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn.primary::before {
+                background: var(--mobile-card-icon-active-bg, var(--mobile-card-icon-bg));
+                border-color: var(--mobile-card-icon-active-border, var(--mobile-card-icon-border));
+                box-shadow: 0 0 0 1px var(--mobile-card-icon-active-ring, rgba(160, 160, 176, 0.24));
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn.disabled::before,
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn:disabled::before {
+                opacity: 0.45;
             }
 
             .mobile-unit-chip .tactical-card-selection-controls .actor-toggle {
@@ -3952,6 +4501,60 @@
 
             .mobile-unit-chip .tactical-card-selection-controls .target-toggle {
                 margin-left: auto;
+            }
+
+            #mobile-creature-strip .mobile-unit-chip .tactical-card-selection-controls {
+                justify-content: flex-end;
+                left: auto;
+                right: 6px;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="focus-actor"] {
+                --mobile-card-icon-content: "👤";
+                --mobile-card-icon-color: var(--accent-primary);
+                --mobile-card-icon-bg: rgba(0, 212, 170, 0.1);
+                --mobile-card-icon-border: rgba(0, 212, 170, 0.45);
+                --mobile-card-icon-active-bg: rgba(0, 212, 170, 0.22);
+                --mobile-card-icon-active-border: var(--accent-primary);
+                --mobile-card-icon-active-ring: rgba(0, 212, 170, 0.28);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="focus-target"],
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="mark-combat-target"] {
+                --mobile-card-icon-content: "⌖";
+                --mobile-card-icon-color: var(--accent-secondary);
+                --mobile-card-icon-bg: rgba(255, 107, 157, 0.1);
+                --mobile-card-icon-border: rgba(255, 107, 157, 0.55);
+                --mobile-card-icon-active-bg: rgba(255, 107, 157, 0.22);
+                --mobile-card-icon-active-border: var(--accent-secondary);
+                --mobile-card-icon-active-ring: rgba(255, 107, 157, 0.28);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="pick-target"] {
+                --mobile-card-icon-content: "⌖";
+                --mobile-card-icon-color: var(--accent-warning);
+                --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
+                --mobile-card-icon-border: rgba(255, 184, 0, 0.58);
+                --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+                --mobile-card-icon-active-border: var(--accent-warning);
+                --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="focus-items"] {
+                --mobile-card-icon-content: "▣";
+                --mobile-card-icon-color: var(--accent-info);
+                --mobile-card-icon-bg: rgba(64, 180, 255, 0.1);
+                --mobile-card-icon-border: rgba(64, 180, 255, 0.45);
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
+                --mobile-card-icon-content: "＋";
+                --mobile-card-icon-color: var(--accent-warning);
+                --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
+                --mobile-card-icon-border: rgba(255, 184, 0, 0.55);
+                --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+                --mobile-card-icon-active-border: var(--accent-warning);
+                --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
             }
 
             .mobile-chip-name {
@@ -5045,6 +5648,7 @@
 
         <!-- Backdrop for closing mobile panels by tapping outside -->
         <div class="panel-backdrop" id="panel-backdrop" onclick="App.closeAllPanels()"></div>
+        <div class="transaction-window-root" id="transaction-window-root" hidden></div>
     </div>
 
 

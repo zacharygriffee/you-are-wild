@@ -722,6 +722,100 @@ async function checkViewport(browser, name, width, height) {
   assert.strictEqual(returnedGameSave.pageOverflow, false, `${name}: closing live-game Save Manager should not introduce horizontal overflow`);
 
   await page.evaluate(() => {
+    const make = (name, id) => ({
+      id, name, species: 'human', icon: '👤',
+      CPun: 100, MPun: 100, CPle: 30, MPle: 100,
+      level: 1, size: 4, appetite: 4,
+      stomach: [], womb: [], balls: [], inventory: [],
+      Figh: 10, Flir: 10, Fuck: 10, Feas: 10, Feed: 10, Flee: 10,
+      con: 10, wis: 10, cha: 10
+    });
+    App.player.gold = 12;
+    App.inventory = [];
+    App.creatures = [
+      Object.assign(make('Guide', 'guide-transaction'), {
+        disposition: App.DISPOSITION.QUEST_GIVER,
+        quest: {
+          id: 'transaction-q1',
+          title: 'Road Errand',
+          description: 'Check the next marker.',
+          objectives: [{ type: 'travel', required: 1, progress: 0, label: 'Walk east' }],
+          reward: { gold: 3 }
+        }
+      }),
+      Object.assign(make('Merchant', 'merchant-transaction'), {
+        disposition: App.DISPOSITION.MERCHANT,
+        stock: [{ id: 'stock-herb', name: 'Healing Herb', price: 2, qty: 1 }]
+      })
+    ];
+    App.renderCreatures();
+    App.renderExplorationActions();
+    App.selectIntent('creature', 'merchant-transaction', 'trade', 'composer-tray');
+  });
+  await page.waitForTimeout(50);
+  const tradeWindow = await page.evaluate(() => {
+    const root = document.getElementById('transaction-window-root');
+    const modal = root?.querySelector('.transaction-window');
+    const close = root?.querySelector('[data-command-control="close-transaction"]');
+    const composer = document.getElementById(innerWidth < 600 ? 'mobile-control-belt' : 'desktop-command-composer');
+    const rect = modal?.getBoundingClientRect();
+    const closeRect = close?.getBoundingClientRect();
+    return {
+      hidden: Boolean(root?.hidden),
+      kind: App.transactionWindow?.kind || '',
+      text: root?.textContent || '',
+      role: modal?.getAttribute('role') || '',
+      ariaModal: modal?.getAttribute('aria-modal') || '',
+      inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+      appInert: document.querySelector('#app > .stage')?.hasAttribute('inert') || false,
+      composerHidden: composer ? getComputedStyle(composer).visibility === 'hidden' : true,
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(tradeWindow.hidden, false, `${name}: trade transaction window should be visible`);
+  assert.strictEqual(tradeWindow.kind, 'trade', `${name}: trade transaction should store trade state`);
+  assert.strictEqual(tradeWindow.role, 'dialog', `${name}: trade transaction should use dialog semantics`);
+  assert.strictEqual(tradeWindow.ariaModal, 'true', `${name}: trade transaction should be modal`);
+  assert.strictEqual(tradeWindow.inViewport, true, `${name}: trade transaction should fit inside the viewport`);
+  assert.strictEqual(tradeWindow.closeVisible, true, `${name}: trade transaction should expose a visible Back exit`);
+  assert.strictEqual(tradeWindow.appInert, true, `${name}: transaction should make the underlying stage inert`);
+  assert.strictEqual(tradeWindow.composerHidden, true, `${name}: transaction should hide underlying composer controls`);
+  assert.strictEqual(tradeWindow.pageOverflow, false, `${name}: trade transaction should not create horizontal overflow`);
+  assert(tradeWindow.text.includes('Buy') && tradeWindow.text.includes('Sell') && tradeWindow.text.includes('Gold'), `${name}: trade transaction should show Buy/Sell and gold`);
+  await page.evaluate(() => App.closeTransactionWindow());
+  await page.waitForTimeout(50);
+  const afterTradeClose = await page.evaluate(() => ({
+    closed: App.transactionWindow === null,
+    hidden: document.getElementById('transaction-window-root')?.hidden || false,
+    stageInert: document.querySelector('#app > .stage')?.hasAttribute('inert') || false
+  }));
+  assert.strictEqual(afterTradeClose.closed, true, `${name}: Back should clear transaction state`);
+  assert.strictEqual(afterTradeClose.hidden, true, `${name}: Back should hide transaction root`);
+  assert.strictEqual(afterTradeClose.stageInert, false, `${name}: Back should restore underlying stage interactivity`);
+
+  await page.evaluate(() => App.selectIntent('creature', 'guide-transaction', 'quest', 'composer-tray'));
+  await page.waitForTimeout(50);
+  const questWindow = await page.evaluate(() => {
+    const root = document.getElementById('transaction-window-root');
+    const modal = root?.querySelector('.transaction-window');
+    const rect = modal?.getBoundingClientRect();
+    return {
+      kind: App.transactionWindow?.kind || '',
+      text: root?.textContent || '',
+      inViewport: Boolean(rect && rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    };
+  });
+  assert.strictEqual(questWindow.kind, 'quest', `${name}: quest transaction should store quest state`);
+  assert.strictEqual(questWindow.inViewport, true, `${name}: quest transaction should fit inside the viewport`);
+  assert.strictEqual(questWindow.pageOverflow, false, `${name}: quest transaction should not create horizontal overflow`);
+  assert(questWindow.text.includes('Available') && questWindow.text.includes('Accepted') && questWindow.text.includes('Completed'), `${name}: quest transaction should show quest status lists`);
+  await page.evaluate(() => App.closeTransactionWindow());
+  await page.evaluate(makeUnitScript());
+  await page.waitForTimeout(50);
+
+  await page.evaluate(() => {
     App.setAppMenuOpen?.(true);
     App.openSettingsFromGame();
   });
@@ -995,6 +1089,7 @@ async function checkViewport(browser, name, width, height) {
       const creatureCard = document.getElementById('mobile-creature-card');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
       const cueButton = creatureCue?.querySelector('button');
+      const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
       const detailButtons = Array.from(document.querySelectorAll('.mobile-strip-details-btn'));
       const moveToggle = document.getElementById('mobile-move-toggle');
       const dockRect = dock.getBoundingClientRect();
@@ -1024,7 +1119,29 @@ async function checkViewport(browser, name, width, height) {
       });
       const detailButtonRects = detailButtons.map(button => {
         const rect = button.getBoundingClientRect();
-        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+        const style = getComputedStyle(button);
+        return {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          fontSize: parseFloat(style.fontSize) || 0,
+          title: button.getAttribute('title') || '',
+          ariaLabel: button.getAttribute('aria-label') || ''
+        };
+      });
+      const creatureTargetButtonRects = creatureTargetButtons.map(button => {
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return {
+          width: rect.width,
+          height: rect.height,
+          fontSize: parseFloat(style.fontSize) || 0,
+          title: button.getAttribute('title') || '',
+          ariaLabel: button.getAttribute('aria-label') || ''
+        };
       });
       const visibleDetailButtonRects = detailButtonRects.filter(rect => rect.width > 0 && rect.height > 0);
       const cueRect = creatureCue.getBoundingClientRect();
@@ -1088,8 +1205,17 @@ async function checkViewport(browser, name, width, height) {
         visibleDetailButtonCount: visibleDetailButtonRects.length,
         minVisibleDetailButtonWidth: Math.min(...visibleDetailButtonRects.map(rect => rect.width)),
         minVisibleDetailButtonHeight: Math.min(...visibleDetailButtonRects.map(rect => rect.height)),
+        maxVisibleDetailButtonWidth: Math.max(0, ...visibleDetailButtonRects.map(rect => rect.width)),
+        maxVisibleDetailButtonHeight: Math.max(0, ...visibleDetailButtonRects.map(rect => rect.height)),
+        maxVisibleDetailButtonFontSize: Math.max(0, ...visibleDetailButtonRects.map(rect => rect.fontSize)),
+        visibleDetailButtonsAccessible: visibleDetailButtonRects.every(rect => rect.title && rect.ariaLabel),
         visibleDetailsInsideViewport: visibleDetailButtonRects.every(rect => rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1),
         visibleDetailsAboveDock: visibleDetailButtonRects.every(rect => rect.bottom <= dockRect.top + 1),
+        creatureTargetButtonCount: creatureTargetButtonRects.length,
+        maxCreatureTargetButtonWidth: Math.max(0, ...creatureTargetButtonRects.map(rect => rect.width)),
+        maxCreatureTargetButtonHeight: Math.max(0, ...creatureTargetButtonRects.map(rect => rect.height)),
+        maxCreatureTargetButtonFontSize: Math.max(0, ...creatureTargetButtonRects.map(rect => rect.fontSize)),
+        creatureTargetButtonsAccessible: creatureTargetButtonRects.every(rect => rect.title && rect.ariaLabel),
         viewportWidth: innerWidth,
         viewportHeight: innerHeight,
         locationActionsText: actions?.innerText || '',
@@ -1139,9 +1265,16 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
     assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
     assert(mobileControls.visibleDetailButtonCount >= 1, `${name}: visible mobile rail should expose an explicit Details route`);
-    assert(mobileControls.minVisibleDetailButtonWidth >= 78 && mobileControls.minVisibleDetailButtonHeight >= 34, `${name}: visible mobile rail Details routes should keep usable tap targets`);
+    assert(mobileControls.minVisibleDetailButtonWidth >= 40 && mobileControls.minVisibleDetailButtonHeight >= 40, `${name}: visible mobile rail Details routes should keep usable icon tap targets`);
+    assert(mobileControls.maxVisibleDetailButtonWidth <= 48 && mobileControls.maxVisibleDetailButtonHeight <= 48, `${name}: visible mobile rail Details routes should stay compact and icon-sized`);
+    assert.strictEqual(mobileControls.maxVisibleDetailButtonFontSize, 0, `${name}: visible mobile rail Details routes should hide visible text labels`);
+    assert.strictEqual(mobileControls.visibleDetailButtonsAccessible, true, `${name}: icon-only mobile rail Details routes should keep title and aria-label text`);
     assert.strictEqual(mobileControls.visibleDetailsInsideViewport, true, `${name}: visible mobile rail Details routes should stay inside the viewport`);
     assert.strictEqual(mobileControls.visibleDetailsAboveDock, true, `${name}: visible mobile rail Details routes should stay above the fixed dock`);
+    assert(mobileControls.creatureTargetButtonCount >= 1, `${name}: mobile creature rail should expose target toggle controls`);
+    assert(mobileControls.maxCreatureTargetButtonWidth <= 44 && mobileControls.maxCreatureTargetButtonHeight <= 44, `${name}: mobile creature target toggles should stay compact and icon-sized while preserving touch area`);
+    assert.strictEqual(mobileControls.maxCreatureTargetButtonFontSize, 0, `${name}: mobile creature target toggles should hide visible text labels`);
+    assert.strictEqual(mobileControls.creatureTargetButtonsAccessible, true, `${name}: icon-only mobile creature target toggles should keep title and aria-label text`);
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
@@ -1172,7 +1305,7 @@ async function checkViewport(browser, name, width, height) {
       return result;
     });
     assert.strictEqual(closedCreatureCue.visible, true, `${name}: closed compact creature rail should expose a visible mobile creature cue without scrolling`);
-    assert(closedCreatureCue.text.includes('Here: Creature'), `${name}: mobile creature cue should summarize the first visible creature when the rail is closed`);
+    assert(closedCreatureCue.text.includes('Here:'), `${name}: mobile creature cue should summarize the first visible creature when the rail is closed`);
     assert(closedCreatureCue.top >= 0, `${name}: mobile creature cue should not start above the viewport`);
     assert(closedCreatureCue.bottom <= closedCreatureCue.dockTop + 1, `${name}: mobile creature cue should stay above the fixed dock`);
     assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
@@ -1699,6 +1832,7 @@ async function checkViewport(browser, name, width, height) {
         stageColumns: stageStyle.gridTemplateColumns,
         map: read('panel-map'),
         main: read('panel-main'),
+        surface: read('desktop-play-surface'),
         party: read('panel-party'),
         enemies: read('panel-enemies'),
         center: read('desktop-play-cell-center')
@@ -1710,7 +1844,53 @@ async function checkViewport(browser, name, width, height) {
     assert.notStrictEqual(desktopPanels.party.display, 'none', `${name}: desktop party panel should remain a primary side panel`);
     assert.notStrictEqual(desktopPanels.enemies.display, 'none', `${name}: desktop creatures panel should remain a primary side panel`);
     assert(desktopPanels.main.width > desktopPanels.party.width, `${name}: desktop main play area should be wider than side panels`);
+    assert(desktopPanels.surface.width <= 982, `${name}: desktop play surface should cap width instead of expanding with spare side-panel space`);
     assert(desktopPanels.center.width > 0 && desktopPanels.center.height > 0, `${name}: desktop center play tile should be visible`);
+
+    const desktopSurfaceStability = await page.evaluate(() => {
+      const measure = () => {
+        const stage = document.querySelector('.stage');
+        const main = document.getElementById('panel-main');
+        const surface = document.getElementById('desktop-play-surface');
+        const center = document.getElementById('desktop-play-cell-center');
+        const stageStyle = getComputedStyle(stage);
+        const mainRect = main.getBoundingClientRect();
+        const surfaceRect = surface.getBoundingClientRect();
+        const centerRect = center.getBoundingClientRect();
+        return {
+          stageColumns: stageStyle.gridTemplateColumns,
+          stageTargetEmpty: stage.classList.contains('target-panel-empty'),
+          mainWidth: mainRect.width,
+          surfaceWidth: surfaceRect.width,
+          centerWidth: centerRect.width
+        };
+      };
+      const originalCreatures = [...App.creatures];
+      const tile = App._currentExplorationTile?.();
+      const originalTileCreatures = Array.isArray(tile?.creatures) ? [...tile.creatures] : null;
+      const originalTileItems = Array.isArray(tile?.items) ? [...tile.items] : null;
+      const withTargets = measure();
+      App.creatures = [];
+      if (tile) {
+        tile.creatures = [];
+        tile.items = [];
+      }
+      App.renderCreatures();
+      App.renderDesktopPlaySurface();
+      const withoutTargets = measure();
+      App.creatures = originalCreatures;
+      if (tile) {
+        if (originalTileCreatures) tile.creatures = originalTileCreatures;
+        if (originalTileItems) tile.items = originalTileItems;
+      }
+      App.renderCreatures();
+      App.renderDesktopPlaySurface();
+      return { withTargets, withoutTargets };
+    });
+    assert.strictEqual(desktopSurfaceStability.withTargets.stageTargetEmpty, false, `${name}: desktop stability setup should start with a target panel`);
+    assert.strictEqual(desktopSurfaceStability.withoutTargets.stageTargetEmpty, true, `${name}: desktop stability setup should exercise the empty target-panel layout`);
+    assert(Math.abs(desktopSurfaceStability.withTargets.surfaceWidth - desktopSurfaceStability.withoutTargets.surfaceWidth) <= 2, `${name}: desktop play surface width should stay stable when the local target panel collapses`);
+    assert(Math.abs(desktopSurfaceStability.withTargets.centerWidth - desktopSurfaceStability.withoutTargets.centerWidth) <= 2, `${name}: desktop center tile width should stay stable when the local target panel collapses`);
 
     await page.evaluate(() => App.toggleExplorationTarget('creature', 'creature-1'));
     await page.waitForTimeout(50);

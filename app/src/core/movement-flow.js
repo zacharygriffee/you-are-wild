@@ -6,6 +6,7 @@
 const YAW_MOVEMENT_FLOW = {
     move(app, dx, dy) {
         if (!app.player) return;
+        if (app.transactionWindow) return false;
         if (app.inInterior) {
             app.moveInterior(dx, dy);
             return;

@@ -179,6 +179,7 @@ const perkFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'perk-flow.js
 const statsPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'stats-panel.js'), 'utf8');
 const questFlowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-flow.js'), 'utf8');
 const questPanelContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'quest-panel.js'), 'utf8');
+const transactionWindowContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'transaction-window.js'), 'utf8');
 const mobileUnitStripsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'mobile-unit-strips.js'), 'utf8');
 const panelRenderingContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-rendering.js'), 'utf8');
 const panelShellContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'panel-shell.js'), 'utf8');
@@ -2365,19 +2366,16 @@ test('Trade flow helper module is registered before app code', () => {
   assertContains(buildContent, "'src/core/trade-flow.js'", 'Trade flow helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/trade-flow.js'") < buildContent.indexOf("'src/core/app.js'"), 'Trade flow helper should load before app.js');
   assertContains(tradeFlowContent, 'const YAW_TRADE_FLOW = {', 'Trade flow helper should expose the trade flow service');
-  assertContains(tradeFlowContent, 'show(app, targetId)', 'Trade flow helper should own merchant panel rendering');
-  assertContains(tradeFlowContent, "app.showCreaturePanelDetail(title, html)", 'Trade should render through creature panel details');
-  assertContains(tradeFlowContent, 'data-command-surface="trade-detail"', 'Trade drawer should identify its detail command surface');
-  assertContains(tradeFlowContent, 'data-command-control="buy-item"', 'Trade buy controls should identify drawer transaction controls');
-  assertContains(tradeFlowContent, 'data-command-control="sell-item"', 'Trade sell controls should identify drawer transaction controls');
-  assertContains(tradeFlowContent, 'data-command-control="close-trade"', 'Trade close control should identify its drawer exit');
-  assertContains(tradeFlowContent, 'data-command-control="close-trade" data-command-slot="exit"', 'Trade close control should identify the canonical exit slot');
+  assertContains(tradeFlowContent, 'show(app, targetId)', 'Trade flow helper should keep a stable merchant entry point');
+  assertContains(tradeFlowContent, "return app.openTransactionWindow('trade', targetId);", 'Trade entry should open the focused transaction window');
+  assertNotContains(tradeFlowContent, "app.showCreaturePanelDetail(title, html)", 'Trade should not render full shop flows through creature panel details');
+  assertNotContains(tradeFlowContent, 'data-command-surface="trade-detail"', 'Trade flow helper should leave shop UI controls to the transaction window');
   assertNotContains(tradeFlowContent, "document.getElementById('scene-description')", 'Trade helper should not render into center tile content');
   assertContains(tradeFlowContent, 'buy(app, targetId, stockIndex)', 'Trade flow helper should own merchant purchase action');
   assertContains(tradeFlowContent, 'sell(app, targetId, itemId)', 'Trade flow helper should own merchant sell action');
   assertContains(tradeFlowContent, 'app.showConfirmDialog({', 'Expensive trade purchases should keep in-app confirmation');
   assertNotContains(tradeFlowContent, 'Date.now', 'Trade helper should keep persistent item ids deterministic');
-  assertContains(appContent, 'YAW_TRADE_FLOW.show(this, targetId)', 'App showTrade wrapper should delegate to the helper');
+  assertContains(appContent, "return this.openTransactionWindow('trade', targetId);", 'App showTrade wrapper should route to the transaction window');
   assertContains(appContent, 'YAW_TRADE_FLOW.buy(this, targetId, stockIndex)', 'App buy wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_TRADE_FLOW.sell(this, targetId, itemId)', 'App sell wrapper should delegate to the helper');
 });
@@ -2437,17 +2435,15 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(questFlowContent, 'maybeSpawnStructureGiver(app, tile)', 'Quest flow helper should own structure quest-giver placement');
   assertContains(questFlowContent, "'structure-quest-template'", 'Structure quest template selection should use deterministic world keys');
   assertContains(questFlowContent, "'structure-quest-giver'", 'Structure quest-giver placement should use deterministic world keys');
-  assertContains(questFlowContent, 'data-command-surface="quest-preview"', 'Quest preview should identify its composer/detail command surface');
-  assertContains(questFlowContent, 'data-command-control="confirm-quest"', 'Quest preview accept should identify the confirm quest control');
-  assertContains(questFlowContent, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify the cancel preview control');
-  assertContains(questFlowContent, 'data-command-control="cancel-quest-preview" data-command-slot="exit"', 'Quest preview close should identify the canonical exit slot');
+  assertContains(questFlowContent, "return app.openTransactionWindow('quest', targetId);", 'Quest NPC entry should open the focused transaction window');
+  assertContains(questFlowContent, 'data-command-surface="quest-preview"', 'Legacy direct quest preview should still identify its command surface');
   assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="open-quest-log"', 'Quest accepted detail should route quest-log opening through target detail controls');
   assertContains(questFlowContent, 'data-command-surface="target-detail" data-command-mode="exploration" data-command-control="close-target-detail"', 'Quest accepted detail should expose a structural target-detail close control');
   assertContains(questFlowContent, 'data-command-control="close-target-detail" data-command-slot="exit"', 'Quest accepted close should identify the canonical exit slot');
   assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
-  assertContains(questFlowContent, 'app.showCreaturePanelDetail(normalized.title, html)', 'Quest preview should render through creature panel details');
+  assertContains(questFlowContent, 'app.refreshTransactionWindow?.()', 'Quest state updates should refresh the transaction window when active');
   assertContains(questFlowContent, 'app.autoSave()', 'Quest state changes should keep autosaving');
   assertNotContains(questFlowContent, 'Date.now', 'Quest reward item ids should remain deterministic');
   assertNotContains(questFlowContent, 'Math.random', 'Quest flow helper should not use ambient randomness');
@@ -2457,6 +2453,30 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_QUEST_FLOW.updateProgress(this, type, payload)', 'App quest progress wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.turnIn(this, questId)', 'App quest turn-in wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_QUEST_FLOW.filteredEntries(this)', 'App quest filtering wrapper should delegate to the helper');
+});
+
+test('Transaction window helper owns focused quest and shop pseudo-windows', () => {
+  assertContains(buildContent, "'src/core/transaction-window.js'", 'Transaction window helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/quest-panel.js'") < buildContent.indexOf("'src/core/transaction-window.js'"), 'Transaction window helper should load after quest rendering helpers');
+  assert(buildContent.indexOf("'src/core/transaction-window.js'") < buildContent.indexOf("'src/core/app.js'"), 'Transaction window helper should load before app.js');
+  assertContains(transactionWindowContent, 'const YAW_TRANSACTION_WINDOW = {', 'Transaction window helper should expose the transaction service');
+  assertContains(transactionWindowContent, "open(app, kind, targetId)", 'Transaction helper should own pseudo-window opening');
+  assertContains(transactionWindowContent, "role=\"dialog\" aria-modal=\"true\"", 'Transaction window should render as a modal dialog');
+  assertContains(transactionWindowContent, 'data-command-surface="transaction-window"', 'Transaction controls should identify the focused transaction surface');
+  assertContains(transactionWindowContent, 'data-command-control="close-transaction" data-command-slot="exit"', 'Transaction close should expose the canonical exit slot');
+  assertContains(transactionWindowContent, "tradeBody(app, merchant)", 'Transaction helper should own shop Buy/Sell lists');
+  assertContains(transactionWindowContent, "questBody(app, giver)", 'Transaction helper should own quest grouped lists');
+  assertContains(transactionWindowContent, "data-quest-section=\"${app._escapeHtml(section)}\"", 'Quest window should expose available/accepted/completed sections');
+  assertContains(transactionWindowContent, "setUnderlyingInert(true)", 'Opening a transaction should make underlying play surfaces inert');
+  assertContains(transactionWindowContent, "setUnderlyingInert(false)", 'Closing a transaction should restore underlying play surfaces');
+  assertContains(appContent, 'YAW_TRANSACTION_WINDOW.open(this, kind, targetId)', 'App transaction open wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TRANSACTION_WINDOW.close(this)', 'App transaction close wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_TRANSACTION_WINDOW.refresh(this)', 'App transaction refresh wrapper should delegate to the helper');
+  assertContains(combatLifecycleContent, 'app.closeTransactionWindow?.();', 'Combat start should safely close active transaction windows');
+  assertContains(movementFlowContent, 'if (app.transactionWindow) return false;', 'Movement should be inert while a transaction window is open');
+  assertContains(templateContent, 'id="transaction-window-root"', 'Game template should provide a transaction window root');
+  assertContains(templateContent, '.transaction-window', 'Template should style the transaction pseudo-window');
+  assertContains(templateContent, '@media (max-width: 1024px)', 'Template should include mobile transaction window bounds');
 });
 
 test('Quest panel helper module is registered before app code', () => {
@@ -4550,7 +4570,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-actor-chip', 'mobile actor belt should style compact actor controls instead of full cards');
   assertContains(template, 'scroll-padding-inline: 10px;', 'mobile actor belt should keep selected chips from clipping against horizontal scroll edges');
   assertContains(template, 'min-height: 52px;\n                padding: 7px 10px;', 'mobile actor rail chips should keep a stable touch height');
-  assertContains(template, '.mobile-actor-chip-btn {\n                min-width: 44px;\n                min-height: 44px;', 'mobile actor rail Actor and Mark buttons should keep finger-sized tap targets');
+  assertContains(template, '.mobile-actor-chip-btn {\n                --mobile-actor-icon-content: "•";', 'mobile actor rail Actor and Mark buttons should use icon-first controls');
+  assertContains(template, 'width: 40px;\n                min-width: 40px;\n                max-width: 40px;\n                height: 44px;', 'mobile actor rail Actor and Mark buttons should keep compact finger-height tap targets');
+  assertContains(template, '.mobile-actor-chip-btn.actor-toggle {\n                --mobile-actor-icon-content: "👤";', 'mobile actor rail Actor controls should render an actor icon');
+  assertContains(template, '.mobile-actor-chip-btn.target-toggle {\n                --mobile-actor-icon-content: "⌖";', 'mobile actor rail Mark controls should render a target icon');
   assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
   assertContains(template, '.mobile-unit-chip .tactical-card-selection-controls .action-btn {\n                pointer-events: auto;\n                flex: 0 0 auto;\n                min-width: 48px;', 'mobile target rail Mark controls should keep readable touch width');
   assertContains(template, 'min-height: 44px;\n                padding: 6px 8px;', 'mobile target rail Mark controls should keep finger-sized tap targets');
@@ -4787,6 +4810,7 @@ function makeElement() {
     hasAttribute(name) { return attributes.has(name); },
     removeAttribute(name) { attributes.delete(name); },
     contains(target) { return target === this || target?.parentNode === this; },
+    querySelector() { return null; },
     querySelectorAll() { return []; },
     remove() { this.removed = true; },
     insertAdjacentHTML(_position, html) { this.innerHTML = (this.innerHTML || '') + html; },
@@ -4868,7 +4892,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'enemies-content',
     'panel-enemies',
     'panel-party',
-    'panel-map'
+    'panel-map',
+    'transaction-window-root'
   ].forEach(id => {
     if (!elements.has(id)) elements.set(id, makeElement());
   });
@@ -4895,7 +4920,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -13845,22 +13870,25 @@ test('Quest system exposes quest giver actions and quest log', () => {
   assertContains(elements.get('desktop-context-belt').innerHTML, "selectIntent('creature','guide-1','quest','composer-tray')", 'Marked quest giver composer should preview through shared intent selection before accepting');
   App.previewQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 0, 'Quest preview should not immediately accept the quest');
-  assertContains(elements.get('enemies-content').innerHTML, 'Quest Preview: Guide Task', 'Quest preview should show the quest title before acceptance in the creature panel');
-  assertContains(elements.get('enemies-content').innerHTML, 'Objectives', 'Quest preview should show objectives');
-  assertContains(elements.get('enemies-content').innerHTML, '10 XP', 'Quest preview should show XP reward');
-  assertContains(elements.get('enemies-content').innerHTML, '5 gold', 'Quest preview should show gold reward');
-  assertContains(elements.get('enemies-content').innerHTML, 'Old Coin', 'Quest preview should show item reward');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-surface="quest-preview"', 'Quest preview should render as an explicit composer/detail command surface');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="confirm-quest"', 'Quest preview accept should identify its confirm control');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="cancel-quest-preview"', 'Quest preview close should identify its cancel control');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="cancel-quest-preview" data-command-slot="exit"', 'Quest preview close should expose the canonical exit slot');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-intent="acceptQuest"', 'Quest preview accept should expose the stable accept intent');
-  assertContains(elements.get('enemies-content').innerHTML, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
+  let transactionHtml = elements.get('transaction-window-root').innerHTML;
+  assertContains(transactionHtml, 'Guide Quests', 'Quest preview should show the NPC quest window title');
+  assertContains(transactionHtml, 'Available', 'Quest preview should show available quests');
+  assertContains(transactionHtml, 'Guide Task', 'Quest preview should show the quest title before acceptance');
+  assertContains(transactionHtml, '10 XP', 'Quest preview should show XP reward');
+  assertContains(transactionHtml, '5 gold', 'Quest preview should show gold reward');
+  assertContains(transactionHtml, 'Old Coin', 'Quest preview should show item reward');
+  assertContains(transactionHtml, 'data-command-surface="transaction-window"', 'Quest preview should render in the focused transaction surface');
+  assertContains(transactionHtml, 'data-command-control="confirm-quest"', 'Quest preview accept should identify its confirm control');
+  assertContains(transactionHtml, 'data-command-control="close-transaction" data-command-slot="exit"', 'Quest window close should expose the canonical exit slot');
+  assertContains(transactionHtml, 'data-command-intent="acceptQuest"', 'Quest preview accept should expose the stable accept intent');
+  assertContains(transactionHtml, "acceptQuestFromUnit('guide-1')", 'Quest preview should include explicit accept');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest Preview: Guide Task', 'Quest preview should not replace center tile content');
   App.acceptQuestFromUnit('guide-1');
   assertEqual(App.quests.length, 1, 'Accepted quest should enter quest log');
-  assertContains(elements.get('enemies-content').innerHTML, 'Quest accepted: Guide Task.', 'Quest acceptance should remain in the creature panel');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-command-control="close-target-detail" data-command-slot="exit"', 'Accepted quest detail close should expose the canonical exit slot');
+  transactionHtml = elements.get('transaction-window-root').innerHTML;
+  assertContains(transactionHtml, 'Accepted', 'Accepted quest should remain visible in the transaction window');
+  assertContains(transactionHtml, 'Guide Task', 'Accepted quest title should remain visible in the transaction window');
+  assertContains(transactionHtml, 'data-command-control="close-transaction" data-command-slot="exit"', 'Accepted quest window close should expose the canonical exit slot');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Quest accepted: Guide Task.', 'Quest acceptance should not replace center tile content');
 });
 
@@ -14285,13 +14313,13 @@ test('Merchant trade supports item categories and sorted stock without index dri
   });
   App.creatures = [merchant];
   App.setTradeFilter('equipment', 'trader-1');
-  let html = elements.get('enemies-content').innerHTML;
+  let html = elements.get('transaction-window-root').innerHTML;
   assertContains(html, 'Hide Armor', 'Equipment filter should show equipment stock');
   assertNotContains(html, 'Healing Herb', 'Equipment filter should hide consumable stock');
   assertNotContains(elements.get('scene-description')?.innerHTML || '', 'Hide Armor', 'Trade filter should not replace center tile content');
   App.setTradeFilter('all', 'trader-1');
   App.setTradeSort('value-desc', 'trader-1');
-  html = elements.get('enemies-content').innerHTML;
+  html = elements.get('transaction-window-root').innerHTML;
   assert(html.indexOf('Hide Armor') < html.indexOf('Healing Herb'), 'Value descending sort should show expensive stock first');
   App.buyFromMerchant('trader-1', 2);
   assert(App.pendingConfirm, 'Buying expensive sorted stock should open confirmation before purchase');
@@ -14312,11 +14340,11 @@ test('Merchant trade action labels localize with accessible names', () => {
   App.creatures = [merchant];
   App.updateLanguage('es');
   App.showTrade('trader-1');
-  const html = elements.get('enemies-content').innerHTML;
-  assertContains(html, 'data-command-surface="trade-detail"', 'Trade drawer should render as a detail command surface');
+  const html = elements.get('transaction-window-root').innerHTML;
+  assertContains(html, 'data-command-surface="transaction-window"', 'Trade should render in the focused transaction surface');
   assertContains(html, 'data-command-control="buy-item"', 'Trade buy button should expose its transaction control role');
   assertContains(html, 'data-command-control="sell-item"', 'Trade sell button should expose its transaction control role');
-  assertContains(html, 'data-command-control="close-trade"', 'Trade back button should expose its drawer exit role');
+  assertContains(html, 'data-command-control="close-transaction"', 'Trade back button should expose its transaction exit role');
   assertContains(html, 'data-command-intent="trade"', 'Trade drawer controls should keep the stable trade intent visible');
   assertContains(html, 'aria-label="Comprar Healing Herb"', 'Buy control should expose localized accessible label');
   assertContains(html, '>Comprar<', 'Buy visible label should localize');
@@ -14324,7 +14352,7 @@ test('Merchant trade action labels localize with accessible names', () => {
   assertContains(html, '>Vender<', 'Sell visible label should localize');
   assertContains(html, 'aria-label="Volver"', 'Trade back control should expose localized accessible label');
   assertContains(html, 'Comercio con Trader', 'Trade heading should localize');
-  assertContains(html, 'Oro: 100', 'Trade gold label should localize');
+  assertContains(html, '<span>Gold</span><strong>100</strong>', 'Trade summary should show current gold');
   assertContains(html, 'Categoria', 'Trade category control should localize');
   assertContains(html, '<option value="equipment" >Equipo</option>', 'Trade category option should localize');
   assertContains(html, 'Ordenar', 'Trade sort control should localize');
@@ -14346,7 +14374,7 @@ test('Merchant trade empty states localize', () => {
   App.updateLanguage('es');
   App.setTradeFilter('equipment', 'trader-1');
   App.showTrade('trader-1');
-  const html = elements.get('enemies-content').innerHTML;
+  const html = elements.get('transaction-window-root').innerHTML;
   assertContains(html, 'No hay existencias que coincidan con el filtro actual.', 'Empty merchant stock message should localize');
   assertContains(html, 'No hay articulos para vender.', 'Empty sell inventory message should localize');
 });
@@ -17023,6 +17051,65 @@ test('Mobile creature long-press exposes quest and trade through marked-target t
   assertNotContains(guideHtml, "selectIntent('creature','guide-1','quest','mobile-chip')", 'Quest action should not be duplicated on the creature chip');
   assertNotContains(merchantHtml, "selectIntent('creature','merchant-1','trade','mobile-chip')", 'Trade action should not be duplicated on the creature chip');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Quest and trade long-press should not open a duplicate action menu');
+});
+
+test('Quest and trade composer intents open focused transaction windows', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { id: 'player-1', gold: 8 });
+  App.party = [App.player];
+  App.location = { x: 4, y: 0 };
+  App.currentBiome = 'road';
+  App.creatures = [
+    makeUnit('Guide', { id: 'guide-1', disposition: App.DISPOSITION.QUEST_GIVER, quest: { id: 'q1', title: 'Find path', description: 'Scout the road.', objectives: [{ type: 'travel', required: 1, progress: 0, label: 'Walk east' }], reward: { gold: 3 } } }),
+    makeUnit('Merchant', { id: 'merchant-1', disposition: App.DISPOSITION.MERCHANT, stock: [{ id: 'ration', name: 'Healing Herb', price: 2, qty: 1 }] })
+  ];
+
+  App.selectIntent('creature', 'guide-1', 'quest', 'composer-tray');
+  let root = elements.get('transaction-window-root');
+  assertEqual(App.transactionWindow.kind, 'quest', 'Quest intent should open a quest transaction window');
+  assertContains(root.innerHTML, 'Guide Quests', 'Quest transaction should identify the NPC');
+  assertContains(root.innerHTML, 'Available', 'Quest transaction should show available quests');
+  assertContains(root.innerHTML, 'Accepted', 'Quest transaction should show accepted quests');
+  assertContains(root.innerHTML, 'Completed', 'Quest transaction should show completed quests');
+  assertContains(root.innerHTML, 'Gold', 'Quest transaction should show player gold summary');
+  assertNotContains(root.innerHTML, 'data-command-control="focus-actor"', 'Transaction window should not contain actor-mark controls');
+  assertNotContains(root.innerHTML, 'data-command-surface="target-intents"', 'Transaction window should not duplicate composer intent controls');
+  App.closeTransactionWindow();
+  assertEqual(App.transactionWindow, null, 'Back should close the transaction window');
+  assertEqual(root.hidden, true, 'Closed transaction root should be hidden');
+
+  App.selectIntent('creature', 'merchant-1', 'trade', 'composer-tray');
+  root = elements.get('transaction-window-root');
+  assertEqual(App.transactionWindow.kind, 'trade', 'Trade intent should open a shop transaction window');
+  assertContains(root.innerHTML, 'Merchant Trade', 'Trade transaction should identify the merchant');
+  assertContains(root.innerHTML, 'Buy', 'Trade transaction should show Buy list');
+  assertContains(root.innerHTML, 'Sell', 'Trade transaction should show Sell list');
+  assertContains(root.innerHTML, 'Inventory', 'Trade transaction should show inventory capacity');
+});
+
+test('Shop purchase updates gold inside transaction window and combat closes safely', () => {
+  const { App, elements } = loadAppForCombat();
+  App.player = makeUnit('You', { id: 'player-1', gold: 8 });
+  App.party = [App.player];
+  const merchant = makeUnit('Merchant', {
+    id: 'merchant-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ id: 'herb-stock', name: 'Healing Herb', price: 2, qty: 1 }]
+  });
+  App.creatures = [merchant];
+
+  App.showTrade('merchant-1');
+  assertContains(elements.get('transaction-window-root').innerHTML, '<strong>8</strong>', 'Shop summary should show starting gold');
+  App.buyFromMerchant('merchant-1', 0);
+  assertEqual(App.player.gold, 6, 'Buying from merchant should subtract gold');
+  assertEqual(App.inventory.length, 1, 'Buying from merchant should add item to inventory');
+  assertContains(elements.get('transaction-window-root').innerHTML, '<strong>6</strong>', 'Shop window should rerender updated gold');
+
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY });
+  App.creatures.push(enemy);
+  App.startCombat([enemy]);
+  assertEqual(App.transactionWindow, null, 'Combat start should close active transaction windows');
+  assertEqual(elements.get('transaction-window-root').hidden, true, 'Combat close should hide the transaction root');
 });
 
 test('Mobile map pinch changes zoom and applies transform', () => {

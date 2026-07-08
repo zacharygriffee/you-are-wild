@@ -5,44 +5,7 @@
 
 const YAW_TRADE_FLOW = {
     show(app, targetId) {
-        const merchant = app._findMerchantById(targetId);
-        if (!merchant) return false;
-        const gold = app.player.gold || 0;
-        const buyLabel = app._escapeHtml(app._label('trade.buy', 'Buy'));
-        const sellLabel = app._escapeHtml(app._label('trade.sell', 'Sell'));
-        const backLabel = app._escapeHtml(app._label('inventory.back', 'Back'));
-        const title = app._escapeHtml(app._label('trade.title', '{name} Trade', { name: merchant.name }));
-        const goldText = app._escapeHtml(app._label('trade.gold', 'Gold: {gold}', { gold }));
-        let html = `<div class="trade-drawer" data-command-surface="trade-detail" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-intent="trade"><h3>${title}</h3><p style="color:var(--text-muted);margin:4px 0 12px;">${goldText}</p>`;
-        html += app._itemListOptions('Trade', app._unitKey(merchant));
-        html += `<h4 style="color:var(--text-primary);margin:12px 0 8px;">${buyLabel}</h4><div style="display:grid;gap:8px;">`;
-        const stockEntries = app._filterAndSortItemEntries((merchant.stock || []).map((item, index) => ({ item, index })), app.tradeFilter, app.tradeSort);
-        if (stockEntries.length === 0) {
-            html += `<p style="color:var(--text-muted)">${app._escapeHtml(app._label('trade.noStockMatches', 'No stock matches the current filter.'))}</p>`;
-        }
-        stockEntries.forEach(({ item, index }) => {
-            const def = app.ITEMS[item.name] || { icon: '?', desc: 'Unknown' };
-            const disabled = gold < item.price || item.qty <= 0 || app.inventory.length >= app.MAX_INVENTORY ? ' disabled' : '';
-            const buyTitle = app._escapeHtml(app._label('trade.buyItem', 'Buy {name}', { name: item.name }));
-            html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">Qty ${item.qty} | ${item.price}g</div></div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="buy-item" data-command-intent="trade" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${buyTitle}" aria-label="${buyTitle}" ${disabled} onclick="App.buyFromMerchant('${app._unitKey(merchant)}',${index})">${buyLabel}</button></div>`;
-        });
-        html += `</div><h4 style="color:var(--text-primary);margin:12px 0 8px;">${sellLabel}</h4><div style="display:grid;gap:8px;">`;
-        const sellEntries = app._filterAndSortItemEntries((app.inventory || []).map((item, index) => ({ item, index })), app.tradeFilter, app.tradeSort);
-        if (app.inventory.length === 0) {
-            html += `<p style="color:var(--text-muted)">${app._escapeHtml(app._label('trade.noItemsToSell', 'No items to sell.'))}</p>`;
-        } else if (sellEntries.length === 0) {
-            html += `<p style="color:var(--text-muted)">${app._escapeHtml(app._label('trade.noInventoryMatches', 'No inventory items match the current filter.'))}</p>`;
-        } else {
-            sellEntries.forEach(({ item }) => {
-                const def = app.ITEMS[item.name] || { icon: '?', value: 1, desc: 'Unknown' };
-                const price = Math.max(1, Math.floor((def.value || 1) * 0.5));
-                const sellTitle = app._escapeHtml(app._label('trade.sellItem', 'Sell {name}', { name: item.name }));
-                html += `<div class="option-card" style="text-align:left;cursor:default;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><div style="font-weight:700;color:var(--text-primary)">${def.icon || '?'} ${item.name}</div><div style="font-size:11px;color:var(--text-muted)">${def.type || 'misc'} · ${def.desc || ''}</div></div><div style="font-size:12px;color:var(--text-muted)">${price}g</div></div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="sell-item" data-command-intent="trade" style="margin-top:8px;padding:4px 8px;font-size:11px" title="${sellTitle}" aria-label="${sellTitle}" onclick="App.sellToMerchant('${app._unitKey(merchant)}','${String(item.id).replace(/'/g, "\\'")}')">${sellLabel}</button></div>`;
-            });
-        }
-        html += `</div><button class="nav-btn" data-command-surface="trade-detail" data-command-mode="exploration" data-command-control="close-trade" data-command-slot="exit" style="margin-top:12px" title="${backLabel}" aria-label="${backLabel}" onclick="App.closePanelDetails('creature')">${backLabel}</button></div>`;
-        app.showCreaturePanelDetail(title, html);
-        return true;
+        return app.openTransactionWindow('trade', targetId);
     },
 
     setFilter(app, filter, targetId) {

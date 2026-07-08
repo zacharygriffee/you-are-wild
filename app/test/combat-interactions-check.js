@@ -241,7 +241,7 @@ async function mobileCombatToolbeltMetrics(page) {
     const rects = buttons.map(button => {
       const rect = button.getBoundingClientRect();
       return { width: rect.width, height: rect.height, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-    });
+    }).filter(rect => rect.width > 0 && rect.height > 0);
     const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
     return {
       buttonCount: rects.length,
@@ -269,10 +269,22 @@ async function mobileExplorationRailMetrics(page) {
       const rect = node.getBoundingClientRect();
       return { width: rect.width, height: rect.height };
     }).filter(rect => rect.width > 0 && rect.height > 0);
+    const buttonRects = selector => Array.from(document.querySelectorAll(selector)).map(button => {
+      const rect = button.getBoundingClientRect();
+      const style = getComputedStyle(button);
+      return {
+        width: rect.width,
+        height: rect.height,
+        fontSize: parseFloat(style.fontSize) || 0,
+        title: button.getAttribute('title') || '',
+        ariaLabel: button.getAttribute('aria-label') || ''
+      };
+    }).filter(rect => rect.width > 0 && rect.height > 0);
     const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
+    const max = (values, fallback = 0) => values.length ? Math.max(...values) : fallback;
     const targetTray = rects('#mobile-target-action-tray .action-btn');
     const actorChips = rects('#mobile-actor-belt .mobile-actor-chip');
-    const actorButtons = rects('#mobile-actor-belt .mobile-actor-chip-btn');
+    const actorButtons = buttonRects('#mobile-actor-belt .mobile-actor-chip-btn');
     const targetButtons = rects('#mobile-creature-strip .tactical-card-selection-controls .action-btn');
     return {
       targetTrayCount: targetTray.length,
@@ -281,7 +293,11 @@ async function mobileExplorationRailMetrics(page) {
       actorChipCount: actorChips.length,
       minActorChipHeight: min(actorChips.map(rect => rect.height)),
       actorButtonCount: actorButtons.length,
+      minActorButtonWidth: min(actorButtons.map(rect => rect.width)),
       minActorButtonHeight: min(actorButtons.map(rect => rect.height)),
+      maxActorButtonWidth: max(actorButtons.map(rect => rect.width)),
+      maxActorButtonFontSize: max(actorButtons.map(rect => rect.fontSize)),
+      actorButtonsAccessible: actorButtons.every(rect => rect.title && rect.ariaLabel),
       targetButtonCount: targetButtons.length,
       minTargetButtonWidth: min(targetButtons.map(rect => rect.width)),
       minTargetButtonHeight: min(targetButtons.map(rect => rect.height))
@@ -296,9 +312,12 @@ function assertMobileExplorationRailTapTargets(metrics, label) {
   assert(metrics.actorChipCount >= 1, `${label}: actor rail should expose compact actor chips`);
   assert(metrics.minActorChipHeight >= 52, `${label}: actor rail chips should keep a stable touch height`);
   assert(metrics.actorButtonCount >= 1, `${label}: actor rail should expose Actor/Mark controls`);
-  assert(metrics.minActorButtonHeight >= 44, `${label}: actor rail Actor/Mark controls should keep finger-sized tap targets`);
+  assert(metrics.minActorButtonWidth >= 40 && metrics.minActorButtonHeight >= 44, `${label}: actor rail Actor/Mark controls should keep compact icon tap targets`);
+  assert(metrics.maxActorButtonWidth <= 44, `${label}: actor rail Actor/Mark controls should stay compact and icon-sized`);
+  assert.strictEqual(metrics.maxActorButtonFontSize, 0, `${label}: actor rail Actor/Mark controls should hide visible text labels`);
+  assert.strictEqual(metrics.actorButtonsAccessible, true, `${label}: icon-only actor rail controls should keep title and aria-label text`);
   assert(metrics.targetButtonCount >= 1, `${label}: target rail should expose compact Mark controls`);
-  assert(metrics.minTargetButtonWidth >= 48, `${label}: target rail Mark controls should keep readable touch width`);
+  assert(metrics.minTargetButtonWidth >= 44, `${label}: target rail Mark controls should keep icon-sized touch width`);
   assert(metrics.minTargetButtonHeight >= 44, `${label}: target rail Mark controls should keep finger-sized tap targets`);
 }
 
@@ -1767,6 +1786,40 @@ async function runSelectionSemanticsFlow(page) {
   assert.strictEqual(state.pickControl, 'combat-target', 'Combat pick button should use combat-target control semantics');
   assert.strictEqual(state.pickState, 'pickable', 'Combat pick button should expose pickable state');
   assert.strictEqual(state.hasAdventureMark, false, 'Combat target picking should not render adventure Mark controls');
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  await setupCombat(page);
+  await page.evaluate(() => {
+    App.executeCombatIntent('fight');
+    if (typeof App.openPanelFromRail === 'function') App.openPanelFromRail('enemies', 'target');
+    else if (typeof togglePanel === 'function') togglePanel('enemies');
+  });
+  state = await page.evaluate(() => {
+    const pick = document.querySelector('#enemies-content button[data-command-control="pick-target"]');
+    const rect = pick?.getBoundingClientRect();
+    const style = pick ? getComputedStyle(pick) : null;
+    const before = pick ? getComputedStyle(pick, '::before') : null;
+    return {
+      pickExists: Boolean(pick),
+      pickText: pick?.textContent.trim() || '',
+      pickTitle: pick?.getAttribute('title') || '',
+      pickAriaLabel: pick?.getAttribute('aria-label') || '',
+      pickWidth: rect?.width || 0,
+      pickHeight: rect?.height || 0,
+      pickFontSize: style ? parseFloat(style.fontSize) || 0 : 0,
+      pickBeforeContent: before?.content || '',
+      pickBeforeColor: before?.color || ''
+    };
+  });
+  assert.strictEqual(state.pickExists, true, 'Mobile drawer combat target picking should render a Pick control');
+  assert.strictEqual(state.pickText, 'Pick', 'Mobile drawer Pick should retain accessible DOM text');
+  assert(state.pickTitle && state.pickAriaLabel, 'Mobile drawer icon-only Pick should keep title and aria-label text');
+  assert(state.pickWidth <= 44 && state.pickHeight >= 44, 'Mobile drawer Pick should render as a compact icon-sized touch target');
+  assert.strictEqual(state.pickFontSize, 0, 'Mobile drawer Pick should hide visible text labels');
+  assert(state.pickBeforeContent.includes('⌖'), 'Mobile drawer Pick should render the target icon glyph');
+  assert(state.pickBeforeColor.includes('184') || state.pickBeforeColor.includes('255'), 'Mobile drawer Pick target icon should use warning/yellow color treatment');
+  await page.evaluate(() => App.closeAllPanels());
+  await page.setViewportSize({ width: 1365, height: 768 });
 }
 
 async function runCenterResourceSearchFlow(page) {
@@ -2679,16 +2732,27 @@ async function runCompactRailRoundTripFlow(page) {
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
     tradeVisible: Boolean(document.querySelector('#mobile-creature-strip .trade-drawer')),
+    transactionOpen: !document.getElementById('transaction-window-root')?.hidden,
+    transactionKind: App.transactionWindow?.kind || '',
+    transactionText: document.getElementById('transaction-window-root')?.textContent || '',
+    composerHidden: getComputedStyle(document.getElementById('mobile-control-belt')).visibility === 'hidden',
+    selectionControlsInsideTransaction: document.querySelectorAll('#transaction-window-root [data-command-control="focus-actor"], #transaction-window-root [data-command-control="focus-target"]').length,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort()
   }));
-  assert.strictEqual(state.creatureDrawerOpen, true, 'Mobile target detail should open the Creatures drawer');
-  assert.strictEqual(state.tradeVisible, true, 'Mobile target detail should replace the compact target rail temporarily');
+  assert.strictEqual(state.creatureDrawerOpen, false, 'Mobile Trade should not open the Creatures drawer');
+  assert.strictEqual(state.tradeVisible, false, 'Mobile Trade should not replace the compact target rail with inline trade content');
+  assert.strictEqual(state.transactionOpen, true, 'Mobile Trade should open a focused transaction window');
+  assert.strictEqual(state.transactionKind, 'trade', 'Mobile Trade should store trade transaction state');
+  assert(state.transactionText.includes('Buy') && state.transactionText.includes('Sell'), 'Mobile Trade transaction should show Buy/Sell lists');
+  assert.strictEqual(state.composerHidden, true, 'Mobile Trade transaction should hide the underlying composer');
+  assert.strictEqual(state.selectionControlsInsideTransaction, 0, 'Mobile Trade transaction should not duplicate actor/target controls');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening target detail should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening target detail should preserve marked targets');
-  await page.evaluate(() => App.closePanelDetails('creature'));
+  await page.evaluate(() => App.closeTransactionWindow());
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
+    transactionOpen: !document.getElementById('transaction-window-root')?.hidden,
     creatureRailOpen: App.mobileCreatureRailOpen,
     creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
     targetButtons: document.querySelectorAll('#mobile-creature-strip button[data-command-control="focus-target"]').length,
@@ -2696,13 +2760,14 @@ async function runCompactRailRoundTripFlow(page) {
     targets: [...App.explorationTargetIds].sort(),
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
   }));
-  assert.strictEqual(state.creatureDrawerOpen, false, 'Target detail Back should close the Creatures drawer on mobile');
-  assert.strictEqual(state.creatureRailOpen, true, 'Target detail Back should restore the compact target rail');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Target detail Back should keep the compact target rail visible');
-  assert(state.targetButtons >= 2, 'Target detail Back should restore target controls');
-  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Target detail Back should keep selected actors');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Target detail Back should keep marked targets');
-  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Target detail Back should keep shared composer intents visible');
+  assert.strictEqual(state.creatureDrawerOpen, false, 'Transaction Back should keep the Creatures drawer closed on mobile');
+  assert.strictEqual(state.transactionOpen, false, 'Transaction Back should close the focused transaction window');
+  assert.strictEqual(state.creatureRailOpen, true, 'Transaction Back should restore the compact target rail');
+  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Transaction Back should keep the compact target rail visible');
+  assert(state.targetButtons >= 2, 'Transaction Back should restore target controls');
+  assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Transaction Back should keep selected actors');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Transaction Back should keep marked targets');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Transaction Back should keep shared composer intents visible');
 
   await page.locator(`#mobile-target-action-tray button[onclick*="resolveExplorationTargetAction('flirt','tease','composer-tray')"]`).click();
   state = await page.evaluate(() => ({

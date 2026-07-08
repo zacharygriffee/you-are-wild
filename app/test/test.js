@@ -4880,6 +4880,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'desktop-presence-rail',
     'selection-sentence',
     'mobile-play-surface',
+    'mobile-scene-sheet',
     'mobile-scene-title',
     'mobile-scene-description',
     'mobile-story-latest',
@@ -6774,6 +6775,29 @@ test('Victory combat end scene does not depend on ambient Math.random', () => {
     return sceneText;
   };
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Victory scene text should not depend on ambient Math.random');
+});
+
+test('Victory level-up refreshes traversal controls after combat disables them', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-post-victory-map', level: 1, xp: 90, xpToNext: 100, perks: [], pendingPerkChoices: 0 });
+  App.player = player;
+  App.party = [player];
+  App.location = { x: -12, y: 6 };
+  App.combatState.active = true;
+  App.combatState.xpEarned = 20;
+  App._runPostCombatScavengers = () => {};
+  App.autoSave = () => {};
+
+  App.renderMap();
+  assertEqual(elements.get('desktop-play-cell-n').getAttribute('data-command-control'), null, 'Active combat render should disable desktop traversal');
+
+  App.endCombat(true);
+
+  assertEqual(App.combatState.active, false, 'Victory should clear active combat');
+  assertEqual(App.player.pendingPerkChoices, 1, 'Victory XP should still queue the level-up perk choice');
+  assertEqual(elements.get('desktop-play-cell-n').getAttribute('data-command-control'), 'move', 'Victory should refresh desktop traversal controls after combat');
+  assertContains(elements.get('desktop-play-cell-n').getAttribute('onclick') || '', 'App.move(0,-1)', 'Victory should restore desktop move click handler');
+  assertContains(elements.get('party-content').innerHTML, 'Choose Perk', 'Pending perk selection should remain available without locking traversal');
 });
 
 test('Fight defeat converts enemies into corpses', () => {

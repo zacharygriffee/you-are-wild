@@ -96,8 +96,10 @@ const YAW_COMBAT_LIFECYCLE = {
             app._markDefeat(outcome);
             app.showDefeatRecovery();
         }
+        if (outcome !== 'defeat') app.renderMap();
         app.renderLog();
-        app.renderParty();
+        if ((app.player?.pendingPerkChoices || 0) > 0) app.showPerkSelection();
+        else app.renderParty();
         app.renderCreatures();
         app.showExplorationActions();
         app.renderMobileCombatToolbelt();

@@ -75,14 +75,42 @@ const YAW_COMBAT_SAVE_STATE = {
             round: Math.max(1, savedCombat.round || 1),
             currentTurn: Math.min(Math.max(0, savedCombat.currentTurn || 0), maxTurn),
             turnQueue,
-            syncActions: (savedCombat.syncActions || []).map(sync => ({
-                type: sync.type,
-                participants: (sync.participantIds || []).map(resolve).filter(Boolean),
-                target: resolve(sync.targetId),
-                resolveAtIndex: sync.resolveAtIndex || 0,
-                round: sync.round || savedCombat.round || 1,
-                resolved: Boolean(sync.resolved)
-            })).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
+            syncActions: (savedCombat.syncActions || []).map(sync => {
+                const participants = (sync.participantIds || []).map(resolve).filter(Boolean);
+                const target = resolve(sync.targetId);
+                const resolveAtIndex = sync.resolveAtIndex || 0;
+                const round = sync.round || savedCombat.round || 1;
+                return {
+                    type: sync.type,
+                    participants,
+                    target,
+                    resolveAtIndex,
+                    round,
+                    resolved: Boolean(sync.resolved),
+                    plan: target && participants.length >= 2 ? app._buildInteractionPlan({
+                        mode: 'combat',
+                        actors: participants,
+                        targets: [target],
+                        action: sync.type,
+                        source: 'sync-save',
+                        targetType: 'enemy',
+                        shape: 'many-to-one',
+                        timing: 'slowest-participant',
+                        resolveAt: resolveAtIndex,
+                        distribution: 'single',
+                        constraints: {
+                            requireCurrentTurn: true,
+                            hostileOnly: true,
+                            checkReach: true,
+                            checkRows: true,
+                            minActors: 2,
+                            minTargets: 1,
+                            maxTargets: 1
+                        },
+                        metadata: { baseAction: app._syncBaseAction(sync.type), round }
+                    }) : null
+                };
+            }).filter(sync => sync.target && sync.participants.length >= 2 && !sync.resolved),
             processing: false,
             xpEarned: savedCombat.xpEarned || 0
         };

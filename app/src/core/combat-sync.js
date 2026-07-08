@@ -89,10 +89,36 @@ const YAW_COMBAT_SYNC = {
                 slowestIdx = index;
             }
         }
+        const plan = app._buildInteractionPlan({
+            mode: 'combat',
+            actors: participants,
+            targets: [target],
+            action: syncType,
+            source: 'sync-composer',
+            targetType: 'enemy',
+            shape: 'many-to-one',
+            timing: 'slowest-participant',
+            resolveAt: slowestIdx,
+            distribution: 'single',
+            constraints: {
+                requireCurrentTurn: true,
+                hostileOnly: true,
+                checkReach: true,
+                checkRows: true,
+                minActors: 2,
+                minTargets: 1,
+                maxTargets: 1
+            },
+            metadata: {
+                baseAction: app._syncBaseAction(syncType),
+                round: app.combatState.round
+            }
+        });
         app._syncCurrentTileCreatures();
         app.combatState.syncActions.push({
             type: syncType, participants: participants, target: target,
-            resolveAtIndex: slowestIdx, resolved: false, round: app.combatState.round
+            resolveAtIndex: slowestIdx, resolved: false, round: app.combatState.round,
+            plan
         });
         app.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${target.name}! Resolves when the slowest participant acts.`, type: 'combat' });
         for (const p of participants) {

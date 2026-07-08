@@ -72,17 +72,31 @@ const YAW_INTERACTION_DISPATCH = {
     },
 
     buildCommand(app, context = {}) {
-        const mode = context.mode || (app.combatState?.active ? 'combat' : 'adventure');
+        const requestedMode = context.mode || (app.combatState?.active ? 'combat' : 'exploration');
+        const mode = requestedMode === 'combat' ? 'combat' : 'adventure';
         const actors = context.actors || (mode === 'combat'
             ? [context.actor || app.activeActor || app._currentCombatActor()].filter(Boolean)
             : app._getExplorationActors());
         const targets = context.targets || (mode === 'combat'
             ? [context.target].filter(Boolean)
             : app._getExplorationTargets());
+        const planContext = {
+            ...context,
+            mode,
+            planMode: mode === 'combat' ? 'combat' : 'exploration',
+            actors,
+            targets,
+            source: this.normalizeSource(context.source || 'command-composer')
+        };
+        const planned = typeof YAW_INTERACTION_PLAN !== 'undefined'
+            ? YAW_INTERACTION_PLAN.build(app, planContext)
+            : null;
+        if (planned) return planned;
         const targetTypes = new Set(targets.map(target => app.party.includes(target) ? 'party' : (target.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature')));
         const inferredTargetType = targetTypes.size > 1 ? 'mixed' : ([...targetTypes][0] || null);
         return {
             mode,
+            planMode: mode === 'combat' ? 'combat' : 'exploration',
             actorIds: actors.map(actor => actor?.id || actor?.name).filter(Boolean),
             targetIds: targets.map(target => target?.id || target?.name).filter(Boolean),
             targetType: context.targetType || inferredTargetType,
@@ -92,6 +106,8 @@ const YAW_INTERACTION_DISPATCH = {
             timing: context.timing || 'immediate',
             resolveAt: context.resolveAt || null,
             constraints: context.constraints || {},
+            shape: context.shape || null,
+            distribution: context.distribution || null,
             clearTargets: Boolean(context.clearTargets),
             actors,
             targets
@@ -187,7 +203,10 @@ const YAW_INTERACTION_DISPATCH = {
             targetType: command.targetType,
             source: command.source,
             mode: command.mode,
-            timing: command.timing
+            timing: command.timing,
+            shape: command.shape,
+            distribution: command.distribution,
+            planMode: command.planMode || command.plan?.mode || 'exploration'
         };
         return this.dispatchAdventure(app, command);
     },
@@ -207,9 +226,13 @@ const YAW_INTERACTION_DISPATCH = {
             targetType: command.targetType,
             source: command.source,
             mode: 'combat',
-            timing: command.timing
+            timing: command.timing,
+            shape: command.shape,
+            distribution: command.distribution,
+            resolveAt: command.resolveAt,
+            planMode: command.planMode || command.plan?.mode || 'combat'
         };
-        if (command.timing === 'queued') return app.queueSyncAction(command.action, command.targets?.[0]);
+        if (command.timing === 'queued' || command.timing === 'slowest-participant') return app.queueSyncAction(command.action, command.targets?.[0]);
         if (command.action === 'feed' && !command.targets?.length) return app.executeFeedAction(command.actors[0]);
         if (command.targets?.length) return app._resolveCombatAction(command);
         return app.executeCombatIntent(command.action, command.actors[0]);
@@ -240,7 +263,10 @@ const YAW_INTERACTION_DISPATCH = {
             targetType: command.targetType || 'marked',
             source: command.source || 'command-composer',
             mode: 'adventure',
-            timing: command.timing || 'immediate'
+            timing: command.timing || 'immediate',
+            shape: command.shape,
+            distribution: command.distribution,
+            planMode: command.planMode || command.plan?.mode || 'exploration'
         };
         app.closeMobileContextMenu?.();
         const options = { subAction: command.subAction };

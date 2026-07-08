@@ -228,6 +228,9 @@
             _buildInteractionCommand(context = {}) {
                 return YAW_INTERACTION_DISPATCH.buildCommand(this, context);
             },
+            _buildInteractionPlan(context = {}) {
+                return YAW_INTERACTION_PLAN.build(this, context);
+            },
             _resolvePanelUnit(type, ref) {
                 return YAW_INTERACTION_DISPATCH.resolvePanelUnit(this, type, ref);
             },

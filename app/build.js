@@ -46,6 +46,7 @@ const SCRIPT_ORDER = [
   'src/core/unit-containers.js',
   'src/core/unit-containment.js',
   'src/core/time-system.js',
+  'src/core/interaction-plan.js',
   'src/core/interaction-dispatch.js',
   'src/core/interaction-state.js',
   'src/core/exploration-selection.js',

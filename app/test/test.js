@@ -144,6 +144,7 @@ const unitLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-li
 const unitContainersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containers.js'), 'utf8');
 const unitContainmentContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containment.js'), 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
+const interactionPlanContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
 const interactionStateContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-state.js'), 'utf8');
 const explorationSelectionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'exploration-selection.js'), 'utf8');
@@ -1748,6 +1749,12 @@ test('Recruitment flow helper module is registered before app code', () => {
 });
 
 test('Interaction dispatch helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/interaction-plan.js'", 'Interaction plan helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/interaction-plan.js'") < buildContent.indexOf("'src/core/interaction-dispatch.js'"), 'Interaction plan helper should load before interaction dispatch');
+  assertContains(interactionPlanContent, 'const YAW_INTERACTION_PLAN = {', 'Interaction plan helper should expose the plan service');
+  assertContains(interactionPlanContent, "inferShape(app, actors = [], targets = [])", 'Interaction plan helper should infer actor-target shape');
+  assertContains(interactionPlanContent, "inferDistribution(shape, requested = null)", 'Interaction plan helper should infer command distribution');
+  assertContains(interactionPlanContent, "slowestParticipantIndex(app, actors = [])", 'Interaction plan helper should compute slowest participant timing');
   assertContains(buildContent, "'src/core/interaction-dispatch.js'", 'Interaction dispatch helper should be included in SCRIPT_ORDER');
   assert(buildContent.indexOf("'src/core/interaction-dispatch.js'") < buildContent.indexOf("'src/core/app.js'"), 'Interaction dispatch helper should load before app.js');
   assertContains(interactionDispatchContent, 'const YAW_INTERACTION_DISPATCH = {', 'Interaction dispatch helper should expose the dispatch service');
@@ -1765,6 +1772,7 @@ test('Interaction dispatch helper module is registered before app code', () => {
   assertContains(interactionDispatchContent, 'dispatchCombat(app, command)', 'Interaction dispatch helper should own combat command routing');
   assertContains(interactionDispatchContent, 'dispatchAdventure(app, command)', 'Interaction dispatch helper should own adventure command routing');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildCommand(this, context)', 'App generic command wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_INTERACTION_PLAN.build(this, context)', 'App interaction plan wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.buildPanelCommand(this, context)', 'App panel command wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.selectIntent(this, type, targetRef, action, source, subAction)', 'App intent selection wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_INTERACTION_DISPATCH.dispatch(this, command)', 'App dispatch wrapper should delegate to the helper');
@@ -4941,7 +4949,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -9384,6 +9392,106 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(seen.length, 2, 'Legacy combat wrapper should delegate through the same dispatcher once');
   assertEqual(seen[1].source, 'combat-targeting', 'Legacy combat wrapper should delegate through the combat target-picker command surface');
   assertEqual(seen[1].targetIds[0], 'enemy-combat-panel-dispatch', 'Legacy combat wrapper should resolve the same target id before dispatch');
+});
+
+test('InteractionPlan infers exploration shapes and distributions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actorA = makeUnit('Actor A', { id: 'plan-actor-a' });
+  const actorB = makeUnit('Actor B', { id: 'plan-actor-b' });
+  const targetA = makeUnit('Target A', { id: 'plan-target-a', disposition: App.DISPOSITION.FRIENDLY });
+  const targetB = makeUnit('Target B', { id: 'plan-target-b', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = actorA;
+  App.party = [actorA, actorB, targetA];
+  App.creatures = [targetB];
+
+  let plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA], targets: [targetB], action: 'inspect', source: 'test-plan' });
+  assertEqual(plan.mode, 'adventure', 'Compatibility command mode should stay adventure for existing exploration routes');
+  assertEqual(plan.plan.mode, 'exploration', 'InteractionPlan mode should normalize adventure to exploration');
+  assertEqual(plan.shape, 'one-to-one', 'One actor and one target should infer one-to-one shape');
+  assertEqual(plan.distribution, 'single', 'One-to-one exploration should infer single distribution');
+  assertEqual(plan.timing, 'immediate', 'Exploration plans should default to immediate timing');
+
+  plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [targetB], action: 'flirt' });
+  assertEqual(plan.shape, 'many-to-one', 'Many actors and one target should infer many-to-one shape');
+
+  plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA], targets: [targetA, targetB], action: 'inspect' });
+  assertEqual(plan.shape, 'one-to-many', 'One actor and many targets should infer one-to-many shape');
+  assertEqual(plan.distribution, 'all', 'One-to-many should infer all-target distribution');
+
+  plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [targetA, targetB], action: 'inspect' });
+  assertEqual(plan.shape, 'paired', 'Equal non-overlapping actor and target groups should infer paired shape');
+  assertEqual(plan.distribution, 'paired', 'Paired shape should infer paired distribution');
+
+  plan = App._buildPanelInteractionCommand({ mode: 'adventure', actors: [actorA, actorB], targets: [actorA, actorB], action: 'feed' });
+  assertEqual(plan.shape, 'mutual', 'Identical actor and target sets should infer mutual shape');
+  assertEqual(plan.distribution, 'mutual', 'Mutual shape should infer mutual distribution');
+});
+
+test('InteractionPlan backs combat current-turn target plans and validation', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'plan-combat-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'plan-combat-ally', Figh: 20, combatRow: 'front' });
+  const frontEnemy = makeUnit('Front Enemy', { id: 'plan-front-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  const backEnemy = makeUnit('Back Enemy', { id: 'plan-back-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'back' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [frontEnemy, backEnemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: frontEnemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+
+  const plan = App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [frontEnemy, backEnemy], action: 'fight', source: 'combat-composer' });
+  assertEqual(plan.plan.mode, 'combat', 'Combat command should carry a combat InteractionPlan');
+  assertEqual(plan.shape, 'one-to-many', 'Current combat actor with multiple targets should infer one-to-many shape');
+  assertEqual(plan.timing, 'current-turn', 'Combat target plans should default to current-turn timing');
+  assertEqual(plan.constraints.requireCurrentTurn, true, 'Combat target plans should require the current turn');
+  assertEqual(plan.constraints.hostileOnly, true, 'Combat target plans should preserve hostile-only targeting by default');
+  assertEqual(plan.constraints.checkReach, true, 'Combat target plans should preserve reach checks by default');
+
+  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [ally], targets: [frontEnemy], action: 'fight' })).ok, false, 'Combat plans should reject non-current actors');
+  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' })).reason, 'cannot-reach', 'Combat plans should reject unreachable back-row targets');
+});
+
+test('Sync queues a slowest-participant InteractionPlan', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'plan-sync-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'plan-sync-ally', Figh: 18, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'plan-sync-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: enemy, initiative: 20 }, { unit: ally, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App._syncParticipants = [player, ally];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Sync queue should still accept a reachable group target');
+  assertEqual(advanced, 1, 'Sync queue should still advance after queuing');
+  assertEqual(App.combatState.syncActions.length, 1, 'Sync queue should store one queued action');
+  const sync = App.combatState.syncActions[0];
+  assertEqual(sync.resolveAtIndex, 2, 'Sync should still resolve at the slowest participant turn index');
+  assertEqual(sync.plan.mode, 'combat', 'Queued Sync should carry a combat InteractionPlan');
+  assertEqual(sync.plan.shape, 'many-to-one', 'Queued Sync should plan as many actors to one target');
+  assertEqual(sync.plan.timing, 'slowest-participant', 'Queued Sync should use slowest-participant timing');
+  assertEqual(sync.plan.resolveAt, 2, 'Queued Sync plan should record the slowest participant index');
+  assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should preserve minimum group actor constraint');
+  assertEqual(sync.plan.metadata.baseAction, 'fight', 'Queued Sync plan should expose the base action seam');
 });
 
 test('Combat target-first marking supports multiple selected targets', () => {

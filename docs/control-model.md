@@ -11,6 +11,27 @@ This document defines the UI-safe control model for traversal, actor selection, 
 
 ## Control Modes
 
+## Interaction Plan
+
+Routine play should route through one command-plan concept:
+
+`Actor(s) -> Target(s) -> Intent -> Timing -> Resolution`
+
+The source object is an `InteractionPlan`. Existing compatibility command fields may remain while older code is being migrated, but new interaction routing should preserve these plan fields:
+
+- `mode`: `exploration` or `combat`
+- `actors` and `targets`: resolved unit objects
+- `action` and optional `subAction`
+- `shape`: `one-to-one`, `many-to-one`, `one-to-many`, `many-to-many`, `mutual`, or `paired`
+- `timing`: `immediate`, `current-turn`, `slowest-participant`, or `queued`
+- `resolveAt`: null, a combat turn index, or a future turn token
+- `constraints`: current-turn, hostility, reach, row, actor/target count, and target-type rules
+- `distribution`: `single`, `all`, `split`, `paired`, `mutual`, `aoe`, or `chain`
+
+Exploration and combat should differ by timing and constraints, not by unrelated UI grammars. Exploration normally uses `timing: immediate`; combat normally uses `timing: current-turn`; Sync/Group combat uses `timing: slowest-participant` and resolves on the slowest participant's turn. Future area, row, chain, or multi-target mechanics should extend plan constraints/distribution rather than creating a second action system.
+
+Invalid or ambiguous plans must preserve actor/target selection state and return correction guidance. They must not silently choose a different actor, target, distribution, or intent.
+
 ### Traversal mode
 
 Traversal mode owns movement through the world and structure interiors.

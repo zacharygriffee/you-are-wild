@@ -142,6 +142,17 @@ const YAW_LOG_VIEW = {
         this.render(app);
     },
 
+    toggleActivityLog(app) {
+        const mobileLog = document.getElementById('mobile-activity-log');
+        const mobileVisible = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 700px)')?.matches);
+        if (mobileVisible && mobileLog) {
+            mobileLog.open = !mobileLog.open;
+            return mobileLog.open;
+        }
+        this.toggleCollapsed(app);
+        return !app.logCollapsed;
+    },
+
     setFilter(app, filter = 'all') {
         app.logFilter = this.allowedFilters().includes(filter) ? filter : 'all';
         this.savePreferences(app);

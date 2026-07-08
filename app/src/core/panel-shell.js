@@ -106,11 +106,14 @@ const YAW_PANEL_SHELL = {
         const rail = app._mobilePanelReturnRail || '';
         app._mobilePanelReturnRail = null;
         if (rail === 'actor') app.mobileActorBeltOpen = true;
-        if (rail === 'target') app.mobileCreatureRailOpen = true;
+        if (rail === 'target') {
+            app.mobileTargetPickerOpen = true;
+            app.mobileCreatureRailOpen = false;
+        }
         app.renderMobileExplorationControls?.();
         if (rail === 'target') app.renderMobileCreatureStrip?.();
         const focusSelectors = rail === 'target'
-            ? ['#mobile-creature-strip [data-command-control="focus-target"]', '#mobile-creature-card [data-command-control="open-target-drawer"]']
+            ? ['#mobile-target-picker-belt [data-command-control="focus-target"]', '#mobile-target-picker-belt [data-command-control="focus-items"]', '#mobile-target-picker-belt [data-command-control="open-target-drawer"]']
             : ['#mobile-actor-belt [data-command-control="focus-actor"]', '#mobile-actor-belt button'];
         const target = focusSelectors.map(selector => document.querySelector(selector)).find(Boolean);
         if (target && typeof target.focus === 'function') {

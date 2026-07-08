@@ -87,6 +87,13 @@ const YAW_SCENE_SHELL = {
             mobileActorBelt.removeAttribute('data-command-mode');
             mobileActorBelt.removeAttribute('data-command-grammar');
         }
+        const mobileTargetPicker = document.getElementById('mobile-target-picker-belt');
+        if (mobileTargetPicker) {
+            mobileTargetPicker.innerHTML = '';
+            mobileTargetPicker.removeAttribute('data-command-surface');
+            mobileTargetPicker.removeAttribute('data-command-mode');
+            mobileTargetPicker.removeAttribute('data-command-grammar');
+        }
         document.getElementById('mobile-control-row')?.classList?.remove('has-visible-controls');
         const mobileCreatureCue = document.getElementById('mobile-creature-presence-cue');
         if (mobileCreatureCue) mobileCreatureCue.innerHTML = '';
@@ -103,16 +110,17 @@ const YAW_SCENE_SHELL = {
         }
         const mobileControlBelt = document.getElementById('mobile-control-belt');
         if (mobileControlBelt) {
-            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'actor-controls-open', 'expanded-controls-open');
+            mobileControlBelt.classList?.remove('has-controls', 'target-controls-open', 'actor-controls-open', 'target-picker-open', 'expanded-controls-open');
             mobileControlBelt.hidden = true;
             mobileControlBelt.setAttribute('aria-hidden', 'true');
             mobileControlBelt.removeAttribute('data-command-surface');
             mobileControlBelt.removeAttribute('data-command-mode');
             mobileControlBelt.removeAttribute('data-command-grammar');
         }
-        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded', 'target-controls-open', 'actor-controls-open');
+        document.getElementById('mobile-play-surface')?.classList?.remove('has-control-belt', 'control-belt-expanded', 'target-controls-open', 'actor-controls-open', 'target-picker-open');
         app.mobileMovePadOpen = false;
         app.mobileActorBeltOpen = false;
+        app.mobileTargetPickerOpen = false;
     },
 
     clearCommandSentences() {

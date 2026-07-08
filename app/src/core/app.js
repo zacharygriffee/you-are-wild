@@ -270,6 +270,9 @@
             renderSelectionSentence() {
                 return YAW_INTERACTION_STATE.renderSelectionSentence(this);
             },
+            handleComposerSlotClick(slot) {
+                return YAW_INTERACTION_STATE.handleSlotClick(this, slot);
+            },
             _panelInteractionTrayTitle(mode) {
                 return YAW_PANEL_INTERACTIONS.title(this, mode);
             },
@@ -727,7 +730,8 @@
             focusedStageObject: null,
             mobileMovePadOpen: false,
             mobileActorBeltOpen: false,
-            mobileCreatureRailOpen: true,
+            mobileTargetPickerOpen: false,
+            mobileCreatureRailOpen: false,
             transactionWindow: null,
             inInterior: false,
             activeInterior: null,
@@ -3964,6 +3968,9 @@
             focusMobileActorRail() {
                 return YAW_MOBILE_UNIT_STRIPS.focusActorRail(this);
             },
+            focusMobileTargetPicker() {
+                return YAW_MOBILE_UNIT_STRIPS.focusTargetPicker(this);
+            },
             focusMobileCreaturePresence() {
                 return YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this);
             },
@@ -3976,15 +3983,22 @@
             },
             toggleMobileActorBelt() {
                 this.mobileActorBeltOpen = !this.mobileActorBeltOpen;
-                if (this.mobileActorBeltOpen) this.mobileMovePadOpen = false;
+                if (this.mobileActorBeltOpen) {
+                    this.mobileTargetPickerOpen = false;
+                    this.mobileMovePadOpen = false;
+                }
                 this.renderMobileExplorationControls();
+            },
+            toggleMobileTargetPicker() {
+                return YAW_MOBILE_UNIT_STRIPS.toggleTargetPicker(this);
             },
             toggleMobilePartyRail() {
                 if (this.combatState?.active) return this.openPanel('party');
                 return this.toggleMobileActorBelt();
             },
             toggleMobileCreatureRail() {
-                return YAW_MOBILE_UNIT_STRIPS.toggleCreatureRail(this);
+                if (this.combatState?.active) return YAW_MOBILE_UNIT_STRIPS.toggleCreatureRail(this);
+                return YAW_MOBILE_UNIT_STRIPS.toggleTargetPicker(this);
             },
             renderMobileCreatureStrip() {
                 return YAW_MOBILE_UNIT_STRIPS.creatures(this);
@@ -4006,6 +4020,9 @@
             },
             _unitTacticalBars(unit, options = {}) {
                 return YAW_UNIT_CARD_STATUS.tacticalBars(this, unit, options);
+            },
+            _unitTacticalRings(unit) {
+                return YAW_UNIT_CARD_STATUS.tacticalRings(this, unit);
             },
             _unitVisibleTraits(unit, type, limit = 3) {
                 return YAW_UNIT_CARD_STATUS.visibleTraits(this, unit, type, limit);
@@ -4290,6 +4307,9 @@
             },
             toggleLogExpanded() {
                 return YAW_LOG_VIEW.toggleExpanded(this);
+            },
+            toggleActivityLog() {
+                return YAW_LOG_VIEW.toggleActivityLog(this);
             },
             setLogFilter(filter = 'all') {
                 return YAW_LOG_VIEW.setFilter(this, filter);

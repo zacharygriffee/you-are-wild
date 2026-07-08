@@ -106,6 +106,21 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         surface.setAttribute?.('data-surface-mode', inCombat ? 'combat' : 'exploration');
     },
 
+    clearCellCommand(el) {
+        if (!el) return;
+        [
+            'role',
+            'data-command-surface',
+            'data-command-mode',
+            'data-command-control',
+            'data-command-direction',
+            'onclick',
+            'onkeydown'
+        ].forEach(attr => el.removeAttribute?.(attr));
+        el.setAttribute?.('tabindex', '-1');
+        el.onclick = null;
+    },
+
     handleTraversalKey(app, event = {}) {
         if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return false;
         if (this.isEditableEventTarget(event.target || document.activeElement)) return false;
@@ -176,6 +191,88 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         el.onclick = moveable ? () => app.move(dx, dy) : null;
     },
 
+    combatantIds(app, unit) {
+        if (!unit) return [];
+        return [app._unitSelectionId?.(unit), unit.id, unit.name].map(id => String(id || '')).filter(Boolean);
+    },
+
+    combatantHtml(app, unit, type, actor = null) {
+        if (!unit) return '';
+        const ids = this.combatantIds(app, unit);
+        const markedTarget = ids.some(id => (app.combatTargetIds || []).includes(id) || app.combatTargetId === id);
+        const syncParticipant = Boolean(app._isSyncParticipant?.(unit));
+        const down = unit.CPun <= 0 || unit.knockedOut || unit.fledCombat || app._isCorpse?.(unit);
+        const current = Boolean(actor && unit === actor);
+        const row = unit.combatRow ? app._label(`combat.row.${unit.combatRow}`, unit.combatRow) : '';
+        const role = type === 'party'
+            ? (current ? app._label('combat.exchange.currentActor', 'Current') : app._label('ui.party', 'Party'))
+            : (markedTarget ? app._label('target.targetRole', 'Target') : app._label('ui.enemies', 'Enemies'));
+        const badges = [
+            current ? app._label('combat.exchange.currentActor', 'Current') : '',
+            markedTarget ? app._label('target.targetRole', 'Target') : '',
+            syncParticipant ? app._label('combat.sync.participantRole', 'Participant') : '',
+            down ? (app._isCorpse?.(unit) ? app._label('disposition.remains', 'Remains') : app._label('unit.trait.wounded', 'Wounded')) : ''
+        ].filter(Boolean).map(label => `<span class="desktop-battle-badge">${app._escapeHtml(label)}</span>`).join('');
+        const icon = unit.icon || (type === 'party' ? '👤' : '⚔️');
+        const bars = typeof YAW_UNIT_CARD_STATUS !== 'undefined' ? YAW_UNIT_CARD_STATUS.tacticalBars(app, unit, { compact: true }) : '';
+        const traits = typeof YAW_UNIT_CARD_STATUS !== 'undefined' ? YAW_UNIT_CARD_STATUS.traitChips(app, unit, type === 'party' ? 'party' : 'creature', 2) : '';
+        return `<div class="desktop-battle-unit ${app._escapeHtml(type)}${current ? ' current-actor' : ''}${markedTarget ? ' selected-target' : ''}${syncParticipant ? ' sync-participant' : ''}${down ? ' downed' : ''}" data-stage-surface="combatant" data-stage-layer="${app._escapeHtml(type)}" data-unit-id="${app._escapeHtml(ids[0] || '')}" aria-label="${app._escapeHtml(`${unit.name || 'Unit'} ${role}`)}">`
+            + `<div class="desktop-battle-unit-head"><span class="desktop-battle-icon" aria-hidden="true">${app._escapeHtml(icon)}</span><span class="desktop-battle-name">${app._escapeHtml(unit.name || app._label('unit.generic', 'unit'))}</span>${badges}</div>`
+            + `<div class="desktop-battle-meta">${app._escapeHtml(row || role)}</div>`
+            + bars
+            + traits
+            + `</div>`;
+    },
+
+    combatLaneHtml(app, title, units, type, actor = null) {
+        const empty = type === 'enemy'
+            ? app._label('combat.exchange.noEnemies', 'No enemies in the line.')
+            : app._label('combat.exchange.noParty', 'No party combatants in the line.');
+        const items = units.length
+            ? units.map(unit => this.combatantHtml(app, unit, type, actor)).join('')
+            : `<div class="desktop-battle-empty">${app._escapeHtml(empty)}</div>`;
+        return `<div class="desktop-battle-lane ${app._escapeHtml(type)}" data-stage-surface="battle-row" data-stage-layer="${app._escapeHtml(type)}"><div class="desktop-battle-lane-title">${app._escapeHtml(title)}</div><div class="desktop-battle-units">${items}</div></div>`;
+    },
+
+    updateCombatLane(app, id, title, units, type, actor) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = `desktop-play-cell desktop-battle-row ${type}`;
+        el.innerHTML = this.combatLaneHtml(app, title, units, type, actor);
+        el.setAttribute?.('data-stage-surface', 'battle-row');
+        el.setAttribute?.('data-stage-layer', type);
+        el.setAttribute?.('aria-label', title);
+        this.clearCellCommand(el);
+    },
+
+    renderCombat(app) {
+        const actor = app.activeActor || app._currentCombatActor?.() || app.player;
+        const enemies = (app.creatures || []).filter(unit => unit && (
+            unit.disposition === app.DISPOSITION.ENEMY ||
+            unit.CPun <= 0 ||
+            app._isCorpse?.(unit)
+        ));
+        const party = (app.party || []).filter(Boolean);
+        const hiddenIds = ['desktop-play-cell-nw', 'desktop-play-cell-ne', 'desktop-play-cell-w', 'desktop-play-cell-e', 'desktop-play-cell-sw', 'desktop-play-cell-se'];
+        hiddenIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = 'desktop-play-cell combat-stage-hidden';
+            el.innerHTML = '';
+            el.setAttribute?.('aria-hidden', 'true');
+            el.setAttribute?.('data-stage-surface', 'battle-hidden');
+            this.clearCellCommand(el);
+        });
+        this.updateCombatLane(app, 'desktop-play-cell-n', app._label('ui.enemies', 'Enemies'), enemies, 'enemy', actor);
+        this.updateCombatLane(app, 'desktop-play-cell-s', app._label('ui.party', 'Party'), party, 'party', actor);
+        this.updateCenter(app, { classes: 'desktop-battle-center', tilesetKey: 'combat', baseTilesetKey: 'combat', kind: 'combat' }, app._label('combat.exchange.summary', 'Combat summary'));
+        const center = document.getElementById('desktop-play-cell-center');
+        if (center) {
+            center.setAttribute('data-stage-surface', 'battle-context');
+            center.setAttribute('data-stage-layer', 'turn-context');
+        }
+    },
+
     renderInterior(app) {
         const cx = app.interiorLocation.x;
         const cy = app.interiorLocation.y;
@@ -222,6 +319,10 @@ const YAW_DESKTOP_PLAY_SURFACE = {
 
     render(app) {
         this.syncSurfaceMode(app);
+        if (this.isCombatActive(app)) {
+            this.renderCombat(app);
+            return;
+        }
         if (app.inInterior && app.activeInterior) {
             this.renderInterior(app);
             return;

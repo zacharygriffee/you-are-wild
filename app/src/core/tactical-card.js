@@ -217,7 +217,7 @@ const YAW_TACTICAL_CARD = {
                     <div class="mobile-chip-name"><span>${isCorpse ? (unit.corpseIcon || unit.icon) : unit.icon}</span><span>${unitLabel}</span>${turnBadge}</div>
                     ${combatStatus}
                     <div class="mobile-chip-meta">${app._escapeHtml(status)}${rowText}</div>
-                    ${app._unitTacticalBars(unit, { compact: true })}
+                    ${app._unitTacticalRings(unit)}
                     ${app._unitTraitChips(unit, type)}
                     ${app._unitSelectionChips(unit, type)}
                     ${inlineActions}

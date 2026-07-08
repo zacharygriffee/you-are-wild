@@ -2283,6 +2283,7 @@ test('Tactical card helper module is registered before mobile and desktop card r
   assertContains(appContent, 'YAW_TACTICAL_CARD.render(this, unit, index, type, options)', 'App tactical card wrapper should delegate to the shared helper');
   assertContains(templateContent, '.mobile-unit-chip.compact-tactical-card', 'Mobile tactical cards should have compact tactical card styling');
   assertContains(templateContent, '.mobile-unit-chip .tactical-card-selection-controls', 'Mobile tactical card controls should be positioned as compact card toggles');
+  assertContains(templateContent, '.mobile-stat-rings', 'Mobile tactical cards should expose compact circular status indicators');
   assertContains(templateContent, '.unit-card.compact-tactical-card', 'Desktop tactical cards should have compact tactical card styling');
 });
 
@@ -4440,7 +4441,7 @@ test('Mobile game shell prevents horizontal overflow', () => {
 
 test('Mobile panels and actions expose map party and enemies', () => {
   assertContains(template, 'transform: translateX(-110%)', 'mobile map panel should use transform overlay');
-  assertContains(template, 'transform: translateX(110%)', 'mobile side panels should use transform overlay');
+  assertContains(template, 'transform: translateY(120%)', 'mobile side panels should use bottom-sheet transform overlay');
   assertNotContains(centerContextContent, "stats: 'App.showCharacterStats()'", 'shared context action helper should not own drawer shortcut handlers');
   assertNotContains(centerContextContent, "togglePanel('map')", 'shared context action helper should not own map drawer shortcuts');
   assertNotContains(centerContextContent, "togglePanel('party')", 'shared context action helper should not own party drawer shortcuts');
@@ -4603,8 +4604,13 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-actor-chip-btn.actor-toggle {\n                --mobile-actor-icon-content: "👤";', 'mobile actor rail Actor controls should render an actor icon');
   assertContains(template, '.mobile-actor-chip-btn.target-toggle {\n                --mobile-actor-icon-content: "⌖";', 'mobile actor rail Mark controls should render a target icon');
   assertContains(template, '.mobile-actor-chip.mobile-actor-clear', 'mobile actor belt should style a clear-exit control');
-  assertContains(template, '.mobile-unit-chip .tactical-card-selection-controls .action-btn {\n                pointer-events: auto;\n                flex: 0 0 auto;\n                min-width: 48px;', 'mobile target rail Mark controls should keep readable touch width');
-  assertContains(template, 'min-height: 44px;\n                padding: 6px 8px;', 'mobile target rail Mark controls should keep finger-sized tap targets');
+  assertContains(template, '.mobile-target-picker-belt', 'mobile target slot should have an independent picker belt');
+  assertContains(template, '.mobile-unit-chip .tactical-card-selection-controls .action-btn {\n                --mobile-card-icon-content: "•";', 'mobile target rail Mark controls should use icon-first badges');
+  assertContains(template, 'width: 44px;\n                min-width: 44px;\n                max-width: 44px;\n                height: 44px;', 'mobile target rail Mark controls should keep compact finger-sized corner targets');
+  assertContains(template, 'font-size: 0;', 'mobile target rail Mark controls should hide visible text labels');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-strip-header {\n                display: none;', 'mobile combat strips should avoid redundant Party/Enemies headers above compact cards');
+  assertContains(template, '.mobile-panel-dock .nav-btn.danger', 'mobile creature dock should expose a danger visual state when enemies are present');
+  assertContains(mobileUnitStripsContent, "button.classList.toggle('danger'", 'mobile creature dock should toggle the enemy danger state from local presence');
   assertContains(template, 'id="mobile-move-toggle"', 'mobile movement pad toggle should remain available for later accessibility settings');
   assertContains(template, 'id="mobile-move-toggle" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="toggle-move-pad" title="Move pad" aria-label="Move pad" data-i18n-title="ui.movePadToggle" data-i18n-aria-label="ui.movePadToggle" aria-controls="mobile-move-pad" aria-expanded="false" onclick="App.toggleMobileMovePad()" hidden', 'mobile movement pad toggle should be hidden while the 3x3 traversal surface is the primary mobile control');
   assertContains(template, '.mobile-move-pad {\n                display: none;', 'mobile movement pad should collapse by default');
@@ -4651,7 +4657,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(mobileCombatToolbeltContent, 'class="selection-sentence mobile-combat-selection-sentence" ${attrs} role="status" aria-live="polite" aria-atomic="true"', 'mobile combat command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(interactionStateContent, 'actorLabel(app, count = 1)', 'selection sentence should choose singular/plural actor labels from state');
   assertContains(interactionStateContent, 'targetLabel(app, count = 1)', 'selection sentence should choose singular/plural target labels from state');
-  assertContains(interactionStateContent, "hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : ''", 'mobile selection sentence should appear only when exploration selection state needs correction or controls');
+  assertContains(interactionStateContent, "hasTargets || hasFocusedObject || hasMeaningfulActors || hasInvalidActors || hasMobilePicker ? html : ''", 'mobile selection sentence should appear when selection state or slot-picker controls are relevant');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));', 'mobile combat intent belt should size buttons without horizontal page overflow');
   assertContains(template, 'overflow-x: auto;\n                overflow-y: hidden;\n                overscroll-behavior-x: contain;', 'mobile unit panels should own horizontal scrolling');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-chip {\n                flex-basis: clamp(132px, 42vw, 172px);', 'combat unit chips should keep stable horizontal card widths');
@@ -4754,8 +4760,8 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   assertContains(template, 'id="panel-enemies" data-surface-role="target-drawer"', 'creature panel should identify as a target detail drawer');
   assertContains(template, 'id="party-content" data-surface-role="actor-list" data-drawer-role="actors"', 'party panel content should identify as the actor drawer list, not a command composer');
   assertContains(template, 'id="enemies-content" data-surface-role="target-list" data-drawer-role="targets"', 'creature panel content should identify as the target drawer list, not a command composer');
-  assertContains(template, 'grid-template-columns: minmax(680px, 1fr) minmax(164px, 184px) minmax(164px, 184px);', 'desktop stage should keep the center surface primary and side rails compact');
-  assertContains(template, '.panel-party,\n        .panel-enemies {\n            background: rgba(26, 26, 46, 0.56);', 'desktop side rails should read as quieter supporting context instead of primary panels');
+  assertContains(template, 'grid-template-columns: minmax(720px, 960px) minmax(144px, 164px) minmax(144px, 164px);', 'desktop stage should keep the center surface primary and side rails compact');
+  assertContains(template, '.panel-party,\n        .panel-enemies {\n            align-self: start;\n            max-height: 100%;\n            background: rgba(26, 26, 46, 0.42);', 'desktop side rails should read as quieter supporting context instead of primary panels');
   assertContains(template, '.panel-party .panel-header,\n        .panel-enemies .panel-header', 'desktop side rail headers should be visually demoted');
   assertContains(template, '.stage.target-panel-empty', 'desktop stage should collapse the target side when no local targets or items exist');
   assertContains(template, '.stage.target-panel-empty .panel-enemies', 'desktop empty target side should not remain a dominant panel');
@@ -12188,6 +12194,13 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(elements.get('mobile-creature-dock-badge').hidden, false, 'Mobile creature dock badge should be visible when living creatures are here');
   assertEqual(elements.get('mobile-creature-dock-badge').textContent, '1', 'Mobile creature dock badge should show the local living creature count');
   assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), '1 here', 'Mobile creature dock button should expose the local creature count accessibly');
+  assertEqual(elements.get('mobile-creatures-dock-btn').classList.contains('danger'), false, 'Friendly creature dock state should not use the enemy danger treatment');
+  const hostile = makeUnit('Raider', { id: 'raider-1', disposition: App.DISPOSITION.ENEMY });
+  App.creatures = [hostile];
+  App.renderMobileCreatureStrip();
+  assertEqual(elements.get('mobile-creatures-dock-btn').classList.contains('danger'), true, 'Hostile creature dock state should use the enemy danger treatment');
+  assertEqual(elements.get('mobile-creature-dock-badge').classList.contains('danger'), true, 'Hostile creature count badge should use the enemy danger treatment');
+  assertContains(elements.get('mobile-creatures-dock-btn').getAttribute('aria-label'), 'Enemies: 1 here', 'Danger dock state should identify local enemies accessibly');
   const scout = makeUnit('Scout', { id: 'scout-1', disposition: App.DISPOSITION.NEUTRAL });
   App.creatures = [guide, scout];
   App.renderMobileExplorationControls();
@@ -15120,11 +15133,11 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(creatureCard, "showIntentMenu('creature','fox-1','desktop')", 'Default creature card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(creatureCard, "selectIntent('creature','fox-1','fight'", 'Default creature card should not show primary action spam');
   assertNotContains(creatureCard, '>...</button>', 'Creature card should not expose an ellipsis menu button that duplicates marked-target controls');
-  assertContains(mobilePartyChip, 'unit-bars compact', 'Mobile party chip should reuse compact tactical bars');
+  assertContains(mobilePartyChip, 'mobile-stat-rings', 'Mobile party chip should use compact circular tactical status rings');
   assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
   assertContains(mobilePartyChip, 'aria-label="Show details for You"', 'Mobile chip click should describe detail toggling rather than actor selection');
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
-  assertContains(mobileCreatureChip, 'unit-bars compact', 'Mobile creature chip should reuse compact tactical bars');
+  assertContains(mobileCreatureChip, 'mobile-stat-rings', 'Mobile creature chip should use compact circular tactical status rings');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(mobilePartyChip, '>...</button>', 'Mobile party chip should not expose an ellipsis menu button that duplicates actor/target controls');
@@ -15981,6 +15994,7 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(template, 'id="mobile-activity-log"', 'Mobile should expose a collapsible activity log');
   assertContains(template, 'id="mobile-activity-log" data-surface-role="history-drawer"', 'Mobile activity log should identify as a secondary history drawer');
   assertContains(template, 'data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-mobile-history"', 'Mobile activity log summary should identify its history toggle control');
+  assertContains(template, 'data-command-control="toggle-history"', 'App menu should expose Activity Log as an explicit history toggle');
   assertContains(template, 'id="mobile-log-list"', 'Mobile activity log should expose recent entries');
   assertContains(template, 'class="log-header-actions" data-command-surface="history-controls" data-command-mode="history"', 'Desktop log header actions should identify as history controls');
   assertContains(template, 'id="log-toggle-collapse" data-command-surface="history-controls" data-command-mode="history" data-command-control="minimize-history"', 'Log minimize button should identify as a history control');
@@ -16002,8 +16016,10 @@ test('Activity log template exposes filters search export and mobile controls', 
   assertContains(appContent, 'LOG_CATEGORIES:', 'Log category registry should exist');
   assertContains(template, '.log-category', 'Log category badge style should exist');
   assertContains(template, '.mobile-activity-log', 'Mobile activity log style should exist');
+  assertContains(template, '.mobile-activity-log:not([open])', 'Closed mobile Activity Log should stay out of the normal play stack');
   assertContains(template, '#app.log-collapsed', 'Log collapsed layout style should exist');
   assertContains(template, '#app.log-expanded', 'Log expanded layout style should exist');
+  assertContains(appContent, 'toggleActivityLog()', 'App should expose a shared Activity Log toggle for the app menu');
 });
 
 test('Story template exposes expandable semantic story surfaces distinct from activity log', () => {
@@ -17085,6 +17101,53 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(App._renderExplorationTargetActions('mobile-target'), 'aria-label="Comerciar Merchant"', 'Marked-target tray trade button should expose localized accessible label');
 });
 
+test('Mobile slot picker preserves actor and target selections independently', () => {
+  const { App, document } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'player-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const scout = makeUnit('Scout', { id: 'scout-1' });
+  const deer = makeUnit('Deerfolk Longname', { id: 'deer-1', icon: '🦌', disposition: App.DISPOSITION.FRIENDLY });
+  App.player = player;
+  App.party = [player, ally, scout];
+  App.creatures = [deer];
+  App.combatState.active = false;
+  App.mobileActorBeltOpen = true;
+  App.mobileTargetPickerOpen = false;
+
+  App.selectExplorationActor(1);
+  App.selectExplorationActor(2);
+  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Mobile actor picker should support multiple selected actors');
+
+  App.focusMobileTargetPicker();
+  assertEqual(App.mobileActorBeltOpen, false, 'Opening target picker should close only the actor picker UI');
+  assertEqual(App.mobileTargetPickerOpen, true, 'Target slot should open the lightweight target picker');
+  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Opening target picker should preserve selected actors');
+  App.toggleExplorationTarget('creature', 'deer-1');
+  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Selecting a creature target should not lose selected actors');
+  assert.deepStrictEqual(App.explorationTargetIds, ['creature:deer-1'], 'Target picker should mark the selected creature');
+
+  App.renderSelectionSentence();
+  const sentence = document.getElementById('mobile-selection-sentence').innerHTML;
+  assertContains(sentence, 'Ally + Scout', 'Mobile composer sentence should name multiple selected actors');
+  assertContains(sentence, 'Deerfolk Longname', 'Mobile composer sentence should name selected target');
+  assertContains(sentence, 'data-command-control="open-actor-slot"', 'Mobile composer actor slot should be a control');
+  assertContains(sentence, 'data-command-control="open-target-slot"', 'Mobile composer target slot should be a control');
+
+  App.clearExplorationActors();
+  App.clearExplorationTargets();
+  App.toggleExplorationTarget('creature', 'deer-1');
+  App.focusMobileActorRail();
+  App.selectExplorationActor(1);
+  assert.deepStrictEqual(App.explorationTargetIds, ['creature:deer-1'], 'Opening actor picker after target-first selection should preserve target');
+  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1'], 'Actor picker should still update actors after target-first selection');
+
+  const targetHtml = YAW_MOBILE_UNIT_STRIPS.targetControls(App);
+  assertContains(targetHtml, 'data-surface-role="target-picker-chip"', 'Target slot picker should use compact target-picker chips');
+  assertContains(targetHtml, 'aria-label="Remove Deerfolk Longname from targets"', 'Target picker chip should keep full accessible target name');
+  assertContains(targetHtml, 'mobile-target-picker-count', 'Target picker chip should show small identity aids');
+  assertContains(targetHtml, 'corner-card-controls', 'Target picker chip should keep mark state in a corner badge');
+});
+
 test('Desktop card intent menus stay suppressed for composer-owned actions', () => {
   const { App, body, document, listeners, elements } = loadAppForCombat();
   const opener = makeElement();
@@ -17245,7 +17308,8 @@ test('Desktop play surface renders adjacent movement cells', () => {
   App.renderMap();
   assertEqual(elements.get('desktop-play-surface').classList.contains('combat-active'), true, 'Desktop play surface should expose combat layout state');
   assertEqual(elements.get('desktop-play-surface').getAttribute('data-surface-mode'), 'combat', 'Desktop play surface should identify combat mode');
-  assertContains(north.innerHTML, 'desktop-play-cell-icon', 'Combat desktop north cell should remain visible as tactical context');
+  assertContains(north.innerHTML, 'desktop-battle-lane', 'Combat desktop north cell should become the enemy battle row');
+  assertContains(north.className, 'desktop-battle-row enemy', 'Combat desktop north cell should identify as the enemy row');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
   assertEqual(north.getAttribute('role'), null, 'Combat desktop north cell should not expose button semantics');
   assertEqual(north.getAttribute('tabindex'), '-1', 'Combat desktop north cell should leave keyboard focus for combat controls');
@@ -17255,7 +17319,9 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertEqual(north.getAttribute('data-command-control'), null, 'Combat desktop north cell should not advertise movement commands');
   assertEqual(north.getAttribute('data-command-direction'), null, 'Combat desktop north cell should not advertise a movement direction');
   assertEqual(north.onclick, null, 'Combat desktop north cell should clear its click handler');
-  assertEqual(center.getAttribute('data-stage-surface'), 'current-tile', 'Desktop center tile should remain the current stage tile in combat');
+  assertEqual(north.getAttribute('data-stage-surface'), 'battle-row', 'Combat desktop north cell should identify as a battle row');
+  assertEqual(center.getAttribute('data-stage-surface'), 'battle-context', 'Desktop center tile should become the combat turn context in combat');
+  assertEqual(elements.get('desktop-play-cell-s').getAttribute('data-stage-surface'), 'battle-row', 'Combat desktop south cell should identify as the party battle row');
 });
 
 test('Desktop traversal hotkeys dispatch through the stage movement command', () => {

@@ -260,8 +260,8 @@ async function mobileCombatToolbeltMetrics(page) {
 function assertMobileCombatToolbeltTapTargets(metrics, label) {
   assert(metrics.toolbeltVisible, `${label}: mobile combat toolbelt should be visible`);
   assert(metrics.buttonCount >= 1, `${label}: mobile combat toolbelt should expose at least one control`);
-  assert(metrics.minButtonWidth >= 70, `${label}: mobile combat controls should keep readable thumb-width targets`);
-  assert(metrics.minButtonHeight >= 44, `${label}: mobile combat controls should keep finger-sized tap targets`);
+  assert(metrics.minButtonWidth >= 70, `${label}: mobile combat controls should keep readable thumb-width targets (${JSON.stringify(metrics)})`);
+  assert(metrics.minButtonHeight >= 44, `${label}: mobile combat controls should keep finger-sized tap targets (${JSON.stringify(metrics)})`);
   assert.strictEqual(metrics.buttonsInsideViewport, true, `${label}: mobile combat controls should stay inside the viewport`);
   assert.strictEqual(metrics.toolbeltInsideViewport, true, `${label}: mobile combat toolbelt should stay inside the viewport`);
 }
@@ -288,8 +288,9 @@ async function mobileExplorationRailMetrics(page) {
     const targetTray = rects('#mobile-target-action-tray .action-btn');
     const actorChips = rects('#mobile-actor-belt .mobile-actor-chip');
     const actorButtons = buttonRects('#mobile-actor-belt .mobile-actor-chip-btn');
-    const targetButtons = rects('#mobile-creature-strip .tactical-card-selection-controls .action-btn');
+    const targetButtons = rects('#mobile-target-picker-belt .tactical-card-selection-controls .action-btn, #mobile-creature-strip .tactical-card-selection-controls .action-btn');
     return {
+      targetPickerOpen: Boolean(window.App?.mobileTargetPickerOpen),
       targetTrayCount: targetTray.length,
       minTargetTrayWidth: min(targetTray.map(rect => rect.width)),
       minTargetTrayHeight: min(targetTray.map(rect => rect.height)),
@@ -319,9 +320,11 @@ function assertMobileExplorationRailTapTargets(metrics, label) {
   assert(metrics.maxActorButtonWidth <= 44, `${label}: actor rail Actor/Mark controls should stay compact and icon-sized`);
   assert.strictEqual(metrics.maxActorButtonFontSize, 0, `${label}: actor rail Actor/Mark controls should hide visible text labels`);
   assert.strictEqual(metrics.actorButtonsAccessible, true, `${label}: icon-only actor rail controls should keep title and aria-label text`);
-  assert(metrics.targetButtonCount >= 1, `${label}: target rail should expose compact Mark controls`);
-  assert(metrics.minTargetButtonWidth >= 44, `${label}: target rail Mark controls should keep icon-sized touch width`);
-  assert(metrics.minTargetButtonHeight >= 44, `${label}: target rail Mark controls should keep finger-sized tap targets`);
+  if (metrics.targetPickerOpen) {
+    assert(metrics.targetButtonCount >= 1, `${label}: target picker should expose compact Mark controls`);
+    assert(metrics.minTargetButtonWidth >= 44, `${label}: target picker Mark controls should keep icon-sized touch width`);
+    assert(metrics.minTargetButtonHeight >= 44, `${label}: target picker Mark controls should keep finger-sized tap targets`);
+  }
 }
 
 async function runCombatTargetFirstComposerFlow(page) {
@@ -330,6 +333,7 @@ async function runCombatTargetFirstComposerFlow(page) {
   const stageState = await page.evaluate(() => {
     const surface = document.querySelector('#desktop-play-surface');
     const north = document.querySelector('#desktop-play-cell-n');
+    const south = document.querySelector('#desktop-play-cell-s');
     const center = document.querySelector('#desktop-play-cell-center');
     const movementCommands = Array.from(document.querySelectorAll('#desktop-play-surface [data-command-surface="stage-traversal"]'));
     return {
@@ -343,6 +347,10 @@ async function runCombatTargetFirstComposerFlow(page) {
       northOnClick: north?.getAttribute('onclick') || null,
       movementCommandCount: movementCommands.length,
       centerStage: center?.getAttribute('data-stage-surface') || '',
+      northStage: north?.getAttribute('data-stage-surface') || '',
+      southStage: south?.getAttribute('data-stage-surface') || '',
+      enemyRowText: north?.innerText || '',
+      partyRowText: south?.innerText || '',
       centerCommandCount: center?.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length || 0
     };
   });
@@ -355,7 +363,11 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(stageState.northControl, null, 'Desktop combat surrounding cells should not advertise movement controls');
   assert.strictEqual(stageState.northOnClick, null, 'Desktop combat surrounding cells should not dispatch movement clicks');
   assert.strictEqual(stageState.movementCommandCount, 0, 'Desktop combat surface should not expose routine stage-traversal commands');
-  assert.strictEqual(stageState.centerStage, 'current-tile', 'Desktop combat center should remain the current stage tile');
+  assert.strictEqual(stageState.centerStage, 'battle-context', 'Desktop combat center should become the turn/exchange context');
+  assert.strictEqual(stageState.northStage, 'battle-row', 'Desktop combat north row should summarize enemies');
+  assert.strictEqual(stageState.southStage, 'battle-row', 'Desktop combat south row should summarize party combatants');
+  assert(stageState.enemyRowText.includes('Enemy'), 'Desktop combat battle stage should show enemy combatants without requiring side rails');
+  assert(stageState.partyRowText.includes('You'), 'Desktop combat battle stage should show party combatants without requiring side rails');
   assert.strictEqual(stageState.centerCommandCount, 0, 'Desktop combat center should stay free of command controls');
   const desktopMark = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => desktopMark.waitFor({ state: 'visible', timeout: 1000 }), 'Desktop combat enemy card should expose target-first Mark');
@@ -1955,8 +1967,9 @@ async function runContextualCardIntentSourceFlow(page) {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await setupAdventure(page);
-  const mobileMark = page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
-  await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile creature chip Mark should render as the chip-level target control');
+  await page.evaluate(() => App.focusMobileTargetPicker?.());
+  const mobileMark = page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first();
+  await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile target picker Mark should render as the chip-level target control');
   await mobileMark.click();
   const mobileInspect = page.locator(`#mobile-target-action-tray button[onclick*="selectIntent('creature','friendly-1','inspect','composer-tray')"]`).first();
   await assert.doesNotReject(() => mobileInspect.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray Inspect should render through shared intent selection');
@@ -1972,10 +1985,10 @@ async function runContextualCardIntentSourceFlow(page) {
   }));
   assert.strictEqual(state.action, 'inspect', 'Mobile marked-target tray Inspect should record the selected action');
   assert.strictEqual(state.source, 'composer-tray', 'Mobile marked-target tray Inspect should preserve composer-tray source metadata');
-  assert.strictEqual(state.mode, 'adventure', 'Mobile creature chip Inspect should normalize as an adventure command');
-  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Mobile creature chip Inspect should record the tapped creature target');
-  assert(state.lastLog.includes('Friendly [human]'), 'Mobile creature chip Inspect should still use the normal inspect resolution');
-  assert.strictEqual(state.centerHasActorControls, false, 'Mobile creature chip Inspect should keep center free of actor controls');
+  assert.strictEqual(state.mode, 'adventure', 'Mobile target picker Inspect should normalize as an adventure command');
+  assert.deepStrictEqual(state.targetIds, ['friendly-1'], 'Mobile target picker Inspect should record the tapped creature target');
+  assert(state.lastLog.includes('Friendly [human]'), 'Mobile target picker Inspect should still use the normal inspect resolution');
+  assert.strictEqual(state.centerHasActorControls, false, 'Mobile target picker Inspect should keep center free of actor controls');
 
   await page.setViewportSize({ width: 1365, height: 768 });
 }
@@ -2210,10 +2223,11 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.menuVisible, false, 'Mobile living creature long-press should not open a duplicate action menu');
   assert.strictEqual(state.hasRadialEntry, false, 'Mobile living creature chip should not expose a secondary-click primary-action popup');
 
-  await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
+  await page.evaluate(() => App.focusMobileTargetPicker?.());
+  await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   const mobileTray = page.locator('#mobile-target-action-tray .target-action-row').first();
   await assert.doesNotReject(() => mobileTray.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile marked-target tray should render in the visible exploration control belt');
-  await page.locator(`#mobile-actor-toggle`).first().click();
+  await page.locator(`#mobile-selection-sentence [data-command-control="open-actor-slot"]`).first().click();
   await page.locator(`#mobile-actor-belt button[data-selection-mode="act-actor"][onclick*="selectExplorationActor(1)"]`).first().click();
 
   state = await page.evaluate(() => {
@@ -2493,24 +2507,27 @@ async function runCompactRailRoundTripFlow(page) {
   const presenceCue = page.locator('#mobile-creature-presence-cue button[data-command-control="open-target-picker"]');
   await presenceCue.scrollIntoViewIfNeeded();
   await presenceCue.click();
-  await page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
+  await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
   state = await page.evaluate(() => ({
     creatureRailOpen: App.mobileCreatureRailOpen,
     creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targetPickerOpen: App.mobileTargetPickerOpen,
+    targetPickerButtons: document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"]').length,
     targets: [...App.explorationTargetIds],
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || '',
     fullDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false
   }));
-  assert.strictEqual(state.creatureRailOpen, true, 'Presence cue should open the compact target rail for multiple creatures');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Compact target rail should be visible after cue activation');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Creature rail target control should mark the selected creature');
+  assert.strictEqual(state.targetPickerOpen, true, 'Presence cue should open the lightweight target picker for multiple creatures');
+  assert(state.targetPickerButtons >= 2, 'Target picker should expose compact target choices');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Target picker control should mark the selected creature');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Marked merchant should expose safe primary and contextual intents in the composer tray');
-  assert.strictEqual(state.fullDrawerOpen, false, 'Creature rail marking should not open the full Creatures drawer');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Target picker marking should not open the full Creatures drawer');
 
-  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-target-rail"]`).click();
+  await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
   state = await page.evaluate(() => ({
     creatureRailOpen: App.mobileCreatureRailOpen,
     creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+    targetPickerOpen: App.mobileTargetPickerOpen,
     targets: [...App.explorationTargetIds],
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || '',
     sentence: document.querySelector('#mobile-selection-sentence')?.innerText || '',
@@ -2518,31 +2535,29 @@ async function runCompactRailRoundTripFlow(page) {
     compactIntentButtons: document.querySelectorAll('[data-card-role="compact-tactical"] [data-command-slot="intent"]').length,
     fullDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false
   }));
-  assert.strictEqual(state.creatureRailOpen, false, 'Closing the compact target rail should update rail state');
-  assert.strictEqual(state.creatureRailDisplay, 'none', 'Closing the compact target rail should hide the target rail');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Closing the compact target rail should preserve marked target state');
-  assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Closing the target rail should keep marked-target composer intents reachable');
-  assert(state.sentence.includes('Merchant'), 'Closing the target rail should keep the mobile composer sentence tied to the marked target');
-  assert.strictEqual(state.beltSurface, 'command-composer', 'Closing the target rail should leave the composer as the active command surface');
-  assert.strictEqual(state.compactIntentButtons, 0, 'Closing the target rail should not move intent buttons onto compact cards');
-  assert.strictEqual(state.fullDrawerOpen, false, 'Closing the target rail should not open the full Creatures drawer');
+  assert.strictEqual(state.targetPickerOpen, true, 'Target slot should reopen the lightweight target picker');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Reopening the target picker should preserve marked target state');
+  assert(state.trayText.includes('Fight') && state.trayText.includes('Trade'), 'Target picker should keep marked-target composer intents reachable');
+  assert(state.sentence.includes('Merchant'), 'Target picker should keep the mobile composer sentence tied to the marked target');
+  assert.strictEqual(state.beltSurface, 'command-composer', 'Target picker should leave the composer as the active command surface');
+  assert.strictEqual(state.compactIntentButtons, 0, 'Target picker should not move intent buttons onto compact cards');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Target picker should not open the full Creatures drawer');
 
-  await page.locator(`.mobile-panel-dock button[data-command-control="toggle-target-rail"]`).click();
   state = await page.evaluate(() => {
-    const merchantChip = Array.from(document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Merchant'));
+    const merchantChip = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-target-picker-chip')).find(chip => chip.textContent.includes('Merchant'));
     return {
-      creatureRailOpen: App.mobileCreatureRailOpen,
-      creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+      targetPickerOpen: App.mobileTargetPickerOpen,
+      targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
       merchantSelectedTarget: merchantChip?.classList.contains('selected-target') || false,
       targetButtonPressed: merchantChip?.querySelector('[data-selection-control="target"]')?.getAttribute('aria-pressed') || '',
       targets: [...App.explorationTargetIds]
     };
   });
-  assert.strictEqual(state.creatureRailOpen, true, 'Reopening the compact target rail should restore rail state');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Reopening the compact target rail should show targets again');
-  assert.strictEqual(state.merchantSelectedTarget, true, 'Reopened compact target rail should preserve the marked merchant visual state');
-  assert.strictEqual(state.targetButtonPressed, 'true', 'Reopened compact target rail should preserve target button pressed state');
-  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Reopening the compact target rail should preserve marked target ids');
+  assert.strictEqual(state.targetPickerOpen, true, 'Target picker should remain open for normal target composition');
+  assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Target picker should keep targets visible while composing');
+  assert.strictEqual(state.merchantSelectedTarget, true, 'Target picker should preserve the marked merchant visual state');
+  assert.strictEqual(state.targetButtonPressed, 'true', 'Target picker should preserve target button pressed state');
+  assert.deepStrictEqual(state.targets, ['creature:merchant-1'], 'Target picker should preserve marked target ids');
 
   state = await page.evaluate(() => {
     const centerTile = document.querySelector('#mobile-mini-map .map-tile.center');
@@ -2590,7 +2605,7 @@ async function runCompactRailRoundTripFlow(page) {
       selectionMode: focusedStage?.getAttribute('data-selection-mode') || '',
       selectionState: focusedStage?.getAttribute('data-selection-state') || '',
       ariaPressed: focusedStage?.getAttribute('aria-pressed') || '',
-      railItemSelected: Boolean(document.querySelector('#mobile-creature-strip .mobile-unit-chip.item-target.selected-stage-focus')),
+      railItemSelected: Boolean(document.querySelector('#mobile-target-picker-belt .mobile-target-picker-chip.item-target.selected-stage-focus')),
       clearFocusVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-control="clear-focused-object"]')),
       takeItemsVisible: Boolean(document.querySelector('#mobile-explore-actions button[data-command-intent="takeItems"]')),
       width: rect?.width || 0,
@@ -2616,7 +2631,8 @@ async function runCompactRailRoundTripFlow(page) {
   assert.strictEqual(state.insideTile, true, 'Focused center presence badge should stay inside the current tile');
 
   await page.evaluate(() => App.clearFocusedStageObject());
-  await page.locator(`#mobile-creature-strip button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
+  await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
+  await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','merchant-1')"]`).click();
 
   await page.locator(`.mobile-panel-dock button[data-command-control="toggle-actor-rail"]`).click();
   await page.locator(`#mobile-actor-belt button[onclick*="selectExplorationActor(1)"]`).click();
@@ -2716,8 +2732,9 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Party stats Back should keep marked targets');
   assert(state.sentence.includes('Ally') && state.sentence.includes('Merchant'), 'Party stats Back should keep the composer sentence visible');
 
+  await page.locator(`#mobile-selection-sentence [data-command-control="open-target-slot"]`).click();
   state = await page.evaluate(() => {
-    const details = document.querySelector('#mobile-creature-card button[data-command-control="open-target-drawer"]');
+    const details = document.querySelector('#mobile-target-picker-belt button[data-command-control="open-target-drawer"]');
     return {
       targetDetailsAttrs: {
         surface: details?.getAttribute('data-command-surface') || '',
@@ -2736,32 +2753,32 @@ async function runCompactRailRoundTripFlow(page) {
     drawer: 'targets',
     returnRail: 'target',
     slot: 'details'
-  }, 'Compact target rail Details should identify drawer navigation and return context');
-  await page.locator(`#mobile-creature-card button[data-command-control="open-target-drawer"]`).click();
+  }, 'Target picker Details should identify drawer navigation and return context');
+  await page.locator(`#mobile-target-picker-belt button[data-command-control="open-target-drawer"]`).click();
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort()
   }));
-  assert.strictEqual(state.creatureDrawerOpen, true, 'Compact target rail Details should open the Creatures drawer');
+  assert.strictEqual(state.creatureDrawerOpen, true, 'Target picker Details should open the Creatures drawer');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Opening Creature details should preserve selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Opening Creature details should preserve marked targets');
   await page.evaluate(() => App.closeAllPanels());
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
-    creatureRailOpen: App.mobileCreatureRailOpen,
-    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
-    targetButtons: document.querySelectorAll('#mobile-creature-strip button[data-command-control="focus-target"]').length,
+    targetPickerOpen: App.mobileTargetPickerOpen,
+    targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
+    targetButtons: document.querySelectorAll('#mobile-target-picker-belt button[data-command-control="focus-target"]').length,
     activeControl: document.activeElement?.getAttribute('data-command-control') || '',
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
   }));
   assert.strictEqual(state.creatureDrawerOpen, false, 'Closing Creature details should return to normal mobile play');
-  assert.strictEqual(state.creatureRailOpen, true, 'Closing Creature details should restore the compact target rail');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Returned target rail should remain visible');
-  assert(state.targetButtons >= 2, 'Returned target rail should keep target controls reachable');
-  assert.strictEqual(state.activeControl, 'focus-target', 'Closing Creature details should return focus to the compact target rail');
+  assert.strictEqual(state.targetPickerOpen, true, 'Closing Creature details should restore the target picker');
+  assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Returned target picker should remain visible');
+  assert(state.targetButtons >= 2, 'Returned target picker should keep target controls reachable');
+  assert.strictEqual(state.activeControl, 'focus-target', 'Closing Creature details should return focus to the target picker');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Closing Creature details should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Closing Creature details should keep marked targets');
   assert(state.trayText.includes('Fight') && state.trayText.includes('Clear'), 'Closing Creature details should keep shared composer intents visible');
@@ -2772,7 +2789,7 @@ async function runCompactRailRoundTripFlow(page) {
   });
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
-    tradeVisible: Boolean(document.querySelector('#mobile-creature-strip .trade-drawer')),
+    tradeVisible: Boolean(document.querySelector('#mobile-creature-strip .trade-drawer, #mobile-target-picker-belt .trade-drawer')),
     transactionOpen: !document.getElementById('transaction-window-root')?.hidden,
     transactionKind: App.transactionWindow?.kind || '',
     transactionText: document.getElementById('transaction-window-root')?.textContent || '',
@@ -2794,17 +2811,17 @@ async function runCompactRailRoundTripFlow(page) {
   state = await page.evaluate(() => ({
     creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
     transactionOpen: !document.getElementById('transaction-window-root')?.hidden,
-    creatureRailOpen: App.mobileCreatureRailOpen,
-    creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
-    targetButtons: document.querySelectorAll('#mobile-creature-strip button[data-command-control="focus-target"]').length,
+    targetPickerOpen: App.mobileTargetPickerOpen,
+    targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
+    targetButtons: document.querySelectorAll('#mobile-target-picker-belt button[data-command-control="focus-target"]').length,
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     trayText: document.querySelector('#mobile-target-action-tray')?.innerText || ''
   }));
   assert.strictEqual(state.creatureDrawerOpen, false, 'Transaction Back should keep the Creatures drawer closed on mobile');
   assert.strictEqual(state.transactionOpen, false, 'Transaction Back should close the focused transaction window');
-  assert.strictEqual(state.creatureRailOpen, true, 'Transaction Back should restore the compact target rail');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Transaction Back should keep the compact target rail visible');
+  assert.strictEqual(state.targetPickerOpen, true, 'Transaction Back should restore the target picker');
+  assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Transaction Back should keep the target picker visible');
   assert(state.targetButtons >= 2, 'Transaction Back should restore target controls');
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Transaction Back should keep selected actors');
   assert.deepStrictEqual(state.targets, ['creature:merchant-1', 'party:player-1'], 'Transaction Back should keep marked targets');
@@ -2828,11 +2845,11 @@ async function runCompactRailRoundTripFlow(page) {
   assert(state.targetPleasures[0] > 0, 'Resolved safe intent should affect the marked creature target');
   assert.strictEqual(state.centerHasActorControls, false, 'Compact rail resolution should keep center free of actor controls');
 
-  await page.locator(`#mobile-creature-strip button[data-selection-mode="mark-target"][onclick*="toggleExplorationTarget('creature','corpse-rail')"]`).click();
+  await page.locator(`#mobile-target-picker-belt button[onclick*="toggleExplorationTarget('creature','corpse-rail')"]`).click();
   state = await page.evaluate(() => {
     const tray = document.querySelector('#mobile-target-action-tray');
     const corpse = App.creatures.find(unit => unit.id === 'corpse-rail');
-    const corpseChip = Array.from(document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip')).find(chip => chip.textContent.includes('Remains'));
+    const corpseChip = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-target-picker-chip')).find(chip => chip.textContent.includes('Remains'));
     return {
       targets: [...App.explorationTargetIds],
       trayText: tray?.innerText || '',
@@ -2845,10 +2862,10 @@ async function runCompactRailRoundTripFlow(page) {
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert.deepStrictEqual(state.targets, ['creature:corpse-rail'], 'Compact target rail should mark remains through the shared target state');
+  assert.deepStrictEqual(state.targets, ['creature:corpse-rail'], 'Target picker should mark remains through the shared target state');
   assert(state.trayText.includes('Loot') && state.trayText.includes('Scavenge'), 'Marked remains should expose Loot and Scavenge in the mobile composer tray');
   assert(state.trayHtml.includes('data-command-intent="loot"') && state.trayHtml.includes('data-command-intent="scavenge"'), 'Marked remains utilities should identify composer-owned intents');
-  assert.strictEqual(state.fullDrawerOpen, false, 'Marking remains from the compact rail should not open the full Creatures drawer');
+  assert.strictEqual(state.fullDrawerOpen, false, 'Marking remains from the target picker should not open the full Creatures drawer');
   assert.strictEqual(state.corpseSelectedTarget, true, 'Marked remains chip should expose selected-target state');
   assert.strictEqual(state.corpseRemaining, 4, 'Marked remains test should start with finite scavenge portions');
   assert.strictEqual(state.chipHasDirectLoot, false, 'Compact remains chip should not duplicate Loot outside the composer tray');
@@ -2865,8 +2882,8 @@ async function runCompactRailRoundTripFlow(page) {
       actorIds: App.lastIntentCommand?.actorIds || [],
       remaining: corpse?.remainingPortions ?? null,
       creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
-      creatureRailOpen: App.mobileCreatureRailOpen,
-      creatureRailDisplay: getComputedStyle(document.querySelector('#mobile-creature-card')).display,
+      targetPickerOpen: App.mobileTargetPickerOpen,
+      targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
       centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
@@ -2876,8 +2893,8 @@ async function runCompactRailRoundTripFlow(page) {
   assert.deepStrictEqual(state.actorIds, ['ally-1', 'scout-1'], 'Compact remains utility should use the selected compact rail actors');
   assert(state.remaining < 4, 'Compact remains Scavenge should consume finite remains portions');
   assert.strictEqual(state.creatureDrawerOpen, false, 'Resolving compact remains utility should not open the full Creatures drawer');
-  assert.strictEqual(state.creatureRailOpen, true, 'Resolving compact remains utility should keep the target rail context available');
-  assert.notStrictEqual(state.creatureRailDisplay, 'none', 'Resolving compact remains utility should keep compact target rail visible');
+  assert.strictEqual(state.targetPickerOpen, true, 'Resolving compact remains utility should keep the target picker context available');
+  assert.notStrictEqual(state.targetPickerDisplay, 'none', 'Resolving compact remains utility should keep target picker visible');
   assert.strictEqual(state.centerHasActorControls, false, 'Compact remains utility resolution should keep center free of actor controls');
 
   await page.setViewportSize({ width: 1365, height: 768 });

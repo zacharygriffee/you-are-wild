@@ -630,6 +630,155 @@
             opacity: 0.62;
         }
 
+        .desktop-play-surface.combat-active {
+            grid-template-columns: 1fr;
+            grid-template-rows: minmax(104px, 0.72fr) minmax(188px, 1.6fr) minmax(104px, 0.82fr);
+            gap: 10px;
+        }
+
+        .desktop-play-surface.combat-active .combat-stage-hidden {
+            display: none;
+        }
+
+        .desktop-play-surface.combat-active #desktop-play-cell-n {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .desktop-play-surface.combat-active #desktop-play-cell-center {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .desktop-play-surface.combat-active #desktop-play-cell-s {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .desktop-play-surface.combat-active .desktop-battle-row {
+            opacity: 1;
+            justify-content: stretch;
+            align-items: stretch;
+            padding: 10px;
+            overflow: hidden;
+            background: rgba(26, 26, 46, 0.64);
+        }
+
+        .desktop-play-surface.combat-active .desktop-battle-center {
+            overflow: auto;
+            background: rgba(20, 20, 40, 0.96);
+        }
+
+        .desktop-battle-lane {
+            width: 100%;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 82px minmax(0, 1fr);
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .desktop-battle-lane-title {
+            align-self: center;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .desktop-battle-units {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(138px, 188px);
+            gap: 8px;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 2px;
+            overscroll-behavior-inline: contain;
+        }
+
+        .desktop-battle-unit {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+            align-content: start;
+            padding: 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 42, 74, 0.68);
+            color: var(--text-secondary);
+        }
+
+        .desktop-battle-unit.current-actor {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.28);
+        }
+
+        .desktop-battle-unit.selected-target {
+            border-color: var(--accent-danger);
+            box-shadow: 0 0 0 1px rgba(255, 68, 136, 0.24);
+        }
+
+        .desktop-battle-unit.sync-participant {
+            border-color: var(--accent-warning);
+        }
+
+        .desktop-battle-unit.downed {
+            opacity: 0.62;
+        }
+
+        .desktop-battle-unit-head {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .desktop-battle-icon,
+        .desktop-battle-badge {
+            flex: 0 0 auto;
+        }
+
+        .desktop-battle-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .desktop-battle-badge {
+            padding: 1px 5px;
+            border: 1px solid var(--border-default);
+            border-radius: 999px;
+            color: var(--accent-primary);
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .desktop-battle-meta,
+        .desktop-battle-empty {
+            min-width: 0;
+            color: var(--text-muted);
+            font-size: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .desktop-battle-unit .unit-bars {
+            margin-top: 1px;
+        }
+
+        .desktop-battle-unit .unit-traits {
+            margin-top: 0;
+        }
+
         .desktop-play-cell.center {
             background: var(--bg-secondary);
             border-color: var(--accent-primary);
@@ -1267,6 +1416,36 @@
             min-width: 0;
             max-width: 100%;
             overflow-wrap: anywhere;
+        }
+
+        .selection-sentence-slot {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            min-width: 0;
+            max-width: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .selection-sentence-slot:hover .selection-sentence-value,
+        .selection-sentence-slot:focus-visible .selection-sentence-value {
+            color: var(--accent-primary);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .selection-sentence-change {
+            color: var(--accent-cyan);
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            opacity: 0.82;
         }
 
         .selection-sentence-label {
@@ -3657,6 +3836,10 @@
                 line-height: 1;
             }
 
+            .mobile-play-surface.combat-active .mobile-strip-header {
+                display: none;
+            }
+
             .mobile-map-card .mini-map {
                 flex: 1 1 auto;
                 min-height: clamp(244px, 27dvh, 248px);
@@ -4052,6 +4235,7 @@
 
             .mobile-target-action-tray:empty,
             .mobile-actor-belt:empty,
+            .mobile-target-picker-belt:empty,
             .mobile-selection-sentence:empty {
                 display: none;
             }
@@ -4099,10 +4283,10 @@
             }
 
             .mobile-control-belt.target-controls-open .mobile-target-action-tray .target-action-row {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-                overflow-x: visible;
-                padding-bottom: 0;
+                display: flex;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 2px;
             }
 
             .mobile-target-action-tray .action-btn {
@@ -4120,18 +4304,6 @@
             }
 
             .mobile-control-belt.target-controls-open .mobile-target-action-tray .action-btn {
-                width: 100%;
-                min-width: 0;
-            }
-
-            .mobile-control-belt.target-controls-open.actor-controls-open .mobile-target-action-tray .target-action-row {
-                display: flex;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding-bottom: 2px;
-            }
-
-            .mobile-control-belt.target-controls-open.actor-controls-open .mobile-target-action-tray .action-btn {
                 flex: 0 0 auto;
                 width: auto;
                 min-width: 70px;
@@ -4220,6 +4392,205 @@
 
             .mobile-actor-belt::-webkit-scrollbar {
                 display: none;
+            }
+
+            .mobile-target-picker-belt {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                overscroll-behavior-x: contain;
+                padding: 2px 10px 6px 0;
+                scroll-padding-inline: 10px;
+                scrollbar-width: none;
+            }
+
+            .mobile-target-picker-belt::-webkit-scrollbar {
+                display: none;
+            }
+
+            .mobile-control-belt.target-picker-open {
+                max-height: min(236px, 28dvh);
+                overflow-y: visible;
+            }
+
+            .mobile-control-belt.target-picker-open .mobile-location-actions {
+                display: none;
+            }
+
+            .mobile-target-picker-chip {
+                flex: 0 0 118px;
+                width: 118px;
+                min-width: 118px;
+                min-height: 64px;
+                display: grid;
+                grid-template-rows: 1fr auto;
+                justify-items: center;
+                align-items: center;
+                gap: 3px;
+                position: relative;
+                padding: 8px 8px 7px;
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                background: rgba(42, 42, 74, 0.92);
+                color: var(--text-primary);
+                cursor: pointer;
+            }
+
+            .mobile-target-picker-chip.mobile-strip-details-btn,
+            .mobile-actor-chip.mobile-strip-details-btn {
+                flex: 0 0 44px;
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                padding: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .mobile-target-picker-chip.mobile-strip-details-btn::before,
+            .mobile-actor-chip.mobile-strip-details-btn::before {
+                content: none;
+            }
+
+            .mobile-target-picker-chip.mobile-strip-details-btn .mobile-target-picker-name,
+            .mobile-actor-chip.mobile-strip-details-btn .mobile-actor-chip-text {
+                display: none;
+            }
+
+            .mobile-target-picker-chip.mobile-strip-details-btn .mobile-target-picker-icon,
+            .mobile-actor-chip.mobile-strip-details-btn .mobile-actor-chip-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+
+            .mobile-target-picker-chip.selected,
+            .mobile-target-picker-chip.selected-target {
+                border-color: var(--accent-secondary);
+                box-shadow: 0 0 0 1px rgba(255, 0, 128, 0.35);
+            }
+
+            .mobile-target-picker-chip.item-target.selected {
+                border-color: var(--accent-info);
+                box-shadow: 0 0 0 1px rgba(64, 180, 255, 0.32);
+            }
+
+            .mobile-target-picker-icon {
+                width: 36px;
+                height: 36px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-sm);
+                border: 1px solid rgba(0, 212, 170, 0.25);
+                background: rgba(0, 212, 170, 0.12);
+                font-size: 21px;
+                line-height: 1;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+            }
+
+            .mobile-target-picker-name {
+                max-width: 100%;
+                color: var(--text-secondary);
+                font-size: 10px;
+                font-weight: 800;
+                line-height: 1.05;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .mobile-target-picker-chip:not(.selected):not(.selected-target) .mobile-target-picker-name {
+                color: var(--text-muted);
+                font-size: 9px;
+                opacity: 0.78;
+            }
+
+            .mobile-target-picker-count {
+                position: absolute;
+                left: 6px;
+                bottom: 6px;
+                min-width: 18px;
+                height: 18px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 5px;
+                border-radius: 999px;
+                background: rgba(17, 31, 52, 0.9);
+                border: 1px solid var(--border-subtle);
+                color: var(--text-muted);
+                font-size: 9px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .mobile-target-picker-chip .tactical-card-selection-controls {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 6px;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                pointer-events: none;
+            }
+
+            .mobile-target-picker-chip .tactical-card-selection-controls .action-btn {
+                --mobile-card-icon-content: "⌖";
+                --mobile-card-icon-color: var(--accent-secondary);
+                --mobile-card-icon-bg: rgba(255, 107, 157, 0.1);
+                --mobile-card-icon-border: rgba(255, 107, 157, 0.55);
+                --mobile-card-icon-active-bg: rgba(255, 107, 157, 0.22);
+                --mobile-card-icon-active-border: var(--accent-secondary);
+                --mobile-card-icon-active-ring: rgba(255, 107, 157, 0.28);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: auto;
+                flex: 0 0 auto;
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                padding: 0;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+                color: var(--mobile-card-icon-color);
+                font-size: 0;
+                line-height: 1;
+                overflow: visible;
+                white-space: nowrap;
+            }
+
+            .mobile-target-picker-chip .tactical-card-selection-controls .action-btn::before {
+                content: var(--mobile-card-icon-content);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border: 1px solid var(--mobile-card-icon-border);
+                border-radius: var(--radius-sm);
+                background: var(--mobile-card-icon-bg);
+                color: var(--mobile-card-icon-color);
+                font-size: 16px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .mobile-target-picker-chip .tactical-card-selection-controls .action-btn.primary::before {
+                background: var(--mobile-card-icon-active-bg, var(--mobile-card-icon-bg));
+                border-color: var(--mobile-card-icon-active-border, var(--mobile-card-icon-border));
+                box-shadow: 0 0 0 1px var(--mobile-card-icon-active-ring, rgba(160, 160, 176, 0.24));
             }
 
             .mobile-control-belt.actor-controls-open .mobile-actor-belt {
@@ -4497,6 +4868,13 @@
                 max-width: 112px;
             }
 
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.has-corner-controls:not(.selected):not(.selected-target) .mobile-actor-chip-text strong,
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.has-corner-controls:not(.selected):not(.selected-target) .mobile-actor-chip-text span {
+                color: var(--text-muted);
+                font-size: 9px;
+                opacity: 0.78;
+            }
+
             .mobile-move-pad {
                 display: none;
                 grid-template-columns: repeat(3, minmax(38px, 48px));
@@ -4676,7 +5054,12 @@
 
             .mobile-unit-chip.compact-tactical-card {
                 position: relative;
-                padding-top: 54px;
+                display: grid;
+                justify-items: center;
+                align-content: start;
+                min-height: 76px;
+                padding: 34px 6px 6px;
+                text-align: center;
             }
 
             .mobile-play-surface.combat-active .mobile-unit-chip {
@@ -4684,14 +5067,14 @@
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip {
-                max-height: 132px;
+                max-height: 138px;
                 align-items: stretch;
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip {
                 flex-basis: clamp(132px, 39vw, 160px);
-                min-height: 128px;
-                max-height: 128px;
+                min-height: 134px;
+                max-height: 134px;
                 padding: 7px;
                 overflow: hidden;
             }
@@ -4881,16 +5264,12 @@
                 --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
             }
 
-            .mobile-unit-chip.compact-tactical-card {
-                padding-top: 8px;
-            }
-
             .mobile-unit-chip.compact-tactical-card.has-corner-controls {
-                padding-top: 38px;
+                padding-top: 34px;
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.compact-tactical-card.has-corner-controls {
-                padding-top: 36px;
+                padding-top: 38px;
             }
 
             .mobile-unit-chip .corner-card-controls {
@@ -4953,14 +5332,49 @@
             }
 
             .mobile-chip-name {
-                display: flex;
-                gap: 6px;
-                align-items: center;
+                display: grid;
+                justify-items: center;
+                gap: 4px;
                 font-size: 12px;
                 font-weight: 700;
-                white-space: nowrap;
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .mobile-chip-name > span:first-child {
+                width: 44px;
+                height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-sm);
+                border: 1px solid rgba(0, 212, 170, 0.25);
+                background: rgba(0, 212, 170, 0.12);
+                font-size: 24px;
+                line-height: 1;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-chip .mobile-chip-name > span:first-child {
+                width: 38px;
+                height: 38px;
+                font-size: 21px;
+            }
+
+            .mobile-chip-name > span:nth-child(2) {
+                max-width: 100%;
+                min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                white-space: nowrap;
+                color: var(--text-secondary);
+                font-size: 10px;
+                line-height: 1.05;
+            }
+
+            .mobile-unit-chip.compact-tactical-card:not(.selected):not(.selected-target):not(.selected-actor) .mobile-chip-name > span:nth-child(2) {
+                color: var(--text-muted);
+                font-size: 9px;
+                opacity: 0.76;
             }
 
             .mobile-chip-meta {
@@ -4983,6 +5397,62 @@
                 height: 4px;
             }
 
+            .mobile-stat-rings {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 6px;
+                width: 100%;
+                margin-top: 6px;
+            }
+
+            .mobile-stat-ring {
+                --stat-ring-color: var(--text-secondary);
+                position: relative;
+                display: inline-grid;
+                place-items: center;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: conic-gradient(var(--stat-ring-color) var(--stat-percent), rgba(160, 160, 176, 0.16) 0);
+                flex: 0 0 auto;
+                color: var(--text-primary);
+                font-size: 10px;
+                line-height: 1;
+            }
+
+            .mobile-stat-ring::before {
+                content: "";
+                position: absolute;
+                inset: 4px;
+                border-radius: 50%;
+                background: var(--bg-tertiary);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .mobile-stat-ring-icon {
+                position: relative;
+                z-index: 1;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 14px;
+                height: 14px;
+                font-size: 10px;
+            }
+
+            .mobile-stat-ring-health {
+                --stat-ring-color: var(--accent-primary);
+            }
+
+            .mobile-stat-ring-pleasure {
+                --stat-ring-color: var(--accent-secondary);
+            }
+
+            .mobile-stat-ring-hunger {
+                --stat-ring-color: var(--accent-warning);
+            }
+
             .mobile-unit-chip .unit-traits {
                 gap: 3px;
                 margin-top: 5px;
@@ -4994,6 +5464,7 @@
             }
 
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-bars,
+            .mobile-play-surface:not(.combat-active) .mobile-unit-chip .mobile-stat-rings,
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-traits,
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .mobile-chip-meta {
                 display: none;
@@ -5212,6 +5683,7 @@
                 left: 12px;
                 right: 12px;
                 bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                display: block;
                 max-height: min(48dvh, 360px);
                 z-index: 120;
                 overflow: auto;
@@ -5388,6 +5860,10 @@
             padding-top: 8px;
         }
 
+        .mobile-activity-log:not([open]) {
+            display: none;
+        }
+
         .mobile-activity-log-summary {
             display: flex;
             gap: 8px;
@@ -5498,6 +5974,12 @@
                 font-size: 16px;
             }
 
+            .mobile-panel-dock .nav-btn.danger {
+                border-color: rgba(255, 71, 87, 0.7);
+                color: #ff7b96;
+                box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.18);
+            }
+
             .mobile-panel-dock-label {
                 display: block;
                 margin-left: 4px;
@@ -5520,6 +6002,12 @@
                 line-height: 15px;
                 text-align: center;
                 box-shadow: 0 2px 8px rgba(0, 212, 170, 0.28);
+            }
+
+            .mobile-panel-dock-badge.danger {
+                background: var(--accent-danger);
+                color: #fff;
+                box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
             }
 
             .mobile-panel-dock-badge[hidden] {
@@ -5969,6 +6457,7 @@
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-save-slots" title="Open save slots" aria-label="Open save slots" data-i18n-title="ui.nav.saveTitle" data-i18n-aria-label="ui.nav.saveTitle" onclick="App.closeAppMenu(); App.showSaveManager('save')">💾 <span data-i18n="save.save">Save</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-load-slots" title="Open load slots" aria-label="Open load slots" data-i18n-title="ui.nav.loadTitle" data-i18n-aria-label="ui.nav.loadTitle" onclick="App.closeAppMenu(); App.showSaveManager('load')">📂 <span data-i18n="save.load">Load</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-settings" title="Open settings" aria-label="Open settings" data-i18n-title="ui.menu.settingsTitle" data-i18n-aria-label="ui.menu.settingsTitle" onclick="App.openSettingsFromGame()">⚙️ <span data-i18n="ui.menu.settings">Settings</span></button>
+                        <button class="nav-btn" role="menuitem" data-command-surface="history-controls" data-command-mode="history" data-command-control="toggle-history" title="Toggle Activity Log" aria-label="Toggle Activity Log" data-i18n-title="ui.activityLog" data-i18n-aria-label="ui.activityLog" onclick="App.closeAppMenu(); App.toggleActivityLog()">📜 <span data-i18n="ui.activityLog">Activity Log</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-market" title="Open market" aria-label="Open market" data-i18n-title="ui.menu.marketTitle" data-i18n-aria-label="ui.menu.marketTitle" onclick="App.closeAppMenu(); App.showMarketScreen()">🏪 <span data-i18n="ui.menu.market">Market</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-mods" title="Open mods" aria-label="Open mods" data-i18n-title="ui.menu.modsTitle" data-i18n-aria-label="ui.menu.modsTitle" onclick="App.closeAppMenu(); App.showModScreen()">📦 <span data-i18n="ui.menu.mods">Mods</span></button>
                         <button class="nav-btn" role="menuitem" data-command-surface="app-system" data-command-mode="system" data-command-control="open-help" title="Open help tutorial" aria-label="Open help tutorial" data-i18n-title="ui.nav.helpTitle" data-i18n-aria-label="ui.nav.helpTitle" onclick="App.closeAppMenu(); App.showTutorial()">📖 <span data-i18n="ui.help">Help</span></button>
@@ -6056,6 +6545,7 @@
 	                                    <button class="nav-btn" data-command-surface="stage-traversal" data-command-mode="exploration" data-command-control="move" data-command-direction="southeast" title="Southeast" aria-label="Move southeast" data-i18n-title="direction.southeast" data-i18n-aria-label="direction.moveSoutheast" onclick="App.move(1,1)">↘</button>
 	                                </div>
 	                                <div class="mobile-actor-belt" id="mobile-actor-belt" aria-label="Party actor controls" data-i18n-aria-label="ui.partyActorControls"></div>
+	                                <div class="mobile-target-picker-belt" id="mobile-target-picker-belt" aria-label="Target controls" data-i18n-aria-label="ui.targetControls"></div>
 	                            </div>
 	                            <div class="mobile-unit-strips" data-surface-role="presence-rails">
 	                                <div class="mobile-strip-card" id="mobile-party-card">

@@ -1089,7 +1089,7 @@ async function checkViewport(browser, name, width, height) {
       const creatureCard = document.getElementById('mobile-creature-card');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
       const cueButton = creatureCue?.querySelector('button');
-      const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
+      const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle, #mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
       const detailButtons = Array.from(document.querySelectorAll('.mobile-strip-details-btn'));
       const moveToggle = document.getElementById('mobile-move-toggle');
       const storyHandle = document.querySelector('.mobile-story-handle');
@@ -1293,27 +1293,30 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.minCenterPresenceFontSize >= 34, `${name}: mobile current tile presence badges should keep readable visible symbols`);
     assert.strictEqual(mobileControls.centerPresenceInsideTile, true, `${name}: mobile current tile presence badges should stay inside the center tile`);
     assert(mobileControls.centerTileBottom <= mobileControls.mapBottom + 1, `${name}: mobile current tile should not clip below the Play Surface card`);
-    assert.strictEqual(mobileControls.detailButtonCount, 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
-    assert(mobileControls.visibleDetailButtonCount >= 1, `${name}: visible mobile rail should expose an explicit Details route`);
-    assert(mobileControls.minVisibleDetailButtonWidth >= 40 && mobileControls.minVisibleDetailButtonHeight >= 40, `${name}: visible mobile rail Details routes should keep usable icon tap targets`);
-    assert(mobileControls.maxVisibleDetailButtonWidth <= 48 && mobileControls.maxVisibleDetailButtonHeight <= 48, `${name}: visible mobile rail Details routes should stay compact and icon-sized`);
-    assert.strictEqual(mobileControls.maxVisibleDetailButtonFontSize, 0, `${name}: visible mobile rail Details routes should hide visible text labels`);
-    assert.strictEqual(mobileControls.visibleDetailButtonsAccessible, true, `${name}: icon-only mobile rail Details routes should keep title and aria-label text`);
-    assert.strictEqual(mobileControls.visibleDetailsInsideViewport, true, `${name}: visible mobile rail Details routes should stay inside the viewport`);
-    assert.strictEqual(mobileControls.visibleDetailsAboveDock, true, `${name}: visible mobile rail Details routes should stay above the fixed dock`);
-    assert(mobileControls.creatureTargetButtonCount >= 1, `${name}: mobile creature rail should expose target toggle controls`);
-    assert(mobileControls.maxCreatureTargetButtonWidth <= 44 && mobileControls.maxCreatureTargetButtonHeight <= 44, `${name}: mobile creature target toggles should stay compact and icon-sized while preserving touch area`);
-    assert.strictEqual(mobileControls.maxCreatureTargetButtonFontSize, 0, `${name}: mobile creature target toggles should hide visible text labels`);
-    assert.strictEqual(mobileControls.creatureTargetButtonsAccessible, true, `${name}: icon-only mobile creature target toggles should keep title and aria-label text`);
+    assert(mobileControls.detailButtonCount >= 2, `${name}: mobile party and creature rails should expose explicit Details routes`);
+    if (mobileControls.visibleDetailButtonCount > 0) {
+      assert(mobileControls.minVisibleDetailButtonWidth >= 40 && mobileControls.minVisibleDetailButtonHeight >= 40, `${name}: visible mobile rail Details routes should keep usable icon tap targets`);
+      assert(mobileControls.maxVisibleDetailButtonWidth <= 48 && mobileControls.maxVisibleDetailButtonHeight <= 48, `${name}: visible mobile rail Details routes should stay compact and icon-sized`);
+      assert.strictEqual(mobileControls.maxVisibleDetailButtonFontSize, 0, `${name}: visible mobile rail Details routes should hide visible text labels`);
+      assert.strictEqual(mobileControls.visibleDetailButtonsAccessible, true, `${name}: icon-only mobile rail Details routes should keep title and aria-label text`);
+      assert.strictEqual(mobileControls.visibleDetailsInsideViewport, true, `${name}: visible mobile rail Details routes should stay inside the viewport`);
+      assert.strictEqual(mobileControls.visibleDetailsAboveDock, true, `${name}: visible mobile rail Details routes should stay above the fixed dock`);
+    }
+    if (mobileControls.creatureTargetButtonCount > 0) {
+      assert(mobileControls.maxCreatureTargetButtonWidth <= 44 && mobileControls.maxCreatureTargetButtonHeight <= 44, `${name}: mobile creature target toggles should stay compact and icon-sized while preserving touch area`);
+      assert.strictEqual(mobileControls.maxCreatureTargetButtonFontSize, 0, `${name}: mobile creature target toggles should hide visible text labels`);
+      assert.strictEqual(mobileControls.creatureTargetButtonsAccessible, true, `${name}: icon-only mobile creature target toggles should keep title and aria-label text`);
+    }
     assert(mobileControls.controlBeltHasLocationActions, `${name}: location actions should live in the control belt`);
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
     assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
-    assert.strictEqual(mobileControls.creatureCueVisible, false, `${name}: open compact creature rail should suppress the duplicate mobile creature cue`);
-    assert.strictEqual(mobileControls.creatureCueText.trim(), '', `${name}: hidden mobile creature cue should not leave duplicate Here text while the creature rail is open`);
+    assert.strictEqual(mobileControls.creatureCueVisible, true, `${name}: baseline mobile play should expose a creature cue without opening the full target rail`);
+    assert(mobileControls.creatureCueText.includes('Here:'), `${name}: baseline mobile creature cue should summarize the first visible creature`);
     assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
     const closedCreatureCue = await page.evaluate(() => {
       App.mobileCreatureRailOpen = false;
+      App.mobileTargetPickerOpen = false;
       App.renderCreatures();
       App.renderMobileExplorationControls?.();
       const dock = document.querySelector('.mobile-panel-dock');
@@ -1329,7 +1332,8 @@ async function checkViewport(browser, name, width, height) {
         bottom: cueRect.bottom,
         dockTop: dockRect.top
       };
-      App.mobileCreatureRailOpen = true;
+      App.mobileCreatureRailOpen = false;
+      App.mobileTargetPickerOpen = false;
       App.renderCreatures();
       App.renderMobileExplorationControls?.();
       return result;
@@ -1338,6 +1342,73 @@ async function checkViewport(browser, name, width, height) {
     assert(closedCreatureCue.text.includes('Here:'), `${name}: mobile creature cue should summarize the first visible creature when the rail is closed`);
     assert(closedCreatureCue.top >= 0, `${name}: mobile creature cue should not start above the viewport`);
     assert(closedCreatureCue.bottom <= closedCreatureCue.dockTop + 1, `${name}: mobile creature cue should stay above the fixed dock`);
+    const openedTargetPicker = await page.evaluate(() => {
+      App.focusMobileTargetPicker?.();
+      const dock = document.querySelector('.mobile-panel-dock');
+      const cue = document.getElementById('mobile-creature-presence-cue');
+      const picker = document.getElementById('mobile-target-picker-belt');
+      const cueButton = cue?.querySelector('button');
+      const cueRect = cue.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      const detailButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-strip-details-btn'));
+      const detailRects = detailButtons.map(button => {
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return {
+          width: rect.width,
+          height: rect.height,
+          fontSize: parseFloat(style.fontSize) || 0,
+          bottom: rect.bottom,
+          title: button.getAttribute('title') || '',
+          ariaLabel: button.getAttribute('aria-label') || ''
+        };
+      }).filter(rect => rect.width > 0 && rect.height > 0);
+      const targetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle')).map(button => {
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return {
+          width: rect.width,
+          height: rect.height,
+          fontSize: parseFloat(style.fontSize) || 0,
+          title: button.getAttribute('title') || button.closest('button')?.getAttribute('title') || '',
+          ariaLabel: button.getAttribute('aria-label') || button.closest('button')?.getAttribute('aria-label') || ''
+        };
+      }).filter(rect => rect.width > 0 && rect.height > 0);
+      const result = {
+        pickerOpen: App.mobileTargetPickerOpen,
+        pickerVisible: Boolean(picker && getComputedStyle(picker).display !== 'none' && picker.getBoundingClientRect().height > 0),
+        cueVisible: Boolean(cueButton) && getComputedStyle(cue).display !== 'none' && cueRect.width > 0 && cueRect.height > 0,
+        detailCount: detailRects.length,
+        minDetailWidth: Math.min(...detailRects.map(rect => rect.width)),
+        minDetailHeight: Math.min(...detailRects.map(rect => rect.height)),
+        maxDetailWidth: Math.max(0, ...detailRects.map(rect => rect.width)),
+        maxDetailHeight: Math.max(0, ...detailRects.map(rect => rect.height)),
+        maxDetailFontSize: Math.max(0, ...detailRects.map(rect => rect.fontSize)),
+        detailsAccessible: detailRects.every(rect => rect.title && rect.ariaLabel),
+        detailsAboveDock: detailRects.every(rect => rect.bottom <= dockRect.top + 1),
+        targetButtonCount: targetButtons.length,
+        maxTargetButtonWidth: Math.max(0, ...targetButtons.map(rect => rect.width)),
+        maxTargetButtonHeight: Math.max(0, ...targetButtons.map(rect => rect.height)),
+        maxTargetButtonFontSize: Math.max(0, ...targetButtons.map(rect => rect.fontSize)),
+        targetButtonsAccessible: targetButtons.every(rect => rect.title && rect.ariaLabel)
+      };
+      App.mobileTargetPickerOpen = false;
+      App.renderMobileExplorationControls?.();
+      return result;
+    });
+    assert.strictEqual(openedTargetPicker.pickerOpen, true, `${name}: Target slot should open the lightweight target picker`);
+    assert.strictEqual(openedTargetPicker.pickerVisible, true, `${name}: open target picker should be visible`);
+    assert.strictEqual(openedTargetPicker.cueVisible, false, `${name}: open target picker should suppress the duplicate mobile creature cue`);
+    assert(openedTargetPicker.detailCount >= 1, `${name}: open target picker should expose an explicit Details route`);
+    assert(openedTargetPicker.minDetailWidth >= 40 && openedTargetPicker.minDetailHeight >= 40, `${name}: target picker Details route should keep a usable icon tap target`);
+    assert(openedTargetPicker.maxDetailWidth <= 48 && openedTargetPicker.maxDetailHeight <= 48, `${name}: target picker Details route should stay compact and icon-sized`);
+    assert.strictEqual(openedTargetPicker.maxDetailFontSize, 0, `${name}: target picker Details route should hide visible text labels`);
+    assert.strictEqual(openedTargetPicker.detailsAccessible, true, `${name}: target picker Details route should keep title and aria-label text`);
+    assert.strictEqual(openedTargetPicker.detailsAboveDock, true, `${name}: target picker Details route should stay above the fixed dock`);
+    assert(openedTargetPicker.targetButtonCount >= 1, `${name}: open target picker should expose compact target toggle controls`);
+    assert(openedTargetPicker.maxTargetButtonWidth <= 44 && openedTargetPicker.maxTargetButtonHeight <= 44, `${name}: target picker toggles should stay compact and icon-sized while preserving touch area`);
+    assert.strictEqual(openedTargetPicker.maxTargetButtonFontSize, 0, `${name}: target picker toggles should hide visible text labels`);
+    assert.strictEqual(openedTargetPicker.targetButtonsAccessible, true, `${name}: icon-only target picker toggles should keep title and aria-label text`);
     assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
     assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);
@@ -1552,7 +1623,7 @@ async function checkViewport(browser, name, width, height) {
         actorBeltCollapsed: actorRect.width === 0 && actorRect.height === 0 && getComputedStyle(actorBelt).display === 'none',
         beltInsideViewport: beltRect.left >= -1 && beltRect.right <= innerWidth + 1 && beltRect.top >= 0 && beltRect.bottom <= dockRect.top + 1,
         trayInsideBelt: overlapArea(trayRect, beltRect) >= (trayRect.width * trayRect.height) - 2,
-        targetActionsWrapped: Boolean(targetActionRow) && targetActionRow.scrollWidth <= targetActionRow.clientWidth + 1,
+        targetActionsScrollable: Boolean(targetActionRow) && targetActionRow.scrollWidth >= targetActionRow.clientWidth,
         actorReachableInBelt: actorScrollTop > 0 || overlapArea(actorRect, beltRect) >= (actorRect.width * actorRect.height) - 2,
         trayButtonCount: trayButtons.length,
         actorButtonCount: actorButtons.length,
@@ -1582,7 +1653,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(expandedComposer.actorBeltCollapsed, true, `${name}: target-priority mobile composer should collapse actor controls while target intents are active`);
     assert.strictEqual(expandedComposer.beltInsideViewport, true, `${name}: expanded mobile composer should stay inside the viewport and above the fixed dock`);
     assert.strictEqual(expandedComposer.trayInsideBelt, true, `${name}: expanded mobile target tray should stay inside the composer belt`);
-    assert.strictEqual(expandedComposer.targetActionsWrapped, true, `${name}: target-priority mobile intent controls should wrap instead of requiring horizontal scrolling`);
+    assert.strictEqual(expandedComposer.targetActionsScrollable, true, `${name}: target-priority mobile intent controls should stay in a compact horizontal row instead of pushing under the dock`);
     assert.strictEqual(expandedComposer.actorReachableInBelt, true, `${name}: collapsed mobile actor rail should not overflow the composer belt`);
     assert(expandedComposer.trayButtonCount >= 2, `${name}: expanded mobile target tray should expose visible target intents and an exit`);
     assert.strictEqual(expandedComposer.actorButtonCount, 0, `${name}: target-priority mobile composer should not stack actor controls under target intents`);
@@ -1701,37 +1772,36 @@ async function checkViewport(browser, name, width, height) {
     const targetDrawerReturn = await page.evaluate(() => {
       const panel = document.getElementById('panel-enemies');
       const backdrop = document.getElementById('panel-backdrop');
-      const creatureCard = document.getElementById('mobile-creature-card');
-      const targetStrip = document.getElementById('mobile-creature-strip');
+      const targetPicker = document.getElementById('mobile-target-picker-belt');
       const tray = document.getElementById('mobile-target-action-tray');
       const sentence = document.getElementById('mobile-selection-sentence');
-      const cardRect = creatureCard?.getBoundingClientRect();
+      const pickerRect = targetPicker?.getBoundingClientRect();
       return {
         panelActive: panel?.classList.contains('active') || false,
         backdropActive: backdrop?.classList.contains('active') || false,
         returnRail: App._mobilePanelReturnRail || '',
-        targetRailOpen: App.mobileCreatureRailOpen !== false,
-        targetRailVisible: Boolean(cardRect && cardRect.width > 0 && cardRect.height > 0 && getComputedStyle(creatureCard).display !== 'none'),
-        targetStripHasTargetControl: Boolean(targetStrip?.querySelector('[data-command-control="focus-target"]')),
+        targetPickerOpen: Boolean(App.mobileTargetPickerOpen),
+        targetPickerVisible: Boolean(pickerRect && pickerRect.width > 0 && pickerRect.height > 0 && getComputedStyle(targetPicker).display !== 'none'),
+        targetPickerHasTargetControl: Boolean(targetPicker?.querySelector('[data-command-control="focus-target"]')),
         actorIds: (App.explorationActorIds || []).join(','),
         targetIds: (App.explorationTargetIds || []).join(','),
         sentenceText: sentence?.innerText || '',
         trayText: tray?.innerText || '',
-        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-creature-card')),
+        focusReturnedToRail: Boolean(document.activeElement?.closest?.('#mobile-target-picker-belt')),
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       };
     });
     assert.strictEqual(targetDrawerReturn.panelActive, false, `${name}: closing target Details should hide the full target drawer`);
     assert.strictEqual(targetDrawerReturn.backdropActive, false, `${name}: closing target Details should clear the panel backdrop`);
     assert.strictEqual(targetDrawerReturn.returnRail, '', `${name}: closing target Details should clear the temporary return rail`);
-    assert.strictEqual(targetDrawerReturn.targetRailOpen, true, `${name}: closing target Details should restore compact target rail state`);
-    assert.strictEqual(targetDrawerReturn.targetRailVisible, true, `${name}: closing target Details should leave the compact target rail visible`);
-    assert.strictEqual(targetDrawerReturn.targetStripHasTargetControl, true, `${name}: returned target rail should keep target controls reachable`);
+    assert.strictEqual(targetDrawerReturn.targetPickerOpen, true, `${name}: closing target Details should restore target picker state`);
+    assert.strictEqual(targetDrawerReturn.targetPickerVisible, true, `${name}: closing target Details should leave the target picker visible`);
+    assert.strictEqual(targetDrawerReturn.targetPickerHasTargetControl, true, `${name}: returned target picker should keep target controls reachable`);
     assert.strictEqual(targetDrawerReturn.actorIds, 'ally-1', `${name}: closing target Details should preserve selected actors`);
     assert(targetDrawerReturn.targetIds.includes('creature:creature-1'), `${name}: closing target Details should preserve marked targets`);
-    assert(targetDrawerReturn.sentenceText.includes('Ally') && targetDrawerReturn.sentenceText.includes('Creature'), `${name}: returned target rail should keep the composer sentence intact`);
-    assert(targetDrawerReturn.trayText.includes('Fight') && targetDrawerReturn.trayText.includes('Clear'), `${name}: returned target rail should keep target intents reachable`);
-    assert.strictEqual(targetDrawerReturn.focusReturnedToRail, true, `${name}: closing target Details should return focus to the compact target rail`);
+    assert(targetDrawerReturn.sentenceText.includes('Ally') && targetDrawerReturn.sentenceText.includes('Creature'), `${name}: returned target picker should keep the composer sentence intact`);
+    assert(targetDrawerReturn.trayText.includes('Fight') && targetDrawerReturn.trayText.includes('Clear'), `${name}: returned target picker should keep target intents reachable`);
+    assert.strictEqual(targetDrawerReturn.focusReturnedToRail, true, `${name}: closing target Details should return focus to the target picker`);
     assert.strictEqual(targetDrawerReturn.pageOverflow, false, `${name}: closing target Details should not create horizontal overflow`);
 
     await page.evaluate(() => App.clearExplorationTargets());

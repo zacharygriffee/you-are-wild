@@ -34,6 +34,27 @@ const YAW_UNIT_CARD_STATUS = {
         return `<div class="unit-bars${compact ? ' compact' : ''}" aria-label="${app._escapeHtml(app._label('ui.tacticalStatus', 'Tactical status'))}">${bars}</div>`;
     },
 
+    tacticalRing(app, key, label, icon, current, max) {
+        const percent = this.barPercent(current, max);
+        const title = app._escapeHtml(`${label}: ${percent}%`);
+        return `<span class="mobile-stat-ring mobile-stat-ring-${key}" title="${title}" aria-label="${title}" style="--stat-percent:${percent}%"><span class="mobile-stat-ring-icon" aria-hidden="true">${icon}</span>${app._srOnly(title)}</span>`;
+    },
+
+    tacticalRings(app, unit) {
+        const stats = app._unitDisplayStats(unit || {});
+        const healthLabel = app._label('party.punishment', 'Punishment');
+        const pleasureLabel = app._label('party.pleasure', 'Spirit');
+        const hungerLabel = app._label('party.hunger', 'Hunger');
+        const maxHunger = unit?.maxHunger || 100;
+        const hunger = unit?.hunger ?? 0;
+        const rings = [
+            this.tacticalRing(app, 'health', healthLabel, '❤', stats.CPun, stats.MPun),
+            this.tacticalRing(app, 'pleasure', pleasureLabel, '✦', stats.CPle, stats.MPle),
+            this.tacticalRing(app, 'hunger', hungerLabel, '🍖', hunger, maxHunger)
+        ].join('');
+        return `<div class="mobile-stat-rings" aria-label="${app._escapeHtml(app._label('ui.tacticalStatus', 'Tactical status'))}">${rings}</div>`;
+    },
+
     visibleTraits(app, unit, type, limit = 3) {
         if (!unit) return [];
         const stats = app._unitDisplayStats(unit || {});

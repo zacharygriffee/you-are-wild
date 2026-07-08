@@ -345,8 +345,8 @@ const YAW_CENTER_CONTEXT = {
             return this.focusPresence(app, entry.type, ref);
         };
         const openTargets = () => {
-            if (isMobile && typeof app.focusMobileCreatureRail === 'function') {
-                return app.focusMobileCreatureRail();
+            if (isMobile && typeof app.focusMobileTargetPicker === 'function') {
+                return app.focusMobileTargetPicker();
             }
             app.renderCreatures();
             app.openPanel('enemies');

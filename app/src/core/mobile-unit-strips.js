@@ -36,6 +36,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const actorToggle = document.getElementById('mobile-actor-toggle');
         const targetTray = document.getElementById('mobile-target-action-tray');
         const actorBelt = document.getElementById('mobile-actor-belt');
+        const targetPickerBelt = document.getElementById('mobile-target-picker-belt');
         const controlBelt = document.getElementById('mobile-control-belt');
         const controlRow = document.getElementById('mobile-control-row');
         const surface = document.getElementById('mobile-play-surface');
@@ -46,8 +47,12 @@ const YAW_MOBILE_UNIT_STRIPS = {
         surface?.classList?.toggle('combat-active', inCombat);
         document.documentElement?.classList?.toggle('mobile-combat-active', inCombat);
         const hasTargets = !inCombat && (app._getExplorationTargets?.() || []).length > 0;
-        if (inCombat) app.mobileActorBeltOpen = false;
-        const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen || (!hasTargets && app.explorationActorSelectionExplicit));
+        if (inCombat) {
+            app.mobileActorBeltOpen = false;
+            app.mobileTargetPickerOpen = false;
+        }
+        const actorSelectionOpen = !inCombat && Boolean(app.mobileActorBeltOpen);
+        const targetPickerOpen = !inCombat && Boolean(app.mobileTargetPickerOpen);
         if ((inCombat || hasTargets || actorSelectionOpen) && app.mobileMovePadOpen) {
             app.mobileMovePadOpen = false;
         }
@@ -61,9 +66,8 @@ const YAW_MOBILE_UNIT_STRIPS = {
             moveToggle.setAttribute('aria-expanded', String(Boolean(app.mobileMovePadOpen) && !inCombat));
         }
         if (actorToggle) {
-            const showActorToggle = hasTargets || actorSelectionOpen;
-            actorToggle.hidden = !showActorToggle;
-            actorToggle.style.display = showActorToggle ? '' : 'none';
+            actorToggle.hidden = true;
+            actorToggle.style.display = 'none';
             actorToggle.classList.toggle('selected', actorSelectionOpen);
             actorToggle.setAttribute('aria-expanded', String(actorSelectionOpen));
         }
@@ -93,6 +97,20 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 actorBelt.removeAttribute('data-command-grammar');
             }
         }
+        if (targetPickerBelt) {
+            targetPickerBelt.innerHTML = targetPickerOpen
+                ? this.targetControls(app)
+                : '';
+            if (targetPickerOpen) {
+                targetPickerBelt.setAttribute('data-command-surface', 'target-routing');
+                targetPickerBelt.setAttribute('data-command-mode', 'exploration');
+                targetPickerBelt.setAttribute('data-command-grammar', 'actor-target-intent');
+            } else {
+                targetPickerBelt.removeAttribute('data-command-surface');
+                targetPickerBelt.removeAttribute('data-command-mode');
+                targetPickerBelt.removeAttribute('data-command-grammar');
+            }
+        }
         this.creaturePresenceCue(app);
         const hasCreatureCue = !hasTargets && this.hasInteractiveMarkup(creatureCue);
         creatureCue?.classList?.toggle('has-visible-cue', hasCreatureCue);
@@ -100,6 +118,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const hasSelectionSentence = Boolean((selectionSentence?.innerHTML || '').trim());
             const hasTargetActions = this.hasInteractiveMarkup(targetTray);
             const hasActorControls = this.hasInteractiveMarkup(actorBelt);
+            const hasTargetPicker = this.hasInteractiveMarkup(targetPickerBelt);
             const hasLocationActions = !hasTargets && this.hasInteractiveMarkup(exploreActions);
             const hasMovePad = Boolean(movePad?.classList?.contains('expanded'));
             const hasControlRow = Boolean(
@@ -112,6 +131,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
                 || hasLocationActions
                 || hasTargetActions
                 || hasActorControls
+                || hasTargetPicker
                 || hasMovePad
             );
             controlBelt.hidden = !hasContent;
@@ -119,12 +139,15 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const expandedControls = hasContent && Boolean(
                 hasTargetActions
                 || hasActorControls
+                || hasTargetPicker
                 || actorSelectionOpen
+                || targetPickerOpen
                 || hasMovePad
             );
             controlBelt.classList.toggle('has-controls', hasContent);
             controlBelt.classList.toggle('target-controls-open', hasTargets);
             controlBelt.classList.toggle('actor-controls-open', actorSelectionOpen);
+            controlBelt.classList.toggle('target-picker-open', targetPickerOpen);
             controlBelt.classList.toggle('expanded-controls-open', expandedControls);
             controlRow?.classList?.toggle('has-visible-controls', hasControlRow);
             if (hasContent) {
@@ -140,15 +163,24 @@ const YAW_MOBILE_UNIT_STRIPS = {
             surface?.classList?.toggle('control-belt-expanded', expandedControls);
             surface?.classList?.toggle('target-controls-open', hasTargets);
             surface?.classList?.toggle('actor-controls-open', actorSelectionOpen);
+            surface?.classList?.toggle('target-picker-open', targetPickerOpen);
         } else {
             surface?.classList?.remove('has-control-belt');
-            surface?.classList?.remove('control-belt-expanded', 'target-controls-open', 'actor-controls-open');
+            surface?.classList?.remove('control-belt-expanded', 'target-controls-open', 'actor-controls-open', 'target-picker-open');
             controlRow?.classList?.remove('has-visible-controls');
         }
         if (actorSelectionOpen && actorBelt && typeof requestAnimationFrame === 'function') {
             requestAnimationFrame(() => {
                 controlBelt.scrollTop = controlBelt.scrollHeight;
                 const selected = actorBelt.querySelector('.mobile-actor-chip.selected-actor, .mobile-actor-chip.selected-target');
+                if (selected && typeof selected.scrollIntoView === 'function') {
+                    selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }
+            });
+        }
+        if (targetPickerOpen && targetPickerBelt && typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => {
+                const selected = targetPickerBelt.querySelector('.mobile-target-picker-chip.selected, .mobile-target-picker-chip.selected-target');
                 if (selected && typeof selected.scrollIntoView === 'function') {
                     selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 }
@@ -186,8 +218,65 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const clear = `<button type="button" class="mobile-actor-chip mobile-actor-clear" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${exitControl}" data-command-slot="exit" title="${exitTitle}" aria-label="${exitTitle}" onclick="event.stopPropagation();${exitHandler}"><span class="mobile-actor-chip-icon" aria-hidden="true">×</span><span class="mobile-actor-chip-text"><strong>${exitLabel}</strong></span></button>`;
         const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
         const detailsTitle = app._escapeHtml(app._label('ui.openPartyDetails', 'Open party details'));
-        const details = `<button type="button" class="mobile-actor-chip mobile-actor-details" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('party','actor')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
+        const details = `<button type="button" class="mobile-actor-chip mobile-actor-details mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('party','actor')"><span class="mobile-actor-chip-icon" aria-hidden="true">☰</span><span class="mobile-actor-chip-text"><strong>${detailsLabel}</strong></span></button>`;
         return `${clear}${chips}${details}`;
+    },
+
+    targetControls(app) {
+        const targets = this.visibleTargets(app);
+        const chips = targets.map((unit, index) => this.targetControlChip(app, unit, index)).join('');
+        const items = this.targetItemControl(app);
+        const hasTargets = (app._getExplorationTargets?.() || []).length > 0 || Boolean(app.focusedStageObject?.type === 'items');
+        const exitLabel = app._escapeHtml(hasTargets
+            ? app._label('target.clearTargets', 'Clear targets')
+            : app._label('target.closeTargets', 'Close targets'));
+        const exitTitle = app._escapeHtml(hasTargets
+            ? app._label('target.clearTargetsTitle', 'Clear selected targets')
+            : app._label('target.closeTargetsTitle', 'Close target picker'));
+        const exitHandler = hasTargets
+            ? 'App.clearExplorationTargets();App.clearFocusedStageObject?.()'
+            : 'App.toggleMobileTargetPicker()';
+        const clear = `<button type="button" class="mobile-target-picker-chip mobile-actor-clear" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="${hasTargets ? 'clear-targets' : 'close-targets'}" data-command-slot="exit" title="${exitTitle}" aria-label="${exitTitle}" onclick="event.stopPropagation();${exitHandler}"><span class="mobile-target-picker-icon" aria-hidden="true">×</span><span class="mobile-target-picker-name">${exitLabel}</span></button>`;
+        const detailsLabel = app._escapeHtml(app._label('ui.details', 'Details'));
+        const detailsTitle = app._escapeHtml(app._label('ui.openCreatureDetails', 'Open creature details'));
+        const details = `<button type="button" class="mobile-target-picker-chip mobile-actor-details mobile-strip-details-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-target-drawer" data-drawer-role="targets" data-return-rail="target" data-command-slot="details" title="${detailsTitle}" aria-label="${detailsTitle}" onclick="event.stopPropagation();App.openPanelFromRail('enemies','target')"><span class="mobile-target-picker-icon" aria-hidden="true">☰</span><span class="mobile-target-picker-name">${detailsLabel}</span></button>`;
+        const emptyLabel = app._escapeHtml(app._label('ui.noCreaturesHere', 'No creatures here'));
+        const empty = `<div class="mobile-target-picker-chip" role="status" aria-label="${emptyLabel}"><span class="mobile-target-picker-icon" aria-hidden="true">∅</span><span class="mobile-target-picker-name">${emptyLabel}</span></div>`;
+        return `${clear}${chips || items ? `${chips}${items}` : empty}${details}`;
+    },
+
+    targetControlChip(app, unit, index) {
+        if (!unit) return '';
+        const isCorpse = app._isCorpse(unit);
+        const ref = app._escapeJsString(app._explorationTargetUnitId('creature', unit));
+        const selected = app._isExplorationTargetUnit('creature', unit);
+        const selectedClass = selected ? ' selected selected-target' : '';
+        const title = app._escapeHtml(app._targetToggleLabel(unit, selected));
+        const label = app._escapeHtml(unit.name || app._label('unit.generic', 'unit'));
+        const icon = app._escapeHtml(isCorpse ? (unit.corpseIcon || unit.icon || '☠') : (unit.icon || '👤'));
+        const disp = app._escapeHtml(app._unitDispositionLabel(unit) || '');
+        const count = app._escapeHtml(String(index + 1));
+        const pressed = app._selectionControlAttrs('target', selected);
+        return `<button type="button" class="mobile-target-picker-chip compact-tactical-card has-corner-controls${selectedClass}" data-card-role="compact-tactical" data-surface-role="target-picker-chip" data-selection-state="${selected ? 'selected' : 'available'}" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-command-slot="target" title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${ref}')">
+                    <span class="mobile-target-picker-icon" aria-hidden="true">${icon}</span>
+                    <span class="mobile-target-picker-name">${label}</span>
+                    <span class="mobile-target-picker-count" aria-hidden="true">#${count}</span>
+                    ${disp ? `<span class="sr-only">${disp}</span>` : ''}
+                    <span class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('creature-selection', unit)}>
+                        <span class="action-btn target-toggle corner-card-toggle target-corner-toggle${selected ? ' primary' : ''}" data-corner-slot="target" ${pressed} aria-hidden="true">${app._escapeHtml(app._targetMarkLabel())}</span>
+                    </span>
+                </button>`;
+    },
+
+    targetItemControl(app) {
+        if (!this.hasTileItems(app)) return '';
+        const summary = this.tileItemSummary(app);
+        if (!summary) return '';
+        const selected = app.focusedStageObject?.type === 'items';
+        const label = app._escapeHtml(summary.name);
+        const icon = app._escapeHtml(app._actionIcon('takeItems') || '🎒');
+        const title = app._escapeHtml(app._label('action.takeItems', 'Take Items'));
+        return `<button type="button" class="mobile-target-picker-chip item-target${selected ? ' selected selected-stage-focus' : ''}" data-surface-role="target-picker-chip" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-items" data-command-slot="target" title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.focusPresence('items','tile-items')"><span class="mobile-target-picker-icon" aria-hidden="true">${icon}</span><span class="mobile-target-picker-name">${label}</span>${summary.count > 1 ? `<span class="mobile-target-picker-count" aria-hidden="true">+${app._escapeHtml(String(summary.count - 1))}</span>` : ''}</button>`;
     },
 
     livingCreatures(app) {
@@ -242,7 +331,9 @@ const YAW_MOBILE_UNIT_STRIPS = {
         const badge = document.getElementById('mobile-creature-dock-badge');
         const button = document.getElementById('mobile-creatures-dock-btn');
         const count = living.length;
-        const baseLabel = app.combatState?.active
+        const hostileCount = living.filter(unit => unit?.disposition === app.DISPOSITION?.ENEMY || String(unit?.disposition || '').toLowerCase().includes('hostile')).length;
+        const danger = Boolean(app.combatState?.active || hostileCount > 0);
+        const baseLabel = danger
             ? app._label('ui.enemies', 'Enemies')
             : app._label('ui.creatures', 'Creatures');
         const title = count > 0
@@ -251,10 +342,17 @@ const YAW_MOBILE_UNIT_STRIPS = {
         if (button) {
             button.setAttribute('title', title);
             button.setAttribute('aria-label', title);
+            button.classList.toggle('danger', danger && count > 0);
+            const label = button.querySelector?.('.mobile-panel-dock-label');
+            if (label) {
+                label.textContent = baseLabel;
+                label.setAttribute('data-i18n', danger ? 'ui.enemies' : 'ui.creatures');
+            }
         }
         if (!badge) return;
         badge.textContent = count > 99 ? '99+' : String(count);
         badge.hidden = count <= 0;
+        badge.classList.toggle('danger', danger && count > 0);
     },
 
     creaturePresenceCue(app) {
@@ -270,7 +368,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
             cue.innerHTML = '';
             return;
         }
-        if (app.mobileCreatureRailOpen !== false) {
+        if (app.mobileCreatureRailOpen !== false || app.mobileTargetPickerOpen) {
             cue.innerHTML = '';
             return;
         }
@@ -304,16 +402,19 @@ const YAW_MOBILE_UNIT_STRIPS = {
             const ref = app._explorationTargetUnitId('creature', living[0]);
             return app.focusPresence('creature', ref);
         }
-        app.mobileCreatureRailOpen = true;
-        app.renderCreatures();
+        return this.focusTargetPicker(app);
+    },
+
+    focusTargetPicker(app) {
+        if (app.combatState?.active) return app.openPanel('enemies');
+        const visible = this.visibleTargets(app);
+        if (!visible.length && !this.hasTileItems(app)) return app.openPanel('enemies');
+        app.mobileTargetPickerOpen = true;
+        app.mobileActorBeltOpen = false;
+        app.mobileMovePadOpen = false;
+        app.renderMobileExplorationControls?.();
         if (typeof document !== 'undefined') {
-            const card = document.getElementById('mobile-creature-card');
-            if (card) card.style.display = 'block';
-            const panel = document.getElementById('panel-enemies');
-            const drawer = document.getElementById('enemies-content');
-            if (drawer && !panel?.classList?.contains('active')) drawer.innerHTML = '';
-            if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-            const target = document.querySelector('#mobile-creature-strip [data-command-control="focus-target"]');
+            const target = document.querySelector('#mobile-target-picker-belt [data-command-control="focus-target"], #mobile-target-picker-belt [data-command-control="focus-items"]');
             if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
         }
         return true;
@@ -322,6 +423,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
     focusActorRail(app) {
         if (app.combatState?.active) return app.openPanel('party');
         app.mobileActorBeltOpen = true;
+        app.mobileTargetPickerOpen = false;
         app.mobileMovePadOpen = false;
         app.renderParty();
         app.renderMobileExplorationControls?.();
@@ -331,6 +433,16 @@ const YAW_MOBILE_UNIT_STRIPS = {
             if (actor && typeof actor.focus === 'function') actor.focus({ preventScroll: true });
         }
         return true;
+    },
+
+    toggleTargetPicker(app) {
+        if (app.combatState?.active) return app.openPanel('enemies');
+        if (app.mobileTargetPickerOpen) {
+            app.mobileTargetPickerOpen = false;
+            app.renderMobileExplorationControls?.();
+            return false;
+        }
+        return this.focusTargetPicker(app);
     },
 
     focusCreatureRail(app) {

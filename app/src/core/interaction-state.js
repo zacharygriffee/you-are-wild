@@ -133,6 +133,7 @@ const YAW_INTERACTION_STATE = {
         }
         if (includeToolbelt) app.renderMobileCombatToolbelt();
         if (app.combatState?.active) app.renderDesktopCombatComposer?.(this.combatActor(app));
+        if (app.combatState?.active) app.renderDesktopPlaySurface?.();
         this.renderSelectionSentence(app);
     },
 
@@ -186,6 +187,8 @@ const YAW_INTERACTION_STATE = {
             const intent = focusedObject.intent || 'choose';
             parts.push({ slot: 'target', label: app._label('target.targetRole', 'Target'), value: focusedObject.name, count: 1 });
             parts.push({ slot: 'intent', label: intentLabel, value: this.actionLabel(app, intent, app._label('ui.chooseAction', 'Choose')), intent });
+        } else if (app.explorationActorSelectionExplicit || app.mobileActorBeltOpen || app.mobileTargetPickerOpen) {
+            parts.push({ slot: 'target', label: targetLabel, value: app._label('ui.chooseTarget', 'Choose'), count: 0 });
         }
         return parts;
     },
@@ -253,8 +256,48 @@ const YAW_INTERACTION_STATE = {
             const slot = app._escapeHtml(part.slot || 'unknown');
             const countAttr = Number.isFinite(part.count) ? ` data-command-count="${app._escapeHtml(String(part.count))}"` : '';
             const intentAttr = part.intent ? ` data-command-intent="${app._escapeHtml(part.intent)}"` : '';
-            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"${countAttr}${intentAttr}><span class="selection-sentence-label">${app._escapeHtml(part.label)}</span><span class="selection-sentence-value">${app._escapeHtml(part.value)}</span></span>`;
+            const label = app._escapeHtml(part.label);
+            const value = app._escapeHtml(part.value);
+            const title = app._escapeHtml(app._label('target.changeSlot', 'Change {slot}: {value}', { slot: part.label, value: part.value }));
+            const change = part.slot === 'actor' || part.slot === 'target'
+                ? `<span class="selection-sentence-change">${app._escapeHtml(app._label('ui.change', 'Change'))}</span>`
+                : '';
+            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"${countAttr}${intentAttr}><button type="button" class="selection-sentence-slot" data-command-surface="command-sentence" data-command-control="open-${slot}-slot" data-command-slot="${slot}"${countAttr}${intentAttr} title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.handleComposerSlotClick('${slot}')"><span class="selection-sentence-label">${label}</span><span class="selection-sentence-value">${value}</span>${change}</button></span>`;
         }).join('');
+    },
+
+    handleSlotClick(app, slot) {
+        if (!slot) return false;
+        if (app.combatState?.active) {
+            if (slot === 'actor') {
+                if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
+                    const party = document.getElementById('mobile-party-card') || document.getElementById('party-panel');
+                    party?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+                    return true;
+                }
+                return false;
+            }
+            if (slot === 'target') {
+                const enemies = document.getElementById('mobile-creature-card') || document.getElementById('panel-enemies');
+                enemies?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+                const target = document.querySelector('#mobile-creature-strip [data-command-control="mark-combat-target"], #mobile-creature-strip [data-command-control="pick-target"]');
+                target?.focus?.({ preventScroll: true });
+                return true;
+            }
+            return false;
+        }
+        if (slot === 'actor') return app.focusMobileActorRail?.() || false;
+        if (slot === 'target') return app.focusMobileTargetPicker?.() || false;
+        if (slot === 'intent') {
+            const action = document.querySelector('#mobile-target-action-tray [data-command-slot="intent"], #mobile-target-action-tray button');
+            if (action) {
+                action.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+                action.focus?.({ preventScroll: true });
+                return true;
+            }
+            return app.focusMobileTargetPicker?.() || false;
+        }
+        return false;
     },
 
     sentenceMeta(parts = []) {
@@ -301,10 +344,18 @@ const YAW_INTERACTION_STATE = {
         const hasTargets = !app.combatState?.active && (app._getExplorationTargets?.() || []).length > 0;
         const hasFocusedObject = !app.combatState?.active && Boolean(app.focusedStageObject?.name);
         const hasExplicitActors = !app.combatState?.active && Boolean(app.explorationActorSelectionExplicit);
+        const hasMobilePicker = !app.combatState?.active && Boolean(app.mobileActorBeltOpen || app.mobileTargetPickerOpen);
         const actorState = !app.combatState?.active && app._selectedExplorationActorState
             ? app._selectedExplorationActorState({ allowFallback: true })
             : null;
         const hasInvalidActors = Boolean(actorState && !actorState.valid);
+        const hasOnlyDefaultActor = Boolean(actorState?.valid
+            && (actorState.actors || []).length === 1
+            && actorState.actors[0] === app.player
+            && !hasTargets
+            && !hasFocusedObject
+            && !hasMobilePicker);
+        const hasMeaningfulActors = hasExplicitActors && !hasOnlyDefaultActor;
         const hasCombatTransient = Boolean(app.combatState?.active && (
             app.targetSelection?.source === 'combat' ||
             app._combatMarkedTarget?.() ||
@@ -313,9 +364,9 @@ const YAW_INTERACTION_STATE = {
             app.feedSelection?.active
         ));
         const hasCombatTurn = Boolean(app.combatState?.active && this.combatActor(app));
-        this.setSentenceSlot(desktop, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
+        this.setSentenceSlot(desktop, hasTargets || hasFocusedObject || hasMeaningfulActors || hasInvalidActors || hasCombatTransient || hasCombatTurn ? html : '', mode, meta);
         const mobile = document.getElementById('mobile-selection-sentence');
-        this.setSentenceSlot(mobile, hasTargets || hasFocusedObject || hasExplicitActors || hasInvalidActors ? html : '', 'exploration', meta);
+        this.setSentenceSlot(mobile, hasTargets || hasFocusedObject || hasMeaningfulActors || hasInvalidActors || hasMobilePicker ? html : '', 'exploration', meta);
         if (typeof YAW_SCENE_SHELL !== 'undefined') YAW_SCENE_SHELL.syncDesktopCommandComposer?.();
         if (!app.combatState?.active) app.renderMobileExplorationControls?.();
         return html;

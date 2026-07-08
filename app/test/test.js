@@ -16016,6 +16016,9 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, 'id="mobile-tile-details-content"', 'Mobile tile details sheet should expose full metadata content');
   assertContains(template, '.story-sheet-window', 'Story sheet should have bounded window styling');
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
+  assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
+  assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
+  assertContains(appContent, 'YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options)', 'App should expose story result bridge wrapper');
 });
 
 test('Story events render semantic interaction results without replacing activity log', () => {
@@ -16043,6 +16046,99 @@ test('Story events render semantic interaction results without replacing activit
   assertContains(elements.get('story-sheet-list').innerHTML, 'Bunnyfolk bumps You', 'Story sheet should render recent story events');
   App.closeStorySheet();
   assertEqual(elements.get('story-sheet').hidden, true, 'Story sheet should close');
+});
+
+test('Story result bridge renders result-first compact feedback without touching center tile', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const bunny = makeUnit('Bunnyfolk', { id: 'bunny-1', icon: 'B' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [bunny];
+  elements.get('scene-description').innerHTML = 'Current tile stays visual.';
+
+  App.emitStoryResult({
+    mode: 'adventure',
+    actors: [you],
+    targets: [bunny],
+    action: 'flirt',
+    shape: 'one-to-one'
+  }, 'You trade a careful greeting with Bunnyfolk.');
+
+  const compact = elements.get('mobile-story-latest').innerHTML;
+  assertContains(compact, 'class="story-summary">You trade a careful greeting with Bunnyfolk.', 'Story capsule should lead with the readable result');
+  assertContains(compact, 'class="story-meta-line"', 'Story capsule should keep actor target intent metadata separate');
+  assertContains(compact, 'You', 'Story metadata should name the actor');
+  assertContains(compact, 'Bunnyfolk', 'Story metadata should name the target');
+  assertContains(compact, 'class="story-intent"', 'Story metadata should include the intent label');
+  assertNotContains(elements.get('scene-description').innerHTML, 'You trade a careful greeting', 'Story result should not replace current tile description');
+});
+
+test('Exploration multi-target story emits one consolidated result', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1', Figh: 40 });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1', disposition: App.DISPOSITION.ENEMY, CPun: 80, con: 1 });
+  const bunnyfolk = makeUnit('Bunnyfolk', { id: 'bunny-1', disposition: App.DISPOSITION.ENEMY, CPun: 80, con: 1 });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk, bunnyfolk];
+  App.outsideActionOnTargets('fight', [ratfolk, bunnyfolk], you);
+
+  assertEqual(App.storyEvents.length, 1, 'Multi-target exploration should emit one consolidated story event');
+  assertContains(App.storyEvents[0].summary, 'multi-target fight', 'Multi-target exploration story should summarize the group result');
+  assertContains(App.storyEvents[0].summary, 'Ratfolk', 'Multi-target exploration story should name first target');
+  assertContains(App.storyEvents[0].summary, 'Bunnyfolk', 'Multi-target exploration story should name second target');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'multi-target fight', 'Mobile story capsule should show consolidated exploration result');
+});
+
+test('Exploration group action story emits one multi-actor result', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1', Feed: 20 });
+  const ally = makeUnit('Ally', { id: 'ally-1', Feed: 20 });
+  const target = makeUnit('Bunnyfolk', { id: 'bunny-1', disposition: App.DISPOSITION.FRIENDLY, CPun: 40, MPun: 100 });
+  App.player = you;
+  App.party = [you, ally];
+  App.creatures = [target];
+  App.outsideGroupActionOnTarget('feed', target, [you, ally]);
+
+  assertEqual(App.storyEvents.length, 1, 'Group exploration should emit one story event');
+  assertEqual(App.storyEvents[0].actorNames.join(', '), 'You, Ally', 'Group story should preserve multiple actor names');
+  assertContains(App.storyEvents[0].summary, 'You, Ally', 'Group story should name multiple actors in the result');
+  assertContains(App.storyEvents[0].summary, 'Bunnyfolk', 'Group story should name the target');
+});
+
+test('Combat multi-target command emits one consolidated story result', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1', Figh: 40, spd: 30, combatRow: 'front' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1, combatRow: 'front' });
+  const bunnyfolk = makeUnit('Bunnyfolk', { id: 'bunny-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, con: 1, combatRow: 'front' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk, bunnyfolk];
+  App.activeActor = you;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: you, initiative: 30 }, { unit: ratfolk, initiative: 20 }, { unit: bunnyfolk, initiative: 10 }],
+    syncActions: []
+  };
+  App.nextTurn = () => {};
+  App._resolveCombatAction({
+    mode: 'combat',
+    planMode: 'combat',
+    actors: [you],
+    targets: [ratfolk, bunnyfolk],
+    action: 'fight',
+    shape: 'one-to-many'
+  });
+
+  assertEqual(App.storyEvents.length, 1, 'Multi-target combat should emit one consolidated story event');
+  assertContains(App.storyEvents[0].summary, 'Ratfolk', 'Multi-target combat story should include first target result');
+  assertContains(App.storyEvents[0].summary, 'Bunnyfolk', 'Multi-target combat story should include second target result');
+  assertContains(App.storyEvents[0].targetNames.join(', '), 'Ratfolk, Bunnyfolk', 'Multi-target combat story should preserve marked targets');
 });
 
 test('Combat log filters by type and search text', () => {

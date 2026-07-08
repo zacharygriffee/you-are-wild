@@ -76,10 +76,37 @@ const YAW_STORY_EVENTS = {
             summary,
             passage,
             deltas: Array.isArray(input.deltas) ? input.deltas : [],
+            metadata: input.metadata || {},
             location: input.location || this.locationLabel(app),
             time: input.time || app._timeLabel?.() || '',
             createdAt: app.storyEventSeq
         };
+    },
+
+    emitResult(app, commandOrPlan = {}, result = '', options = {}) {
+        const command = commandOrPlan?.plan || commandOrPlan || {};
+        const resultText = Array.isArray(result)
+            ? result.filter(Boolean).join(' ')
+            : String(result || command.result || command.summary || '').trim();
+        const actors = this.units(options.actors || command.actors || command.actor || []);
+        const targets = this.units(options.targets || command.targets || command.target || []);
+        const intent = options.intent || command.subAction || command.intent || command.action || 'action';
+        const shape = options.shape || command.shape || command.distribution || '';
+        const deltas = Array.isArray(options.deltas) ? options.deltas : (Array.isArray(command.deltas) ? command.deltas : []);
+        return this.emit(app, {
+            mode: options.mode || command.mode || command.planMode || (app.combatState?.active ? 'combat' : 'adventure'),
+            type: options.type || 'interaction-result',
+            actors,
+            targets,
+            intent,
+            summary: options.summary || resultText || this.defaultSummary(app, actors, targets, intent),
+            passage: options.passage || resultText || options.summary || '',
+            deltas,
+            metadata: {
+                shape,
+                source: options.source || command.source || 'interaction-result'
+            }
+        });
     },
 
     emit(app, input = {}) {
@@ -99,7 +126,8 @@ const YAW_STORY_EVENTS = {
         const actors = event.actorNames?.length ? `<span class="story-actors">${app._escapeHtml(event.actorNames.join(', '))}</span>` : '';
         const targets = event.targetNames?.length ? `<span class="story-targets">${app._escapeHtml(event.targetNames.join(', '))}</span>` : '';
         const arrow = actors && targets ? '<span class="story-arrow" aria-hidden="true">-></span>' : '';
-        return `<span class="story-latest-line">${actors}${arrow}${targets}<span class="story-intent">${app._escapeHtml(event.intentLabel)}</span><span class="story-summary">${app._escapeHtml(event.summary)}</span></span>`;
+        const meta = [actors || '', arrow, targets || '', `<span class="story-intent">${app._escapeHtml(event.intentLabel)}</span>`].filter(Boolean).join('');
+        return `<span class="story-latest-line"><span class="story-summary">${app._escapeHtml(event.summary)}</span><span class="story-meta-line">${meta}</span></span>`;
     },
 
     eventHtml(app, event) {

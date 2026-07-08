@@ -1347,7 +1347,6 @@
         .desktop-story-strip .story-latest {
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .desktop-story-expand-btn {
@@ -5240,16 +5239,36 @@
             }
 
             .story-latest-line {
-                display: inline-flex;
-                align-items: baseline;
-                gap: 5px;
+                display: grid;
+                gap: 2px;
                 max-width: 100%;
                 min-width: 0;
             }
 
-            .story-actors,
-            .story-targets,
             .story-summary {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                color: var(--text-primary);
+                font-weight: 700;
+            }
+
+            .story-meta-line {
+                min-width: 0;
+                display: flex;
+                align-items: baseline;
+                gap: 5px;
+                overflow: hidden;
+                color: var(--text-muted);
+                font-size: 10px;
+                line-height: 1.2;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .story-actors,
+            .story-targets {
                 min-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;

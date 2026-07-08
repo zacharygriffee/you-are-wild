@@ -1520,14 +1520,12 @@
             },
 
             _emitCombatAction(action, actor, target, result) {
-                this.emitStoryEvent({
+                this.emitStoryResult({
                     mode: 'combat',
                     actors: Array.isArray(actor) ? actor : [actor].filter(Boolean),
                     targets: Array.isArray(target) ? target : [target].filter(Boolean),
-                    intent: action,
-                    summary: result,
-                    passage: result
-                });
+                    action
+                }, result, { mode: 'combat' });
                 this._emitModuleHook('onCombatAction', { action, actor, target, result });
             },
 
@@ -2131,8 +2129,9 @@
                 return YAW_COMBAT_RESOLUTION.resolveCommand(this, command);
             },
 
-            executeActionAgainstTarget(action, actor, target, options = {}) {
-                return YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target, options);
+            executeActionAgainstTarget(action, actor, target) {
+                if (arguments.length > 3) return YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target, arguments[3]);
+                return YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target);
             },
 
             // ===== SUB-ACTION ENGINE =====
@@ -2821,7 +2820,7 @@
                         skippedSet.add(target);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false, suppressStory: true });
                     if (resolved === false || this.lastActionResolution?.affected === false) skippedSet.add(target);
                 }
                 const affected = targetList.filter(target => !skippedSet.has(target)).map(t => t.name);
@@ -2837,7 +2836,7 @@
                     });
                 if (skipped.length > 0) summary += ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`;
                 this.log.push({ text: summary, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: [actor], targets: targetList, intent: action, summary, passage: summary });
+                this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: targetList, action, shape: 'one-to-many' }, summary);
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -2922,7 +2921,7 @@
                         return false;
                 }
                 this.log.push({ text: result, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: living, targets: living, intent: action, summary: result, passage: result });
+                this.emitStoryResult({ mode: 'adventure', actors: living, targets: living, action, shape: 'mutual' }, result);
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -2944,7 +2943,7 @@
                         skipped.push(target.name);
                         continue;
                     }
-                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false });
+                    const resolved = this.outsideActionOnTarget(action, target, actor, { ...options, allowPartySacrifice: false, suppressStory: true });
                     if (resolved === false) {
                         skipped.push(target.name);
                         continue;
@@ -2964,7 +2963,7 @@
                     ? ` ${this._label('target.skippedFullTargets', 'Skipped full targets: {targets}.', { targets: skipped.join(', ') })}`
                     : '';
                 this.log.push({ text: summary + skippedText, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: livingActors, targets: targetList, intent: action, summary: summary + skippedText, passage: summary + skippedText });
+                this.emitStoryResult({ mode: 'adventure', actors: livingActors, targets: targetList, action, shape: 'paired' }, summary + skippedText);
                 this._normalizeExplorationSelections();
                 this.renderLog();
                 this.renderParty();
@@ -3162,7 +3161,7 @@
                         return true;
                 }
                 this.log.push({ text: result, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: livingActors, targets: [target], intent: action, summary: result, passage: result });
+                this.emitStoryResult({ mode: 'adventure', actors: livingActors, targets: [target], action, shape: 'many-to-one' }, result);
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -3330,7 +3329,9 @@
                     }
                 }
                 this.log.push({ text: result, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: [actor], targets: [target], intent: action, summary: result, passage: result });
+                if (!options.suppressStory) {
+                    this.emitStoryResult({ mode: 'adventure', actors: [actor], targets: [target], action, shape: 'one-to-one', subAction: selectedSubAction }, result);
+                }
                 this.lastActionResolution = { action, actor, target, ok: affected, affected, message: result };
                 this.renderLog();
                 this.renderParty();
@@ -3454,7 +3455,7 @@
                     voreEnabled: this.settings.vore
                 });
                 this.log.push({ text, type: item || gold > 0 ? 'loot' : 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: [this._getExplorationActor?.() || this.player].filter(Boolean), targets: [corpse], intent: 'loot', summary: text, passage: text });
+                this.emitStoryResult({ mode: 'adventure', actors: [this._getExplorationActor?.() || this.player].filter(Boolean), targets: [corpse], action: 'loot' }, text);
                 this.renderLog();
                 this.renderCreatures();
                 this.renderExplorationActions();
@@ -3498,7 +3499,7 @@
                     voreEnabled: this.settings.vore
                 });
                 this.log.push({ text, type: 'discovery' });
-                this.emitStoryEvent({ mode: 'adventure', actors: consumedActors, targets: [corpse], intent: 'scavenge', summary: text, passage: text });
+                this.emitStoryResult({ mode: 'adventure', actors: consumedActors, targets: [corpse], action: 'scavenge' }, text);
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();
@@ -4172,6 +4173,9 @@
             },
             emitStoryEvent(input = {}) {
                 return YAW_STORY_EVENTS.emit(this, input);
+            },
+            emitStoryResult(commandOrPlan = {}, result = '', options = {}) {
+                return YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options);
             },
             renderStoryEvents() {
                 return YAW_STORY_EVENTS.render(this);

@@ -14,6 +14,7 @@ const YAW_COMBAT_RESOLUTION = {
         app.renderMobileCombatToolbelt();
         if (targets.length > 1 && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
             let resolved = false;
+            const resultLines = [];
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
                 if (!multiTarget || multiTarget.CPun <= 0 || multiTarget.disposition !== app.DISPOSITION.ENEMY) continue;
@@ -27,7 +28,20 @@ const YAW_COMBAT_RESOLUTION = {
                     });
                     continue;
                 }
-                resolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false }) !== false || resolved;
+                const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false, suppressStory: true }) !== false;
+                if (targetResolved && app.lastCombatActionResult?.result) resultLines.push(app.lastCombatActionResult.result);
+                resolved = targetResolved || resolved;
+            }
+            if (resolved) {
+                const targetNames = targets.map(unit => unit?.name).filter(Boolean).join(', ');
+                const summary = resultLines.length > 0
+                    ? resultLines.join(' ')
+                    : app._label('target.multiActionDone', '{name} finishes a multi-target {action} action on {targets}.', {
+                        name: actor?.name || app._label('target.actorRole', 'Actor'),
+                        action: app._uiLabel(command.action).toLowerCase(),
+                        targets: targetNames
+                    });
+                app.emitStoryResult?.({ ...command, shape: command.shape || 'one-to-many' }, summary, { mode: 'combat' });
             }
             app.renderCombatSceneForTurn(actor);
             app.renderLog();
@@ -42,7 +56,8 @@ const YAW_COMBAT_RESOLUTION = {
         return app.executeActionAgainstTarget(command.action, actor, target);
     },
 
-    executeActionAgainstTarget(app, action, actor, target, options = {}) {
+    executeActionAgainstTarget(app, action, actor, target) {
+        const options = arguments[4] || {};
         const advanceTurn = options.advanceTurn !== false;
         app.combatState.processing = true;
         try {
@@ -166,7 +181,8 @@ const YAW_COMBAT_RESOLUTION = {
             }
             }
             app._pushLog(result, 'combat', { actor, targetId: target.id || target.name, targetName: target.name, action, phase: 'action' });
-            app._emitCombatAction(action, actor, target, result);
+            app.lastCombatActionResult = { action, actor, target, result };
+            if (!options.suppressStory) app._emitCombatAction(action, actor, target, result);
             app.renderCombatSceneForTurn(actor);
             app.renderLog();
             app.renderCreatures();

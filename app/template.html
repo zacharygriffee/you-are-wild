@@ -1692,6 +1692,83 @@
             --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
         }
 
+        .unit-card.compact-tactical-card {
+            padding: 10px;
+        }
+
+        .unit-card.compact-tactical-card.has-corner-controls .unit-header {
+            padding-top: 30px;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls {
+            top: 4px;
+            left: 5px;
+            right: 5px;
+            z-index: 2;
+        }
+
+        .corner-card-controls [data-corner-slot="agency"] {
+            margin-right: auto;
+        }
+
+        .corner-card-controls [data-corner-slot="target"] {
+            margin-left: auto;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .action-btn {
+            width: 38px;
+            min-width: 38px;
+            max-width: 38px;
+            height: 38px;
+            min-height: 38px;
+            border-color: transparent;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .action-btn::before {
+            width: 28px;
+            height: 28px;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .action-btn[data-selection-control="sync-participant"][data-selection-state="selected"] {
+            --compact-card-icon-content: "✓";
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .action-btn[data-selection-control="sync-participant"][data-selection-state="locked"] {
+            --compact-card-icon-content: "★";
+            --compact-card-icon-color: var(--accent-primary);
+            --compact-card-icon-bg: rgba(0, 212, 170, 0.14);
+            --compact-card-icon-border: rgba(0, 212, 170, 0.55);
+            --compact-card-icon-active-bg: rgba(0, 212, 170, 0.26);
+            --compact-card-icon-active-border: var(--accent-primary);
+            --compact-card-icon-active-ring: rgba(0, 212, 170, 0.3);
+        }
+
+        .unit-card.compact-tactical-card .inline-card-controls {
+            position: static;
+            display: flex;
+            justify-content: flex-start;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 8px 0 0;
+            border-top: 1px solid var(--border-default);
+            pointer-events: auto;
+        }
+
+        .unit-card.compact-tactical-card .inline-card-controls .action-btn {
+            width: auto;
+            max-width: none;
+            height: auto;
+            min-height: 34px;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .unit-card.compact-tactical-card .inline-card-controls .action-btn::before {
+            content: none;
+        }
+
         .unit-actions [data-selection-mode] {
             border-width: 1px;
             border-style: solid;
@@ -4173,6 +4250,54 @@
                 box-shadow: 0 0 0 1px var(--mobile-actor-icon-active-ring, rgba(160, 160, 176, 0.24));
             }
 
+            .mobile-actor-chip.has-corner-controls {
+                position: relative;
+                padding-top: 35px;
+                align-items: flex-start;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.has-corner-controls {
+                padding: 35px 7px 7px;
+            }
+
+            .mobile-actor-chip.has-corner-controls .mobile-actor-chip-controls {
+                position: absolute;
+                top: 4px;
+                left: 5px;
+                right: 5px;
+                display: flex;
+                justify-content: space-between;
+                gap: 4px;
+                margin: 0;
+                pointer-events: none;
+                z-index: 2;
+            }
+
+            .mobile-actor-chip.has-corner-controls .mobile-actor-chip-btn {
+                pointer-events: auto;
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .mobile-actor-chip.has-corner-controls .mobile-actor-chip-btn::before {
+                width: 30px;
+                height: 30px;
+            }
+
+            .mobile-actor-chip.has-corner-controls .mobile-actor-chip-text {
+                max-width: 108px;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.has-corner-controls .mobile-actor-chip-text {
+                max-width: 112px;
+            }
+
             .mobile-move-pad {
                 display: none;
                 grid-template-columns: repeat(3, minmax(38px, 48px));
@@ -4555,6 +4680,77 @@
                 --mobile-card-icon-active-bg: rgba(255, 184, 0, 0.24);
                 --mobile-card-icon-active-border: var(--accent-warning);
                 --mobile-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+            }
+
+            .mobile-unit-chip.compact-tactical-card {
+                padding-top: 8px;
+            }
+
+            .mobile-unit-chip.compact-tactical-card.has-corner-controls {
+                padding-top: 38px;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.compact-tactical-card.has-corner-controls {
+                padding-top: 36px;
+            }
+
+            .mobile-unit-chip .corner-card-controls {
+                top: 4px;
+                left: 5px;
+                right: 5px;
+                z-index: 2;
+            }
+
+            .mobile-unit-chip .corner-card-controls .action-btn {
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+            }
+
+            .mobile-unit-chip .corner-card-controls .action-btn::before {
+                width: 30px;
+                height: 30px;
+            }
+
+            .mobile-unit-chip .corner-card-controls .action-btn[data-selection-control="sync-participant"][data-selection-state="selected"] {
+                --mobile-card-icon-content: "✓";
+            }
+
+            .mobile-unit-chip .corner-card-controls .action-btn[data-selection-control="sync-participant"][data-selection-state="locked"] {
+                --mobile-card-icon-content: "★";
+                --mobile-card-icon-color: var(--accent-primary);
+                --mobile-card-icon-bg: rgba(0, 212, 170, 0.14);
+                --mobile-card-icon-border: rgba(0, 212, 170, 0.55);
+                --mobile-card-icon-active-bg: rgba(0, 212, 170, 0.26);
+                --mobile-card-icon-active-border: var(--accent-primary);
+                --mobile-card-icon-active-ring: rgba(0, 212, 170, 0.3);
+            }
+
+            .mobile-unit-chip .inline-card-controls {
+                position: static;
+                justify-content: flex-start;
+                pointer-events: auto;
+                margin-top: 8px;
+                padding: 8px 0 0;
+                border-top: 1px solid var(--border-default);
+            }
+
+            .mobile-unit-chip .inline-card-controls .action-btn {
+                width: auto;
+                max-width: none;
+                min-width: 54px;
+                height: auto;
+                min-height: 40px;
+                padding: 6px 10px;
+                font-size: 11px;
+                border-color: var(--border-default);
+                background: rgba(42, 42, 74, 0.9);
+            }
+
+            .mobile-unit-chip .inline-card-controls .action-btn::before {
+                content: none;
             }
 
             .mobile-chip-name {

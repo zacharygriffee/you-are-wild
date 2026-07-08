@@ -14858,6 +14858,8 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const playerCard = App.renderUnitCard(player, 0, 'party');
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   const creatureCard = App.renderUnitCard(creature, 0, 'creature');
+  const desktopCompactPlayerCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
+  const desktopCompactCreatureCard = App.renderTacticalCard(creature, 0, 'creature', { presentation: 'desktop' });
   const mobilePlayerChip = App.renderMobileUnitChip(player, 0, 'party');
   const mobileAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
@@ -14904,6 +14906,9 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Desktop creature action row should identify target composer routing');
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Desktop creature action row should identify the shared command grammar');
   assertContains(creatureCard, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Desktop creature Mark button should expose button-level target routing');
+  assertContains(desktopCompactPlayerCard, 'data-corner-slot="agency"', 'Desktop compact party actor control should live in the agency corner');
+  assertContains(desktopCompactPlayerCard, 'data-corner-slot="target"', 'Desktop compact party target control should live in the target corner');
+  assertContains(desktopCompactCreatureCard, 'data-corner-slot="target"', 'Desktop compact creature target control should live in the target corner');
   assertContains(creatureCard, 'data-selection-control="target" aria-pressed="true"', 'Marked creature control should expose true pressed state');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Marked creature control should expose exploration target mode');
   assertContains(creatureCard, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Desktop creature Mark button should identify the target slot');
@@ -14921,11 +14926,13 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration"', 'Mobile party action row should identify actor-target composer routing');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile party action row should identify the shared command grammar');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" data-selection-control="actor"', 'Mobile party Actor chip should expose button-level actor routing');
+  assertContains(mobilePlayerChip, 'data-corner-slot="agency"', 'Mobile compact party actor control should live in the agency corner');
   assertContains(mobilePlayerChip, 'data-selection-control="actor" aria-pressed="false"', 'Mobile Act control should expose actor pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available"', 'Mobile Act control should expose act-actor mode');
   assertContains(mobilePlayerChip, 'data-selection-mode="act-actor" data-selection-state="available" data-command-slot="actor"', 'Mobile party Actor chip should identify the actor slot');
   assertContains(mobilePlayerChip, 'aria-label="Add You as actor"', 'Unselected mobile actor control should advertise add semantics');
   assertContains(mobilePlayerChip, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Mobile party Mark chip should expose button-level target routing');
+  assertContains(mobilePlayerChip, 'data-corner-slot="target"', 'Mobile compact party target control should live in the target corner');
   assertContains(mobilePlayerChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile party Target control should expose target pressed state');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile party Mark control should expose mark-target mode');
   assertContains(mobilePlayerChip, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Mobile party Mark chip should identify the target slot');
@@ -14941,6 +14948,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration"', 'Mobile creature action row should identify target composer routing');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent"', 'Mobile creature action row should identify the shared command grammar');
   assertContains(mobileCreatureChip, 'data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Mobile creature Mark chip should expose button-level target routing');
+  assertContains(mobileCreatureChip, 'data-corner-slot="target"', 'Mobile compact creature target control should live in the target corner');
   assertContains(mobileCreatureChip, 'data-selection-control="target" aria-pressed="true"', 'Mobile creature Target control should expose target pressed state');
   assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile creature Mark control should expose mark-target mode');
   assertContains(mobileCreatureChip, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Mobile creature Mark chip should identify the target slot');
@@ -14967,6 +14975,8 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(expandedMobilePlayerChip, 'data-card-state="expanded"', 'Mobile expanded chip should expose expanded focus/detail state');
   assertContains(expandedMobilePlayerChip, 'aria-label="Hide details for You"', 'Mobile expanded chip should describe collapsing details');
   assertContains(expandedMobilePlayerChip, 'aria-expanded="true"', 'Mobile expanded chip should expose expanded detail state');
+  assertNotContains(expandedMobilePlayerChip, 'corner-card-controls', 'Mobile expanded party chip should keep actor/mark controls inline instead of corner badges');
+  assertContains(expandedMobilePlayerChip, 'inline-card-controls', 'Mobile expanded party chip should keep normal inline actor/mark controls');
   assertContains(expandedMobilePlayerChip, 'data-action-scope="party-details" aria-label="Detail controls for You"', 'Mobile expanded party chip should expose detail-management scope');
   assertContains(expandedMobilePlayerChip, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile expanded party stats should identify itself as a detail-management control');
 
@@ -15006,15 +15016,19 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   App.combatTargetId = null;
   App.syncSelection = { active: true, phase: 'participants', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1'] };
   const syncActorCard = App.renderUnitCard(player, 0, 'party');
+  const syncCompactActorCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
   const mobileSyncActorChip = App.renderMobileUnitChip(player, 0, 'party');
   const syncAllyCard = App.renderUnitCard(ally, 1, 'party');
   const mobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(syncActorCard, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="locked"', 'Desktop Sync current actor button should expose locked participant state');
   assertContains(syncActorCard, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Desktop Sync current actor should be a described disabled control');
-  assertContains(syncActorCard, '>Actor</button>', 'Desktop Sync current actor should keep Actor copy instead of helper selection copy');
+  assertContains(syncActorCard, '>Actor</button>', 'Desktop expanded/full Sync current actor should keep normal Actor copy');
+  assertContains(syncCompactActorCard, 'data-corner-slot="agency"', 'Desktop compact Sync current actor should render in the agency corner slot');
+  assertContains(syncCompactActorCard, '>Lead</button>', 'Desktop compact Sync current actor should use compact Lead copy');
   assertContains(mobileSyncActorChip, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="locked"', 'Mobile Sync current actor button should expose locked participant state');
   assertContains(mobileSyncActorChip, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Mobile Sync current actor should be a described disabled control');
-  assertContains(mobileSyncActorChip, '>Actor</button>', 'Mobile Sync current actor chip should show Actor instead of the selected-helper checkmark');
+  assertContains(mobileSyncActorChip, 'data-corner-slot="agency"', 'Mobile Sync current actor should render in the agency corner slot');
+  assertContains(mobileSyncActorChip, '>Lead</button>', 'Mobile Sync current actor chip should show compact Lead copy');
   assertContains(syncAllyCard, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Desktop sync participant row should identify group actor-selection scope');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop sync participant row should identify the shared command grammar');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');
@@ -16562,12 +16576,14 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(partyHtml, 'Aliado', 'Mobile party status should localize');
   assertContains(partyHtml, 'aria-label="Agregar Ally como actor"', 'Mobile party actor button should localize accessible role label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
+  assertContains(partyHtml, 'data-corner-slot="agency"', 'Mobile compact party actor control should live in the agency corner');
+  assertContains(partyHtml, 'data-corner-slot="target"', 'Mobile compact party target control should live in the target corner');
   assertNotContains(partyHtml, 'aria-label="Acciones del grupo: Ally"', 'Mobile party chip should not expose a duplicate visible action menu');
   assertNotContains(partyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile collapsed party chip should keep detail controls out of the default actor-target row');
   ally.expanded = true;
   const expandedPartyHtml = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(expandedPartyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile expanded party stats button should localize accessible label');
-  assertContains(partyHtml, '>Actor<', 'Mobile party actor button text should localize as a role');
+  assertContains(partyHtml, '>Act<', 'Mobile compact party actor button should use short Act copy');
   assertContains(partyHtml, '>Marcar<', 'Mobile party target button text should localize');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');
   assertContains(creatureHtml, 'Amistoso', 'Mobile creature disposition should localize');

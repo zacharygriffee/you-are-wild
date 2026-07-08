@@ -1146,11 +1146,35 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.locationActionsText.includes('Items'), `${name}: location action row should expose tile-local actions in the control belt`);
     assert.strictEqual(mobileControls.locationActionsInSheet, false, `${name}: presentation sheet should not contain location actions`);
     assert.strictEqual(mobileControls.sheetActionButtons, 0, `${name}: presentation sheet should not contain duplicated full action controls`);
-    assert.strictEqual(mobileControls.creatureCueVisible, true, `${name}: tile with a living creature should expose a visible mobile creature cue without scrolling`);
-    assert(mobileControls.creatureCueText.includes('Here: Creature'), `${name}: mobile creature cue should summarize the first visible creature`);
+    assert.strictEqual(mobileControls.creatureCueVisible, false, `${name}: open compact creature rail should suppress the duplicate mobile creature cue`);
+    assert.strictEqual(mobileControls.creatureCueText.trim(), '', `${name}: hidden mobile creature cue should not leave duplicate Here text while the creature rail is open`);
     assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
-    assert(mobileControls.creatureCueTop >= 0, `${name}: mobile creature cue should not start above the viewport`);
-    assert(mobileControls.creatureCueBottom <= mobileControls.dockTop + 1, `${name}: mobile creature cue should stay above the fixed dock`);
+    const closedCreatureCue = await page.evaluate(() => {
+      App.mobileCreatureRailOpen = false;
+      App.renderCreatures();
+      App.renderMobileExplorationControls?.();
+      const dock = document.querySelector('.mobile-panel-dock');
+      const cue = document.getElementById('mobile-creature-presence-cue');
+      const cueButton = cue?.querySelector('button');
+      const cueRect = cue.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      const visible = Boolean(cueButton) && getComputedStyle(cue).display !== 'none' && cueRect.width > 0 && cueRect.height > 0;
+      const result = {
+        text: cue?.innerText || '',
+        visible,
+        top: cueRect.top,
+        bottom: cueRect.bottom,
+        dockTop: dockRect.top
+      };
+      App.mobileCreatureRailOpen = true;
+      App.renderCreatures();
+      App.renderMobileExplorationControls?.();
+      return result;
+    });
+    assert.strictEqual(closedCreatureCue.visible, true, `${name}: closed compact creature rail should expose a visible mobile creature cue without scrolling`);
+    assert(closedCreatureCue.text.includes('Here: Creature'), `${name}: mobile creature cue should summarize the first visible creature when the rail is closed`);
+    assert(closedCreatureCue.top >= 0, `${name}: mobile creature cue should not start above the viewport`);
+    assert(closedCreatureCue.bottom <= closedCreatureCue.dockTop + 1, `${name}: mobile creature cue should stay above the fixed dock`);
     assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
     assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);

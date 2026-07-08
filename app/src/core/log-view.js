@@ -95,6 +95,7 @@ const YAW_LOG_VIEW = {
             const normalized = this.applyPreferences(app, {});
             app._setStoredValue('logView', JSON.stringify(normalized));
         }
+        this.applyLayoutState(app);
     },
 
     savePreferences(app) {

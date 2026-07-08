@@ -270,6 +270,10 @@ const YAW_MOBILE_UNIT_STRIPS = {
             cue.innerHTML = '';
             return;
         }
+        if (app.mobileCreatureRailOpen !== false) {
+            cue.innerHTML = '';
+            return;
+        }
         const first = living[0] || {};
         const icon = app._escapeHtml(first.icon || '👤');
         const selected = living.length === 1 && app._isExplorationTargetUnit('creature', first);

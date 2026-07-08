@@ -16009,15 +16009,22 @@ test('Activity log template exposes filters search export and mobile controls', 
 test('Story template exposes expandable semantic story surfaces distinct from activity log', () => {
   assertContains(template, 'id="mobile-story-latest"', 'Mobile story capsule should expose a latest story slot');
   assertContains(template, 'data-command-control="open-story-sheet"', 'Story capsule should expose an open-story command');
+  assertContains(template, 'class="nav-btn mobile-story-handle"', 'Mobile should expose a thumb-zone story handle outside the compact scene capsule');
   assertContains(template, 'id="desktop-story-strip"', 'Desktop should expose a story strip outside the activity log');
   assertContains(template, 'id="story-sheet"', 'Story should expose an expandable sheet');
   assertContains(template, 'id="story-sheet-list"', 'Story sheet should expose recent story events');
   assertContains(template, 'id="mobile-tile-details-sheet"', 'Mobile should expose a tile details sheet');
   assertContains(template, 'id="mobile-tile-details-content"', 'Mobile tile details sheet should expose full metadata content');
   assertContains(template, '.story-sheet-window', 'Story sheet should have bounded window styling');
+  assertContains(template, '.mobile-story-handle', 'Mobile story handle should have dedicated bounded styling');
+  assertContains(template, '#app.story-sheet-open .mobile-story-handle', 'Mobile story handle should hide while the sheet is open');
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
+  assertContains(storyEventsContent, 'setUnderlyingInert(enabled)', 'Story sheet should control inert background state');
+  assertContains(storyEventsContent, 'setUnderlyingInert(true)', 'Opening Story should make the play UI inert behind the sheet');
+  assertContains(storyEventsContent, 'setUnderlyingInert(false)', 'Closing Story should restore the play UI');
+  assertContains(storyEventsContent, '_activateFocusTrap?.(sheet', 'Story sheet should use the app focus trap when available');
   assertContains(appContent, 'YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options)', 'App should expose story result bridge wrapper');
 });
 

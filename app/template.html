@@ -1444,6 +1444,10 @@
             font-size: 12px;
         }
 
+        .mobile-story-handle {
+            display: none;
+        }
+
         .panel-interaction-tray {
             border: 1px solid var(--border-default);
             border-radius: var(--radius-sm);
@@ -5098,11 +5102,44 @@
             }
 
             .mobile-story-expand-btn {
-                flex: 0 0 auto;
-                min-height: 30px;
-                padding: 3px 9px;
-                font-size: 10px;
+                display: none;
+            }
+
+            .mobile-story-handle {
+                position: fixed;
+                left: 50%;
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
+                z-index: 126;
+                transform: translateX(-50%);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-width: 112px;
+                min-height: 36px;
+                padding: 7px 12px;
+                border: 1px solid var(--border-default);
+                border-radius: 999px;
+                background: rgba(26, 26, 46, 0.96);
+                color: var(--text-primary);
+                box-shadow: var(--shadow-md);
+                font-size: 12px;
+                font-weight: 800;
+                line-height: 1;
                 text-transform: uppercase;
+                touch-action: manipulation;
+            }
+
+            .mobile-story-handle::before {
+                content: "▴";
+                color: var(--accent-primary);
+                font-size: 12px;
+                line-height: 1;
+            }
+
+            #app.story-sheet-open .mobile-story-handle {
+                visibility: hidden;
+                pointer-events: none;
             }
 
             .mobile-play-surface.combat-active .mobile-scene-sheet {
@@ -5295,7 +5332,7 @@
 
             .story-sheet-window {
                 width: 100%;
-                max-height: min(70dvh, 620px);
+                max-height: min(68dvh, 620px);
                 border-radius: var(--radius-md) var(--radius-md) 0 0;
             }
 
@@ -5304,7 +5341,7 @@
             }
 
             .story-sheet-list {
-                padding: 10px 12px calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                padding: 10px 12px 14px;
             }
 
             .mobile-scene-sheet .tile-event-feed.compact {
@@ -6055,6 +6092,7 @@
 	                                    <div class="mobile-log-list" id="mobile-log-list" aria-live="polite" aria-relevant="additions text"></div>
 	                                </details>
 	                            </div>
+                                <button class="nav-btn mobile-story-handle" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open story" aria-label="Open story">Story</button>
 	                            <div class="mobile-panel-dock" data-surface-role="drawer-shortcuts" data-command-surface="drawer-shortcuts" data-command-mode="navigation" aria-label="Mobile panel shortcuts" data-i18n-aria-label="ui.mobilePanels">
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-stats-drawer" title="Stats" aria-label="Stats" data-i18n-title="ui.stats" data-i18n-aria-label="ui.stats" onclick="App.showCharacterStats()">📊 <span class="mobile-panel-dock-label" data-i18n="ui.stats">Stats</span></button>
 	                                <button class="nav-btn" data-command-surface="drawer-shortcuts" data-command-mode="navigation" data-command-control="open-review-map" title="Map" aria-label="Map" data-i18n-title="ui.map" data-i18n-aria-label="ui.map" onclick="togglePanel('map')">🗺️ <span class="mobile-panel-dock-label" data-i18n="ui.map">Map</span></button>

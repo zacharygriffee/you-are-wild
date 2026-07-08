@@ -167,6 +167,21 @@ const YAW_STORY_EVENTS = {
         });
     },
 
+    setUnderlyingInert(enabled) {
+        const selectors = ['#app > .app-header', '#app .panel-main', '#app .panel-map', '#app .panel-party', '#app .panel-enemies', '#app > .panel-log'];
+        selectors.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (!element) return;
+            if (enabled) {
+                element.setAttribute('inert', '');
+                element.setAttribute('aria-hidden', 'true');
+            } else {
+                element.removeAttribute('inert');
+                element.removeAttribute('aria-hidden');
+            }
+        });
+    },
+
     open(app) {
         this.render(app);
         const sheet = document.getElementById('story-sheet');
@@ -174,6 +189,8 @@ const YAW_STORY_EVENTS = {
         sheet.hidden = false;
         sheet.setAttribute('aria-hidden', 'false');
         document.getElementById('app')?.classList?.add('story-sheet-open');
+        this.setUnderlyingInert(true);
+        app._activateFocusTrap?.(sheet, { close: () => app.closeStorySheet() });
         app._focusFirstIn?.(sheet);
         return true;
     },
@@ -183,6 +200,8 @@ const YAW_STORY_EVENTS = {
         if (!sheet) return false;
         sheet.hidden = true;
         sheet.setAttribute('aria-hidden', 'true');
+        app._restoreFocusTrap?.();
+        this.setUnderlyingInert(false);
         document.getElementById('app')?.classList?.remove('story-sheet-open');
         return true;
     }

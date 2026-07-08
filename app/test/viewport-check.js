@@ -1092,10 +1092,13 @@ async function checkViewport(browser, name, width, height) {
       const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
       const detailButtons = Array.from(document.querySelectorAll('.mobile-strip-details-btn'));
       const moveToggle = document.getElementById('mobile-move-toggle');
+      const storyHandle = document.querySelector('.mobile-story-handle');
+      const topStoryButton = document.querySelector('.mobile-scene-sheet .mobile-story-expand-btn');
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const mapRect = map.getBoundingClientRect();
       const sheetRect = sheet.getBoundingClientRect();
+      const storyHandleRect = storyHandle.getBoundingClientRect();
       const unitStripsRect = unitStrips.getBoundingClientRect();
       const creatureCardRect = creatureCard.getBoundingClientRect();
       const tileInfoRect = tileInfo.getBoundingClientRect();
@@ -1147,6 +1150,12 @@ async function checkViewport(browser, name, width, height) {
       const cueRect = creatureCue.getBoundingClientRect();
       const moveToggleRect = moveToggle.getBoundingClientRect();
       const beltStyle = getComputedStyle(belt);
+      const storyHandleStyle = getComputedStyle(storyHandle);
+      const topStoryButtonStyle = getComputedStyle(topStoryButton);
+      const surface = document.getElementById('mobile-play-surface');
+      surface?.classList.add('combat-active');
+      const combatStoryHandleDisplay = getComputedStyle(storyHandle).display;
+      surface?.classList.remove('combat-active');
       const overlapArea = (a, b) => {
         const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
         const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
@@ -1173,6 +1182,19 @@ async function checkViewport(browser, name, width, height) {
         mapBottom: mapRect.bottom,
         sheetHeight: sheetRect.height,
         sheetBottom: sheetRect.bottom,
+        storyHandlePosition: storyHandleStyle.position,
+        storyHandleDisplay: storyHandleStyle.display,
+        storyHandleVisibility: storyHandleStyle.visibility,
+        storyHandleTop: storyHandleRect.top,
+        storyHandleRight: storyHandleRect.right,
+        storyHandleBottom: storyHandleRect.bottom,
+        storyHandleLeft: storyHandleRect.left,
+        storyHandleWidth: storyHandleRect.width,
+        storyHandleHeight: storyHandleRect.height,
+        storyHandleMinHeight: parseFloat(storyHandleStyle.minHeight) || 0,
+        storyHandleText: storyHandle?.innerText || '',
+        topStoryButtonDisplay: topStoryButtonStyle.display,
+        combatStoryHandleDisplay,
         miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
         creatureCardTop: creatureCardRect.top,
@@ -1246,6 +1268,14 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
     assert(mobileControls.sheetHeight <= 150, `${name}: mobile story capsule should stay compact above the traversal stage`);
     assert(mobileControls.sheetBottom <= mobileControls.mapTop + 1, `${name}: mobile story capsule should not overlap the traversal map`);
+    assert.strictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: high story capsule button should be hidden on mobile`);
+    assert.strictEqual(mobileControls.storyHandlePosition, 'fixed', `${name}: mobile story access should live in the thumb zone as a fixed handle`);
+    assert.notStrictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: mobile story handle should be visible during normal play`);
+    assert.notStrictEqual(mobileControls.combatStoryHandleDisplay, 'none', `${name}: mobile story handle should remain available during combat`);
+    assert(mobileControls.storyHandleLeft >= -1 && mobileControls.storyHandleRight <= mobileControls.viewportWidth + 1, `${name}: mobile story handle should stay inside viewport horizontally`);
+    assert(mobileControls.storyHandleTop >= 0 && mobileControls.storyHandleBottom <= mobileControls.dockTop + 1, `${name}: mobile story handle should sit above the dock without clipping`);
+    assert(mobileControls.storyHandleWidth >= 96 && mobileControls.storyHandleHeight >= 36 && mobileControls.storyHandleMinHeight >= 36, `${name}: mobile story handle should keep a thumb-sized target`);
+    assert(mobileControls.storyHandleText.toLowerCase().includes('story'), `${name}: mobile story handle should be labeled accessibly`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
@@ -1341,6 +1371,74 @@ async function checkViewport(browser, name, width, height) {
     await page.evaluate(() => {
       document.getElementById('mobile-activity-log').open = false;
     });
+
+    const openStorySheet = await page.evaluate(() => {
+      App.emitStoryResult({
+        actors: [App.player],
+        targets: [App.creatures?.[0]],
+        intent: 'Talk'
+      }, 'You and Bunnyfolk exchange a tense look.', {
+        summary: 'You and Bunnyfolk exchange a tense look.',
+        passage: 'Bunnyfolk studies the camp while you hold position.'
+      });
+      App.openStorySheet();
+      const appRoot = document.getElementById('app');
+      const sheet = document.getElementById('story-sheet');
+      const windowEl = sheet?.querySelector('.story-sheet-window');
+      const close = sheet?.querySelector('[data-command-control="close-story-sheet"]');
+      const header = document.querySelector('#app > .app-header');
+      const main = document.querySelector('#app .panel-main');
+      const handle = document.querySelector('.mobile-story-handle');
+      const sheetRect = sheet.getBoundingClientRect();
+      const windowRect = windowEl.getBoundingClientRect();
+      const closeRect = close.getBoundingClientRect();
+      const handleStyle = getComputedStyle(handle);
+      const storyText = document.getElementById('story-sheet-list')?.innerText || '';
+      const opened = {
+        appOpenClass: appRoot.classList.contains('story-sheet-open'),
+        hidden: sheet.hidden,
+        ariaHidden: sheet.getAttribute('aria-hidden'),
+        sheetLeft: sheetRect.left,
+        sheetRight: sheetRect.right,
+        sheetTop: sheetRect.top,
+        sheetBottom: sheetRect.bottom,
+        windowBottom: windowRect.bottom,
+        windowHeight: windowRect.height,
+        closeVisible: closeRect.width >= 32 && closeRect.height >= 32,
+        headerInert: header?.hasAttribute('inert') || false,
+        mainInert: main?.hasAttribute('inert') || false,
+        handleVisibility: handleStyle.visibility,
+        handlePointerEvents: handleStyle.pointerEvents,
+        storyText,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight
+      };
+      App.closeStorySheet();
+      opened.closedHidden = sheet.hidden;
+      opened.closedAriaHidden = sheet.getAttribute('aria-hidden');
+      opened.headerInertAfterClose = header?.hasAttribute('inert') || false;
+      opened.mainInertAfterClose = main?.hasAttribute('inert') || false;
+      opened.appOpenClassAfterClose = appRoot.classList.contains('story-sheet-open');
+      return opened;
+    });
+    assert.strictEqual(openStorySheet.hidden, false, `${name}: mobile story sheet should open from the thumb-zone handle path`);
+    assert.strictEqual(openStorySheet.ariaHidden, 'false', `${name}: open mobile story sheet should expose dialog semantics`);
+    assert.strictEqual(openStorySheet.appOpenClass, true, `${name}: open mobile story sheet should mark root state`);
+    assert(openStorySheet.sheetLeft >= -1 && openStorySheet.sheetRight <= openStorySheet.viewportWidth + 1, `${name}: mobile story sheet should stay inside viewport horizontally`);
+    assert(openStorySheet.sheetTop >= -1 && openStorySheet.sheetBottom <= openStorySheet.viewportHeight + 1, `${name}: mobile story sheet should stay inside viewport vertically`);
+    assert(openStorySheet.windowHeight <= openStorySheet.viewportHeight * 0.7 + 8, `${name}: mobile story sheet should remain a bounded bottom sheet`);
+    assert(openStorySheet.windowBottom <= openStorySheet.viewportHeight + 1, `${name}: mobile story window should not run under the viewport`);
+    assert.strictEqual(openStorySheet.closeVisible, true, `${name}: mobile story sheet should keep Close visible`);
+    assert.strictEqual(openStorySheet.headerInert, true, `${name}: mobile story sheet should make header inert behind the dialog`);
+    assert.strictEqual(openStorySheet.mainInert, true, `${name}: mobile story sheet should make play surface inert behind the dialog`);
+    assert.strictEqual(openStorySheet.handleVisibility, 'hidden', `${name}: mobile story handle should hide while the sheet is open`);
+    assert.strictEqual(openStorySheet.handlePointerEvents, 'none', `${name}: mobile story handle should be inert while the sheet is open`);
+    assert(openStorySheet.storyText.includes('Bunnyfolk studies'), `${name}: mobile story sheet should show recent story events`);
+    assert.strictEqual(openStorySheet.closedHidden, true, `${name}: closing mobile story sheet should hide it again`);
+    assert.strictEqual(openStorySheet.closedAriaHidden, 'true', `${name}: closed mobile story sheet should restore hidden semantics`);
+    assert.strictEqual(openStorySheet.headerInertAfterClose, false, `${name}: closing mobile story sheet should restore header interaction`);
+    assert.strictEqual(openStorySheet.mainInertAfterClose, false, `${name}: closing mobile story sheet should restore play surface interaction`);
+    assert.strictEqual(openStorySheet.appOpenClassAfterClose, false, `${name}: closing mobile story sheet should clear root state`);
 
     await page.evaluate(() => {
       App.toggleMobileMovePad();

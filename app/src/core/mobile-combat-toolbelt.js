@@ -105,6 +105,11 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const active = Boolean(app.combatState?.active);
         if (surface?.classList) surface.classList.toggle('combat-active', active);
         document.documentElement?.classList?.toggle('mobile-combat-active', active);
+        if (active && typeof window !== 'undefined' && window.innerWidth <= 1024) {
+            const mainContent = document.querySelector('.panel-main .panel-content');
+            if (mainContent) mainContent.scrollTop = 0;
+            if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+        }
         app.renderMobileExplorationControls?.();
         if (!belt) return '';
         if (!active) {

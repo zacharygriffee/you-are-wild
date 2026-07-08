@@ -62,7 +62,8 @@ const YAW_LOG_VIEW = {
         const prefs = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
         const filter = this.allowedFilters().includes(prefs.filter) ? prefs.filter : 'all';
         const search = typeof prefs.search === 'string' ? prefs.search.slice(0, 120) : '';
-        const collapsed = prefs.collapsed === true;
+        const hasCollapsedPreference = Object.prototype.hasOwnProperty.call(prefs, 'collapsed');
+        const collapsed = hasCollapsedPreference ? prefs.collapsed === true : true;
         const expanded = prefs.expanded === true && !collapsed;
         return { filter, search, collapsed, expanded };
     },

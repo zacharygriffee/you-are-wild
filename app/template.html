@@ -283,7 +283,7 @@
         .stage {
             grid-area: stage;
             display: grid;
-            grid-template-columns: minmax(680px, 1fr) minmax(164px, 184px) minmax(164px, 184px);
+            grid-template-columns: minmax(720px, 1fr) minmax(144px, 164px) minmax(144px, 164px);
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
@@ -291,7 +291,7 @@
         }
 
         .stage.target-panel-empty {
-            grid-template-columns: minmax(760px, 1fr) minmax(164px, 184px) 0;
+            grid-template-columns: minmax(800px, 1fr) minmax(144px, 164px) 0;
         }
 
         /* Panel Base */
@@ -585,10 +585,14 @@
 
         .desktop-play-surface {
             width: min(100%, 980px);
-            min-height: min(100%, 560px);
+            height: clamp(430px, calc(100dvh - 238px), 560px);
+            min-height: 0;
+            max-height: 100%;
+            position: relative;
+            z-index: 1;
             display: grid;
             grid-template-columns: minmax(80px, 0.58fr) minmax(280px, 2.5fr) minmax(80px, 0.58fr);
-            grid-template-rows: minmax(78px, 0.58fr) minmax(300px, 2.8fr) minmax(78px, 0.58fr);
+            grid-template-rows: minmax(66px, 0.58fr) minmax(240px, 2.8fr) minmax(66px, 0.58fr);
             gap: 8px;
             align-items: stretch;
         }
@@ -690,7 +694,7 @@
         .scene-title {
             font-size: 24px;
             font-weight: 700;
-            margin-bottom: var(--space-md);
+            margin-bottom: var(--space-sm);
             color: var(--text-accent);
         }
 
@@ -1298,8 +1302,10 @@
             gap: 6px;
             width: min(100%, 720px);
             max-width: 100%;
-            margin: var(--space-sm) auto 0;
+            margin: 6px auto 0;
             min-width: 0;
+            position: relative;
+            z-index: 4;
         }
 
         .desktop-command-composer .selection-sentence,
@@ -1345,7 +1351,7 @@
             width: 100%;
             max-width: min(100%, 720px);
             margin: var(--space-sm) auto 0;
-            padding: var(--space-sm);
+            padding: 7px;
             border: 1px solid var(--border-default);
             border-radius: var(--radius-md);
             background: rgba(26, 26, 46, 0.88);
@@ -1376,7 +1382,7 @@
             flex: 0 0 auto;
             min-width: 78px;
             max-width: 120px;
-            padding: 8px 10px;
+            padding: 7px 9px;
         }
 
         .desktop-context-belt .action-caption {
@@ -1437,7 +1443,9 @@
 
         .panel-party,
         .panel-enemies {
-            background: rgba(26, 26, 46, 0.56);
+            align-self: start;
+            max-height: 100%;
+            background: rgba(26, 26, 46, 0.42);
             border-color: var(--border-subtle);
         }
 
@@ -1451,12 +1459,15 @@
 
         .panel-party .panel-content,
         .panel-enemies .panel-content {
-            padding: 10px;
+            padding: 8px;
+            max-height: calc(100dvh - 164px);
+            overflow-y: auto;
+            scrollbar-width: thin;
         }
 
         .panel-party .unit-card.compact-tactical-card,
         .panel-enemies .unit-card.compact-tactical-card {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .stage.target-panel-empty .panel-enemies {
@@ -2643,21 +2654,21 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: minmax(620px, 1fr) minmax(156px, 176px) minmax(156px, 176px);
+                grid-template-columns: minmax(660px, 1fr) minmax(140px, 156px) minmax(140px, 156px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(700px, 1fr) minmax(156px, 176px) 0;
+                grid-template-columns: minmax(740px, 1fr) minmax(140px, 156px) 0;
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: minmax(540px, 1fr) minmax(148px, 168px) minmax(148px, 168px);
+                grid-template-columns: minmax(560px, 1fr) minmax(136px, 148px) minmax(136px, 148px);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(620px, 1fr) minmax(148px, 168px) 0;
+                grid-template-columns: minmax(640px, 1fr) minmax(136px, 148px) 0;
             }
         }
 
@@ -2767,13 +2778,23 @@
 
             .panel-party,
             .panel-enemies {
-                transform: translateX(110%);
+                top: auto;
+                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 12px);
+                max-height: min(68dvh, 560px);
+                min-height: 0;
+                box-shadow: var(--shadow-lg);
+                transform: translateY(120%);
             }
 
             .panel-map.active,
             .panel-party.active,
             .panel-enemies.active {
                 transform: translateX(0);
+            }
+
+            .panel-party.active,
+            .panel-enemies.active {
+                transform: translateY(0);
             }
 
             .panel-map:not(.active),
@@ -2798,6 +2819,18 @@
                 grid-area: auto;
             }
 
+            .panel-party .panel-header,
+            .panel-enemies .panel-header {
+                flex: 0 0 auto;
+            }
+
+            .panel-party .panel-content,
+            .panel-enemies .panel-content {
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .panel-main {
                 width: 100%;
                 max-width: 100%;
@@ -2819,6 +2852,20 @@
                 display: inline-flex;
                 padding: 2px 8px;
                 font-size: 11px;
+            }
+
+            .panel-party .panel-header-actions .nav-btn,
+            .panel-enemies .panel-header-actions .nav-btn {
+                min-height: 32px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            }
+
+            .panel-party .panel-header-actions .mobile-panel-close,
+            .panel-enemies .panel-header-actions .mobile-panel-close {
+                min-width: 32px;
             }
 
             .scene-display {
@@ -3117,13 +3164,37 @@
             }
 
             .mobile-control-belt.actor-controls-open {
-                max-height: min(192px, 27dvh);
+                max-height: min(236px, 28dvh);
+                overflow-y: visible;
             }
 
             .mobile-control-belt.actor-controls-open .mobile-selection-sentence {
                 min-height: 0;
                 padding: 4px 7px;
                 line-height: 1.15;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-location-actions {
+                display: none;
+            }
+
+            .mobile-play-surface.target-controls-open.actor-controls-open:not(.combat-active) .mobile-unit-strip {
+                pointer-events: none;
+            }
+
+            .mobile-play-surface.target-controls-open.actor-controls-open:not(.combat-active) .mobile-unit-strips {
+                gap: 6px;
+            }
+
+            .mobile-play-surface.target-controls-open.actor-controls-open:not(.combat-active) .mobile-strip-card {
+                min-height: 0;
+            }
+
+            .mobile-play-surface.target-controls-open.actor-controls-open:not(.combat-active) .mobile-strip-card .mobile-unit-strip {
+                max-height: 0;
+                overflow: hidden;
+                padding: 0;
+                border: 0;
             }
 
             .mobile-play-surface.target-controls-open .mobile-creature-presence-cue {
@@ -3300,7 +3371,8 @@
             }
 
             .mobile-control-belt.target-controls-open.actor-controls-open {
-                max-height: min(280px, 36dvh);
+                max-height: min(236px, 28dvh);
+                overflow-y: visible;
             }
 
             .mobile-control-belt.target-controls-open .mobile-target-action-tray {
@@ -3331,6 +3403,19 @@
             .mobile-control-belt.target-controls-open .mobile-target-action-tray .action-btn {
                 width: 100%;
                 min-width: 0;
+            }
+
+            .mobile-control-belt.target-controls-open.actor-controls-open .mobile-target-action-tray .target-action-row {
+                display: flex;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 2px;
+            }
+
+            .mobile-control-belt.target-controls-open.actor-controls-open .mobile-target-action-tray .action-btn {
+                flex: 0 0 auto;
+                width: auto;
+                min-width: 70px;
             }
 
             @media (max-width: 380px) {
@@ -3365,7 +3450,7 @@
                 .mobile-control-belt {
                     gap: 4px;
                     padding: 6px;
-                    overflow-y: auto;
+                    overflow-y: visible;
                 }
 
                 .mobile-control-belt.actor-controls-open {
@@ -3384,6 +3469,11 @@
 
                 .mobile-creature-presence-btn {
                     min-height: 26px;
+                    padding: 4px 8px;
+                }
+
+                .mobile-strip-details-btn {
+                    min-height: 34px;
                     padding: 4px 8px;
                 }
 
@@ -3411,6 +3501,16 @@
                 display: none;
             }
 
+            .mobile-control-belt.actor-controls-open .mobile-actor-belt {
+                display: flex;
+                gap: 4px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                max-height: 58px;
+                padding: 2px 0 4px;
+                scroll-padding-inline: 8px;
+            }
+
             .mobile-actor-chip {
                 flex: 0 0 auto;
                 display: inline-flex;
@@ -3424,6 +3524,20 @@
                 border-radius: var(--radius-sm);
                 background: rgba(42, 42, 74, 0.92);
                 color: var(--text-primary);
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip {
+                flex: 0 0 132px;
+                width: auto;
+                min-width: 132px;
+                max-width: 132px;
+                gap: 4px;
+                padding: 4px;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip:not(.mobile-actor-clear):not(.mobile-actor-details) {
+                display: inline-flex;
+                min-height: 52px;
             }
 
             .mobile-actor-chip.selected {
@@ -3444,11 +3558,40 @@
             .mobile-actor-chip.mobile-actor-clear {
                 border-color: rgba(255, 107, 157, 0.35);
                 color: var(--text-secondary);
-                flex-basis: 78px;
-                width: 78px;
-                min-width: 78px;
-                max-width: 78px;
                 cursor: pointer;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-clear {
+                flex: 0 0 44px;
+                width: auto;
+                min-width: 44px;
+                max-width: 44px;
+                justify-content: center;
+                min-height: 52px;
+                padding-inline: 0;
+                font-size: 0;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-details {
+                flex: 0 0 44px;
+                width: auto;
+                min-width: 44px;
+                max-width: 44px;
+                justify-content: center;
+                min-height: 52px;
+                padding-inline: 0;
+                font-size: 0;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-clear .mobile-actor-chip-icon,
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-details .mobile-actor-chip-icon {
+                font-size: 18px;
+                line-height: 1;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-clear .mobile-actor-chip-text,
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip.mobile-actor-details .mobile-actor-chip-text {
+                display: none;
             }
 
             .mobile-actor-chip.mobile-actor-details {
@@ -3488,6 +3631,25 @@
                 gap: 4px;
                 margin-left: auto;
                 flex: 0 0 auto;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip-controls {
+                grid-column: auto;
+                width: auto;
+                margin-left: auto;
+                gap: 2px;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip-btn {
+                flex: 0 0 auto;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip-icon {
+                font-size: 14px;
+            }
+
+            .mobile-control-belt.actor-controls-open .mobile-actor-chip-text {
+                max-width: 24px;
             }
 
             .mobile-actor-chip-btn {
@@ -3560,6 +3722,10 @@
             .mobile-combat-toolbelt.active {
                 display: grid;
                 gap: 6px;
+            }
+
+            .mobile-play-surface:not(.combat-active) #mobile-combat-toolbelt {
+                display: none !important;
             }
 
             .mobile-combat-status {
@@ -3637,6 +3803,7 @@
 
             .mobile-play-surface.combat-active #mobile-party-card {
                 order: 3;
+                max-height: 204px;
             }
 
             .mobile-play-surface:not(.combat-active) #mobile-party-card {
@@ -3688,6 +3855,28 @@
 
             .mobile-play-surface.combat-active .mobile-unit-chip {
                 flex-basis: clamp(132px, 42vw, 172px);
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip {
+                max-height: 132px;
+                align-items: stretch;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip {
+                flex-basis: clamp(132px, 39vw, 160px);
+                min-height: 128px;
+                max-height: 128px;
+                padding: 7px;
+                overflow: hidden;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.compact-tactical-card {
+                padding-top: 8px;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .unit-traits,
+            .mobile-play-surface.combat-active #mobile-party-strip .unit-selection-chips {
+                display: none;
             }
 
             .mobile-unit-chip.targetable {

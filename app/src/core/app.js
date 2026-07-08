@@ -3531,6 +3531,9 @@
             _executeFeedSubAction(subId, actor) {
                 return YAW_COMBAT_FEED.executeSubAction(this, subId, actor);
             },
+            _resolveCombatFeedCommand(command) {
+                return YAW_COMBAT_FEED.resolveCommand(this, command);
+            },
 
             // ===== XP/LEVELING =====
             gainXP(amount) {

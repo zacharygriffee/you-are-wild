@@ -2156,6 +2156,7 @@ test('Combat feed helper module is registered before app code', () => {
   assertContains(combatFeedContent, 'const YAW_COMBAT_FEED = {', 'Combat feed helper should expose the feed service');
   assertContains(combatFeedContent, 'executeAction(app, actor = app.activeActor || app._currentCombatActor() || app.player)', 'Combat feed helper should own feed intent execution');
   assertContains(combatFeedContent, 'executeSubAction(app, subId, actor)', 'Combat feed helper should own feed sub-action execution');
+  assertContains(combatFeedContent, 'resolveCommand(app, command)', 'Combat feed helper should resolve plan-backed feed sub-action commands');
   assertContains(combatFeedContent, 'app.feedSelection = {', 'Combat feed helper should own feed panel selection state');
   assertContains(combatFeedContent, 'app._renderInteractionState({ exploration: false, toolbelt: true })', 'Combat feed helper should render feed options through panel/toolbelt state');
   assertNotContains(combatFeedContent, 'Math.random', 'Combat feed helper should not use ambient randomness');
@@ -2163,6 +2164,7 @@ test('Combat feed helper module is registered before app code', () => {
   assertNotContains(combatFeedContent, 'simplified', 'Combat feed helper should not retain stale simplified-target comments');
   assertContains(appContent, 'YAW_COMBAT_FEED.executeAction(this, actor)', 'App feed action wrapper should delegate to combat feed');
   assertContains(appContent, 'YAW_COMBAT_FEED.executeSubAction(this, subId, actor)', 'App feed sub-action wrapper should delegate to combat feed');
+  assertContains(appContent, 'YAW_COMBAT_FEED.resolveCommand(this, command)', 'App feed command wrapper should delegate plan-backed feed resolution');
 });
 
 test('Combat intent helper module is registered before app code', () => {
@@ -5335,6 +5337,12 @@ test('Combat feed defaults to the current combat actor', () => {
   assertEqual(result, true, 'Current actor feed should resolve as a valid feed action');
   assertEqual(healedBy, ally, 'Feed should use the current combat actor when no explicit actor is passed');
   assertEqual(healedTarget, player, 'Current actor feed should target the wounded party member');
+  assertEqual(App.lastIntentCommand.source, 'feed-options', 'Feed sub-action should resolve through the feed options command surface');
+  assertEqual(App.lastIntentCommand.action, 'feed', 'Feed sub-action should record the feed command action');
+  assertEqual(App.lastIntentCommand.subAction, 'heal', 'Feed sub-action should record the selected sub-action');
+  assertEqual(App.lastIntentCommand.actorIds.join(','), 'ally-feed-current', 'Feed sub-action command should preserve the acting combat actor');
+  assertEqual(App.lastIntentCommand.targetIds.join(','), 'player-feed-current', 'Feed sub-action command should preserve the chosen feed target');
+  assertEqual(App.lastIntentCommand.planMode, 'combat', 'Feed sub-action should route through a combat InteractionPlan');
   assertEqual(App._feedAdvanced, true, 'Current actor feed should consume the turn');
 });
 

@@ -713,6 +713,7 @@
             },
             targetSelection: null,
             combatTargetId: null,
+            combatTargetIds: [],
             activeActor: null,
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,
@@ -2083,6 +2084,10 @@
                 return YAW_COMBAT_TARGETING.markedTarget(this);
             },
 
+            _combatMarkedTargets() {
+                return YAW_COMBAT_TARGETING.markedTargets(this);
+            },
+
             _isCombatMarkedTarget(unit) {
                 return YAW_COMBAT_TARGETING.isMarkedTarget(this, unit);
             },
@@ -2116,8 +2121,8 @@
                 return YAW_COMBAT_RESOLUTION.resolveCommand(this, command);
             },
 
-            executeActionAgainstTarget(action, actor, target) {
-                return YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target);
+            executeActionAgainstTarget(action, actor, target, options = {}) {
+                return YAW_COMBAT_RESOLUTION.executeActionAgainstTarget(this, action, actor, target, options);
             },
 
             // ===== SUB-ACTION ENGINE =====

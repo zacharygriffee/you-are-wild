@@ -164,9 +164,10 @@ const YAW_INTERACTION_DISPATCH = {
                 return { ok: true };
             }
             if (command.targets?.length && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
-                const target = command.targets[0];
-                if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
-                if (!app._canReachCombatTarget(actor, target, command.action)) return { ok: false, reason: 'cannot-reach' };
+                for (const target of command.targets) {
+                    if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
+                    if (!app._canReachCombatTarget(actor, target, command.action)) return { ok: false, reason: 'cannot-reach' };
+                }
             }
         }
         return { ok: true };

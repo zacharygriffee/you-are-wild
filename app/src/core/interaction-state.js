@@ -7,6 +7,7 @@ const YAW_INTERACTION_STATE = {
     clearTransient(app) {
         app.targetSelection = null;
         app.combatTargetId = null;
+        app.combatTargetIds = [];
         app.syncSelection = null;
         app.feedSelection = null;
         app._syncSelected = [];
@@ -122,13 +123,13 @@ const YAW_INTERACTION_STATE = {
             intentText = this.actionLabel(app, app.targetSelection.action, app._label('ui.chooseAction', 'Choose'));
             targetText = app._label('target.pickTarget', 'Pick target');
         } else {
-            const markedTarget = app._combatMarkedTarget?.();
-            if (markedTarget) {
-                targetText = this.unitNames(app, [markedTarget], app._label('target.none', 'None'));
-                targetCount = 1;
+            const markedTargets = app._combatMarkedTargets?.() || [];
+            if (markedTargets.length) {
+                targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
+                targetCount = markedTargets.length;
             }
         }
-        if (targetText) parts.push({ slot: 'target', label: this.targetLabel(app, 1), value: targetText, count: targetCount });
+        if (targetText) parts.push({ slot: 'target', label: this.targetLabel(app, targetCount || 1), value: targetText, count: targetCount });
         parts.push({ slot: 'intent', label: intentLabel, value: intentText, intent: intentId });
         return parts;
     },
@@ -199,6 +200,7 @@ const YAW_INTERACTION_STATE = {
         const hasCombatTransient = Boolean(app.combatState?.active && (
             app.targetSelection?.source === 'combat' ||
             app._combatMarkedTarget?.() ||
+            (app._combatMarkedTargets?.() || []).length > 0 ||
             app.syncSelection?.active ||
             app.feedSelection?.active
         ));

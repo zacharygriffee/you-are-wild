@@ -6,17 +6,51 @@
 const YAW_COMBAT_RESOLUTION = {
     resolveCommand(app, command) {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
-        const target = command?.targets?.[0] || null;
+        const targets = (command?.targets || []).filter(Boolean);
+        const target = targets[0] || null;
         app.targetSelection = null;
         app.combatTargetId = null;
+        app.combatTargetIds = [];
         app.renderMobileCombatToolbelt();
+        if (targets.length > 1 && ['fight', 'flirt', 'fuck', 'feast'].includes(command.action)) {
+            let resolved = false;
+            for (const multiTarget of targets) {
+                if (!app.combatState?.active) break;
+                if (!multiTarget || multiTarget.CPun <= 0 || multiTarget.disposition !== app.DISPOSITION.ENEMY) continue;
+                if (!app._canReachCombatTarget(actor, multiTarget, command.action)) {
+                    app._pushLog(app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: multiTarget.name }), 'combat', {
+                        actor,
+                        targetId: multiTarget.id || multiTarget.name,
+                        targetName: multiTarget.name,
+                        action: command.action,
+                        phase: 'cannot-reach'
+                    });
+                    continue;
+                }
+                resolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false }) !== false || resolved;
+            }
+            app.renderCombatSceneForTurn(actor);
+            app.renderLog();
+            app.renderCreatures();
+            app.renderParty();
+            app._syncCurrentTileCreatures();
+            app._sanitizeCombatState({ preserveTurn: true });
+            app.autoSave();
+            app.nextTurn();
+            return resolved;
+        }
         return app.executeActionAgainstTarget(command.action, actor, target);
     },
 
-    executeActionAgainstTarget(app, action, actor, target) {
+    executeActionAgainstTarget(app, action, actor, target, options = {}) {
+        const advanceTurn = options.advanceTurn !== false;
         app.combatState.processing = true;
         try {
-            if (!target || !actor || (target.CPun <= 0 && !app._isCorpse(target))) { app.combatState.processing = false; app.nextTurn(); return false; }
+            if (!target || !actor || (target.CPun <= 0 && !app._isCorpse(target))) {
+                app.combatState.processing = false;
+                if (advanceTurn) app.nextTurn();
+                return false;
+            }
             const actorName = actor.name === app.player?.name ? 'You' : actor.name;
             const actorVerb = actor.name === app.player?.name ? '' : 's';
             let result = '';
@@ -140,7 +174,7 @@ const YAW_COMBAT_RESOLUTION = {
             app._syncCurrentTileCreatures();
             app._sanitizeCombatState({ preserveTurn: true });
             app.autoSave();
-            app.nextTurn();
+            if (advanceTurn) app.nextTurn();
             return true;
         } catch (e) {
             console.error('Combat action failed:', e);

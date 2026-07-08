@@ -36,6 +36,7 @@ const YAW_COMBAT_FEED = {
         };
         app.targetSelection = null;
         app.combatTargetId = null;
+        app.combatTargetIds = [];
         app.syncSelection = null;
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;

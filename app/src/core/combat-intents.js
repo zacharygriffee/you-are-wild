@@ -41,6 +41,7 @@ const YAW_COMBAT_INTENTS = {
         }
         if (action === 'feed') {
             app.combatTargetId = null;
+            app.combatTargetIds = [];
             return app._dispatchPanelInteraction({
                 mode: 'combat',
                 actors: [current],
@@ -52,21 +53,25 @@ const YAW_COMBAT_INTENTS = {
         }
         if (action === 'sync') {
             app.combatTargetId = null;
+            app.combatTargetIds = [];
             app.showSyncMenu();
             return true;
         }
         if (action === 'moveRow') {
             app.combatTargetId = null;
+            app.combatTargetIds = [];
             app.moveCombatRow();
             return true;
         }
         if (action === 'flee' && current.name === app.player?.name) {
             app.combatTargetId = null;
+            app.combatTargetIds = [];
             app.attemptFlee();
             return true;
         }
         if (action === 'skip') {
             app.combatTargetId = null;
+            app.combatTargetIds = [];
             app.nextTurn();
             return true;
         }

@@ -9386,6 +9386,47 @@ test('Panel wrappers use one command dispatcher for combat target clicks', () =>
   assertEqual(seen[1].targetIds[0], 'enemy-combat-panel-dispatch', 'Legacy combat wrapper should resolve the same target id before dispatch');
 });
 
+test('Combat target-first marking supports multiple selected targets', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-combat-multi-target', Figh: 18 });
+  const enemyA = makeUnit('Enemy A', { id: 'enemy-combat-target-a', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, Figh: 4, con: 1, combatRow: 'front' });
+  const enemyB = makeUnit('Enemy B', { id: 'enemy-combat-target-b', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, Figh: 4, con: 1, combatRow: 'front' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [enemyA, enemyB];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }, { unit: enemyA, initiative: 10 }, { unit: enemyB, initiative: 9 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  let turnAdvances = 0;
+  App.nextTurn = function() { turnAdvances++; };
+
+  assertEqual(App.toggleCombatTarget('enemy-combat-target-a'), true, 'First combat target mark should toggle on');
+  assertEqual(App.toggleCombatTarget('enemy-combat-target-b'), true, 'Second combat target mark should toggle on without replacing the first');
+
+  assertEqual(App.combatTargetIds.join(','), 'enemy-combat-target-a,enemy-combat-target-b', 'Combat target marks should keep a multi-target id list');
+  assertEqual(App.combatTargetId, 'enemy-combat-target-a', 'Legacy combatTargetId should remain the first marked target');
+  assertEqual(App._isCombatMarkedTarget(enemyA), true, 'First enemy should remain marked');
+  assertEqual(App._isCombatMarkedTarget(enemyB), true, 'Second enemy should also be marked');
+  assertContains(elements.get('selection-sentence').innerHTML, 'Targets', 'Combat composer sentence should expose plural target labeling');
+  assertEqual(elements.get('desktop-context-belt').getAttribute('data-command-target-count'), '2', 'Desktop composer should expose the selected combat target count');
+
+  assertEqual(App.executeCombatIntent('fight'), true, 'Target-first Fight should resolve against selected combat targets');
+
+  assert(enemyA.CPun < 100, 'First marked combat target should take damage');
+  assert(enemyB.CPun < 100, 'Second marked combat target should take damage');
+  assertEqual(App.combatTargetId, null, 'Resolved multi-target combat intent should clear legacy target id');
+  assertEqual(App.combatTargetIds.join(','), '', 'Resolved multi-target combat intent should clear target id list');
+  assertEqual(App.lastIntentCommand.targetIds.join(','), 'enemy-combat-target-a,enemy-combat-target-b', 'Combat command should record every marked target id');
+  assertEqual(turnAdvances, 1, 'Multi-target combat intent should still advance the combat turn once');
+});
+
 test('Exploration cards expose multi-target selection and context actions', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const actor = makeUnit('Actor', { id: 'actor-1', Flir: 30, cha: 20 });

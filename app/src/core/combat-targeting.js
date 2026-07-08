@@ -7,6 +7,7 @@ const YAW_COMBAT_TARGETING = {
     selectTarget(app, action) {
         const actor = app.activeActor || app.player;
         app.combatTargetId = null;
+        app.combatTargetIds = [];
         app.targetSelection = { action, source: 'combat', actorId: actor?.id || actor?.name || 'player' };
         app._clearCenterActionsForCombat();
         app.renderCombatSceneForTurn(actor);
@@ -39,19 +40,37 @@ const YAW_COMBAT_TARGETING = {
         return unit.disposition !== app.DISPOSITION.PARTY;
     },
 
-    markedTarget(app) {
-        if (!app.combatState?.active || !app.combatTargetId) return null;
-        const targetId = String(app.combatTargetId);
-        return app.creatures.find(unit => {
+    targetIds(app) {
+        const ids = Array.isArray(app.combatTargetIds)
+            ? app.combatTargetIds.map(id => String(id)).filter(Boolean)
+            : [];
+        if (app.combatTargetId && !ids.includes(String(app.combatTargetId))) ids.unshift(String(app.combatTargetId));
+        const validIds = ids.filter(id => app.creatures.some(unit => unit
+            && unit.CPun > 0
+            && unit.disposition === app.DISPOSITION.ENEMY
+            && (app._unitSelectionId(unit) === id || String(unit.id || unit.name) === id)));
+        app.combatTargetIds = [...new Set(validIds)];
+        app.combatTargetId = app.combatTargetIds[0] || null;
+        return app.combatTargetIds;
+    },
+
+    markedTargets(app) {
+        if (!app.combatState?.active) return [];
+        const ids = this.targetIds(app);
+        return ids.map(targetId => app.creatures.find(unit => {
             if (!unit || unit.CPun <= 0 || unit.disposition !== app.DISPOSITION.ENEMY) return false;
             return app._unitSelectionId(unit) === targetId || String(unit.id || unit.name) === targetId;
-        }) || null;
+        })).filter(Boolean);
+    },
+
+    markedTarget(app) {
+        return this.markedTargets(app)[0] || null;
     },
 
     isMarkedTarget(app, unit) {
-        if (!unit || !app.combatTargetId) return false;
-        const targetId = String(app.combatTargetId);
-        return app._unitSelectionId(unit) === targetId || String(unit.id || unit.name) === targetId;
+        if (!unit) return false;
+        const unitIds = [app._unitSelectionId(unit), String(unit.id || unit.name)];
+        return this.targetIds(app).some(targetId => unitIds.includes(targetId));
     },
 
     toggleMarkedTarget(app, targetId) {
@@ -63,19 +82,23 @@ const YAW_COMBAT_TARGETING = {
             && (app._unitSelectionId(unit) === id || String(unit.id || unit.name) === id));
         if (!target) return false;
         const unitId = app._unitSelectionId(target);
-        app.combatTargetId = app.combatTargetId === unitId ? null : unitId;
+        const ids = this.targetIds(app);
+        app.combatTargetIds = ids.includes(unitId)
+            ? ids.filter(existing => existing !== unitId)
+            : [...ids, unitId];
+        app.combatTargetId = app.combatTargetIds[0] || null;
         app._clearCenterActionsForCombat();
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
     },
 
     executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
-        const target = this.markedTarget(app);
-        if (!target) return false;
+        const targets = this.markedTargets(app);
+        if (!targets.length) return false;
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor],
-            targets: [target],
+            targets,
             action,
             source: 'combat-composer',
             constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
@@ -86,6 +109,7 @@ const YAW_COMBAT_TARGETING = {
             return false;
         }
         app.combatTargetId = null;
+        app.combatTargetIds = [];
         app.targetSelection = null;
         return app._dispatchInteractionCommand(command);
     },

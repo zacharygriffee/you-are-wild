@@ -9502,6 +9502,52 @@ test('InteractionPlan backs combat current-turn target plans and validation', ()
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [frontEnemy, backEnemy], action: 'fight', constraints: { maxTargets: 1 } })).reason, 'too-many-targets', 'Combat plans should enforce target count constraints when mechanics declare them');
 });
 
+test('Combat planner confirms one actor Talk as a direct row-agnostic action', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const ratfolk = makeUnit('Ratfolk', { id: 'planner-talk-ratfolk', Flir: 30, cha: 18, combatRow: 'front' });
+  const goblin = makeUnit('Goblin', {
+    id: 'planner-talk-goblin',
+    disposition: App.DISPOSITION.ENEMY,
+    CPun: 100,
+    MPun: 100,
+    CPle: 0,
+    MPle: 100,
+    wis: 8,
+    combatRow: 'back'
+  });
+  App.player = ratfolk;
+  App.party = [ratfolk];
+  App.creatures = [goblin];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ratfolk, initiative: 20 }, { unit: goblin, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = ratfolk;
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(ratfolk)],
+    pendingIntent: 'flirt',
+    explicitActors: true
+  };
+  App.combatTargetIds = [App._unitSelectionId(goblin)];
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
+  assertEqual(App.confirmCombatPlan(), true, 'Single-actor planner Talk should resolve as a direct combat action');
+  assertEqual(App.combatState.syncActions.length, 0, 'Single-actor planner Talk should not queue a Sync/group action');
+  assertEqual(App.lastIntentCommand.action, 'flirt', 'Single-actor planner Talk should preserve the direct Talk intent');
+  assertEqual(App.lastIntentCommand.timing, 'current-turn', 'Single-actor planner Talk should resolve on the current turn');
+  assertEqual(advanced, 1, 'Single-actor planner Talk should consume the current actor turn');
+  assertEqual(App.combatCorrectionMessage, null, 'Valid single-actor Talk should not leave a correction warning');
+  assertEqual(App.combatPlanSelection, null, 'Successful single-actor planner action should clear transient planner state');
+});
+
 test('Sync queues a slowest-participant InteractionPlan', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'plan-sync-player', Figh: 20, combatRow: 'front' });

@@ -28,7 +28,8 @@ const YAW_COMBAT_PLANNING = {
                 source: 'combat-planner',
                 actorIds: options.skipDefaultActor ? [] : [currentId],
                 pendingIntent: null,
-                explicitActors: false
+                explicitActors: false,
+                hadGroupActors: false
             };
         }
         this.normalize(app);
@@ -91,6 +92,7 @@ const YAW_COMBAT_PLANNING = {
             : (ids.includes(unitId)
                 ? ids.filter(existing => existing !== unitId)
                 : [...ids, unitId]);
+        app.combatPlanSelection.hadGroupActors = app.combatPlanSelection.actorIds.length > 1;
         app.combatPlanSelection.explicitActors = true;
         app.targetSelection = null;
         this.normalize(app);
@@ -144,6 +146,7 @@ const YAW_COMBAT_PLANNING = {
 
     confirm(app) {
         if (!app.combatPlanSelection?.active) return false;
+        const intendedGroup = Boolean(app.combatPlanSelection.hadGroupActors);
         this.normalize(app);
         const action = app.combatPlanSelection.pendingIntent;
         const syncType = this.typeForIntent(app, action);
@@ -178,7 +181,7 @@ const YAW_COMBAT_PLANNING = {
                 consumeCurrentTurn: true
             }
         });
-        if (!action || !syncType) {
+        if (!action) {
             app._reportInvalidCombatCommand?.(command, 'missing-action');
             return false;
         }
@@ -188,6 +191,44 @@ const YAW_COMBAT_PLANNING = {
         }
         if (partyTargets.length > 0 && !supportIntents.has(action)) {
             app._reportInvalidCombatCommand?.({ ...command, targets: partyTargets, targetType: 'party' }, 'party-target-blocked');
+            return false;
+        }
+        if (actors.length === 1 && !intendedGroup) {
+            const singleCommand = app._buildPanelInteractionCommand({
+                mode: 'combat',
+                actors,
+                targets,
+                action,
+                source: 'combat-planner',
+                targetType: 'enemy',
+                shape: 'one-to-one',
+                timing: 'current-turn',
+                distribution: 'single',
+                constraints: {
+                    requireCurrentTurn: true,
+                    hostileOnly: true,
+                    checkReach: true,
+                    checkRows: true,
+                    minActors: 1,
+                    minTargets: 1,
+                    maxTargets: 1
+                },
+                metadata: {
+                    baseAction: action,
+                    phase: 'confirm',
+                    consumeCurrentTurn: true
+                }
+            });
+            const singleValid = app._validateInteractionCommand?.(singleCommand) || { ok: true };
+            if (!singleValid.ok) {
+                app._reportInvalidCombatCommand?.(singleCommand, singleValid.reason);
+                return false;
+            }
+            app.combatPlanSelection = null;
+            return app._dispatchInteractionCommand(singleCommand);
+        }
+        if (!syncType) {
+            app._reportInvalidCombatCommand?.(command, 'invalid-combat-target');
             return false;
         }
         const valid = app._validateInteractionCommand?.(command) || { ok: true };
@@ -200,7 +241,10 @@ const YAW_COMBAT_PLANNING = {
 
     controls(app) {
         if (!app.combatPlanSelection?.active) return '';
-        const confirmLabel = app._escapeHtml(app._label('combat.group.confirm', 'Confirm Group'));
+        const actorCount = this.actors(app).length;
+        const confirmLabel = app._escapeHtml(actorCount > 1
+            ? app._label('combat.group.confirm', 'Confirm Group')
+            : app._label('combat.action.confirm', 'Confirm Action'));
         const clearLabel = app._escapeHtml(app._label('combat.group.clear', 'Clear Group'));
         const pending = Boolean(app.combatPlanSelection.pendingIntent);
         const pendingClass = pending ? ' primary' : '';

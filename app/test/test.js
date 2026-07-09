@@ -15190,7 +15190,9 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
   assertContains(templateContent, 'grid-template-columns: 40px minmax(52px, 1fr) 40px;', 'Micro tactical cards should reserve tight control/stat/control columns');
   assertContains(templateContent, '.unit-card.compact-tactical-card:not(.micro-tactical-card)', 'Desktop compact padding should not apply to micro cards');
-  assertContains(templateContent, 'grid-auto-columns: minmax(136px, 156px);', 'Desktop battle micro cards should use compact mobile-parity columns');
+  assertContains(templateContent, 'grid-template-rows: minmax(52px, 0.34fr) minmax(260px, 2.4fr) minmax(52px, 0.38fr);', 'Desktop combat stage should give turn context more space than the micro card belts');
+  assertContains(templateContent, 'grid-auto-columns: minmax(132px, 150px);', 'Desktop battle micro cards should use compact mobile-parity columns');
+  assertContains(templateContent, '.desktop-battle-units .micro-tactical-card.selected-actor', 'Desktop battle micro cards should suppress bulky selected glow rules');
   assertContains(templateContent, 'max-height: 50px;', 'Mobile micro cards should not regain bulky vertical padding');
   App.combatState.active = false;
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');

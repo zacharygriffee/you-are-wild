@@ -1977,11 +1977,14 @@ test('Combat action helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-rules.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat rules should load before app.js');
   assertContains(combatRulesContent, 'const YAW_COMBAT_RULES = {', 'Combat rules helper should expose the combat rules service');
   assertContains(combatRulesContent, 'effectiveSpeed(app, unit)', 'Combat rules helper should own effective speed');
+  assertContains(combatRulesContent, 'intentReachProfile(_app, actor, action =', 'Combat rules helper should own intent-specific reach profiles');
+  assertContains(combatRulesContent, 'reachResult(app, actor, target, action =', 'Combat rules helper should return structured reach results');
   assertContains(combatRulesContent, 'canReachCombatTarget(app, actor, target, action =', 'Combat rules helper should own reach validation');
   assertContains(combatRulesContent, 'terrainCausesMiss(app, actor, target, action =', 'Combat rules helper should own deterministic terrain miss checks');
   assertContains(combatRulesContent, 'applyTerrainRoundEffects(app, living)', 'Combat rules helper should own terrain round effects');
   assertNotContains(combatRulesContent, 'Math.random', 'Combat rules helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_RULES.effectiveSpeed(this, unit)', 'App effective speed wrapper should delegate to combat rules');
+  assertContains(appContent, 'YAW_COMBAT_RULES.reachResult(this, actor, target, action)', 'App structured reach wrapper should delegate to combat rules');
   assertContains(appContent, 'YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action)', 'App reach wrapper should delegate to combat rules');
   assertContains(appContent, 'YAW_COMBAT_RULES.applyTerrainRoundEffects(this, living)', 'App terrain effects wrapper should delegate to combat rules');
   assertContains(buildContent, "'src/core/combat-status.js'", 'Combat status helper should be included in SCRIPT_ORDER');
@@ -13341,7 +13344,7 @@ test('Combat auto-position assigns flying and ranged units to back row', () => {
   assertEqual(harpy.combatRow, 'back', 'Flying/ranged enemy should default to back row');
 });
 
-test('Melee combat targeting cannot select unreachable back-row enemies', () => {
+test('Melee combat targeting allows back-row attempts and fails through Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-melee', Figh: 30 });
   const enemy = makeUnit('Backline', { id: 'backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
@@ -13356,20 +13359,17 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="flirt"', 'Talk should remain available when physical reach is blocked by row');
   App.selectTarget('fight');
   const desktopTargetHtml = elements.get('enemies-content').innerHTML;
-  assertContains(desktopTargetHtml, 'disabled', 'Unreachable back-row enemy should render disabled');
-  assertContains(desktopTargetHtml, 'Backline is in the back row', 'Unreachable desktop target should explain the back-row reach blocker');
-  assertContains(desktopTargetHtml, 'current actor has no ranged/flying reach', 'Unreachable desktop target should name the missing reach capability');
-  assertContains(desktopTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable desktop target should suggest actual reach capabilities');
-  assertContains(desktopTargetHtml, 'Talk/Flee', 'Unreachable desktop target should suggest non-physical counterplay');
+  assertNotContains(desktopTargetHtml, 'disabled aria-disabled="true"', 'Back-row enemy should remain selectable for an attempted physical action');
+  assertContains(desktopTargetHtml, 'Try', 'Unreachable physical target should be labeled as an attempt, not unavailable');
+  assertContains(desktopTargetHtml, 'Backline, but the back row is beyond ordinary melee reach', 'Desktop target should explain likely reach failure');
+  assertContains(desktopTargetHtml, 'try a social action', 'Desktop target should suggest non-physical counterplay');
   assertNotContains(desktopTargetHtml, 'move rows before choosing', 'Unreachable desktop target should not imply Move Row solves current back-row reach rules');
   const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
-  assertContains(mobileTargetHtml, 'Backline is in the back row', 'Unreachable mobile target should explain the back-row reach blocker');
-  assertContains(mobileTargetHtml, 'current actor has no ranged/flying reach', 'Unreachable mobile target should name the missing reach capability');
-  assertContains(mobileTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable mobile target should suggest actual reach capabilities');
-  assertContains(mobileTargetHtml, 'Talk/Flee', 'Unreachable mobile target should suggest non-physical counterplay');
+  assertContains(mobileTargetHtml, 'Try', 'Unreachable mobile target should expose attempt semantics');
+  assertContains(mobileTargetHtml, 'Backline, but the back row is beyond ordinary melee reach', 'Mobile target should explain likely reach failure');
   assertNotContains(mobileTargetHtml, 'move rows before choosing', 'Unreachable mobile target should not imply Move Row solves current back-row reach rules');
   App.updateLanguage('es');
-  const invalidCommand = App._buildPanelInteractionCommand({
+  const command = App._buildPanelInteractionCommand({
     mode: 'combat',
     actors: [player],
     targets: [enemy],
@@ -13377,10 +13377,44 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
     source: 'combat-targeting',
     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
   });
-  const invalid = App._validateInteractionCommand(invalidCommand);
-  App._reportInvalidCombatCommand(invalidCommand, invalid.reason);
+  const valid = App._validateInteractionCommand(command);
+  assertEqual(valid.ok, true, 'Back-row physical target should validate as an attempt');
+  App._dispatchInteractionCommand(command);
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
-  assertContains(App.combatCorrectionMessage.text, 'Backline', 'Blocked reach correction should name the target');
+  assertContains(App.latestSceneBeat.summary, 'retaguardia', 'Reach failure should emit a localized Scene Beat');
+  assertContains(App.log[App.log.length - 1].text, 'retaguardia', 'Reach failure should remain in the durable log');
+});
+
+test('Intent reach profiles separate social ranged flying anti-flying and contact rules', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const ground = makeUnit('Ground', { id: 'reach-ground', Figh: 40, Fuck: 40, Flir: 40, combatRow: 'front' });
+  const flyer = makeUnit('Flyer', { id: 'reach-flyer', Figh: 40, flying: true, combatRow: 'back' });
+  const anti = makeUnit('Anti', { id: 'reach-anti', Figh: 40, antiflying: true, combatRow: 'front' });
+  const ranged = makeUnit('Ranged', { id: 'reach-ranged', Figh: 40, ranged: true, combatRow: 'back' });
+  const backline = makeUnit('Backline', { id: 'reach-backline', disposition: App.DISPOSITION.ENEMY, CPun: 100, CPle: 0, MPle: 100, wis: 1, combatRow: 'back' });
+  const flyingTarget = makeUnit('Harpy', { id: 'reach-harpy', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front', con: 1 });
+  App.player = ground;
+  App.party = [ground, flyer, anti, ranged];
+  App.creatures = [backline, flyingTarget];
+  App.combatState.active = true;
+  App.nextTurn = function() {};
+
+  assertEqual(App._combatReachResult(ground, backline, 'flirt').canSucceed, true, 'Talk/social should be cross-row by default');
+  App.executeActionAgainstTarget('flirt', ground, backline);
+  assertContains(App.lastCombatActionResult.result, 'talk', 'Cross-row Talk should resolve normally');
+
+  App.executeActionAgainstTarget('feast', ground, backline);
+  assertContains(App.lastCombatActionResult.result, 'needs close contact', 'Feast should use a close/contact profile by default');
+
+  App.executeActionAgainstTarget('fight', flyer, backline);
+  assert(backline.CPun < 100, 'Flying actor should be able to fight across rows');
+
+  App.executeActionAgainstTarget('fight', anti, flyingTarget);
+  assert(flyingTarget.CPun < 100, 'Anti-flying actor should be able to fight a front-row flying target');
+
+  flyingTarget.CPun = 100;
+  App.executeActionAgainstTarget('fight', ranged, flyingTarget);
+  assert(flyingTarget.CPun < 100, 'Ranged actor should be able to fight flying targets');
 });
 
 test('Combat ranged back-row traits outrank generic tags and emit an intro beat', () => {
@@ -13415,7 +13449,7 @@ test('Combat ranged back-row traits outrank generic tags and emit an intro beat'
   assertContains(detailed, 'Talk/Flee', 'Detailed card should suggest non-physical answers');
 });
 
-test('Combat group planner surfaces row reach correction in the mobile composer', () => {
+test('Combat group planner queues unreachable physical attempts and fizzles through Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'planner-row-player', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'planner-row-ally', Figh: 30, combatRow: 'front' });
@@ -13441,20 +13475,19 @@ test('Combat group planner surfaces row reach correction in the mobile composer'
     explicitActors: true
   };
   App.combatTargetIds = [App._unitSelectionId(enemy)];
+  App.nextTurn = function() { this._plannerNextTurn = (this._plannerNextTurn || 0) + 1; };
 
-  assertEqual(App.confirmCombatPlan(), false, 'Unreachable group plan should reject without queueing');
-  assertContains(App.combatCorrectionMessage.text, 'Siren 1 is in the back row', 'Planner correction should explain the row blocker');
-  assertContains(App.combatCorrectionMessage.text, 'You, Ally has no ranged/flying reach', 'Planner correction should name selected actors missing reach');
-  assertContains(App.combatCorrectionMessage.text, 'Use a flying, ranged, or anti-flying actor', 'Planner correction should suggest real reach capabilities');
-  assertContains(App.combatCorrectionMessage.text, 'Talk/Flee', 'Planner correction should suggest non-physical options');
+  assertEqual(App.confirmCombatPlan(), true, 'Unreachable group plan should queue as an attempted physical action');
+  assertEqual(App.combatState.syncActions.length, 1, 'Attempted group action should queue through existing slowest-participant plumbing');
+  assertEqual(App.combatCorrectionMessage, null, 'Queued attempt should not leave invalid-command correction state');
+  App._resolveSyncAction(App.combatState.syncActions[0]);
+  assertContains(App.latestSceneBeat.summary, 'Siren 1', 'Fizzling group reach should name the target in Scene Feed');
+  assertContains(App.latestSceneBeat.summary, 'back row', 'Fizzling group reach should explain the row blocker');
   App.renderMobileCombatToolbelt();
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Siren 1 is in the back row', 'Mobile combat composer should surface planner reach correction');
-  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Talk/Flee', 'Mobile combat composer should preserve counterplay guidance');
-  assertContains(App.log[App.log.length - 1].text, 'Siren 1 is in the back row', 'Planner rejection should remain in the durable log');
-  assertEqual(App.combatState.syncActions.length, 0, 'Rejected planner action should not queue a group action');
+  assertContains(App.log[App.log.length - 1].text, 'back row', 'Fizzling group action should remain in the durable log');
 });
 
-test('Sync combat target selection respects participant reach', () => {
+test('Sync combat target selection allows attempts and resolves unreachable groups as fizzles', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-sync-reach', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'ally-sync-reach', Figh: 30, combatRow: 'front' });
@@ -13466,18 +13499,22 @@ test('Sync combat target selection respects participant reach', () => {
   App.activeActor = player;
   App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-reach', participantIds: ['player-sync-reach', 'ally-sync-reach'] };
   App._syncParticipants = [player, ally];
-  App.nextTurn = function() { this._syncReachConsumedTurn = true; };
+  App.nextTurn = function() { this._syncReachConsumedTurn = (this._syncReachConsumedTurn || 0) + 1; };
 
   App.renderCreatures();
-  assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should reject enemies no selected participant can reach');
-  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync target should render as a disabled control');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Unreachable sync target should expose blocked combat-pick state');
-  assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Unreachable sync target should not queue');
-  assertEqual(App.combatState.syncActions.length, 0, 'Unreachable sync target should not create a queued sync action');
-  assertEqual(App._syncReachConsumedTurn, undefined, 'Rejected sync target should not consume the active turn');
-  assertContains(App.log[App.log.length - 1].text, 'You, Ally cannot reach Backline from here.', 'Rejected sync target should explain the reach failure');
+  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow attempted physical targets');
+  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync attempt should not render as disabled');
+  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Unreachable sync attempt should render as pickable');
+  assertContains(elements.get('enemies-content').innerHTML, 'Try', 'Unreachable sync attempt should be labeled as a try');
+  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Unreachable sync target should queue as an attempted group action');
+  assertEqual(App.combatState.syncActions.length, 1, 'Attempted sync target should create a queued sync action');
+  App._resolveSyncAction(App.combatState.syncActions[0]);
+  assertContains(App.latestSceneBeat.summary, 'back row', 'Unreachable queued sync should fizzle with a Scene Feed explanation');
 
   ally.ranged = true;
+  App.combatState.syncActions = [];
+  App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-reach', participantIds: ['player-sync-reach', 'ally-sync-reach'] };
+  App._syncParticipants = [player, ally];
   App.renderCreatures();
   assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow a target at least one selected participant can reach');
   assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Reachable sync target should render as pickable');
@@ -13673,7 +13710,7 @@ test('Swamp terrain stuck outcome is deterministic by combat state', () => {
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Swamp terrain stuck should not depend on ambient Math.random');
 });
 
-test('Flying creatures are immune to ground melee target selection', () => {
+test('Ground melee can attempt flying targets and fails with Scene Feed feedback', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'ground-melee', Figh: 30 });
   const flyer = makeUnit('Flyer', { id: 'flying-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front' });
@@ -13684,7 +13721,11 @@ test('Flying creatures are immune to ground melee target selection', () => {
   App.activeActor = player;
   App.nextTurn = function() {};
   App.selectTarget('fight');
-  assertContains(elements.get('enemies-content').innerHTML, 'disabled', 'Ground melee should not target flying creatures');
+  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Ground melee should be allowed to try a flying target');
+  assertContains(elements.get('enemies-content').innerHTML, 'Try', 'Ground melee flying target should be labeled as an attempt');
+  App.executeActionAgainstTarget('fight', player, flyer);
+  assertEqual(flyer.CPun, 100, 'Failed flying reach attempt should not damage the target');
+  assertContains(App.latestSceneBeat.summary, 'out of reach in the air', 'Failed flying reach should explain the miss through Scene Feed');
 });
 
 test('Obedient ally turns use the same panel target selection', () => {
@@ -15881,14 +15922,14 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat target button should identify combat target selection separately from exploration marking');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile combat target button should expose available combat-target mode');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile combat target button should identify the target slot');
-  assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop blocked combat target should be an actual disabled control');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Desktop blocked combat target should expose blocked combat-target state');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Desktop blocked combat target should identify the target slot');
-  assertContains(blockedEnemyCard, '>Airborne</button>', 'Desktop blocked combat target should show a short visible reach reason');
-  assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-target state');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
-  assertContains(mobileBlockedEnemyChip, 'is airborne. Use a flying, ranged, or anti-flying actor', 'Mobile blocked combat target should keep the reach reason available to assistive tech');
+  assertNotContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop difficult combat target should remain selectable as an attempted action');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available"', 'Desktop difficult combat target should expose available combat-target state');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Desktop difficult combat target should identify the target slot');
+  assertContains(blockedEnemyCard, '>Try</button>', 'Desktop difficult combat target should show attempt semantics');
+  assertNotContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile difficult combat target should remain selectable as an attempted action');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile difficult combat target should expose available combat-target state');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile difficult combat target should identify the target slot');
+  assertContains(mobileBlockedEnemyChip, 'stays out of reach in the air', 'Mobile difficult combat target should keep the reach warning available to assistive tech');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });
@@ -16689,7 +16730,8 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
     }
   }));
 
-  assertEqual(resolved, false, 'Blocked physical reach should not resolve the combat action');
+  assertEqual(resolved, true, 'Blocked physical reach should resolve as a spent failed attempt');
+  assertEqual(siren.CPun, 100, 'Blocked reach attempt should not damage the target');
   assertEqual(App.storyEvents.length, 1, 'Blocked reach should emit one failure Scene Beat');
   assertEqual(App.storyEvents[0].resultKind, 'failure', 'Blocked reach Scene Beat should be marked as failure');
   assertContains(App.storyEvents[0].summary, 'back row', 'Blocked reach Scene Beat should explain the row problem');

@@ -190,7 +190,7 @@ const YAW_INTERACTION_DISPATCH = {
                 for (const target of command.targets) {
                     if (!target || target.CPun <= 0) return { ok: false, reason: 'invalid-combat-target' };
                     if (constraints.hostileOnly !== false && target.disposition !== app.DISPOSITION.ENEMY) return { ok: false, reason: 'invalid-combat-target' };
-                    if (constraints.checkReach !== false && !reachActors.some(unit => app._canReachCombatTarget(unit, target, normalizedCombatAction))) return { ok: false, reason: 'cannot-reach' };
+                    if (constraints.checkReach !== false && !reachActors.some(unit => app._canAttemptCombatTarget?.(unit, target, normalizedCombatAction))) return { ok: false, reason: 'cannot-reach' };
                 }
             }
         }
@@ -255,15 +255,8 @@ const YAW_INTERACTION_DISPATCH = {
         const actors = command?.timing === 'slowest-participant'
             ? (command?.actors || [])
             : [actor].filter(Boolean);
-        const hasReachActor = actors.some(unit => unit?.flying || unit?.ranged || unit?.antiflying);
-        const actionLabel = app._uiLabel ? app._uiLabel(baseAction) : baseAction;
-        const actorName = actors.map(unit => unit?.name).filter(Boolean).join(', ') || actor?.name || app._label('target.actorRole', 'Actor');
-        if (target.flying && !hasReachActor) {
-            return app._label('combat.cannotReachFlying', '{target} is airborne. {actor} has no flying/ranged/anti-flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { target: target.name, actor: actorName, action: actionLabel });
-        }
-        if (target.combatRow === 'back' && !hasReachActor) {
-            return app._label('combat.cannotReachBackRow', '{target} is in the back row. {actor} has no ranged/flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { target: target.name, actor: actorName, action: actionLabel });
-        }
+        const reach = actors.map(unit => app._combatReachResult?.(unit, target, baseAction)).find(result => result?.canAttempt && !result.canSucceed);
+        if (reach) return app._combatReachFailureText?.(actors, target, baseAction, reach);
         return null;
     },
 

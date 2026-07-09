@@ -669,15 +669,15 @@ async function runReachabilityMatrix(page) {
   let target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   let attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.disabled, true, 'Unreachable fight target should be an actual disabled control');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable fight target should expose disabled state accessibly');
-  assert(attrs.label.includes('Enemy is airborne'), 'Unreachable fight target should explain the flying reach blocker');
+  assert.strictEqual(attrs.disabled, false, 'Unreachable fight target should remain selectable as an attempted action');
+  assert.notStrictEqual(attrs.ariaDisabled, 'true', 'Unreachable fight target should not expose disabled state when attempts are allowed');
+  assert(attrs.label.includes('out of reach') || attrs.label.includes('likely fails'), 'Unreachable fight target should explain the flying reach blocker as a likely failure');
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures[0]?.CPun,
     targetSelectionAction: App.targetSelection?.action || null
   }));
-  assert.strictEqual(state.enemyPun, 100, 'Disabled fight target should not damage enemy');
-  assert.strictEqual(state.targetSelectionAction, 'fight', 'Disabled fight target should preserve selected intent for correction');
+  assert.strictEqual(state.enemyPun, 100, 'Unresolved fight target attempt should not damage enemy before selection');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Unreachable fight target should preserve selected intent for correction');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
@@ -694,13 +694,13 @@ async function runReachabilityMatrix(page) {
       enemyPun: App.creatures[0]?.CPun
     };
   });
-  assert.strictEqual(attrs.disabled, true, 'Mobile unreachable fight target should be an actual disabled chip control');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Mobile unreachable fight target should expose disabled state accessibly');
-  assert(attrs.label.includes('Enemy is airborne'), 'Mobile unreachable fight target should explain the flying reach blocker');
+  assert.strictEqual(attrs.disabled, false, 'Mobile unreachable fight target should remain selectable as an attempted action');
+  assert.notStrictEqual(attrs.ariaDisabled, 'true', 'Mobile unreachable fight target should not expose disabled state when attempts are allowed');
+  assert(attrs.label.includes('out of reach') || attrs.label.includes('likely fails'), 'Mobile unreachable fight target should explain the flying reach blocker as a likely failure');
   assert.strictEqual(state.chipRow, 'back', 'Mobile compact enemy chip should expose row feedback while targeting');
-  assert.strictEqual(state.selectedTarget, false, 'Mobile blocked combat target should not be styled as a pickable target');
-  assert.strictEqual(state.enemyPun, 100, 'Mobile disabled fight target should not damage enemy');
-  assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile disabled fight target should preserve selected intent for correction');
+  assert.strictEqual(state.selectedTarget, false, 'Mobile combat target should not look selected before an attempted pick');
+  assert.strictEqual(state.enemyPun, 100, 'Mobile unresolved fight target attempt should not damage enemy before selection');
+  assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile unreachable fight target should preserve selected intent for correction');
   await page.setViewportSize({ width: 1365, height: 768 });
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 20, MPun: 100, size: 2 } });
@@ -708,15 +708,15 @@ async function runReachabilityMatrix(page) {
   target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await target.waitFor({ state: 'visible', timeout: 1000 });
   attrs = await target.evaluate(el => ({ disabled: el.disabled, ariaDisabled: el.getAttribute('aria-disabled'), label: el.getAttribute('aria-label') || '' }));
-  assert.strictEqual(attrs.disabled, true, 'Unreachable feast target should be an actual disabled control');
-  assert.strictEqual(attrs.ariaDisabled, 'true', 'Unreachable feast target should expose disabled state accessibly');
-  assert(attrs.label.includes('Enemy is airborne'), 'Unreachable feast target should explain the flying reach blocker');
+  assert.strictEqual(attrs.disabled, false, 'Unreachable feast target should remain selectable as an attempted action');
+  assert.notStrictEqual(attrs.ariaDisabled, 'true', 'Unreachable feast target should not expose disabled state when attempts are allowed');
+  assert(attrs.label.includes('out of reach') || attrs.label.includes('likely fails'), 'Unreachable feast target should explain the flying reach blocker as a likely failure');
   state = await page.evaluate(() => ({
     stomachCount: App.player.stomach.length,
     targetSelectionAction: App.targetSelection?.action || null
   }));
-  assert.strictEqual(state.stomachCount, 0, 'Disabled feast target should not contain enemy');
-  assert.strictEqual(state.targetSelectionAction, 'feast', 'Disabled feast target should preserve selected intent for correction');
+  assert.strictEqual(state.stomachCount, 0, 'Unresolved feast target attempt should not contain enemy before selection');
+  assert.strictEqual(state.targetSelectionAction, 'feast', 'Unreachable feast target should preserve selected intent for correction');
 
   await setupCombat(page, { enemyOverrides: { flying: true, combatRow: 'back', CPun: 100, MPun: 100 } });
   await clickIntentAndTarget(page, 'flirt');
@@ -1451,12 +1451,12 @@ async function runDesktopSyncComposerFlow(page) {
       rowFeedback: card?.innerText || ''
     };
   });
-  assert.strictEqual(state.disabled, true, 'Desktop unreachable Sync target should be an actual disabled control');
-  assert.strictEqual(state.ariaDisabled, 'true', 'Desktop unreachable Sync target should expose aria-disabled');
-  assert.strictEqual(state.disabledClass, true, 'Desktop unreachable Sync target should carry disabled visual styling');
-  assert.strictEqual(state.selectionState, 'blocked', 'Desktop unreachable Sync target should expose blocked selection state');
-  assert(state.label.includes('airborne'), 'Desktop unreachable Sync target should explain the reach blocker');
-  assert.strictEqual(state.cardSelectedTarget, false, 'Desktop unreachable Sync target should not look selected');
+  assert.strictEqual(state.disabled, false, 'Desktop unreachable Sync target should remain selectable as an attempted group action');
+  assert.notStrictEqual(state.ariaDisabled, 'true', 'Desktop unreachable Sync target should not expose aria-disabled when attempts are allowed');
+  assert.strictEqual(state.disabledClass, false, 'Desktop unreachable Sync target should not carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'pickable', 'Desktop unreachable Sync target should expose pickable attempt state');
+  assert(state.label.includes('out of reach') || state.label.includes('likely fails'), 'Desktop unreachable Sync target should explain the reach blocker as a likely failure');
+  assert.strictEqual(state.cardSelectedTarget, true, 'Desktop unreachable Sync target should look pickable during target selection');
   assert(state.rowFeedback.includes('Back'), 'Desktop unreachable Sync target card should still show row feedback');
   await page.evaluate(() => {
     const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
@@ -1688,12 +1688,12 @@ async function runMobileSyncComposerFlow(page) {
       rowFeedback: chip?.getAttribute('data-combat-row') || ''
     };
   });
-  assert.strictEqual(state.disabled, true, 'Mobile unreachable Sync target should be an actual disabled control');
-  assert.strictEqual(state.ariaDisabled, 'true', 'Mobile unreachable Sync target should expose aria-disabled');
-  assert.strictEqual(state.disabledClass, true, 'Mobile unreachable Sync target should carry disabled visual styling');
-  assert.strictEqual(state.selectionState, 'blocked', 'Mobile unreachable Sync target should expose blocked selection state');
-  assert(state.label.includes('airborne'), 'Mobile unreachable Sync target should explain the reach blocker');
-  assert.strictEqual(state.chipSelectedTarget, false, 'Mobile unreachable Sync target should not look selected');
+  assert.strictEqual(state.disabled, false, 'Mobile unreachable Sync target should remain selectable as an attempted group action');
+  assert.notStrictEqual(state.ariaDisabled, 'true', 'Mobile unreachable Sync target should not expose aria-disabled when attempts are allowed');
+  assert.strictEqual(state.disabledClass, false, 'Mobile unreachable Sync target should not carry disabled visual styling');
+  assert.strictEqual(state.selectionState, 'pickable', 'Mobile unreachable Sync target should expose pickable attempt state');
+  assert(state.label.includes('out of reach') || state.label.includes('likely fails'), 'Mobile unreachable Sync target should explain the reach blocker as a likely failure');
+  assert.strictEqual(state.chipSelectedTarget, true, 'Mobile unreachable Sync target should look pickable during target selection');
   assert.strictEqual(state.rowFeedback, 'back', 'Mobile unreachable Sync target chip should still expose row feedback');
   await page.evaluate(() => {
     const enemy = App.creatures.find(unit => unit.id === 'enemy-1');

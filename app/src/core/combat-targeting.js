@@ -37,7 +37,7 @@ const YAW_COMBAT_TARGETING = {
             const actor = app.activeActor || app.player;
             if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
             if (unit.CPun <= 0) return false;
-            return unit.disposition === app.DISPOSITION.ENEMY && app._canReachCombatTarget(actor, unit, app.targetSelection.action);
+            return unit.disposition === app.DISPOSITION.ENEMY && app._canAttemptCombatTarget(actor, unit, app.targetSelection.action);
         }
         if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
         return unit.disposition !== app.DISPOSITION.PARTY;
@@ -145,7 +145,17 @@ const YAW_COMBAT_TARGETING = {
         if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return false;
         if (livingParticipants.length < 2) return false;
         const action = this.syncBaseAction(syncType);
-        return livingParticipants.some(unit => app._canReachCombatTarget(unit, target, action));
+        return livingParticipants.some(unit => app._canAttemptCombatTarget(unit, target, action));
+    },
+
+    reachWarning(app, actors = [], unit, action) {
+        const actorList = (Array.isArray(actors) ? actors : [actors]).filter(Boolean);
+        if (!unit || !actorList.length) return null;
+        const physical = app._isPhysicalCombatAction?.(action);
+        if (!physical) return null;
+        const results = actorList.map(actor => app._combatReachResult?.(actor, unit, action)).filter(Boolean);
+        if (results.some(result => result.canSucceed)) return null;
+        return results.find(result => result.canAttempt) || null;
     },
 
     targetPickHint(app, unit, action, canTarget = this.canSelectCreatureTarget(app, unit)) {
@@ -155,38 +165,37 @@ const YAW_COMBAT_TARGETING = {
         const actionLabel = syncActive
             ? app._label('action.sync', 'Sync')
             : app._uiLabel(action || 'action');
-        if (canTarget) {
-            return app._label('target.selectAs', 'Select {name} as {action} target', { name, action: actionLabel });
-        }
         const actors = syncActive
             ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
             : [app.activeActor || app.player].filter(Boolean);
-        const physical = app._isPhysicalCombatAction?.(effectiveAction);
-        if (physical && unit?.CPun > 0 && unit.disposition === app.DISPOSITION.ENEMY) {
-            const anyRanged = actors.some(actor => actor?.flying || actor?.ranged || actor?.antiflying);
-            if (unit.flying && !anyRanged) {
-                return app._label('target.blockedFlying', '{name} is airborne. Your current actor has no flying/ranged/anti-flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { name, action: actionLabel });
-            }
-            if (unit.combatRow === 'back' && !anyRanged) {
-                return app._label('target.blockedBackRow', '{name} is in the back row. Your current actor has no ranged/flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { name, action: actionLabel });
-            }
+        const warning = this.reachWarning(app, actors, unit, effectiveAction);
+        if (canTarget && warning) {
+            return app._combatReachFailureText?.(actors, unit, effectiveAction, warning)
+                || app._label('target.likelyFails', 'You can try {action} on {name}, but it may not connect.', { name, action: actionLabel });
+        }
+        if (canTarget) {
+            return app._label('target.selectAs', 'Select {name} as {action} target', { name, action: actionLabel });
         }
         return app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name, action: actionLabel });
     },
 
     targetPickLabel(app, unit, action, canTarget = this.canSelectCreatureTarget(app, unit)) {
-        if (canTarget || !unit) return app._label('target.pick', 'Pick');
+        if (canTarget && unit) {
+            const syncActive = Boolean(app.syncSelection?.active && app.syncSelection.phase === 'target');
+            const effectiveAction = syncActive ? this.syncBaseAction(app.syncSelection.type) : action;
+            const actors = syncActive
+                ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
+                : [app.activeActor || app.player].filter(Boolean);
+            if (this.reachWarning(app, actors, unit, effectiveAction)) return app._label('target.try', 'Try');
+            return app._label('target.pick', 'Pick');
+        }
+        if (!unit) return app._label('target.pick', 'Pick');
         const syncActive = Boolean(app.syncSelection?.active && app.syncSelection.phase === 'target');
         const effectiveAction = syncActive ? this.syncBaseAction(app.syncSelection.type) : action;
         const actors = syncActive
             ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
             : [app.activeActor || app.player].filter(Boolean);
-        const physical = app._isPhysicalCombatAction?.(effectiveAction);
-        if (physical && unit?.CPun > 0 && unit.disposition === app.DISPOSITION.ENEMY) {
-            const anyRanged = actors.some(actor => actor?.flying || actor?.ranged || actor?.antiflying);
-            if (unit.flying && !anyRanged) return app._label('target.airborneShort', 'Airborne');
-            if (unit.combatRow === 'back' && !anyRanged) return app._label('target.outOfReach', 'Out of reach');
-        }
+        if (this.reachWarning(app, actors, unit, effectiveAction)) return app._label('target.try', 'Try');
         return app._label('target.unavailable', 'Unavailable');
     },
 

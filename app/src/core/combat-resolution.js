@@ -4,6 +4,43 @@
  */
 
 const YAW_COMBAT_RESOLUTION = {
+    reachFailure(app, action, actors = [], target = null, reach = null, options = {}) {
+        const actorList = (Array.isArray(actors) ? actors : [actors]).filter(Boolean);
+        const result = app._combatReachFailureText?.(actorList, target, action, reach)
+            || app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', {
+                actor: actorList.map(unit => unit?.name).filter(Boolean).join(', ') || app._label('target.actorRole', 'Actor'),
+                target: target?.name || app._label('target.targetRole', 'Target')
+            });
+        app._pushLog(result, 'combat', {
+            actor: actorList[0] || null,
+            targetId: target?.id || target?.name,
+            targetName: target?.name,
+            action,
+            phase: 'reach-failure',
+            reason: reach?.reason || 'cannot-reach',
+            profile: reach?.profile || ''
+        });
+        app.lastCombatActionResult = { action, actor: actorList[0] || null, actors: actorList, target, result, reach, failedReach: true };
+        if (!options.suppressStory) {
+            app.emitStoryResult?.({
+                mode: 'combat',
+                actors: actorList,
+                targets: [target].filter(Boolean),
+                action,
+                resultKind: 'failure',
+                tags: ['cannot-reach', 'reach-profile', reach?.reason, reach?.profile].filter(Boolean),
+                source: 'combat-resolution'
+            }, result, {
+                mode: 'combat',
+                resultKind: 'failure',
+                importance: 'hint',
+                tags: ['cannot-reach', 'reach-profile', reach?.reason, reach?.profile].filter(Boolean),
+                source: 'combat-resolution'
+            });
+        }
+        return result;
+    },
+
     resolveCommand(app, command) {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const targets = (command?.targets || []).filter(Boolean);
@@ -18,14 +55,10 @@ const YAW_COMBAT_RESOLUTION = {
             for (const multiTarget of targets) {
                 if (!app.combatState?.active) break;
                 if (!multiTarget || multiTarget.CPun <= 0 || multiTarget.disposition !== app.DISPOSITION.ENEMY) continue;
-                if (!app._canReachCombatTarget(actor, multiTarget, command.action)) {
-                    app._pushLog(app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: multiTarget.name }), 'combat', {
-                        actor,
-                        targetId: multiTarget.id || multiTarget.name,
-                        targetName: multiTarget.name,
-                        action: command.action,
-                        phase: 'cannot-reach'
-                    });
+                const reach = app._combatReachResult?.(actor, multiTarget, command.action);
+                if (reach?.canAttempt && !reach.canSucceed) {
+                    resultLines.push(this.reachFailure(app, command.action, [actor], multiTarget, reach, { suppressStory: true }));
+                    resolved = true;
                     continue;
                 }
                 const targetResolved = app.executeActionAgainstTarget(command.action, actor, multiTarget, { advanceTurn: false, suppressStory: true }) !== false;
@@ -69,6 +102,19 @@ const YAW_COMBAT_RESOLUTION = {
             const actorName = actor.name === app.player?.name ? 'You' : actor.name;
             const actorVerb = actor.name === app.player?.name ? '' : 's';
             let result = '';
+            const reach = app._combatReachResult?.(actor, target, action);
+            if (reach?.canAttempt && !reach.canSucceed) {
+                result = this.reachFailure(app, action, [actor], target, reach, options);
+                app.renderCombatSceneForTurn(actor);
+                app.renderLog();
+                app.renderCreatures();
+                app.renderParty();
+                app._syncCurrentTileCreatures();
+                app._sanitizeCombatState({ preserveTurn: true });
+                app.autoSave();
+                if (advanceTurn) app.nextTurn();
+                return true;
+            }
             switch (action) {
             case 'scavenge': {
                 const consumed = app._consumeCorpsePortions(target, [actor]);

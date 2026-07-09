@@ -313,6 +313,20 @@ const YAW_COMBAT_SYNC = {
             app.nextTurn();
             return;
         }
+        const baseAction = app._syncBaseAction(sync.type);
+        if (app._isPhysicalCombatAction?.(baseAction)) {
+            const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, sync.target, baseAction)).filter(Boolean);
+            if (!reachResults.some(result => result.canSucceed)) {
+                const reach = reachResults.find(result => result.canAttempt) || reachResults[0] || null;
+                const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], sync.target, reach);
+                app.renderLog();
+                app.renderParty();
+                app.renderCreatures();
+                app.renderCombatSceneForTurn?.(app._currentCombatActor?.() || app.activeActor || app.player);
+                app.nextTurn();
+                return result;
+            }
+        }
         let result = '';
         switch (sync.type) {
             case 'sync_fuck': {

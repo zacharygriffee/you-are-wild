@@ -1992,8 +1992,24 @@
                 return YAW_COMBAT_RULES.isPhysicalCombatAction(action);
             },
 
+            _combatReachProfile(actor, action = 'fight') {
+                return YAW_COMBAT_RULES.intentReachProfile(this, actor, action);
+            },
+
+            _combatReachResult(actor, target, action = 'fight') {
+                return YAW_COMBAT_RULES.reachResult(this, actor, target, action);
+            },
+
+            _canAttemptCombatTarget(actor, target, action = 'fight') {
+                return YAW_COMBAT_RULES.canAttemptCombatTarget(this, actor, target, action);
+            },
+
             _canReachCombatTarget(actor, target, action = 'fight') {
                 return YAW_COMBAT_RULES.canReachCombatTarget(this, actor, target, action);
+            },
+
+            _combatReachFailureText(actors = [], target = null, action = 'fight', reach = null) {
+                return YAW_COMBAT_RULES.reachFailureText(this, actors, target, action, reach);
             },
 
             _terrainCausesMiss(actor, target, action = 'fight') {

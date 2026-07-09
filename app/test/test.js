@@ -10626,9 +10626,10 @@ test('Recruitment is gated by pleasure and willingness score', () => {
   const player = makeUnit('You', { cha: 10, Flir: 10, Fuck: 10, xp: 0, xpToNext: 1000 });
   const reluctant = makeUnit('Reluctant', { id: 'reluctant-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 10, MPle: 100 });
   const willing = makeUnit('Willing', { id: 'willing-1', disposition: App.DISPOSITION.FRIENDLY, CPle: 90, MPle: 100, willing: true });
+  const neutralReady = makeUnit('Neutral Ready', { id: 'neutral-ready-1', disposition: App.DISPOSITION.NEUTRAL, CPle: 85, MPle: 100 });
   App.player = player;
   App.party = [player];
-  App.creatures = [reluctant, willing];
+  App.creatures = [reluctant, willing, neutralReady];
   App.updateLanguage('es');
   App.renderCreatures();
   const html = elements.get('enemies-content').innerHTML;
@@ -10642,8 +10643,31 @@ test('Recruitment is gated by pleasure and willingness score', () => {
   assertContains(App.log[App.log.length - 1].text, 'Reluctant aun no esta listo para unirse al grupo.', 'Failed recruitment log should localize');
   App.recruitCreatureById('willing-1');
   assert(App.party.includes(willing), 'High-score willing friendly should join');
-  assertEqual(player.xp, App.BALANCE.recruitXP, 'Successful recruitment should use configured recruit XP reward');
-  assertContains(App.log[App.log.length - 1].text, 'Willing se une a tu grupo!', 'Successful recruitment log should localize');
+  App.recruitCreatureById('neutral-ready-1');
+  assert(App.party.includes(neutralReady), 'High-spirit neutral should join when baseline recruit eligibility allows it');
+  assertEqual(player.xp, App.BALANCE.recruitXP * 2, 'Successful recruitment should use configured recruit XP reward for each recruit');
+  assertContains(App.log[App.log.length - 1].text, 'Neutral Ready se une a tu grupo!', 'Successful recruitment log should localize');
+});
+
+test('Exploration play crossing high spirit makes neutral creatures recruitable', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-social-recruit', Fuck: 80, Flir: 60, cha: 20, xp: 0, xpToNext: 1000 });
+  const target = makeUnit('Neutral Friend', {
+    id: 'neutral-social-recruit',
+    disposition: App.DISPOSITION.NEUTRAL,
+    CPle: 70,
+    MPle: 100,
+    wis: 1
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [target];
+  App.outsideActionOnTarget('fuck', target, player);
+  assertEqual(target.disposition, App.DISPOSITION.FRIENDLY, 'Exploration play threshold should make the target friendly when the copy says so');
+  assertEqual(App._canRecruit(player, target), true, 'High-spirit neutral made friendly by play should become recruitable');
+  assertContains(App.log[App.log.length - 1].text, 'may be willing to join the party', 'Exploration play result should cue recruitment availability');
+  assertEqual(App.recruitCreatureById('neutral-social-recruit'), true, 'Recruiting the newly friendly high-spirit creature should succeed');
+  assert(App.party.includes(target), 'Newly recruitable social target should move into party');
 });
 
 test('Rest only appears and heals at safe structures', () => {

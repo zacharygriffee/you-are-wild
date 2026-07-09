@@ -3282,6 +3282,7 @@
                             if (target.CPle >= target.MPle * 0.8 && oldPle < target.MPle * 0.8) {
                                 target.willing = true;
                                 target.orgasmed = true;
+                                target.disposition = this.DISPOSITION.FRIENDLY;
                                 result += ` ${this._label('explore.fuck.devoted', '{target} relaxes and becomes completely friendly.', { target: target.name })}`;
                                 this._updateQuestProgress('seduce', { target, targetId: target.id || target.name, species: target.species, name: target.name });
                                 if (this.settings.refractoryPeriod) {

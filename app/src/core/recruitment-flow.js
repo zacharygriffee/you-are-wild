@@ -19,9 +19,12 @@ const YAW_RECRUITMENT_FLOW = {
     },
 
     canRecruit(app, actor, target) {
-        if (!target || target.disposition !== app.DISPOSITION.FRIENDLY || app.party.includes(target)) return false;
+        if (!target || app.party.includes(target)) return false;
+        const recruitableDisposition = target.disposition === app.DISPOSITION.FRIENDLY || target.disposition === app.DISPOSITION.NEUTRAL;
+        if (!recruitableDisposition) return false;
         if (!app._hasBaselineInteractionEligibility(target, 'recruit')) return false;
-        return this.score(app, actor, target) >= 85;
+        const spiritRatio = (target.CPle || 0) / Math.max(1, target.MPle || 100);
+        return spiritRatio >= 0.85 || this.score(app, actor, target) >= 85;
     },
 
     fromIndex(app, index) {
@@ -32,7 +35,7 @@ const YAW_RECRUITMENT_FLOW = {
 
     byId(app, targetId) {
         const target = app.creatures.find(c => String(c.id || c.name) === String(targetId));
-        if (!target || target.disposition !== app.DISPOSITION.FRIENDLY) return false;
+        if (!this.canRecruit(app, app._getExplorationActor(), target)) return false;
         return app.recruitCreature(target, app._getExplorationActor());
     },
 

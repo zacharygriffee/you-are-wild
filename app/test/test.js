@@ -2293,7 +2293,8 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
-  assertContains(mobileUnitChipContent, "YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile' })", 'Mobile unit chip helper should delegate normal rails to the shared tactical card renderer');
+  assertContains(mobileUnitChipContent, "const density = app.combatState?.active ? 'micro' : 'medium';", 'Mobile unit chip helper should choose micro combat cards and medium normal rails');
+  assertContains(mobileUnitChipContent, "YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile', density })", 'Mobile unit chip helper should delegate density-aware rails to the shared tactical card renderer');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual creature utility dispatch');
   assertNotContains(mobileUnitChipContent, 'showRadialIntentMenu', 'Mobile unit chips should not expose duplicate secondary-click intent menus');
   assertContains(appContent, 'YAW_MOBILE_UNIT_CHIP.render(this, unit, index, type)', 'App mobile unit chip wrapper should delegate to the helper');
@@ -2558,7 +2559,7 @@ test('Panel rendering helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/panel-rendering.js'") < buildContent.indexOf("'src/core/app.js'"), 'Panel rendering helper should load before app.js');
   assertContains(panelRenderingContent, 'const YAW_PANEL_RENDERING = {', 'Panel rendering helper should expose the panel rendering service');
   assertContains(panelRenderingContent, 'listCard(app, unit, index, type)', 'Panel rendering helper should choose compact cards for normal lists and full cards for details');
-  assertContains(panelRenderingContent, "app.renderTacticalCard(unit, index, type, { presentation: 'desktop' })", 'Normal desktop panel lists should render compact tactical cards');
+  assertContains(panelRenderingContent, "app.renderTacticalCard(unit, index, type, { presentation: 'desktop', density: 'medium' })", 'Normal desktop panel lists should render medium tactical cards');
   assertContains(panelRenderingContent, 'if (unit?.expanded) return app.renderUnitCard(unit, index, type)', 'Expanded desktop panel lists should retain full cards for management/detail');
   assertContains(panelRenderingContent, 'partyUtilities(app)', 'Panel rendering helper should own party panel utility actions');
   assertContains(panelRenderingContent, 'party(app)', 'Panel rendering helper should own party panel refresh');
@@ -15108,6 +15109,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   const partyCard = App.renderUnitCard(player, 0, 'party');
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   const creatureCard = App.renderUnitCard(creature, 0, 'creature');
+  const desktopMediumCard = App.renderTacticalCard(creature, 0, 'creature', { presentation: 'desktop', density: 'medium' });
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
 
@@ -15139,6 +15141,22 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'mobile-stat-rings', 'Mobile creature chip should use compact circular tactical status rings');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
+  assertContains(desktopMediumCard, 'density-medium', 'Desktop rail cards should identify the medium density tier');
+  assertContains(desktopMediumCard, 'tactical-stat-rings', 'Medium tactical cards should use shared circular tactical status rings');
+  assertNotContains(desktopMediumCard, 'unit-bars compact', 'Medium tactical cards should not render bulky linear compact bars');
+  App.combatState.active = true;
+  creature.disposition = App.DISPOSITION.ENEMY;
+  const desktopMicroCard = App.renderTacticalCard(creature, 0, 'creature', { presentation: 'desktop', density: 'micro', stage: 'combat' });
+  const mobileMicroCard = App.renderMobileUnitChip(creature, 0, 'creature');
+  assertContains(desktopMicroCard, 'density-micro', 'Desktop combat-present cards should identify the micro density tier');
+  assertContains(desktopMicroCard, 'micro-control-slot', 'Micro tactical cards should expose left and right control segments');
+  assertContains(desktopMicroCard, 'data-card-density="micro"', 'Micro tactical cards should expose card density metadata');
+  assertContains(desktopMicroCard, 'data-unit-name="Fox"', 'Micro tactical cards should preserve the full unit name as metadata');
+  assertContains(desktopMicroCard, 'data-command-control="mark-combat-target"', 'Micro enemy cards should preserve combat target marking');
+  assertContains(desktopMicroCard, 'tactical-stat-rings', 'Micro tactical cards should use shared circular tactical status rings');
+  assertNotContains(desktopMicroCard, '<div class="unit-name">Fox</div>', 'Micro tactical cards should not render a visible full name row');
+  assertContains(mobileMicroCard, 'density-micro', 'Mobile combat strips should render micro tactical cards');
+  App.combatState.active = false;
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(mobilePartyChip, '>...</button>', 'Mobile party chip should not expose an ellipsis menu button that duplicates actor/target controls');
   assertNotContains(mobileCreatureChip, "selectIntent('creature','fox-1','inspect','mobile-chip')", 'Mobile creature chip should not duplicate inspect outside the marked-target tray');
@@ -17305,10 +17323,16 @@ test('Desktop play surface renders adjacent movement cells', () => {
 
   App.combatState.active = true;
   App.mode = App.GAME_MODE.COMBAT;
+  App.player = makeUnit('You', { id: 'player-1', CPun: 80, MPun: 100, CPle: 50, MPle: 100 });
+  App.party = [App.player];
+  App.activeActor = App.player;
+  App.creatures = [makeUnit('Ratfolk', { id: 'rat-stage', disposition: App.DISPOSITION.ENEMY, CPun: 70, MPun: 100, CPle: 20, MPle: 100 })];
   App.renderMap();
   assertEqual(elements.get('desktop-play-surface').classList.contains('combat-active'), true, 'Desktop play surface should expose combat layout state');
   assertEqual(elements.get('desktop-play-surface').getAttribute('data-surface-mode'), 'combat', 'Desktop play surface should identify combat mode');
   assertContains(north.innerHTML, 'desktop-battle-lane', 'Combat desktop north cell should become the enemy battle row');
+  assertContains(north.innerHTML, 'micro-tactical-card', 'Combat desktop battle rows should use micro tactical cards');
+  assertNotContains(north.innerHTML, 'class="desktop-battle-unit ', 'Combat desktop battle rows should not render bulky bespoke combatant cards');
   assertContains(north.className, 'desktop-battle-row enemy', 'Combat desktop north cell should identify as the enemy row');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
   assertEqual(north.getAttribute('role'), null, 'Combat desktop north cell should not expose button semantics');

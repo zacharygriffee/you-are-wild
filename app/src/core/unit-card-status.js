@@ -37,7 +37,7 @@ const YAW_UNIT_CARD_STATUS = {
     tacticalRing(app, key, label, icon, current, max) {
         const percent = this.barPercent(current, max);
         const title = app._escapeHtml(`${label}: ${percent}%`);
-        return `<span class="mobile-stat-ring mobile-stat-ring-${key}" title="${title}" aria-label="${title}" style="--stat-percent:${percent}%"><span class="mobile-stat-ring-icon" aria-hidden="true">${icon}</span>${app._srOnly(title)}</span>`;
+        return `<span class="tactical-stat-ring mobile-stat-ring tactical-stat-ring-${key} mobile-stat-ring-${key}" title="${title}" aria-label="${title}" style="--stat-percent:${percent}%"><span class="tactical-stat-ring-icon mobile-stat-ring-icon" aria-hidden="true">${icon}</span>${app._srOnly(title)}</span>`;
     },
 
     tacticalRings(app, unit) {
@@ -52,7 +52,7 @@ const YAW_UNIT_CARD_STATUS = {
             this.tacticalRing(app, 'pleasure', pleasureLabel, '✦', stats.CPle, stats.MPle),
             this.tacticalRing(app, 'hunger', hungerLabel, '🍖', hunger, maxHunger)
         ].join('');
-        return `<div class="mobile-stat-rings" aria-label="${app._escapeHtml(app._label('ui.tacticalStatus', 'Tactical status'))}">${rings}</div>`;
+        return `<div class="tactical-stat-rings mobile-stat-rings" aria-label="${app._escapeHtml(app._label('ui.tacticalStatus', 'Tactical status'))}">${rings}</div>`;
     },
 
     visibleTraits(app, unit, type, limit = 3) {

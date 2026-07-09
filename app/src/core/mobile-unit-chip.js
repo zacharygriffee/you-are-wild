@@ -5,7 +5,8 @@
 
 const YAW_MOBILE_UNIT_CHIP = {
     render(app, unit, index, type) {
-        return YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile' });
+        const density = app.combatState?.active ? 'micro' : 'medium';
+        return YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile', density });
     }
 };
 

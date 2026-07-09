@@ -23,7 +23,7 @@ const YAW_PANEL_RENDERING = {
 
     listCard(app, unit, index, type) {
         if (unit?.expanded) return app.renderUnitCard(unit, index, type);
-        return app.renderTacticalCard(unit, index, type, { presentation: 'desktop' });
+        return app.renderTacticalCard(unit, index, type, { presentation: 'desktop', density: 'medium' });
     },
 
     party(app) {

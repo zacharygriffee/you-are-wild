@@ -690,13 +690,18 @@
         .desktop-battle-units {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: minmax(138px, 188px);
+            grid-auto-columns: minmax(150px, 196px);
             gap: 8px;
             min-width: 0;
             overflow-x: auto;
             overflow-y: hidden;
             padding-bottom: 2px;
             overscroll-behavior-inline: contain;
+        }
+
+        .desktop-battle-units .micro-tactical-card {
+            margin-bottom: 0;
+            background: rgba(42, 42, 74, 0.68);
         }
 
         .desktop-battle-unit {
@@ -1842,6 +1847,272 @@
 
         .unit-card.compact-tactical-card .unit-traits {
             margin-top: 6px;
+        }
+
+        .tactical-stat-rings {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            margin-top: 6px;
+        }
+
+        .tactical-stat-ring {
+            --stat-ring-color: var(--text-secondary);
+            position: relative;
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: conic-gradient(var(--stat-ring-color) var(--stat-percent), rgba(160, 160, 176, 0.16) 0);
+            flex: 0 0 auto;
+            color: var(--text-primary);
+            font-size: 10px;
+            line-height: 1;
+        }
+
+        .tactical-stat-ring::before {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tactical-stat-ring-icon {
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            font-size: 10px;
+        }
+
+        .tactical-stat-ring-health {
+            --stat-ring-color: var(--accent-primary);
+        }
+
+        .tactical-stat-ring-pleasure {
+            --stat-ring-color: var(--accent-secondary);
+        }
+
+        .tactical-stat-ring-hunger {
+            --stat-ring-color: var(--accent-warning);
+        }
+
+        .unit-card.compact-tactical-card.density-medium .unit-header {
+            gap: 8px;
+        }
+
+        .unit-card.compact-tactical-card.density-medium .unit-info {
+            min-width: 0;
+        }
+
+        .unit-card.compact-tactical-card.density-medium .unit-name {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .unit-card.compact-tactical-card.density-medium .tactical-stat-rings {
+            justify-content: flex-start;
+        }
+
+        .unit-card.compact-tactical-card.density-medium .unit-card-status {
+            font-size: 10px;
+        }
+
+        .micro-tactical-card {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) 44px;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            min-height: 50px;
+            padding: 6px;
+        }
+
+        .unit-card.compact-tactical-card.micro-tactical-card {
+            padding: 6px;
+        }
+
+        .micro-tactical-card .micro-control-slot,
+        .micro-tactical-card .micro-stat-slot {
+            min-width: 0;
+        }
+
+        .micro-tactical-card .micro-control-slot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .micro-tactical-card .unit-actions.micro-control-slot {
+            gap: 0;
+            padding: 0;
+            border: 0;
+            margin: 0;
+            flex-wrap: nowrap;
+        }
+
+        .micro-tactical-card .micro-avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(0, 212, 170, 0.28);
+            border-radius: var(--radius-sm);
+            background: rgba(0, 212, 170, 0.12);
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .micro-tactical-card .micro-stat-slot {
+            display: grid;
+            justify-items: center;
+            gap: 2px;
+        }
+
+        .micro-tactical-card .tactical-stat-rings {
+            gap: 4px;
+            margin-top: 0;
+        }
+
+        .micro-tactical-card .tactical-stat-ring {
+            width: 24px;
+            height: 24px;
+            font-size: 9px;
+        }
+
+        .micro-tactical-card .tactical-stat-ring::before {
+            inset: 3px;
+        }
+
+        .micro-tactical-card .unit-selection-chips {
+            justify-content: center;
+            gap: 3px;
+            margin-top: 1px;
+        }
+
+        .micro-tactical-card .micro-chip-meta {
+            display: block;
+            max-width: 100%;
+            margin-top: 1px;
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .micro-tactical-card .unit-selection-chip {
+            padding: 1px 5px;
+            font-size: 8px;
+            max-width: 58px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .micro-tactical-card .action-btn {
+            --compact-card-icon-content: "•";
+            --compact-card-icon-color: var(--text-secondary);
+            --compact-card-icon-bg: rgba(160, 160, 176, 0.12);
+            --compact-card-icon-border: rgba(160, 160, 176, 0.38);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            min-width: 44px;
+            max-width: 44px;
+            height: 44px;
+            min-height: 44px;
+            padding: 0;
+            border-color: transparent;
+            background: transparent;
+            box-shadow: none;
+            color: var(--compact-card-icon-color);
+            font-size: 0;
+            line-height: 1;
+            overflow: visible;
+            pointer-events: auto;
+        }
+
+        .micro-tactical-card .action-btn::before {
+            content: var(--compact-card-icon-content);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--compact-card-icon-border);
+            border-radius: var(--radius-sm);
+            background: var(--compact-card-icon-bg);
+            color: var(--compact-card-icon-color);
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .micro-tactical-card .action-btn.primary::before {
+            background: var(--compact-card-icon-active-bg, var(--compact-card-icon-bg));
+            border-color: var(--compact-card-icon-active-border, var(--compact-card-icon-border));
+            box-shadow: 0 0 0 1px var(--compact-card-icon-active-ring, rgba(160, 160, 176, 0.24));
+        }
+
+        .micro-tactical-card .action-btn[data-command-control="focus-actor"] {
+            --compact-card-icon-content: "👤";
+            --compact-card-icon-color: var(--accent-primary);
+            --compact-card-icon-bg: rgba(0, 212, 170, 0.1);
+            --compact-card-icon-border: rgba(0, 212, 170, 0.45);
+            --compact-card-icon-active-bg: rgba(0, 212, 170, 0.22);
+            --compact-card-icon-active-border: var(--accent-primary);
+            --compact-card-icon-active-ring: rgba(0, 212, 170, 0.28);
+        }
+
+        .micro-tactical-card .action-btn[data-command-control="focus-target"],
+        .micro-tactical-card .action-btn[data-command-control="mark-combat-target"] {
+            --compact-card-icon-content: "⌖";
+            --compact-card-icon-color: var(--accent-secondary);
+            --compact-card-icon-bg: rgba(255, 107, 157, 0.1);
+            --compact-card-icon-border: rgba(255, 107, 157, 0.55);
+            --compact-card-icon-active-bg: rgba(255, 107, 157, 0.22);
+            --compact-card-icon-active-border: var(--accent-secondary);
+            --compact-card-icon-active-ring: rgba(255, 107, 157, 0.28);
+        }
+
+        .micro-tactical-card .action-btn[data-command-control="pick-target"],
+        .micro-tactical-card .action-btn[data-command-control="toggle-sync-participant"] {
+            --compact-card-icon-content: "⌖";
+            --compact-card-icon-color: var(--accent-warning);
+            --compact-card-icon-bg: rgba(255, 184, 0, 0.12);
+            --compact-card-icon-border: rgba(255, 184, 0, 0.58);
+            --compact-card-icon-active-bg: rgba(255, 184, 0, 0.24);
+            --compact-card-icon-active-border: var(--accent-warning);
+            --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
+        }
+
+        .micro-tactical-card .action-btn[data-selection-control="sync-participant"][data-selection-state="selected"] {
+            --compact-card-icon-content: "✓";
+        }
+
+        .micro-tactical-card .action-btn[data-selection-control="sync-participant"][data-selection-state="locked"] {
+            --compact-card-icon-content: "★";
+            --compact-card-icon-color: var(--accent-primary);
+            --compact-card-icon-bg: rgba(0, 212, 170, 0.14);
+            --compact-card-icon-border: rgba(0, 212, 170, 0.55);
         }
 
         .unit-combat-actions {
@@ -5083,6 +5354,54 @@
                 padding-top: 8px;
             }
 
+            .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card {
+                flex-basis: clamp(148px, 48vw, 178px);
+                display: grid;
+                grid-template-columns: 44px minmax(0, 1fr) 44px;
+                justify-items: stretch;
+                align-content: center;
+                min-height: 58px;
+                max-height: 68px;
+                padding: 6px;
+                text-align: center;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.micro-tactical-card {
+                flex-basis: clamp(148px, 46vw, 176px);
+                min-height: 58px;
+                max-height: 68px;
+                padding: 6px;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card.has-corner-controls {
+                padding-top: 6px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .micro-control-slot {
+                width: 44px;
+                min-width: 44px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .micro-avatar {
+                width: 34px;
+                height: 34px;
+                font-size: 20px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .tactical-stat-rings {
+                gap: 4px;
+                margin-top: 0;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .tactical-stat-ring {
+                width: 24px;
+                height: 24px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .unit-selection-chip {
+                max-width: 54px;
+            }
+
             .mobile-play-surface.combat-active #mobile-party-strip .unit-traits,
             .mobile-play-surface.combat-active #mobile-party-strip .unit-selection-chips {
                 display: none;
@@ -5270,6 +5589,24 @@
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.compact-tactical-card.has-corner-controls {
                 padding-top: 38px;
+            }
+
+            .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card.has-corner-controls,
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.micro-tactical-card.has-corner-controls {
+                padding-top: 6px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .action-btn {
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                padding: 0;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+                font-size: 0;
             }
 
             .mobile-unit-chip .corner-card-controls {
@@ -5464,7 +5801,6 @@
             }
 
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-bars,
-            .mobile-play-surface:not(.combat-active) .mobile-unit-chip .mobile-stat-rings,
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .unit-traits,
             .mobile-play-surface:not(.combat-active) .mobile-unit-chip .mobile-chip-meta {
                 display: none;

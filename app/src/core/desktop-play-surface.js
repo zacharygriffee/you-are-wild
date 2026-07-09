@@ -199,29 +199,18 @@ const YAW_DESKTOP_PLAY_SURFACE = {
     combatantHtml(app, unit, type, actor = null) {
         if (!unit) return '';
         const ids = this.combatantIds(app, unit);
-        const markedTarget = ids.some(id => (app.combatTargetIds || []).includes(id) || app.combatTargetId === id);
-        const syncParticipant = Boolean(app._isSyncParticipant?.(unit));
-        const down = unit.CPun <= 0 || unit.knockedOut || unit.fledCombat || app._isCorpse?.(unit);
-        const current = Boolean(actor && unit === actor);
-        const row = unit.combatRow ? app._label(`combat.row.${unit.combatRow}`, unit.combatRow) : '';
-        const role = type === 'party'
-            ? (current ? app._label('combat.exchange.currentActor', 'Current') : app._label('ui.party', 'Party'))
-            : (markedTarget ? app._label('target.targetRole', 'Target') : app._label('ui.enemies', 'Enemies'));
-        const badges = [
-            current ? app._label('combat.exchange.currentActor', 'Current') : '',
-            markedTarget ? app._label('target.targetRole', 'Target') : '',
-            syncParticipant ? app._label('combat.sync.participantRole', 'Participant') : '',
-            down ? (app._isCorpse?.(unit) ? app._label('disposition.remains', 'Remains') : app._label('unit.trait.wounded', 'Wounded')) : ''
-        ].filter(Boolean).map(label => `<span class="desktop-battle-badge">${app._escapeHtml(label)}</span>`).join('');
-        const icon = unit.icon || (type === 'party' ? '👤' : '⚔️');
-        const bars = typeof YAW_UNIT_CARD_STATUS !== 'undefined' ? YAW_UNIT_CARD_STATUS.tacticalBars(app, unit, { compact: true }) : '';
-        const traits = typeof YAW_UNIT_CARD_STATUS !== 'undefined' ? YAW_UNIT_CARD_STATUS.traitChips(app, unit, type === 'party' ? 'party' : 'creature', 2) : '';
-        return `<div class="desktop-battle-unit ${app._escapeHtml(type)}${current ? ' current-actor' : ''}${markedTarget ? ' selected-target' : ''}${syncParticipant ? ' sync-participant' : ''}${down ? ' downed' : ''}" data-stage-surface="combatant" data-stage-layer="${app._escapeHtml(type)}" data-unit-id="${app._escapeHtml(ids[0] || '')}" aria-label="${app._escapeHtml(`${unit.name || 'Unit'} ${role}`)}">`
-            + `<div class="desktop-battle-unit-head"><span class="desktop-battle-icon" aria-hidden="true">${app._escapeHtml(icon)}</span><span class="desktop-battle-name">${app._escapeHtml(unit.name || app._label('unit.generic', 'unit'))}</span>${badges}</div>`
-            + `<div class="desktop-battle-meta">${app._escapeHtml(row || role)}</div>`
-            + bars
-            + traits
-            + `</div>`;
+        const cardType = type === 'party' ? 'party' : 'creature';
+        const source = cardType === 'party' ? app.party : app.creatures;
+        const unitIndex = Math.max(0, (source || []).indexOf(unit));
+        const html = app.renderTacticalCard(unit, unitIndex, cardType, {
+            presentation: 'desktop',
+            density: 'micro',
+            stage: 'combat'
+        });
+        return html.replace(
+            'data-card-density="micro"',
+            `data-card-density="micro" data-unit-id="${app._escapeHtml(ids[0] || '')}"`
+        );
     },
 
     combatLaneHtml(app, title, units, type, actor = null) {

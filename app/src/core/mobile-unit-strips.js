@@ -172,7 +172,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
         if (actorSelectionOpen && actorBelt && typeof requestAnimationFrame === 'function') {
             requestAnimationFrame(() => {
                 controlBelt.scrollTop = controlBelt.scrollHeight;
-                const selected = actorBelt.querySelector('.mobile-actor-chip.selected-actor, .mobile-actor-chip.selected-target');
+                const selected = actorBelt.querySelector('.mobile-unit-chip.selected-actor, .mobile-unit-chip.selected-target, .mobile-actor-chip.selected-actor, .mobile-actor-chip.selected-target');
                 if (selected && typeof selected.scrollIntoView === 'function') {
                     selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 }
@@ -191,20 +191,7 @@ const YAW_MOBILE_UNIT_STRIPS = {
     actorControls(app) {
         const chips = (app.party || []).map((unit, index) => {
             if (!unit || !app._isLivingCreature(unit)) return '';
-            const selected = app._isExplicitExplorationActor?.(unit);
-            const targetKey = app._unitKey(unit);
-            const targetSelected = app._isExplorationTarget('party', app._unitSelectionId(unit));
-            const unitName = unit === app.player ? app._label('party.you', 'You') : (unit.name || app._label('ui.unknown', 'Unknown'));
-            const role = unit === app.player ? app._label('party.you', 'You') : app._partyRoleLabel(app._getPartyRole(unit));
-            const actorTitle = app._escapeHtml(app._actorToggleLabel(unit, selected));
-            const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetSelected));
-            const label = app._escapeHtml(unitName);
-            const meta = app._escapeHtml(role || '');
-            const icon = app._escapeHtml(unit.icon || '👤');
-            const selectedClass = `${selected ? ' selected selected-actor' : ''}${targetSelected ? ' selected-target' : ''}`;
-            const pressed = app._selectionControlAttrs('actor', selected);
-            const targetPressed = app._selectionControlAttrs('target', targetSelected);
-            return `<div class="mobile-actor-chip has-corner-controls${selectedClass}" role="group" aria-label="${label} party selection"><span class="mobile-actor-chip-controls corner-card-controls"><button type="button" class="mobile-actor-chip-btn actor-toggle corner-card-toggle agency-corner-toggle${selected ? ' primary' : ''}" data-corner-slot="agency" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" title="${actorTitle}" aria-label="${actorTitle}" ${pressed} onclick="event.stopPropagation();App.selectExplorationActor(${index})">${app._escapeHtml(app._label('target.actShort', 'Act'))}</button><button type="button" class="mobile-actor-chip-btn target-toggle corner-card-toggle target-corner-toggle${targetSelected ? ' primary' : ''}" data-corner-slot="target" data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" title="${targetTitle}" aria-label="${targetTitle}" ${targetPressed} onclick="event.stopPropagation();App.toggleExplorationTarget('party','${app._escapeJsString(targetKey)}')">${app._escapeHtml(app._targetMarkLabel())}</button></span><span class="mobile-actor-chip-icon" aria-hidden="true">${icon}</span><span class="mobile-actor-chip-text"><strong>${label}</strong>${meta ? `<span>${meta}</span>` : ''}</span></div>`;
+            return app.renderTacticalCard(unit, index, 'party', { presentation: 'mobile', density: 'micro' });
         }).join('');
         const hasExplicitActors = Boolean(app.explorationActorSelectionExplicit);
         const exitLabel = app._escapeHtml(hasExplicitActors
@@ -247,25 +234,13 @@ const YAW_MOBILE_UNIT_STRIPS = {
 
     targetControlChip(app, unit, index) {
         if (!unit) return '';
-        const isCorpse = app._isCorpse(unit);
-        const ref = app._escapeJsString(app._explorationTargetUnitId('creature', unit));
-        const selected = app._isExplorationTargetUnit('creature', unit);
-        const selectedClass = selected ? ' selected selected-target' : '';
-        const title = app._escapeHtml(app._targetToggleLabel(unit, selected));
-        const label = app._escapeHtml(unit.name || app._label('unit.generic', 'unit'));
-        const icon = app._escapeHtml(isCorpse ? (unit.corpseIcon || unit.icon || '☠') : (unit.icon || '👤'));
-        const disp = app._escapeHtml(app._unitDispositionLabel(unit) || '');
-        const count = app._escapeHtml(String(index + 1));
-        const pressed = app._selectionControlAttrs('target', selected);
-        return `<button type="button" class="mobile-target-picker-chip compact-tactical-card has-corner-controls${selectedClass}" data-card-role="compact-tactical" data-surface-role="target-picker-chip" data-selection-state="${selected ? 'selected' : 'available'}" data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-command-slot="target" title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.toggleExplorationTarget('creature','${ref}')">
-                    <span class="mobile-target-picker-icon" aria-hidden="true">${icon}</span>
-                    <span class="mobile-target-picker-name">${label}</span>
-                    <span class="mobile-target-picker-count" aria-hidden="true">#${count}</span>
-                    ${disp ? `<span class="sr-only">${disp}</span>` : ''}
-                    <span class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('creature-selection', unit)}>
-                        <span class="action-btn target-toggle corner-card-toggle target-corner-toggle${selected ? ' primary' : ''}" data-corner-slot="target" ${pressed} aria-hidden="true">${app._escapeHtml(app._targetMarkLabel())}</span>
-                    </span>
-                </button>`;
+        const creatureIndex = Math.max(0, app.creatures.indexOf(unit));
+        return app.renderTacticalCard(unit, creatureIndex, 'creature', {
+            presentation: 'mobile',
+            density: 'micro',
+            extraClass: 'mobile-target-picker-chip',
+            surfaceRoleAttrs: 'data-surface-role="target-picker-chip" data-drawer-role="targets"'
+        });
     },
 
     targetItemControl(app) {

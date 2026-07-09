@@ -2293,7 +2293,7 @@ test('Mobile unit chip helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/mobile-unit-chip.js'") < buildContent.indexOf("'src/core/mobile-unit-strips.js'"), 'Mobile unit chip helper should load before the mobile unit strip helper');
   assertContains(mobileUnitChipContent, 'const YAW_MOBILE_UNIT_CHIP = {', 'Mobile unit chip helper should expose the chip service');
   assertContains(mobileUnitChipContent, 'render(app, unit, index, type)', 'Mobile unit chip helper should own chip rendering');
-  assertContains(mobileUnitChipContent, "const density = app.combatState?.active ? 'micro' : 'medium';", 'Mobile unit chip helper should choose micro combat cards and medium normal rails');
+  assertContains(mobileUnitChipContent, "const density = unit?.expanded ? 'medium' : 'micro';", 'Mobile unit chip helper should use micro default cards and medium expanded detail chips');
   assertContains(mobileUnitChipContent, "YAW_TACTICAL_CARD.render(app, unit, index, type, { presentation: 'mobile', density })", 'Mobile unit chip helper should delegate density-aware rails to the shared tactical card renderer');
   assertContains(markedTargetActionsContent, "App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')", 'Marked-target tray should own contextual creature utility dispatch');
   assertNotContains(mobileUnitChipContent, 'showRadialIntentMenu', 'Mobile unit chips should not expose duplicate secondary-click intent menus');
@@ -2541,14 +2541,13 @@ test('Mobile unit strip helper module is registered before app code', () => {
   assertContains(mobileUnitStripsContent, "targetTray.setAttribute('data-command-surface', 'target-intents')", 'Mobile target action tray should identify the active target-intent surface when populated');
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-surface', 'actor-target-routing')", 'Mobile actor belt should identify the actor-routing command surface when open');
   assertContains(mobileUnitStripsContent, "actorBelt.setAttribute('data-command-mode', 'exploration')", 'Mobile actor belt should identify exploration command mode when open');
-  assertContains(mobileUnitStripsContent, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile actor chips should identify their actor-routing composer surface');
-  assertContains(mobileUnitStripsContent, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
+  assertContains(mobileUnitStripsContent, "app.renderTacticalCard(unit, index, 'party', { presentation: 'mobile', density: 'micro' })", 'Mobile actor rail should render shared micro tactical actor chips');
   assertContains(mobileUnitStripsContent, "const exitControl = hasExplicitActors ? 'clear-actors' : 'close-actors';", 'Mobile actor rail exit should distinguish clear-selected state from close-picker state');
   assertContains(mobileUnitStripsContent, "const exitHandler = hasExplicitActors ? 'App.clearExplorationActors()' : 'App.toggleMobileActorBelt()';", 'Mobile actor rail exit should close the picker before explicit actors exist');
   assertContains(mobileUnitStripsContent, 'data-command-control="${exitControl}" data-command-slot="exit"', 'Mobile actor rail exit should identify the exit slot structurally');
   assertContains(mobileUnitStripsContent, 'data-command-control="open-actor-drawer" data-drawer-role="actors" data-return-rail="actor" data-command-slot="details"', 'Mobile actor rail Details chip should identify drawer routing and return rail metadata');
   assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, i, 'party')", 'Mobile party strip should keep using mobile party chips');
-  assertContains(mobileUnitStripsContent, "app.renderMobileUnitChip(unit, app.creatures.indexOf(unit), 'creature')", 'Mobile creature strip should keep using creature indexes from the canonical creature array');
+  assertContains(mobileUnitStripsContent, "app.renderTacticalCard(unit, creatureIndex, 'creature'", 'Mobile target picker should render shared micro creature chips from canonical creature indexes');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.party(this)', 'App mobile party strip wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.creatures(this)', 'App mobile creature strip wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_MOBILE_UNIT_STRIPS.focusCreaturePresence(this)', 'App mobile creature presence focus should delegate to the helper');
@@ -8260,7 +8259,7 @@ test('Mobile presence overflow opens compact rails instead of drawers', () => {
 
   assertEqual(App.focusPresenceOverflow('actor'), true, 'Mobile actor overflow should resolve');
   assertEqual(App.mobileActorBeltOpen, true, 'Mobile actor overflow should open the compact actor rail');
-  assertContains(document.getElementById('mobile-actor-belt').innerHTML, 'mobile-actor-chip', 'Mobile actor overflow should render compact actor chips');
+  assertContains(document.getElementById('mobile-actor-belt').innerHTML, 'mobile-unit-chip', 'Mobile actor overflow should render shared micro actor chips');
   assertContains(document.getElementById('mobile-actor-belt').innerHTML, 'data-command-control="focus-actor"', 'Mobile actor overflow should expose actor focus controls');
   assertEqual(document.getElementById('panel-party').classList.contains('active'), false, 'Mobile actor overflow should not open the full Party drawer');
   assertEqual(document.getElementById('panel-backdrop').classList.contains('active'), false, 'Mobile actor overflow should leave the drawer backdrop closed');
@@ -9708,8 +9707,8 @@ test('Exploration cards expose multi-target selection and context actions', () =
   assertContains(mobileActorChip, 'aria-label="Quitar Actor de los actores"', 'Mobile actor button should label actor role selection instead of an action command');
   assertContains(mobileCreatureChip, 'selected selected-target', 'Mobile selected target chip should expose selected target class');
   assertContains(mobileCreatureChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile selected target chip root should expose selected target metadata');
-  assertContains(mobileActorChip, 'unit-selection-chips', 'Mobile actor chip should render selected-state chips');
-  assertContains(mobileCreatureChip, 'unit-selection-chips', 'Mobile creature chip should render selected-state chips');
+  assertContains(mobileActorChip, 'data-selection-roles="actor" data-selection-state="selected"', 'Mobile actor micro chip should expose selected actor state without visible selection chips');
+  assertContains(mobileCreatureChip, 'data-selection-roles="target" data-selection-state="selected"', 'Mobile creature micro chip should expose selected target state without visible selection chips');
   const selectionHtml = elements.get('selection-sentence').innerHTML;
   const actionsHtml = elements.get('desktop-context-belt').innerHTML;
   const partyPanelHtml = elements.get('party-content').innerHTML;
@@ -12230,7 +12229,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'aria-label="Mark Ally as target"', 'Mobile actor belt should expose party target marking without opening the full party drawer');
   assertContains(elements.get('mobile-actor-belt').innerHTML, "toggleExplorationTarget('party','ally-1')", 'Mobile actor belt should route party target marking through existing target selection');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'data-command-control="focus-target"', 'Mobile actor belt should identify party mark controls as target routing');
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'Open party details', 'Mobile actor belt should preserve a path to the full party drawer');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'title="Open party details"', 'Mobile actor belt should preserve a path to the full party drawer');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-surface'), 'actor-target-routing', 'Mobile actor belt should identify actor-routing command surface when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-mode'), 'exploration', 'Mobile actor belt should identify exploration command mode when opened');
   assertEqual(elements.get('mobile-actor-belt').getAttribute('data-command-grammar'), 'actor-target-intent', 'Mobile actor belt should identify the shared command grammar when opened');
@@ -12295,9 +12294,9 @@ test('Mobile exploration uses visible control belt for movement target actions a
   App.toggleMobileActorBelt();
   const openedActorHtml = elements.get('mobile-actor-belt').innerHTML;
   assertEqual(elements.get('mobile-actor-toggle').getAttribute('aria-expanded'), 'true', 'Mobile Actors toggle should expose expanded state');
-  assertContains(openedActorHtml, 'Ally', 'Mobile actor belt should expose party members when the actor toggle is opened');
+  assertContains(openedActorHtml, 'data-unit-name="Ally"', 'Mobile actor belt should preserve party member names as metadata when the actor toggle is opened');
   assertContains(openedActorHtml, 'selectExplorationActor(1)', 'Mobile actor belt should allow selecting a party actor for marked-target interactions');
-  assertContains(openedActorHtml, 'mobile-actor-chip', 'Mobile actor belt should render compact actor chips for marked-target interactions');
+  assertContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should render shared micro actor chips for marked-target interactions');
   assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor"', 'Mobile actor chips should identify actor-routing composer surface');
   assertContains(openedActorHtml, 'data-command-control="focus-actor"', 'Mobile actor chips should identify actor composer routing');
   assertContains(openedActorHtml, 'data-selection-mode="act-actor" data-selection-state="available" data-command-slot="actor"', 'Mobile actor belt chips should identify the actor slot');
@@ -12306,7 +12305,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertContains(openedActorHtml, 'data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="close-actors"', 'Mobile actor close exit should identify actor-routing composer surface');
   assertContains(openedActorHtml, 'data-command-control="close-actors"', 'Mobile actor close exit should identify its command route');
   assertContains(openedActorHtml, 'data-command-control="close-actors" data-command-slot="exit"', 'Mobile actor close exit should identify the exit slot');
-  assertContains(openedActorHtml, 'Close actors', 'Mobile actor close exit should describe the picker state before explicit selection');
+  assertContains(openedActorHtml, 'title="Close actor picker"', 'Mobile actor close exit should describe the picker state before explicit selection');
   assertNotContains(openedActorHtml, 'Clear actors', 'Mobile actor belt should not claim selected actors are clearable before explicit actor selection');
   assertNotContains(openedActorHtml, 'mobile-unit-chip', 'Mobile actor belt should not render full unit cards into the fixed control belt');
   assertNotContains(openedActorHtml, 'unit-bars', 'Mobile actor belt should not include full tactical bars in the fixed control belt');
@@ -12315,7 +12314,7 @@ test('Mobile exploration uses visible control belt for movement target actions a
   assertEqual(App.explorationActorSelectionExplicit, true, 'Selecting an ally from the mobile actor belt should create explicit actor state');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'clearExplorationActors()', 'Mobile actor belt should switch to a clear actor exit after explicit actor selection');
   assertContains(elements.get('mobile-actor-belt').innerHTML, 'data-command-control="clear-actors" data-command-slot="exit"', 'Mobile explicit actor clear exit should identify the exit slot');
-  assertContains(elements.get('mobile-actor-belt').innerHTML, 'Clear actors', 'Mobile explicit actor clear exit should use the clear label');
+  assertContains(elements.get('mobile-actor-belt').innerHTML, 'title="Clear selected actors"', 'Mobile explicit actor clear exit should use the clear label');
   assertContains(document.getElementById('mobile-selection-sentence').innerHTML, 'Ally', 'Mobile composer sentence should show the explicit actor before clearing');
   App.selectExplorationActor(1);
   assertEqual(App.explorationActorSelectionExplicit, false, 'Deselecting the last explicit actor should restore implicit player actor state');
@@ -15146,8 +15145,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(mobilePartyChip, 'aria-label="Show details for You"', 'Mobile chip click should describe detail toggling rather than actor selection');
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'mobile-stat-rings', 'Mobile creature chip should use compact circular tactical status rings');
-  assertContains(mobileCreatureChip, 'presentation-corner-badge', 'Mobile creature chips should render a passive corner avatar badge');
-  assertContains(mobileCreatureChip, "--mobile-card-icon-content:&#39;🦊&#39;", 'Mobile creature corner badge should use the unit avatar icon');
+  assertContains(mobileCreatureChip, 'data-card-density="micro"', 'Mobile creature chips should use the textless micro density');
+  assertContains(mobileCreatureChip, 'class="micro-avatar"', 'Mobile creature micro chips should render the passive avatar segment');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
   assertContains(templateContent, '.density-medium.has-corner-controls[data-surface-role="actor-card"] .unit-icon', 'Medium actor cards should hide duplicate body icons when the actor badge carries the avatar');
   assertContains(templateContent, '.density-medium.has-corner-controls[data-surface-role="target-card"] .unit-icon', 'Medium target cards should hide duplicate body icons when the presentation badge carries the avatar');
@@ -15374,7 +15373,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(availableMobileCombatEnemyChip, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="mark-combat-target" data-selection-control="combat-target"', 'Mobile idle combat target button should expose combat-specific target routing');
   assertContains(availableMobileCombatEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile idle combat target button should expose available combat target state');
   assertContains(availableMobileCombatEnemyChip, 'aria-label="Set Enemy as combat target"', 'Mobile idle combat target button should advertise set-combat-target semantics');
-  assertContains(availableMobileCombatEnemyChip, '>Target</button>', 'Mobile idle combat target button should avoid generic Mark copy');
+  assertNotContains(availableMobileCombatEnemyChip, '>Target</button>', 'Mobile micro combat target button should be icon-only');
   assertNotContains(availableMobileCombatEnemyChip, 'data-selection-mode="mark-target"', 'Mobile idle combat target button should not reuse exploration mark-target mode');
   App.combatTargetId = 'enemy-1';
   const markedCombatEnemyCard = App.renderUnitCard(enemy, 1, 'creature');
@@ -15401,11 +15400,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(syncActorCard, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Desktop Sync current actor should be a described disabled control');
   assertContains(syncActorCard, '>Actor</button>', 'Desktop expanded/full Sync current actor should keep normal Actor copy');
   assertContains(syncCompactActorCard, 'data-corner-slot="agency"', 'Desktop compact Sync current actor should render in the agency corner slot');
-  assertContains(syncCompactActorCard, '>Lead</button>', 'Desktop compact Sync current actor should use compact Lead copy');
+  assertNotContains(syncCompactActorCard, '>Lead</button>', 'Desktop compact Sync current actor should keep the badge icon-only');
   assertContains(mobileSyncActorChip, 'data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="locked"', 'Mobile Sync current actor button should expose locked participant state');
   assertContains(mobileSyncActorChip, 'aria-pressed="true" title="Current sync actor: You" aria-label="Current sync actor: You" disabled aria-disabled="true"', 'Mobile Sync current actor should be a described disabled control');
   assertContains(mobileSyncActorChip, 'data-corner-slot="agency"', 'Mobile Sync current actor should render in the agency corner slot');
-  assertContains(mobileSyncActorChip, '>Lead</button>', 'Mobile Sync current actor chip should show compact Lead copy');
+  assertNotContains(mobileSyncActorChip, '>Lead</button>', 'Mobile Sync current actor chip should keep the badge icon-only');
   assertContains(syncAllyCard, 'data-action-scope="sync-participants" aria-label="Sync participant controls for Ally"', 'Desktop sync participant row should identify group actor-selection scope');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent"', 'Desktop sync participant row should identify the shared command grammar');
   assertContains(syncAllyCard, 'data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant"', 'Desktop sync participant button should identify itself as a combat grammar control');
@@ -15449,7 +15448,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-target state');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
-  assertContains(mobileBlockedEnemyChip, '>Airborne</button>', 'Mobile blocked combat target should show a short visible reach reason without relying on hover text');
+  assertContains(mobileBlockedEnemyChip, 'is airborne. Use a flying or ranged actor', 'Mobile blocked combat target should keep the reach reason available to assistive tech');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });
@@ -15503,7 +15502,7 @@ test('Unit cards and mobile chips render capped localized trait chips', () => {
   assertContains(creatureCard, 'Wounded', 'Creature card should expose wounded state as a trait chip');
   assertContains(creatureCard, 'Hungry', 'Creature card should expose hunger pressure as a trait chip');
   assertContains(creatureCard, 'Quest', 'Creature card should expose contextual quest state as a trait chip');
-  assertContains(mobileCreatureChip, 'unit-trait-chip', 'Mobile unit chip should reuse trait chip rendering');
+  assertContains(mobileCreatureChip, 'aria-label="Punishment:', 'Mobile micro unit chip should keep tactical status available through stat-ring labels');
 
   App.updateLanguage('es');
   const localizedAllyCard = App.renderUnitCard(ally, 1, 'party');
@@ -17073,7 +17072,8 @@ test('Mobile party chips expose long-press management handlers', () => {
   const html = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(html, 'startMobilePartyPress(event,1)', 'Mobile party chip should start long-press management');
   assertContains(html, 'cancelMobilePartyPress()', 'Mobile party chip should cancel long-press on movement/end');
-  assertContains(html, 'Ally - Guard', 'Mobile party chip should summarize assigned role');
+  assertContains(html, 'data-unit-name="Ally"', 'Mobile party micro chip should preserve the full name as metadata');
+  assertNotContains(html, 'Ally - Guard', 'Mobile party micro chip should not spend visible space on role text');
   App.showMobilePartyContext(1);
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration"', 'Mobile party long-press menu should identify the detail-management surface');
   assertContains(body.innerHTML, 'data-command-surface="detail-management" data-command-mode="exploration" data-command-control="open-party-stats"', 'Mobile party long-press Stats should identify its drawer control');
@@ -17095,7 +17095,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   App.creatures = [friendly, merchant];
   App.updateLanguage('es');
   const partyHtml = App.renderMobileUnitChip(ally, 1, 'party');
-  assertContains(partyHtml, 'Aliado', 'Mobile party status should localize');
+  assertContains(partyHtml, 'data-unit-name="Ally"', 'Mobile party micro chip should preserve the full name as metadata');
   assertContains(partyHtml, 'aria-label="Agregar Ally como actor"', 'Mobile party actor button should localize accessible role label');
   assertContains(partyHtml, 'aria-label="Marcar Ally como objetivo"', 'Mobile party target button should localize accessible label');
   assertContains(partyHtml, 'data-corner-slot="agency"', 'Mobile compact party actor control should live in the agency corner');
@@ -17105,10 +17105,10 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   ally.expanded = true;
   const expandedPartyHtml = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(expandedPartyHtml, 'aria-label="Mostrar estadisticas de Ally"', 'Mobile expanded party stats button should localize accessible label');
-  assertContains(partyHtml, '>Act<', 'Mobile compact party actor button should use short Act copy');
-  assertContains(partyHtml, '>Marcar<', 'Mobile party target button text should localize');
+  assertNotContains(partyHtml, '>Act<', 'Mobile micro party actor button should be icon-only');
+  assertNotContains(partyHtml, '>Marcar<', 'Mobile micro party target button should be icon-only');
   const creatureHtml = App.renderMobileUnitChip(friendly, 0, 'creature');
-  assertContains(creatureHtml, 'Amistoso', 'Mobile creature disposition should localize');
+  assertContains(creatureHtml, 'data-unit-name="Friendly"', 'Mobile creature micro chip should preserve the full name as metadata');
   assertContains(creatureHtml, 'aria-label="Castigo: 100%"', 'Mobile creature health bar should localize accessible label');
   assertContains(creatureHtml, 'aria-label="Marcar Friendly como objetivo"', 'Mobile creature target button should localize accessible label');
   assertNotContains(creatureHtml, 'aria-label="Inspeccionar Friendly"', 'Mobile creature chip should not duplicate inspect outside the marked-target tray');
@@ -17123,7 +17123,7 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed mobile creature menu should not duplicate primary actions');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed mobile creature menu should not open a context menu');
   const merchantHtml = App.renderMobileUnitChip(merchant, 1, 'creature');
-  assertContains(merchantHtml, 'Mercader', 'Mobile merchant disposition should localize');
+  assertContains(merchantHtml, 'data-unit-name="Merchant"', 'Mobile merchant micro chip should preserve the full name as metadata');
   assertNotContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile merchant chip should not duplicate trade outside the marked-target tray');
   App.clearExplorationTargets();
   App.toggleExplorationTarget('creature', 'merchant-1');
@@ -17145,15 +17145,15 @@ test('Mobile slot picker preserves actor and target selections independently', (
 
   App.selectExplorationActor(1);
   App.selectExplorationActor(2);
-  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Mobile actor picker should support multiple selected actors');
+  assertEqual(JSON.stringify(App._getExplorationActors().map(unit => unit.id)), JSON.stringify(['ally-1', 'scout-1']), 'Mobile actor picker should support multiple selected actors');
 
   App.focusMobileTargetPicker();
   assertEqual(App.mobileActorBeltOpen, false, 'Opening target picker should close only the actor picker UI');
   assertEqual(App.mobileTargetPickerOpen, true, 'Target slot should open the lightweight target picker');
-  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Opening target picker should preserve selected actors');
+  assertEqual(JSON.stringify(App._getExplorationActors().map(unit => unit.id)), JSON.stringify(['ally-1', 'scout-1']), 'Opening target picker should preserve selected actors');
   App.toggleExplorationTarget('creature', 'deer-1');
-  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1', 'scout-1'], 'Selecting a creature target should not lose selected actors');
-  assert.deepStrictEqual(App.explorationTargetIds, ['creature:deer-1'], 'Target picker should mark the selected creature');
+  assertEqual(JSON.stringify(App._getExplorationActors().map(unit => unit.id)), JSON.stringify(['ally-1', 'scout-1']), 'Selecting a creature target should not lose selected actors');
+  assertEqual(JSON.stringify(App.explorationTargetIds), JSON.stringify(['creature:deer-1']), 'Target picker should mark the selected creature');
 
   App.renderSelectionSentence();
   const sentence = document.getElementById('mobile-selection-sentence').innerHTML;
@@ -17167,14 +17167,16 @@ test('Mobile slot picker preserves actor and target selections independently', (
   App.toggleExplorationTarget('creature', 'deer-1');
   App.focusMobileActorRail();
   App.selectExplorationActor(1);
-  assert.deepStrictEqual(App.explorationTargetIds, ['creature:deer-1'], 'Opening actor picker after target-first selection should preserve target');
-  assert.deepStrictEqual(App._getExplorationActors().map(unit => unit.id), ['ally-1'], 'Actor picker should still update actors after target-first selection');
+  assertEqual(JSON.stringify(App.explorationTargetIds), JSON.stringify(['creature:deer-1']), 'Opening actor picker after target-first selection should preserve target');
+  assertEqual(JSON.stringify(App._getExplorationActors().map(unit => unit.id)), JSON.stringify(['ally-1']), 'Actor picker should still update actors after target-first selection');
 
-  const targetHtml = YAW_MOBILE_UNIT_STRIPS.targetControls(App);
+  App.mobileTargetPickerOpen = true;
+  App.renderMobileCreatureStrip();
+  const targetHtml = document.getElementById('mobile-target-picker-belt').innerHTML;
   assertContains(targetHtml, 'data-surface-role="target-picker-chip"', 'Target slot picker should use compact target-picker chips');
   assertContains(targetHtml, 'aria-label="Remove Deerfolk Longname from targets"', 'Target picker chip should keep full accessible target name');
-  assertContains(targetHtml, 'mobile-target-picker-count', 'Target picker chip should show small identity aids');
-  assertContains(targetHtml, 'corner-card-controls', 'Target picker chip should keep mark state in a corner badge');
+  assertContains(targetHtml, 'data-card-density="micro"', 'Target picker chip should use textless micro density');
+  assertContains(targetHtml, 'micro-target-slot', 'Target picker chip should keep mark state in the right micro segment');
 });
 
 test('Desktop card intent menus stay suppressed for composer-owned actions', () => {

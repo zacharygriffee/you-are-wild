@@ -286,8 +286,8 @@ async function mobileExplorationRailMetrics(page) {
     const min = (values, fallback = 0) => values.length ? Math.min(...values) : fallback;
     const max = (values, fallback = 0) => values.length ? Math.max(...values) : fallback;
     const targetTray = rects('#mobile-target-action-tray .action-btn');
-    const actorChips = rects('#mobile-actor-belt .mobile-actor-chip');
-    const actorButtons = buttonRects('#mobile-actor-belt .mobile-actor-chip-btn');
+    const actorChips = rects('#mobile-actor-belt .mobile-unit-chip, #mobile-actor-belt .mobile-actor-chip');
+    const actorButtons = buttonRects('#mobile-actor-belt .mobile-unit-chip .action-btn, #mobile-actor-belt .mobile-actor-chip-btn');
     const targetButtons = rects('#mobile-target-picker-belt .tactical-card-selection-controls .action-btn, #mobile-creature-strip .tactical-card-selection-controls .action-btn');
     return {
       targetPickerOpen: Boolean(window.App?.mobileTargetPickerOpen),
@@ -429,8 +429,9 @@ async function runCombatTargetFirstComposerFlow(page) {
     targetSelection: App.targetSelection,
     sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
     enemySelectedTarget: document.querySelector('#mobile-creature-strip .mobile-unit-chip')?.classList.contains('selected-target') || false,
-    currentActorBadge: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-actor .unit-selection-chips')?.innerText || '',
-    enemyTargetBadge: document.querySelector('#mobile-creature-strip .mobile-unit-chip.selected-target .unit-selection-chips')?.innerText || '',
+    currentActorState: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-actor')?.getAttribute('data-selection-state') || '',
+    currentActorAria: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-actor')?.getAttribute('aria-current') || '',
+    enemyTargetState: document.querySelector('#mobile-creature-strip .mobile-unit-chip.selected-target')?.getAttribute('data-selection-state') || '',
     hasCombatPick: Boolean(document.querySelector('#mobile-creature-strip button[data-selection-mode="combat-pick"]')),
     hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'"),
     composerActorCount: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-actor-count') || '',
@@ -445,8 +446,9 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.targetSelection, null, 'Mobile combat Mark should not enter intent-first target-pick state');
   assert(state.sentence.includes('You') && state.sentence.includes('Enemy') && state.sentence.includes('Choose'), 'Mobile sentence should show Actor -> Target -> Intent after combat Mark');
   assert.strictEqual(state.enemySelectedTarget, true, 'Mobile marked combat enemy should expose selected-target state');
-  assert(state.currentActorBadge.includes('Current'), 'Mobile compact combat actor chip should show a visible Current badge');
-  assert(state.enemyTargetBadge.includes('Target'), 'Mobile marked combat enemy chip should show a visible Target badge');
+  assert.strictEqual(state.currentActorState, 'selected', 'Mobile compact combat actor chip should expose selected current state');
+  assert.strictEqual(state.currentActorAria, 'true', 'Mobile compact combat actor chip should expose aria-current');
+  assert.strictEqual(state.enemyTargetState, 'selected', 'Mobile marked combat enemy chip should expose selected target state');
   assert.strictEqual(state.hasCombatPick, false, 'Mobile target-first Mark should not render combat-pick controls before intent');
   assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat Mark should not render adventure target controls');
   assert.strictEqual(state.composerActorCount, '1', 'Mobile combat composer root should expose current actor count after marking');
@@ -547,7 +549,7 @@ async function runReachabilityMatrix(page) {
   state = await page.evaluate(() => {
     const chip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
     return {
-      chipMeta: chip?.querySelector('.mobile-chip-meta')?.innerText || '',
+      chipRow: chip?.getAttribute('data-combat-row') || '',
       selectedTarget: chip?.classList.contains('selected-target') || false,
       targetSelectionAction: App.targetSelection?.action || null,
       enemyPun: App.creatures[0]?.CPun
@@ -556,7 +558,7 @@ async function runReachabilityMatrix(page) {
   assert.strictEqual(attrs.disabled, true, 'Mobile unreachable fight target should be an actual disabled chip control');
   assert.strictEqual(attrs.ariaDisabled, 'true', 'Mobile unreachable fight target should expose disabled state accessibly');
   assert(attrs.label.includes('Enemy is airborne'), 'Mobile unreachable fight target should explain the flying reach blocker');
-  assert(state.chipMeta.includes('Back'), 'Mobile compact enemy chip should show row feedback while targeting');
+  assert.strictEqual(state.chipRow, 'back', 'Mobile compact enemy chip should expose row feedback while targeting');
   assert.strictEqual(state.selectedTarget, false, 'Mobile blocked combat target should not be styled as a pickable target');
   assert.strictEqual(state.enemyPun, 100, 'Mobile disabled fight target should not damage enemy');
   assert.strictEqual(state.targetSelectionAction, 'fight', 'Mobile disabled fight target should preserve selected intent for correction');
@@ -874,7 +876,7 @@ async function runDesktopSyncComposerFlow(page) {
       surface: tray?.getAttribute('data-command-surface') || '',
       controls: tray?.innerText || '',
       participantButtons: document.querySelectorAll('#party-content button[data-selection-mode="sync-participant"]').length,
-      lockedActorLabel: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.textContent.trim() || '',
+      lockedActorLabel: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-label') || '',
       lockedActorCornerSlot: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('data-corner-slot') || '',
       lockedActorDisabled: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.hasAttribute('disabled') || false,
       lockedActorAriaDisabled: document.querySelector('#party-content button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-disabled') || '',
@@ -889,7 +891,7 @@ async function runDesktopSyncComposerFlow(page) {
   assert.strictEqual(state.surface, 'sync-participants', 'Desktop Sync participant tray should identify actor selection surface');
   assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Desktop Sync participant tray should expose Confirm and Cancel Sync');
   assert(state.participantButtons >= 2, 'Desktop Sync participant phase should expose party participant controls');
-  assert.strictEqual(state.lockedActorLabel, 'Lead', 'Desktop compact Sync locked current actor should use Lead copy');
+  assert(state.lockedActorLabel.includes('Current sync actor'), 'Desktop compact Sync locked current actor should keep an accessible label');
   assert.strictEqual(state.lockedActorCornerSlot, 'agency', 'Desktop compact Sync locked current actor should live in the agency corner');
   assert.strictEqual(state.lockedActorDisabled, true, 'Desktop Sync locked current actor should be disabled');
   assert.strictEqual(state.lockedActorAriaDisabled, 'true', 'Desktop Sync locked current actor should expose aria-disabled');
@@ -1100,7 +1102,7 @@ async function runMobileSyncComposerFlow(page) {
       surface: tray?.getAttribute('data-command-surface') || '',
       controls: tray?.innerText || '',
       participantButtons: document.querySelectorAll('#mobile-party-strip button[data-selection-mode="sync-participant"]').length,
-      lockedActorLabel: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.textContent.trim() || '',
+      lockedActorLabel: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-label') || '',
       lockedActorCornerSlot: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('data-corner-slot') || '',
       lockedActorDisabled: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.hasAttribute('disabled') || false,
       lockedActorAriaDisabled: document.querySelector('#mobile-party-strip button[data-selection-state="locked"][onclick*="player-1"]')?.getAttribute('aria-disabled') || '',
@@ -1116,7 +1118,7 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.surface, 'sync-participants', 'Mobile Sync participant tray should identify actor selection surface');
   assert(state.controls.includes('Confirm Participants') && state.controls.includes('Cancel Sync'), 'Mobile Sync participant tray should expose Confirm and Cancel Sync');
   assert(state.participantButtons >= 2, 'Mobile Sync participant phase should expose party participant controls');
-  assert.strictEqual(state.lockedActorLabel, 'Lead', 'Mobile Sync locked current actor should show compact Lead copy');
+  assert(state.lockedActorLabel.includes('Current sync actor'), 'Mobile Sync locked current actor should keep an accessible label');
   assert.strictEqual(state.lockedActorCornerSlot, 'agency', 'Mobile Sync locked current actor should live in the agency corner');
   assert.strictEqual(state.lockedActorDisabled, true, 'Mobile Sync locked current actor should be disabled');
   assert.strictEqual(state.lockedActorAriaDisabled, 'true', 'Mobile Sync locked current actor should expose aria-disabled');
@@ -1181,7 +1183,7 @@ async function runMobileSyncComposerFlow(page) {
       selectionState: pick?.getAttribute('data-selection-state') || '',
       label: pick?.getAttribute('aria-label') || '',
       chipSelectedTarget: chip?.classList.contains('selected-target') || false,
-      rowFeedback: chip?.innerText || ''
+      rowFeedback: chip?.getAttribute('data-combat-row') || ''
     };
   });
   assert.strictEqual(state.disabled, true, 'Mobile unreachable Sync target should be an actual disabled control');
@@ -1190,7 +1192,7 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.selectionState, 'blocked', 'Mobile unreachable Sync target should expose blocked selection state');
   assert(state.label.includes('airborne'), 'Mobile unreachable Sync target should explain the reach blocker');
   assert.strictEqual(state.chipSelectedTarget, false, 'Mobile unreachable Sync target should not look selected');
-  assert(state.rowFeedback.includes('Back'), 'Mobile unreachable Sync target chip should still show row feedback');
+  assert.strictEqual(state.rowFeedback, 'back', 'Mobile unreachable Sync target chip should still expose row feedback');
   await page.evaluate(() => {
     const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
     if (enemy) {
@@ -1236,8 +1238,8 @@ async function runMobileSyncComposerFlow(page) {
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
-    partyBadges: Array.from(document.querySelectorAll('#mobile-party-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
-    enemyBadges: Array.from(document.querySelectorAll('#mobile-creature-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+    partyGroupCount: document.querySelectorAll('#mobile-party-strip .mobile-unit-chip[data-sync-role="Group"]').length,
+    enemyTargetCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip[data-sync-role="Target"]').length,
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
     centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
@@ -1248,8 +1250,8 @@ async function runMobileSyncComposerFlow(page) {
   assert.strictEqual(state.queuedType, 'sync_fight', 'Mobile Sync queue should preserve the selected group intent');
   assert.strictEqual(state.queuedTarget, 'enemy-1', 'Mobile Sync queue should preserve the picked enemy target');
   assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1'], 'Mobile Sync queue should preserve selected participants');
-  assert(state.partyBadges.includes('Group'), 'Mobile queued Sync participants should expose group badges on compact chips');
-  assert(state.enemyBadges.includes('Target'), 'Mobile queued Sync target should expose target badge on compact chips');
+  assert(state.partyGroupCount >= 1, 'Mobile queued Sync participants should expose group state on compact chips');
+  assert(state.enemyTargetCount >= 1, 'Mobile queued Sync target should expose target state on compact chips');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after queueing Sync');
   assert.strictEqual(state.centerHasControls, false, 'Mobile queued Sync should keep center stage free of combat controls');
 
@@ -1258,16 +1260,16 @@ async function runMobileSyncComposerFlow(page) {
     App.renderCreatures();
     App.renderMobileCombatToolbelt();
     return {
-      partyBadges: Array.from(document.querySelectorAll('#mobile-party-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
-      enemyBadges: Array.from(document.querySelectorAll('#mobile-creature-strip .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
+      partyGroupCount: document.querySelectorAll('#mobile-party-strip .mobile-unit-chip[data-sync-role="Group"]').length,
+      enemyTargetCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip[data-sync-role="Target"]').length,
       participantControls: document.querySelectorAll('#mobile-party-strip button[data-selection-mode="sync-participant"]').length,
       combatPickControls: document.querySelectorAll('#mobile-creature-strip button[data-selection-mode="combat-pick"]').length,
       toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
       centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
-  assert(state.partyBadges.includes('Group'), 'Mobile queued Sync group badges should survive compact party rerender');
-  assert(state.enemyBadges.includes('Target'), 'Mobile queued Sync target badge should survive compact target rerender');
+  assert(state.partyGroupCount >= 1, 'Mobile queued Sync group state should survive compact party rerender');
+  assert(state.enemyTargetCount >= 1, 'Mobile queued Sync target state should survive compact target rerender');
   assert.strictEqual(state.participantControls, 0, 'Mobile queued Sync should not leave helper-pick controls after compact rerender');
   assert.strictEqual(state.combatPickControls, 0, 'Mobile queued Sync should not leave target-pick controls after compact rerender');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after queued Sync rerender');
@@ -2233,7 +2235,7 @@ async function runMobileSelectionAndCombatFlow(page) {
   state = await page.evaluate(() => {
     const trayEl = document.querySelector('#mobile-target-action-tray');
     const partyStripTray = document.querySelector('#mobile-party-strip .panel-interaction-tray');
-    const allyChip = Array.from(document.querySelectorAll('#mobile-actor-belt .mobile-actor-chip')).find(chip => chip.textContent.includes('Ally'));
+    const allyChip = Array.from(document.querySelectorAll('#mobile-actor-belt .mobile-unit-chip')).find(chip => chip.getAttribute('data-unit-name') === 'Ally');
     const creatureChip = document.querySelector('#mobile-creature-strip .mobile-unit-chip');
     return {
       hiddenPartyTrayVisible: Boolean(partyStripTray),

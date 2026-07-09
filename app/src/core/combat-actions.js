@@ -47,7 +47,8 @@ const YAW_COMBAT_ACTIONS = {
         const attrs = `data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
         const compactClass = compact ? ' corner-card-toggle agency-corner-toggle' : '';
         const compactSlot = compact ? ' data-corner-slot="agency"' : '';
-        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${app._escapeHtml(compact ? compactLabel : label)}</button>`;
+        const content = compact ? '' : app._escapeHtml(label);
+        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
     },
 
     actionButtons(app, actor, options = {}) {

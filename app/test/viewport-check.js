@@ -1089,7 +1089,7 @@ async function checkViewport(browser, name, width, height) {
       const creatureCard = document.getElementById('mobile-creature-card');
       const creatureCue = document.getElementById('mobile-creature-presence-cue');
       const cueButton = creatureCue?.querySelector('button');
-      const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle, #mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
+      const creatureTargetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"].target-toggle, #mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle, #mobile-creature-strip .target-toggle[data-command-control="focus-target"]'));
       const detailButtons = Array.from(document.querySelectorAll('.mobile-strip-details-btn'));
       const moveToggle = document.getElementById('mobile-move-toggle');
       const storyHandle = document.querySelector('.mobile-story-handle');
@@ -1363,7 +1363,7 @@ async function checkViewport(browser, name, width, height) {
           ariaLabel: button.getAttribute('aria-label') || ''
         };
       }).filter(rect => rect.width > 0 && rect.height > 0);
-      const targetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle')).map(button => {
+      const targetButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt [data-command-control="focus-target"].target-toggle, #mobile-target-picker-belt [data-command-control="focus-target"] .target-toggle')).map(button => {
         const rect = button.getBoundingClientRect();
         const style = getComputedStyle(button);
         return {

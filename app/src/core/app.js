@@ -732,6 +732,7 @@
             storyEvents: [],
             latestStoryEvent: null,
             storyEventSeq: 0,
+            sceneTemplates: [],
             tileEvents: [],
             logFilter: 'all',
             logSearch: '',
@@ -4246,6 +4247,12 @@
             },
             emitStoryResult(commandOrPlan = {}, result = '', options = {}) {
                 return YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options);
+            },
+            registerSceneTemplate(template = {}) {
+                return YAW_STORY_EVENTS.registerSceneTemplate(this, template);
+            },
+            renderSceneBeat(plan = {}, outcome = {}) {
+                return YAW_STORY_EVENTS.renderSceneBeat(this, plan, outcome);
             },
             renderStoryEvents() {
                 return YAW_STORY_EVENTS.render(this);

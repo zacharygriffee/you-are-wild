@@ -16147,11 +16147,107 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
+  assertContains(storyEventsContent, 'registerSceneTemplate(app, template = {})', 'Story event helper should expose moddable scene template registration');
+  assertContains(storyEventsContent, 'renderSceneBeat(app, plan = {}, outcomeInput = {})', 'Story event helper should expose deterministic Scene Beat rendering');
   assertContains(storyEventsContent, 'setUnderlyingInert(enabled)', 'Story sheet should control inert background state');
   assertContains(storyEventsContent, 'setUnderlyingInert(true)', 'Opening Story should make the play UI inert behind the sheet');
   assertContains(storyEventsContent, 'setUnderlyingInert(false)', 'Closing Story should restore the play UI');
   assertContains(storyEventsContent, '_activateFocusTrap?.(sheet', 'Story sheet should use the app focus trap when available');
   assertContains(appContent, 'YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options)', 'App should expose story result bridge wrapper');
+  assertContains(appContent, 'YAW_STORY_EVENTS.registerSceneTemplate(this, template)', 'App should expose mod scene template registration');
+  assertContains(appContent, 'YAW_STORY_EVENTS.renderSceneBeat(this, plan, outcome)', 'App should expose deterministic Scene Beat rendering');
+  assertNotContains(storyEventsContent, 'setTimeout', 'Latest Scene Beat should not disappear on a timer');
+});
+
+test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk];
+
+  const event = App.emitStoryResult({
+    mode: 'combat',
+    actors: [you],
+    targets: [ratfolk],
+    action: 'fight',
+    shape: 'one-to-one'
+  }, 'You hit Ratfolk for 8 punishment!');
+
+  assertEqual(event.type, 'scene-beat', 'Resolved action should emit a Scene Beat');
+  assertEqual(event.mode, 'combat', 'Scene Beat should preserve combat mode');
+  assertEqual(event.action, 'fight', 'Scene Beat should preserve action');
+  assertEqual(event.resultKind, 'damage', 'Combat fight should infer a damage result kind');
+  assertEqual(event.actorNames.join(', '), 'You', 'Scene Beat should preserve actor names');
+  assertEqual(event.targetNames.join(', '), 'Ratfolk', 'Scene Beat should preserve target names');
+  assertEqual(event.deltas.some(delta => delta.type === 'punishment' && delta.amount === 8), true, 'Scene Beat should extract damage delta');
+  assertContains(elements.get('mobile-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in mobile feed');
+  assertContains(elements.get('desktop-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in desktop feed');
+});
+
+test('Scene template registry supports moddable templates and fallback strings', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk];
+
+  const registered = App.registerSceneTemplate({
+    id: 'test.custom-fight',
+    mode: 'combat',
+    action: 'fight',
+    priority: 100,
+    summary: '{actors} cleanly demonstrates {action} on {targets}.',
+    passage: ctx => `Template passage: ${ctx.actorNames.join(' + ')} versus ${ctx.targetNames.join(' + ')}.`
+  });
+  assertEqual(registered, true, 'Mod scene template should register');
+
+  const custom = App.renderSceneBeat({
+    mode: 'combat',
+    actors: [you],
+    targets: [ratfolk],
+    action: 'fight'
+  }, { summary: 'Original result text.' });
+  assertContains(custom.summary, 'You cleanly demonstrates Fight on Ratfolk.', 'Custom template should render deterministic summary');
+  assertContains(custom.passage, 'Template passage: You versus Ratfolk.', 'Custom template should render deterministic passage');
+  assertEqual(custom.metadata.templateId, 'test.custom-fight', 'Custom template id should be recorded');
+
+  const fallback = App.renderSceneBeat({
+    mode: 'adventure',
+    actors: [you],
+    targets: [ratfolk],
+    action: 'unknown_scene_action'
+  }, { summary: 'Fallback result string remains readable.' });
+  assertEqual(fallback.summary, 'Fallback result string remains readable.', 'Unknown action should fall back to existing result string');
+  assertEqual(fallback.metadata.templateId, 'fallback', 'Unknown action should identify fallback rendering');
+});
+
+test('Scene Beat DSL coalesces group and multi-target actions into one beat with sub-events', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ally = makeUnit('Ally', { id: 'ally-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1' });
+  const bunnyfolk = makeUnit('Bunnyfolk', { id: 'bunny-1' });
+  App.player = you;
+  App.party = [you, ally];
+  App.creatures = [ratfolk, bunnyfolk];
+
+  const event = App.emitStoryResult({
+    mode: 'combat',
+    actors: [you, ally],
+    targets: [ratfolk, bunnyfolk],
+    action: 'sync_fight',
+    shape: 'many-to-many'
+  }, 'You and Ally press a group fight against Ratfolk and Bunnyfolk.');
+
+  assertEqual(App.storyEvents.length, 1, 'Group command should emit one coalesced Scene Beat');
+  assertEqual(event.actorNames.join(', '), 'You, Ally', 'Coalesced Scene Beat should preserve multiple actors');
+  assertEqual(event.targetNames.join(', '), 'Ratfolk, Bunnyfolk', 'Coalesced Scene Beat should preserve multiple targets');
+  assertEqual(event.subEvents.length, 2, 'Multi-target Scene Beat should expose sub-event metadata');
+  assertEqual(event.subEvents.some(subEvent => subEvent.targetName === 'Ratfolk'), true, 'Sub-events should include first target');
+  assertEqual(event.subEvents.some(subEvent => subEvent.targetName === 'Bunnyfolk'), true, 'Sub-events should include second target');
 });
 
 test('Story events render semantic interaction results without replacing activity log', () => {

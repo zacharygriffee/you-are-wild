@@ -41,6 +41,59 @@ const YAW_COMBAT_SYNC = {
         return Boolean(app.syncSelection?.active && app.syncSelection.phase === 'compose' && app.syncSelection.source === 'slot-composer');
     },
 
+    clearSlotCompose(app, reason = 'cancel') {
+        if (!this.isSlotCompose(app)) return false;
+        app.syncSelection = null;
+        app._syncSelected = [];
+        app._syncParticipants = null;
+        app._syncType = null;
+        app._renderInteractionState({ exploration: false, toolbelt: true });
+        return true;
+    },
+
+    normalizeSlotCompose(app) {
+        if (!this.isSlotCompose(app)) return false;
+        const actor = app.activeActor || app._currentCombatActor() || app.player;
+        if (!actor || !app.party.includes(actor) || actor.CPun <= 0) {
+            return this.clearSlotCompose(app, 'missing-actor');
+        }
+        const actorId = app._unitSelectionId(actor);
+        const validIds = [];
+        for (const id of app.syncSelection.participantIds || []) {
+            const unit = app.party.find(candidate => app._unitSelectionId(candidate) === id || String(candidate.id || candidate.name) === id);
+            if (unit && unit.CPun > 0) {
+                const unitId = app._unitSelectionId(unit);
+                if (!validIds.includes(unitId)) validIds.push(unitId);
+            }
+        }
+        app.syncSelection.actorId = actorId;
+        app.syncSelection.participantIds = validIds.includes(actorId)
+            ? [actorId, ...validIds.filter(id => id !== actorId)]
+            : [actorId, ...validIds];
+        app._syncSelected = app.syncSelection.participantIds
+            .map(id => app.party.findIndex(unit => app._unitSelectionId(unit) === id))
+            .filter(index => index >= 0);
+        app.targetSelection = null;
+        if (app._combatMarkedTargets) app._combatMarkedTargets();
+        return true;
+    },
+
+    status(app) {
+        if (!this.isSlotCompose(app)) return null;
+        this.normalizeSlotCompose(app);
+        return {
+            participants: app._syncSelectedParticipants?.() || [],
+            targets: app._combatMarkedTargets?.() || [],
+            actorId: app.syncSelection?.actorId || null
+        };
+    },
+
+    composeControls(app) {
+        if (!this.isSlotCompose(app)) return '';
+        const label = app._escapeHtml(app._label('combat.group.clear', 'Clear Group'));
+        return `<div class="unit-actions unit-combat-actions compact combat-group-compose-controls" data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${label}"><button class="action-btn" data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit" title="${label}" aria-label="${label}" onclick="event.stopPropagation();App.clearCombatGroupCompose()">${label}</button></div>`;
+    },
+
     ensureSlotCompose(app) {
         if (!app.combatState?.active || app.feedSelection?.active) return false;
         const actor = app.activeActor || app._currentCombatActor() || app.player;
@@ -61,9 +114,7 @@ const YAW_COMBAT_SYNC = {
             const ids = app.syncSelection.participantIds || [];
             app.syncSelection.participantIds = ids.includes(actorId) ? ids : [actorId, ...ids];
         }
-        app._syncSelected = (app.syncSelection.participantIds || [])
-            .map(id => app.party.findIndex(unit => app._unitSelectionId(unit) === id))
-            .filter(index => index >= 0);
+        this.normalizeSlotCompose(app);
         return true;
     },
 
@@ -80,12 +131,7 @@ const YAW_COMBAT_SYNC = {
                 ? participantIds.filter(existing => existing !== unitId)
                 : [...participantIds, unitId];
         }
-        if (!(app.syncSelection.participantIds || []).includes(actorId)) {
-            app.syncSelection.participantIds = [actorId, ...(app.syncSelection.participantIds || [])];
-        }
-        app._syncSelected = (app.syncSelection.participantIds || [])
-            .map(pid => app.party.findIndex(candidate => app._unitSelectionId(candidate) === pid))
-            .filter(index => index >= 0);
+        this.normalizeSlotCompose(app);
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
     },
@@ -102,6 +148,7 @@ const YAW_COMBAT_SYNC = {
 
     queueSlotIntent(app, action) {
         if (!this.isSlotCompose(app)) return false;
+        this.normalizeSlotCompose(app);
         const syncType = this.typeForIntent(action);
         const participants = app._syncSelectedParticipants();
         const targets = app._combatMarkedTargets?.() || [];
@@ -128,6 +175,11 @@ const YAW_COMBAT_SYNC = {
         });
         if (!syncType) {
             app._reportInvalidCombatCommand?.(command, 'invalid-combat-target');
+            return false;
+        }
+        const valid = app._validateInteractionCommand?.(command) || { ok: true };
+        if (!valid.ok) {
+            app._reportInvalidCombatCommand?.(command, valid.reason);
             return false;
         }
         return app._dispatchInteractionCommand(command);

@@ -297,6 +297,18 @@
             _isCombatGroupCompose() {
                 return YAW_COMBAT_SYNC.isSlotCompose(this);
             },
+            clearCombatGroupCompose(reason = 'cancel') {
+                return YAW_COMBAT_SYNC.clearSlotCompose(this, reason);
+            },
+            normalizeCombatGroupCompose() {
+                return YAW_COMBAT_SYNC.normalizeSlotCompose(this);
+            },
+            combatGroupComposeStatus() {
+                return YAW_COMBAT_SYNC.status(this);
+            },
+            _combatGroupComposeControls() {
+                return YAW_COMBAT_SYNC.composeControls(this);
+            },
             toggleCombatGroupParticipant(id) {
                 return YAW_COMBAT_SYNC.toggleSlotParticipant(this, id);
             },

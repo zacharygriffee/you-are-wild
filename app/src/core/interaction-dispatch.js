@@ -250,9 +250,14 @@ const YAW_INTERACTION_DISPATCH = {
     reportInvalidCombat(app, command, reason = 'invalid-combat-target') {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command?.targets?.[0] || null;
-        const text = reason === 'cannot-reach' && target
-            ? app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name })
-            : app._label('combat.invalidCommand', 'That combat action is not valid right now.');
+        let text = app._label('combat.invalidCommand', 'That combat action is not valid right now.');
+        if (reason === 'cannot-reach' && target) {
+            text = app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name });
+        } else if (reason === 'too-many-targets' && command?.source === 'combat-slot-composer') {
+            text = app._label('combat.group.oneTargetOnly', 'Choose one target for a group action.');
+        } else if (reason === 'missing-target' && command?.source === 'combat-slot-composer') {
+            text = app._label('combat.group.needTarget', 'Choose one target for a group action.');
+        }
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });

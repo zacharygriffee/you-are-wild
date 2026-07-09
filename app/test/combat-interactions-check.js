@@ -1015,7 +1015,144 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.queued, false, 'Slot group intent with no target should not queue');
   assert.strictEqual(state.syncCount, 0, 'Slot group missing target should not create a queued action');
   assert.strictEqual(state.phase, 'compose', 'Slot group missing target should preserve compose state for correction');
-  assert(state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
+  assert(state.lastLog.includes('Choose one target') || state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
+
+  await prepare();
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    source: App.syncSelection?.source || null,
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    targetIds: App.combatTargetIds,
+    sentence: document.querySelector('#selection-sentence')?.innerText || '',
+    clearVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="clear-combat-group"]')),
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
+    actorBadgeText: document.querySelector('#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]')?.textContent.trim() || ''
+  }));
+  assert.strictEqual(state.phase, 'compose', 'Desktop target-first flow should enter slot-composed group phase');
+  assert.strictEqual(state.source, 'slot-composer', 'Desktop target-first flow should preserve the slot-composer source');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop target-first flow should select current actor plus ally');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Desktop target-first flow should preserve the already marked enemy');
+  assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Desktop target-first sentence should show actors and target');
+  assert.strictEqual(state.clearVisible, true, 'Desktop slot group compose should expose Clear Group');
+  assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible next to Clear Group');
+  assert.strictEqual(state.actorBadgeText, 'X', 'Desktop compact combat actor badge should show the unit avatar/icon');
+
+  await page.locator(`#desktop-context-belt button[data-command-control="clear-combat-group"]`).first().click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    targetIds: App.combatTargetIds,
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
+    clearVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="clear-combat-group"]'))
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Clear Group should exit slot-composed group state');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Clear Group should preserve the marked target for normal single-actor correction');
+  assert.strictEqual(state.normalFightVisible, true, 'Clear Group should leave normal combat intents usable');
+  assert.strictEqual(state.clearVisible, false, 'Clear Group control should disappear after clearing compose state');
+
+  await prepare();
+  await page.evaluate(() => {
+    const enemyA = App.creatures.find(unit => unit.id === 'enemy-1');
+    const enemyB = { ...enemyA, id: 'enemy-2', name: 'Enemy B', CPun: 100, MPun: 100, combatRow: 'front' };
+    App.creatures.push(enemyB);
+    App.combatState.turnQueue.push({ unit: enemyB, initiative: 9 });
+    App.combatTargetIds = ['enemy-1', 'enemy-2'];
+    App.combatTargetId = 'enemy-1';
+    App.renderCreatures();
+    App.renderDesktopPlaySurface();
+    App.renderMobileCombatToolbelt();
+  });
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  state = await page.evaluate(() => {
+    const queued = App.executeCombatIntent('fight');
+    return {
+      queued,
+      syncCount: App.combatState.syncActions.length,
+      phase: App.syncSelection?.phase || null,
+      targetIds: App.combatTargetIds,
+      lastLog: App.log[App.log.length - 1]?.text || ''
+    };
+  });
+  assert.strictEqual(state.queued, false, 'Slot group intent with multiple targets should not queue in pass 2');
+  assert.strictEqual(state.syncCount, 0, 'Slot group multiple targets should not create a queued action');
+  assert.strictEqual(state.phase, 'compose', 'Slot group multiple targets should preserve compose state for correction');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1', 'enemy-2'], 'Slot group multiple targets should preserve selected targets for correction');
+  assert(state.lastLog.includes('Choose one target'), 'Slot group multiple targets should explain the one-target correction');
+
+  await prepare();
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  state = await page.evaluate(() => {
+    const ally = App.party.find(unit => unit.id === 'ally-1');
+    ally.CPun = 0;
+    const queued = App.executeCombatIntent('fight');
+    return {
+      queued,
+      syncCount: App.combatState.syncActions.length,
+      phase: App.syncSelection?.phase || null,
+      participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name)
+    };
+  });
+  assert.strictEqual(state.queued, false, 'Slot group with incapacitated helper should not queue');
+  assert.strictEqual(state.syncCount, 0, 'Incapacitated helper should not create a queued action');
+  assert.strictEqual(state.phase, 'compose', 'Incapacitated helper should leave compose state active for correction');
+  assert.deepStrictEqual(state.participants, ['player-1'], 'Incapacitated helper should be removed before queueing');
+
+  await prepare();
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  state = await page.evaluate(() => {
+    const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+    enemy.CPun = 0;
+    const queued = App.executeCombatIntent('fight');
+    return {
+      queued,
+      syncCount: App.combatState.syncActions.length,
+      phase: App.syncSelection?.phase || null,
+      participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+      targetIds: App.combatTargetIds
+    };
+  });
+  assert.strictEqual(state.queued, false, 'Slot group with disappeared target should not queue');
+  assert.strictEqual(state.syncCount, 0, 'Disappeared target should not create a queued action');
+  assert.strictEqual(state.phase, 'compose', 'Disappeared target should leave actor compose state active for correction');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Disappeared target should preserve selected actors');
+  assert.deepStrictEqual(state.targetIds, [], 'Disappeared target should clear only target selection');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare();
+  await page.locator(`#mobile-creature-strip button[data-command-control="mark-combat-target"]`).first().click();
+  await page.locator(`#mobile-party-strip button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    targetIds: App.combatTargetIds,
+    sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
+    clearVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="clear-combat-group"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="fight"]')),
+    actorBadgeText: document.querySelector('#mobile-party-strip button[data-command-surface="combat-group-actors"][onclick*="ally-1"]')?.textContent.trim() || ''
+  }));
+  assert.strictEqual(state.phase, 'compose', 'Mobile target-first flow should enter slot-composed group phase');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile target-first flow should select current actor plus ally');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Mobile target-first flow should preserve the marked enemy');
+  assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile target-first sentence should show actors and target');
+  assert.strictEqual(state.clearVisible, true, 'Mobile slot group compose should expose Clear Group');
+  assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
+  assert.strictEqual(state.actorBadgeText, 'X', 'Mobile compact combat actor badge should show the unit avatar/icon');
+  await page.locator(`#mobile-combat-toolbelt button[data-command-intent="fight"]`).first().click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    syncCount: App.combatState.syncActions.length,
+    queuedType: App.combatState.syncActions[0]?.type || '',
+    queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
+    queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name)
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Mobile target-first slot group queue should clear compose Sync state');
+  assert.strictEqual(state.syncCount, 1, 'Mobile target-first slot group Fight should queue one existing Sync action');
+  assert.strictEqual(state.queuedType, 'sync_fight', 'Mobile target-first slot group Fight should map to sync_fight');
+  assert.strictEqual(state.queuedTarget, 'enemy-1', 'Mobile target-first slot group queue should preserve marked enemy');
+  assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1'], 'Mobile target-first slot group queue should preserve selected actors');
 }
 
 async function runDesktopSyncComposerFlow(page) {

@@ -45,6 +45,10 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const button = (label, onclick, classes = 'action-btn', title = label, attrs = '') => `<button class="${classes}"${attrs ? ` ${attrs}` : ''} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${onclick}">${app._escapeHtml(label)}</button>`;
         const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
+        if (app._isCombatGroupCompose?.()) {
+            const clearGroup = app._label('combat.group.clear', 'Clear Group');
+            return row(clearGroup, 'combat-group-compose', button(clearGroup, 'event.stopPropagation();App.clearCombatGroupCompose()', 'action-btn', clearGroup, 'data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit"'));
+        }
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             const cancelSync = app._label('combat.sync.cancel', 'Cancel Sync');
             if (app.syncSelection.phase === 'choose') {

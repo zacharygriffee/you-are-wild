@@ -94,16 +94,21 @@ Battle mode owns turn order, combat constraints, and event focus. It is related 
 - Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
 - Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
 
-#### Row System Doctrine
+#### Row And Reach Doctrine
 
-Rows are for formation, reach, and target protection. They are not initiative.
+Rows are for formation context, reach explanation, and future target protection. They are not initiative, and they do not define every interaction by themselves. Each intent owns its own reach profile.
 
 Current implementation:
 
 - Flying or ranged units default to the back row; other units default to the front row when combat starts.
-- `Fight` and `Feast` are physical row-sensitive actions.
-- Talk, Play, Feed, support, and other non-physical actions ignore row reach unless a specific mechanic says otherwise.
-- Current physical reach is intentionally simple: back-row or flying targets require a flying, ranged, or anti-flying actor. The current implementation does not yet model front-row blockers or exposed back rows.
+- `Fight` uses an intent-owned reach profile: melee, ranged, or hybrid depending on actor traits and future action metadata.
+- `Feast` uses a close/contact profile by default.
+- Talk, Play, Feed, support, and other social/support intents ignore row reach unless a specific mechanic says otherwise.
+- Flying can engage across rows. Flying targets still need an appropriate physical answer for contact-style actions.
+- Ranged actors can reach flying targets and can use ranged reach from the back row. A ranged actor in the front row may need to retreat before using a purely ranged profile against grounded targets.
+- Anti-flying actors answer front-row flying targets for relevant physical profiles.
+- Impossible or poor physical attempts should be allowed where the target is otherwise valid. The action can consume the turn and fail with a Scene Beat explaining why, rather than presenting a generic invalid-command error.
+- Current reach is intentionally narrow: the current implementation does not yet model full front-row blockers, exposed back rows, equipment reach, snare/grab, or area distribution.
 - `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy should not imply that moving rows always solves back-row targeting.
 
 Future formal row rules should decide these points before deeper mechanics work:

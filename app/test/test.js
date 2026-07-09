@@ -17219,14 +17219,14 @@ test('Tutorial steps localize through active language', () => {
   assertContains(elements.get('tutorial-content').textContent, 'Eres salvaje', 'First tutorial content should localize');
   App.nextTutorial();
   assertEqual(elements.get('tutorial-title').textContent, 'Combate', 'Second tutorial title should localize');
-  assertContains(elements.get('tutorial-content').textContent, 'acciones sincronizadas', 'Second tutorial content should localize');
+  assertContains(elements.get('tutorial-content').textContent, 'Selecciona actores', 'Second tutorial content should localize group planning language');
 });
 
-test('Combat tutorial copy documents row and reach basics', () => {
-  assertContains(contentSystemContent, 'Front and Back rows affect physical reach', 'English combat tutorial should mention row reach basics');
-  assertContains(contentSystemContent, 'back-row or flying targets need a flying, ranged, or anti-flying actor', 'English combat tutorial should explain the reach requirement');
-  assertContains(contentSystemContent, 'Las filas Frente y Retaguardia afectan el alcance fisico', 'Spanish combat tutorial should mention row reach basics');
-  assertContains(appContent, 'Front and Back rows affect physical reach', 'Tutorial fallback copy should mention row reach basics');
+test('Combat tutorial copy documents group planning and intent-owned reach', () => {
+  assertContains(contentSystemContent, 'Select actors, mark targets, choose an intent, then commit group plans', 'English combat tutorial should teach the shared group-planning grammar');
+  assertContains(contentSystemContent, 'Each intent owns its reach', 'English combat tutorial should explain intent-owned reach profiles');
+  assertContains(contentSystemContent, 'las acciones sociales pueden cruzar filas', 'Spanish combat tutorial should explain social cross-row reach');
+  assertContains(contentSystemContent, 'los intentos fisicos pueden fallar', 'Spanish combat tutorial should explain attempted physical failures');
 });
 
 test('Save manager renders localized accessible slot actions', () => {

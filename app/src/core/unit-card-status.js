@@ -104,13 +104,13 @@ const YAW_UNIT_CARD_STATUS = {
         const row = unit.combatRow || '';
         if (row !== 'back' && !unit.flying && !unit.ranged) return '';
         if (unit.ranged && row === 'back') {
-            return app._label('combat.tacticalSummary.rangedBackRow', 'Ranged back-row attacker. Physical melee requires ranged/flying reach, or another answer such as Talk/Flee.');
+            return app._label('combat.tacticalSummary.rangedBackRow', 'Ranged back-row attacker. Fight, Feast, and social intents each use their own reach profile.');
         }
         if (unit.flying) {
-            return app._label('combat.tacticalSummary.flying', 'Flying target. Physical melee requires flying, ranged, or anti-flying reach.');
+            return app._label('combat.tacticalSummary.flying', 'Flying target. Physical contact usually needs flying, ranged, or anti-flying reach; social intents can still work.');
         }
         if (row === 'back') {
-            return app._label('combat.tacticalSummary.backRow', 'Back-row unit. Physical melee requires ranged/flying reach under current row rules.');
+            return app._label('combat.tacticalSummary.backRow', 'Back-row unit. Intent reach matters: social intents can cross rows, while close/contact actions may fail.');
         }
         return '';
     },

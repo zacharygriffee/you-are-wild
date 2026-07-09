@@ -327,6 +327,41 @@ function assertMobileExplorationRailTapTargets(metrics, label) {
   }
 }
 
+async function mobileMicroCardOverlapMetrics(page, selector) {
+  return page.evaluate((stripSelector) => {
+    const cards = Array.from(document.querySelectorAll(`${stripSelector} .micro-tactical-card`));
+    const rows = cards.map(card => {
+      const left = card.querySelector('.micro-agency-slot .action-btn, .micro-agency-slot .micro-avatar');
+      const right = card.querySelector('.micro-target-slot .action-btn, .micro-target-slot .micro-avatar');
+      const rings = Array.from(card.querySelectorAll('.tactical-stat-ring'));
+      const ringRects = rings.map(ring => ring.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+      if (!left || !right || !ringRects.length) return { overlaps: false, leftOverlap: 0, rightOverlap: 0 };
+      const leftRect = left.getBoundingClientRect();
+      const rightRect = right.getBoundingClientRect();
+      const ringsLeft = Math.min(...ringRects.map(rect => rect.left));
+      const ringsRight = Math.max(...ringRects.map(rect => rect.right));
+      const leftOverlap = Math.max(0, leftRect.right - ringsLeft);
+      const rightOverlap = Math.max(0, ringsRight - rightRect.left);
+      return {
+        overlaps: leftOverlap > 0.5 || rightOverlap > 0.5,
+        leftOverlap,
+        rightOverlap
+      };
+    });
+    return {
+      count: rows.length,
+      overlapCount: rows.filter(row => row.overlaps).length,
+      maxLeftOverlap: rows.length ? Math.max(...rows.map(row => row.leftOverlap)) : 0,
+      maxRightOverlap: rows.length ? Math.max(...rows.map(row => row.rightOverlap)) : 0
+    };
+  }, selector);
+}
+
+function assertMobileMicroCardsDoNotOverlap(metrics, label) {
+  assert(metrics.count >= 1, `${label}: should render at least one micro tactical card`);
+  assert.strictEqual(metrics.overlapCount, 0, `${label}: micro stat rings should not overlap actor/avatar or Mark/Target controls (${JSON.stringify(metrics)})`);
+}
+
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
@@ -423,6 +458,8 @@ async function runCombatTargetFirstComposerFlow(page) {
   await setupCombat(page);
   const mobileMark = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat enemy chip should expose target-first Mark');
+  assertMobileMicroCardsDoNotOverlap(await mobileMicroCardOverlapMetrics(page, '#mobile-creature-strip'), 'Mobile combat enemy strip');
+  assertMobileMicroCardsDoNotOverlap(await mobileMicroCardOverlapMetrics(page, '#mobile-party-strip'), 'Mobile combat party strip');
   await mobileMark.click();
   state = await page.evaluate(() => ({
     markedTargetId: App.combatTargetId,

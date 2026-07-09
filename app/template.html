@@ -5384,7 +5384,7 @@
             }
 
             .mobile-unit-chip.micro-tactical-card {
-                flex: 0 0 clamp(148px, 44vw, 178px);
+                flex: 0 0 clamp(168px, 44vw, 184px);
                 width: auto;
                 min-width: 0;
                 display: grid;
@@ -5403,11 +5403,11 @@
             }
 
             .mobile-control-belt.actor-controls-open .mobile-actor-belt .mobile-unit-chip.micro-tactical-card {
-                flex: 0 0 clamp(152px, 46vw, 184px);
+                flex: 0 0 clamp(172px, 46vw, 188px);
             }
 
             .mobile-target-picker-belt .mobile-target-picker-chip.mobile-unit-chip.micro-tactical-card {
-                flex: 0 0 clamp(148px, 44vw, 178px);
+                flex: 0 0 clamp(168px, 44vw, 184px);
                 width: auto;
                 min-width: 0;
                 grid-template-rows: none;
@@ -5440,7 +5440,7 @@
             }
 
             .mobile-play-surface.combat-active .mobile-unit-chip.micro-tactical-card {
-                flex-basis: clamp(148px, 48vw, 178px);
+                flex-basis: clamp(168px, 48vw, 184px);
                 display: grid;
                 grid-template-columns: 44px minmax(0, 1fr) 44px;
                 justify-items: stretch;
@@ -5452,7 +5452,7 @@
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.micro-tactical-card {
-                flex-basis: clamp(148px, 46vw, 176px);
+                flex-basis: clamp(168px, 46vw, 184px);
                 min-height: 48px;
                 max-height: 56px;
                 padding: 2px 6px;
@@ -5474,13 +5474,21 @@
             }
 
             .mobile-unit-chip.micro-tactical-card .tactical-stat-rings {
-                gap: 4px;
+                justify-content: center;
+                gap: 1px;
+                width: auto;
+                max-width: 53px;
                 margin-top: 0;
             }
 
             .mobile-unit-chip.micro-tactical-card .tactical-stat-ring {
-                width: 24px;
-                height: 24px;
+                width: 17px;
+                height: 17px;
+                font-size: 8px;
+            }
+
+            .mobile-unit-chip.micro-tactical-card .tactical-stat-ring::before {
+                inset: 2px;
             }
 
             .mobile-unit-chip.micro-tactical-card .unit-selection-chip {

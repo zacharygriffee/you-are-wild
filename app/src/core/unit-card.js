@@ -87,17 +87,20 @@ const YAW_UNIT_CARD = {
                 partyManagementControls = `<div class="unit-actions unit-management-actions" ${app._unitActionRowAttrs('party-management', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${partyManagementControls}</div>`;
             }
         } else if (isParty && app.combatState.active) {
-            if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('sync-participants', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${app._syncParticipantButton(unit)}</div>`;
-            } else if (!app.targetSelection && !(app.syncSelection?.active && app.syncSelection.phase === 'target')) {
-                const targetPressed = app._isExplorationTarget('party', app._unitSelectionId(unit));
-                const targetClass = targetPressed ? ' primary' : '';
-                const targetKey = app._unitKey(unit);
-                const targetLabel = app._escapeHtml(app._targetMarkLabel());
-                const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
-                const targetCommandAttrs = 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target"';
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${app._syncParticipantButton(unit)}<button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button></div>`;
-            }
+            const targetPressed = app._isExplorationTarget('party', app._unitSelectionId(unit));
+            const targetClass = targetPressed ? ' primary' : '';
+            const targetKey = app._unitKey(unit);
+            const targetLabel = app._escapeHtml(app._targetMarkLabel());
+            const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
+            const targetCommandAttrs = 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target"';
+            const targetButton = `<button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button>`;
+            const participantButton = !app.feedSelection?.active && (!app.syncSelection?.active || app.syncSelection.phase === 'participants')
+                ? app._syncParticipantButton(unit)
+                : '';
+            const actionScope = app.syncSelection?.active && app.syncSelection.phase === 'participants'
+                ? 'sync-participants'
+                : 'party-selection';
+            actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs(actionScope, unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${participantButton}${targetButton}</div>`;
         }
         if (!isParty && isCorpse) {
             const targetKey = app._unitKey(unit);

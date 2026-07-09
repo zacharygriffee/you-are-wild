@@ -15837,8 +15837,11 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(compactCombatActorCard, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Compact desktop combat party card should keep party target marking available');
   assertContains(compactCombatActorCard, 'data-corner-slot="target"', 'Compact desktop combat party target control should live in the target corner');
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
+  const fullTargetPickActorCard = App.renderUnitCard(player, 0, 'party');
   const compactTargetPickActorCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
   const mobileTargetPickActorChip = App.renderMobileUnitChip(player, 0, 'party');
+  assertContains(fullTargetPickActorCard, "toggleExplorationTarget('party','player-1')", 'Full desktop combat party Mark should remain available during target-pick');
+  assertContains(fullTargetPickActorCard, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Full desktop combat party Mark should keep combat target routing during target-pick');
   assertContains(compactTargetPickActorCard, "toggleExplorationTarget('party','player-1')", 'Compact desktop combat party Mark should remain available during target-pick');
   assertContains(mobileTargetPickActorChip, "toggleExplorationTarget('party','player-1')", 'Mobile combat party Mark should remain available during target-pick');
   App.targetSelection = null;
@@ -15900,6 +15903,10 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   const selectedMobileSyncAllyChip = App.renderMobileUnitChip(ally, 1, 'party');
   assertContains(selectedSyncAllyCard, 'data-selection-roles="participant" data-selection-state="selected"', 'Desktop selected Sync helper card should expose participant metadata');
   assertContains(selectedMobileSyncAllyChip, 'data-selection-roles="participant" data-selection-state="selected"', 'Mobile selected Sync helper chip should expose participant metadata');
+  App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-1', participantIds: ['player-1', 'ally-1'] };
+  const syncTargetPhaseActorCard = App.renderUnitCard(player, 0, 'party');
+  assertContains(syncTargetPhaseActorCard, "toggleExplorationTarget('party','player-1')", 'Full desktop combat party Mark should remain available during legacy Sync target phase');
+  assertContains(syncTargetPhaseActorCard, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Full desktop combat party Mark should keep combat routing during legacy Sync target phase');
   App.syncSelection = null;
   App.targetSelection = { action: 'fight', source: 'combat', actorId: 'player-1' };
   const enemyCard = App.renderUnitCard(enemy, 1, 'creature');

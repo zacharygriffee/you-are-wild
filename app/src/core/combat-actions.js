@@ -36,17 +36,27 @@ const YAW_COMBAT_ACTIONS = {
         const current = app._currentCombatActor?.() || app.activeActor || app.player;
         const actorId = app.syncSelection?.actorId || (current ? app._unitSelectionId(current) : '');
         const selected = participantPhase ? app._isSyncParticipant(unit) : Boolean(app._isCombatPlanActor?.(unit));
-        const actorLocked = participantPhase && id === actorId;
+        const isLeadActor = id === actorId;
+        const actorLocked = participantPhase && isLeadActor;
+        const planLead = !participantPhase && isLeadActor;
         const name = unit.name || app._label('ui.ally', 'ally');
-        const label = actorLocked
-            ? app._label('target.actorRole', 'Actor')
-            : (selected ? app._label('combat.sync.participantRole', 'Participant') : app._label('combat.sync.selectParticipants', 'Select participants for sync'));
-        const compactLabel = actorLocked
-            ? app._label('combat.sync.leadRole', 'Lead')
-            : (selected ? app._label('combat.sync.joinedRole', 'Joined') : app._label('combat.sync.joinRole', 'Join'));
-        const title = app._escapeHtml(actorLocked
-            ? app._label('combat.sync.actorLockedFor', 'Current sync actor: {name}', { name })
-            : app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name }));
+        const label = actorLocked || planLead
+            ? (participantPhase ? app._label('target.actorRole', 'Actor') : app._label('combat.group.leadRole', 'Lead'))
+            : (participantPhase
+                ? (selected ? app._label('combat.sync.participantRole', 'Participant') : app._label('combat.sync.selectParticipants', 'Select participants for sync'))
+                : (selected ? app._label('combat.group.participantRole', 'Participant') : app._label('combat.group.selectParticipants', 'Select participants for group plan')));
+        const compactLabel = actorLocked || planLead
+            ? (participantPhase ? app._label('combat.sync.leadRole', 'Lead') : app._label('combat.group.leadRole', 'Lead'))
+            : (participantPhase
+                ? (selected ? app._label('combat.sync.joinedRole', 'Joined') : app._label('combat.sync.joinRole', 'Join'))
+                : (selected ? app._label('combat.group.joinedRole', 'Joined') : app._label('combat.group.joinRole', 'Join')));
+        const title = app._escapeHtml(actorLocked || planLead
+            ? (participantPhase
+                ? app._label('combat.sync.actorLockedFor', 'Current sync actor: {name}', { name })
+                : app._label('combat.group.leadActorFor', 'Current group lead: {name}', { name }))
+            : (participantPhase
+                ? app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name })
+                : app._label('combat.group.selectParticipantFor', 'Select {name} for group plan', { name })));
         const disabled = actorLocked ? ' disabled aria-disabled="true"' : '';
         const state = actorLocked ? 'locked' : (selected ? 'selected' : 'available');
         const intent = app._escapeHtml(app.syncSelection?.type || app._combatPendingIntent?.() || 'group-compose');
@@ -90,8 +100,11 @@ const YAW_COMBAT_ACTIONS = {
         if (corpses.length > 0) {
             buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="scavenge" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         }
+        const showLegacySync = app.showLegacySyncButton === true || app.settings?.showLegacySyncButton === true;
         if (enemies.length > 0) {
-            buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
+            if (showLegacySync) {
+                buttons.push(app._iconActionButton('sync', '👥', "event.stopPropagation();App.executeCombatIntent('sync')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync" data-command-grammar="actor-target-intent" data-command-slot="intent" data-command-legacy="sync"'));
+            }
             const moveRowLabel = app._escapeHtml(app._label('action.moveRow', 'Move Row'));
             buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
         }

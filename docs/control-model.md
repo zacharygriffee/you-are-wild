@@ -28,7 +28,7 @@ The source object is an `InteractionPlan`. Existing compatibility command fields
 - `constraints`: current-turn, hostility, reach, row, actor/target count, and target-type rules
 - `distribution`: `single`, `all`, `split`, `paired`, `mutual`, `aoe`, or `chain`
 
-Exploration and combat should differ by timing and constraints, not by unrelated UI grammars. Exploration normally uses `timing: immediate`; combat normally uses `timing: current-turn`; Sync/Group combat uses `timing: slowest-participant` and resolves on the slowest participant's turn. Future area, row, chain, or multi-target mechanics should extend plan constraints/distribution rather than creating a second action system.
+Exploration and combat should differ by timing and constraints, not by unrelated UI grammars. Exploration normally uses `timing: immediate`; combat normally uses `timing: current-turn`; group combat uses `timing: slowest-participant` and resolves on the slowest participant's turn. Future area, row, chain, or multi-target mechanics should extend plan constraints/distribution rather than creating a second action system.
 
 Invalid or ambiguous plans must preserve actor/target selection state and return correction guidance. They must not silently choose a different actor, target, distribution, or intent.
 
@@ -75,12 +75,14 @@ The combat UI grammar is:
 
 `Lead Actor + Participants -> Target(s) -> Intent -> Commit`
 
+- Player-facing combat group planning is `Actor(s) -> Target(s) -> Intent -> Commit`. The older Sync button is compatibility/internal terminology and should not be the primary visible route for ordinary players.
 - The current turn actor is the required Lead Actor for this phase of the system. Do not allow group plans that exclude the current actor yet.
 - Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
 - Group combat targets one enemy by default. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
 - Party targets are allowed in combat group planning only for support intents such as Feed, Heal, Guard, Assist, and future buffs. Hostile group actions against party members are blocked unless a specific future mechanic explicitly permits them.
 - If the target or participants become invalid before resolution, the plan fizzles cleanly and emits log/story feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
 - There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
+- Internally, current group planning may continue to queue `sync_*` actions through `syncSelection`, `syncActions`, and `queueSyncAction`. Preserve those names and save/load compatibility until a separate mechanics migration deliberately replaces them.
 
 ### Selection mode
 
@@ -103,7 +105,7 @@ Intent mode owns what the selected actors are trying to do.
 - Action menus, bottom sheets, desktop popovers, and future radial controls are alternate presentations of the same intent model.
 - The radial or gesture path must be an accelerator only; every intent needs a labeled, keyboard/focusable, accessible fallback.
 - High-impact commands must not bypass normal confirmation, capacity, eligibility, content-tier, or target-validation gates.
-- Combat intent selection should reuse the same panel-selected actor/target model as exploration. Battle-specific buttons such as Move Row, Sync/Group, Guard/Wait, or Flee are availability differences on the same command surface, not a separate center-grid action system.
+- Combat intent selection should reuse the same panel-selected actor/target model as exploration. Battle-specific buttons such as Move Row, Guard/Wait, or Flee are availability differences on the same command surface, not a separate center-grid action system. Group planning should be expressed through actor badges, target marks, intent selection, and Commit Group rather than a primary Sync button.
 
 ### Inspection mode
 

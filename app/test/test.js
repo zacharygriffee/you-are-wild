@@ -2038,7 +2038,8 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, "belt.setAttribute('data-command-intent', meta.intent || 'choose')", 'Desktop combat composer root should expose current intent metadata');
   assertContains(combatActionsContent, "app._combatIntentButton('fight', actor)", 'Combat action helper should keep fight on the shared combat intent button path');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed"', 'Combat Feed button should identify the combat intent surface');
-  assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync"', 'Combat Sync button should identify the combat intent surface');
+  assertContains(combatActionsContent, 'showLegacySyncButton', 'Combat action helper should keep the Sync button behind an internal legacy/debug fallback flag');
+  assertContains(combatActionsContent, 'data-command-legacy="sync"', 'Legacy Sync button should identify itself as compatibility UI when explicitly enabled');
   assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow"', 'Combat Move Row button should identify the combat intent surface');
   assertContains(combatActionsContent, 'data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent"', 'Combat Move Row button should identify the combat intent slot');
@@ -9593,6 +9594,9 @@ test('Combat group planner requires current actor lead and blocks hostile party 
 
   assertEqual(App.toggleCombatPlanActor('doctrine-player'), true, 'Current actor badge remains selectable');
   assertEqual(App._combatPlanActors().map(unit => unit.id).join(','), 'doctrine-player', 'Toggling current actor should not remove the required lead');
+  const leadCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
+  assertContains(leadCard, 'Current group lead: You', 'Normal combat planning should label the current actor as group lead');
+  assertNotContains(leadCard, 'Current sync actor: You', 'Normal combat planning should not expose Sync terminology on the lead badge');
   assertEqual(App.toggleCombatPlanActor('doctrine-ally'), true, 'Non-current actor can join the group plan');
   App.toggleCombatTarget('doctrine-enemy');
   App.setCombatPlanIntent('fight');
@@ -9620,6 +9624,44 @@ test('Combat group planner requires current actor lead and blocks hostile party 
   assertContains(App.combatCorrectionMessage.text, 'Party targets are only allowed for support group intents in combat.', 'Hostile party target rejection should explain the support-only doctrine');
   assertEqual(App.combatState.syncActions.length, 0, 'Rejected party-target hostile group plan should not queue');
   assertEqual(App.combatPlanSelection.active, true, 'Rejected party-target hostile group plan should preserve planner state');
+});
+
+test('Combat intent belts hide primary Sync by default while preserving legacy fallback', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'sync-soft-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'sync-soft-ally', Figh: 18, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'sync-soft-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+
+  let html = App._combatActionButtons(player);
+  assertNotContains(html, 'data-command-intent="sync"', 'Primary combat intent belt should not show Sync by default');
+  assertContains(html, 'data-command-intent="fight"', 'Primary combat intent belt should keep normal intent buttons visible');
+  assertContains(html, 'data-command-intent="moveRow"', 'Hiding Sync should not change row-control availability');
+
+  App.renderMobileCombatToolbelt();
+  assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'data-command-intent="sync"', 'Mobile combat toolbelt should not show primary Sync by default');
+
+  App.showLegacySyncButton = true;
+  html = App._combatActionButtons(player);
+  assertContains(html, 'data-command-intent="sync"', 'Legacy Sync fallback should render when explicitly enabled');
+  assertContains(html, 'data-command-legacy="sync"', 'Legacy Sync fallback should identify compatibility UI');
+
+  App.showLegacySyncButton = false;
+  assertEqual(App.executeCombatIntent('sync'), true, 'Legacy Sync path should remain invokable directly for compatibility/debug');
+  assertEqual(App.syncSelection?.phase, 'choose', 'Direct legacy Sync invocation should still open the old choose phase');
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-surface="sync-intents"', 'Direct legacy Sync invocation should still render sync intent controls');
 });
 
 test('Current InteractionPlan reflects exploration and combat selection side-state', () => {

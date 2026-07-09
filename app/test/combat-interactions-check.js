@@ -1331,8 +1331,12 @@ async function runDesktopSyncComposerFlow(page) {
   };
 
   await prepare();
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('sync')"]`).first().click();
-  let state = await page.evaluate(() => {
+  let state = await page.evaluate(() => ({
+    syncVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="sync"]'))
+  }));
+  assert.strictEqual(state.syncVisible, false, 'Desktop primary combat belt should hide Sync by default');
+  await page.evaluate(() => App.executeCombatIntent('sync'));
+  state = await page.evaluate(() => {
     const tray = document.querySelector('#desktop-context-belt .combat-sync-tray');
     const row = tray?.querySelector('.target-action-row');
     return {
@@ -1416,11 +1420,11 @@ async function runDesktopSyncComposerFlow(page) {
   }));
   assert.strictEqual(state.syncSelection, null, 'Desktop Cancel Sync should clear sync selection');
   assert.strictEqual(state.targetSelection, null, 'Desktop Cancel Sync should leave no target selection');
-  assert.strictEqual(state.syncVisible, true, 'Desktop combat intents should be reachable again after cancelling Sync');
+  assert.strictEqual(state.syncVisible, false, 'Desktop primary combat intents should keep Sync hidden after cancelling legacy Sync');
   assert.strictEqual(state.centerHasControls, false, 'Desktop Cancel Sync should keep center stage free of combat controls');
 
   await prepare();
-  await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('sync')"]`).first().click();
+  await page.evaluate(() => App.executeCombatIntent('sync'));
   await page.locator(`#desktop-context-belt button[data-command-intent="sync_fight"]`).first().click();
   await page.locator(`#party-content button[data-selection-mode="sync-participant"][onclick*="ally-1"]`).first().click();
   await page.locator(`#desktop-context-belt button[data-command-control="confirm-sync-participants"]`).click();
@@ -1552,8 +1556,12 @@ async function runMobileSyncComposerFlow(page) {
   };
 
   await prepare();
-  await page.locator(`#mobile-combat-toolbelt button[data-command-intent="sync"]`).first().click();
-  let state = await page.evaluate(() => {
+  let state = await page.evaluate(() => ({
+    syncVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="sync"]'))
+  }));
+  assert.strictEqual(state.syncVisible, false, 'Mobile primary combat belt should hide Sync by default');
+  await page.evaluate(() => App.executeCombatIntent('sync'));
+  state = await page.evaluate(() => {
     const tray = document.querySelector('#mobile-combat-toolbelt .mobile-combat-phase-controls');
     const row = tray?.querySelector('.unit-actions');
     return {
@@ -1648,12 +1656,12 @@ async function runMobileSyncComposerFlow(page) {
   }));
   assert.strictEqual(state.syncSelection, null, 'Mobile Cancel Sync should clear sync selection');
   assert.strictEqual(state.targetSelection, null, 'Mobile Cancel Sync should leave no target selection');
-  assert.strictEqual(state.syncVisible, true, 'Mobile combat intents should be reachable again after cancelling Sync');
+  assert.strictEqual(state.syncVisible, false, 'Mobile primary combat intents should keep Sync hidden after cancelling legacy Sync');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after cancelling Sync');
   assert.strictEqual(state.centerHasControls, false, 'Mobile Cancel Sync should keep center stage free of combat controls');
 
   await prepare();
-  await page.locator(`#mobile-combat-toolbelt button[data-command-intent="sync"]`).first().click();
+  await page.evaluate(() => App.executeCombatIntent('sync'));
   await page.locator(`#mobile-combat-toolbelt button[data-command-intent="sync_fight"]`).first().click();
   await page.locator(`#mobile-party-strip button[data-selection-mode="sync-participant"][onclick*="ally-1"]`).first().click();
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="confirm-sync-participants"]`).click();
@@ -2773,7 +2781,7 @@ async function runMobileSelectionAndCombatFlow(page) {
     App.activeActor = App.player;
     App.showActorActions(App.player);
   });
-  await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('sync')"]`).first().click();
+  await page.evaluate(() => App.executeCombatIntent('sync'));
   const syncChoose = page.locator('#mobile-combat-toolbelt .mobile-combat-phase-controls').first();
   await assert.doesNotReject(() => syncChoose.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile Sync choose phase should render visible toolbelt controls');
   state = await page.evaluate(() => ({

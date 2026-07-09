@@ -110,9 +110,8 @@ const YAW_COMBAT_ACTIONS = {
         }
         if (actor?.name === app.player?.name) {
             buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
-        } else {
-            buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         }
+        buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         if (buttons.length === 0) return '';
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);
         const compactClass = compact ? ' compact' : '';

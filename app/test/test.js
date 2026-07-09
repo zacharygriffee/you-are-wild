@@ -13662,6 +13662,7 @@ test('Player combat action controls localize in desktop composer', () => {
   assertNotContains(html, 'showInteractMenu', 'Combat action bar should keep creature interactions in party/creature panels');
   assertNotContains(html, 'aria-label="Interactuar"', 'Combat action bar should not duplicate panel creature interactions');
   assertContains(html, 'aria-label="Huir"', 'Flee action should localize accessible label');
+  assertContains(html, 'aria-label="Saltar"', 'Player combat turns should always expose Skip as a fallback action');
   assertNotContains(elements.get('scene-actions').innerHTML, 'panel-first-combat-prompt', 'Scene center should keep combat prompts out of the context area');
   assertEqual(elements.get('scene-actions').innerHTML, '', 'showActorActions should clear center actions while the composer owns controls');
   assertEqual(elements.get('scene-actions').hidden, true, 'showActorActions should hard-hide center actions while the composer owns controls');

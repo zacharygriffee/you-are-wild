@@ -9621,7 +9621,8 @@ test('Combat group planner requires current actor lead and blocks hostile party 
   App.combatTargetIds = [App._unitSelectionId(enemy)];
   App.toggleExplorationTarget('party', 'doctrine-party-target');
   assertEqual(App.confirmCombatPlan(), false, 'Hostile combat group plan should reject marked party targets');
-  assertContains(App.combatCorrectionMessage.text, 'Party targets are only allowed for support group intents in combat.', 'Hostile party target rejection should explain the support-only doctrine');
+  assertContains(App.combatCorrectionMessage.text, 'Party targets need a support intent in combat for now.', 'Hostile party target rejection should explain the current-phase support-only guardrail');
+  assertContains(App.combatCorrectionMessage.text, 'explicit combat rules', 'Hostile party target rejection should leave room for future broader party-target interactions');
   assertEqual(App.combatState.syncActions.length, 0, 'Rejected party-target hostile group plan should not queue');
   assertEqual(App.combatPlanSelection.active, true, 'Rejected party-target hostile group plan should preserve planner state');
 });

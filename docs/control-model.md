@@ -99,7 +99,7 @@ The combat UI grammar is:
 - The current turn actor is the required Lead Actor for this phase of the system. Do not allow group plans that exclude the current actor yet.
 - Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
 - Group combat targets one enemy by default. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
-- Party targets are allowed in combat group planning only for support intents such as Feed, Heal, Guard, Assist, and future buffs. Hostile group actions against party members are blocked unless a specific future mechanic explicitly permits them.
+- Current combat group planning allows party targets only for support intents such as Feed, Heal, Guard, Assist, and future buffs. This is a phase guardrail, not the final doctrine: future combat interaction rules should allow party members, enemies, and neutral creatures to be targets for the full interaction set when explicit consent, hostility, safety, and resolution rules exist.
 - If the target or participants become invalid before resolution, the plan fizzles cleanly and emits log/story feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
 - There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
 - Internally, current group planning may continue to queue `sync_*` actions through `syncSelection`, `syncActions`, and `queueSyncAction`. Preserve those names and save/load compatibility until a separate mechanics migration deliberately replaces them.

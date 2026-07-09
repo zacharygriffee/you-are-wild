@@ -165,6 +165,7 @@ const combatResolutionContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'comb
 const combatAlliesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-allies.js'), 'utf8');
 const combatEnemiesContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-enemies.js'), 'utf8');
 const combatSyncContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-sync.js'), 'utf8');
+const combatPlanningContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-planning.js'), 'utf8');
 const combatMobilityContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-mobility.js'), 'utf8');
 const combatFeedContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-feed.js'), 'utf8');
 const combatIntentsContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'combat-intents.js'), 'utf8');
@@ -2135,6 +2136,14 @@ test('Combat sync helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_COMBAT_SYNC.selectParticipants(this, syncType)', 'App sync participant wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.queueAction(this, syncType, targetIndex, command)', 'App sync queue wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_COMBAT_SYNC.resolveAction(this, sync)', 'App sync resolution wrapper should delegate to the helper');
+});
+
+test('Combat planning helper module is registered before app code', () => {
+  assertContains(buildContent, "'src/core/combat-planning.js'", 'Combat planning helper should be included in SCRIPT_ORDER');
+  assert(buildContent.indexOf("'src/core/combat-sync.js'") < buildContent.indexOf("'src/core/combat-planning.js'"), 'Combat planning helper should load after legacy sync primitives');
+  assert(buildContent.indexOf("'src/core/combat-planning.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat planning helper should load before app.js');
+  assertContains(combatPlanningContent, 'const YAW_COMBAT_PLANNING = {', 'Combat planning helper should expose the planning service');
+  assertContains(appContent, 'YAW_COMBAT_PLANNING.confirm(this)', 'App combat planning wrapper should delegate to the helper');
 });
 
 test('Combat mobility helper module is registered before app code', () => {
@@ -4965,7 +4974,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
   const appFactory = new Function(
     'window', 'document', 'localStorage', 'CONTENT', 'Binary', 'MODULE_SYSTEM',
     'indexedDB', 'confirm', 'prompt', 'alert', 'setTimeout', 'Math',
-    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
+    `${worldGenerationContent}\n${assetManifestContent}\n${storageSystemContent}\n${worldStateContent}\n${worldStoreContent}\n${worldRandomContent}\n${encounterPreferencesContent}\n${createFlowContent}\n${mapVisualsContent}\n${largeMapContent}\n${desktopPlaySurfaceContent}\n${localMapContent}\n${tileResourcesContent}\n${centerContextContent}\n${defeatRecoveryContent}\n${logViewContent}\n${storyEventsContent}\n${tileEventFeedContent}\n${structureNavigationContent}\n${movementFlowContent}\n${subActionsContent}\n${uiTextContent}\n${actionUiContent}\n${actionRulesContent}\n${speciesSystemContent}\n${unitLifecycleContent}\n${unitContainersContent}\n${unitContainmentContent}\n${timeSystemContent}\n${interactionPlanContent}\n${interactionDispatchContent}\n${interactionStateContent}\n${explorationSelectionContent}\n${markedTargetActionsContent}\n${recruitmentFlowContent}\n${panelInteractionsContent}\n${panelCommandsContent}\n${unitStatsContent}\n${unitCardStatusContent}\n${combatStateRollContent}\n${combatRulesContent}\n${combatStatusContent}\n${combatTurnsContent}\n${combatLifecycleContent}\n${combatActionsContent}\n${combatTargetingContent}\n${combatResolutionContent}\n${combatAlliesContent}\n${combatEnemiesContent}\n${combatSyncContent}\n${combatPlanningContent}\n${combatMobilityContent}\n${combatFeedContent}\n${combatIntentsContent}\n${mobileCombatToolbeltContent}\n${combatActorStateContent}\n${tacticalCardContent}\n${mobileUnitChipContent}\n${unitCardContent}\n${equipmentSystemContent}\n${merchantSystemContent}\n${inventoryPanelContent}\n${tradeFlowContent}\n${perkFlowContent}\n${statsPanelContent}\n${questFlowContent}\n${questPanelContent}\n${transactionWindowContent}\n${mobileUnitStripsContent}\n${panelRenderingContent}\n${panelShellContent}\n${unitSelectionContent}\n${partyManagementContent}\n${focusTrapContent}\n${intentMenuContent}\n${dialogFlowContent}\n${settingsFlowContent}\n${settingsDataFlowContent}\n${mobileGesturesContent}\n${mobileContextMenuContent}\n${saveManagerContent}\n${saveMetadataContent}\n${savePersistenceContent}\n${saveSlotFlowContent}\n${saveLoadFlowContent}\n${combatSceneContent}\n${sceneShellContent}\n${combatSaveStateContent}\n${appContent}\nreturn window.App;`
   );
   const indexedDb = options.indexedDB || {
     open() { return {}; },
@@ -15165,6 +15174,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(desktopMediumCard, 'unit-bars compact', 'Medium tactical cards should not render bulky linear compact bars');
   App.combatState.active = true;
   creature.disposition = App.DISPOSITION.ENEMY;
+  const desktopMicroPartyCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop', density: 'micro', stage: 'combat' });
   const desktopMicroCard = App.renderTacticalCard(creature, 0, 'creature', { presentation: 'desktop', density: 'micro', stage: 'combat' });
   const mobileMicroCard = App.renderMobileUnitChip(creature, 0, 'creature');
   assertContains(desktopMicroCard, 'density-micro', 'Desktop combat-present cards should identify the micro density tier');
@@ -15174,9 +15184,13 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(desktopMicroCard, 'data-command-control="mark-combat-target"', 'Micro enemy cards should preserve combat target marking');
   assertContains(desktopMicroCard, 'tactical-stat-rings', 'Micro tactical cards should use shared circular tactical status rings');
   assertNotContains(desktopMicroCard, '<div class="unit-name">Fox</div>', 'Micro tactical cards should not render a visible full name row');
+  assertContains(desktopMicroPartyCard, "--compact-card-icon-content:&#39;🧙&#39;", 'Desktop party micro actor badge should paint the real actor avatar');
+  assertNotContains(desktopMicroPartyCard, '>🧙</button>', 'Desktop party micro actor badge should not duplicate the avatar as button text');
   assertContains(mobileMicroCard, 'density-micro', 'Mobile combat strips should render micro tactical cards');
   assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
   assertContains(templateContent, 'grid-template-columns: 40px minmax(52px, 1fr) 40px;', 'Micro tactical cards should reserve tight control/stat/control columns');
+  assertContains(templateContent, '.unit-card.compact-tactical-card:not(.micro-tactical-card)', 'Desktop compact padding should not apply to micro cards');
+  assertContains(templateContent, 'grid-auto-columns: minmax(136px, 156px);', 'Desktop battle micro cards should use compact mobile-parity columns');
   assertContains(templateContent, 'max-height: 50px;', 'Mobile micro cards should not regain bulky vertical padding');
   App.combatState.active = false;
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');

@@ -1158,7 +1158,8 @@ async function runCombatSlotGroupComposerFlow(page) {
     sentence: document.querySelector('#selection-sentence')?.innerText || '',
     clearVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="clear-combat-group"]')),
     normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
-    actorBadgeText: document.querySelector('#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.textContent.trim() || ''
+    actorBadgeText: document.querySelector('#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.textContent.trim() || '',
+    actorBadgeStyle: document.querySelector('#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.getAttribute('style') || ''
   }));
   assert.strictEqual(state.planActive, true, 'Desktop target-first flow should enter combat planner state');
   assert.strictEqual(state.source, 'combat-planner', 'Desktop target-first flow should preserve the planner source');
@@ -1167,7 +1168,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Desktop target-first sentence should show actors and target');
   assert.strictEqual(state.clearVisible, true, 'Desktop slot group compose should expose Clear Group');
   assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible next to Clear Group');
-  assert.strictEqual(state.actorBadgeText, 'X', 'Desktop compact combat actor badge should show the unit avatar/icon');
+  assert.strictEqual(state.actorBadgeText, '', 'Desktop compact combat actor badge should not duplicate the avatar as text');
+  assert(state.actorBadgeStyle.includes("--compact-card-icon-content:'X'"), 'Desktop compact combat actor badge should paint the unit avatar/icon');
 
   await page.locator(`#desktop-context-belt button[data-command-control="clear-combat-group"]`).first().click();
   state = await page.evaluate(() => ({
@@ -1264,7 +1266,8 @@ async function runCombatSlotGroupComposerFlow(page) {
     sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
     clearVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="clear-combat-group"]')),
     normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="fight"]')),
-    actorBadgeText: document.querySelector('#mobile-party-strip button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.textContent.trim() || ''
+    actorBadgeText: document.querySelector('#mobile-party-strip button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.textContent.trim() || '',
+    actorBadgeStyle: document.querySelector('#mobile-party-strip button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.getAttribute('style') || ''
   }));
   assert.strictEqual(state.planActive, true, 'Mobile target-first flow should enter combat planner state');
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile target-first flow should select current actor plus ally');
@@ -1272,7 +1275,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile target-first sentence should show actors and target');
   assert.strictEqual(state.clearVisible, true, 'Mobile slot group compose should expose Clear Group');
   assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
-  assert.strictEqual(state.actorBadgeText, 'X', 'Mobile compact combat actor badge should show the unit avatar/icon');
+  assert.strictEqual(state.actorBadgeText, '', 'Mobile compact combat actor badge should not duplicate the avatar as text');
+  assert(state.actorBadgeStyle.includes("--compact-card-icon-content:'X'"), 'Mobile compact combat actor badge should paint the unit avatar/icon');
   await page.locator(`#mobile-combat-toolbelt button[data-command-intent="fight"]`).first().click();
   state = await page.evaluate(() => ({
     combatPlanSelection: App.combatPlanSelection,

@@ -659,7 +659,7 @@
             opacity: 1;
             justify-content: stretch;
             align-items: stretch;
-            padding: 10px;
+            padding: 6px;
             overflow: hidden;
             background: rgba(26, 26, 46, 0.64);
         }
@@ -673,8 +673,8 @@
             width: 100%;
             min-width: 0;
             display: grid;
-            grid-template-columns: 82px minmax(0, 1fr);
-            gap: 10px;
+            grid-template-columns: 58px minmax(0, 1fr);
+            gap: 6px;
             align-items: stretch;
         }
 
@@ -690,18 +690,22 @@
         .desktop-battle-units {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: minmax(150px, 196px);
-            gap: 8px;
+            grid-auto-columns: minmax(136px, 156px);
+            gap: 6px;
             min-width: 0;
             overflow-x: auto;
             overflow-y: hidden;
-            padding-bottom: 2px;
+            padding-bottom: 0;
             overscroll-behavior-inline: contain;
         }
 
         .desktop-battle-units .micro-tactical-card {
             margin-bottom: 0;
             background: rgba(42, 42, 74, 0.68);
+            min-height: 42px;
+            max-height: 46px;
+            padding: 1px 3px;
+            align-content: center;
         }
 
         .desktop-battle-unit {
@@ -1984,8 +1988,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 34px;
-            height: 34px;
+            width: 32px;
+            height: 32px;
             border: 1px solid rgba(0, 212, 170, 0.28);
             border-radius: var(--radius-sm);
             background: rgba(0, 212, 170, 0.12);
@@ -2000,13 +2004,13 @@
         }
 
         .micro-tactical-card .tactical-stat-rings {
-            gap: 4px;
+            gap: 2px;
             margin-top: 0;
         }
 
         .micro-tactical-card .tactical-stat-ring {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             font-size: 9px;
         }
 
@@ -2050,9 +2054,9 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 44px;
-            min-width: 44px;
-            max-width: 44px;
+            width: 40px;
+            min-width: 40px;
+            max-width: 40px;
             height: 44px;
             min-height: 44px;
             padding: 0;
@@ -2071,8 +2075,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border: 1px solid var(--compact-card-icon-border);
             border-radius: var(--radius-sm);
             background: var(--compact-card-icon-bg);
@@ -2289,11 +2293,11 @@
             --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
         }
 
-        .unit-card.compact-tactical-card {
+        .unit-card.compact-tactical-card:not(.micro-tactical-card) {
             padding: 10px;
         }
 
-        .unit-card.compact-tactical-card.has-corner-controls .unit-header {
+        .unit-card.compact-tactical-card.has-corner-controls:not(.micro-tactical-card) .unit-header {
             padding-top: 30px;
         }
 

@@ -59,7 +59,7 @@ const YAW_COMBAT_ACTIONS = {
         const compactSlot = compact ? ' data-corner-slot="agency"' : '';
         const iconText = String(unit.icon || '👤').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const iconStyle = compact ? ` style="--compact-card-icon-content:'${app._escapeHtml(iconText)}';--mobile-card-icon-content:'${app._escapeHtml(iconText)}';"` : '';
-        const content = compact ? app._escapeHtml(unit.icon || '👤') : app._escapeHtml(label);
+        const content = compact ? '' : app._escapeHtml(label);
         const onclick = participantPhase ? 'App._toggleSyncParticipantById' : 'App.toggleCombatPlanActor';
         return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot}${iconStyle} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();${onclick}('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
     },

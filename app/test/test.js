@@ -2456,6 +2456,7 @@ test('Quest flow helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/quest-flow.js'") < buildContent.indexOf("'src/core/quest-panel.js'"), 'Quest flow helper should load before quest panel rendering');
   assertContains(questFlowContent, 'const YAW_QUEST_FLOW = {', 'Quest flow helper should expose the quest flow service');
   assertContains(questFlowContent, 'normalize(app, quest, giver = null)', 'Quest flow helper should own quest normalization');
+  assertContains(questFlowContent, 'speciesLabel(app, speciesId)', 'Quest flow helper should own quest species display labels');
   assertContains(questFlowContent, 'accept(app, quest, giver = null)', 'Quest flow helper should own quest acceptance');
   assertContains(questFlowContent, 'updateProgress(app, type, payload = {})', 'Quest flow helper should own quest progress updates');
   assertContains(questFlowContent, 'grantReward(app, quest)', 'Quest flow helper should own quest reward grants');
@@ -2474,6 +2475,7 @@ test('Quest flow helper module is registered before app code', () => {
   assertContains(appContent, 'YAW_QUEST_FLOW.templateForStructure(this, structureId, tile)', 'App structure quest template wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.createStructureGiver(this, structureId, tile)', 'App structure quest-giver wrapper should delegate to quest flow');
   assertContains(appContent, 'YAW_QUEST_FLOW.maybeSpawnStructureGiver(this, tile)', 'App structure quest placement wrapper should delegate to quest flow');
+  assertContains(appContent, 'YAW_QUEST_FLOW.speciesLabel(this, speciesId)', 'App quest species display label wrapper should delegate to quest flow');
   assertContains(questFlowContent, 'app.refreshTransactionWindow?.()', 'Quest state updates should refresh the transaction window when active');
   assertContains(questFlowContent, 'app.autoSave()', 'Quest state changes should keep autosaving');
   assertNotContains(questFlowContent, 'Date.now', 'Quest reward item ids should remain deterministic');
@@ -14550,6 +14552,76 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
   assertEqual(App.player.xp, 10, 'Quest reward should grant XP');
   assertEqual(App.inventory[0].name, 'Old Coin', 'Quest reward should grant item');
   assertEqual(App.inventory[0].id, 'quest_item_wolf-hunt_old-coin_0', 'Quest reward item id should be stable without timestamp entropy');
+});
+
+test('Quest species objectives match exact internal ids and display species labels', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
+  App.player = player;
+  App.party = [player];
+  App.inventory = [];
+
+  const objective = { type: 'defeat', species: 'wolf', required: 1, progress: 0, complete: false };
+  assertEqual(App.questSpeciesLabel('wolf'), 'Wolfkin', 'Quest species labels should use player-facing species names');
+  assertEqual(App._questObjectiveLabel(objective), 'defeat Wolfkin', 'Generated objective labels should display species names instead of raw ids');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf', target: { species: 'wolf' } }, objective), true, 'Internal wolf species id should match exact wolf objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'fox', target: { species: 'fox' } }, objective), false, 'Internal wolf species id should not fuzzy-match fox');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'hyena', target: { species: 'hyena' } }, objective), false, 'Internal wolf species id should not fuzzy-match hyena or other canid-like species');
+  assertEqual(App._questObjectiveMatches('consume', { target: { species: 'wolf' } }, { ...objective, type: 'consume' }), true, 'Shared consume progress should use exact species ids');
+  assertEqual(App._questObjectiveMatches('seduce', { target: { species: 'wolf' } }, { ...objective, type: 'seduce' }), true, 'Shared seduce progress should use exact species ids');
+
+  const normalized = App._normalizeQuest({
+    id: 'wolfkin_hunt',
+    title: 'Wolfkin Hunt',
+    objectives: [objective],
+    reward: { gold: 1 }
+  });
+  assertEqual(normalized.objectives[0].label, 'defeat Wolfkin', 'Normalized quest objectives should generate display-name labels when no explicit label exists');
+  App.quests = [normalized];
+  App.showQuestLog();
+  assertContains(elements.get('party-content').innerHTML, 'defeat Wolfkin', 'Quest log should render the generated display-name objective label');
+
+  const explicit = App._normalizeQuest({
+    id: 'explicit_wolf',
+    title: 'Explicit Wolf',
+    objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat the northern scout' }]
+  });
+  assertEqual(explicit.objectives[0].label, 'Defeat the northern scout', 'Explicit authored objective labels should be preserved');
+});
+
+test('Generated and mod species quest objectives use registered exact species ids', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const registered = new Set(App.species.map(species => species.id));
+  Object.values(App.QUEST_TEMPLATES).forEach(template => {
+    (template.objectives || []).forEach(objective => {
+      if (objective.species) assert(registered.has(objective.species), `Quest template species ${objective.species} should be registered`);
+    });
+  });
+  assertEqual(App.QUEST_TEMPLATES.camp_safety.objectives[0].species, 'wolf', 'Camp safety should keep the internal wolf species id');
+  assertEqual(App.QUEST_TEMPLATES.camp_safety.objectives[0].label, 'Defeat a Wolfkin', 'Camp safety should display the player-facing Wolfkin label');
+
+  App.STRUCTURES.test_invalid_quest_giver = {
+    name: 'Test Outpost',
+    icon: 'T',
+    quest: { chance: 1, templates: ['camp_safety'], species: ['missing_species'] }
+  };
+  const giver = App._createStructureQuestGiver('test_invalid_quest_giver', { x: 4, y: 2 });
+  assert(registered.has(giver.species), 'Generated quest giver species should fall back to a registered species id');
+  assert(giver.species !== 'missing_species', 'Generated quest giver should not keep an unregistered species id');
+
+  App.species.push({ id: 'modfolk', name: 'Modfolk', icon: 'M', desc: 'Mod registered person' });
+  App.SPECIES_CANON.modfolk = {
+    sapience: 'person',
+    bodyPlan: 'humanoid',
+    traits: ['person', 'modded'],
+    baselineInteraction: 'sapient',
+    interactionEligibility: { social: true, sensitiveSocial: true, feed: true, feast: true, recruit: true }
+  };
+  const modObjective = { type: 'defeat', species: 'modfolk', required: 1, progress: 0, complete: false };
+  assertEqual(App.questSpeciesLabel('modfolk'), 'Modfolk', 'Mod-registered species should provide quest display labels');
+  assertEqual(App._questObjectiveLabel(modObjective), 'defeat Modfolk', 'Mod-registered species objectives should generate display-name labels');
+  assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk' } }, modObjective), true, 'Mod-registered species should match exact species objective ids');
+  assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'wolf' } }, modObjective), false, 'Mod species objective should not fuzzy-match other species');
 });
 
 test('Quest turn-in can defer rewards until claimed from quest log', () => {

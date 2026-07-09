@@ -36,6 +36,14 @@ During migration, legacy transient UI state such as combat target-pick, marked c
 
 Combat Feed is a current-turn plan even when it opens a sub-action picker. The picker may remain a transient intent surface, but choosing a feed sub-action should dispatch a `feed` plan with the resolved actor, target, and `subAction` instead of resolving outside the command path.
 
+### Quest Species Matching Doctrine
+
+Quest species objectives match exact internal species IDs. An objective with `species: "wolf"` matches units whose internal `species` is exactly `"wolf"`; it does not fuzzy-match wolfkin-like labels, canine families, beastfolk, tags, hostile-canid categories, or related species such as fox or hyena.
+
+Player-facing quest text should render species display names from the species registry. The internal ID `wolf` can therefore appear to the player as `Wolfkin`, and generated quest objective labels should prefer that display name when no explicit authored label is provided. Existing authored labels remain authoritative, but default content should avoid exposing raw internal IDs when a display name exists.
+
+Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid exact quest targets when the mod registers the species ID. Broader family, tag, taxonomy, or target-pool quest selectors are deferred until a later quest-design pass and should not be approximated through fuzzy string matching.
+
 ### Traversal mode
 
 Traversal mode owns movement through the world and structure interiors.

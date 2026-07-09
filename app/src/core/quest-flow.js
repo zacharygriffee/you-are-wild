@@ -55,8 +55,14 @@ const YAW_QUEST_FLOW = {
     },
 
     objectiveLabel(app, objective) {
-        const target = objective.item || objective.species || objective.targetId || objective.location?.label || 'target';
+        const target = objective.item || this.speciesLabel(app, objective.species) || objective.targetId || objective.location?.label || 'target';
         return `${objective.type || 'find'} ${target}`;
+    },
+
+    speciesLabel(app, speciesId) {
+        if (!speciesId) return '';
+        const species = (app.species || []).find(s => s.id === speciesId);
+        return species?.name || species?.label || speciesId;
     },
 
     rewardPreviewText(app, reward = {}) {
@@ -106,23 +112,26 @@ const YAW_QUEST_FLOW = {
         if (!questConfig) return null;
         const quest = this.templateForStructure(app, structureId, tile);
         if (!quest) return null;
-        const speciesPool = questConfig.species || ['human'];
+        const registeredSpecies = new Set((app.species || []).map(species => species.id));
+        const speciesPool = (questConfig.species || ['human']).filter(sid => registeredSpecies.has(sid));
+        const fallbackSpecies = registeredSpecies.has('human') ? 'human' : ((app.species || [])[0]?.id || 'human');
         const x = tile?.x ?? 0;
         const y = tile?.y ?? 0;
         const sid = typeof WorldGen !== 'undefined'
-            ? (WorldGen.pickWeighted(app._mapSeed(), app.worldMeta?.generatorVersion || 1, 'structure-quest-species', x, y, speciesPool) || 'human')
-            : speciesPool[0] || 'human';
-        const sp = app.species.find(s => s.id === sid) || app.species.find(s => s.id === 'human');
+            ? (WorldGen.pickWeighted(app._mapSeed(), app.worldMeta?.generatorVersion || 1, 'structure-quest-species', x, y, speciesPool) || fallbackSpecies)
+            : speciesPool[0] || fallbackSpecies;
+        const sp = app.species.find(s => s.id === sid) || app.species.find(s => s.id === fallbackSpecies);
+        const giverSpeciesId = sp?.id || fallbackSpecies;
         return app._normalizeUnit({
             id: `questgiver_${structureId}_${x}_${y}`,
             name: `${sp?.name || 'Local'} Guide`,
-            species: sid,
+            species: giverSpeciesId,
             icon: sp?.icon || '👤',
             disposition: app.DISPOSITION.QUEST_GIVER,
             level: Math.max(1, app.player?.level || 1),
-            bodyParts: app.SPECIES_DEFAULT_PARTS[sid] || [],
+            bodyParts: app.SPECIES_DEFAULT_PARTS[giverSpeciesId] || [],
             quest,
-            tags: [sp?.name || sid, 'Quest', struct.name],
+            tags: [sp?.name || giverSpeciesId, 'Quest', struct.name],
             expanded: false,
             hero: false,
             ally: false,

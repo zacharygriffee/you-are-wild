@@ -619,13 +619,13 @@
                 camp_safety: {
                     title: 'Camp Safety',
                     description: 'A traveler wants the local predators thinned out.',
-                    objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolf' }],
+                    objectives: [{ type: 'defeat', species: 'wolf', required: 1, label: 'Defeat a Wolfkin' }],
                     reward: { xp: 20, gold: 12 }
                 },
                 ruins_cleanup: {
                     title: 'Ruins Cleanup',
                     description: 'A nervous explorer wants proof that the old bones have been cleared.',
-                    objectives: [{ type: 'defeat', species: 'skeleton', required: 1, label: 'Defeat a Skeleton' }],
+                    objectives: [{ type: 'defeat', species: 'skeleton', required: 1, label: 'Defeat an Awakened Skeleton' }],
                     reward: { xp: 25, gold: 14, items: ['Crystal Shard'] }
                 }
             },
@@ -3798,6 +3798,10 @@
 
             _questObjectiveLabel(objective) {
                 return YAW_QUEST_FLOW.objectiveLabel(this, objective);
+            },
+
+            questSpeciesLabel(speciesId) {
+                return YAW_QUEST_FLOW.speciesLabel(this, speciesId);
             },
 
             _questRewardPreviewText(reward = {}) {

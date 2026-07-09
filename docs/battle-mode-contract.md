@@ -19,6 +19,8 @@ Battle mode is not a separate action model. It is the normal actor, target, and 
 - Group actions resolve through the same intent model, but timing is delayed to the slowest participant.
 - Flee is actor-specific. A party member can opt out; when all remaining party members have fled or fallen, combat resolves.
 
+See [Combat Row And Reach Audit](combat-row-reach-audit.md) for the current first-pass row behavior and open formation-system questions.
+
 ## Command Shape
 
 Combat intent should normalize toward:

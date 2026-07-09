@@ -13122,8 +13122,12 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   const desktopTargetHtml = elements.get('enemies-content').innerHTML;
   assertContains(desktopTargetHtml, 'disabled', 'Unreachable back-row enemy should render disabled');
   assertContains(desktopTargetHtml, 'Backline is in the back row', 'Unreachable desktop target should explain the back-row reach blocker');
+  assertContains(desktopTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable desktop target should suggest actual reach capabilities');
+  assertNotContains(desktopTargetHtml, 'move rows before choosing', 'Unreachable desktop target should not imply Move Row solves current back-row reach rules');
   const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
   assertContains(mobileTargetHtml, 'Backline is in the back row', 'Unreachable mobile target should explain the back-row reach blocker');
+  assertContains(mobileTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable mobile target should suggest actual reach capabilities');
+  assertNotContains(mobileTargetHtml, 'move rows before choosing', 'Unreachable mobile target should not imply Move Row solves current back-row reach rules');
   App.updateLanguage('es');
   App.executeActionOnTarget('fight', 'backline-1');
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
@@ -15486,7 +15490,7 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile blocked combat target should be an actual disabled control');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile blocked combat target should expose blocked combat-target state');
   assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile blocked combat target should identify the target slot');
-  assertContains(mobileBlockedEnemyChip, 'is airborne. Use a flying or ranged actor', 'Mobile blocked combat target should keep the reach reason available to assistive tech');
+  assertContains(mobileBlockedEnemyChip, 'is airborne. Use a flying, ranged, or anti-flying actor', 'Mobile blocked combat target should keep the reach reason available to assistive tech');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
 });

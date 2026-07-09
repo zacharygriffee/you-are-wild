@@ -3583,8 +3583,8 @@
             },
 
             // ===== FLEE =====
-            attemptFlee() {
-                return YAW_COMBAT_MOBILITY.attemptFlee(this);
+            attemptFlee(actor = this.activeActor || this._currentCombatActor() || this.player) {
+                return YAW_COMBAT_MOBILITY.attemptFlee(this, actor);
             },
 
             // ===== FEED ACTION =====

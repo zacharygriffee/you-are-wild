@@ -77,11 +77,11 @@ const YAW_COMBAT_INTENTS = {
             app.moveCombatRow();
             return true;
         }
-        if (action === 'flee' && current.name === app.player?.name) {
+        if (action === 'flee') {
             app.combatTargetId = null;
             app.combatTargetIds = [];
             app.combatPlanSelection = null;
-            app.attemptFlee();
+            app.attemptFlee(current);
             return true;
         }
         if (action === 'skip') {

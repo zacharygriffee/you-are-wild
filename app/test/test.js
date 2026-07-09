@@ -2152,11 +2152,12 @@ test('Combat mobility helper module is registered before app code', () => {
   assert(buildContent.indexOf("'src/core/combat-mobility.js'") < buildContent.indexOf("'src/core/app.js'"), 'Combat mobility helper should load before app.js');
   assertContains(combatMobilityContent, 'const YAW_COMBAT_MOBILITY = {', 'Combat mobility helper should expose the mobility service');
   assertContains(combatMobilityContent, 'moveRow(app)', 'Combat mobility helper should own row movement');
-  assertContains(combatMobilityContent, 'attemptFlee(app)', 'Combat mobility helper should own flee attempts');
-  assertContains(combatMobilityContent, "app._combatStateRoll('combat-player-flee'", 'Combat flee should remain deterministic through combat state rolls');
+  assertContains(combatMobilityContent, 'attemptFlee(app, actor', 'Combat mobility helper should own unit-specific flee attempts');
+  assertContains(combatMobilityContent, "'combat-player-flee'", 'Player flee should preserve its deterministic combat state roll key');
+  assertContains(combatMobilityContent, "'combat-party-flee'", 'Party member flee should use a deterministic combat state roll key');
   assertNotContains(combatMobilityContent, 'Math.random', 'Combat mobility helper should not use ambient randomness');
   assertContains(appContent, 'YAW_COMBAT_MOBILITY.moveRow(this)', 'App row movement wrapper should delegate to the helper');
-  assertContains(appContent, 'YAW_COMBAT_MOBILITY.attemptFlee(this)', 'App flee wrapper should delegate to the helper');
+  assertContains(appContent, 'YAW_COMBAT_MOBILITY.attemptFlee(this, actor)', 'App flee wrapper should delegate to the helper');
 });
 
 test('Combat feed helper module is registered before app code', () => {
@@ -5263,6 +5264,40 @@ test('Flee failure and no-enemy feedback localize', () => {
   assertEqual(failed.App.syncSelection, null, 'Failed flee should clear stale sync selection');
   assertEqual(failed.App.feedSelection, null, 'Failed flee should clear stale feed selection');
   assertContains(failed.App.log[failed.App.log.length - 1].text, 'Huida fallida! Fast Enemy te intercepta!', 'Failed flee log should localize');
+});
+
+test('Party member Flee removes only that member from active combat', () => {
+  const { App } = loadAppForCombat(() => 0);
+  App.worldMeta = { seed: 'unit-flee', generatorVersion: 2 };
+  const player = makeUnit('You', { id: 'player-1', Flee: 10 });
+  const ally = makeUnit('Ally', { id: 'ally-1', Flee: 100, obedient: true });
+  const enemy = makeUnit('Enemy', { id: 'enemy-1', disposition: App.DISPOSITION.ENEMY, spd: 1 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.location = { x: 0, y: 0 };
+  App.dayCount = 0;
+  App.timeHour = 0;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: ally, initiative: 20 }, { unit: player, initiative: 15 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = ally;
+  App._combatStateRoll = () => 0;
+  App.nextTurn = function() { this._allyFleeAdvanced = true; };
+  const handled = App.attemptFlee(ally);
+  assertEqual(handled, true, 'Ally flee should be handled as a unit action');
+  assertEqual(App.combatState.active, true, 'Ally flee should not end combat while the player remains active');
+  assertEqual(ally.fledCombat, true, 'Successful ally flee should remove that ally from active combat');
+  assertEqual(player.fledCombat, undefined, 'Successful ally flee should not mark the player as fled');
+  assertEqual(App.creatures.includes(enemy), true, 'Enemy should remain in combat after one party member flees');
+  assertEqual(App._allyFleeAdvanced, true, 'Successful ally flee should consume that ally turn');
+  assertContains(App.log[App.log.length - 1].text, 'Ally flees from the fight!', 'Ally flee should name the fleeing unit');
 });
 
 test('Player flee result is deterministic by combat state', () => {
@@ -13629,6 +13664,7 @@ test('Obedient ally turns use the same panel target selection', () => {
   assertContains(composerHtml, 'aria-label="Luchar"', 'Ally combat fight action should localize accessible label');
   assertContains(composerHtml, '>Luchar<', 'Ally combat fight action should localize visible label');
   assertContains(composerHtml, 'aria-label="Sincronizar"', 'Sync action should localize accessible label');
+  assertContains(composerHtml, 'aria-label="Huir"', 'Ally combat turns should expose unit-specific Flee');
   assertContains(composerHtml, 'aria-label="Saltar"', 'Non-player skip action should localize accessible label');
   App.executeCombatIntent('fight');
   assertContains(elements.get('enemies-content').innerHTML, "executeActionOnTarget('fight','enemy-ally')", 'Ally target should be selected from panel');

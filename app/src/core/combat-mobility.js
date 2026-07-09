@@ -19,28 +19,51 @@ const YAW_COMBAT_MOBILITY = {
         app.nextTurn();
     },
 
-    attemptFlee(app) {
+    attemptFlee(app, actor = app.activeActor || app._currentCombatActor?.() || app.player) {
+        if (!actor || !app.party.includes(actor) || actor.CPun <= 0 || actor.knockedOut || actor.fledCombat) return false;
         const enemies = app.creatures.filter(c => c.disposition === app.DISPOSITION.ENEMY && c.CPun > 0);
         const enemy = enemies[0];
         if (!enemy) {
             app.log.push({ text: app._label('combat.flee.noEnemies', 'No enemies to flee from!'), type: 'combat' });
             app.renderLog();
-            return;
+            return false;
         }
-        const fleeChance = 0.6 + (app.player.Flee - enemy.spd) * 0.02;
-        const fleeRoll = app._combatStateRoll('combat-player-flee', app.player, app._unitSelectionId(enemy));
+        app._clearTransientInteractionState();
+        const fleeChance = 0.6 + ((actor.Flee || 10) - (enemy.spd || 10)) * 0.02;
+        const isPlayer = actor.name === app.player?.name;
+        const rollKey = isPlayer ? 'combat-player-flee' : 'combat-party-flee';
+        const fleeRoll = app._combatStateRoll(rollKey, actor, app._unitSelectionId(enemy));
         if (fleeRoll < Math.max(0.1, Math.min(0.95, fleeChance))) {
-            app.log.push({ text: app._label('combat.flee.success', 'You flee successfully!'), type: 'combat' });
-            app.creatures = app.creatures.filter(c => c.disposition !== app.DISPOSITION.ENEMY);
-            app._emitCombatAction('flee', app.player, enemy, 'success');
-            app.endCombat('flee');
+            actor.fledCombat = true;
+            app.log.push({
+                text: isPlayer
+                    ? app._label('combat.flee.success', 'You flee successfully!')
+                    : app._label('combat.flee.actorSuccess', '{name} flees from the fight!', { name: actor.name }),
+                type: 'combat'
+            });
+            app._emitCombatAction('flee', actor, enemy, 'success');
+            const livingParty = app.party.filter(p => p.CPun > 0 && !p.knockedOut && !p.fledCombat);
+            if (livingParty.length === 0) {
+                app.creatures = app.creatures.filter(c => c.disposition !== app.DISPOSITION.ENEMY);
+                app.endCombat('flee');
+            } else {
+                app.renderLog();
+                app.renderParty();
+                app.renderCreatures();
+                app.nextTurn();
+            }
         } else {
-            app.log.push({ text: app._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name }), type: 'combat' });
-            app._emitCombatAction('flee', app.player, enemy, 'failed');
-            app._clearTransientInteractionState();
+            app.log.push({
+                text: isPlayer
+                    ? app._label('combat.flee.failed', 'Flee failed! {name} intercepts you!', { name: enemy.name })
+                    : app._label('combat.flee.actorFailed', '{actor} tries to flee, but {enemy} intercepts!', { actor: actor.name, enemy: enemy.name }),
+                type: 'combat'
+            });
+            app._emitCombatAction('flee', actor, enemy, 'failed');
             app.renderLog();
             app.nextTurn();
         }
+        return true;
     }
 };
 

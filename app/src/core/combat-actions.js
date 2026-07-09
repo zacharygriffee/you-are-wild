@@ -108,9 +108,7 @@ const YAW_COMBAT_ACTIONS = {
             const moveRowLabel = app._escapeHtml(app._label('action.moveRow', 'Move Row'));
             buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="moveRow" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${moveRowLabel}" aria-label="${moveRowLabel}" onclick="event.stopPropagation();App.executeCombatIntent('moveRow')">↕️ ${moveRowLabel}</button>`);
         }
-        if (actor?.name === app.player?.name) {
-            buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
-        }
+        buttons.push(app._iconActionButton('flee', app._actionIcon('flee'), "event.stopPropagation();App.executeCombatIntent('flee')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="flee" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         buttons.push(app._iconActionButton('skip', '', "event.stopPropagation();App.executeCombatIntent('skip')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="skip" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         if (buttons.length === 0) return '';
         const rowAttrs = app._unitActionRowAttrs('combat-actions', actor);

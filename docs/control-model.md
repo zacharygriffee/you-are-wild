@@ -65,6 +65,26 @@ Battle mode owns turn order, combat constraints, and event focus. It is related 
 - Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
 - Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
 
+#### Row System Doctrine
+
+Rows are for formation, reach, and target protection. They are not initiative.
+
+Current implementation:
+
+- Flying or ranged units default to the back row; other units default to the front row when combat starts.
+- `Fight` and `Feast` are physical row-sensitive actions.
+- Talk, Play, Feed, support, and other non-physical actions ignore row reach unless a specific mechanic says otherwise.
+- Current physical reach is intentionally simple: back-row or flying targets require a flying, ranged, or anti-flying actor. The current implementation does not yet model front-row blockers or exposed back rows.
+- `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy should not imply that moving rows always solves back-row targeting.
+
+Future formal row rules should decide these points before deeper mechanics work:
+
+- Front-row units protect back-row units on the same side. Ordinary physical melee should not target protected back-row units while living front-row blockers remain.
+- Back-row melee actors are protected but limited. They should usually Advance before ordinary physical melee unless they have reach, ranged, flying, or special access.
+- If a side has no living front-row blockers, ordinary melee may reach exposed back-row targets.
+- Flying still occupies a row for UI purposes. Flying can bypass row blockers, and flying targets still require flying, ranged, or anti-flying reach. Do not add a third air lane until a later formal pass needs it.
+- Size, reach traits, equipment, terrain, and abilities should eventually feed into explicit helper predicates for row access instead of ad hoc card or action checks.
+
 #### Combat Group Planning Doctrine
 
 Combat group planning still uses the shared `InteractionPlan` model:

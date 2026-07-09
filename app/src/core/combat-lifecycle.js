@@ -26,6 +26,24 @@ const YAW_COMBAT_LIFECYCLE = {
         if (ambushers.length > 0) app._pushLog(`${ambushers.map(e => e.name).join(', ')} ambush from hiding!`, 'combat', { phase: 'start' });
         app._pushLog(`Combat! Order: ${app.combatState.turnQueue.map(e => e.unit.name).join(', ')}`, 'combat', { phase: 'start' });
         app.updateScene(`Round 1`, `Combat started!`, true);
+        const rangedBackRowEnemies = enemies.filter(unit => unit?.CPun > 0 && unit.ranged && unit.combatRow === 'back');
+        if (rangedBackRowEnemies.length && typeof app.emitStoryResult === 'function') {
+            const names = rangedBackRowEnemies.map(unit => unit.name || app._label('unit.generic', 'unit')).join(', ');
+            const summary = app._label('combat.intro.rangedBackRow', '{names} keep their distance, attacking from the back row.', { names });
+            app.emitStoryResult({
+                mode: 'combat',
+                action: 'position',
+                shape: 'combat-intro',
+                actors: rangedBackRowEnemies,
+                targets: app.party,
+                tags: ['row', 'ranged'],
+                source: 'combat-start'
+            }, summary, {
+                resultKind: 'positioning',
+                importance: 'hint',
+                tags: ['row', 'ranged']
+            });
+        }
         app._emitModuleHook('onEncounterStart', {
             enemies,
             party: app.party,

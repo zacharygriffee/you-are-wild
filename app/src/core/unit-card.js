@@ -174,6 +174,7 @@ const YAW_UNIT_CARD = {
             dispLabel ? `<span class="unit-meta-badge">${app._escapeHtml(dispLabel)}</span>` : '',
             turnBadge
         ].filter(Boolean).join('');
+        const tacticalSummary = app._unitTacticalSummary?.(unit) || '';
         const statLabels = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
@@ -188,6 +189,7 @@ const YAW_UNIT_CARD = {
                             <div class="unit-card-status">${compactStatus}</div>
                             ${app._unitTacticalBars(unit)}
                             ${app._unitTraitChips(unit, type)}
+                            ${tacticalSummary ? `<div class="unit-tactical-summary">${app._escapeHtml(tacticalSummary)}</div>` : ''}
                             ${app._unitSelectionChips(unit, type)}
                         </div>
                     </div>

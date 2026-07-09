@@ -257,11 +257,12 @@ const YAW_INTERACTION_DISPATCH = {
             : [actor].filter(Boolean);
         const hasReachActor = actors.some(unit => unit?.flying || unit?.ranged || unit?.antiflying);
         const actionLabel = app._uiLabel ? app._uiLabel(baseAction) : baseAction;
+        const actorName = actors.map(unit => unit?.name).filter(Boolean).join(', ') || actor?.name || app._label('target.actorRole', 'Actor');
         if (target.flying && !hasReachActor) {
-            return app._label('combat.cannotReachFlying', '{target} is airborne. Use a flying, ranged, or anti-flying actor for {action}.', { target: target.name, action: actionLabel });
+            return app._label('combat.cannotReachFlying', '{target} is airborne. {actor} has no flying/ranged/anti-flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { target: target.name, actor: actorName, action: actionLabel });
         }
         if (target.combatRow === 'back' && !hasReachActor) {
-            return app._label('combat.cannotReachBackRow', '{target} is in the back row. Use a flying, ranged, or anti-flying actor for {action}.', { target: target.name, action: actionLabel });
+            return app._label('combat.cannotReachBackRow', '{target} is in the back row. {actor} has no ranged/flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { target: target.name, actor: actorName, action: actionLabel });
         }
         return null;
     },

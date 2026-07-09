@@ -4078,6 +4078,9 @@
             _unitTacticalRings(unit) {
                 return YAW_UNIT_CARD_STATUS.tacticalRings(this, unit);
             },
+            _unitTacticalSummary(unit) {
+                return YAW_UNIT_CARD_STATUS.tacticalSummary(this, unit);
+            },
             _unitVisibleTraits(unit, type, limit = 3) {
                 return YAW_UNIT_CARD_STATUS.visibleTraits(this, unit, type, limit);
             },

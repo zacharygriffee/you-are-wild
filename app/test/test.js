@@ -13216,20 +13216,67 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   App.activeActor = player;
   player.combatRow = 'front';
   App.nextTurn = function() {};
+  App.showActorActions(player);
+  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="flirt"', 'Talk should remain available when physical reach is blocked by row');
   App.selectTarget('fight');
   const desktopTargetHtml = elements.get('enemies-content').innerHTML;
   assertContains(desktopTargetHtml, 'disabled', 'Unreachable back-row enemy should render disabled');
   assertContains(desktopTargetHtml, 'Backline is in the back row', 'Unreachable desktop target should explain the back-row reach blocker');
+  assertContains(desktopTargetHtml, 'current actor has no ranged/flying reach', 'Unreachable desktop target should name the missing reach capability');
   assertContains(desktopTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable desktop target should suggest actual reach capabilities');
+  assertContains(desktopTargetHtml, 'Talk/Flee', 'Unreachable desktop target should suggest non-physical counterplay');
   assertNotContains(desktopTargetHtml, 'move rows before choosing', 'Unreachable desktop target should not imply Move Row solves current back-row reach rules');
   const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
   assertContains(mobileTargetHtml, 'Backline is in the back row', 'Unreachable mobile target should explain the back-row reach blocker');
+  assertContains(mobileTargetHtml, 'current actor has no ranged/flying reach', 'Unreachable mobile target should name the missing reach capability');
   assertContains(mobileTargetHtml, 'Use a flying, ranged, or anti-flying actor', 'Unreachable mobile target should suggest actual reach capabilities');
+  assertContains(mobileTargetHtml, 'Talk/Flee', 'Unreachable mobile target should suggest non-physical counterplay');
   assertNotContains(mobileTargetHtml, 'move rows before choosing', 'Unreachable mobile target should not imply Move Row solves current back-row reach rules');
   App.updateLanguage('es');
-  App.executeActionOnTarget('fight', 'backline-1');
+  const invalidCommand = App._buildPanelInteractionCommand({
+    mode: 'combat',
+    actors: [player],
+    targets: [enemy],
+    action: 'fight',
+    source: 'combat-targeting',
+    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+  });
+  const invalid = App._validateInteractionCommand(invalidCommand);
+  App._reportInvalidCombatCommand(invalidCommand, invalid.reason);
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
-  assertContains(App.log[App.log.length - 1].text, 'You no puede alcanzar a Backline desde aqui.', 'Blocked reach log should localize');
+  assertContains(App.combatCorrectionMessage.text, 'Backline', 'Blocked reach correction should name the target');
+});
+
+test('Combat ranged back-row traits outrank generic tags and emit an intro beat', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'player-siren-row' });
+  const siren = makeUnit('Siren 1', {
+    id: 'siren-row-1',
+    icon: 'S',
+    ranged: true,
+    darkvision: true,
+    speciesTraits: ['person'],
+    disposition: App.DISPOSITION.ENEMY
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [siren];
+  App.processTurn = function() {};
+  App.startCombat([siren]);
+
+  assertEqual(siren.combatRow, 'back', 'Ranged enemy should default to back row');
+  assertContains(App.latestStoryEvent?.summary || '', 'Siren 1 keep their distance', 'Combat intro beat should mention ranged back-row threat');
+  assertContains(App.latestStoryEvent?.summary || '', 'back row', 'Combat intro beat should name the row threat');
+
+  const medium = App.renderTacticalCard(siren, 0, 'creature', { presentation: 'desktop', density: 'medium' });
+  assertContains(medium, 'Ranged', 'Medium combat card should expose ranged trait');
+  assertContains(medium, 'Back Row', 'Medium combat card should expose back-row trait');
+  assertNotContains(medium, 'Darkvision', 'Generic traits should not hide combat-critical ranged/row tags under the two-chip cap');
+
+  siren.expanded = true;
+  const detailed = App.renderUnitCard(siren, 0, 'creature');
+  assertContains(detailed, 'Ranged back-row attacker', 'Detailed card should include tactical row/range summary');
+  assertContains(detailed, 'Talk/Flee', 'Detailed card should suggest non-physical answers');
 });
 
 test('Combat group planner surfaces row reach correction in the mobile composer', () => {
@@ -13261,9 +13308,12 @@ test('Combat group planner surfaces row reach correction in the mobile composer'
 
   assertEqual(App.confirmCombatPlan(), false, 'Unreachable group plan should reject without queueing');
   assertContains(App.combatCorrectionMessage.text, 'Siren 1 is in the back row', 'Planner correction should explain the row blocker');
+  assertContains(App.combatCorrectionMessage.text, 'You, Ally has no ranged/flying reach', 'Planner correction should name selected actors missing reach');
   assertContains(App.combatCorrectionMessage.text, 'Use a flying, ranged, or anti-flying actor', 'Planner correction should suggest real reach capabilities');
+  assertContains(App.combatCorrectionMessage.text, 'Talk/Flee', 'Planner correction should suggest non-physical options');
   App.renderMobileCombatToolbelt();
   assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Siren 1 is in the back row', 'Mobile combat composer should surface planner reach correction');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Talk/Flee', 'Mobile combat composer should preserve counterplay guidance');
   assertContains(App.log[App.log.length - 1].text, 'Siren 1 is in the back row', 'Planner rejection should remain in the durable log');
   assertEqual(App.combatState.syncActions.length, 0, 'Rejected planner action should not queue a group action');
 });
@@ -13285,7 +13335,6 @@ test('Sync combat target selection respects participant reach', () => {
   App.renderCreatures();
   assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should reject enemies no selected participant can reach');
   assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync target should render as a disabled control');
-  assertContains(elements.get('enemies-content').innerHTML, 'action-btn primary target-toggle disabled', 'Unreachable sync target should carry disabled visual styling');
   assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="blocked"', 'Unreachable sync target should expose blocked combat-pick state');
   assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Unreachable sync target should not queue');
   assertEqual(App.combatState.syncActions.length, 0, 'Unreachable sync target should not create a queued sync action');

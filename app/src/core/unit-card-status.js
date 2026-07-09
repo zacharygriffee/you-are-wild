@@ -61,10 +61,16 @@ const YAW_UNIT_CARD_STATUS = {
         const maxHunger = unit.maxHunger || 100;
         const hunger = unit.hunger ?? 0;
         const status = unit.status || {};
+        const inCombat = Boolean(app.combatState?.active);
         const chips = [];
         const add = (key, label, tone = 'neutral') => {
             if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
         };
+        if (inCombat && unit.combatRow === 'back') add('row-back', app._label('combat.row.backBadge', 'Back Row'), 'position');
+        else if (inCombat && unit.combatRow === 'front') add('row-front', app._label('combat.row.frontBadge', 'Front Row'), 'position');
+        if (inCombat && unit.ranged) add('ranged', app._label('unit.trait.ranged', 'Ranged'), 'ability');
+        if (inCombat && unit.flying) add('flying', app._label('unit.trait.flying', 'Flying'), 'ability');
+        if (inCombat && unit.antiflying) add('antiflying', app._label('unit.trait.antiflying', 'Anti-flying'), 'ability');
         if (status.sleep || unit.asleep) add('asleep', app._label('unit.trait.asleep', 'Asleep'), 'status');
         if (status.poisoned) add('poisoned', app._label('unit.trait.poisoned', 'Poison'), 'danger');
         if (status.burn) add('burning', app._label('unit.trait.burning', 'Burning'), 'danger');
@@ -85,10 +91,28 @@ const YAW_UNIT_CARD_STATUS = {
             else if (unit.disposition === app.DISPOSITION.NEUTRAL) add('neutral', app._label('disposition.neutral', 'Neutral'), 'relation');
             else if (unit.disposition === app.DISPOSITION.ENEMY) add('hostile', app._label('disposition.hostile', 'Hostile'), 'danger');
         }
-        if (unit.flying) add('flying', app._label('unit.trait.flying', 'Flying'), 'ability');
+        if (!inCombat && unit.ranged) add('ranged', app._label('unit.trait.ranged', 'Ranged'), 'ability');
+        if (!inCombat && unit.flying) add('flying', app._label('unit.trait.flying', 'Flying'), 'ability');
+        if (!inCombat && unit.antiflying) add('antiflying', app._label('unit.trait.antiflying', 'Anti-flying'), 'ability');
         if (unit.darkvision) add('darkvision', app._label('unit.trait.darkvision', 'Darkvision'), 'ability');
         if (unit.sapience === 'person' || unit.speciesTraits?.includes('person')) add('person', app._label('unit.trait.person', 'Person'), 'special');
         return chips.slice(0, Math.max(0, limit));
+    },
+
+    tacticalSummary(app, unit) {
+        if (!unit || !app.combatState?.active) return '';
+        const row = unit.combatRow || '';
+        if (row !== 'back' && !unit.flying && !unit.ranged) return '';
+        if (unit.ranged && row === 'back') {
+            return app._label('combat.tacticalSummary.rangedBackRow', 'Ranged back-row attacker. Physical melee requires ranged/flying reach, or another answer such as Talk/Flee.');
+        }
+        if (unit.flying) {
+            return app._label('combat.tacticalSummary.flying', 'Flying target. Physical melee requires flying, ranged, or anti-flying reach.');
+        }
+        if (row === 'back') {
+            return app._label('combat.tacticalSummary.backRow', 'Back-row unit. Physical melee requires ranged/flying reach under current row rules.');
+        }
+        return '';
     },
 
     traitChips(app, unit, type, limit = 3) {

@@ -165,10 +165,10 @@ const YAW_COMBAT_TARGETING = {
         if (physical && unit?.CPun > 0 && unit.disposition === app.DISPOSITION.ENEMY) {
             const anyRanged = actors.some(actor => actor?.flying || actor?.ranged || actor?.antiflying);
             if (unit.flying && !anyRanged) {
-                return app._label('target.blockedFlying', '{name} is airborne. Use a flying, ranged, or anti-flying actor before choosing {action}.', { name, action: actionLabel });
+                return app._label('target.blockedFlying', '{name} is airborne. Your current actor has no flying/ranged/anti-flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { name, action: actionLabel });
             }
             if (unit.combatRow === 'back' && !anyRanged) {
-                return app._label('target.blockedBackRow', '{name} is in the back row. Use a flying, ranged, or anti-flying actor before choosing {action}.', { name, action: actionLabel });
+                return app._label('target.blockedBackRow', '{name} is in the back row. Your current actor has no ranged/flying reach for {action}. Use a flying, ranged, or anti-flying actor, or try Talk/Flee.', { name, action: actionLabel });
             }
         }
         return app._label('target.cannotSelectAs', 'Cannot select {name} as {action} target', { name, action: actionLabel });

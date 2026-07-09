@@ -6,7 +6,7 @@
 const YAW_MOBILE_COMBAT_TOOLBELT = {
     prompt(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active) return '';
-        if (app.syncSelection?.active) {
+        if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             if (app.syncSelection.phase === 'choose') {
                 return app._label('combat.sync.chooseAction', 'Choose Sync Action');
             }
@@ -33,7 +33,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
 
     intentButtons(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active || !actor || !(actor === app.player || app.party.includes(actor))) return '';
-        if (app.syncSelection?.active || app.feedSelection?.active) return '';
+        if ((app.syncSelection?.active && !app._isCombatGroupCompose?.()) || app.feedSelection?.active) return '';
         const buttons = app._combatActionButtons(actor, { compact: false });
         if (!buttons) return '';
         const label = app._escapeHtml(app._label('mobile.combat.intents', 'Combat intents'));
@@ -45,7 +45,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const button = (label, onclick, classes = 'action-btn', title = label, attrs = '') => `<button class="${classes}"${attrs ? ` ${attrs}` : ''} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${onclick}">${app._escapeHtml(label)}</button>`;
         const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
-        if (app.syncSelection?.active) {
+        if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             const cancelSync = app._label('combat.sync.cancel', 'Cancel Sync');
             if (app.syncSelection.phase === 'choose') {
                 const syncButton = (type, icon, key, fallback) => {

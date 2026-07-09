@@ -96,7 +96,7 @@ const YAW_UNIT_CARD = {
                 const targetLabel = app._escapeHtml(app._targetMarkLabel());
                 const targetTitle = app._escapeHtml(app._targetToggleLabel(unit, targetPressed));
                 const targetCommandAttrs = 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target"';
-                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;"><button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button></div>`;
+                actionButtons = `<div class="unit-actions" ${app._unitActionRowAttrs('party-selection', unit)} style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${app._syncParticipantButton(unit)}<button class="action-btn${targetClass}" ${targetCommandAttrs} ${app._selectionControlAttrs('target', targetPressed)} title="${targetTitle}" aria-label="${targetTitle}" onclick="event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')">${targetLabel}</button></div>`;
             }
         }
         if (!isParty && isCorpse) {

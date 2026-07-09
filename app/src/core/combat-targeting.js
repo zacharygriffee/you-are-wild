@@ -75,7 +75,8 @@ const YAW_COMBAT_TARGETING = {
 
     toggleMarkedTarget(app, targetId) {
         const targetPickActive = app.targetSelection?.source === 'combat' && app.targetSelection.action !== 'scavenge';
-        if (!app.combatState?.active || app.syncSelection?.active || app.feedSelection?.active) return false;
+        const composeActive = app._isCombatGroupCompose?.() || false;
+        if (!app.combatState?.active || (app.syncSelection?.active && !composeActive) || app.feedSelection?.active) return false;
         if (app.targetSelection && !targetPickActive) return false;
         const id = String(targetId || '');
         const target = app.creatures.find(unit => unit
@@ -109,6 +110,9 @@ const YAW_COMBAT_TARGETING = {
     executeIntentOnMarkedTarget(app, action, actor = app.activeActor || app._currentCombatActor() || app.player) {
         const targets = this.markedTargets(app);
         if (!targets.length) return false;
+        if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
+            return app.queueCombatGroupIntent(action);
+        }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors: [actor],

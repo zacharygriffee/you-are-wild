@@ -294,6 +294,15 @@
             _syncParticipantButton(unit, compact = false) {
                 return YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact);
             },
+            _isCombatGroupCompose() {
+                return YAW_COMBAT_SYNC.isSlotCompose(this);
+            },
+            toggleCombatGroupParticipant(id) {
+                return YAW_COMBAT_SYNC.toggleSlotParticipant(this, id);
+            },
+            queueCombatGroupIntent(action) {
+                return YAW_COMBAT_SYNC.queueSlotIntent(this, action);
+            },
             _isCurrentCombatActor(unit) {
                 return YAW_COMBAT_ACTOR_STATE.isCurrent(this, unit);
             },

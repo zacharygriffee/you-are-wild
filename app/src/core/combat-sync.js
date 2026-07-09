@@ -37,6 +37,102 @@ const YAW_COMBAT_SYNC = {
         return app._toggleSyncParticipantById(app._unitSelectionId(unit));
     },
 
+    isSlotCompose(app) {
+        return Boolean(app.syncSelection?.active && app.syncSelection.phase === 'compose' && app.syncSelection.source === 'slot-composer');
+    },
+
+    ensureSlotCompose(app) {
+        if (!app.combatState?.active || app.feedSelection?.active) return false;
+        const actor = app.activeActor || app._currentCombatActor() || app.player;
+        if (!actor || !app.party.includes(actor) || actor.CPun <= 0) return false;
+        const actorId = app._unitSelectionId(actor);
+        if (!this.isSlotCompose(app)) {
+            app.targetSelection = null;
+            app.syncSelection = {
+                active: true,
+                phase: 'compose',
+                source: 'slot-composer',
+                actorId,
+                participantIds: [actorId],
+                type: null
+            };
+        } else {
+            app.syncSelection.actorId = app.syncSelection.actorId || actorId;
+            const ids = app.syncSelection.participantIds || [];
+            app.syncSelection.participantIds = ids.includes(actorId) ? ids : [actorId, ...ids];
+        }
+        app._syncSelected = (app.syncSelection.participantIds || [])
+            .map(id => app.party.findIndex(unit => app._unitSelectionId(unit) === id))
+            .filter(index => index >= 0);
+        return true;
+    },
+
+    toggleSlotParticipant(app, id) {
+        if (!this.ensureSlotCompose(app)) return false;
+        const key = String(id || '');
+        const unit = app.party.find(candidate => app._unitSelectionId(candidate) === key || String(candidate.id || candidate.name) === key);
+        if (!unit || unit.CPun <= 0) return false;
+        const unitId = app._unitSelectionId(unit);
+        const actorId = app.syncSelection.actorId;
+        if (unitId !== actorId) {
+            const participantIds = app.syncSelection.participantIds || [];
+            app.syncSelection.participantIds = participantIds.includes(unitId)
+                ? participantIds.filter(existing => existing !== unitId)
+                : [...participantIds, unitId];
+        }
+        if (!(app.syncSelection.participantIds || []).includes(actorId)) {
+            app.syncSelection.participantIds = [actorId, ...(app.syncSelection.participantIds || [])];
+        }
+        app._syncSelected = (app.syncSelection.participantIds || [])
+            .map(pid => app.party.findIndex(candidate => app._unitSelectionId(candidate) === pid))
+            .filter(index => index >= 0);
+        app._renderInteractionState({ exploration: false, toolbelt: true });
+        return true;
+    },
+
+    typeForIntent(action) {
+        const map = {
+            fight: 'sync_fight',
+            flirt: 'sync_flirt',
+            fuck: 'sync_fuck',
+            feed: 'sync_feed'
+        };
+        return map[action] || null;
+    },
+
+    queueSlotIntent(app, action) {
+        if (!this.isSlotCompose(app)) return false;
+        const syncType = this.typeForIntent(action);
+        const participants = app._syncSelectedParticipants();
+        const targets = app._combatMarkedTargets?.() || [];
+        const command = app._buildPanelInteractionCommand({
+            mode: 'combat',
+            actors: participants,
+            targets,
+            action: syncType || action,
+            source: 'combat-slot-composer',
+            targetType: 'enemy',
+            shape: 'many-to-one',
+            timing: 'slowest-participant',
+            distribution: 'single',
+            constraints: {
+                requireCurrentTurn: true,
+                hostileOnly: true,
+                checkReach: true,
+                checkRows: true,
+                minActors: 2,
+                minTargets: 1,
+                maxTargets: 1
+            },
+            metadata: { baseAction: syncType ? app._syncBaseAction(syncType) : action, phase: 'compose' }
+        });
+        if (!syncType) {
+            app._reportInvalidCombatCommand?.(command, 'invalid-combat-target');
+            return false;
+        }
+        return app._dispatchInteractionCommand(command);
+    },
+
     confirmParticipants(app, syncType) {
         if (syncType && (!app.syncSelection?.active || app.syncSelection.type !== syncType)) app.selectSyncParticipants(syncType);
         const participants = app._syncSelectedParticipants();

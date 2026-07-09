@@ -26,6 +26,9 @@ const YAW_COMBAT_INTENTS = {
         }
         app.activeActor = current;
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
+            if (action !== 'scavenge' && app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
+                return app.queueCombatGroupIntent(action);
+            }
             if (action !== 'scavenge' && app._combatMarkedTarget?.()) {
                 return app._executeCombatIntentOnMarkedTarget(action, current);
             }
@@ -40,6 +43,9 @@ const YAW_COMBAT_INTENTS = {
             return true;
         }
         if (action === 'feed') {
+            if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
+                return app.queueCombatGroupIntent(action);
+            }
             app.combatTargetId = null;
             app.combatTargetIds = [];
             return app._dispatchPanelInteraction({

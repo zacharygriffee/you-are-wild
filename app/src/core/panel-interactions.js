@@ -22,7 +22,7 @@ const YAW_PANEL_INTERACTIONS = {
         if (app.feedSelection?.active) {
             return this.feed(app, actor, label);
         }
-        if (app.syncSelection?.active) {
+        if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             return this.sync(app, actor, label);
         }
         return '';

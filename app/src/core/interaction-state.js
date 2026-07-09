@@ -45,8 +45,10 @@ const YAW_INTERACTION_STATE = {
         if (app.syncSelection?.active) {
             const participants = this.syncSelectedParticipants(app);
             const actors = participants.length ? participants : [actor].filter(Boolean);
-            const targets = app.syncSelection.phase === 'target' ? (app._combatMarkedTargets?.() || []) : [];
-            const action = app.syncSelection.type || 'sync';
+            const targets = app.syncSelection.phase === 'target' || app.syncSelection.phase === 'compose'
+                ? (app._combatMarkedTargets?.() || [])
+                : [];
+            const action = app.syncSelection.type || (app.syncSelection.phase === 'compose' ? 'choose' : 'sync');
             return app._buildInteractionPlan({
                 mode: 'combat',
                 actors,
@@ -215,10 +217,18 @@ const YAW_INTERACTION_STATE = {
                 parts[0].value = this.unitNames(app, participants, parts[0].value);
                 parts[0].count = actorCount;
             }
-            intentId = app.syncSelection.type || 'sync';
-            intentText = this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
+            intentId = app.syncSelection.type || (app.syncSelection.phase === 'compose' ? 'choose' : 'sync');
+            intentText = app.syncSelection.phase === 'compose'
+                ? app._label('ui.chooseAction', 'Choose')
+                : this.actionLabel(app, app.syncSelection.type, app._label('action.sync', 'Sync'));
             if (app.syncSelection.phase === 'target') {
                 targetText = app._label('target.pickTarget', 'Pick target');
+            } else if (app.syncSelection.phase === 'compose') {
+                const markedTargets = app._combatMarkedTargets?.() || [];
+                if (markedTargets.length) {
+                    targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
+                    targetCount = markedTargets.length;
+                }
             }
         } else if (app.feedSelection?.active) {
             intentId = 'feed';
@@ -270,7 +280,7 @@ const YAW_INTERACTION_STATE = {
         if (!slot) return false;
         if (app.combatState?.active) {
             if (slot === 'actor') {
-                if (app.syncSelection?.active && app.syncSelection.phase === 'participants') {
+                if (app.syncSelection?.active && (app.syncSelection.phase === 'participants' || app.syncSelection.phase === 'compose')) {
                     const party = document.getElementById('mobile-party-card') || document.getElementById('party-panel');
                     party?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
                     return true;
@@ -385,6 +395,9 @@ const YAW_INTERACTION_STATE = {
     },
 
     toggleSyncParticipantById(app, id) {
+        if (app.syncSelection?.active && app.syncSelection.phase === 'compose' && app.syncSelection.source === 'slot-composer') {
+            return app.toggleCombatGroupParticipant?.(id) || false;
+        }
         if (!app.syncSelection?.active || app.syncSelection.phase !== 'participants') return false;
         const participantIds = app.syncSelection.participantIds || [];
         const actorId = app.syncSelection.actorId;

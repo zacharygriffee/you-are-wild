@@ -27,10 +27,16 @@ const YAW_COMBAT_ACTIONS = {
     },
 
     syncParticipantButton(app, unit, compact = false) {
-        if (!app.syncSelection?.active || app.syncSelection.phase !== 'participants' || !unit || unit.CPun <= 0) return '';
+        if (!unit || unit.CPun <= 0) return '';
+        const participantPhase = app.syncSelection?.active && app.syncSelection.phase === 'participants';
+        const composePhase = app._isCombatGroupCompose?.() || false;
+        const composeAvailable = app.combatState?.active && !app.syncSelection?.active && !app.feedSelection?.active;
+        if (!participantPhase && !composePhase && !composeAvailable) return '';
         const id = app._unitSelectionId(unit);
-        const selected = app._isSyncParticipant(unit);
-        const actorLocked = id === app.syncSelection.actorId;
+        const current = app._currentCombatActor?.() || app.activeActor || app.player;
+        const actorId = app.syncSelection?.actorId || (current ? app._unitSelectionId(current) : '');
+        const selected = app._isSyncParticipant(unit) || (!app.syncSelection?.active && id === actorId);
+        const actorLocked = id === actorId;
         const name = unit.name || app._label('ui.ally', 'ally');
         const label = actorLocked
             ? app._label('target.actorRole', 'Actor')
@@ -43,12 +49,17 @@ const YAW_COMBAT_ACTIONS = {
             : app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name }));
         const disabled = actorLocked ? ' disabled aria-disabled="true"' : '';
         const state = actorLocked ? 'locked' : (selected ? 'selected' : 'available');
-        const intent = app._escapeHtml(app.syncSelection?.type || 'sync');
-        const attrs = `data-command-surface="sync-participants" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="toggle-sync-participant" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="sync-participant" data-selection-mode="sync-participant" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
+        const intent = app._escapeHtml(app.syncSelection?.type || 'group-compose');
+        const surface = participantPhase ? 'sync-participants' : 'combat-group-actors';
+        const selectionMode = participantPhase ? 'sync-participant' : 'combat-group-participant';
+        const selectionControl = participantPhase ? 'sync-participant' : 'combat-group-participant';
+        const commandControl = participantPhase ? 'toggle-sync-participant' : 'toggle-combat-group-participant';
+        const attrs = `data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="${commandControl}" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="${selectionControl}" data-selection-mode="${selectionMode}" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
         const compactClass = compact ? ' corner-card-toggle agency-corner-toggle' : '';
         const compactSlot = compact ? ' data-corner-slot="agency"' : '';
         const content = compact ? '' : app._escapeHtml(label);
-        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();App._toggleSyncParticipantById('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
+        const onclick = participantPhase ? 'App._toggleSyncParticipantById' : 'App.toggleCombatGroupParticipant';
+        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();${onclick}('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
     },
 
     actionButtons(app, actor, options = {}) {
@@ -94,7 +105,7 @@ const YAW_COMBAT_ACTIONS = {
 
     desktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {
         if (!app.combatState?.active) return '';
-        if (app.syncSelection?.active || app.feedSelection?.active) {
+        if ((app.syncSelection?.active && !app._isCombatGroupCompose?.()) || app.feedSelection?.active) {
             return app._renderCombatPanelTray?.() || '';
         }
         if (app.targetSelection?.source === 'combat') {

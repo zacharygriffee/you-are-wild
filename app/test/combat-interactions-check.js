@@ -892,6 +892,132 @@ async function runStaleSyncParticipantFlow(page) {
   assert(state.lastLog.includes('Participants are no longer in the turn queue'), 'Rejected stale sync should explain the correction');
 }
 
+async function runCombatSlotGroupComposerFlow(page) {
+  const prepare = async () => {
+    await setupCombat(page, {
+      withAlly: true,
+      allyOverrides: { combatRow: 'front', Figh: 80 },
+      enemyOverrides: { combatRow: 'front', CPun: 100, MPun: 100 }
+    });
+    await page.evaluate(() => {
+      const ally = App.party.find(unit => unit.id === 'ally-1');
+      const enemy = App.creatures.find(unit => unit.id === 'enemy-1');
+      if (ally && !App.combatState.turnQueue.some(entry => entry.unit === ally)) {
+        App.combatState.turnQueue.splice(1, 0, { unit: ally, initiative: 15 });
+      }
+      App.combatState.currentTurn = 0;
+      App.activeActor = App.player;
+      App._advancedTurn = false;
+      if (enemy) enemy.combatRow = 'front';
+      App.showActorActions(App.player);
+    });
+  };
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await prepare();
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  let state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    source: App.syncSelection?.source || null,
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    sentence: document.querySelector('#selection-sentence')?.innerText || '',
+    oldConfirmVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]')),
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.phase, 'compose', 'Desktop actor badge should enter slot-composed group phase');
+  assert.strictEqual(state.source, 'slot-composer', 'Desktop actor badge should mark Sync state as slot-composed');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop actor badge should select current actor plus ally');
+  assert(state.sentence.includes('You') && state.sentence.includes('Ally'), 'Desktop group compose sentence should show both actors');
+  assert.strictEqual(state.oldConfirmVisible, false, 'Desktop slot group compose should not show old Confirm Participants');
+  assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop slot group compose should keep center stage free of controls');
+
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  state = await page.evaluate(() => ({
+    targetIds: App.combatTargetIds,
+    sentence: document.querySelector('#selection-sentence')?.innerText || '',
+    targetState: document.querySelector('#enemies-content button[data-command-control="mark-combat-target"]')?.getAttribute('data-selection-state') || ''
+  }));
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Desktop slot group compose should keep enemy Mark usable');
+  assert(state.sentence.includes('Enemy'), 'Desktop group compose sentence should show marked enemy target');
+  assert.strictEqual(state.targetState, 'selected', 'Desktop marked enemy should expose selected combat target state');
+
+  await page.locator(`#desktop-context-belt button[data-command-intent="fight"]`).first().click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    targetSelection: App.targetSelection,
+    syncCount: App.combatState.syncActions.length,
+    advanced: App._advancedTurn === true,
+    queuedType: App.combatState.syncActions[0]?.type || '',
+    queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
+    queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
+    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Desktop slot group queue should clear compose Sync state');
+  assert.strictEqual(state.targetSelection, null, 'Desktop slot group queue should leave no target-pick state');
+  assert.strictEqual(state.syncCount, 1, 'Desktop slot group Fight should queue one existing Sync action');
+  assert.strictEqual(state.advanced, true, 'Desktop slot group queue should advance the current turn');
+  assert.strictEqual(state.queuedType, 'sync_fight', 'Desktop slot group Fight should map to sync_fight');
+  assert.strictEqual(state.queuedTarget, 'enemy-1', 'Desktop slot group queue should preserve marked enemy');
+  assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1'], 'Desktop slot group queue should preserve selected actors');
+  assert.strictEqual(state.centerHasControls, false, 'Desktop slot group queue should keep center stage free of controls');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare();
+  await page.locator(`#mobile-party-strip button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  await page.locator(`#mobile-creature-strip button[data-command-control="mark-combat-target"]`).first().click();
+  state = await page.evaluate(() => ({
+    phase: App.syncSelection?.phase || null,
+    source: App.syncSelection?.source || null,
+    participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
+    sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
+    oldConfirmVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-sync-participants"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="fight"]')),
+    targetIds: App.combatTargetIds
+  }));
+  assert.strictEqual(state.phase, 'compose', 'Mobile actor badge should enter slot-composed group phase');
+  assert.strictEqual(state.source, 'slot-composer', 'Mobile actor badge should mark Sync state as slot-composed');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile actor badge should select current actor plus ally');
+  assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile compose sentence should show actors and target');
+  assert.strictEqual(state.oldConfirmVisible, false, 'Mobile slot group compose should not show old Confirm Participants');
+  assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Mobile slot group compose should keep enemy Mark usable');
+  assertMobileMicroCardsDoNotOverlap(await mobileMicroCardOverlapMetrics(page, '#mobile-party-strip'), 'Mobile slot group party strip');
+  assertMobileMicroCardsDoNotOverlap(await mobileMicroCardOverlapMetrics(page, '#mobile-creature-strip'), 'Mobile slot group enemy strip');
+
+  await page.locator(`#mobile-combat-toolbelt button[data-command-intent="fight"]`).first().click();
+  state = await page.evaluate(() => ({
+    syncSelection: App.syncSelection,
+    syncCount: App.combatState.syncActions.length,
+    queuedType: App.combatState.syncActions[0]?.type || '',
+    queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
+    queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name)
+  }));
+  assert.strictEqual(state.syncSelection, null, 'Mobile slot group queue should clear compose Sync state');
+  assert.strictEqual(state.syncCount, 1, 'Mobile slot group Fight should queue one existing Sync action');
+  assert.strictEqual(state.queuedType, 'sync_fight', 'Mobile slot group Fight should map to sync_fight');
+  assert.strictEqual(state.queuedTarget, 'enemy-1', 'Mobile slot group queue should preserve marked enemy');
+  assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1'], 'Mobile slot group queue should preserve selected actors');
+
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await prepare();
+  await page.locator(`#party-content button[data-command-surface="combat-group-actors"][onclick*="ally-1"]`).first().click();
+  state = await page.evaluate(() => {
+    const queued = App.executeCombatIntent('fight');
+    return {
+      queued,
+      syncCount: App.combatState.syncActions.length,
+      phase: App.syncSelection?.phase || null,
+      lastLog: App.log[App.log.length - 1]?.text || ''
+    };
+  });
+  assert.strictEqual(state.queued, false, 'Slot group intent with no target should not queue');
+  assert.strictEqual(state.syncCount, 0, 'Slot group missing target should not create a queued action');
+  assert.strictEqual(state.phase, 'compose', 'Slot group missing target should preserve compose state for correction');
+  assert(state.lastLog.includes('not valid') || state.lastLog.includes('valid'), 'Slot group missing target should report an invalid command');
+}
+
 async function runDesktopSyncComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   const prepare = async () => {
@@ -3444,6 +3570,7 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
     await runReachabilityMatrix(page);
     await runMultiEnemyCombatTargetingFlow(page);
     await runStaleSyncParticipantFlow(page);
+    await runCombatSlotGroupComposerFlow(page);
     await runDesktopSyncComposerFlow(page);
     await runMobileSyncComposerFlow(page);
     await runCombatNonTargetClearFlow(page);

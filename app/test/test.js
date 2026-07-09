@@ -12017,6 +12017,12 @@ test('Mobile combat toolbelt promotes enemy and party strips during targeting', 
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
   assertNotContains(mobilePartyChip, "executeCombatIntent('fight')", 'Mobile party chips should not duplicate combat intent controls');
   assertNotContains(mobilePartyChip, 'unit-combat-actions', 'Mobile party chips should not carry repeated combat action clusters');
+  assertContains(elements.get('mobile-party-strip').innerHTML, "toggleExplorationTarget('party','ally-mobile')", 'Mobile combat party strip should expose party member target marking');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-command-surface="party-target-routing" data-command-mode="combat"', 'Mobile combat party Mark should stay in combat command mode');
+  App.toggleExplorationTarget('party', 'ally-mobile');
+  assert(App.explorationTargetIds.includes('party:ally-mobile'), 'Mobile combat party Mark should toggle the party target state');
+  assertContains(elements.get('mobile-party-strip').innerHTML, 'data-selection-mode="mark-target" data-selection-state="marked"', 'Mobile combat party strip should show marked party target state');
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'mobile-combat-intents', 'Marking a party target during combat should keep the combat composer visible');
 
   App.selectTarget('fight');
   assertNotContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Targeting: Fight', 'Mobile combat toolbelt should not duplicate selected target guidance');
@@ -15359,8 +15365,15 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   App.activeActor = player;
   const currentActorCard = App.renderUnitCard(player, 0, 'party');
   const mobileCurrentActorChip = App.renderMobileUnitChip(player, 0, 'party');
+  const compactCombatActorCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop' });
   assertContains(currentActorCard, 'data-selection-roles="actor" data-selection-state="selected" aria-current="true"', 'Desktop current combat actor card should expose current actor metadata');
+  assertContains(currentActorCard, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Desktop combat party card should keep party target marking available');
+  assertContains(currentActorCard, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Desktop combat party target button should preserve marked party target semantics');
   assertContains(mobileCurrentActorChip, 'data-selection-roles="actor" data-selection-state="selected" aria-current="true"', 'Mobile current combat actor chip should expose current actor metadata');
+  assertContains(mobileCurrentActorChip, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Mobile combat party chip should keep party target marking available');
+  assertContains(mobileCurrentActorChip, 'data-selection-mode="mark-target" data-selection-state="marked" data-command-slot="target"', 'Mobile combat party target button should preserve marked party target semantics');
+  assertContains(compactCombatActorCard, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" data-selection-control="target"', 'Compact desktop combat party card should keep party target marking available');
+  assertContains(compactCombatActorCard, 'data-corner-slot="target"', 'Compact desktop combat party target control should live in the target corner');
   const availableCombatEnemyCard = App.renderUnitCard(enemy, 1, 'creature');
   const availableMobileCombatEnemyChip = App.renderMobileUnitChip(enemy, 1, 'creature');
   assertContains(availableCombatEnemyCard, 'data-action-scope="combat-target-mark" aria-label="Combat target marking controls for Enemy"', 'Desktop idle combat enemy row should identify combat target-marking scope');

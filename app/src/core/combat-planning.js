@@ -37,6 +37,8 @@ const YAW_COMBAT_PLANNING = {
 
     normalize(app) {
         if (!app.combatPlanSelection?.active) return false;
+        const current = this.currentActor(app);
+        const currentId = current && app.party.includes(current) && current.CPun > 0 ? this.actorId(app, current) : '';
         const validIds = [];
         for (const id of app.combatPlanSelection.actorIds || []) {
             const unit = app.party.find(candidate => this.actorId(app, candidate) === String(id) || String(candidate?.id || candidate?.name) === String(id));
@@ -45,7 +47,9 @@ const YAW_COMBAT_PLANNING = {
                 if (!validIds.includes(unitId)) validIds.push(unitId);
             }
         }
-        app.combatPlanSelection.actorIds = validIds;
+        app.combatPlanSelection.actorIds = currentId
+            ? [currentId, ...validIds.filter(id => id !== currentId)]
+            : validIds;
         if (app._combatMarkedTargets) app._combatMarkedTargets();
         return true;
     },
@@ -79,10 +83,14 @@ const YAW_COMBAT_PLANNING = {
         const unit = app.party.find(candidate => this.actorId(app, candidate) === key || String(candidate?.id || candidate?.name) === key);
         if (!unit || unit.CPun <= 0) return false;
         const unitId = this.actorId(app, unit);
+        const current = this.currentActor(app);
+        const currentId = current ? this.actorId(app, current) : '';
         const ids = app.combatPlanSelection.actorIds || [];
-        app.combatPlanSelection.actorIds = ids.includes(unitId)
-            ? ids.filter(existing => existing !== unitId)
-            : [...ids, unitId];
+        app.combatPlanSelection.actorIds = unitId === currentId
+            ? [unitId, ...ids.filter(existing => existing !== unitId)]
+            : (ids.includes(unitId)
+                ? ids.filter(existing => existing !== unitId)
+                : [...ids, unitId]);
         app.combatPlanSelection.explicitActors = true;
         app.targetSelection = null;
         this.normalize(app);
@@ -143,6 +151,8 @@ const YAW_COMBAT_PLANNING = {
         const targets = app._combatMarkedTargets?.() || [];
         const current = this.currentActor(app);
         const includesCurrent = Boolean(current && actors.some(unit => this.actorId(app, unit) === this.actorId(app, current)));
+        const partyTargets = (app._getExplorationTargets?.() || []).filter(unit => app.party.includes(unit));
+        const supportIntents = new Set(['feed', 'heal', 'guard', 'assist']);
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors,
@@ -154,7 +164,7 @@ const YAW_COMBAT_PLANNING = {
             timing: 'slowest-participant',
             distribution: 'single',
             constraints: {
-                requireCurrentTurn: includesCurrent,
+                requireCurrentTurn: true,
                 hostileOnly: true,
                 checkReach: true,
                 checkRows: true,
@@ -165,11 +175,19 @@ const YAW_COMBAT_PLANNING = {
             metadata: {
                 baseAction: syncType ? app._syncBaseAction(syncType) : action,
                 phase: 'confirm',
-                consumeCurrentTurn: includesCurrent
+                consumeCurrentTurn: true
             }
         });
         if (!action || !syncType) {
             app._reportInvalidCombatCommand?.(command, 'missing-action');
+            return false;
+        }
+        if (!includesCurrent) {
+            app._reportInvalidCombatCommand?.(command, 'missing-lead-actor');
+            return false;
+        }
+        if (partyTargets.length > 0 && !supportIntents.has(action)) {
+            app._reportInvalidCombatCommand?.({ ...command, targets: partyTargets, targetType: 'party' }, 'party-target-blocked');
             return false;
         }
         const valid = app._validateInteractionCommand?.(command) || { ok: true };

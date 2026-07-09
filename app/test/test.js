@@ -9571,6 +9571,57 @@ test('Sync target pick dispatches through a slowest-participant InteractionPlan'
   assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should retain group actor constraints');
 });
 
+test('Combat group planner requires current actor lead and blocks hostile party targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'doctrine-player', Figh: 20, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'doctrine-ally', Figh: 18, combatRow: 'front' });
+  const partyTarget = makeUnit('Party Target', { id: 'doctrine-party-target', CPun: 100, MPun: 100, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'doctrine-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally, partyTarget];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: partyTarget, initiative: 15 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+
+  assertEqual(App.toggleCombatPlanActor('doctrine-player'), true, 'Current actor badge remains selectable');
+  assertEqual(App._combatPlanActors().map(unit => unit.id).join(','), 'doctrine-player', 'Toggling current actor should not remove the required lead');
+  assertEqual(App.toggleCombatPlanActor('doctrine-ally'), true, 'Non-current actor can join the group plan');
+  App.toggleCombatTarget('doctrine-enemy');
+  App.setCombatPlanIntent('fight');
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  assertEqual(App.confirmCombatPlan(), true, 'Group plan with current lead, ally, one enemy target, and Fight should queue');
+  assertEqual(advanced, 1, 'Committed group plan should spend the current lead turn');
+  assertEqual(App.combatState.syncActions.length, 1, 'Committed group plan should queue one slowest-participant action');
+  assertEqual(App.combatState.syncActions[0].participants.map(unit => unit.id).join(','), 'doctrine-player,doctrine-ally', 'Queued group should include the current actor lead and selected participant');
+  assertEqual(App.combatState.syncActions[0].plan.constraints.requireCurrentTurn, true, 'Queued group plan should require the current turn lead');
+  assertEqual(App.combatState.turnQueue[0].actedThisRound, true, 'Committed group plan should lock the current lead as having spent the turn');
+  assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'Committed group plan should lock non-current participants as having spent their turns');
+
+  App.combatState.syncActions = [];
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: 'fight',
+    explicitActors: true
+  };
+  App.combatTargetIds = [App._unitSelectionId(enemy)];
+  App.toggleExplorationTarget('party', 'doctrine-party-target');
+  assertEqual(App.confirmCombatPlan(), false, 'Hostile combat group plan should reject marked party targets');
+  assertContains(App.combatCorrectionMessage.text, 'Party targets are only allowed for support group intents in combat.', 'Hostile party target rejection should explain the support-only doctrine');
+  assertEqual(App.combatState.syncActions.length, 0, 'Rejected party-target hostile group plan should not queue');
+  assertEqual(App.combatPlanSelection.active, true, 'Rejected party-target hostile group plan should preserve planner state');
+});
+
 test('Current InteractionPlan reflects exploration and combat selection side-state', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'current-plan-player', Figh: 20, combatRow: 'front' });

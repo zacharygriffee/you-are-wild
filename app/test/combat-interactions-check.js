@@ -1064,7 +1064,6 @@ async function runCombatSlotGroupComposerFlow(page) {
     App.renderDesktopPlaySurface();
     App.renderDesktopCombatComposer(App.player);
   });
-  await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="player-1"]`).first().click();
   await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
   await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-2"]`).first().click();
   await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
@@ -1077,11 +1076,11 @@ async function runCombatSlotGroupComposerFlow(page) {
     currentActed: Boolean(App.combatState.turnQueue[0]?.actedThisRound),
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name)
   }));
-  assert.strictEqual(state.combatPlanSelection, null, 'Desktop excluded-current Confirm Group should clear planner state');
-  assert.strictEqual(state.syncCount, 1, 'Desktop excluded-current Confirm Group should queue one Sync action');
-  assert.strictEqual(state.advanced, false, 'Desktop excluded-current Confirm Group should not spend the current actor turn');
-  assert.strictEqual(state.currentActed, false, 'Desktop excluded-current Confirm Group should not mark current actor as acted');
-  assert.deepStrictEqual(state.queuedParticipants, ['ally-1', 'ally-2'], 'Desktop excluded-current Confirm Group should queue only selected non-current actors');
+  assert.strictEqual(state.combatPlanSelection, null, 'Desktop Confirm Group should clear planner state when lead stays included');
+  assert.strictEqual(state.syncCount, 1, 'Desktop Confirm Group should queue one Sync action with the current actor as lead');
+  assert.strictEqual(state.advanced, true, 'Desktop Confirm Group should spend the current actor turn when committing the group');
+  assert.strictEqual(state.currentActed, true, 'Desktop Confirm Group should mark the current actor as acted');
+  assert.deepStrictEqual(state.queuedParticipants, ['player-1', 'ally-1', 'ally-2'], 'Desktop group planning should preserve the current actor as lead');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare();

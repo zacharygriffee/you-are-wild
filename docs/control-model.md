@@ -65,6 +65,23 @@ Battle mode owns turn order, combat constraints, and event focus. It is related 
 - Desktop battle layout should mirror the same conceptual flow as mobile: party, intent, enemy, and center-stage combat focus remain aligned even when wider panels expose more detail.
 - Flee is party-member dependent. One or more party members may flee while others remain in battle; a full-party flee exits Battle mode and returns to directional escape selection on the play surface.
 
+#### Combat Group Planning Doctrine
+
+Combat group planning still uses the shared `InteractionPlan` model:
+
+`Actor(s) -> Target(s) -> Intent -> Timing -> Resolution`
+
+The combat UI grammar is:
+
+`Lead Actor + Participants -> Target(s) -> Intent -> Commit`
+
+- The current turn actor is the required Lead Actor for this phase of the system. Do not allow group plans that exclude the current actor yet.
+- Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
+- Group combat targets one enemy by default. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
+- Party targets are allowed in combat group planning only for support intents such as Feed, Heal, Guard, Assist, and future buffs. Hostile group actions against party members are blocked unless a specific future mechanic explicitly permits them.
+- If the target or participants become invalid before resolution, the plan fizzles cleanly and emits log/story feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
+- There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
+
 ### Selection mode
 
 Selection mode owns who is acting and who or what is being acted on.

@@ -15099,7 +15099,7 @@ test('Player stats view converges on party player when references drift', () => 
 
 test('Unit cards and mobile chips render compact tactical bars accessibly', () => {
   const { App, elements } = loadAppForCombat();
-  const player = makeUnit('You', { id: 'player-1', CPun: 80, MPun: 100, CPle: 25, MPle: 100, hunger: 45, maxHunger: 90 });
+  const player = makeUnit('You', { id: 'player-1', icon: '🧙', CPun: 80, MPun: 100, CPle: 25, MPle: 100, hunger: 45, maxHunger: 90 });
   const ally = makeUnit('Ally', { id: 'ally-1', CPun: 999, MPun: 100, CPle: -5, MPle: 100 });
   const creature = makeUnit('Fox', { id: 'fox-1', disposition: App.DISPOSITION.FRIENDLY, CPun: 30, MPun: 60, CPle: 20, MPle: 80, hunger: 200, maxHunger: 100 });
   App.player = player;
@@ -15110,6 +15110,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   const allyCard = App.renderUnitCard(ally, 1, 'party');
   const creatureCard = App.renderUnitCard(creature, 0, 'creature');
   const desktopMediumCard = App.renderTacticalCard(creature, 0, 'creature', { presentation: 'desktop', density: 'medium' });
+  const desktopMediumPartyCard = App.renderTacticalCard(player, 0, 'party', { presentation: 'desktop', density: 'medium' });
   const mobilePartyChip = App.renderMobileUnitChip(player, 0, 'party');
   const mobileCreatureChip = App.renderMobileUnitChip(creature, 0, 'creature');
 
@@ -15127,6 +15128,7 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(partyCard, 'aria-expanded="false"', 'Desktop cards should expose their detail toggle state');
   assertContains(partyCard, "event.key==='Enter'||event.key===' '", 'Desktop unit cards should activate with Enter or Space');
   assertContains(partyCard, 'selectExplorationActor(0)', 'Act action should remain available from party card');
+  assertContains(desktopMediumPartyCard, "--compact-card-icon-content:&#39;🧙&#39;", 'Compact actor badge should use the unit avatar icon');
   assertContains(partyCard, "toggleExplorationTarget('party'", 'Target action should remain available from party card');
   assertNotContains(partyCard, "App.showIntentMenu('party',0,'desktop')", 'Party card should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(partyCard, '>...</button>', 'Party card should not expose an ellipsis menu button that duplicates actor/target controls');
@@ -15137,10 +15139,12 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertNotContains(creatureCard, '>...</button>', 'Creature card should not expose an ellipsis menu button that duplicates marked-target controls');
   assertContains(mobilePartyChip, 'mobile-stat-rings', 'Mobile party chip should use compact circular tactical status rings');
   assertContains(mobilePartyChip, 'role="button" tabindex="0"', 'Mobile unit chips should be keyboard focusable');
+  assertContains(mobilePartyChip, "--mobile-card-icon-content:&#39;🧙&#39;", 'Mobile compact actor badge should use the unit avatar icon');
   assertContains(mobilePartyChip, 'aria-label="Show details for You"', 'Mobile chip click should describe detail toggling rather than actor selection');
   assertContains(mobilePartyChip, "event.key==='Enter'||event.key===' '", 'Mobile unit chips should activate with Enter or Space');
   assertContains(mobileCreatureChip, 'mobile-stat-rings', 'Mobile creature chip should use compact circular tactical status rings');
   assertContains(mobilePartyChip, 'aria-label="Hunger: 50%"', 'Mobile party chip should expose hunger bar label');
+  assertContains(templateContent, '.density-medium.has-corner-controls[data-surface-role="actor-card"] .unit-icon', 'Medium actor cards should hide duplicate body icons when the actor badge carries the avatar');
   assertContains(desktopMediumCard, 'density-medium', 'Desktop rail cards should identify the medium density tier');
   assertContains(desktopMediumCard, 'tactical-stat-rings', 'Medium tactical cards should use shared circular tactical status rings');
   assertNotContains(desktopMediumCard, 'unit-bars compact', 'Medium tactical cards should not render bulky linear compact bars');

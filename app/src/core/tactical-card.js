@@ -22,6 +22,17 @@ const YAW_TACTICAL_CARD = {
         return text.length > 18 ? `${text.slice(0, 15).trim()}...` : text;
     },
 
+    cssContentValue(app, value) {
+        const text = String(value || '•').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return app._escapeHtml(`'${text}'`);
+    },
+
+    agencyIconStyle(app, unit, fallback = '👤') {
+        const icon = unit?.icon || fallback;
+        const content = this.cssContentValue(app, icon);
+        return `style="--compact-card-icon-content:${content};--mobile-card-icon-content:${content};"`;
+    },
+
     controlButton(app, classes, label, title, onclick, attrs = '') {
         const cornerSlot = classes.includes('agency-corner-toggle')
             ? ' data-corner-slot="agency"'
@@ -57,7 +68,7 @@ const YAW_TACTICAL_CARD = {
         } else if (isParty && !app.combatState.active) {
             const explicitlySelectedActor = app._isExplicitExplorationActor?.(unit);
             const selectedClass = explicitlySelectedActor ? ' primary' : '';
-            const actorAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', explicitlySelectedActor)}`;
+            const actorAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', explicitlySelectedActor)} ${this.agencyIconStyle(app, unit)}`;
             agencyControl = this.controlButton(app, 'action-btn actor-toggle micro-card-toggle agency-corner-toggle' + selectedClass, app._label('target.actShort', 'Act'), app._actorToggleLabel(unit, explicitlySelectedActor), `event.stopPropagation();App.selectExplorationActor(${index})`, actorAttrs);
         }
         let targetControl = '';
@@ -139,7 +150,7 @@ const YAW_TACTICAL_CARD = {
             const explicitlySelectedActor = app._isExplicitExplorationActor?.(unit);
             const selectedClass = explicitlySelectedActor ? ' primary' : '';
             const targetClass = targetSelected ? ' primary' : '';
-            const actorAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', explicitlySelectedActor)}`;
+            const actorAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', explicitlySelectedActor)} ${this.agencyIconStyle(app, unit)}`;
             const targetAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
             actionButtons = `<div class="unit-actions tactical-card-selection-controls corner-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${button('action-btn actor-toggle corner-card-toggle agency-corner-toggle' + selectedClass, app._label('target.actShort', 'Act'), app._actorToggleLabel(unit, explicitlySelectedActor), `event.stopPropagation();App.selectExplorationActor(${index})`, actorAttrs)}${button('action-btn target-toggle corner-card-toggle target-corner-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs)}</div>`;
         } else if (isParty && app.combatState.active && app.syncSelection?.active && app.syncSelection.phase === 'participants') {
@@ -245,7 +256,7 @@ const YAW_TACTICAL_CARD = {
             const targetClass = targetSelected ? ' primary' : '';
             const actorPressed = explicitlySelectedActor;
             const targetPressed = targetSelected;
-            const actorCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', actorPressed)}`;
+            const actorCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-actor" ${app._selectionControlAttrs('actor', actorPressed)} ${this.agencyIconStyle(app, unit)}`;
             const targetCommandAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetPressed)}`;
             actionButtons = isExpanded
                 ? `<div class="unit-actions tactical-card-selection-controls inline-card-controls" ${app._unitActionRowAttrs('party-selection', unit)}>${chipButton('action-btn actor-toggle' + selectedClass, app._label('target.act', 'Actor'), app._actorToggleLabel(unit, actorPressed), `event.stopPropagation();App.selectExplorationActor(${index})`, actorCommandAttrs)}${chipButton('action-btn target-toggle' + targetClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetPressed), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetCommandAttrs)}</div>`

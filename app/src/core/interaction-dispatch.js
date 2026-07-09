@@ -253,10 +253,12 @@ const YAW_INTERACTION_DISPATCH = {
         let text = app._label('combat.invalidCommand', 'That combat action is not valid right now.');
         if (reason === 'cannot-reach' && target) {
             text = app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name });
-        } else if (reason === 'too-many-targets' && command?.source === 'combat-slot-composer') {
+        } else if (reason === 'too-many-targets' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
             text = app._label('combat.group.oneTargetOnly', 'Choose one target for a group action.');
-        } else if (reason === 'missing-target' && command?.source === 'combat-slot-composer') {
+        } else if (reason === 'missing-target' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
             text = app._label('combat.group.needTarget', 'Choose one target for a group action.');
+        } else if (reason === 'missing-action' && command?.source === 'combat-planner') {
+            text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
         }
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
         app.renderLog();

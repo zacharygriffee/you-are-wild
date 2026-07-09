@@ -16,6 +16,7 @@ const YAW_COMBAT_SYNC = {
         app.targetSelection = null;
         app.combatTargetId = null;
         app.combatTargetIds = [];
+        app.combatPlanSelection = null;
         app.syncSelection = { active: true, phase: 'choose', actorId, participantIds: [actorId], type: null };
         app._renderInteractionState({ exploration: false, toolbelt: true });
         return true;
@@ -26,6 +27,7 @@ const YAW_COMBAT_SYNC = {
         const actorId = app._unitSelectionId(actor);
         app.combatTargetId = null;
         app.combatTargetIds = [];
+        app.combatPlanSelection = null;
         app.syncSelection = { active: true, phase: 'participants', actorId, participantIds: [actorId], type: syncType };
         app._syncSelected = [app.party.indexOf(actor)].filter(index => index >= 0);
         app._renderInteractionState({ exploration: false, toolbelt: true });
@@ -271,6 +273,7 @@ const YAW_COMBAT_SYNC = {
             plan
         });
         app.log.push({ text: `${participants.map(p => p.name).join(', ')} prepare a ${syncType.replace('sync_', '')} on ${target.name}! Resolves when the slowest participant acts.`, type: 'combat' });
+        const consumeCurrentTurn = command?.metadata?.consumeCurrentTurn !== false;
         for (const p of participants) {
             const qEntry = app.combatState.turnQueue.find(q => q.unit === p);
             if (qEntry) qEntry.actedThisRound = true;
@@ -279,7 +282,11 @@ const YAW_COMBAT_SYNC = {
         app.renderLog();
         app.renderParty();
         app.renderCreatures();
-        app.nextTurn();
+        if (consumeCurrentTurn) app.nextTurn();
+        else {
+            app._renderInteractionState({ exploration: false, toolbelt: true });
+            app.renderCombatSceneForTurn?.(app._currentCombatActor?.() || app.activeActor || app.player);
+        }
         return true;
     },
 

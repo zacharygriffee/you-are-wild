@@ -26,6 +26,9 @@ const YAW_COMBAT_INTENTS = {
         }
         app.activeActor = current;
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
+            if (action !== 'scavenge' && YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
+                return app.setCombatPlanIntent(action);
+            }
             if (action !== 'scavenge' && app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
                 return app.queueCombatGroupIntent(action);
             }
@@ -43,6 +46,9 @@ const YAW_COMBAT_INTENTS = {
             return true;
         }
         if (action === 'feed') {
+            if (YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
+                return app.setCombatPlanIntent(action);
+            }
             if (app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {
                 return app.queueCombatGroupIntent(action);
             }
@@ -60,24 +66,28 @@ const YAW_COMBAT_INTENTS = {
         if (action === 'sync') {
             app.combatTargetId = null;
             app.combatTargetIds = [];
+            app.combatPlanSelection = null;
             app.showSyncMenu();
             return true;
         }
         if (action === 'moveRow') {
             app.combatTargetId = null;
             app.combatTargetIds = [];
+            app.combatPlanSelection = null;
             app.moveCombatRow();
             return true;
         }
         if (action === 'flee' && current.name === app.player?.name) {
             app.combatTargetId = null;
             app.combatTargetIds = [];
+            app.combatPlanSelection = null;
             app.attemptFlee();
             return true;
         }
         if (action === 'skip') {
             app.combatTargetId = null;
             app.combatTargetIds = [];
+            app.combatPlanSelection = null;
             app.nextTurn();
             return true;
         }

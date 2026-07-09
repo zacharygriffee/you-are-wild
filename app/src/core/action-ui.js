@@ -16,7 +16,8 @@ const YAW_ACTION_UI = {
         const isSelected = app.targetSelection?.source === 'combat'
             && app.targetSelection.action === key
             && (!app.targetSelection.actorId || app.targetSelection.actorId === actorId || app.targetSelection.actorId === actor?.id || app.targetSelection.actorId === actor?.name);
-        const classes = [extraClass, isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+        const isPlanned = app._combatPendingIntent?.() === key;
+        const classes = [extraClass, (isSelected || isPlanned) ? 'selected' : ''].filter(Boolean).join(' ');
         const intent = app._escapeHtml(key);
         return app._iconActionButton(key, app._actionIcon(key), `event.stopPropagation();App.executeCombatIntent('${key}')`, classes, `data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent"`);
     },

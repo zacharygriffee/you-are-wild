@@ -2110,7 +2110,8 @@
         }
 
         .micro-tactical-card .action-btn[data-command-control="pick-target"],
-        .micro-tactical-card .action-btn[data-command-control="toggle-sync-participant"] {
+        .micro-tactical-card .action-btn[data-command-control="toggle-sync-participant"],
+        .micro-tactical-card .action-btn[data-command-control="toggle-combat-plan-actor"] {
             --compact-card-icon-content: "⌖";
             --compact-card-icon-color: var(--accent-warning);
             --compact-card-icon-bg: rgba(255, 184, 0, 0.12);
@@ -2118,10 +2119,6 @@
             --compact-card-icon-active-bg: rgba(255, 184, 0, 0.24);
             --compact-card-icon-active-border: var(--accent-warning);
             --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
-        }
-
-        .micro-tactical-card .action-btn[data-selection-control="sync-participant"][data-selection-state="selected"] {
-            --compact-card-icon-content: "✓";
         }
 
         .micro-tactical-card .action-btn[data-selection-control="sync-participant"][data-selection-state="locked"] {
@@ -2282,8 +2279,8 @@
             --compact-card-icon-active-ring: rgba(255, 184, 0, 0.3);
         }
 
-        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
-            --compact-card-icon-content: "＋";
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"],
+        .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-combat-plan-actor"] {
             --compact-card-icon-color: var(--accent-warning);
             --compact-card-icon-bg: rgba(255, 184, 0, 0.12);
             --compact-card-icon-border: rgba(255, 184, 0, 0.55);
@@ -3965,8 +3962,9 @@
             }
 
             .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"],
-            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
-                --mobile-card-icon-content: "＋";
+            .panel-party .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-combat-plan-actor"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"],
+            .panel-enemies .unit-card.compact-tactical-card .tactical-card-selection-controls .action-btn[data-command-control="toggle-combat-plan-actor"] {
                 --mobile-card-icon-color: var(--accent-warning);
                 --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
                 --mobile-card-icon-border: rgba(255, 184, 0, 0.55);
@@ -5716,8 +5714,8 @@
                 --mobile-card-icon-border: rgba(64, 180, 255, 0.45);
             }
 
-            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"] {
-                --mobile-card-icon-content: "＋";
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-sync-participant"],
+            .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="toggle-combat-plan-actor"] {
                 --mobile-card-icon-color: var(--accent-warning);
                 --mobile-card-icon-bg: rgba(255, 184, 0, 0.12);
                 --mobile-card-icon-border: rgba(255, 184, 0, 0.55);

@@ -18,6 +18,9 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.feedSelection?.active) {
             return app._label('feed.optionsTitle', 'Feed Options');
         }
+        if (app.combatPlanSelection?.active) {
+            return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action: app._combatPendingIntent?.() ? app._uiLabel(app._combatPendingIntent()) : app._label('ui.chooseAction', 'Choose') });
+        }
         if (app.targetSelection?.source === 'combat') {
             const action = app._uiLabel(app.targetSelection.action || 'action');
             return app._label('mobile.combat.markTargets', 'Mark target(s) for {action}.', { action });
@@ -45,6 +48,10 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const button = (label, onclick, classes = 'action-btn', title = label, attrs = '') => `<button class="${classes}"${attrs ? ` ${attrs}` : ''} title="${app._escapeHtml(title)}" aria-label="${app._escapeHtml(title)}" onclick="${onclick}">${app._escapeHtml(label)}</button>`;
         const row = (label, surface, buttons) => `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(label)}"><div class="unit-actions unit-combat-actions compact" data-command-surface="${app._escapeHtml(surface)}" data-command-mode="combat" data-command-grammar="actor-target-intent">${buttons}</div></div>`;
         const cancelLabel = app._label('ui.cancel', 'Cancel');
+        if (app.combatPlanSelection?.active) {
+            const controls = app._combatPlanControls?.() || '';
+            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(app._label('combat.group.confirm', 'Confirm Group'))}">${controls}</div>` : '';
+        }
         if (app._isCombatGroupCompose?.()) {
             const clearGroup = app._label('combat.group.clear', 'Clear Group');
             return row(clearGroup, 'combat-group-compose', button(clearGroup, 'event.stopPropagation();App.clearCombatGroupCompose()', 'action-btn', clearGroup, 'data-command-surface="combat-group-compose" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="clear-combat-group" data-command-slot="exit"'));

@@ -294,6 +294,36 @@
             _syncParticipantButton(unit, compact = false) {
                 return YAW_COMBAT_ACTIONS.syncParticipantButton(this, unit, compact);
             },
+            _isCombatPlanActive() {
+                return YAW_COMBAT_PLANNING.isActive(this);
+            },
+            _combatPlanActors() {
+                return YAW_COMBAT_PLANNING.actors(this);
+            },
+            _isCombatPlanActor(unit) {
+                return YAW_COMBAT_PLANNING.isActorSelected(this, unit);
+            },
+            toggleCombatPlanActor(id) {
+                return YAW_COMBAT_PLANNING.toggleActor(this, id);
+            },
+            setCombatPlanIntent(action) {
+                return YAW_COMBAT_PLANNING.setIntent(this, action);
+            },
+            confirmCombatPlan() {
+                return YAW_COMBAT_PLANNING.confirm(this);
+            },
+            clearCombatPlan(reason = 'cancel') {
+                return YAW_COMBAT_PLANNING.clear(this, reason);
+            },
+            _combatPlanControls() {
+                return YAW_COMBAT_PLANNING.controls(this);
+            },
+            _combatPendingIntent() {
+                return YAW_COMBAT_PLANNING.pendingIntent(this);
+            },
+            executeQuickCombatIntentOnTarget(action, targetId) {
+                return YAW_COMBAT_PLANNING.quickTargetClick(this, action, targetId);
+            },
             _isCombatGroupCompose() {
                 return YAW_COMBAT_SYNC.isSlotCompose(this);
             },
@@ -744,6 +774,7 @@
             targetSelection: null,
             combatTargetId: null,
             combatTargetIds: [],
+            combatPlanSelection: null,
             activeActor: null,
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,

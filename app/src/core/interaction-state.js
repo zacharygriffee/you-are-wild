@@ -8,6 +8,7 @@ const YAW_INTERACTION_STATE = {
         app.targetSelection = null;
         app.combatTargetId = null;
         app.combatTargetIds = [];
+        app.combatPlanSelection = null;
         app.syncSelection = null;
         app.feedSelection = null;
         app._syncSelected = [];
@@ -42,6 +43,33 @@ const YAW_INTERACTION_STATE = {
         }
 
         const actor = this.combatActor(app);
+        if (app.combatPlanSelection?.active) {
+            const actors = app._combatPlanActors?.() || [];
+            const targets = app._combatMarkedTargets?.() || [];
+            const action = app._combatPendingIntent?.() || 'choose';
+            return app._buildInteractionPlan({
+                mode: 'combat',
+                actors,
+                targets,
+                action,
+                source: 'combat-planner',
+                targetType: 'enemy',
+                shape: actors.length > 1 ? 'many-to-one' : undefined,
+                timing: 'slowest-participant',
+                distribution: 'single',
+                constraints: {
+                    requireCurrentTurn: actors.some(unit => app._isCurrentCombatActor?.(unit)),
+                    hostileOnly: true,
+                    checkReach: true,
+                    checkRows: true,
+                    minActors: 2,
+                    minTargets: 1,
+                    maxTargets: 1
+                },
+                metadata: { phase: action === 'choose' ? 'intent' : 'confirm', baseAction: action }
+            });
+        }
+
         if (app.syncSelection?.active) {
             const participants = this.syncSelectedParticipants(app);
             const actors = participants.length ? participants : [actor].filter(Boolean);
@@ -209,7 +237,27 @@ const YAW_INTERACTION_STATE = {
         let targetCount = 0;
         let intentText = app._label('ui.chooseAction', 'Choose');
         let intentId = 'choose';
-        if (app.syncSelection?.active) {
+        if (app.combatPlanSelection?.active) {
+            const actors = app._combatPlanActors?.() || [];
+            if (actors.length > 0) {
+                actorCount = actors.length;
+                parts[0].label = this.actorLabel(app, actorCount);
+                parts[0].value = this.unitNames(app, actors, parts[0].value);
+                parts[0].count = actorCount;
+            } else {
+                parts[0].value = app._label('target.none', 'None');
+                parts[0].count = 0;
+            }
+            const markedTargets = app._combatMarkedTargets?.() || [];
+            if (markedTargets.length) {
+                targetText = this.unitNames(app, markedTargets, app._label('target.none', 'None'));
+                targetCount = markedTargets.length;
+            } else {
+                targetText = app._label('target.pickTarget', 'Pick target');
+            }
+            intentId = app._combatPendingIntent?.() || 'choose';
+            intentText = this.actionLabel(app, intentId, app._label('ui.chooseAction', 'Choose'));
+        } else if (app.syncSelection?.active) {
             const participants = this.syncSelectedParticipants(app);
             if (participants.length > 0) {
                 actorCount = participants.length;
@@ -280,6 +328,11 @@ const YAW_INTERACTION_STATE = {
         if (!slot) return false;
         if (app.combatState?.active) {
             if (slot === 'actor') {
+                if (app.combatPlanSelection?.active) {
+                    const party = document.getElementById('mobile-party-card') || document.getElementById('party-panel');
+                    party?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+                    return true;
+                }
                 if (app.syncSelection?.active && (app.syncSelection.phase === 'participants' || app.syncSelection.phase === 'compose')) {
                     const party = document.getElementById('mobile-party-card') || document.getElementById('party-panel');
                     party?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });

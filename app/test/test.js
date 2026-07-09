@@ -2035,7 +2035,7 @@ test('Combat action helper module is registered before app code', () => {
   assertContains(combatActionsContent, "belt.setAttribute('data-command-actor-count', String(meta.actorCount ?? 0))", 'Desktop combat composer root should expose actor count metadata');
   assertContains(combatActionsContent, "belt.setAttribute('data-command-target-count', String(meta.targetCount ?? 0))", 'Desktop combat composer root should expose target count metadata');
   assertContains(combatActionsContent, "belt.setAttribute('data-command-intent', meta.intent || 'choose')", 'Desktop combat composer root should expose current intent metadata');
-  assertContains(combatActionsContent, "app._combatIntentButton('fight', actor, 'primary')", 'Combat action helper should keep fight on the shared combat intent button path');
+  assertContains(combatActionsContent, "app._combatIntentButton('fight', actor)", 'Combat action helper should keep fight on the shared combat intent button path');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed"', 'Combat Feed button should identify the combat intent surface');
   assertContains(combatActionsContent, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="sync"', 'Combat Sync button should identify the combat intent surface');
   assertContains(combatActionsContent, "App.executeCombatIntent('moveRow')", 'Combat action helper should keep row movement on the shared combat dispatcher');

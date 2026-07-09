@@ -8,7 +8,9 @@ const YAW_UNIT_SELECTION = {
         if (!unit) return [];
         const roles = [];
         if (app.combatState?.active) {
-            if (type === 'party' && app._isCurrentCombatActor(unit)) roles.push('actor');
+            if (type === 'party' && app._isCombatPlanActive?.()) {
+                if (app._isCombatPlanActor?.(unit)) roles.push(app._isCurrentCombatActor(unit) ? 'actor' : 'participant');
+            } else if (type === 'party' && app._isCurrentCombatActor(unit)) roles.push('actor');
             if (type === 'party' && app._isSyncParticipant(unit) && !roles.includes('actor')) roles.push('participant');
             if (type === 'creature' && app._isCombatMarkedTarget?.(unit)) roles.push('target');
             if (type === 'creature' && app.targetSelection?.source === 'combat' && app._isCombatMarkedTarget?.(unit)) roles.push('target');

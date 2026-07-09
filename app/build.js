@@ -67,6 +67,7 @@ const SCRIPT_ORDER = [
   'src/core/combat-allies.js',
   'src/core/combat-enemies.js',
   'src/core/combat-sync.js',
+  'src/core/combat-planning.js',
   'src/core/combat-mobility.js',
   'src/core/combat-feed.js',
   'src/core/combat-intents.js',

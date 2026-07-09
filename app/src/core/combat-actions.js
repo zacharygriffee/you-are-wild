@@ -29,14 +29,14 @@ const YAW_COMBAT_ACTIONS = {
     syncParticipantButton(app, unit, compact = false) {
         if (!unit || unit.CPun <= 0) return '';
         const participantPhase = app.syncSelection?.active && app.syncSelection.phase === 'participants';
-        const composePhase = app._isCombatGroupCompose?.() || false;
+        const planActive = app._isCombatPlanActive?.() || false;
         const composeAvailable = app.combatState?.active && !app.syncSelection?.active && !app.feedSelection?.active;
-        if (!participantPhase && !composePhase && !composeAvailable) return '';
+        if (!participantPhase && !planActive && !composeAvailable) return '';
         const id = app._unitSelectionId(unit);
         const current = app._currentCombatActor?.() || app.activeActor || app.player;
         const actorId = app.syncSelection?.actorId || (current ? app._unitSelectionId(current) : '');
-        const selected = app._isSyncParticipant(unit) || (!app.syncSelection?.active && id === actorId);
-        const actorLocked = id === actorId;
+        const selected = participantPhase ? app._isSyncParticipant(unit) : Boolean(app._isCombatPlanActor?.(unit));
+        const actorLocked = participantPhase && id === actorId;
         const name = unit.name || app._label('ui.ally', 'ally');
         const label = actorLocked
             ? app._label('target.actorRole', 'Actor')
@@ -49,17 +49,19 @@ const YAW_COMBAT_ACTIONS = {
             : app._label('combat.sync.selectParticipantFor', 'Select {name} for sync', { name }));
         const disabled = actorLocked ? ' disabled aria-disabled="true"' : '';
         const state = actorLocked ? 'locked' : (selected ? 'selected' : 'available');
-        const intent = app._escapeHtml(app.syncSelection?.type || 'group-compose');
-        const surface = participantPhase ? 'sync-participants' : 'combat-group-actors';
-        const selectionMode = participantPhase ? 'sync-participant' : 'combat-group-participant';
-        const selectionControl = participantPhase ? 'sync-participant' : 'combat-group-participant';
-        const commandControl = participantPhase ? 'toggle-sync-participant' : 'toggle-combat-group-participant';
+        const intent = app._escapeHtml(app.syncSelection?.type || app._combatPendingIntent?.() || 'group-compose');
+        const surface = participantPhase ? 'sync-participants' : 'combat-plan-actors';
+        const selectionMode = participantPhase ? 'sync-participant' : 'combat-plan-actor';
+        const selectionControl = participantPhase ? 'sync-participant' : 'combat-plan-actor';
+        const commandControl = participantPhase ? 'toggle-sync-participant' : 'toggle-combat-plan-actor';
         const attrs = `data-command-surface="${surface}" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="${commandControl}" data-command-slot="actor" data-command-intent="${intent}" data-selection-control="${selectionControl}" data-selection-mode="${selectionMode}" data-selection-state="${state}" aria-pressed="${selected ? 'true' : 'false'}"`;
         const compactClass = compact ? ' corner-card-toggle agency-corner-toggle' : '';
         const compactSlot = compact ? ' data-corner-slot="agency"' : '';
+        const iconText = String(unit.icon || '👤').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const iconStyle = compact ? ` style="--compact-card-icon-content:'${app._escapeHtml(iconText)}';--mobile-card-icon-content:'${app._escapeHtml(iconText)}';"` : '';
         const content = compact ? app._escapeHtml(unit.icon || '👤') : app._escapeHtml(label);
-        const onclick = participantPhase ? 'App._toggleSyncParticipantById' : 'App.toggleCombatGroupParticipant';
-        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();${onclick}('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
+        const onclick = participantPhase ? 'App._toggleSyncParticipantById' : 'App.toggleCombatPlanActor';
+        return `<button class="action-btn${compactClass}${selected ? ' primary' : ''}"${compactSlot}${iconStyle} ${attrs} title="${title}" aria-label="${title}"${disabled} onclick="event.stopPropagation();${onclick}('${String(id).replace(/'/g, "\\'")}')">${content}</button>`;
     },
 
     actionButtons(app, actor, options = {}) {
@@ -76,13 +78,14 @@ const YAW_COMBAT_ACTIONS = {
             buttons.push(`<button class="action-btn" data-command-surface="combat-intents" data-command-mode="combat" data-command-control="instant-win" style="background:var(--accent-warning);color:var(--bg-primary);" title="${instantWinTitle}" aria-label="${instantWinTitle}" onclick="event.stopPropagation();App.instantWin()">⚡ ${instantWinLabel}</button>`);
         }
         if (enemies.length > 0) {
-            buttons.push(app._combatIntentButton('fight', actor, 'primary'));
+            buttons.push(app._combatIntentButton('fight', actor));
             buttons.push(app._combatIntentButton('flirt', actor));
             buttons.push(app._combatIntentButton('feast', actor));
             buttons.push(app._combatIntentButton('fuck', actor));
         }
         if (allies.length > 0) {
-            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
+            const feedClass = app._combatPendingIntent?.() === 'feed' ? 'selected' : '';
+            buttons.push(app._iconActionButton('feed', app._actionIcon('feed'), "event.stopPropagation();App.executeCombatIntent('feed')", feedClass, 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="feed" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
         }
         if (corpses.length > 0) {
             buttons.push(app._iconActionButton('scavenge', '🍖', "event.stopPropagation();App.executeCombatIntent('scavenge')", '', 'data-command-surface="combat-intents" data-command-mode="combat" data-command-intent="scavenge" data-command-grammar="actor-target-intent" data-command-slot="intent"'));
@@ -120,7 +123,7 @@ const YAW_COMBAT_ACTIONS = {
         const actions = this.actionButtons(app, actor, { source: 'desktop-composer' });
         if (!actions) return '';
         const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
-        const groupControls = app._combatGroupComposeControls?.() || '';
+        const groupControls = app._combatPlanControls?.() || app._combatGroupComposeControls?.() || '';
         return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${groupControls}${actions}</div>`;
     },
 

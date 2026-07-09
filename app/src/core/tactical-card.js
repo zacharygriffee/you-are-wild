@@ -79,6 +79,7 @@ const YAW_TACTICAL_CARD = {
         const stageAttrs = options.stage === 'combat'
             ? `data-stage-surface="combatant" data-stage-layer="${app._escapeHtml(isParty ? 'party' : 'enemy')}"`
             : '';
+        const suppressTargetControl = options.suppressTargetControl === true;
         const rowAttr = app.combatState?.active && unit.combatRow
             ? `data-combat-row="${app._escapeHtml(unit.combatRow)}"`
             : '';
@@ -94,15 +95,15 @@ const YAW_TACTICAL_CARD = {
             agencyControl = this.controlButton(app, 'action-btn actor-toggle micro-card-toggle agency-corner-toggle' + selectedClass, app._label('target.actShort', 'Act'), app._actorToggleLabel(unit, explicitlySelectedActor), `event.stopPropagation();App.selectExplorationActor(${index})`, actorAttrs);
         }
         let targetControl = '';
-        if (isParty && !app.combatState.active) {
+        if (!suppressTargetControl && isParty && !app.combatState.active) {
             const selectedClass = targetSelected ? ' primary' : '';
             const targetAttrs = `data-command-surface="actor-target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
             targetControl = this.controlButton(app, 'action-btn target-toggle micro-card-toggle target-corner-toggle' + selectedClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs);
-        } else if (isParty && app.combatState.active && !app.targetSelection && !(app.syncSelection?.active && app.syncSelection.phase === 'target')) {
+        } else if (!suppressTargetControl && isParty && app.combatState.active && !app.targetSelection && !(app.syncSelection?.active && app.syncSelection.phase === 'target')) {
             const selectedClass = targetSelected ? ' primary' : '';
             const targetAttrs = `data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
             targetControl = this.controlButton(app, 'action-btn target-toggle micro-card-toggle target-corner-toggle' + selectedClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('party','${targetKey}')`, targetAttrs);
-        } else if (isCorpse) {
+        } else if (!suppressTargetControl && isCorpse) {
             if (app.combatState.active && app.targetSelection?.source === 'combat' && app.targetSelection.action === 'scavenge') {
                 const canTarget = app.canSelectCreatureTarget(unit);
                 const disabledClass = canTarget ? '' : ' disabled';
@@ -115,7 +116,7 @@ const YAW_TACTICAL_CARD = {
                 const targetAttrs = `data-command-surface="target-routing" data-command-mode="exploration" data-command-grammar="actor-target-intent" data-command-control="focus-target" ${app._selectionControlAttrs('target', targetSelected)}`;
                 targetControl = this.controlButton(app, 'action-btn target-toggle micro-card-toggle target-corner-toggle' + selectedClass, app._targetMarkLabel(), app._targetToggleLabel(unit, targetSelected), `event.stopPropagation();App.toggleExplorationTarget('creature','${explorationTargetKey}')`, targetAttrs);
             }
-        } else if (!isParty && unit.CPun > 0) {
+        } else if (!suppressTargetControl && !isParty && unit.CPun > 0) {
             if (app.targetSelection) {
                 const disabledClass = isTargetable ? '' : ' disabled';
                 const disabledAttr = isTargetable ? '' : 'disabled aria-disabled="true"';

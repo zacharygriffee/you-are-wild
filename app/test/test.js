@@ -15194,7 +15194,8 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
   assertContains(templateContent, 'grid-template-columns: 40px minmax(52px, 1fr) 40px;', 'Micro tactical cards should reserve tight control/stat/control columns');
   assertContains(templateContent, '.unit-card.compact-tactical-card:not(.micro-tactical-card)', 'Desktop compact padding should not apply to micro cards');
-  assertContains(templateContent, 'grid-template-rows: minmax(52px, 0.34fr) minmax(260px, 2.4fr) minmax(52px, 0.38fr);', 'Desktop combat stage should give turn context more space than the micro card belts');
+  assertContains(templateContent, 'grid-template-rows: minmax(0, 1fr);', 'Desktop combat stage should give the center battle context the full play surface');
+  assertContains(templateContent, '.desktop-battle-stack', 'Desktop combat stage should stack enemy and party micro belts inside the center context');
   assertContains(templateContent, 'grid-auto-columns: minmax(132px, 150px);', 'Desktop battle micro cards should use compact mobile-parity columns');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card {\n            grid-template-columns: 32px minmax(58px, 1fr) 34px;', 'Desktop battle micro cards should remove extra interior control padding');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card .micro-target-slot {\n            width: 34px;\n            min-width: 34px;\n            margin-left: 3px;', 'Desktop battle target controls should keep only a small gap from stat rings');
@@ -17385,10 +17386,12 @@ test('Desktop play surface renders adjacent movement cells', () => {
   App.renderMap();
   assertEqual(elements.get('desktop-play-surface').classList.contains('combat-active'), true, 'Desktop play surface should expose combat layout state');
   assertEqual(elements.get('desktop-play-surface').getAttribute('data-surface-mode'), 'combat', 'Desktop play surface should identify combat mode');
-  assertContains(north.innerHTML, 'desktop-battle-lane', 'Combat desktop north cell should become the enemy battle row');
-  assertContains(north.innerHTML, 'micro-tactical-card', 'Combat desktop battle rows should use micro tactical cards');
-  assertNotContains(north.innerHTML, 'class="desktop-battle-unit ', 'Combat desktop battle rows should not render bulky bespoke combatant cards');
-  assertContains(north.className, 'desktop-battle-row enemy', 'Combat desktop north cell should identify as the enemy row');
+  const combatStageHtml = elements.get('scene-description').innerHTML;
+  assertContains(combatStageHtml, 'desktop-battle-stack', 'Combat desktop center should own the stacked battle rows');
+  assertContains(combatStageHtml, 'desktop-battle-lane', 'Combat desktop center stack should include battle lanes');
+  assertContains(combatStageHtml, 'micro-tactical-card', 'Combat desktop battle lanes should use micro tactical cards');
+  assertNotContains(combatStageHtml, 'class="desktop-battle-unit ', 'Combat desktop battle lanes should not render bulky bespoke combatant cards');
+  assertContains(north.className, 'combat-stage-hidden', 'Combat desktop north cell should be hidden once enemy lane moves into the center stack');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');
   assertEqual(north.getAttribute('role'), null, 'Combat desktop north cell should not expose button semantics');
   assertEqual(north.getAttribute('tabindex'), '-1', 'Combat desktop north cell should leave keyboard focus for combat controls');
@@ -17398,9 +17401,9 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertEqual(north.getAttribute('data-command-control'), null, 'Combat desktop north cell should not advertise movement commands');
   assertEqual(north.getAttribute('data-command-direction'), null, 'Combat desktop north cell should not advertise a movement direction');
   assertEqual(north.onclick, null, 'Combat desktop north cell should clear its click handler');
-  assertEqual(north.getAttribute('data-stage-surface'), 'battle-row', 'Combat desktop north cell should identify as a battle row');
+  assertEqual(north.getAttribute('data-stage-surface'), 'battle-hidden', 'Combat desktop north cell should identify as hidden combat stage chrome');
   assertEqual(center.getAttribute('data-stage-surface'), 'battle-context', 'Desktop center tile should become the combat turn context in combat');
-  assertEqual(elements.get('desktop-play-cell-s').getAttribute('data-stage-surface'), 'battle-row', 'Combat desktop south cell should identify as the party battle row');
+  assertEqual(elements.get('desktop-play-cell-s').getAttribute('data-stage-surface'), 'battle-hidden', 'Combat desktop south cell should identify as hidden combat stage chrome');
 });
 
 test('Desktop traversal hotkeys dispatch through the stage movement command', () => {

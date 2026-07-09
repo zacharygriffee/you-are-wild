@@ -159,6 +159,9 @@ const YAW_STORY_EVENTS = {
         if (mobileLatest) mobileLatest.innerHTML = latestHtml;
         const desktopLatest = document.getElementById('desktop-story-latest');
         if (desktopLatest) desktopLatest.innerHTML = latestHtml;
+        document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
+            el.innerHTML = latestHtml;
+        });
         const sheetList = document.getElementById('story-sheet-list');
         if (sheetList) sheetList.innerHTML = this.listHtml(app);
         const count = String((app.storyEvents || []).length);

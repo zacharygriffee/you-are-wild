@@ -6,7 +6,7 @@
 
 ## Current State
 
-- **Build:** `npm run full-build`, `npm run audit:branding`, and `git diff --check` pass as of `d78d3b8 Complete north-star UI comfort pass`; 94/94 lint modules are clean and `dist/you-are-wild.html` is generated from source.
+- **Build:** `npm run full-build`, `npm run audit:branding`, and `git diff --check` are the required verification gates before each pushed work slice; `dist/you-are-wild.html` is generated from source.
 - **Architecture:** Single-file HTML distributable (`dist/you-are-wild.html`), 94-script modular JS source in `app/src/`, template shell in `app/template.html`
 - **Content system:** Template-driven with safe/mature/adult tiers. `maxTier: 0` (safe), `voreEnabled: false`, and `explicitDescriptions: false` are defaults.
 - **Modding:** `registerSubAction()`, `registerBiome()`, `registerSpecies()` APIs with module hooks (`onCombatAction`, `onSubActionExecute`, `onDigestionTick`)
@@ -14,6 +14,14 @@
 - **Creature canon:** Humanoid/Sapient Creature Canon doctrine now lives in `docs/creature-canon.md`; use it when formalizing default species taxonomy, sapience metadata, body-plan metadata, and interaction eligibility gates.
 - **Controls doctrine:** The UI-safe control model now lives in `docs/control-model.md`; use it before broad traversal, actor/target selection, intent menu, Combat Toolbelt, battle-surface, or inspection-surface changes.
 - **Save/world storage:** Save-as/new-slot now forks mutable world state to a fresh `worldId`, while slot delete and delete-all saves prune unreferenced `YAW_Worlds` records without deleting worlds still referenced by another save.
+
+### Ready-To-Implement Backlog Status (2026-07-09)
+
+- **Active goal:** finish the ready-to-implement UI/core backlog without broad restructuring: Combat Layout Parity, Story Result Placement, Activity Log Optionality, Tactical Card Polish follow-up, and Docs Refresh.
+- **Ready item count:** 5 items are implementation-ready. Combat layout parity and Story placement now share the same combat mental model: context/story first, composer next, enemy/creature belt, party belt, then intent controls. Desktop combat no longer uses separate traversal-row battle lanes; enemy and party micro belts live inside the center combat context.
+- **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Story remains the primary interaction feedback surface.
+- **Deferred decision count:** 5 topics remain intentionally deferred until design/mechanics discussion: removing/replacing legacy Sync, formal row-blocking rules, feast/containment redesign, quest taxonomy matching, and mobile Story toast/notification behavior.
+- **Verification expectation:** every ready backlog pass should run `npm run full-build`, `npm run audit:branding`, and `git diff --check`; use browser smoke for `412x915` mobile and `1365x768` desktop when layout is touched.
 
 ---
 

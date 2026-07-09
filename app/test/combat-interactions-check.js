@@ -409,6 +409,7 @@ async function runCombatTargetFirstComposerFlow(page) {
     const north = document.querySelector('#desktop-play-cell-n');
     const south = document.querySelector('#desktop-play-cell-s');
     const center = document.querySelector('#desktop-play-cell-center');
+    const stack = document.querySelector('#scene-description .desktop-battle-stack');
     const movementCommands = Array.from(document.querySelectorAll('#desktop-play-surface [data-command-surface="stage-traversal"]'));
     return {
       surfaceMode: surface?.getAttribute('data-surface-mode') || '',
@@ -423,9 +424,11 @@ async function runCombatTargetFirstComposerFlow(page) {
       centerStage: center?.getAttribute('data-stage-surface') || '',
       northStage: north?.getAttribute('data-stage-surface') || '',
       southStage: south?.getAttribute('data-stage-surface') || '',
-      enemyRowText: north?.innerText || '',
-      partyRowText: south?.innerText || '',
-      centerCommandCount: center?.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length || 0
+      stackStage: stack?.getAttribute('data-stage-surface') || '',
+      enemyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.enemy').length || 0,
+      partyLaneCount: stack?.querySelectorAll('.desktop-battle-lane.party').length || 0,
+      stackMicroCount: stack?.querySelectorAll('.micro-tactical-card').length || 0,
+      centerIntentCount: center?.querySelectorAll('[data-command-surface="combat-intents"], .unit-combat-actions').length || 0
     };
   });
   assert.strictEqual(stageState.surfaceMode, 'combat', 'Desktop play surface should identify combat mode during browser combat smoke');
@@ -438,11 +441,13 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(stageState.northOnClick, null, 'Desktop combat surrounding cells should not dispatch movement clicks');
   assert.strictEqual(stageState.movementCommandCount, 0, 'Desktop combat surface should not expose routine stage-traversal commands');
   assert.strictEqual(stageState.centerStage, 'battle-context', 'Desktop combat center should become the turn/exchange context');
-  assert.strictEqual(stageState.northStage, 'battle-row', 'Desktop combat north row should summarize enemies');
-  assert.strictEqual(stageState.southStage, 'battle-row', 'Desktop combat south row should summarize party combatants');
-  assert(stageState.enemyRowText.includes('Enemy'), 'Desktop combat battle stage should show enemy combatants without requiring side rails');
-  assert(stageState.partyRowText.includes('You'), 'Desktop combat battle stage should show party combatants without requiring side rails');
-  assert.strictEqual(stageState.centerCommandCount, 0, 'Desktop combat center should stay free of command controls');
+  assert.strictEqual(stageState.northStage, 'battle-hidden', 'Desktop combat north row should be hidden after enemy lane moves into the center stack');
+  assert.strictEqual(stageState.southStage, 'battle-hidden', 'Desktop combat south row should be hidden after party lane moves into the center stack');
+  assert.strictEqual(stageState.stackStage, 'battle-stack', 'Desktop combat center should own the stacked enemy and party belts');
+  assert.strictEqual(stageState.enemyLaneCount, 1, 'Desktop combat battle stack should include an enemy belt without requiring side rails');
+  assert.strictEqual(stageState.partyLaneCount, 1, 'Desktop combat battle stack should include a party belt without requiring side rails');
+  assert(stageState.stackMicroCount >= 2, 'Desktop combat battle stack should use micro combat cards for visible combatants');
+  assert.strictEqual(stageState.centerIntentCount, 0, 'Desktop combat center should stay free of duplicated intent/action grids');
   await page.locator('#enemies-content .compact-tactical-card').first().click();
   let state = await page.evaluate(() => ({
     enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
@@ -618,14 +623,14 @@ async function runActionMatrix(page) {
     centerSummary: Boolean(document.querySelector('#desktop-play-cell-center .combat-scene-summary')),
     turnOrder: document.querySelector('#desktop-play-cell-center .combat-turn-order')?.textContent || '',
     recentExchange: document.querySelector('#desktop-play-cell-center .combat-recent-exchange')?.textContent || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasIntentControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.enemyPun < 100, 'Fight should damage a reachable enemy through panel clicks');
   assert.strictEqual(state.targetSelection, null, 'Fight should clear target selection after resolving');
   assert.strictEqual(state.centerSummary, true, 'Combat center should render current-exchange feedback after a panel action');
   assert(state.turnOrder.includes('Current') && state.turnOrder.includes('Next'), 'Combat center should surface passive current and next turn context');
   assert(state.recentExchange.includes('hit') || state.recentExchange.includes('miss'), 'Combat center should surface the resolved exchange text');
-  assert.strictEqual(state.centerHasActorControls, false, 'Combat center feedback should not duplicate actor or target controls');
+  assert.strictEqual(state.centerHasIntentControls, false, 'Combat center feedback should not duplicate intent/action controls');
 
   await setupCombat(page);
   await clickIntentAndTarget(page, 'flirt');
@@ -788,7 +793,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
       frontCard: cards.find(card => card.text.includes('Frontline')) || null,
       backCard: cards.find(card => card.text.includes('Backline')) || null,
       pickCount: document.querySelectorAll('#enemies-content button[data-command-control="mark-combat-target"]').length,
-      centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.targetSelection, 'flirt', 'Desktop multi-enemy setup should enter Flirt target-pick state');
@@ -826,14 +831,14 @@ async function runMultiEnemyCombatTargetingFlow(page) {
     targetSelection: App.targetSelection,
     commandSource: App.lastIntentCommand?.source || '',
     commandTargets: App.lastIntentCommand?.targetIds || [],
-    centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasIntentControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.frontPle > 0, 'Desktop confirmation should affect the selected front enemy');
   assert(state.backPle > 0, 'Desktop confirmation should affect the second marked enemy');
   assert.strictEqual(state.targetSelection, null, 'Desktop front-row pick should clear target-pick state');
   assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop front-row confirmation should preserve composer source');
   assert.deepStrictEqual(state.commandTargets, ['front-enemy', 'back-enemy'], 'Desktop confirmation should record every selected enemy id');
-  assert.strictEqual(state.centerHasControls, false, 'Desktop multi-enemy resolution should keep center free of controls');
+  assert.strictEqual(state.centerHasIntentControls, false, 'Desktop multi-enemy resolution should keep center free of intent/action controls');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare();
@@ -861,7 +866,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
       pickCount: document.querySelectorAll('#mobile-creature-strip button[data-command-control="mark-combat-target"]').length,
       toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
       hasAdventureMark: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("toggleExplorationTarget('creature'"),
-      centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.targetSelection, 'flirt', 'Mobile multi-enemy setup should enter Flirt target-pick state');
@@ -902,7 +907,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
     commandSource: App.lastIntentCommand?.source || '',
     commandTargets: App.lastIntentCommand?.targetIds || [],
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
-    centerHasControls: /executeCombatIntent|executeActionOnTarget|selectExplorationActor|toggleExplorationTarget/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasIntentControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert(state.frontPle > 0, 'Mobile confirmation should affect the selected front enemy');
   assert(state.backPle > 0, 'Mobile confirmation should affect the second marked enemy');
@@ -910,7 +915,7 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile front-row confirmation should preserve composer source');
   assert.deepStrictEqual(state.commandTargets, ['front-enemy', 'back-enemy'], 'Mobile confirmation should record every selected enemy id');
   assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after multi-enemy resolution');
-  assert.strictEqual(state.centerHasControls, false, 'Mobile multi-enemy resolution should keep center free of controls');
+  assert.strictEqual(state.centerHasIntentControls, false, 'Mobile multi-enemy resolution should keep center free of intent/action controls');
   await page.setViewportSize({ width: 1365, height: 768 });
 }
 
@@ -980,7 +985,7 @@ async function runCombatSlotGroupComposerFlow(page) {
     oldConfirmVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]')),
     confirmGroupVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-combat-plan"]')),
     normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.planActive, true, 'Desktop actor badge should enter combat planner state');
   assert.strictEqual(state.source, 'combat-planner', 'Desktop actor badge should use combat planner state');
@@ -1011,7 +1016,7 @@ async function runCombatSlotGroupComposerFlow(page) {
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.combatPlanSelection?.active, true, 'Desktop Fight should arm planner before confirmation');
   assert.strictEqual(state.targetSelection, null, 'Desktop slot group queue should leave no target-pick state');
@@ -1028,7 +1033,7 @@ async function runCombatSlotGroupComposerFlow(page) {
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.combatPlanSelection, null, 'Desktop Confirm Group should clear planner state');
   assert.strictEqual(state.targetSelection, null, 'Desktop Confirm Group should leave no target-pick state');
@@ -1341,7 +1346,7 @@ async function runDesktopSyncComposerFlow(page) {
       shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
       beltIntent: document.querySelector('#desktop-context-belt')?.getAttribute('data-command-intent') || '',
       cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="cancel-sync"]')),
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'choose', 'Desktop Sync should enter choose phase');
@@ -1374,7 +1379,7 @@ async function runDesktopSyncComposerFlow(page) {
       confirmSlot: confirm?.getAttribute('data-command-slot') || '',
       cancelVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="cancel-sync"]')),
       shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'participants', 'Desktop Sync should enter participant phase');
@@ -1396,7 +1401,7 @@ async function runDesktopSyncComposerFlow(page) {
     participants: App._syncSelectedParticipants().map(unit => unit.id || unit.name),
     confirmDisabled: document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]')?.hasAttribute('disabled') || false,
     allySelected: document.querySelector('#party-content button[data-selection-mode="sync-participant"][onclick*="ally-1"]')?.getAttribute('data-selection-state') || '',
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop Sync participant click should add the ally helper');
   assert.strictEqual(state.confirmDisabled, false, 'Desktop Sync confirm should enable after helper selection');
@@ -1408,7 +1413,7 @@ async function runDesktopSyncComposerFlow(page) {
     syncSelection: App.syncSelection,
     targetSelection: App.targetSelection,
     syncVisible: (document.querySelector('#desktop-context-belt')?.innerHTML || '').includes("executeCombatIntent('sync')"),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.syncSelection, null, 'Desktop Cancel Sync should clear sync selection');
   assert.strictEqual(state.targetSelection, null, 'Desktop Cancel Sync should leave no target selection');
@@ -1470,7 +1475,7 @@ async function runDesktopSyncComposerFlow(page) {
       pickSurface: pick?.getAttribute('data-command-surface') || '',
       pickSlot: pick?.getAttribute('data-command-slot') || '',
       shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'target', 'Desktop Sync should enter target phase after confirming participants');
@@ -1494,7 +1499,7 @@ async function runDesktopSyncComposerFlow(page) {
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
     partyBadges: Array.from(document.querySelectorAll('#party-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
     enemyBadges: Array.from(document.querySelectorAll('#enemies-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.syncSelection, null, 'Desktop Sync queue should clear sync selection after target pick');
   assert.strictEqual(state.targetSelection, null, 'Desktop Sync queue should leave no target selection after target pick');
@@ -1515,7 +1520,7 @@ async function runDesktopSyncComposerFlow(page) {
       enemyBadges: Array.from(document.querySelectorAll('#enemies-content .turn-order-badge')).map(node => node.textContent.trim()).join(' '),
       participantControls: document.querySelectorAll('#party-content button[data-selection-mode="sync-participant"]').length,
       combatPickControls: document.querySelectorAll('#enemies-content button[data-selection-mode="combat-pick"]').length,
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert(state.partyBadges.includes('Group'), 'Desktop queued Sync group badges should survive compact party rerender');
@@ -1564,7 +1569,7 @@ async function runMobileSyncComposerFlow(page) {
       sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
       cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="cancel-sync"]')),
       legacyActionsHidden: getComputedStyle(document.querySelector('#mobile-combat-actions')).display === 'none',
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'choose', 'Mobile Sync should enter choose phase');
@@ -1601,7 +1606,7 @@ async function runMobileSyncComposerFlow(page) {
       cancelVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="cancel-sync"]')),
       toolbeltIntent: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-intent') || '',
       sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'participants', 'Mobile Sync should enter participant phase');
@@ -1626,7 +1631,7 @@ async function runMobileSyncComposerFlow(page) {
     confirmDisabled: document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-sync-participants"]')?.hasAttribute('disabled') || false,
     allySelected: document.querySelector('#mobile-party-strip button[data-selection-mode="sync-participant"][onclick*="ally-1"]')?.getAttribute('data-selection-state') || '',
     allyChipSelectedParticipant: document.querySelector('#mobile-party-strip .mobile-unit-chip.selected-participant')?.textContent.includes('Ally') || false,
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile Sync participant click should add the ally helper');
   assert.strictEqual(state.confirmDisabled, false, 'Mobile Sync confirm should enable after helper selection');
@@ -1640,7 +1645,7 @@ async function runMobileSyncComposerFlow(page) {
     targetSelection: App.targetSelection,
     syncVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="sync"]')),
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.syncSelection, null, 'Mobile Cancel Sync should clear sync selection');
   assert.strictEqual(state.targetSelection, null, 'Mobile Cancel Sync should leave no target selection');
@@ -1704,7 +1709,7 @@ async function runMobileSyncComposerFlow(page) {
       pickSlot: pick?.getAttribute('data-command-slot') || '',
       toolbeltIntent: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-intent') || '',
       enemySelectedTarget: document.querySelector('#mobile-creature-strip .mobile-unit-chip')?.classList.contains('selected-target') || false,
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert.strictEqual(state.phase, 'target', 'Mobile Sync should enter target phase after confirming participants');
@@ -1731,7 +1736,7 @@ async function runMobileSyncComposerFlow(page) {
     partyGroupCount: document.querySelectorAll('#mobile-party-strip .mobile-unit-chip[data-sync-role="Group"]').length,
     enemyTargetCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip[data-sync-role="Target"]').length,
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.syncSelection, null, 'Mobile Sync queue should clear sync selection after target pick');
   assert.strictEqual(state.targetSelection, null, 'Mobile Sync queue should leave no target selection after target pick');
@@ -1755,7 +1760,7 @@ async function runMobileSyncComposerFlow(page) {
       participantControls: document.querySelectorAll('#mobile-party-strip button[data-selection-mode="sync-participant"]').length,
       combatPickControls: document.querySelectorAll('#mobile-creature-strip button[data-selection-mode="combat-pick"]').length,
       toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
-      centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
     };
   });
   assert(state.partyGroupCount >= 1, 'Mobile queued Sync group state should survive compact party rerender');
@@ -1831,7 +1836,7 @@ async function runCombatFleeComposerFlow(page) {
     shellIntent: document.querySelector('#desktop-command-composer')?.getAttribute('data-command-intent') || '',
     partyCardHasFlee: (document.querySelector('#party-content')?.innerHTML || '').includes("executeCombatIntent('flee')"),
     creatureCardHasFlee: (document.querySelector('#enemies-content')?.innerHTML || '').includes("executeCombatIntent('flee')"),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.fleeVisible, true, 'Desktop combat composer should expose Flee as a visible intent');
   assert.strictEqual(state.shellSurface, 'command-composer', 'Desktop Flee should live inside the command composer shell');
@@ -1850,7 +1855,7 @@ async function runCombatFleeComposerFlow(page) {
     feedSelection: App.feedSelection,
     lastLog: App.log[App.log.length - 1]?.text || '',
     fleeVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="flee"]')),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.combatActive, true, 'Failed desktop Flee should keep combat active');
   assert.strictEqual(state.advanced, true, 'Desktop Flee should consume the current actor turn on failure');
@@ -1878,7 +1883,7 @@ async function runCombatFleeComposerFlow(page) {
     oldMobileBarDisplay: getComputedStyle(document.querySelector('#mobile-combat-actions')).display,
     partyChipHasFlee: (document.querySelector('#mobile-party-strip')?.innerHTML || '').includes("executeCombatIntent('flee')"),
     creatureChipHasFlee: (document.querySelector('#mobile-creature-strip')?.innerHTML || '').includes("executeCombatIntent('flee')"),
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.fleeVisible, true, 'Mobile combat toolbelt should expose Flee as a visible intent');
   assert.strictEqual(state.toolbeltSurface, 'combat-composer', 'Mobile Flee should live in the combat composer toolbelt');
@@ -1901,7 +1906,7 @@ async function runCombatFleeComposerFlow(page) {
     lastLog: App.log[App.log.length - 1]?.text || '',
     fleeVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="flee"]')),
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
-    centerHasControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|executeCombatIntent|executeActionOnTarget|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|attemptFlee/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.combatActive, true, 'Failed mobile Flee should keep combat active');
   assert.strictEqual(state.advanced, true, 'Mobile Flee should consume the current actor turn on failure');

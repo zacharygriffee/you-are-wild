@@ -93,6 +93,19 @@ const YAW_COMBAT_SCENE = {
         };
     },
 
+    latestStoryHtml(app, { mobile = false } = {}) {
+        const latest = app.latestStoryEvent || (app.storyEvents || [])[app.storyEvents?.length - 1] || null;
+        const storyHtml = typeof YAW_STORY_EVENTS !== 'undefined'
+            ? YAW_STORY_EVENTS.compactHtml(app, latest)
+            : `<span class="story-empty">${app._escapeHtml(app._label('story.empty', 'Story beats will appear here after interactions.'))}</span>`;
+        const latestClass = mobile ? 'mobile-combat-story-latest' : 'desktop-combat-story-latest';
+        const expandClass = mobile ? 'mobile-story-expand-btn' : 'desktop-story-expand-btn';
+        return `<div class="combat-story-strip ${mobile ? 'mobile-combat-story-strip' : 'desktop-combat-story-strip'}" data-surface-role="story" aria-live="polite">`
+            + `<div class="desktop-story-copy"><span class="desktop-story-kicker">Story</span><div class="story-latest ${latestClass}" data-surface-role="story-latest">${storyHtml}</div></div>`
+            + `<button class="nav-btn ${expandClass}" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="${app._escapeHtml(String((app.storyEvents || []).length))}" title="Open story" aria-label="Open story">Expand</button>`
+            + `</div>`;
+    },
+
     sceneHtml(app, unit = null) {
         const actor = this.actor(app, unit);
         const turn = (app.combatState?.currentTurn ?? 0) + 1;
@@ -129,6 +142,7 @@ const YAW_COMBAT_SCENE = {
             + selectedIntentHtml
             + pendingHtml
             + `<div class="combat-recent-exchange"><div class="combat-exchange-title">${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}</div><ol>${recentHtml}</ol></div>`
+            + this.latestStoryHtml(app)
             + `</section>`;
     },
 
@@ -150,6 +164,7 @@ const YAW_COMBAT_SCENE = {
         return `<div class="mobile-combat-latest-strip" aria-label="${app._escapeHtml(app._label('combat.exchange.recent', 'Recent exchange'))}">`
             + `<div class="mobile-combat-latest-meta"><strong>${app._escapeHtml(actorName)}</strong><span>${app._escapeHtml(status)}</span></div>`
             + `<div class="mobile-combat-latest-text">${actionHtml}<span>${app._escapeHtml(text)}</span></div>`
+            + this.latestStoryHtml(app, { mobile: true })
             + `</div>`;
     },
 

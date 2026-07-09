@@ -95,7 +95,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
     },
 
     isCombatActive(app) {
-        return Boolean(app.combatState?.active || app.mode === app.GAME_MODE.COMBAT);
+        return Boolean(app.combatState?.active);
     },
 
     syncSurfaceMode(app) {
@@ -205,7 +205,8 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         const html = app.renderTacticalCard(unit, unitIndex, cardType, {
             presentation: 'desktop',
             density: 'micro',
-            stage: 'combat'
+            stage: 'combat',
+            suppressTargetControl: cardType === 'party'
         });
         return html.replace(
             'data-card-density="micro"',
@@ -234,7 +235,30 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         this.clearCellCommand(el);
     },
 
+    renderCombatStack(app, enemies, party, actor) {
+        const desc = document.getElementById('scene-description');
+        if (!desc) return;
+        const html = `<div class="desktop-battle-stack" data-stage-surface="battle-stack" data-stage-layer="combatants">`
+            + this.combatLaneHtml(app, app._label('ui.enemies', 'Enemies'), enemies, 'enemy', actor)
+            + this.combatLaneHtml(app, app._label('ui.party', 'Party'), party, 'party', actor)
+            + `</div>`;
+        const summary = desc.querySelector?.('.combat-scene-summary');
+        if (summary) {
+            summary.querySelector?.('.desktop-battle-stack')?.remove();
+            summary.insertAdjacentHTML?.('beforeend', html);
+            return;
+        }
+        desc.insertAdjacentHTML?.('beforeend', html);
+    },
+
+    clearCombatStack() {
+        const desc = document.getElementById('scene-description');
+        document.querySelectorAll?.('#scene-description .desktop-battle-stack').forEach(el => el.remove());
+        if (desc?.querySelector?.('.combat-scene-summary')) desc.innerHTML = '';
+    },
+
     renderCombat(app) {
+        if (typeof YAW_CENTER_CONTEXT !== 'undefined') YAW_CENTER_CONTEXT.clearPresence?.();
         const actor = app.activeActor || app._currentCombatActor?.() || app.player;
         const enemies = (app.creatures || []).filter(unit => unit && (
             unit.disposition === app.DISPOSITION.ENEMY ||
@@ -242,7 +266,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             app._isCorpse?.(unit)
         ));
         const party = (app.party || []).filter(Boolean);
-        const hiddenIds = ['desktop-play-cell-nw', 'desktop-play-cell-ne', 'desktop-play-cell-w', 'desktop-play-cell-e', 'desktop-play-cell-sw', 'desktop-play-cell-se'];
+        const hiddenIds = ['desktop-play-cell-nw', 'desktop-play-cell-n', 'desktop-play-cell-ne', 'desktop-play-cell-w', 'desktop-play-cell-e', 'desktop-play-cell-sw', 'desktop-play-cell-s', 'desktop-play-cell-se'];
         hiddenIds.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -252,14 +276,13 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             el.setAttribute?.('data-stage-surface', 'battle-hidden');
             this.clearCellCommand(el);
         });
-        this.updateCombatLane(app, 'desktop-play-cell-n', app._label('ui.enemies', 'Enemies'), enemies, 'enemy', actor);
-        this.updateCombatLane(app, 'desktop-play-cell-s', app._label('ui.party', 'Party'), party, 'party', actor);
         this.updateCenter(app, { classes: 'desktop-battle-center', tilesetKey: 'combat', baseTilesetKey: 'combat', kind: 'combat' }, app._label('combat.exchange.summary', 'Combat summary'));
         const center = document.getElementById('desktop-play-cell-center');
         if (center) {
             center.setAttribute('data-stage-surface', 'battle-context');
             center.setAttribute('data-stage-layer', 'turn-context');
         }
+        this.renderCombatStack(app, enemies, party, actor);
     },
 
     renderInterior(app) {
@@ -312,6 +335,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
             this.renderCombat(app);
             return;
         }
+        this.clearCombatStack();
         if (app.inInterior && app.activeInterior) {
             this.renderInterior(app);
             return;

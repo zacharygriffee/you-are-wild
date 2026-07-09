@@ -12242,7 +12242,10 @@ test('Mobile combat scene renders one latest-exchange strip instead of boxed sum
 
   assertContains(elements.get('scene-description').innerHTML, 'combat-scene-summary', 'Desktop center should keep the full combat summary');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-latest-strip', 'Mobile scene should use the compact latest-exchange strip');
+  assertContains(elements.get('mobile-scene-description').innerHTML, 'mobile-combat-story-strip', 'Mobile combat scene should own the compact story strip');
   assertContains(elements.get('mobile-scene-description').innerHTML, 'You hit Enemy for 8.', 'Mobile latest-exchange strip should show the newest combat exchange');
+  assertEqual(elements.get('mobile-story-latest').hidden, true, 'Standalone mobile story capsule should hide while combat scene owns story feedback');
+  assertEqual(elements.get('mobile-story-latest').innerHTML, '', 'Standalone mobile story capsule should not duplicate combat story placeholder');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-recent-exchange', 'Mobile scene should not embed the boxed recent-exchange list');
   assertNotContains(elements.get('mobile-scene-description').innerHTML, 'combat-turn-order', 'Mobile scene should not embed the full turn-order box');
 });

@@ -362,7 +362,11 @@ const YAW_STORY_EVENTS = {
         const latest = app.latestStoryEvent || (app.storyEvents || [])[app.storyEvents?.length - 1] || null;
         const latestHtml = this.compactHtml(app, latest);
         const mobileLatest = document.getElementById('mobile-story-latest');
-        if (mobileLatest) mobileLatest.innerHTML = latestHtml;
+        if (mobileLatest) {
+            const combatOwnsMobileStory = Boolean(app.combatState?.active);
+            mobileLatest.hidden = combatOwnsMobileStory;
+            mobileLatest.innerHTML = combatOwnsMobileStory ? '' : latestHtml;
+        }
         const desktopLatest = document.getElementById('desktop-story-latest');
         if (desktopLatest) desktopLatest.innerHTML = latestHtml;
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {

@@ -205,8 +205,7 @@ const YAW_DESKTOP_PLAY_SURFACE = {
         const html = app.renderTacticalCard(unit, unitIndex, cardType, {
             presentation: 'desktop',
             density: 'micro',
-            stage: 'combat',
-            suppressTargetControl: cardType === 'party'
+            stage: 'combat'
         });
         return html.replace(
             'data-card-density="micro"',

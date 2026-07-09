@@ -17633,6 +17633,7 @@ test('Desktop play surface renders adjacent movement cells', () => {
   assertContains(combatStageHtml, 'desktop-battle-stack', 'Combat desktop center should own the stacked battle rows');
   assertContains(combatStageHtml, 'desktop-battle-lane', 'Combat desktop center stack should include battle lanes');
   assertContains(combatStageHtml, 'micro-tactical-card', 'Combat desktop battle lanes should use micro tactical cards');
+  assertContains(combatStageHtml, 'data-command-surface="party-target-routing" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="focus-target"', 'Combat desktop party battle lane should keep party Mark controls visible');
   assertNotContains(combatStageHtml, 'class="desktop-battle-unit ', 'Combat desktop battle lanes should not render bulky bespoke combatant cards');
   assertContains(north.className, 'combat-stage-hidden', 'Combat desktop north cell should be hidden once enemy lane moves into the center stack');
   assertNotContains(north.className, 'moveable', 'Combat desktop north cell should not present as moveable');

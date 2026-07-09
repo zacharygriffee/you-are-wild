@@ -1949,7 +1949,7 @@ async function runAdventureMarkedTargetFlow(page) {
       actorSummary: sentenceEl?.textContent?.includes('ActorAlly') || false,
       targetSummary: sentenceEl?.textContent?.includes('TargetFriendly') || false,
       centerHasSentence: Boolean(document.querySelector('#desktop-play-cell-center #selection-sentence')),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(trayState.partyHasTray, false, 'Party panel should not duplicate the desktop composer tray');
@@ -1966,7 +1966,7 @@ async function runAdventureMarkedTargetFlow(page) {
     actors: App._getExplorationActors().map(unit => unit.id),
     commandSource: App.lastIntentCommand?.source || '',
     trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert(resolved.targetPle > 0, 'Composer marked target action should resolve against the marked creature');
   assert.strictEqual(resolved.targetsRemaining, 0, 'Resolved marked target action should clear target marks');
@@ -1979,15 +1979,21 @@ async function runAdventureMarkedTargetFlow(page) {
   await page.locator(`#party-content button[onclick*="selectExplorationActor(1)"]`).first().click();
   await page.locator(`#enemies-content button[onclick*="toggleExplorationTarget('creature','friendly-1')"]`).first().click();
   await setupCombat(page);
-  const swapped = await page.evaluate(() => ({
-    trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
-    combatButtons: document.querySelector('#desktop-context-belt')?.innerHTML.includes("executeCombatIntent('fight')") || false,
-    creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
-  }));
+  const swapped = await page.evaluate(() => {
+    const center = document.querySelector('#desktop-play-cell-center');
+    const battleStackHtml = center?.querySelector('.desktop-battle-stack')?.innerHTML || '';
+    return {
+      trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
+      combatButtons: document.querySelector('#desktop-context-belt')?.innerHTML.includes("executeCombatIntent('fight')") || false,
+      creatureMarkButtons: document.querySelector('#enemies-content')?.innerHTML.includes("toggleExplorationTarget('creature'") || false,
+      partyMarkInBattleStack: battleStackHtml.includes('data-command-surface="party-target-routing"'),
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
+    };
+  });
   assert.strictEqual(swapped.trayVisible, false, 'Switching into combat should hide adventure marked-target composer tray');
   assert.strictEqual(swapped.combatButtons, true, 'Switching into combat should render combat intent controls in the desktop composer');
   assert.strictEqual(swapped.creatureMarkButtons, false, 'Switching into combat should replace adventure target marks with combat target picks');
+  assert.strictEqual(swapped.partyMarkInBattleStack, true, 'Switching into combat should keep party Mark controls in the battle stack party lane');
   assert.strictEqual(swapped.centerHasActorControls, false, 'Center tile should stay free of actor controls after switching into combat');
 }
 
@@ -2052,7 +2058,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     partyCards: document.querySelectorAll('#party-content .compact-tactical-card').length,
     targetCards: document.querySelectorAll('#enemies-content .compact-tactical-card').length,
     desktopPresence: document.querySelector('#desktop-presence-rail')?.innerText || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || ''),
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack(),
     directIntentControls: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${document.querySelector('#party-content')?.innerHTML || ''}${document.querySelector('#enemies-content')?.innerHTML || ''}`)
   }));
   assert(state.partyCards >= 3, 'Desktop compact flow should expose compact party cards for actor selection');
@@ -2088,7 +2094,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
       partyDetailOpen: Boolean(document.querySelector('#party-content .party-panel-detail')),
       targetDetailOpen: Boolean(document.querySelector('#enemies-content .creature-panel-detail')),
       sidePanelDirectIntents: /resolveExplorationTargetAction|showIntentMenu\('creature'|selectIntent\('creature'/.test(`${partyHtml}${targetHtml}`),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.deepStrictEqual(state.actors, ['ally-1', 'scout-1'], 'Desktop compact cards should support multiple selected party actors');
@@ -2116,7 +2122,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     actors: App._getExplorationActors().map(unit => unit.id),
     targets: [...App.explorationTargetIds].sort(),
     sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.allyExpanded, true, 'Desktop card body click should open opt-in party details');
   assert.strictEqual(state.statsVisible, true, 'Expanded desktop party card should expose Stats as a detail command');
@@ -2134,7 +2140,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     sentenceText: document.querySelector('#selection-sentence')?.innerText || '',
     trayText: document.querySelector('#desktop-context-belt')?.innerText || '',
     centerLeak: (document.querySelector('#scene-description')?.innerHTML || '').includes('party-stats-view'),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.statsDetailOpen, true, 'Desktop Stats should open as a Party detail surface');
   assert.strictEqual(state.partyPanelFocused, true, 'Desktop Stats should focus the Party detail panel without opening mobile drawers');
@@ -2170,7 +2176,7 @@ async function runDesktopCompactCardRoundTripFlow(page) {
     commandTargets: App.lastIntentCommand?.targetIds || [],
     targetsRemaining: [...App.explorationTargetIds],
     friendlyPleasure: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle || 0,
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.commandAction, 'flirt', 'Desktop compact-card intent should resolve through shared intent dispatch');
   assert.strictEqual(state.commandSubAction, 'tease', 'Desktop compact-card intent should preserve the selected safe sub-action');
@@ -2205,7 +2211,7 @@ async function runStaleMarkedActorFlow(page) {
       targetPle: App.creatures.find(unit => unit.id === 'friendly-1')?.CPle,
       actorIds: [...App.explorationActorIds],
       targetIds: [...App.explorationTargetIds],
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert(state.trayText.includes('Select a living actor'), 'Stale actor composer should explain that an actor must be selected');
@@ -2223,7 +2229,7 @@ async function runStaleMarkedActorFlow(page) {
     lastCommand: App.lastIntentCommand,
     lastLog: App.log[App.log.length - 1]?.text || '',
     trayVisible: Boolean(document.querySelector('#desktop-context-belt .target-action-row')),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.targetPle, 0, 'Stale actor marked-target action should not fall back to player and mutate target');
   assert.deepStrictEqual(state.actorIds, ['missing-actor'], 'Stale actor rejection should preserve actor selection for correction');
@@ -2413,7 +2419,7 @@ async function runCenterResourceSearchFlow(page) {
     contextDescription: document.querySelector('#scene-description')?.textContent || '',
     desktopSearchVisible: Boolean(document.querySelector('#desktop-context-belt button[onclick*="App.search()"]')),
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert(state.contextTitle.includes('Grove') || state.contextTitle.includes('Road') || state.contextTitle.includes('Tile'), 'Center context should continue to own the current tile title');
   assert(state.contextDescription.includes('berry thicket'), 'Center context should describe the searchable resource tile');
@@ -2432,7 +2438,7 @@ async function runCenterResourceSearchFlow(page) {
     mobileSearchVisible: Boolean(document.querySelector('#mobile-explore-actions button[onclick*="App.search()"]')),
     latestLog: App.log[App.log.length - 1]?.text || '',
     latestEvent: App.tileEvents[App.tileEvents.length - 1]?.text || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.inventoryCount, 1, 'Clicking Search should grant one resource-site item through the browser UI');
   assert(state.inventoryName, 'Resource-site Search should name the found item');
@@ -2460,7 +2466,7 @@ async function runContextualCardIntentSourceFlow(page) {
     mode: App.lastIntentCommand?.mode || '',
     targetIds: App.lastIntentCommand?.targetIds || [],
     lastLog: App.log[App.log.length - 1]?.text || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.action, 'inspect', 'Desktop marked-target tray Inspect should record the selected action');
   assert.strictEqual(state.source, 'composer-tray', 'Desktop marked-target tray Inspect should preserve composer-tray source metadata');
@@ -2485,7 +2491,7 @@ async function runContextualCardIntentSourceFlow(page) {
     mode: App.lastIntentCommand?.mode || '',
     targetIds: App.lastIntentCommand?.targetIds || [],
     lastLog: App.log[App.log.length - 1]?.text || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.action, 'inspect', 'Mobile marked-target tray Inspect should record the selected action');
   assert.strictEqual(state.source, 'composer-tray', 'Mobile marked-target tray Inspect should preserve composer-tray source metadata');
@@ -2503,7 +2509,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
   let state = await page.evaluate(() => ({
     partyHasDuplicateMenu: (document.querySelector('#party-content')?.innerHTML || '').includes("showIntentMenu('party'"),
     creatureHasDuplicateMenu: (document.querySelector('#enemies-content')?.innerHTML || '').includes("showIntentMenu('creature'"),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.partyHasDuplicateMenu, false, 'Desktop party cards should not expose duplicate visible intent menus');
   assert.strictEqual(state.creatureHasDuplicateMenu, false, 'Desktop living creature cards should not expose duplicate visible intent menus');
@@ -2550,7 +2556,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
       hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
       hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.presentation, 'desktop', 'Desktop sub-action sheet should declare desktop presentation');
@@ -2565,7 +2571,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       hasDesktopClass: menuEl?.classList.contains('intent-menu-desktop') || false,
       hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
       hasMobileMenu: Boolean(document.querySelector('#mobile-context-menu')),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.hasDesktopClass, true, 'Desktop sub-action sheet should stay on the desktop surface');
@@ -2612,7 +2618,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
       viewportWidth: innerWidth,
       viewportHeight: innerHeight,
       hasAttackButton: (menuEl?.innerHTML || '').includes("selectIntent('creature','friendly-1','fight','desktop','attack')"),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.positioned, 'anchored', 'Desktop sub-action sheet should mark anchored positioning when opened from an edge control');
@@ -2638,7 +2644,7 @@ async function runDesktopIntentSubActionSheetFlow(page) {
     source: App.lastIntentCommand?.source || '',
     mode: App.lastIntentCommand?.mode || '',
     targetIds: App.lastIntentCommand?.targetIds || [],
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.menuVisible, false, 'Selecting a desktop sub-action should close the intent sheet');
   assert.strictEqual(state.action, 'fight', 'Desktop sub-action selection should record the selected action');
@@ -2686,7 +2692,7 @@ async function runRadialIntentSubActionPresentationFlow(page) {
       menuVisible: Boolean(menu),
       source: App.lastIntentCommand?.source || '',
       subAction: App.lastIntentCommand?.subAction || '',
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.menuVisible, false, 'Selecting a radial sub-action should close the sheet');
@@ -2704,7 +2710,7 @@ async function runMobileSelectionAndCombatFlow(page) {
     mobileSurfaceVisible: getComputedStyle(document.querySelector('#mobile-play-surface')).display !== 'none',
     partyChipCount: document.querySelectorAll('#mobile-party-strip .mobile-unit-chip').length,
     creatureChipCount: document.querySelectorAll('#mobile-creature-strip .mobile-unit-chip').length,
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.mobileSurfaceVisible, true, 'Mobile play surface should be visible at mobile viewport');
   assert.strictEqual(state.partyChipCount, 2, 'Mobile party strip should render player and ally chips');
@@ -2746,7 +2752,7 @@ async function runMobileSelectionAndCombatFlow(page) {
       allySelectedActor: allyChip?.classList.contains('selected-actor') || false,
       creatureSelectedTarget: creatureChip?.classList.contains('selected-target') || false,
       hasComposerSource: trayEl?.innerHTML.includes("resolveExplorationTargetAction('fight','attack','composer-tray')") || false,
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.hiddenPartyTrayVisible, false, 'Mobile marked-target tray should not live inside the hidden party strip');
@@ -2763,7 +2769,7 @@ async function runMobileSelectionAndCombatFlow(page) {
     targetsRemaining: App.explorationTargetIds.length,
     commandSource: App.lastIntentCommand?.source || '',
     trayVisible: Boolean((document.querySelector('#mobile-target-action-tray')?.innerHTML || '').trim()),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert(state.targetPle > 0, 'Mobile composer-tray action should resolve against the marked creature');
   assert.strictEqual(state.targetsRemaining, 0, 'Mobile marked-target action should clear target marks');
@@ -2885,12 +2891,14 @@ async function runMobileSelectionAndCombatFlow(page) {
 
   await mobilePick.click();
   await page.locator('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]').first().click();
-  state = await page.evaluate(() => ({
-    enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
-    targetSelection: App.targetSelection,
-    commandSource: App.lastIntentCommand?.source || '',
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
-  }));
+  state = await page.evaluate(() => {
+    return {
+      enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
+      targetSelection: App.targetSelection,
+      commandSource: App.lastIntentCommand?.source || '',
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
+    };
+  });
   assert(state.enemyPun < 100, 'Mobile combat target confirmation should resolve the selected fight target');
   assert.strictEqual(state.targetSelection, null, 'Mobile combat target confirmation should clear target selection after resolving');
   assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile combat target confirmation should identify the composer command surface');
@@ -3339,7 +3347,7 @@ async function runCompactRailRoundTripFlow(page) {
     targetIds: App.lastIntentCommand?.targetIds || [],
     targetsRemaining: [...App.explorationTargetIds],
     targetPleasures: App.creatures.filter(unit => unit.id === 'merchant-1').map(unit => unit.CPle),
-    centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+    centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
   }));
   assert.strictEqual(state.action, 'flirt', 'Safe mobile target intent should route through shared intent dispatch');
   assert.strictEqual(state.subAction, 'tease', 'Safe mobile target intent should preserve the selected sub-action');
@@ -3363,7 +3371,7 @@ async function runCompactRailRoundTripFlow(page) {
       corpseRemaining: App._corpseRemainingPortions(corpse),
       chipHasDirectLoot: (corpseChip?.innerHTML || '').includes("selectIntent('creature','corpse-rail','loot'"),
       chipHasDirectScavenge: (corpseChip?.innerHTML || '').includes("selectIntent('creature','corpse-rail','scavenge'"),
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.deepStrictEqual(state.targets, ['creature:corpse-rail'], 'Target picker should mark remains through the shared target state');
@@ -3388,7 +3396,7 @@ async function runCompactRailRoundTripFlow(page) {
       creatureDrawerOpen: document.querySelector('#panel-enemies')?.classList.contains('active') || false,
       targetPickerOpen: App.mobileTargetPickerOpen,
       targetPickerDisplay: getComputedStyle(document.querySelector('#mobile-target-picker-belt')).display,
-      centerHasActorControls: /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
+      centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
   assert.strictEqual(state.action, 'scavenge', 'Compact remains utility should resolve through shared contextual intent dispatch');
@@ -3858,6 +3866,14 @@ async function runMalformedSaveMetadataBrowserFlow(page) {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+    await page.addInitScript(() => {
+      window.__yawCenterHasActorControlsOutsideBattleStack = () => {
+        const center = document.querySelector('#desktop-play-cell-center');
+        const centerClone = center?.cloneNode(true);
+        centerClone?.querySelector('.desktop-battle-stack')?.remove();
+        return /selectExplorationActor|toggleExplorationTarget|resolveExplorationTargetAction|showIntentMenu\('creature'/.test(centerClone?.innerHTML || '');
+      };
+    });
     await page.goto(distUrl, { waitUntil: 'load' });
     await page.waitForFunction(() => Boolean(window.App), null, { timeout: 5000 });
     await clearBrowserStorage(page);

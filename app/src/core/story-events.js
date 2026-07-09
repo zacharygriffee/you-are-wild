@@ -1,11 +1,18 @@
 /**
- * YOU ARE WILD STORY EVENTS
- * Lightweight semantic presentation layer for resolved actor-target-intent beats.
+ * YOU ARE WILD SCENE FEED
+ * Deterministic semantic presentation layer for resolved actor-target-intent beats.
+ *
+ * The legacy YAW_STORY_EVENTS name is retained as a compatibility namespace.
  */
 
 const YAW_STORY_EVENTS = {
     maxEvents: 18,
     builtInTemplates: [],
+
+    currentContentTier() {
+        const tier = Number((typeof CONTENT !== 'undefined' ? CONTENT?.preferences?.maxTier : 0) ?? 0);
+        return Number.isFinite(tier) ? tier : 0;
+    },
 
     units(input = []) {
         const list = Array.isArray(input) ? input : [input];
@@ -47,7 +54,7 @@ const YAW_STORY_EVENTS = {
     defaultSummary(app, actors, targets, intent) {
         const actorText = this.unitNames(app, actors).join(', ') || app._label('target.actorRole', 'Actor');
         const targetText = this.unitNames(app, targets).join(', ') || app._label('target.targetRole', 'Target');
-        return app._label('story.defaultSummary', '{actors} -> {targets}: {intent}.', {
+        return app._label('scene.defaultSummary', app._label('story.defaultSummary', '{actors} -> {targets}: {intent}.'), {
             actors: actorText,
             targets: targetText,
             intent: this.intentLabel(app, intent)
@@ -65,7 +72,28 @@ const YAW_STORY_EVENTS = {
                 passage: ctx.outcome.passage || ctx.outcome.summary || ctx.defaultSummary
             })
         });
+        const failureBeat = (id, match, priority = 30) => ({
+            id,
+            priority,
+            match,
+            render: (app, ctx) => {
+                const actors = ctx.actorNames.join(', ') || app._label('target.actorRole', 'Actor');
+                const targets = ctx.targetNames.join(', ') || app._label('target.targetRole', 'Target');
+                const action = this.intentLabel(app, ctx.action);
+                const summary = ctx.outcome.summary || app._label('scene.failure.generic', '{actors} tries {action} on {targets}, but it does not work.', {
+                    actors,
+                    action,
+                    targets
+                });
+                return {
+                    summary,
+                    passage: ctx.outcome.passage || summary
+                };
+            }
+        });
         this.builtInTemplates = [
+            failureBeat('combat.failure.cannotReach', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure' && ctx.tags.includes('cannot-reach'), 50),
+            failureBeat('combat.failure.invalid', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure', 40),
             resultFirst('combat.groupFight', ctx => ctx.mode === 'combat' && ctx.shape === 'many-to-one' && ctx.actionBase === 'fight' && ctx.actors.length > 1, 20),
             resultFirst('combat.fight', ctx => ctx.mode === 'combat' && ctx.actionBase === 'fight'),
             resultFirst('combat.social', ctx => ctx.mode === 'combat' && ['flirt', 'fuck'].includes(ctx.actionBase)),
@@ -86,6 +114,7 @@ const YAW_STORY_EVENTS = {
             action: template.action || null,
             shape: template.shape || null,
             tags: Array.isArray(template.tags) ? template.tags.map(String) : [],
+            contentTier: Number.isFinite(template.contentTier) ? template.contentTier : null,
             minTier: Number.isFinite(template.minTier) ? template.minTier : 0,
             maxTier: Number.isFinite(template.maxTier) ? template.maxTier : Infinity,
             priority: Number.isFinite(template.priority) ? template.priority : 0,
@@ -123,12 +152,14 @@ const YAW_STORY_EVENTS = {
             actorNames: this.unitNames(app, actors),
             targetNames: this.unitNames(app, targets),
             defaultSummary,
+            contentTier: outcome.contentTier ?? this.currentContentTier(),
             tags: [...new Set([...(Array.isArray(plan.tags) ? plan.tags : []), ...(Array.isArray(outcome.tags) ? outcome.tags : [])].map(String))]
         };
     },
 
     templateMatches(app, template, ctx) {
-        const tier = Number((typeof CONTENT !== 'undefined' ? CONTENT?.preferences?.maxTier : 0) ?? 0);
+        const tier = Number(ctx.contentTier ?? this.currentContentTier());
+        if (Number.isFinite(template.contentTier) && tier !== template.contentTier) return false;
         if (tier < template.minTier || tier > template.maxTier) return false;
         if (template.mode && template.mode !== ctx.mode) return false;
         if (template.action && template.action !== ctx.action && template.action !== ctx.actionBase) return false;
@@ -202,6 +233,7 @@ const YAW_STORY_EVENTS = {
             deltas,
             tags,
             importance: options.importance || plan.importance || (deltas.some(delta => (delta.type || delta.kind) === 'state') ? 'major' : 'normal'),
+            contentTier: Number.isFinite(options.contentTier) ? options.contentTier : (Number.isFinite(plan.contentTier) ? plan.contentTier : this.currentContentTier()),
             source: options.source || plan.source || 'interaction-result',
             subEvents: Array.isArray(options.subEvents) ? options.subEvents : []
         };
@@ -244,6 +276,7 @@ const YAW_STORY_EVENTS = {
             deltas: Array.isArray(outcome.deltas) ? outcome.deltas : [],
             tags: ctx.tags,
             importance: outcome.importance || 'normal',
+            contentTier: outcome.contentTier ?? ctx.contentTier ?? this.currentContentTier(),
             source: outcome.source || plan.source || 'scene-template',
             subEvents: this.defaultSubEvents(app, ctx, summary),
             metadata: {
@@ -284,6 +317,7 @@ const YAW_STORY_EVENTS = {
             deltas: Array.isArray(input.deltas) ? input.deltas : [],
             tags: Array.isArray(input.tags) ? input.tags : [],
             importance: input.importance || 'normal',
+            contentTier: Number.isFinite(input.contentTier) ? input.contentTier : this.currentContentTier(),
             source: input.source || input.metadata?.source || 'scene-feed',
             subEvents: Array.isArray(input.subEvents) ? input.subEvents : [],
             metadata: input.metadata || {},
@@ -299,19 +333,25 @@ const YAW_STORY_EVENTS = {
         return this.emit(app, this.renderSceneBeat(app, command, outcome));
     },
 
+    emitSceneBeat(app, commandOrPlan = {}, result = '', options = {}) {
+        return this.emitResult(app, commandOrPlan, result, options);
+    },
+
     emit(app, input = {}) {
         const event = this.normalize(app, input);
         if (!Array.isArray(app.storyEvents)) app.storyEvents = [];
         app.storyEvents.push(event);
         if (app.storyEvents.length > this.maxEvents) app.storyEvents = app.storyEvents.slice(-this.maxEvents);
         app.latestStoryEvent = event;
+        app.sceneEvents = app.storyEvents;
+        app.latestSceneBeat = event;
         this.render(app);
         return event;
     },
 
     compactHtml(app, event = null) {
         if (!event) {
-            return `<span class="story-empty">${app._escapeHtml(app._label('story.empty', 'Story beats will appear here after interactions.'))}</span>`;
+            return `<span class="story-empty">${app._escapeHtml(app._label('scene.empty', 'Scene beats will appear here after interactions.'))}</span>`;
         }
         const actors = event.actorNames?.length ? `<span class="story-actors">${app._escapeHtml(event.actorNames.join(', '))}</span>` : '';
         const targets = event.targetNames?.length ? `<span class="story-targets">${app._escapeHtml(event.targetNames.join(', '))}</span>` : '';
@@ -353,7 +393,7 @@ const YAW_STORY_EVENTS = {
     listHtml(app) {
         const events = (app.storyEvents || []).slice(-this.maxEvents).reverse();
         if (!events.length) {
-            return `<div class="story-empty">${app._escapeHtml(app._label('story.noEvents', 'No story events yet. Resolve an interaction to begin the scene record.'))}</div>`;
+            return `<div class="story-empty">${app._escapeHtml(app._label('scene.noEvents', 'No scene beats yet. Resolve an interaction to begin the scene feed.'))}</div>`;
         }
         return events.map(event => this.eventHtml(app, event)).join('');
     },
@@ -369,6 +409,11 @@ const YAW_STORY_EVENTS = {
         }
         const desktopLatest = document.getElementById('desktop-story-latest');
         if (desktopLatest) desktopLatest.innerHTML = latestHtml;
+        const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
+        if (desktopSceneLatest) desktopSceneLatest.innerHTML = latestHtml;
+        const desktopSceneSlot = document.getElementById('desktop-scene-feed-slot');
+        const desktopLegacyStrip = document.getElementById('desktop-story-strip');
+        if (desktopSceneSlot && desktopLegacyStrip) desktopLegacyStrip.hidden = true;
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
             el.innerHTML = latestHtml;
         });

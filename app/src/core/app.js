@@ -730,7 +730,9 @@
             dayCount: 0,
             log: [],
             storyEvents: [],
+            sceneEvents: [],
             latestStoryEvent: null,
+            latestSceneBeat: null,
             storyEventSeq: 0,
             sceneTemplates: [],
             tileEvents: [],
@@ -4255,17 +4257,29 @@
             emitStoryResult(commandOrPlan = {}, result = '', options = {}) {
                 return YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options);
             },
+            emitSceneBeat(commandOrPlan = {}, result = '', options = {}) {
+                return YAW_STORY_EVENTS.emitSceneBeat(this, commandOrPlan, result, options);
+            },
             registerSceneTemplate(template = {}) {
                 return YAW_STORY_EVENTS.registerSceneTemplate(this, template);
             },
             renderSceneBeat(plan = {}, outcome = {}) {
                 return YAW_STORY_EVENTS.renderSceneBeat(this, plan, outcome);
             },
+            renderSceneFeed() {
+                return YAW_STORY_EVENTS.render(this);
+            },
             renderStoryEvents() {
                 return YAW_STORY_EVENTS.render(this);
             },
+            openSceneFeed() {
+                return YAW_STORY_EVENTS.open(this);
+            },
             openStorySheet() {
                 return YAW_STORY_EVENTS.open(this);
+            },
+            closeSceneFeed() {
+                return YAW_STORY_EVENTS.close(this);
             },
             closeStorySheet() {
                 return YAW_STORY_EVENTS.close(this);

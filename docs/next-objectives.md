@@ -17,10 +17,11 @@
 
 ### Ready-To-Implement Backlog Status (2026-07-09)
 
-- **Active goal:** finish the ready-to-implement UI/core backlog without broad restructuring: Combat Layout Parity, Story Result Placement, Activity Log Optionality, Tactical Card Polish follow-up, and Docs Refresh.
-- **Ready item count:** 5 items are implementation-ready. Combat layout parity and Story placement now share the same combat mental model: context/story first, composer next, enemy/creature belt, party belt, then intent controls. Desktop combat no longer uses separate traversal-row battle lanes; enemy and party micro belts live inside the center combat context.
-- **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Story remains the primary interaction feedback surface.
-- **Deferred decision count:** 5 topics remain intentionally deferred until design/mechanics discussion: removing/replacing legacy Sync, formal row-blocking rules, feast/containment redesign, quest taxonomy matching, and mobile Story toast/notification behavior.
+- **Active goal:** finish the Scene Feed / Scene Beat foundation before more broad UI restructuring. Player-facing "Story" language is being retired in favor of Scene Feed: latest readable POV beat, expanded recent beat sheet, and deterministic dumb-code templates from structured gameplay outcomes.
+- **Ready item count:** 5 items remain implementation-ready after the Scene Feed foundation slice: Combat Layout Parity follow-up, mobile Scene Feed feedback pattern, Activity Log optionality polish, Tactical Card Polish follow-up, and Docs Refresh.
+- **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible.
+- **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Activity Log remains durable technical/history output; Scene Feed is the primary current feedback surface.
+- **Deferred decision count:** 5 topics remain intentionally deferred until design/mechanics discussion: removing/replacing legacy Sync internals, formal row-blocking rules, feast/containment redesign, quest target taxonomy beyond exact species IDs, and mobile Scene Feed toast/notification behavior.
 - **Verification expectation:** every ready backlog pass should run `npm run full-build`, `npm run audit:branding`, and `git diff --check`; use browser smoke for `412x915` mobile and `1365x768` desktop when layout is touched.
 
 ---
@@ -185,7 +186,7 @@
 3. **Compact exploration rails are the normal mobile flow.** The compact rail test state covers multiple party members, multiple living creatures, remains, and tile items. It verifies cue marking, rail close/reopen, multi-actor selection, party-member target marking, safe-labeled target intent dispatch, item/remains composer routing, and Details drawer round-trips without requiring full Party/Creatures drawers for ordinary play.
 4. **Compact combat controls are covered.** Interaction checks verify desktop and mobile Sync/group choose, participant, target, queue, and cancel phases; Flee composer ownership; row/reach blockers; current actor/target badges; mobile toolbelt reachability; and no restored generic Actor/Mark combat controls outside the current concrete combat-selection states.
 5. **Desktop center cleanup is an invariant, not an active duplication hunt.** Current tests assert that center stage presence is visual only, the desktop presence rail does not duplicate side-panel actor/target selection, command sentences and target actions live below the stage in the composer, and legacy center action slots stay hidden/empty during exploration details, combat, recovery, and rich detail views.
-6. **Composer ownership remains the key UI rule.** Story is read-only semantic presentation, Stage is 3x3 traversal/local presence, Composer owns `Actor(s) -> Target(s) -> Intent`, and drawers remain opt-in detail/management surfaces. Future UI changes should add tests only when they protect a discovered regression or a new expected workflow.
+6. **Composer ownership remains the key UI rule.** Scene Feed is read-only semantic presentation, Stage is 3x3 traversal/local presence, Composer owns `Actor(s) -> Target(s) -> Intent`, and drawers remain opt-in detail/management surfaces. Future UI changes should add tests only when they protect a discovered regression or a new expected workflow.
 
 ### Remaining UI Objectives
 

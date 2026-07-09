@@ -1275,7 +1275,7 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.storyHandleLeft >= -1 && mobileControls.storyHandleRight <= mobileControls.viewportWidth + 1, `${name}: mobile story handle should stay inside viewport horizontally`);
     assert(mobileControls.storyHandleTop >= 0 && mobileControls.storyHandleBottom <= mobileControls.dockTop + 1, `${name}: mobile story handle should sit above the dock without clipping`);
     assert(mobileControls.storyHandleWidth >= 96 && mobileControls.storyHandleHeight >= 36 && mobileControls.storyHandleMinHeight >= 36, `${name}: mobile story handle should keep a thumb-sized target`);
-    assert(mobileControls.storyHandleText.toLowerCase().includes('story'), `${name}: mobile story handle should be labeled accessibly`);
+    assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: mobile scene feed handle should be labeled accessibly`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
@@ -2097,10 +2097,14 @@ async function checkViewport(browser, name, width, height) {
         };
       });
       const beltButtons = visibleButtons('#desktop-context-belt button');
-      const centerCommands = center.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length;
+      const commandSelector = '[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]';
+      const gameplayCommandCount = node => Array.from(node?.querySelectorAll(commandSelector) || [])
+        .filter(command => command.getAttribute('data-command-surface') !== 'story-controls')
+        .length;
+      const centerCommands = gameplayCommandCount(center);
       const storyCommands = [title, description, eventFeed].reduce((count, node) => {
         if (!node) return count;
-        return count + node.querySelectorAll('[data-command-surface], button, [role="button"], input, select, textarea, .action-btn, [onclick]').length;
+        return count + gameplayCommandCount(node);
       }, 0);
       const firstBeltButton = beltButtons[0] || null;
       return {

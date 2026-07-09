@@ -32,9 +32,30 @@ Exploration and combat should differ by timing and constraints, not by unrelated
 
 Invalid or ambiguous plans must preserve actor/target selection state and return correction guidance. They must not silently choose a different actor, target, distribution, or intent.
 
-During migration, legacy transient UI state such as combat target-pick, marked combat targets, feed sub-action choice, and Sync participant choice must be readable as the current `InteractionPlan`. Those states may remain as compatibility storage while older renderers are being migrated, but UI sentences, tests, story/log metadata, and future resolvers should treat the plan snapshot as the shared semantic shape.
+During migration, legacy transient UI state such as combat target-pick, marked combat targets, feed sub-action choice, and Sync participant choice must be readable as the current `InteractionPlan`. Those states may remain as compatibility storage while older renderers are being migrated, but UI sentences, tests, Scene Beat / log metadata, and future resolvers should treat the plan snapshot as the shared semantic shape.
 
 Combat Feed is a current-turn plan even when it opens a sub-action picker. The picker may remain a transient intent surface, but choosing a feed sub-action should dispatch a `feed` plan with the resolved actor, target, and `subAction` instead of resolving outside the command path.
+
+## Scene Feed and Scene Beat Doctrine
+
+The player-facing semantic surface is the Scene Feed, not "Story." It represents the player's readable point-of-view account of what just happened. A Scene Beat is one resolved or failed gameplay beat produced from structured gameplay data.
+
+Scene Beat is the semantic source of truth for presentation. It should be built from `InteractionPlan + ActionOutcome` or equivalent structured command/result data, not by parsing Activity Log strings. Activity Log and Scene Feed may both render related information, but they serve different audiences:
+
+- Scene Feed: immediate readable player feedback, latest beat, recent beat sheet, and later POV narration.
+- Activity Log: durable technical/history feed, filters, search, export, debugging, and continuity context.
+- LLM/mod narrative layers: optional consumers that can use Scene Beats, Activity history, raw systemic JSON, or generated template output, but core play must remain functional without any LLM.
+
+Scene Beat shape should preserve:
+
+- `mode`, `action`, optional `subAction`, and `shape`
+- resolved `actors` and `targets`
+- `resultKind`, `summary`, optional `passage`, `deltas`, `tags`, `importance`, `source`, and `contentTier`
+- optional `subEvents` for multiple effects from one command
+
+Multiple mechanical effects from one command should coalesce into one Scene Beat with sub-events rather than spamming the feed. Failed actions should also be Scene Beats when the failure matters to play. For example, a physical attack that cannot reach a back-row or flying target should produce readable POV feedback explaining why the attempt fails and what kind of counterplay exists.
+
+Scene templates are deterministic dumb-code templates first. They may match on action, mode, shape, tags, result kind, and content tier; mod templates may override by priority, but a core fallback must always remain available. Content-tier safety belongs in template matching before text is rendered.
 
 ### Quest Species Matching Doctrine
 
@@ -108,7 +129,7 @@ The combat UI grammar is:
 - Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
 - Group combat targets one enemy by default. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
 - Current combat group planning allows party targets only for support intents such as Feed, Heal, Guard, Assist, and future buffs. This is a phase guardrail, not the final doctrine: future combat interaction rules should allow party members, enemies, and neutral creatures to be targets for the full interaction set when explicit consent, hostility, safety, and resolution rules exist.
-- If the target or participants become invalid before resolution, the plan fizzles cleanly and emits log/story feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
+- If the target or participants become invalid before resolution, the plan fizzles cleanly and emits Activity Log / Scene Feed feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
 - There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
 - Internally, current group planning may continue to queue `sync_*` actions through `syncSelection`, `syncActions`, and `queueSyncAction`. Preserve those names and save/load compatibility until a separate mechanics migration deliberately replaces them.
 

@@ -4917,6 +4917,8 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'desktop-play-surface',
     'desktop-story-strip',
     'desktop-story-latest',
+    'desktop-scene-feed-slot',
+    'desktop-scene-feed-latest',
     'desktop-presence-rail',
     'selection-sentence',
     'mobile-play-surface',
@@ -16446,6 +16448,10 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, 'data-command-control="open-story-sheet"', 'Story capsule should expose an open-story command');
   assertContains(template, 'class="nav-btn mobile-story-handle"', 'Mobile should expose a thumb-zone story handle outside the compact scene capsule');
   assertContains(template, 'id="desktop-story-strip"', 'Desktop should expose a story strip outside the activity log');
+  assertContains(template, 'id="desktop-scene-feed-slot"', 'Desktop context panel should expose an in-context Scene Feed slot');
+  assertContains(template, 'id="desktop-scene-feed-latest"', 'Desktop context panel should expose the latest Scene Beat target');
+  assertContains(template, 'data-surface-role="scene-feed"', 'Scene Feed surfaces should use player-facing scene-feed roles');
+  assertContains(template, 'Scene Feed', 'Expanded semantic sheet should use Scene Feed wording');
   assertContains(template, 'id="story-sheet"', 'Story should expose an expandable sheet');
   assertContains(template, 'id="story-sheet-list"', 'Story sheet should expose recent story events');
   assertContains(template, 'id="mobile-tile-details-sheet"', 'Mobile should expose a tile details sheet');
@@ -16458,11 +16464,16 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
   assertContains(storyEventsContent, 'registerSceneTemplate(app, template = {})', 'Story event helper should expose moddable scene template registration');
   assertContains(storyEventsContent, 'renderSceneBeat(app, plan = {}, outcomeInput = {})', 'Story event helper should expose deterministic Scene Beat rendering');
+  assertContains(storyEventsContent, 'emitSceneBeat(app, commandOrPlan = {}, result = \'\', options = {})', 'Scene Feed helper should expose player-facing Scene Beat emission');
+  assertContains(storyEventsContent, 'contentTier', 'Scene Beat data should carry content-tier metadata');
   assertContains(storyEventsContent, 'setUnderlyingInert(enabled)', 'Story sheet should control inert background state');
   assertContains(storyEventsContent, 'setUnderlyingInert(true)', 'Opening Story should make the play UI inert behind the sheet');
   assertContains(storyEventsContent, 'setUnderlyingInert(false)', 'Closing Story should restore the play UI');
   assertContains(storyEventsContent, '_activateFocusTrap?.(sheet', 'Story sheet should use the app focus trap when available');
   assertContains(appContent, 'YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options)', 'App should expose story result bridge wrapper');
+  assertContains(appContent, 'emitSceneBeat(commandOrPlan = {}, result = \'\', options = {})', 'App should expose a Scene Beat wrapper for mods and core UI');
+  assertContains(appContent, 'renderSceneFeed()', 'App should expose a Scene Feed render wrapper');
+  assertContains(appContent, 'openSceneFeed()', 'App should expose a Scene Feed opener wrapper');
   assertContains(appContent, 'YAW_STORY_EVENTS.registerSceneTemplate(this, template)', 'App should expose mod scene template registration');
   assertContains(appContent, 'YAW_STORY_EVENTS.renderSceneBeat(this, plan, outcome)', 'App should expose deterministic Scene Beat rendering');
   assertNotContains(storyEventsContent, 'setTimeout', 'Latest Scene Beat should not disappear on a timer');
@@ -16493,6 +16504,7 @@ test('Scene Beat DSL emits combat fight beat with actor target and damage delta'
   assertEqual(event.deltas.some(delta => delta.type === 'punishment' && delta.amount === 8), true, 'Scene Beat should extract damage delta');
   assertContains(elements.get('mobile-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in mobile feed');
   assertContains(elements.get('desktop-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in desktop feed');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render inside the desktop context panel');
 });
 
 test('Scene template registry supports moddable templates and fallback strings', () => {
@@ -16533,6 +16545,39 @@ test('Scene template registry supports moddable templates and fallback strings',
   assertEqual(fallback.metadata.templateId, 'fallback', 'Unknown action should identify fallback rendering');
 });
 
+test('Scene template registry respects content-tier matching', () => {
+  const { App } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk];
+
+  App.registerSceneTemplate({
+    id: 'test.tier-zero-fight',
+    mode: 'combat',
+    action: 'fight',
+    contentTier: 0,
+    priority: 100,
+    summary: 'Tier zero {actors} handles {targets}.'
+  });
+  App.registerSceneTemplate({
+    id: 'test.tier-two-fight',
+    mode: 'combat',
+    action: 'fight',
+    contentTier: 2,
+    priority: 200,
+    summary: 'Tier two {actors} handles {targets}.'
+  });
+
+  const safe = App.renderSceneBeat({ mode: 'combat', actors: [you], targets: [ratfolk], action: 'fight' }, { contentTier: 0 });
+  const tierTwo = App.renderSceneBeat({ mode: 'combat', actors: [you], targets: [ratfolk], action: 'fight' }, { contentTier: 2 });
+  assertContains(safe.summary, 'Tier zero', 'Content-tier exact template should match safe tier');
+  assertContains(tierTwo.summary, 'Tier two', 'Content-tier exact template should match higher tier');
+  assertEqual(safe.contentTier, 0, 'Scene Beat should preserve safe content tier');
+  assertEqual(tierTwo.contentTier, 2, 'Scene Beat should preserve higher content tier');
+});
+
 test('Scene Beat DSL coalesces group and multi-target actions into one beat with sub-events', () => {
   const { App } = loadAppForCombat();
   const you = makeUnit('You', { id: 'you-1' });
@@ -16557,6 +16602,47 @@ test('Scene Beat DSL coalesces group and multi-target actions into one beat with
   assertEqual(event.subEvents.length, 2, 'Multi-target Scene Beat should expose sub-event metadata');
   assertEqual(event.subEvents.some(subEvent => subEvent.targetName === 'Ratfolk'), true, 'Sub-events should include first target');
   assertEqual(event.subEvents.some(subEvent => subEvent.targetName === 'Bunnyfolk'), true, 'Sub-events should include second target');
+});
+
+test('Blocked combat reach emits a failure Scene Beat with row guidance', () => {
+  const { App, elements } = loadAppForCombat();
+  const mousefolk = makeUnit('Mousefolk', { id: 'mouse-1', Figh: 20, combatRow: 'front' });
+  const siren = makeUnit('Siren 1', { id: 'siren-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, ranged: true, combatRow: 'back' });
+  App.player = mousefolk;
+  App.party = [mousefolk];
+  App.creatures = [siren];
+  App.activeActor = mousefolk;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: mousefolk, initiative: 20 }, { unit: siren, initiative: 10 }],
+    syncActions: []
+  };
+
+  const resolved = App._dispatchInteractionCommand(App._buildPanelInteractionCommand({
+    mode: 'combat',
+    actors: [mousefolk],
+    targets: [siren],
+    action: 'fight',
+    source: 'combat-planner',
+    constraints: {
+      requireCurrentTurn: true,
+      hostileOnly: true,
+      checkReach: true,
+      minActors: 1,
+      minTargets: 1,
+      maxTargets: 1
+    }
+  }));
+
+  assertEqual(resolved, false, 'Blocked physical reach should not resolve the combat action');
+  assertEqual(App.storyEvents.length, 1, 'Blocked reach should emit one failure Scene Beat');
+  assertEqual(App.storyEvents[0].resultKind, 'failure', 'Blocked reach Scene Beat should be marked as failure');
+  assertContains(App.storyEvents[0].summary, 'back row', 'Blocked reach Scene Beat should explain the row problem');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'back row', 'Desktop context Scene Feed should show the reach failure');
+  assertContains(elements.get('log-content').innerHTML, 'back row', 'Activity Log should still retain the technical failure history');
 });
 
 test('Story events render semantic interaction results without replacing activity log', () => {

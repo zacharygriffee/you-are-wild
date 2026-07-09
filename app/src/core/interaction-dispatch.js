@@ -287,6 +287,21 @@ const YAW_INTERACTION_DISPATCH = {
         }
         app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
+        app.emitStoryResult?.({
+            ...(command || {}),
+            mode: 'combat',
+            actors: command?.actors?.length ? command.actors : [actor].filter(Boolean),
+            targets: command?.targets?.length ? command.targets : [target].filter(Boolean),
+            action: command?.metadata?.baseAction || command?.action || 'action',
+            tags: [reason, ...(reason === 'cannot-reach' ? ['cannot-reach', 'row'] : [])],
+            source: 'combat-validation'
+        }, text, {
+            mode: 'combat',
+            resultKind: 'failure',
+            importance: reason === 'cannot-reach' ? 'hint' : 'normal',
+            tags: [reason, ...(reason === 'cannot-reach' ? ['cannot-reach', 'row'] : [])],
+            source: 'combat-validation'
+        });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });
     },

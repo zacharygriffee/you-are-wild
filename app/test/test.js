@@ -15175,6 +15175,9 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(desktopMicroCard, 'tactical-stat-rings', 'Micro tactical cards should use shared circular tactical status rings');
   assertNotContains(desktopMicroCard, '<div class="unit-name">Fox</div>', 'Micro tactical cards should not render a visible full name row');
   assertContains(mobileMicroCard, 'density-micro', 'Mobile combat strips should render micro tactical cards');
+  assertContains(templateContent, '.mobile-unit-chip.micro-tactical-card {\n                flex: 0 0 clamp(148px, 40vw, 160px);', 'Mobile micro cards should stay narrow enough to avoid padded rail rows');
+  assertContains(templateContent, 'grid-template-columns: 40px minmax(52px, 1fr) 40px;', 'Micro tactical cards should reserve tight control/stat/control columns');
+  assertContains(templateContent, 'max-height: 50px;', 'Mobile micro cards should not regain bulky vertical padding');
   App.combatState.active = false;
   assertNotContains(mobilePartyChip, "App.showIntentMenu('party',0)", 'Mobile party chip should not duplicate marked-target actions behind a visible action menu');
   assertNotContains(mobilePartyChip, '>...</button>', 'Mobile party chip should not expose an ellipsis menu button that duplicates actor/target controls');

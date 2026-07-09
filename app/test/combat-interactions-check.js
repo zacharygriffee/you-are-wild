@@ -296,6 +296,7 @@ async function mobileExplorationRailMetrics(page) {
       minTargetTrayHeight: min(targetTray.map(rect => rect.height)),
       actorChipCount: actorChips.length,
       minActorChipHeight: min(actorChips.map(rect => rect.height)),
+      maxActorChipHeight: max(actorChips.map(rect => rect.height)),
       actorButtonCount: actorButtons.length,
       minActorButtonWidth: min(actorButtons.map(rect => rect.width)),
       minActorButtonHeight: min(actorButtons.map(rect => rect.height)),
@@ -314,7 +315,8 @@ function assertMobileExplorationRailTapTargets(metrics, label) {
   assert(metrics.minTargetTrayWidth >= 70, `${label}: marked target intents should keep readable thumb-width targets`);
   assert(metrics.minTargetTrayHeight >= 44, `${label}: marked target intents should keep finger-sized tap targets`);
   assert(metrics.actorChipCount >= 1, `${label}: actor rail should expose compact actor chips`);
-  assert(metrics.minActorChipHeight >= 48, `${label}: actor rail chips should keep a stable touch height`);
+  assert(metrics.minActorChipHeight >= 44, `${label}: actor rail chips should keep a stable touch height`);
+  assert(metrics.maxActorChipHeight <= 52, `${label}: actor rail micro chips should not regain excess vertical padding`);
   assert(metrics.actorButtonCount >= 1, `${label}: actor rail should expose Actor/Mark controls`);
   assert(metrics.minActorButtonWidth >= 40 && metrics.minActorButtonHeight >= 44, `${label}: actor rail Actor/Mark controls should keep compact icon tap targets`);
   assert(metrics.maxActorButtonWidth <= 44, `${label}: actor rail Actor/Mark controls should stay compact and icon-sized`);

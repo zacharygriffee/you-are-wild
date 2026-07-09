@@ -706,12 +706,54 @@
         }
 
         .desktop-battle-units .micro-tactical-card {
+            grid-template-columns: 32px minmax(58px, 1fr) 34px;
+            gap: 0;
             margin-bottom: 0;
             background: rgba(42, 42, 74, 0.68);
-            min-height: 42px;
-            max-height: 46px;
-            padding: 1px 3px;
+            min-height: 38px;
+            max-height: 40px;
+            padding: 0;
             align-content: center;
+        }
+
+        .desktop-battle-units .micro-tactical-card .micro-control-slot {
+            width: 32px;
+            min-width: 32px;
+            min-height: 38px;
+        }
+
+        .desktop-battle-units .micro-tactical-card .micro-target-slot {
+            width: 34px;
+            min-width: 34px;
+            margin-left: 3px;
+        }
+
+        .desktop-battle-units .micro-tactical-card .action-btn {
+            width: 32px;
+            min-width: 32px;
+            max-width: 32px;
+            height: 38px;
+            min-height: 38px;
+        }
+
+        .desktop-battle-units .micro-tactical-card .micro-target-slot .action-btn {
+            width: 34px;
+            min-width: 34px;
+            max-width: 34px;
+        }
+
+        .desktop-battle-units .micro-tactical-card .action-btn::before {
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .desktop-battle-units .micro-tactical-card .action-btn.primary::before {
+            background: transparent;
+            border-color: currentColor;
+            box-shadow: none;
         }
 
         .desktop-battle-units .micro-tactical-card.selected,

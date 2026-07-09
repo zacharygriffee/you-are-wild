@@ -15192,6 +15192,9 @@ test('Unit cards and mobile chips render compact tactical bars accessibly', () =
   assertContains(templateContent, '.unit-card.compact-tactical-card:not(.micro-tactical-card)', 'Desktop compact padding should not apply to micro cards');
   assertContains(templateContent, 'grid-template-rows: minmax(52px, 0.34fr) minmax(260px, 2.4fr) minmax(52px, 0.38fr);', 'Desktop combat stage should give turn context more space than the micro card belts');
   assertContains(templateContent, 'grid-auto-columns: minmax(132px, 150px);', 'Desktop battle micro cards should use compact mobile-parity columns');
+  assertContains(templateContent, '.desktop-battle-units .micro-tactical-card {\n            grid-template-columns: 32px minmax(58px, 1fr) 34px;', 'Desktop battle micro cards should remove extra interior control padding');
+  assertContains(templateContent, '.desktop-battle-units .micro-tactical-card .micro-target-slot {\n            width: 34px;\n            min-width: 34px;\n            margin-left: 3px;', 'Desktop battle target controls should keep only a small gap from stat rings');
+  assertContains(templateContent, '.desktop-battle-units .micro-tactical-card .action-btn::before {\n            width: 28px;\n            height: 28px;\n            background: transparent;', 'Desktop battle actor and mark controls should avoid filled underglow backgrounds');
   assertContains(templateContent, '.desktop-battle-units .micro-tactical-card.selected-actor', 'Desktop battle micro cards should suppress bulky selected glow rules');
   assertContains(templateContent, 'max-height: 50px;', 'Mobile micro cards should not regain bulky vertical padding');
   App.combatState.active = false;

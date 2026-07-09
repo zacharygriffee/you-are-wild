@@ -92,6 +92,9 @@ const YAW_STORY_EVENTS = {
             }
         });
         this.builtInTemplates = [
+            resultFirst('adventure.tileObservation', ctx => ctx.tags.includes('tile-entry') && ctx.tags.includes('observation'), 60),
+            resultFirst('adventure.recruitAvailable', ctx => ctx.tags.includes('recruit-available'), 55),
+            failureBeat('adventure.recruitBlocked', ctx => ctx.actionBase === 'recruit' && ctx.resultKind === 'failure', 50),
             failureBeat('combat.failure.cannotReach', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure' && ctx.tags.includes('cannot-reach'), 50),
             failureBeat('combat.failure.invalid', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure', 40),
             resultFirst('combat.groupFight', ctx => ctx.mode === 'combat' && ctx.shape === 'many-to-one' && ctx.actionBase === 'fight' && ctx.actors.length > 1, 20),
@@ -213,6 +216,7 @@ const YAW_STORY_EVENTS = {
             ? options.deltas
             : (Array.isArray(plan.deltas) ? plan.deltas : this.extractDeltas(resultText));
         const tags = [...new Set([...(Array.isArray(options.tags) ? options.tags : []), ...(Array.isArray(plan.tags) ? plan.tags : [])].map(String))];
+        if (/may be willing to join the party|ready to follow|ready to join/i.test(resultText)) tags.push('recruit-available');
         const inferredResultKind = (() => {
             if (deltas.some(delta => (delta.type || delta.kind) === 'state' && delta.state === 'defeated')) return 'decisive';
             if (deltas.some(delta => ['punishment', 'damage'].includes(delta.type || delta.kind))) return 'damage';
@@ -237,6 +241,147 @@ const YAW_STORY_EVENTS = {
             source: options.source || plan.source || 'interaction-result',
             subEvents: Array.isArray(options.subEvents) ? options.subEvents : []
         };
+    },
+
+    listNames(app, names = [], limit = 3) {
+        const clean = names.filter(Boolean).map(String);
+        if (clean.length <= limit) return clean.join(', ');
+        return app._label('scene.listWithMore', '{items}, and {count} more', {
+            items: clean.slice(0, limit).join(', '),
+            count: clean.length - limit
+        });
+    },
+
+    tileObservationData(app, tile = null, options = {}) {
+        if (!tile) return null;
+        const biome = app.biomes?.[tile.displayBiome || tile.biome] || app.biomes?.[tile.biome] || {};
+        const place = tile.structure
+            ? (app.STRUCTURES?.[tile.structure]?.name || tile.structure)
+            : (tile.landmarkName || biome.name || app._label('ui.exploration', 'the area'));
+        const living = (app._tileCreatures?.(app.creatures?.length ? app.creatures : tile.creatures || []) || [])
+            .filter(unit => unit && !app._isCorpse?.(unit) && (unit.CPun ?? 1) > 0);
+        const remains = (app._tileCreatures?.(app.creatures?.length ? app.creatures : tile.creatures || []) || [])
+            .filter(unit => unit && app._isCorpse?.(unit));
+        const items = Array.isArray(tile.items) ? tile.items : [];
+        const details = [];
+        const subEvents = [];
+        if (tile.hasLandmark && tile.landmarkName) {
+            details.push(app._label('scene.observe.landmark', '{name} stands out here.', { name: tile.landmarkName }));
+            subEvents.push({ type: 'landmark', summary: tile.landmarkName });
+        }
+        if (tile.structure) {
+            const structName = app.STRUCTURES?.[tile.structure]?.name || tile.structure;
+            details.push(app._label('scene.observe.structure', 'There is a {name} here.', { name: structName }));
+            subEvents.push({ type: 'structure', summary: structName });
+        }
+        if (living.length) {
+            const names = this.listNames(app, living.map(unit => unit.name));
+            const hungry = living.filter(unit => (unit.hunger || 0) >= 60).map(unit => unit.name);
+            const creatureText = hungry.length
+                ? app._label('scene.observe.creaturesHungry', 'You notice {names}; {hungry} looks hungry.', {
+                    names,
+                    hungry: this.listNames(app, hungry, 2)
+                })
+                : app._label('scene.observe.creatures', 'You notice {names} nearby.', { names });
+            details.push(creatureText);
+            living.forEach(unit => subEvents.push({ type: 'creature', targetId: unit.id || unit.name, targetName: unit.name, summary: unit.name }));
+        }
+        if (remains.length) {
+            details.push(app._label('scene.observe.remains', 'Remains are visible: {names}.', {
+                names: this.listNames(app, remains.map(unit => unit.corpseName || unit.name))
+            }));
+            remains.forEach(unit => subEvents.push({ type: 'remains', targetId: unit.id || unit.name, targetName: unit.corpseName || unit.name, summary: unit.corpseName || unit.name }));
+        }
+        if (items.length) {
+            const itemNames = items.map(item => item?.name || String(item));
+            details.push(app._label('scene.observe.items', 'You spot items here: {items}.', { items: this.listNames(app, itemNames) }));
+            itemNames.forEach(name => subEvents.push({ type: 'item', summary: name }));
+        }
+        if (!details.length) return null;
+        const intro = options.wasExplored
+            ? app._label('scene.observe.return', 'You return to {place}.', { place })
+            : app._label('scene.observe.enter', 'You enter {place}.', { place });
+        return {
+            place,
+            summary: `${intro} ${details.join(' ')}`.trim(),
+            passage: `${intro} ${details.join(' ')}`.trim(),
+            targets: living,
+            subEvents,
+            tags: [
+                'tile-entry',
+                'observation',
+                ...(tile.hasLandmark ? ['landmark'] : []),
+                ...(tile.structure ? ['structure'] : []),
+                ...(living.length ? ['creatures'] : []),
+                ...(remains.length ? ['remains'] : []),
+                ...(items.length ? ['items'] : [])
+            ],
+            metadata: {
+                tile: { x: tile.x, y: tile.y, biome: tile.biome, place },
+                wasExplored: Boolean(options.wasExplored)
+            }
+        };
+    },
+
+    emitTileObservation(app, tile = null, options = {}) {
+        const observation = this.tileObservationData(app, tile, options);
+        if (!observation) return null;
+        return this.emitResult(app, {
+            mode: 'adventure',
+            action: 'observe',
+            shape: 'tile-entry',
+            actors: [app.player].filter(Boolean),
+            targets: observation.targets,
+            tags: observation.tags,
+            metadata: observation.metadata,
+            source: 'tile-entry'
+        }, observation.summary, {
+            mode: 'adventure',
+            resultKind: 'observation',
+            importance: observation.tags.includes('creatures') || observation.tags.includes('landmark') ? 'notable' : 'normal',
+            summary: observation.summary,
+            passage: observation.passage,
+            tags: observation.tags,
+            subEvents: observation.subEvents,
+            source: 'tile-entry',
+            metadata: observation.metadata
+        });
+    },
+
+    recruitmentMessage(app, target, kind = 'blocked', reason = '') {
+        const name = target?.name || app._label('target.targetRole', 'Target');
+        if (kind === 'available') {
+            return app._label('scene.recruit.available', '{name} looks ready to join you.', { name });
+        }
+        if (kind === 'joined') {
+            return app._label('scene.recruit.joined', '{name} joins your party.', { name });
+        }
+        if (reason === 'party-full') {
+            return app._label('scene.recruit.partyFull', '{name} seems willing, but your party is full.', { name });
+        }
+        if (reason === 'role-bound') {
+            return app._label('scene.recruit.roleBound', '{name} has duties here and is not ready to leave.', { name });
+        }
+        return app._label('scene.recruit.notReady', '{name} is not ready to join you yet.', { name });
+    },
+
+    emitRecruitmentBeat(app, target, actor = app.player, kind = 'blocked', reason = '') {
+        if (!target) return null;
+        const text = this.recruitmentMessage(app, target, kind, reason);
+        return this.emitResult(app, {
+            mode: 'adventure',
+            action: 'recruit',
+            actors: [actor || app.player].filter(Boolean),
+            targets: [target],
+            tags: ['recruit', kind === 'available' ? 'recruit-available' : `recruit-${kind}`, reason].filter(Boolean),
+            source: 'recruitment'
+        }, text, {
+            mode: 'adventure',
+            resultKind: kind === 'blocked' ? 'failure' : 'social',
+            importance: kind === 'blocked' ? 'hint' : 'notable',
+            tags: ['recruit', kind === 'available' ? 'recruit-available' : `recruit-${kind}`, reason].filter(Boolean),
+            source: 'recruitment'
+        });
     },
 
     defaultSubEvents(app, ctx, renderedSummary = '') {

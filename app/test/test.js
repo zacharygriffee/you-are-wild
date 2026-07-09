@@ -16519,10 +16519,15 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(storyEventsContent, '_activateFocusTrap?.(sheet', 'Story sheet should use the app focus trap when available');
   assertContains(appContent, 'YAW_STORY_EVENTS.emitResult(this, commandOrPlan, result, options)', 'App should expose story result bridge wrapper');
   assertContains(appContent, 'emitSceneBeat(commandOrPlan = {}, result = \'\', options = {})', 'App should expose a Scene Beat wrapper for mods and core UI');
+  assertContains(appContent, 'emitTileObservation(tile = null, options = {})', 'App should expose tile-entry observation Scene Beats');
+  assertContains(appContent, 'emitRecruitmentSceneBeat(target, actor = this.player, kind = \'blocked\', reason = \'\')', 'App should expose recruitment Scene Beats');
   assertContains(appContent, 'renderSceneFeed()', 'App should expose a Scene Feed render wrapper');
   assertContains(appContent, 'openSceneFeed()', 'App should expose a Scene Feed opener wrapper');
   assertContains(appContent, 'YAW_STORY_EVENTS.registerSceneTemplate(this, template)', 'App should expose mod scene template registration');
   assertContains(appContent, 'YAW_STORY_EVENTS.renderSceneBeat(this, plan, outcome)', 'App should expose deterministic Scene Beat rendering');
+  assertContains(storyEventsContent, 'emitTileObservation(app, tile = null, options = {})', 'Scene Feed helper should own tile-entry observation emission');
+  assertContains(storyEventsContent, 'emitRecruitmentBeat(app, target, actor = app.player, kind = \'blocked\', reason = \'\')', 'Scene Feed helper should own recruitment beat emission');
+  assertContains(movementFlowContent, 'app.emitTileObservation?.(tile, { wasExplored })', 'Movement should emit coalesced tile-entry observation beats after tile state settles');
   assertNotContains(storyEventsContent, 'setTimeout', 'Latest Scene Beat should not disappear on a timer');
 });
 
@@ -16690,6 +16695,74 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
   assertContains(App.storyEvents[0].summary, 'back row', 'Blocked reach Scene Beat should explain the row problem');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'back row', 'Desktop context Scene Feed should show the reach failure');
   assertContains(elements.get('log-content').innerHTML, 'back row', 'Activity Log should still retain the technical failure history');
+});
+
+test('Tile-entry observation emits one coalesced Scene Beat without activity log duplication', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1' });
+  const bunny = makeUnit('Bunnyfolk', { id: 'bunny-1', icon: 'B', disposition: App.DISPOSITION.NEUTRAL, hunger: 75 });
+  const remains = makeUnit('Ratfolk Remains', { id: 'rat-remains', disposition: App.DISPOSITION.CORPSE, corpseName: 'Ratfolk' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [bunny, remains];
+  App.location = { x: 3, y: 4 };
+  App.log = [];
+  const tile = {
+    x: 3,
+    y: 4,
+    biome: 'grove',
+    hasLandmark: true,
+    landmarkName: 'Great Tree',
+    structure: null,
+    creatures: [bunny, remains],
+    items: [{ name: 'Old Coin' }]
+  };
+
+  const event = App.emitTileObservation(tile, { wasExplored: false });
+
+  assertEqual(App.log.length, 0, 'Scene observations should not write Activity Log entries');
+  assertEqual(App.storyEvents.length, 1, 'Tile entry should emit one coalesced Scene Beat');
+  assertEqual(event.resultKind, 'observation', 'Tile entry should be typed as an observation');
+  assertContains(event.summary, 'Great Tree', 'Observation should include landmarks');
+  assertContains(event.summary, 'Bunnyfolk', 'Observation should include local creatures');
+  assertContains(event.summary, 'hungry', 'Observation should include visible hungry creature state');
+  assertContains(event.summary, 'Old Coin', 'Observation should include visible tile items');
+  assertEqual(event.subEvents.length >= 4, true, 'Observation should preserve sub-event metadata for landmarks, creatures, remains, and items');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Great Tree', 'Desktop Scene Feed should show the latest tile observation');
+});
+
+test('Recruitment Scene Beats explain availability, blocked attempts, and joins', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1' });
+  const bunny = makeUnit('Bunnyfolk', { id: 'bunny-1', disposition: App.DISPOSITION.NEUTRAL, CPle: 90, MPle: 100 });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [bunny];
+  App.location = { x: 0, y: 0 };
+
+  const available = App.emitStoryResult({
+    mode: 'adventure',
+    actors: [player],
+    targets: [bunny],
+    action: 'flirt',
+    shape: 'one-to-one'
+  }, 'You talks with Bunnyfolk. Their guard lowers. Spirit rises to 90/100. Bunnyfolk may be willing to join the party.');
+
+  assertEqual(available.tags.includes('recruit-available'), true, 'Social result should tag recruit availability on the resolved beat');
+  assertContains(available.summary, 'may be willing to join', 'Recruit availability should remain visible in the interaction beat');
+
+  bunny.disposition = App.DISPOSITION.MERCHANT;
+  App.recruitCreature(bunny, player);
+  const blocked = App.latestSceneBeat;
+  assertEqual(blocked.resultKind, 'failure', 'Blocked recruitment should emit a failure beat');
+  assertContains(blocked.summary, 'duties here', 'Blocked merchant recruitment should explain role-bound refusal');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'duties here', 'Desktop Scene Feed should show blocked recruitment reason');
+
+  bunny.disposition = App.DISPOSITION.NEUTRAL;
+  bunny.CPle = 95;
+  App.recruitCreature(bunny, player);
+  assertEqual(App.party.includes(bunny), true, 'High-spirit neutral should still recruit successfully');
+  assertContains(App.latestSceneBeat.summary, 'joins your party', 'Successful recruitment should emit a join beat');
 });
 
 test('Story events render semantic interaction results without replacing activity log', () => {

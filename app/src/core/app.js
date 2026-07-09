@@ -4264,6 +4264,12 @@
             emitSceneBeat(commandOrPlan = {}, result = '', options = {}) {
                 return YAW_STORY_EVENTS.emitSceneBeat(this, commandOrPlan, result, options);
             },
+            emitTileObservation(tile = null, options = {}) {
+                return YAW_STORY_EVENTS.emitTileObservation(this, tile, options);
+            },
+            emitRecruitmentSceneBeat(target, actor = this.player, kind = 'blocked', reason = '') {
+                return YAW_STORY_EVENTS.emitRecruitmentBeat(this, target, actor, kind, reason);
+            },
             registerSceneTemplate(template = {}) {
                 return YAW_STORY_EVENTS.registerSceneTemplate(this, template);
             },

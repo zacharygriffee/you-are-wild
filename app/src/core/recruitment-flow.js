@@ -53,11 +53,14 @@ const YAW_RECRUITMENT_FLOW = {
     recruit(app, target, actor = app.player, options = {}) {
         if (app.party.length >= app.MAX_PARTY_SIZE) {
             app.log.push({ text: app._label('recruit.partyFull', 'Party is full! Cannot recruit {name}', { name: target.name }), type: 'combat' });
+            app.emitRecruitmentSceneBeat?.(target, actor, 'blocked', 'party-full');
             app.renderLog();
             return false;
         }
         if (!options.force && !this.canRecruit(app, actor, target)) {
             app.log.push({ text: app._label('recruit.notReady', '{name} is not ready to join the party.', { name: target.name }), type: 'discovery' });
+            const roleBound = target?.disposition === app.DISPOSITION.MERCHANT || target?.disposition === app.DISPOSITION.QUEST_GIVER;
+            app.emitRecruitmentSceneBeat?.(target, actor, 'blocked', roleBound ? 'role-bound' : 'not-ready');
             app.renderLog();
             app.renderCreatures();
             return false;
@@ -70,6 +73,7 @@ const YAW_RECRUITMENT_FLOW = {
         app.party.push(target);
         app.creatures = app.creatures.filter(c => c !== target);
         app.log.push({ text: app._label('recruit.joined', '{name} joins your party!', { name: target.name }), type: 'discovery' });
+        app.emitRecruitmentSceneBeat?.(target, actor, 'joined');
         app.gainXP(app.BALANCE.recruitXP);
         app.renderParty();
         app.renderCreatures();

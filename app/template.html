@@ -1936,6 +1936,14 @@
             display: none;
         }
 
+        .unit-card.compact-tactical-card.density-medium.has-corner-controls[data-surface-role="target-card"] .unit-header {
+            gap: 0;
+        }
+
+        .unit-card.compact-tactical-card.density-medium.has-corner-controls[data-surface-role="target-card"] .unit-icon {
+            display: none;
+        }
+
         .micro-tactical-card {
             display: grid;
             grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -2321,6 +2329,40 @@
         .unit-card.compact-tactical-card .corner-card-controls .action-btn::before {
             width: 28px;
             height: 28px;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .presentation-corner-badge {
+            --compact-card-icon-color: var(--text-secondary);
+            --compact-card-icon-bg: rgba(160, 160, 176, 0.12);
+            --compact-card-icon-border: rgba(160, 160, 176, 0.38);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            width: 38px;
+            min-width: 38px;
+            max-width: 38px;
+            height: 38px;
+            min-height: 38px;
+            pointer-events: none;
+            font-size: 0;
+            line-height: 1;
+        }
+
+        .unit-card.compact-tactical-card .corner-card-controls .presentation-corner-badge::before {
+            content: var(--compact-card-icon-content);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--compact-card-icon-border);
+            border-radius: var(--radius-sm);
+            background: var(--compact-card-icon-bg);
+            color: var(--compact-card-icon-color);
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1;
         }
 
         .unit-card.compact-tactical-card .corner-card-controls .action-btn[data-selection-control="sync-participant"][data-selection-state="selected"] {
@@ -5543,6 +5585,46 @@
                 right: 6px;
             }
 
+            #mobile-creature-strip .mobile-unit-chip .tactical-card-selection-controls.has-presentation-badge {
+                justify-content: space-between;
+                left: 6px;
+                right: 6px;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .presentation-corner-badge {
+                --mobile-card-icon-color: var(--text-secondary);
+                --mobile-card-icon-bg: rgba(160, 160, 176, 0.12);
+                --mobile-card-icon-border: rgba(160, 160, 176, 0.38);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex: 0 0 auto;
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                height: 44px;
+                min-height: 44px;
+                pointer-events: none;
+                font-size: 0;
+                line-height: 1;
+            }
+
+            .mobile-unit-chip .tactical-card-selection-controls .presentation-corner-badge::before {
+                content: var(--mobile-card-icon-content);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border: 1px solid var(--mobile-card-icon-border);
+                border-radius: var(--radius-sm);
+                background: var(--mobile-card-icon-bg);
+                color: var(--mobile-card-icon-color);
+                font-size: 16px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
             .mobile-unit-chip .tactical-card-selection-controls .action-btn[data-command-control="focus-actor"] {
                 --mobile-card-icon-content: "👤";
                 --mobile-card-icon-color: var(--accent-primary);
@@ -5697,6 +5779,10 @@
                 background: rgba(0, 212, 170, 0.12);
                 font-size: 24px;
                 line-height: 1;
+            }
+
+            .mobile-unit-chip.compact-tactical-card.has-corner-controls[data-surface-role="target-presence-chip"] .mobile-chip-name > span:first-child {
+                display: none;
             }
 
             .mobile-play-surface.combat-active .mobile-unit-chip .mobile-chip-name > span:first-child {

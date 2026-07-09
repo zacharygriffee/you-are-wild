@@ -245,6 +245,7 @@ const YAW_CREATE_FLOW = {
         app.safeAnchor = app._ensureSafeAnchor();
         app.defeatState = null;
         app.exploreTile(0, 0);
+        app.revealVisibleTiles(0, 0, app._mapVisibilityRadius());
         app.showScreen('game');
         app._renderTime();
         app.renderMap();

@@ -94,7 +94,7 @@ const YAW_WORLD_STATE = {
         const generated = typeof WorldGen !== 'undefined'
             ? WorldGen.generateBaseTile(app.worldMeta, x, y, app._regionBiomeKeys())
             : { biome: 'plains', baseBiome: 'plains', macroBiome: 'plains', elevation: 0.5, moisture: 0.5, heat: 0.5, fertility: 0.5, dangerPressure: 0.3, regionCell: null, terrainTags: [] };
-        return { x, y, ...generated, explored: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
+        return { x, y, ...generated, explored: false, seen: false, description: '', hasLandmark: false, landmarkName: '', hostile: false, creatures: [], items: [], structure: null, structureSpawned: false };
     },
 
     getTileDelta(app, x, y) {
@@ -121,7 +121,7 @@ const YAW_WORLD_STATE = {
         if (!tile) return null;
         const base = app.getBaseTile(tile.x, tile.y);
         const delta = {};
-        const fields = ['biome', 'explored', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'tag', 'name', 'color'];
+        const fields = ['biome', 'explored', 'seen', 'description', 'hasLandmark', 'landmarkName', 'hostile', 'creatures', 'items', 'structure', 'structureSpawned', 'structureLooted', 'resourceSearched', 'interior', 'tag', 'name', 'color'];
         for (const field of fields) {
             const value = tile[field];
             const baseValue = base[field];
@@ -229,6 +229,7 @@ const YAW_WORLD_STATE = {
     exploreTile(app, x, y) {
         const key = app._tileKey(x, y);
         const tile = app.getTile(x, y);
+        tile.seen = true;
         if (!tile.explored) {
             tile.explored = true;
             app.exploredTiles.add(key);
@@ -256,6 +257,26 @@ const YAW_WORLD_STATE = {
             app.persistTileDelta(x, y, tile);
         }
         return tile;
+    },
+
+    revealVisibleTiles(app, x = app.location?.x || 0, y = app.location?.y || 0, radius = 1) {
+        const centerX = Number(x);
+        const centerY = Number(y);
+        const revealRadius = Math.max(0, Math.floor(Number(radius) || 0));
+        if (!Number.isFinite(centerX) || !Number.isFinite(centerY)) return [];
+        const revealed = [];
+        for (let dy = -revealRadius; dy <= revealRadius; dy++) {
+            for (let dx = -revealRadius; dx <= revealRadius; dx++) {
+                const tx = centerX + dx;
+                const ty = centerY + dy;
+                const tile = app.getTile(tx, ty);
+                if (tile.seen || tile.explored) continue;
+                tile.seen = true;
+                app.persistTileDelta(tx, ty, tile);
+                revealed.push(tile);
+            }
+        }
+        return revealed;
     }
 };
 

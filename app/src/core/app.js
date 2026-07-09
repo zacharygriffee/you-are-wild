@@ -1678,6 +1678,9 @@
             exploreTile(x, y) {
                 return YAW_WORLD_STATE.exploreTile(this, x, y);
             },
+            revealVisibleTiles(x = this.location.x, y = this.location.y, radius = this._mapVisibilityRadius()) {
+                return YAW_WORLD_STATE.revealVisibleTiles(this, x, y, radius);
+            },
 
             enterStructure() {
                 return YAW_STRUCTURE_NAVIGATION.enter(this);

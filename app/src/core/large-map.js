@@ -9,9 +9,9 @@ const YAW_LARGE_MAP = {
         if (x === app.location.x && y === app.location.y) return true;
         if (app.exploredTiles?.has(key)) return true;
         const cached = app.worldMap?.get(key);
-        if (cached && (cached.explored || cached.hasLandmark || cached.structure || (cached.creatures || []).length || (cached.items || []).length)) return true;
+        if (cached && (cached.explored || cached.seen || cached.hasLandmark || cached.structure || (cached.creatures || []).length || (cached.items || []).length)) return true;
         const delta = app.getTileDelta(x, y);
-        return Boolean(delta && (delta.explored || delta.hasLandmark || delta.structure || (delta.creatures || []).length || (delta.items || []).length));
+        return Boolean(delta && (delta.explored || delta.seen || delta.hasLandmark || delta.structure || (delta.creatures || []).length || (delta.items || []).length));
     },
 
     resolveTile(app, x, y) {

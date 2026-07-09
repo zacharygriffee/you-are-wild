@@ -1422,17 +1422,19 @@ test('World state helper module is registered before app code', () => {
   assertContains(worldStateContent, 'regionBiomeKeys(app)', 'World state helper should own region biome key filtering');
   assertContains(worldStateContent, 'getSuperPatchBiome(app, spx, spy)', 'World state helper should own deterministic super-patch biome compatibility');
   assertContains(worldStateContent, 'rebuildSuperPatchMap(app)', 'World state helper should own super-patch map rebuilds');
-  assertContains(worldStateContent, "const fields = ['biome', 'explored', 'description'", 'Sparse tile delta field contract should live in the world state helper');
+  assertContains(worldStateContent, "const fields = ['biome', 'explored', 'seen', 'description'", 'Sparse tile delta field contract should include sight reveal state in the world state helper');
   assertContains(worldStateContent, 'app._syncCurrentTileCreatures()', 'World state helper should synchronize current creatures before delta persistence');
   assertContains(worldStateContent, 'restoreWorldState(app, loaded)', 'World state helper should own restored world reconstruction');
   assertContains(worldStateContent, 'app.worldMeta = app._normalizeWorldMeta(loaded.worldMeta', 'World restore should normalize loaded metadata in the helper');
   assertContains(worldStateContent, 'app.persistTileDelta(effective.x, effective.y, effective)', 'World restore should rebuild sparse tile deltas in the helper');
   assertContains(worldStateContent, 'exploreTile(app, x, y)', 'World state helper should own first-discovery tile mutation');
+  assertContains(worldStateContent, 'revealVisibleTiles(app', 'World state helper should own nearby map sight reveal');
   assertContains(worldStateContent, 'WorldGen.hash01(app._mapSeed()', 'World tile descriptions should be deterministic in the helper');
   assertContains(worldStateContent, 'WorldGen.chance(app._mapSeed()', 'World landmarks and structures should be deterministic in the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.regionBiomeKeys(this)', 'App region biome wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.getSuperPatchBiome(this, spx, spy)', 'App super-patch wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.exploreTile(this, x, y)', 'App explore-tile wrapper should delegate to world state');
+  assertContains(appContent, 'YAW_WORLD_STATE.revealVisibleTiles(this, x, y, radius)', 'App sight reveal wrapper should delegate to world state');
   assertContains(appContent, 'YAW_WORLD_STATE.getBaseTile(this, x, y)', 'App base tile wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.persistTileDelta(this, x, y, tile)', 'App tile delta wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_WORLD_STATE.applyTileDeltaRecords(this, records)', 'App sparse record wrapper should delegate to the helper');
@@ -1504,6 +1506,7 @@ test('Create flow helper module is registered before app code', () => {
   assertContains(createFlowContent, 'createCharacter(app)', 'Create flow helper should own new-run initialization');
   assertContains(createFlowContent, 'if (!app.validateCharacterCreation()) return;', 'Create flow should stop invalid starts');
   assertContains(createFlowContent, 'app.exploreTile(0, 0)', 'Create flow should initialize the starting tile');
+  assertContains(createFlowContent, 'app.revealVisibleTiles(0, 0', 'Create flow should reveal the starting sight radius for the large map');
   assertContains(createFlowContent, 'app.autoSave()', 'Create flow should auto-save the new run');
   assertContains(appContent, 'YAW_CREATE_FLOW.selectSpecies(this, id)', 'App species wrapper should delegate to the helper');
   assertContains(appContent, 'YAW_CREATE_FLOW.validate(this)', 'App validation wrapper should delegate to the helper');
@@ -11938,6 +11941,26 @@ test('Large map renders discovered tiles without materializing unknown tiles', (
   assertContains(elements.get('large-map').innerHTML, 'Old Tree', 'Known point of interest should be labeled');
   assertContains(elements.get('large-map-pois').innerHTML, 'Old Tree', 'Point of interest list should include known landmark');
   assertEqual(App.worldMap.has('6,6'), false, 'Unknown large-map tiles should not materialize into worldMap');
+});
+
+test('Large map exposes sighted nearby tiles without marking them explored', () => {
+  const { App, elements } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-large-map-seen', seed: 'large-map-seen-seed', generatorVersion: 1, mapModsHash: 'core' };
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.exploreTile(0, 0);
+  App.revealVisibleTiles(0, 0, 1);
+  assertEqual(App.isExplored(1, 0), false, 'Sight reveal should not mark adjacent tiles explored');
+  assertEqual(App.getTile(1, 0).seen, true, 'Sight reveal should mark adjacent tiles as seen');
+  assertEqual(App.getTileDelta(1, 0).seen, true, 'Sight reveal should persist adjacent tile visibility');
+  assertEqual(YAW_LARGE_MAP.isKnown(App, 1, 0), true, 'Large map should treat sighted adjacent tiles as known');
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'large-map-tile known', 'Rendered large map should expose sighted tiles');
+  assertEqual(App.worldMap.has('6,6'), false, 'Sight reveal should not materialize distant unknown large-map tiles');
 });
 
 test('Large map controls zoom pan and recenter the discovered region', () => {

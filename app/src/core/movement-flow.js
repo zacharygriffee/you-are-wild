@@ -31,6 +31,7 @@ const YAW_MOVEMENT_FLOW = {
 
         const wasExplored = app.isExplored(app.location.x, app.location.y);
         const tile = app.exploreTile(app.location.x, app.location.y);
+        app.revealVisibleTiles(app.location.x, app.location.y, app._mapVisibilityRadius?.() ?? 1);
         const biome = app.biomes[tile.biome];
         const movedText = app._label('log.movedTo', 'Moved to {x}, {y} ({biome})', {
             x: app.location.x,

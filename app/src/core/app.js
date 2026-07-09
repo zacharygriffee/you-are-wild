@@ -775,6 +775,7 @@
             combatTargetId: null,
             combatTargetIds: [],
             combatPlanSelection: null,
+            combatCorrectionMessage: null,
             activeActor: null,
             explorationActorIds: [],
             explorationActorSelectionExplicit: false,
@@ -4756,7 +4757,7 @@
             nextTutorial() {
                 const steps = [
                     { titleKey: 'ui.tutorial.welcome.title', contentKey: 'ui.tutorial.welcome.content', title: 'Welcome', content: 'You are wild in a strange living world. Explore, learn your limits, and grow stronger. Choose your risks carefully.' },
-                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Sync actions let multiple allies act together.' },
+                    { titleKey: 'ui.tutorial.combat.title', contentKey: 'ui.tutorial.combat.content', title: 'Combat', content: 'In combat, you take turns with enemies and allies. Use Fight, Talk, Eat, Play, Feed, or Flee. Sync actions let multiple allies act together. Front and Back rows affect physical reach: back-row or flying targets need a flying, ranged, or anti-flying actor.' },
                     { titleKey: 'ui.tutorial.feast.title', contentKey: 'ui.tutorial.feast.content', title: 'Eat', content: 'Eat weakened targets to hold them safely. Capacity matters, and mods can add alternate outcomes.' },
                     { titleKey: 'ui.tutorial.party.title', contentKey: 'ui.tutorial.party.content', title: 'Party', content: 'Recruit willing creatures, assign roles, choose AI orders, and manage who acts in exploration or combat.' },
                     { titleKey: 'ui.tutorial.ready.title', contentKey: 'ui.tutorial.ready.content', title: 'Ready', content: 'Start exploring when you are ready. Use the map, party, and creature panels to keep the flow manageable.' }

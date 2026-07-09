@@ -6,6 +6,7 @@
 const YAW_MOBILE_COMBAT_TOOLBELT = {
     prompt(app, actor = app._currentCombatActor()) {
         if (!app.combatState?.active) return '';
+        if (app.combatCorrectionMessage?.text) return app.combatCorrectionMessage.text;
         if (app.syncSelection?.active && !app._isCombatGroupCompose?.()) {
             if (app.syncSelection.phase === 'choose') {
                 return app._label('combat.sync.chooseAction', 'Choose Sync Action');
@@ -147,10 +148,13 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         const status = app._label('mobile.combat.status', 'Round {round} · Turn {turn}/{total}', { round, turn, total });
         const title = app._label('mobile.combat.actor', '{name} to act', { name: actorName });
         const prompt = this.prompt(app, actor);
+        const promptClass = app.combatCorrectionMessage?.text
+            ? 'mobile-combat-prompt combat-correction-message'
+            : 'mobile-combat-prompt';
         const sentence = this.selectionSentence(app);
         const phaseControls = this.phaseControls(app, actor);
         const intents = this.intentButtons(app, actor);
-        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div>${sentence}${phaseControls}<div class="mobile-combat-prompt">${app._escapeHtml(prompt)}</div>${intents}`;
+        const html = `<div class="mobile-combat-status"><strong>${app._escapeHtml(title)}</strong><span>${app._escapeHtml(status)}</span></div>${sentence}${phaseControls}<div class="${promptClass}">${app._escapeHtml(prompt)}</div>${intents}`;
         belt.className = 'mobile-combat-toolbelt active';
         belt.setAttribute('data-surface-role', 'command-composer');
         belt.setAttribute('data-command-surface', 'combat-composer');

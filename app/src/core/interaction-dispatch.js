@@ -226,6 +226,7 @@ const YAW_INTERACTION_DISPATCH = {
             this.reportInvalidCombat(app, command, valid.reason);
             return false;
         }
+        app.combatCorrectionMessage = null;
         app.lastIntentCommand = {
             actorIds: command.actorIds,
             action: command.action,
@@ -247,12 +248,31 @@ const YAW_INTERACTION_DISPATCH = {
         return app.executeCombatIntent(command.action, command.actors[0]);
     },
 
+    combatReachCorrection(app, command, actor, target) {
+        if (!target) return null;
+        const baseAction = String(command?.metadata?.baseAction || command?.action || 'fight').replace(/^sync_/, '') || 'fight';
+        if (!app._isPhysicalCombatAction?.(baseAction)) return null;
+        const actors = command?.timing === 'slowest-participant'
+            ? (command?.actors || [])
+            : [actor].filter(Boolean);
+        const hasReachActor = actors.some(unit => unit?.flying || unit?.ranged || unit?.antiflying);
+        const actionLabel = app._uiLabel ? app._uiLabel(baseAction) : baseAction;
+        if (target.flying && !hasReachActor) {
+            return app._label('combat.cannotReachFlying', '{target} is airborne. Use a flying, ranged, or anti-flying actor for {action}.', { target: target.name, action: actionLabel });
+        }
+        if (target.combatRow === 'back' && !hasReachActor) {
+            return app._label('combat.cannotReachBackRow', '{target} is in the back row. Use a flying, ranged, or anti-flying actor for {action}.', { target: target.name, action: actionLabel });
+        }
+        return null;
+    },
+
     reportInvalidCombat(app, command, reason = 'invalid-combat-target') {
         const actor = command?.actors?.[0] || app.activeActor || app._currentCombatActor() || app.player;
         const target = command?.targets?.[0] || null;
         let text = app._label('combat.invalidCommand', 'That combat action is not valid right now.');
         if (reason === 'cannot-reach' && target) {
-            text = app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name });
+            text = this.combatReachCorrection(app, command, actor, target)
+                || app._label('combat.cannotReachTarget', '{actor} cannot reach {target} from here.', { actor: actor?.name || 'Actor', target: target.name });
         } else if (reason === 'too-many-targets' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
             text = app._label('combat.group.oneTargetOnly', 'Choose one target for a group action.');
         } else if (reason === 'missing-target' && ['combat-slot-composer', 'combat-planner'].includes(command?.source)) {
@@ -260,6 +280,7 @@ const YAW_INTERACTION_DISPATCH = {
         } else if (reason === 'missing-action' && command?.source === 'combat-planner') {
             text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
         }
+        app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });
         app.renderLog();
         app._renderInteractionState({ exploration: false, toolbelt: true });

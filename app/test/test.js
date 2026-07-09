@@ -2195,6 +2195,8 @@ test('Mobile combat toolbelt helper module is registered before app code', () =>
   assertContains(mobileCombatToolbeltContent, "app.syncSelection?.active", 'Mobile combat prompt should be phase-aware for Sync states');
   assertContains(mobileCombatToolbeltContent, "app.feedSelection?.active", 'Mobile combat prompt should be phase-aware for Feed states');
   assertContains(mobileCombatToolbeltContent, "app.targetSelection?.source === 'combat'", 'Mobile combat prompt should be phase-aware for target-pick states');
+  assertContains(mobileCombatToolbeltContent, 'app.combatCorrectionMessage?.text', 'Mobile combat prompt should surface invalid-command correction feedback');
+  assertContains(mobileCombatToolbeltContent, 'mobile-combat-prompt combat-correction-message', 'Mobile combat prompt should visibly distinguish correction feedback');
   assertContains(mobileCombatToolbeltContent, "app._label('mobile.combat.markTargets'", 'Mobile combat target prompt should use shared multi-mark target wording');
   assertContains(mobileCombatToolbeltContent, 'intentButtons(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt helper should own shared combat intent controls');
   assertContains(mobileCombatToolbeltContent, 'phaseControls(app, actor = app._currentCombatActor())', 'Mobile combat toolbelt should own transient combat phase controls');
@@ -4530,6 +4532,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, 'id="mobile-selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Mobile command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(template, 'id="selection-sentence" role="status" aria-live="polite" aria-atomic="true"', 'Desktop command sentence should announce actor-target-intent changes as an atomic status');
   assertContains(template, '.selection-sentence:empty', 'selection sentence should hide when no state is available');
+  assertContains(template, '.combat-correction-message', 'Combat correction feedback should have a visible composer style');
   assertContains(template, '.mobile-selection-sentence', 'mobile selection sentence should have bounded mobile styling');
   assertContains(template, 'class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent"', 'Desktop command composer shell should own sentence and controls structurally');
   assertContains(template, 'id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden', 'Desktop command composer shell should start hidden until it has real controls');
@@ -13134,6 +13137,42 @@ test('Melee combat targeting cannot select unreachable back-row enemies', () => 
   assertContains(App.log[App.log.length - 1].text, 'You no puede alcanzar a Backline desde aqui.', 'Blocked reach log should localize');
 });
 
+test('Combat group planner surfaces row reach correction in the mobile composer', () => {
+  const { App, elements } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'planner-row-player', Figh: 30, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'planner-row-ally', Figh: 30, combatRow: 'front' });
+  const enemy = makeUnit('Siren 1', { id: 'planner-row-siren', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'back' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.combatState = {
+    active: true,
+    round: 2,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  App.combatPlanSelection = {
+    active: true,
+    source: 'combat-planner',
+    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
+    pendingIntent: 'fight',
+    explicitActors: true
+  };
+  App.combatTargetIds = [App._unitSelectionId(enemy)];
+
+  assertEqual(App.confirmCombatPlan(), false, 'Unreachable group plan should reject without queueing');
+  assertContains(App.combatCorrectionMessage.text, 'Siren 1 is in the back row', 'Planner correction should explain the row blocker');
+  assertContains(App.combatCorrectionMessage.text, 'Use a flying, ranged, or anti-flying actor', 'Planner correction should suggest real reach capabilities');
+  App.renderMobileCombatToolbelt();
+  assertContains(elements.get('mobile-combat-toolbelt').innerHTML, 'Siren 1 is in the back row', 'Mobile combat composer should surface planner reach correction');
+  assertContains(App.log[App.log.length - 1].text, 'Siren 1 is in the back row', 'Planner rejection should remain in the durable log');
+  assertEqual(App.combatState.syncActions.length, 0, 'Rejected planner action should not queue a group action');
+});
+
 test('Sync combat target selection respects participant reach', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-sync-reach', Figh: 30, combatRow: 'front' });
@@ -16528,6 +16567,13 @@ test('Tutorial steps localize through active language', () => {
   App.nextTutorial();
   assertEqual(elements.get('tutorial-title').textContent, 'Combate', 'Second tutorial title should localize');
   assertContains(elements.get('tutorial-content').textContent, 'acciones sincronizadas', 'Second tutorial content should localize');
+});
+
+test('Combat tutorial copy documents row and reach basics', () => {
+  assertContains(contentSystemContent, 'Front and Back rows affect physical reach', 'English combat tutorial should mention row reach basics');
+  assertContains(contentSystemContent, 'back-row or flying targets need a flying, ranged, or anti-flying actor', 'English combat tutorial should explain the reach requirement');
+  assertContains(contentSystemContent, 'Las filas Frente y Retaguardia afectan el alcance fisico', 'Spanish combat tutorial should mention row reach basics');
+  assertContains(appContent, 'Front and Back rows affect physical reach', 'Tutorial fallback copy should mention row reach basics');
 });
 
 test('Save manager renders localized accessible slot actions', () => {

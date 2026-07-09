@@ -74,6 +74,7 @@ const YAW_COMBAT_PLANNING = {
 
     toggleActor(app, id) {
         if (!this.ensure(app)) return false;
+        app.combatCorrectionMessage = null;
         const key = String(id || '');
         const unit = app.party.find(candidate => this.actorId(app, candidate) === key || String(candidate?.id || candidate?.name) === key);
         if (!unit || unit.CPun <= 0) return false;
@@ -91,6 +92,7 @@ const YAW_COMBAT_PLANNING = {
 
     setIntent(app, action) {
         if (!this.ensure(app)) return false;
+        app.combatCorrectionMessage = null;
         app.combatPlanSelection.pendingIntent = action || null;
         app.targetSelection = null;
         app._clearCenterActionsForCombat?.();
@@ -113,6 +115,7 @@ const YAW_COMBAT_PLANNING = {
 
     clear(app, reason = 'cancel', options = {}) {
         if (!app.combatPlanSelection?.active) return false;
+        app.combatCorrectionMessage = null;
         app.combatPlanSelection = null;
         app.targetSelection = null;
         if (options.clearTargets) {

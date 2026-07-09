@@ -9,6 +9,7 @@ const YAW_INTERACTION_STATE = {
         app.combatTargetId = null;
         app.combatTargetIds = [];
         app.combatPlanSelection = null;
+        app.combatCorrectionMessage = null;
         app.syncSelection = null;
         app.feedSelection = null;
         app._syncSelected = [];

@@ -6,6 +6,7 @@
 const YAW_COMBAT_TARGETING = {
     selectTarget(app, action) {
         const actor = app.activeActor || app.player;
+        app.combatCorrectionMessage = null;
         app.combatTargetId = null;
         app.combatTargetIds = [];
         app.combatPlanSelection = null;
@@ -16,6 +17,7 @@ const YAW_COMBAT_TARGETING = {
     },
 
     cancelTargetSelection(app) {
+        app.combatCorrectionMessage = null;
         app._clearTransientInteractionState();
         if (app.combatState.active) app.showActorActions(app._currentCombatActor() || app.activeActor || app.player);
         else {
@@ -86,6 +88,7 @@ const YAW_COMBAT_TARGETING = {
             && (app._unitSelectionId(unit) === id || String(unit.id || unit.name) === id));
         if (!target) return false;
         if (targetPickActive && !this.canSelectCreatureTarget(app, target)) return false;
+        app.combatCorrectionMessage = null;
         const unitId = app._unitSelectionId(target);
         const ids = this.targetIds(app);
         app.combatTargetIds = ids.includes(unitId)

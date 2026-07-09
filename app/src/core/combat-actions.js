@@ -124,7 +124,10 @@ const YAW_COMBAT_ACTIONS = {
         if (!actions) return '';
         const label = app._escapeHtml(app._label('combat.intentControls', 'Combat intent controls'));
         const groupControls = app._combatPlanControls?.() || app._combatGroupComposeControls?.() || '';
-        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${groupControls}${actions}</div>`;
+        const correction = app.combatCorrectionMessage?.text
+            ? `<div class="combat-correction-message" role="status" aria-live="polite">${app._escapeHtml(app.combatCorrectionMessage.text)}</div>`
+            : '';
+        return `<div class="desktop-combat-composer" role="group" aria-label="${label}">${correction}${groupControls}${actions}</div>`;
     },
 
     renderDesktopComposer(app, actor = app._currentCombatActor?.() || app.activeActor) {

@@ -362,6 +362,43 @@ function assertMobileMicroCardsDoNotOverlap(metrics, label) {
   assert.strictEqual(metrics.overlapCount, 0, `${label}: micro stat rings should not overlap actor/avatar or Mark/Target controls (${JSON.stringify(metrics)})`);
 }
 
+async function mobileCombatPartyMediumFitMetrics(page) {
+  return page.evaluate(() => {
+    App.toggleUnit(0, 'party');
+    const shell = document.querySelector('#mobile-party-card');
+    const strip = document.querySelector('#mobile-party-strip');
+    const card = document.querySelector('#mobile-party-strip .mobile-unit-chip.density-medium');
+    const rect = node => {
+      const box = node?.getBoundingClientRect();
+      return box ? { top: box.top, bottom: box.bottom, height: box.height } : null;
+    };
+    const shellRect = rect(shell);
+    const stripRect = rect(strip);
+    const cardRect = rect(card);
+    return {
+      hasMediumCard: Boolean(card),
+      cardHeight: cardRect?.height || 0,
+      stripHeight: stripRect?.height || 0,
+      shellHeight: shellRect?.height || 0,
+      cardInsideStrip: Boolean(cardRect && stripRect && cardRect.bottom <= stripRect.bottom + 1),
+      cardInsideShell: Boolean(cardRect && shellRect && cardRect.bottom <= shellRect.bottom + 1),
+      stripOverflowY: strip ? getComputedStyle(strip).overflowY : '',
+      shellOverflowY: shell ? getComputedStyle(shell).overflowY : '',
+      cardOverflowY: card ? getComputedStyle(card).overflowY : ''
+    };
+  });
+}
+
+function assertMobileCombatPartyMediumFits(metrics) {
+  assert.strictEqual(metrics.hasMediumCard, true, `Mobile combat party strip should render an expanded medium card (${JSON.stringify(metrics)})`);
+  assert(metrics.cardHeight > 134, `Expanded medium party card should be allowed to exceed the old fixed chip height (${JSON.stringify(metrics)})`);
+  assert.strictEqual(metrics.cardInsideStrip, true, `Expanded medium party card should fit inside the party strip (${JSON.stringify(metrics)})`);
+  assert.strictEqual(metrics.cardInsideShell, true, `Expanded medium party card should fit inside the party card container (${JSON.stringify(metrics)})`);
+  assert.notStrictEqual(metrics.stripOverflowY, 'hidden', `Combat party strip should not hide medium-card overflow (${JSON.stringify(metrics)})`);
+  assert.notStrictEqual(metrics.shellOverflowY, 'hidden', `Combat party card shell should not hide medium-card overflow (${JSON.stringify(metrics)})`);
+  assert.notStrictEqual(metrics.cardOverflowY, 'hidden', `Expanded medium party card should not hide its own content (${JSON.stringify(metrics)})`);
+}
+
 async function runCombatTargetFirstComposerFlow(page) {
   await page.setViewportSize({ width: 1365, height: 768 });
   await setupCombat(page);
@@ -455,6 +492,8 @@ async function runCombatTargetFirstComposerFlow(page) {
   assert.strictEqual(state.commandAction, 'fight', 'Desktop target-first Fight should dispatch the selected intent');
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await setupCombat(page);
+  assertMobileCombatPartyMediumFits(await mobileCombatPartyMediumFitMetrics(page));
   await setupCombat(page);
   const mobileMark = page.locator('#mobile-creature-strip button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => mobileMark.waitFor({ state: 'visible', timeout: 1000 }), 'Mobile combat enemy chip should expose target-first Mark');

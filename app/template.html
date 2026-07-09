@@ -5328,7 +5328,8 @@
 
             .mobile-play-surface.combat-active #mobile-party-card {
                 order: 3;
-                max-height: 204px;
+                max-height: none;
+                overflow: visible;
             }
 
             .mobile-play-surface:not(.combat-active) #mobile-party-card {
@@ -5423,8 +5424,9 @@
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip {
-                max-height: 138px;
-                align-items: stretch;
+                max-height: none;
+                align-items: flex-start;
+                overflow-y: visible;
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip {
@@ -5433,6 +5435,11 @@
                 max-height: 134px;
                 padding: 7px;
                 overflow: hidden;
+            }
+
+            .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.density-medium {
+                max-height: none;
+                overflow: visible;
             }
 
             .mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.compact-tactical-card {

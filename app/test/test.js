@@ -4646,6 +4646,9 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card {\n                order: 1;', 'combat enemy strip should render above the combat prompt');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 2;', 'combat prompt should render between enemy and party strips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;', 'combat party strip should render below the combat prompt near thumb reach');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 3;\n                max-height: none;\n                overflow: visible;', 'combat party card should not clip expanded medium party chips');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-strip {\n                max-height: none;\n                align-items: flex-start;\n                overflow-y: visible;', 'combat party strip should grow vertically for medium party cards');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.density-medium {\n                max-height: none;\n                overflow: visible;', 'combat medium party chips should not clip their own content');
   assertContains(template, '.mobile-combat-intents .unit-actions', 'mobile combat toolbelt should own a shared intent action row');
   assertContains(template, 'grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));', 'mobile combat toolbelt buttons should keep readable thumb-width tracks');
   assertContains(template, 'min-height: 44px;', 'mobile combat toolbelt buttons should keep finger-sized tap targets');

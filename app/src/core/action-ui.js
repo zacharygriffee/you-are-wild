@@ -27,6 +27,32 @@ const YAW_ACTION_UI = {
         return `<div class="action-legend" aria-label="${app._escapeHtml(app._label('ui.actionLegend', 'Action legend'))}">${keys.map(key => `<span><span aria-hidden="true">${app._actionIcon(key)}</span> ${app._uiLabel(key)}</span>`).join('')}</div>`;
     },
 
+    priority(key) {
+        const order = {
+            recruit: 10,
+            quest: 20,
+            acceptQuest: 20,
+            viewQuest: 20,
+            trade: 30,
+            loot: 40,
+            scavenge: 50,
+            inspect: 60,
+            fight: 100,
+            flirt: 110,
+            fuck: 120,
+            feast: 130,
+            feed: 140
+        };
+        return order[key] ?? 1000;
+    },
+
+    sortActionEntries(entries) {
+        return (entries || [])
+            .map((entry, index) => ({ ...entry, index }))
+            .sort((a, b) => (this.priority(a.action) - this.priority(b.action)) || (a.index - b.index))
+            .map(({ index, ...entry }) => entry);
+    },
+
     icon(key) {
         return {
             fight: '⚔️',

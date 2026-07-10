@@ -18379,6 +18379,9 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertContains(friendlyTray, 'aria-label="Inspeccionar Friendly"', 'Marked-target tray inspect button should expose localized accessible label');
   assertContains(friendlyTray, 'aria-label="Reclutar Friendly"', 'Marked-target tray recruit button should expose localized accessible label');
   assertContains(friendlyTray, 'aria-label="Aceptar mision Friendly"', 'Marked-target tray quest button should expose localized accessible label');
+  assert(friendlyTray.indexOf('data-command-intent="recruit"') < friendlyTray.indexOf('data-command-intent="fight"'), 'Marked-target tray should render Recruit before routine Fight');
+  assert(friendlyTray.indexOf('data-command-intent="quest"') < friendlyTray.indexOf('data-command-intent="fight"'), 'Marked-target tray should render Quest before routine Fight');
+  assert(friendlyTray.indexOf('data-command-control="clear-targets"') >= 0, 'Marked-target tray should keep Clear available while sorting actions');
   assertEqual(App.showIntentMenu('creature', 'friendly-1'), false, 'Living mobile creature menus should stay suppressed in favor of target marking');
   assertNotContains(body.innerHTML, 'aria-label="Luchar Friendly"', 'Suppressed mobile creature menu should not duplicate primary actions');
   assertNotContains(body.innerHTML, 'id="mobile-context-menu"', 'Suppressed mobile creature menu should not open a context menu');
@@ -18387,7 +18390,9 @@ test('Mobile unit chip actions expose localized accessible labels', () => {
   assertNotContains(merchantHtml, 'aria-label="Comerciar Merchant"', 'Mobile merchant chip should not duplicate trade outside the marked-target tray');
   App.clearExplorationTargets();
   App.toggleExplorationTarget('creature', 'merchant-1');
-  assertContains(App._renderExplorationTargetActions('mobile-target'), 'aria-label="Comerciar Merchant"', 'Marked-target tray trade button should expose localized accessible label');
+  const merchantTray = App._renderExplorationTargetActions('mobile-target');
+  assertContains(merchantTray, 'aria-label="Comerciar Merchant"', 'Marked-target tray trade button should expose localized accessible label');
+  assert(merchantTray.indexOf('data-command-intent="trade"') < merchantTray.indexOf('data-command-intent="fight"'), 'Marked-target tray should render Trade before routine Fight');
 });
 
 test('Mobile slot picker preserves actor and target selections independently', () => {
@@ -18525,6 +18530,50 @@ test('Desktop marked-target actions stay bounded and dispatch default actions di
   assertEqual(opener.focused, true, 'Closing desktop marked-target sub-actions should restore focus to the opener');
   assertEqual(App.explorationActorIds.join(','), 'player-1', 'Canceling marked-target sub-actions should preserve actor selection');
   assertEqual(App.explorationTargetIds.join(','), 'creature:guide-1', 'Canceling marked-target sub-actions should preserve target selection');
+});
+
+test('Marked-target contextual utilities sort before routine actions', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'player-1' });
+  const recruitableQuestTarget = makeUnit('Guide', {
+    id: 'guide-priority',
+    disposition: App.DISPOSITION.FRIENDLY,
+    CPle: 95,
+    MPle: 100,
+    willing: true,
+    quest: { id: 'quest-priority', title: 'Help' }
+  });
+  const merchant = makeUnit('Merchant', { id: 'merchant-priority', disposition: App.DISPOSITION.MERCHANT });
+  const remains = makeUnit('Remains', {
+    id: 'remains-priority',
+    disposition: App.DISPOSITION.CORPSE,
+    CPun: 0,
+    corpseName: 'Remains',
+    edibleRemaining: 2,
+    portionsRemaining: 2
+  });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [recruitableQuestTarget, merchant, remains];
+  App.explorationActorIds = ['player-1'];
+
+  App.explorationTargetIds = ['creature:guide-priority'];
+  const guideHtml = App._renderExplorationTargetActions('desktop');
+  assert(guideHtml.indexOf('data-command-intent="recruit"') < guideHtml.indexOf('data-command-intent="quest"'), 'Recruit should sort before Quest for recruitable quest targets');
+  assert(guideHtml.indexOf('data-command-intent="quest"') < guideHtml.indexOf('data-command-intent="fight"'), 'Quest should sort before routine Fight');
+  assert(guideHtml.indexOf('data-command-intent="inspect"') < guideHtml.indexOf('data-command-intent="fight"'), 'Inspect should stay ahead of routine actions after contextual actions');
+  assertContains(guideHtml, 'data-command-control="clear-targets"', 'Clear should remain available in the target action row');
+
+  App.explorationTargetIds = ['creature:merchant-priority'];
+  const merchantHtml = App._renderExplorationTargetActions('desktop');
+  assert(merchantHtml.indexOf('data-command-intent="trade"') < merchantHtml.indexOf('data-command-intent="fight"'), 'Trade should sort before routine Fight');
+
+  App.explorationTargetIds = ['creature:remains-priority'];
+  const remainsHtml = App._renderExplorationTargetActions('desktop');
+  assert(remainsHtml.indexOf('data-command-intent="loot"') >= 0, 'Remains should expose Loot through the composer tray');
+  assert(remainsHtml.indexOf('data-command-intent="scavenge"') >= 0, 'Remains should expose Scavenge through the composer tray');
+  assert(remainsHtml.indexOf('data-command-intent="loot"') < remainsHtml.indexOf('data-command-intent="scavenge"'), 'Loot should sort before Scavenge for remains');
+  assertNotContains(remainsHtml, 'data-command-intent="fight"', 'Remains should not expose routine living-target actions');
 });
 
 test('Marked creature target Fight button resolves the default attack', () => {

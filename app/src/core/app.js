@@ -174,6 +174,9 @@
             _actionLegend(keys) {
                 return YAW_ACTION_UI.legend(this, keys);
             },
+            _sortActionEntries(entries) {
+                return YAW_ACTION_UI.sortActionEntries(entries);
+            },
             applyStaticLocalization(root = document) {
                 return YAW_UI_TEXT.applyStaticLocalization(this, root);
             },

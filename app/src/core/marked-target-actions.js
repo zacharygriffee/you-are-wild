@@ -22,7 +22,7 @@ const YAW_MARKED_TARGET_ACTIONS = {
         const targetRef = singlePanelTarget ? app._explorationTargetUnitId('creature', singlePanelTarget) : '';
         const panelIntent = action => `App.selectIntent('creature','${app._escapeJsString(targetRef)}','${action}','composer-tray')`;
         const keys = ['fight', 'flirt', 'fuck', 'feast', 'feed'];
-        const buttons = singleCorpseTarget ? [] : keys.map(key => {
+        const buttonEntries = singleCorpseTarget ? [] : keys.map(key => {
             const title = app._escapeHtml(`${app._uiLabel(key)} ${label}`);
             const intent = app._escapeHtml(key);
             const actionSource = ['desktop', 'desktop-target', 'composer-tray', 'panel-tray', 'mobile-target'].includes(source)
@@ -33,7 +33,10 @@ const YAW_MARKED_TARGET_ACTIONS = {
             const handler = defaultSubAction
                 ? `App.resolveExplorationTargetAction('${key}','${safeSubAction}','${actionSource}')`
                 : `App.resolveExplorationTargetAction('${key}',null,'${actionSource}')`;
-            return `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`;
+            return {
+                action: key,
+                html: `<button class="action-btn" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${title}" aria-label="${title}" onclick="${handler}"><span class="action-icon" aria-hidden="true">${app._actionIcon(key)}</span><span class="action-caption">${app._uiLabel(key)}</span></button>`
+            };
         });
         if (singleCorpseTarget) {
             const targetName = singleCorpseTarget.corpseName || singleCorpseTarget.name || app._label('disposition.remains', 'Remains');
@@ -46,13 +49,13 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 const handler = enabled ? ` onclick="${panelIntent(dispatchAction)}"` : '';
                 return `<button class="action-btn contextual-utility${enabled ? '' : ' disabled'}" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${title}" aria-label="${title}"${disabled}${handler}>${iconHtml}<span class="action-caption">${caption}</span></button>`;
             };
-            buttons.push(corpseButton('loot', 'loot', '🎒'));
+            buttonEntries.push({ action: 'loot', html: corpseButton('loot', 'loot', '🎒') });
             const canScavenge = app._canScavengeCorpse(singleCorpseTarget);
             const scavengeStatus = app._corpseScavengeStatus(singleCorpseTarget);
             const scavengeTitle = canScavenge
                 ? `${app._uiLabel('scavenge')} ${targetName} (${scavengeStatus})`
                 : `${scavengeStatus} ${targetName}`;
-            buttons.push(corpseButton('scavenge', 'scavenge', '🍖', canScavenge, scavengeTitle));
+            buttonEntries.push({ action: 'scavenge', html: corpseButton('scavenge', 'scavenge', '🍖', canScavenge, scavengeTitle) });
         }
         if (singleCreatureTarget) {
             const targetName = singleCreatureTarget.name || app._label('ui.creatures', 'Creatures');
@@ -63,13 +66,16 @@ const YAW_MARKED_TARGET_ACTIONS = {
                 const iconHtml = icon ? `<span class="action-icon" aria-hidden="true">${icon}</span>` : `<span class="action-icon" aria-hidden="true">${app._actionIcon(labelAction)}</span>`;
                 return `<button class="action-btn contextual-utility" data-command-surface="target-intents" data-command-mode="exploration" data-command-intent="${intent}" data-command-grammar="actor-target-intent" data-command-slot="intent" title="${title}" aria-label="${title}" onclick="${panelIntent(dispatchAction)}">${iconHtml}<span class="action-caption">${caption}</span></button>`;
             };
-            buttons.push(utilityButton('inspect', 'inspect', '👁️'));
+            buttonEntries.push({ action: 'inspect', html: utilityButton('inspect', 'inspect', '👁️') });
             const actor = primaryActor || app._getExplorationActor();
-            if (app._canRecruit(actor, singleCreatureTarget)) buttons.push(utilityButton('recruit', 'recruit', '💕'));
-            if (singleCreatureTarget.quest) buttons.push(utilityButton(singleCreatureTarget.questAccepted ? 'viewQuest' : 'acceptQuest', 'quest', '📜'));
-            if (singleCreatureTarget.disposition === app.DISPOSITION.MERCHANT) buttons.push(utilityButton('trade', 'trade', '🪙'));
+            if (app._canRecruit(actor, singleCreatureTarget)) buttonEntries.push({ action: 'recruit', html: utilityButton('recruit', 'recruit', '💕') });
+            if (singleCreatureTarget.quest) {
+                const questAction = singleCreatureTarget.questAccepted ? 'viewQuest' : 'acceptQuest';
+                buttonEntries.push({ action: questAction, html: utilityButton(questAction, 'quest', '📜') });
+            }
+            if (singleCreatureTarget.disposition === app.DISPOSITION.MERCHANT) buttonEntries.push({ action: 'trade', html: utilityButton('trade', 'trade', '🪙') });
         }
-        const buttonHtml = buttons.join('');
+        const buttonHtml = app._sortActionEntries(buttonEntries).map(entry => entry.html).join('');
         const clearLabel = app._escapeHtml(app._t('target.clear'));
         const clearTitle = app._escapeHtml(app._t('target.clearSelected'));
         const controlsLabel = app._escapeHtml(app._label('target.intentControls', 'Target intent controls'));

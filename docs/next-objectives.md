@@ -27,7 +27,8 @@
 - **Current no-decision backlog:** no implementation-ready items are currently listed as open. The last no-decision slice documented the Scene Feed DSL contract, verified universal party/creature target Mark controls, per-actor Skip/Flee routing, adjacent 3x3 map reveal, tile-entry observation beats, intent-owned reach-profile failure beats, Activity Log optionality, and tactical-card density/polish coverage.
 - **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible. See `docs/scene-feed-dsl.md`.
 - **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Activity Log remains durable technical/history output; Scene Feed is the primary current feedback surface.
-- **Deferred decision count:** 9 topics remain intentionally deferred until design/mechanics discussion: feast/containment redesign, formal row-blocking doctrine beyond intent-owned reach profiles, broad combat balance/costs and rewards, perk-tree design, party-size upgrade economics, NPC role recruitment exceptions, quest taxonomy beyond exact species IDs, mobile Scene Feed toast/notification behavior, and public save/schema rewrites.
+- **Accepted mechanics decisions:** `docs/control-model.md` now records settled doctrine for impossible physical attempts consuming turns, nonviolent victory XP parity, minimal/default-plus-moddable perks, hard default party cap with mod override, recruited NPCs dropping shop/quest duties by default, pre-beta containment save migration tolerance, and persistent inline mobile feedback first.
+- **Deferred decision count:** 6 topics remain intentionally deferred until design/mechanics discussion: formal row-blocking doctrine beyond intent-owned reach profiles, detailed combat economy/cost balancing, procedural/modded perk presentation details, quest taxonomy beyond exact species IDs, richer feast/containment verbs beyond V1, and mobile Scene Feed toast/notification behavior after desktop presentation stabilizes.
 - **Verification expectation:** every future ready backlog pass should run `npm run full-build`, `npm run audit:branding`, and `git diff --check`; use browser smoke for `412x915` mobile and `1365x768` desktop when layout is touched.
 
 ---
@@ -209,14 +210,12 @@ The items below are not active no-decision work. Some are already partially impl
 
 ### Decision-Heavy Topics
 
-- **Feast/containment redesign:** needs a structured containment/digestion doctrine before new implementation.
+- **Feast/containment expansion beyond V1:** V1 doctrine and stomach/swallow adapter exist; chew portions, fragment/slurp, alternate containers, pass-through, nested containment, permanent stat growth, and detailed balance remain future design work.
 - **Formal row-blocking doctrine:** current implementation uses intent-owned reach profiles; full front-row protection, exposed back rows, equipment reach, snare/grab, and distribution rules are future design work.
-- **Combat balance/costs and rewards:** action costs, hunger/spirit tradeoffs, creature size value, and seduce/fight/feed economy need balancing discussion.
-- **Perk tree and party-size upgrades:** progression shape, unlock costs, and balance are not decided.
-- **NPC role recruitment exceptions:** merchants, quest givers, and duty-bound NPCs need doctrine for recruitment, prices, rewards, and relationship benefits.
+- **Combat economy/cost balancing:** nonviolent victory XP parity is accepted; action costs, hunger/spirit tradeoffs, creature size value, and seduce/fight/feed economy still need balancing discussion.
+- **Procedural/modded perk details:** default perks should stay minimal and approachable; deeper procedural perks, modded trees, unlock costs, presentation, and balance are deferred feature design.
 - **Quest taxonomy expansion:** broader species-family/tag objectives beyond exact species IDs need design before implementation.
-- **Mobile Scene Feed notification pattern:** toast/popover behavior is deferred until desktop Scene Feed presentation is satisfactory.
-- **Public save/schema rewrites:** defer unless a concrete mechanics migration requires them.
+- **Mobile Scene Feed notification pattern:** persistent inline feedback is accepted first; toast/popover behavior is deferred until desktop Scene Feed presentation is satisfactory and mobile playtesting proves a need.
 
 ### Long-Horizon Notes (Do Not Treat As Immediate Tasks)
 

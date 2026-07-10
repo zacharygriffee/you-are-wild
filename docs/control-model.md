@@ -61,6 +61,18 @@ See [Scene Feed DSL](scene-feed-dsl.md) for the concrete `SceneBeat` shape, `Act
 
 See [Feast / Containment Doctrine](feast-containment-doctrine.md) for the V1 containment lifecycle, compatibility adapter over current stomach/prey fields, swallow/release/terminal rules, and feast/container mod seams.
 
+## Accepted Mechanics Decisions
+
+These decisions are settled doctrine until a later explicit mechanics pass reopens them:
+
+- Impossible or poor physical actions should consume the actor or committed group's action when attempted. Scene Feed feedback is responsible for explaining why the attempt failed and what the player can learn from it.
+- Nonviolent victory should grant equivalent baseline XP to combat victory. Reward flavor, tags, relationship changes, quest hooks, or follow-up opportunities can differ, but social routes should not be mechanically inferior by default.
+- Perks are a feature layer, not a prerequisite for core mechanics. The default game should expose a minimal, approachable perk surface: early perks can be stat bumps and small passives, milestone perks can unlock mechanics, and deeper procedural or moddable perk trees are deferred until the core game shape is stable.
+- Party size uses a hard default cap for performance and UI readability. Mods may raise or replace that cap for players who opt into larger parties on capable devices.
+- Recruited NPCs lose shop or quest-giver duties by default. Keeping those functions requires a special authored companion role or future explicit role-retention mechanic.
+- Pre-beta containment save changes may break old saves if a clean versioned schema becomes necessary. Prefer compatibility adapters when practical, but do not compromise central containment mechanics merely to preserve unreleased legacy saves.
+- Mobile feedback should be persistent inline first. Transient toast or popover feedback is deferred until desktop Scene Feed shape is satisfactory and mobile playtesting proves inline feedback is missed.
+
 ### Quest Species Matching Doctrine
 
 Quest species objectives match exact internal species IDs. An objective with `species: "wolf"` matches units whose internal `species` is exactly `"wolf"`; it does not fuzzy-match wolfkin-like labels, canine families, beastfolk, tags, hostile-canid categories, or related species such as fox or hyena.

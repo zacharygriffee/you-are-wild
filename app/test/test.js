@@ -16637,6 +16637,23 @@ test('Feast containment doctrine locks V1 scope and links from control model', (
   assertContains(feastContainmentDoc, 'Nested containment mechanics and transfer math', 'Doctrine should explicitly defer nested containment math');
 });
 
+test('Control model records accepted mechanics decisions', () => {
+  const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
+  const nextObjectives = fs.readFileSync(NEXT_OBJECTIVES, 'utf8');
+  assertContains(controlModel, '## Accepted Mechanics Decisions', 'Control model should record settled mechanics decisions');
+  assertContains(controlModel, 'Impossible or poor physical actions should consume the actor or committed group', 'Physical failure attempts should be accepted as turn-consuming doctrine');
+  assertContains(controlModel, 'Nonviolent victory should grant equivalent baseline XP to combat victory', 'Nonviolent victory XP parity should be accepted doctrine');
+  assertContains(controlModel, 'Perks are a feature layer, not a prerequisite for core mechanics', 'Perks should be documented as a feature layer');
+  assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
+  assertContains(controlModel, 'Recruited NPCs lose shop or quest-giver duties by default', 'NPC role recruitment default should be documented');
+  assertContains(controlModel, 'Pre-beta containment save changes may break old saves', 'Containment save migration tolerance should be documented');
+  assertContains(controlModel, 'Mobile feedback should be persistent inline first', 'Mobile feedback doctrine should prefer inline first');
+  assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
+  assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
+  assertContains(nextObjectives, '6 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
+});
+
 test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {
   const { App, elements } = loadAppForCombat();
   const you = makeUnit('You', { id: 'you-1' });

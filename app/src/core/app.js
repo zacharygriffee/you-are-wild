@@ -765,7 +765,7 @@
                 fatalVore: false, chewing: false, allTheWayThrough: false,
                 hardcore: false, scat: false, watersports: false,
                 boneCrushing: false, unwillingWarnings: false,
-                statAbsorption: true, refractoryPeriod: false,
+                statAbsorption: false, refractoryPeriod: false,
                 sameSpeciesBonus: false, fluidEnabled: false,
                 cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
                 partyPlayFightMode: 'nonlethal',
@@ -1237,6 +1237,24 @@
             _normalizeContainmentRecords(holder, container = 'stomach') {
                 return YAW_UNIT_CONTAINMENT.normalizeContainer(this, holder, container);
             },
+            _captureVitalProfile(unit) {
+                return YAW_UNIT_CONTAINMENT.captureVitalProfile(unit);
+            },
+            _applyVitalDamage(recordOrUnit, amount = 0, context = {}) {
+                return YAW_UNIT_CONTAINMENT.applyVitalDamage(recordOrUnit, amount, context);
+            },
+            _vitalRatio(record) {
+                return YAW_UNIT_CONTAINMENT.vitalRatio(record);
+            },
+            _releaseFromVitalState(record) {
+                return YAW_UNIT_CONTAINMENT.releaseFromVitalState(record);
+            },
+            _isTerminalVitalState(record) {
+                return YAW_UNIT_CONTAINMENT.isTerminalVitalState(record);
+            },
+            _containmentSummary(record) {
+                return YAW_UNIT_CONTAINMENT.summary(record);
+            },
             _activeContainedPrey(unit, container = 'stomach') {
                 return (this._normalizeContainmentRecords(unit, container) || []).filter(prey => YAW_UNIT_CONTAINMENT.isActiveContained(prey, container));
             },
@@ -1246,8 +1264,9 @@
                 return active.map(({ container, prey }) => {
                     const containerLabel = this._label(container === 'stomach' ? 'capacity.stomach' : container === 'womb' ? 'capacity.womb' : 'capacity.balls', container);
                     const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
+                    const vital = Math.round(this._vitalRatio(prey) * 100);
                     const release = prey.releaseEligible ? this._label('containment.releaseEligible', 'releasable') : this._label('containment.releaseBlocked', 'not releasable');
-                    return `${prey.name} in ${containerLabel}: ${progress}% · ${release}`;
+                    return `${prey.name} in ${containerLabel}: ${progress}% · vitality ${vital}% · ${release}`;
                 }).join(' | ');
             },
             _interiorKey(x = this.interiorLocation.x, y = this.interiorLocation.y) {
@@ -2261,12 +2280,15 @@
                     case 'feast.chew': {
                         const canChew = this.cheats.canEatAnything || target.CPun <= target.MPun * 0.3 || (actor.Feas > target.Flee && actor.size >= target.size - 2);
                         if (!canChew) { result = `${target.name} is too strong or too big to chew!`; break; }
+                        this._applyVitalDamage(target, target.MPun || target.CPun || 1, { source: 'chew', terminal: false });
+                        target.state = 'depleted';
+                        target.digestionState = 'depleted';
                         target.alive = false; target.CPun = 0; target.CPle = 0;
                         actor.CPun = Math.min(actor.MPun, actor.CPun + 30);
                         actor.Feas += 2;
                         this._awardCombatXP(this.XP_REWARDS.consumeEnemy);
                         this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                        result = `${actorName} tear${actorVerb} into ${target.name} with savage teeth, chewing them apart!`;
+                        result = `${actorName} break${actorVerb} down ${target.name}'s vitality. ${target.name} is depleted.`;
                         break;
                     }
                     case 'feast.cockVore': {
@@ -2308,14 +2330,7 @@
                         const prey = livingStomach[0];
                         const idx = actor.stomach.indexOf(prey);
                         if (idx >= 0) actor.stomach.splice(idx, 1);
-                        prey.inStomach = false;
-                        prey.state = 'released';
-                        prey.digestionState = 'released';
-                        prey.releaseEligible = false;
-                        const remainingRatio = Math.max(0.05, 1 - ((prey.progress ?? prey.digestionProgress ?? 0) / 100));
-                        prey.CPun = Math.max(1, Math.floor((prey.MPun || 1) * remainingRatio));
-                        prey.CPle = 0;
-                        prey.status = prey.status || {};
+                        this._releaseFromVitalState(prey);
                         if (this.creatures.indexOf(prey) === -1) this.creatures.push(prey);
                         YAW_UNIT_CONTAINMENT.emitContainmentBeat(this, 'released', actor, prey, {
                             deltas: [{ kind: 'state', state: 'released', unit: prey.name }]
@@ -2375,7 +2390,8 @@
                     case 'feed.slurp': {
                         if (!target.slurpable) { result = `${target.name} is not slurpable.`; break; }
                         const slurpAmount = Math.floor((actor.Feed || 10) * 1.5);
-                        target.CPun = Math.max(1, target.CPun - slurpAmount);
+                        this._applyVitalDamage(target, slurpAmount, { source: 'slurp', terminal: false, minimumCondition: 1 });
+                        if (target.vitalRemaining <= 0) target.state = 'depleted';
                         target.CPle = Math.min(target.MPle, target.CPle + Math.floor(slurpAmount * 0.2));
                         actor.CPun = Math.min(actor.MPun, actor.CPun + slurpAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
@@ -2386,13 +2402,12 @@
                     case 'feed.fragment': {
                         if (!target.breakable) { result = `${target.name} is not breakable.`; break; }
                         const fragAmount = Math.floor((actor.Feed || 10) * 1.5);
-                        target.CPun = Math.max(1, target.CPun - fragAmount);
-                        target.str = Math.max(1, (target.str || 10) - 1);
-                        target.con = Math.max(1, (target.con || 10) - 1);
+                        this._applyVitalDamage(target, fragAmount, { source: 'fragment', terminal: false, minimumCondition: 1 });
+                        if (target.vitalRemaining <= 0) target.state = 'depleted';
                         actor.CPun = Math.min(actor.MPun, actor.CPun + fragAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} break${actorVerb} off a piece of ${target.name}, consuming it as nourishment. ${target.name} is diminished but regenerates over time.`;
+                        result = `${actorName} reduce${actorVerb} ${target.name}'s vitality as nourishment. ${target.name} is diminished but remains whole.`;
                         break;
                     }
                     default: {
@@ -2776,31 +2791,24 @@
             },
 
             _groupChewFeast(actors, target) {
-                const portions = actors.filter(actor => actor && actor !== target);
-                if (portions.length === 0) return this._label('group.feast.noHelpers', '{target} cannot be split without helpers.', { target: target.name });
-                const portionSize = Math.max(1, Math.ceil((target.size || 1) / portions.length));
-                const blocked = portions.find(actor => this._containerUsed(actor, 'stomach') + portionSize > this._containerCapacity(actor, 'stomach'));
-                if (blocked) return this._capacityFailureMessage(blocked, target, 'stomach');
-                for (const actor of portions) {
-                    if (!actor.stomach) actor.stomach = [];
-                    actor.stomach.push({
-                        name: `${target.name} portion`,
-                        species: target.species,
-                        size: portionSize,
-                        alive: false,
-                        inStomach: true,
-                        digestionState: 'digested',
-                        digestionProgress: 100,
-                        sourceId: target.id || target.name
-                    });
+                const participants = actors.filter(actor => actor && actor !== target);
+                if (participants.length === 0) return this._label('group.feast.noHelpers', '{target} cannot be reduced without helpers.', { target: target.name });
+                const vitalDamage = Math.max(1, participants.reduce((sum, actor) => sum + Math.max(1, Math.floor((actor.Feas || 10) * 0.5)), 0));
+                this._applyVitalDamage(target, vitalDamage, { source: 'group-chew', terminal: false });
+                for (const actor of participants) {
                     actor.hunger = Math.max(0, (actor.hunger || 0) - 25);
                 }
-                target.CPun = 0;
-                if (this.party.includes(target)) this._removeContainedPartyMember(target);
-                else this._removeCreatureFromArea(target);
-                this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
-                return this._label('group.feast.split', '{actors} split {target} into chewable portions.', {
-                    actors: portions.map(actor => actor.name).join(', '),
+                if (target.vitalRemaining <= 0 || target.CPun <= 0) {
+                    target.alive = false;
+                    target.CPun = 0;
+                    target.state = 'depleted';
+                    target.digestionState = 'depleted';
+                    if (this.party.includes(target)) this._removeContainedPartyMember(target);
+                    else this._removeCreatureFromArea(target);
+                    this._updateQuestProgress('consume', { target, targetId: target.id || target.name, species: target.species, name: target.name });
+                }
+                return this._label('group.feast.split', '{actors} reduce {target} through vital damage.', {
+                    actors: participants.map(actor => actor.name).join(', '),
                     target: target.name
                 });
             },

@@ -10,9 +10,11 @@ Feast is three linked systems:
 - Contained creature lifecycle: whether the contained creature is intact, digesting, releasable, terminal, released, or passed.
 - Assimilation/stat transfer: conservative hunger relief, healing, or temporary effects from terminal digestion.
 
-Containment data must stay neutral and content-tier safe. Core state should describe facts such as holder, contained creature, container, progress, integrity, release eligibility, and temporary effects. Scene Feed owns player-facing wording and chooses safe/default presentation from templates.
+Containment data must stay neutral and content-tier safe. Core state should describe facts such as holder, contained creature, container, progress, vital integrity, release eligibility, and temporary effects. Scene Feed owns player-facing wording and chooses safe/default presentation from templates.
 
 V1 does not perform a broad save/schema rewrite. It normalizes current `stomach`, `womb`, `balls`, `inStomach`, `digestionProgress`, `digestionState`, and `statDrain` fields into the V1 shape at runtime and preserves those fields for compatibility.
+
+V2 builds on this adapter with a two-track damage model. Regular damage affects current punishment/condition. Vital damage affects recoverable vitality and release outcomes. Core does not create itemized creature-piece inventory for chew, slurp, or fragment; those are future/modded extensions. See [Feast / Containment V2 Doctrine](feast-containment-v2.md).
 
 ## V1 Containment Record
 
@@ -27,6 +29,11 @@ Existing prey snapshots should normalize to this shape:
   state: "contained" | "digesting" | "terminal" | "released" | "passed",
   integrity: "intact" | "damaged" | "fragmented" | "portions",
   progress,
+  capturedPun,
+  vitalRemaining,
+  vitalMax,
+  vitalDamageTaken,
+  originalStats,
   releaseEligible,
   digestionRate,
   absorptionRate,
@@ -40,10 +47,11 @@ V1 defaults:
 
 - `swallow` creates `integrity: "intact"`.
 - Intact contained creatures remain releasable until terminal digestion.
-- Terminal digestion occurs when `progress >= 100` or contained condition/vitals reach zero.
+- Terminal digestion occurs when `progress >= 100`, contained condition reaches zero, or `vitalRemaining <= 0`.
 - Release is command-driven only; auto-escape is deferred.
 - Terminal digestion creates no remains or loot by default.
 - Temporary stat effects are supported by schema, but default V1 mostly grants hunger relief, healing, and conservative temporary boosts.
+- Visible stats are not directly mutated by each digestion tick by default. `statDrain` is a compatibility/weakness ledger; released condition and Vital Weakness derive from remaining vital integrity.
 
 ## Active V1 Scope
 
@@ -102,8 +110,8 @@ Activity Log remains the durable technical/history surface. Safe tier uses neutr
 
 ## Deferred
 
-- Chew portions/remains.
-- Fragment/slurp lifecycle.
+- Itemized chew portions/remains in core.
+- Itemized fragment/slurp lifecycle in core.
 - Alternate containers/routes beyond stomach.
 - Pass-through/all-the-way-through.
 - Nested containment mechanics and transfer math.

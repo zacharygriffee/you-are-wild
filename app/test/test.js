@@ -13,6 +13,7 @@ const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mo
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
+const FEAST_CONTAINMENT_V2 = path.join(__dirname, '..', '..', 'docs', 'feast-containment-v2.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -147,6 +148,7 @@ const unitLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-li
 const unitContainersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containers.js'), 'utf8');
 const unitContainmentContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containment.js'), 'utf8');
 const feastContainmentDoc = fs.readFileSync(FEAST_CONTAINMENT_DOCTRINE, 'utf8');
+const feastContainmentV2Doc = fs.readFileSync(FEAST_CONTAINMENT_V2, 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionPlanContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
@@ -5025,7 +5027,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'New Run', 'save.load': 'Load', 'save.save': 'Save', 'save.delete': 'Delete', 'save.close': 'Close', 'save.action.newGame': 'Choose a slot for a new game', 'save.action.useEmpty': 'Start new game in {slot}', 'save.action.overwrite': 'Overwrite {slot} with a new game', 'save.action.newRun': 'Start a new run in {slot}', 'save.action.load': 'Load {slot}', 'save.action.save': 'Save and continue in {slot}', 'save.action.delete': 'Delete {slot}',
           'settings.confirmClearAllData': 'WARNING: This will delete ALL saves, modules, and game data. This cannot be undone. Are you sure?', 'settings.clearAllDataDone': 'All data cleared. Refresh the page to start fresh.', 'settings.clearAllDataFailed': 'Failed to clear all data: {message}',
           'save.confirm.newGameOverwrite': 'Start a new game in {slot}? This will overwrite that save slot. This cannot be undone.', 'save.confirm.manualOverwrite': 'Overwrite {slot} with the current game and continue auto-saving there? This cannot be undone.', 'save.confirm.deleteSlot': 'Delete save slot {slot}? This permanently removes only this slot and cannot be undone.', 'save.confirmDeleteAll': 'Delete ALL save data? This cannot be undone!', 'save.error.noGame': 'No game to save!', 'save.error.noSave': 'No save in {slot}', 'save.success.saved': 'Game saved to {slot}. Auto-save now updates this slot.', 'save.success.deletedAll': 'All saves deleted.', 'save.recoveredOnLoad': 'You were revived from the brink of defeat. Welcome back, {name}.', 'save.error.saveFailed': 'Save failed: {message}', 'save.error.loadFailed': 'Load failed: {message}', 'save.error.deleteFailed': 'Delete failed: {message}', 'save.error.deleteAllFailed': 'Delete saves failed: {message}', 'save.recovery.prompt': 'Save data is incompatible or corrupted. Options:\n\n1 = Delete save\n2 = Download backup (as base64)\n3 = Cancel\n\nEnter 1, 2, or 3:', 'save.recovery.deleted': 'Save deleted.', 'save.recovery.backupDownloaded': 'Backup downloaded. Save remains intact.',
-          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be split without helpers.', 'group.feast.split': '{actors} split {target} into chewable portions.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
+          'target.actors': 'Actors', 'target.primaryActor': 'Primary', 'target.helpers': 'Helpers', 'target.targets': 'Targets', 'target.act': 'Actor', 'target.mark': 'Mark', 'target.pick': 'Pick', 'target.actorRole': 'Actor', 'target.targetRole': 'Target', 'target.markedRole': 'Marked', 'target.selectActorFor': 'Set {name} as actor', 'target.addActorFor': 'Add {name} as actor', 'target.removeActorFor': 'Remove {name} from actors', 'target.markFor': 'Mark {name} as target', 'target.removeTargetFor': 'Remove {name} from targets', 'target.selectAs': 'Select {name} as {action} target', 'target.cannotSelectAs': 'Cannot select {name} as {action} target', 'target.selectedSummary': 'Selected exploration targets', 'target.chooseOneActor': 'Choose one actor for multi-target {action} actions, or one target for group {action} actions. Current selection has {actorCount} actors and {targetCount} targets.', 'target.cannotHandleMultiple': '{name} cannot handle {count} targets with {action} yet.', 'target.multiActionDone': '{name} finishes a multi-target {action} action on {targets}.', 'target.multiActionNone': '{name} finds no valid targets for multi-target {action}.', 'target.pairedActionDone': 'Paired {action} actions resolved: {pairs}.', 'target.skippedFullTargets': 'Skipped full targets: {targets}.', 'target.clear': 'Clear', 'target.count': '{count} target', 'target.count_plural': '{count} targets', 'target.intentControls': 'Target intent controls', 'target.clearSelected': 'Clear selected targets', 'explore.fight.hit': '{actor} hits {target} for {amount} punishment.', 'explore.fight.subdued': '{target} is subdued.', 'explore.fuck.success': '{actor} plays with {target}. Spirit rises to {current}/{max}.', 'explore.fuck.devoted': '{target} relaxes and becomes completely friendly.', 'explore.fuck.recover': '{target} needs a moment to catch their breath...', 'explore.fuck.resists': '{target} does not want to play.', 'explore.feast.swallow': '{actor} eats {target}. They are held in {owner} belly.', 'explore.feast.tooStrong': '{target} is too large or strong to eat.', 'explore.flirt.success': '{actor} talks with {target}. Their guard lowers. Spirit rises to {current}/{max}.', 'explore.flirt.charmed': '{target} is convinced and becomes friendly!', 'explore.flirt.rebuff': '{target} rejects the conversation!', 'explore.feed.success': '{actor} feeds {target}, restoring {amount} punishment and sating their hunger.', 'explore.recruit.possible': '{target} may be willing to join the party.', 'group.feed.selfBlocked': '{name} cannot feed into themself yet.', 'group.feed.playerBlocked': '{name} cannot be handed off as prey right now.', 'group.feed.partyToConsumer': '{prey} is fed to {consumer} and settles in their belly.', 'group.feed.helpers': '{helpers} help feed {prey} to {target}.', 'group.feed.tend': '{actors} tend {target}, restoring {amount} punishment.', 'group.feed.tendTogether': '{actors} tend {target} together, restoring {amount} punishment.', 'group.feed.creature': '{actors} feed {target}, restoring {amount} punishment.', 'group.fight.roughCollapse': '{name} collapses from the rough play.', 'group.fight.pinned': 'They are pinned but not seriously hurt.', 'group.fight.sparTogether': '{actors} spar together, each taking {amount} punishment.', 'group.mutual.feed': '{actors} tend each other, restoring {amount} punishment where needed.', 'group.mutual.feastBlocked': '{actors} cannot eat themselves as a mutual group. Choose a primary target instead.', 'group.mutual.fight': '{actors} spar as a mutual group, each taking {amount} punishment.', 'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.', 'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.', 'group.fight.collapses': '{target} collapses.', 'group.feast.noHelpers': '{target} cannot be reduced without helpers.', 'group.feast.split': '{actors} reduce {target} through vital damage.', 'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.', 'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.', 'group.feast.swallow': '{helpers} help {primary} eat {target}.', 'group.social.share': '{actors} share {action} with {target}. Spirit spreads through the group; {target} rises to {current}/{max}.', 'group.social.focus': '{actors} focus on {target}. Spirit rises to {current}/{max}.', 'group.social.resists': "{target} resists the group's attention."
         },
         es: {
           'action.fight': 'Luchar', 'action.flirt': 'Hablar', 'action.fuck': 'Jugar', 'action.feast': 'Comer', 'action.feed': 'Alimentar', 'action.flee': 'Huir', 'action.moveRow': 'Mover fila', 'action.sync': 'Sincronizar', 'action.skip': 'Saltar', 'action.search': 'Buscar', 'action.rest': 'Descansar', 'action.inventory': 'Objetos', 'action.interact': 'Interactuar', 'action.stats': 'Estadisticas', 'action.inspect': 'Inspeccionar', 'action.recruit': 'Reclutar', 'action.acceptQuest': 'Aceptar mision', 'action.viewQuest': 'Ver mision', 'action.trade': 'Comerciar', 'action.acceptQuestFrom': 'Aceptar mision de {name}', 'action.viewQuestFrom': 'Ver mision de {name}', 'action.tradeWith': 'Comerciar con {name}', 'action.loot': 'Saquear', 'action.scavenge': 'Rebuscar', 'action.scavenged': 'Rebuscado',
@@ -5042,7 +5044,7 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
           'save.newRun': 'Nueva partida', 'save.load': 'Cargar', 'save.save': 'Guardar', 'save.delete': 'Borrar', 'save.close': 'Cerrar', 'save.action.newGame': 'Elegir un slot para una partida nueva', 'save.action.useEmpty': 'Iniciar partida nueva en {slot}', 'save.action.overwrite': 'Sobrescribir {slot} con una partida nueva', 'save.action.newRun': 'Iniciar una nueva partida en {slot}', 'save.action.load': 'Cargar {slot}', 'save.action.save': 'Guardar y continuar en {slot}', 'save.action.delete': 'Borrar {slot}',
           'settings.confirmClearAllData': 'ADVERTENCIA: Esto borrara todas las partidas, modulos y datos del juego. Esta accion no se puede deshacer. Continuar?', 'settings.clearAllDataDone': 'Todos los datos fueron borrados. Actualiza la pagina para empezar de nuevo.', 'settings.clearAllDataFailed': 'Error al borrar todos los datos: {message}',
           'save.confirm.newGameOverwrite': 'Iniciar partida nueva en {slot}? Esto sobrescribira ese slot. Esta accion no se puede deshacer.', 'save.confirm.manualOverwrite': 'Sobrescribir {slot} con la partida actual y continuar autoguardando ahi? Esta accion no se puede deshacer.', 'save.confirm.deleteSlot': 'Borrar el slot {slot}? Esto elimina permanentemente solo este slot y no se puede deshacer.', 'save.confirmDeleteAll': 'Borrar TODOS los datos de partidas? Esta accion no se puede deshacer!', 'save.error.noGame': 'No hay partida para guardar!', 'save.error.noSave': 'No hay partida en {slot}', 'save.success.saved': 'Partida guardada en {slot}. El autoguardado ahora actualiza este slot.', 'save.success.deletedAll': 'Todas las partidas fueron borradas.', 'save.recoveredOnLoad': 'Te recuperaste al borde de la derrota. Bienvenido de vuelta, {name}.', 'save.error.saveFailed': 'Error al guardar: {message}', 'save.error.loadFailed': 'Error al cargar: {message}', 'save.error.deleteFailed': 'Error al borrar: {message}', 'save.error.deleteAllFailed': 'Error al borrar partidas: {message}', 'save.recovery.prompt': 'Los datos de la partida son incompatibles o estan corruptos. Opciones:\n\n1 = Borrar partida\n2 = Descargar respaldo (base64)\n3 = Cancelar\n\nIngresa 1, 2 o 3:', 'save.recovery.deleted': 'Partida borrada.', 'save.recovery.backupDownloaded': 'Respaldo descargado. La partida queda intacta.',
-          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actor', 'target.mark': 'Marcar', 'target.pick': 'Elegir', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.markedRole': 'Marcado', 'target.selectActorFor': 'Asignar {name} como actor', 'target.addActorFor': 'Agregar {name} como actor', 'target.removeActorFor': 'Quitar {name} de los actores', 'target.markFor': 'Marcar {name} como objetivo', 'target.removeTargetFor': 'Quitar {name} de los objetivos', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.intentControls': 'Controles de intencion de objetivo', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} juega con {target}. El animo sube a {current}/{max}.', 'explore.fuck.devoted': '{target} se relaja y queda completamente amistoso.', 'explore.fuck.recover': '{target} necesita un momento para respirar...', 'explore.fuck.resists': '{target} no quiere jugar.', 'explore.feast.swallow': '{actor} come a {target}. Queda en la barriga de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} habla con {target}. Baja la guardia. El animo sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda convencido y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza la conversacion!', 'explore.feed.success': '{actor} alimenta a {target}, restaurando {amount} de castigo y saciando su hambre.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su barriga.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden comerse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El animo sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede dividirse sin ayudantes.', 'group.feast.split': '{actors} dividen a {target} en porciones masticables.', 'group.feast.selfBlocked': '{target} no puede comerse a si mismo. Selecciona otros miembros del grupo como actores para este objetivo, o selecciona solo a {target} para comer otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo coman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a comer a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El animo se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El animo sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
+          'target.actors': 'Actores', 'target.primaryActor': 'Principal', 'target.helpers': 'Ayudantes', 'target.targets': 'Objetivos', 'target.act': 'Actor', 'target.mark': 'Marcar', 'target.pick': 'Elegir', 'target.actorRole': 'Actor', 'target.targetRole': 'Objetivo', 'target.markedRole': 'Marcado', 'target.selectActorFor': 'Asignar {name} como actor', 'target.addActorFor': 'Agregar {name} como actor', 'target.removeActorFor': 'Quitar {name} de los actores', 'target.markFor': 'Marcar {name} como objetivo', 'target.removeTargetFor': 'Quitar {name} de los objetivos', 'target.selectAs': 'Seleccionar {name} como objetivo de {action}', 'target.cannotSelectAs': 'No se puede seleccionar {name} como objetivo de {action}', 'target.selectedSummary': 'Objetivos de exploracion seleccionados', 'target.chooseOneActor': 'Elige un actor para acciones multiobjetivo de {action}, o un objetivo para acciones grupales de {action}. La seleccion actual tiene {actorCount} actores y {targetCount} objetivos.', 'target.cannotHandleMultiple': '{name} no puede manejar {count} objetivos con {action} todavia.', 'target.multiActionDone': '{name} termina una accion multiobjetivo de {action} sobre {targets}.', 'target.multiActionNone': '{name} no encuentra objetivos validos para multiobjetivo de {action}.', 'target.pairedActionDone': 'Acciones emparejadas de {action} resueltas: {pairs}.', 'target.skippedFullTargets': 'Objetivos llenos omitidos: {targets}.', 'target.clear': 'Limpiar', 'target.count': '{count} objetivo', 'target.count_plural': '{count} objetivos', 'target.intentControls': 'Controles de intencion de objetivo', 'target.clearSelected': 'Limpiar objetivos', 'explore.fight.hit': '{actor} golpea a {target} por {amount} de castigo.', 'explore.fight.subdued': '{target} queda sometido.', 'explore.fuck.success': '{actor} juega con {target}. El animo sube a {current}/{max}.', 'explore.fuck.devoted': '{target} se relaja y queda completamente amistoso.', 'explore.fuck.recover': '{target} necesita un momento para respirar...', 'explore.fuck.resists': '{target} no quiere jugar.', 'explore.feast.swallow': '{actor} come a {target}. Queda en la barriga de {owner}.', 'explore.feast.tooStrong': '{target} es demasiado grande o fuerte para comer.', 'explore.flirt.success': '{actor} habla con {target}. Baja la guardia. El animo sube a {current}/{max}.', 'explore.flirt.charmed': '{target} queda convencido y se vuelve amistoso!', 'explore.flirt.rebuff': '{target} rechaza la conversacion!', 'explore.feed.success': '{actor} alimenta a {target}, restaurando {amount} de castigo y saciando su hambre.', 'explore.recruit.possible': '{target} podria estar dispuesto a unirse al grupo.', 'group.feed.selfBlocked': '{name} no puede alimentarse a si mismo todavia.', 'group.feed.playerBlocked': '{name} no puede ser entregado como presa ahora.', 'group.feed.partyToConsumer': '{prey} es alimentado a {consumer} y queda en su barriga.', 'group.feed.helpers': '{helpers} ayudan a alimentar {prey} a {target}.', 'group.feed.tend': '{actors} atienden a {target}, restaurando {amount} de castigo.', 'group.feed.tendTogether': '{actors} atienden juntos a {target}, restaurando {amount} de castigo.', 'group.feed.creature': '{actors} alimentan a {target}, restaurando {amount} de castigo.', 'group.fight.roughCollapse': '{name} cae por el juego brusco.', 'group.fight.pinned': 'Quedan inmovilizados sin heridas serias.', 'group.fight.sparTogether': '{actors} practican combate juntos, cada uno recibe {amount} de castigo.', 'group.mutual.feed': '{actors} se atienden entre si, restaurando {amount} de castigo donde hace falta.', 'group.mutual.feastBlocked': '{actors} no pueden comerse a si mismos como grupo mutuo. Elige un objetivo principal.', 'group.mutual.fight': '{actors} practican combate como grupo mutuo, cada uno recibe {amount} de castigo.', 'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El animo sube para todos los involucrados.', 'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.', 'group.fight.collapses': '{target} cae.', 'group.feast.noHelpers': '{target} no puede reducirse sin ayudantes.', 'group.feast.split': '{actors} reducen la vitalidad de {target}.', 'group.feast.selfBlocked': '{target} no puede comerse a si mismo. Selecciona otros miembros del grupo como actores para este objetivo, o selecciona solo a {target} para comer otro objetivo.', 'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo coman.', 'group.feast.swallow': '{helpers} ayudan a {primary} a comer a {target}.', 'group.social.share': '{actors} comparten {action} con {target}. El animo se extiende por el grupo; {target} sube a {current}/{max}.', 'group.social.focus': '{actors} se enfocan en {target}. El animo sube a {current}/{max}.', 'group.social.resists': '{target} resiste la atencion del grupo.'
         }
       },
       setPreference(key, value) { this.preferences[key] = value; },
@@ -5764,14 +5766,23 @@ test('Digestion container configs preserve per-container drain behavior', () => 
   assertEqual(stomachPrey.statDrain.str, 1, 'Stomach drain should affect strength');
   assertEqual(stomachPrey.statDrain.con, 1, 'Stomach drain should affect constitution');
   assertEqual(stomachPrey.statDrain.Figh, 1, 'Stomach drain should affect fight');
+  assertEqual(stomachPrey.str, 10, 'Digestion tick should not directly mutate visible strength');
+  assertEqual(stomachPrey.con, 10, 'Digestion tick should not directly mutate visible constitution');
+  assertEqual(stomachPrey.Figh, 10, 'Digestion tick should not directly mutate visible fight stat');
+  assert(stomachPrey.vitalRemaining < stomachPrey.vitalMax, 'Stomach digestion should reduce vital integrity');
   assertEqual(wombPrey.digestionProgress, 3, 'Womb prey should use the preserved fast womb rate');
   assertEqual(wombPrey.statDrain.cha, 1, 'Womb drain should track charisma without NaN');
   assertEqual(wombPrey.statDrain.Flir, 1, 'Womb drain should affect flirt');
   assertEqual(wombPrey.statDrain.Fuck, 1, 'Womb drain should affect fuck');
+  assertEqual(wombPrey.cha, 10, 'Womb tick should not directly mutate visible charisma');
+  assertEqual(wombPrey.Flir, 10, 'Womb tick should not directly mutate visible flirt stat');
+  assertEqual(wombPrey.Fuck, 10, 'Womb tick should not directly mutate visible play stat');
   assertEqual(Number.isNaN(wombPrey.statDrain.cha), false, 'Womb charisma drain should remain numeric');
   assertEqual(ballsPrey.digestionProgress, 3, 'Balls prey should use the preserved fast balls rate');
   assertEqual(ballsPrey.statDrain.Feas, 1, 'Balls drain should affect feast');
   assertEqual(ballsPrey.statDrain.Fuck, 1, 'Balls drain should affect fuck');
+  assertEqual(ballsPrey.Feas, 10, 'Reserve tick should not directly mutate visible feast stat');
+  assertEqual(ballsPrey.Fuck, 10, 'Reserve tick should not directly mutate visible play stat');
 });
 
 test('Status effects apply damage and expire during processing', () => {
@@ -8989,22 +9000,23 @@ test('Single feast removes consumed area creature from active tile', () => {
   assertEqual(App.explorationTargetIds.includes('creature:prey-1'), false, 'Consumed area creature should clear selected target state');
 });
 
-test('Chewing-enabled group feast splits target among selected actors', () => {
+test('Chewing-enabled group feast applies vital damage without splitting pieces', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-1' });
   const eaterA = makeUnit('Eater A', { id: 'eater-a', size: 4, appetite: 4, Feas: 20 });
   const eaterB = makeUnit('Eater B', { id: 'eater-b', size: 4, appetite: 4, Feas: 20 });
-  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1 });
+  const prey = makeUnit('Prey', { id: 'prey-1', size: 4, Flee: 1, CPun: 100, MPun: 100 });
   App.player = player;
   App.party = [player, eaterA, eaterB, prey];
   App.settings.chewing = true;
   App.selectExplorationActor(1);
   App.selectExplorationActor(2);
   App.outsideActionForParty('feast', 3);
-  assertEqual(eaterA.stomach.length, 1, 'First group eater should receive a prey portion');
-  assertEqual(eaterB.stomach.length, 1, 'Second group eater should receive a prey portion');
-  assertEqual(App.party.includes(prey), false, 'Split party target should leave active party list');
-  assertContains(App.log[App.log.length - 1].text, 'split Prey', 'Group chew feast should log splitting behavior');
+  assertEqual(eaterA.stomach.length, 0, 'First group eater should not receive a synthetic prey portion');
+  assertEqual(eaterB.stomach.length, 0, 'Second group eater should not receive a synthetic prey portion');
+  assertEqual(App.party.includes(prey), true, 'Nonterminal vital-damage target should remain active');
+  assert(prey.vitalRemaining < prey.vitalMax, 'Group chew should reduce prey vital integrity');
+  assertContains(App.log[App.log.length - 1].text, 'reduce Prey through vital damage', 'Group chew feast should log vital reduction behavior');
 });
 
 test('Group feast respects explicit swallow sub-action when chewing is enabled', () => {
@@ -9138,7 +9150,7 @@ test('Group exploration outcome summaries localize', () => {
   feast.App.explorationActorIds = ['eater-a', 'eater-b'];
   feast.App.updateLanguage('es');
   feast.App.outsideActionForParty('feast', 3);
-  assertContains(feast.App.log[feast.App.log.length - 1].text, 'dividen a Prey en porciones masticables', 'Group chew feast summary should localize');
+  assertContains(feast.App.log[feast.App.log.length - 1].text, 'reducen la vitalidad de Prey', 'Group chew feast summary should localize vital damage');
 
   const transfer = loadAppForCombat(() => 0);
   const transferPlayer = makeUnit('You', { id: 'player-1' });
@@ -16683,13 +16695,19 @@ test('Feast containment doctrine locks V1 scope and links from control model', (
   assertContains(feastContainmentDoc, 'holderId', 'Doctrine should document normalized holder id');
   assertContains(feastContainmentDoc, 'containedId', 'Doctrine should document normalized contained id');
   assertContains(feastContainmentDoc, 'containerId: "stomach"', 'Doctrine should document stomach as V1 container');
+  assertContains(feastContainmentDoc, 'vitalRemaining', 'Doctrine should document vital remaining in the normalized record');
   assertContains(feastContainmentDoc, '`swallow` creates `integrity: "intact"`', 'Doctrine should lock swallow intact default');
-  assertContains(feastContainmentDoc, 'Terminal digestion occurs when `progress >= 100` or contained condition/vitals reach zero', 'Doctrine should lock terminal thresholds');
+  assertContains(feastContainmentDoc, 'Terminal digestion occurs when `progress >= 100`, contained condition reaches zero, or `vitalRemaining <= 0`', 'Doctrine should lock terminal thresholds');
+  assertContains(feastContainmentDoc, 'Visible stats are not directly mutated by each digestion tick', 'Doctrine should keep visible stats separate from tick ledger');
   assertContains(feastContainmentDoc, 'Release is command-driven only', 'Doctrine should defer auto-escape');
   assertContains(feastContainmentDoc, 'Terminal digestion creates no remains or loot by default', 'Doctrine should lock no-remains V1 behavior');
   assertContains(feastContainmentDoc, 'App.registerFeastVerbProfile(profile)', 'Doctrine should document feast verb mod seam');
   assertContains(feastContainmentDoc, 'App.registerContainerProfile(profile)', 'Doctrine should document container profile mod seam');
-  assertContains(feastContainmentDoc, 'Chew portions/remains', 'Doctrine should explicitly defer chew portions');
+  assertContains(feastContainmentDoc, 'Itemized chew portions/remains in core', 'Doctrine should explicitly defer itemized chew portions');
+  assertContains(feastContainmentV2Doc, 'Core Feast should not model chewed creature pieces as inventory items', 'V2 doctrine should reject itemized creature pieces as core model');
+  assertContains(feastContainmentV2Doc, 'Regular damage', 'V2 doctrine should distinguish regular damage');
+  assertContains(feastContainmentV2Doc, 'Vital damage', 'V2 doctrine should distinguish vital damage');
+  assertContains(feastContainmentV2Doc, 'No creature-piece inventory items in core', 'V2 doctrine should lock no piece inventory non-goal');
   assertContains(feastContainmentDoc, 'Nested containment mechanics and transfer math', 'Doctrine should explicitly defer nested containment math');
 });
 
@@ -16703,6 +16721,7 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
   assertContains(controlModel, 'Recruited NPCs lose shop or quest-giver duties by default', 'NPC role recruitment default should be documented');
   assertContains(controlModel, 'Pre-beta containment save changes may break old saves', 'Containment save migration tolerance should be documented');
+  assertContains(controlModel, 'Feast/containment uses regular damage and vital damage as separate tracks', 'Control model should record vital damage doctrine');
   assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
@@ -17407,6 +17426,30 @@ test('Accessibility settings apply, sync, and persist', () => {
 });
 
 test('Persisted app settings normalize before use and save', () => {
+  const { App, storage } = loadAppForCombat(() => 0.5, {
+    storage: {
+      'yaw-settings': JSON.stringify({
+        fatalVore: 'true',
+        statAbsorption: false,
+        highContrast: true,
+        reducedMotion: 'yes',
+        fontSize: 99,
+        partyPlayFightMode: 'unsafe',
+        injected: true
+      }),
+      'yaw-content-prefs': JSON.stringify({ maxTier: 2, explicitDescriptions: true, voreEnabled: true, language: 'en' })
+    }
+  });
+
+  assertEqual(App.settings.statAbsorption, false, 'Stored false should remain false for known boolean settings');
+});
+
+test('Default containment settings do not grant permanent stat absorption', () => {
+  const { App } = loadAppForCombat();
+  assertEqual(App.settings.statAbsorption, false, 'Permanent stat absorption should be opt-in, not default containment behavior');
+});
+
+test('Persisted app settings normalize remaining fields before use and save', () => {
   const { App, storage } = loadAppForCombat(() => 0.5, {
     storage: {
       'yaw-settings': JSON.stringify({
@@ -18372,9 +18415,28 @@ test('Swallow creates normalized containment record and keeps prey recoverable o
   assertEqual(prey.entryVerb, 'swallow', 'Containment record should use swallow entry verb');
   assertEqual(prey.state, 'contained', 'Swallow should start as contained');
   assertEqual(prey.integrity, 'intact', 'Swallow should preserve intact release eligibility');
+  assertEqual(prey.capturedPun, 20, 'Swallow should capture current condition at containment time');
+  assertEqual(prey.vitalMax, 100, 'Swallow should create a vital max from prey condition capacity');
+  assertEqual(prey.vitalRemaining, 100, 'Swallow should do no immediate vital damage by default');
+  assertEqual(prey.originalStats.Figh, target.Figh, 'Swallow should capture original combat stat profile');
   assertEqual(prey.releaseEligible, true, 'Intact swallowed prey should be releasable before terminal digestion');
   assertContains(App.latestSceneBeat.summary, 'Bunnyfolk is held', 'Swallow should emit a containment Scene Beat');
   assertContains(App.latestSceneBeat.tags.join(','), 'containment', 'Scene Beat should carry containment tags');
+});
+
+test('Normal fight damage does not create or reduce vital integrity', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'fighter-1', Figh: 40 });
+  const target = makeUnit('Ratfolk', { id: 'rat-regular-damage', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, con: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+
+  App.outsideActionOnTarget('fight', target, actor);
+
+  assert(target.CPun < 100, 'Normal fight should reduce current condition');
+  assertEqual(Number.isFinite(target.vitalRemaining), false, 'Normal fight should not create vitalRemaining');
+  assertEqual(Number.isFinite(target.vitalDamageTaken), false, 'Normal fight should not create vital damage ledger');
 });
 
 test('Containment adapter normalizes existing stomach prey saves without data loss', () => {
@@ -18389,6 +18451,8 @@ test('Containment adapter normalizes existing stomach prey saves without data lo
   assertEqual(prey.containedId, 'stored-legacy', 'Legacy prey should gain contained id');
   assertEqual(prey.containerId, 'stomach', 'Legacy prey should normalize to stomach container');
   assertEqual(prey.progress, 25, 'Legacy digestionProgress should map to progress');
+  assertEqual(prey.vitalMax, 100, 'Legacy prey should gain vital max');
+  assertEqual(prey.vitalRemaining, 75, 'Legacy prey should infer vital remaining from progress');
   assertEqual(prey.state, 'digesting', 'Legacy progress should normalize to digesting state');
   assertEqual(prey.releaseEligible, true, 'Legacy intact prey should remain releasable');
 });
@@ -18410,6 +18474,7 @@ test('Containment records survive binary save/load through stomach compatibility
   assertEqual(restoredPrey.entryVerb, 'swallow', 'Loaded stomach prey should preserve entry verb');
   assertEqual(restoredPrey.releaseEligible, true, 'Loaded stomach prey should preserve release eligibility');
   assertEqual(restoredPrey.containedId, 'save-prey', 'Loaded stomach prey should preserve contained id');
+  assertEqual(restoredPrey.vitalRemaining, 100, 'Loaded stomach prey should preserve vital integrity');
 });
 
 test('Digestion tick advances progress, reduces condition, and terminalizes at threshold', () => {
@@ -18421,6 +18486,7 @@ test('Digestion tick advances progress, reduces condition, and terminalizes at t
   const prey = App._containTargetIn(actor, target, 'stomach');
   prey.progress = 95;
   prey.digestionProgress = 95;
+  prey.vitalRemaining = 2;
   prey.CPun = 1;
   const beforeHunger = actor.hunger;
   App._processStomachState(actor);
@@ -18428,6 +18494,7 @@ test('Digestion tick advances progress, reduces condition, and terminalizes at t
   assertEqual(prey.state, 'terminal', 'Progress or zero condition should terminalize containment');
   assertEqual(prey.releaseEligible, false, 'Terminal prey should no longer be releasable');
   assertEqual(prey.CPun, 0, 'Terminal prey condition should be zero');
+  assertEqual(prey.vitalRemaining, 0, 'Terminal prey vital integrity should be zero');
   assert(actor.hunger < beforeHunger, 'Terminal digestion should grant conservative hunger relief');
   assert(Array.isArray(actor.temporaryStatEffects) && actor.temporaryStatEffects.length > 0, 'Terminal digestion should record temporary stat effects');
   assertEqual(App._containerUsed(actor, 'stomach'), 0, 'Terminal digestion should stop occupying active stomach capacity');
@@ -18445,15 +18512,62 @@ test('Release restores contained prey at reduced condition and clears active con
   const prey = App._containTargetIn(actor, target, 'stomach');
   prey.progress = 40;
   prey.digestionProgress = 40;
+  prey.vitalRemaining = 60;
 
   const result = App._doSubAction('feast', 'release', actor, target, 'You', '');
   assertContains(result, 'release Bunnyfolk', 'Release sub-action should report release');
   assertEqual(actor.stomach.length, 0, 'Release should remove active stomach record');
   assertEqual(App.creatures.includes(prey), true, 'Release should restore prey to creature surface');
   assertEqual(prey.state, 'released', 'Released prey should keep released lifecycle state');
-  assertEqual(prey.CPun, 60, 'Release should restore prey at reduced condition based on progress');
+  assertEqual(prey.CPun, 60, 'Release should restore prey at reduced condition based on vital integrity');
+  assert(prey.status.vitalWeakness, 'Release below full vitality should apply Vital Weakness state');
   assertContains(App.latestSceneBeat.summary, 'released from You', 'Release should emit a Scene Beat');
   assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
+});
+
+test('Chew slurp and fragment use vital damage without creature-piece inventory', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'vital-actor', Feas: 40, Feed: 20, size: 6, CPun: 50, MPun: 100, hunger: 50 });
+  const chewTarget = makeUnit('Chew Target', { id: 'chew-target', CPun: 20, MPun: 100, size: 2, Flee: 1 });
+  const slurpTarget = makeUnit('Slimefolk', { id: 'slurp-target', CPun: 100, MPun: 100, slurpable: true });
+  const fragmentTarget = makeUnit('Plantfolk', { id: 'fragment-target', CPun: 100, MPun: 100, breakable: true, str: 10, con: 10 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [chewTarget, slurpTarget, fragmentTarget];
+  App.inventory = [];
+
+  const chewResult = App._doSubAction('feast', 'chew', actor, chewTarget, 'You', '');
+  const slurpResult = App._doSubAction('feed', 'slurp', actor, slurpTarget, 'You', '');
+  const fragmentResult = App._doSubAction('feed', 'fragment', actor, fragmentTarget, 'You', '');
+
+  assertContains(chewResult, 'vitality', 'Chew result should use vital-damage language');
+  assertEqual(chewTarget.vitalRemaining, 0, 'Chew should apply terminal vital damage');
+  assertEqual(chewTarget.state, 'depleted', 'Chew should mark target depleted instead of creating pieces');
+  assert(slurpTarget.vitalRemaining < slurpTarget.vitalMax, 'Slurp should reduce vital integrity');
+  assert(fragmentTarget.vitalRemaining < fragmentTarget.vitalMax, 'Fragment should reduce vital integrity');
+  assertEqual(fragmentTarget.str, 10, 'Fragment should not directly mutate visible strength');
+  assertEqual(fragmentTarget.con, 10, 'Fragment should not directly mutate visible constitution');
+  assertContains(fragmentResult, 'remains whole', 'Fragment result should avoid itemized piece language');
+  assertNotContains(slurpResult, 'item', 'Slurp should not describe inventory items');
+  assertEqual(App.inventory.length, 0, 'Chew/slurp/fragment should not create inventory pieces');
+  assertEqual(actor.stomach.some(prey => String(prey.name || '').includes('portion')), false, 'Chew/slurp/fragment should not create stomach portion records');
+});
+
+test('Group chew applies vital damage without synthetic portion records', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'group-vital-1', Feas: 30, hunger: 50, stomach: [] });
+  const helper = makeUnit('Helper', { id: 'group-vital-2', Feas: 30, hunger: 50, stomach: [] });
+  const target = makeUnit('Target', { id: 'group-vital-target', CPun: 100, MPun: 100, size: 4 });
+  App.player = actor;
+  App.party = [actor, helper];
+  App.creatures = [target];
+
+  const result = App._groupChewFeast([actor, helper], target);
+
+  assertContains(result, 'vital', 'Group chew should describe vital reduction');
+  assert(target.vitalRemaining < target.vitalMax, 'Group chew should reduce target vital integrity');
+  assertEqual(actor.stomach.length, 0, 'Group chew should not create actor portion records');
+  assertEqual(helper.stomach.length, 0, 'Group chew should not create helper portion records');
 });
 
 test('Over-capacity blocks swallow and expanded cards show containment detail', () => {
@@ -18473,7 +18587,7 @@ test('Over-capacity blocks swallow and expanded cards show containment detail', 
 
   const cardHtml = App.renderUnitCard(actor, 0, 'party');
   assertContains(cardHtml, 'Contains 1', 'Compact/detail card traits should show small containment indicator');
-  assertContains(cardHtml, 'Held in Belly: 30% · releasable', 'Expanded details should show contained unit, progress, and release eligibility');
+  assertContains(cardHtml, 'Held in Belly: 30% · vitality 70% · releasable', 'Expanded details should show contained unit, progress, vitality, and release eligibility');
 });
 
 test('Terminal digestion uses neutral safe wording and creates no remains by default', () => {

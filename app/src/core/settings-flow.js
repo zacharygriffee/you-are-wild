@@ -37,7 +37,7 @@ const YAW_SETTINGS_FLOW = {
             fatalVore: false, chewing: false, allTheWayThrough: false,
             hardcore: false, scat: false, watersports: false,
             boneCrushing: false, unwillingWarnings: false,
-            statAbsorption: true, refractoryPeriod: false,
+            statAbsorption: false, refractoryPeriod: false,
             sameSpeciesBonus: false, fluidEnabled: false,
             cockVoreEnabled: false, unbirthEnabled: false, forcedFeeding: false,
             partyPlayFightMode: 'nonlethal',

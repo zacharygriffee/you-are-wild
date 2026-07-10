@@ -1,6 +1,6 @@
 /**
  * YOU ARE WILD UNIT CONTAINMENT
- * Shared contained-unit snapshots, stat drain, and containment tick processing.
+ * Shared contained-unit snapshots, vital integrity, and containment tick processing.
  */
 
 const YAW_UNIT_CONTAINMENT = {
@@ -78,12 +78,22 @@ const YAW_UNIT_CONTAINMENT = {
             inCock: extra.inCock || false,
             digestionProgress: 0,
             digestionState: 'contained',
+            capturedPun: Number.isFinite(target.CPun) ? target.CPun : target.MPun || 1,
+            originalStats: this.captureVitalProfile(target),
             statDrain: this.emptyStatDrain(),
             willingSacrifice: extra.willingSacrifice || false,
             forcedFed: extra.forcedFed || false,
             by: extra.by || null
         };
         return this.normalizeRecord(app, extra.holder || null, prey, containerId, { ...extra, entryVerb });
+    },
+
+    captureVitalProfile(unit) {
+        const stats = ['Figh', 'Feas', 'Flir', 'Fuck', 'Flee', 'Feed', 'str', 'con', 'spd', 'int', 'wis', 'cha'];
+        return stats.reduce((profile, stat) => {
+            profile[stat] = Number.isFinite(unit?.[stat]) ? unit[stat] : 0;
+            return profile;
+        }, {});
     },
 
     emptyStatDrain() {
@@ -99,6 +109,7 @@ const YAW_UNIT_CONTAINMENT = {
         if (prey?.state === 'terminal' || prey?.digestionState === 'terminal') return 'terminal';
         if (prey?.state === 'released' || prey?.digestionState === 'released') return 'released';
         if (prey?.state === 'passed' || prey?.digestionState === 'passed') return 'passed';
+        if (prey?.state === 'depleted' || prey?.digestionState === 'depleted') return 'depleted';
         if (prey?.state === 'digesting' || prey?.digestionState === 'digesting' || (prey?.digestionProgress || 0) > 0) return 'digesting';
         return prey?.state || 'contained';
     },
@@ -111,23 +122,37 @@ const YAW_UNIT_CONTAINMENT = {
         const state = this.normalizedState(prey);
         const integrity = prey.integrity || defaults.integrity || (prey.alive === false ? 'damaged' : 'intact');
         const profile = this.profile(app, containerId);
+        const clampedProgress = Math.max(0, Math.min(100, progress));
+        const vitalMax = Math.max(1, Number(prey.vitalMax || prey.MPun || prey.maxHp || 1));
+        const inferredVital = Math.max(0, Math.round(vitalMax * (1 - clampedProgress / 100)));
         prey.holderId = holderId;
         prey.containedId = containedId;
         prey.containerId = prey.containerId || defaults.containerId || containerId;
         prey.entryVerb = prey.entryVerb || defaults.entryVerb || (prey.containerId === 'stomach' ? 'swallow' : prey.containerId);
         prey.state = state;
         prey.integrity = integrity;
-        prey.progress = Math.max(0, Math.min(100, progress));
+        prey.progress = clampedProgress;
         prey.releaseEligible = typeof prey.releaseEligible === 'boolean'
             ? prey.releaseEligible
-            : prey.integrity === 'intact' && !['terminal', 'released', 'passed'].includes(state);
+            : prey.integrity === 'intact' && !['terminal', 'released', 'passed', 'depleted'].includes(state);
+        prey.capturedPun = Number.isFinite(prey.capturedPun) ? prey.capturedPun : (Number.isFinite(prey.CPun) ? prey.CPun : prey.MPun || vitalMax);
+        prey.vitalMax = vitalMax;
+        prey.vitalRemaining = Number.isFinite(prey.vitalRemaining) ? Math.max(0, Math.min(vitalMax, prey.vitalRemaining)) : inferredVital;
+        prey.vitalDamageTaken = Number.isFinite(prey.vitalDamageTaken) ? Math.max(0, prey.vitalDamageTaken) : Math.max(0, vitalMax - prey.vitalRemaining);
+        prey.originalStats = prey.originalStats && typeof prey.originalStats === 'object'
+            ? { ...this.captureVitalProfile(prey), ...prey.originalStats }
+            : this.captureVitalProfile(prey);
         prey.digestionRate = Number.isFinite(prey.digestionRate) ? prey.digestionRate : profile.digestionRate || 5;
         prey.absorptionRate = Number.isFinite(prey.absorptionRate) ? prey.absorptionRate : profile.absorptionRate || 1;
         prey.temporaryStatEffects = Array.isArray(prey.temporaryStatEffects) ? prey.temporaryStatEffects : [];
         prey.modifiers = prey.modifiers && typeof prey.modifiers === 'object' ? prey.modifiers : {};
         prey.tags = Array.isArray(prey.tags) ? Array.from(new Set([...prey.tags, 'containment', prey.entryVerb, prey.integrity])) : ['containment', prey.entryVerb, prey.integrity];
+        if ((prey.vitalRemaining <= 0 || prey.progress >= 100) && !['released', 'passed', 'depleted'].includes(prey.state)) {
+            prey.state = 'terminal';
+            prey.releaseEligible = false;
+        }
         prey.digestionProgress = prey.progress;
-        prey.digestionState = state === 'terminal' ? 'terminal' : state === 'released' ? 'released' : state === 'digesting' ? 'digesting' : 'contained';
+        prey.digestionState = prey.state === 'terminal' ? 'terminal' : prey.state === 'released' ? 'released' : prey.state === 'depleted' ? 'depleted' : prey.state === 'digesting' ? 'digesting' : 'contained';
         this.ensureStatDrain(prey);
         return prey;
     },
@@ -141,7 +166,7 @@ const YAW_UNIT_CONTAINMENT = {
     isActiveContained(prey, containerId = 'stomach') {
         if (!prey) return false;
         const state = this.normalizedState(prey);
-        if (['terminal', 'released', 'passed'].includes(state)) return false;
+        if (['terminal', 'released', 'passed', 'depleted'].includes(state)) return false;
         if (containerId === 'stomach' && prey.inStomach === false) return false;
         return prey.alive !== false && prey.CPun !== 0;
     },
@@ -150,6 +175,78 @@ const YAW_UNIT_CONTAINMENT = {
         const max = Math.max(1, Number(prey?.MPun || prey?.maxHp || 1));
         const current = Number.isFinite(prey?.CPun) ? prey.CPun : max;
         return { current, max };
+    },
+
+    vitalRatio(record) {
+        if (!record) return 0;
+        const max = Math.max(1, Number(record.vitalMax || record.MPun || record.maxHp || 1));
+        const current = Math.max(0, Math.min(max, Number.isFinite(record.vitalRemaining) ? record.vitalRemaining : max));
+        return current / max;
+    },
+
+    isTerminalVitalState(record) {
+        if (!record) return false;
+        return record.state === 'terminal'
+            || record.digestionState === 'terminal'
+            || (Number.isFinite(record.vitalRemaining) && record.vitalRemaining <= 0)
+            || (Number.isFinite(record.progress) && record.progress >= 100);
+    },
+
+    applyVitalDamage(recordOrUnit, amount = 0, context = {}) {
+        if (!recordOrUnit) return null;
+        const max = Math.max(1, Number(recordOrUnit.vitalMax || recordOrUnit.MPun || recordOrUnit.maxHp || 1));
+        if (!Number.isFinite(recordOrUnit.vitalMax)) recordOrUnit.vitalMax = max;
+        if (!Number.isFinite(recordOrUnit.vitalRemaining)) {
+            const progress = Number(recordOrUnit.progress ?? recordOrUnit.digestionProgress ?? 0);
+            recordOrUnit.vitalRemaining = Math.max(0, Math.round(max * (1 - Math.max(0, Math.min(100, progress)) / 100)));
+        }
+        if (!recordOrUnit.originalStats) recordOrUnit.originalStats = this.captureVitalProfile(recordOrUnit);
+        const damage = Math.max(0, Math.floor(Number(amount) || 0));
+        const before = recordOrUnit.vitalRemaining;
+        recordOrUnit.vitalRemaining = Math.max(0, before - damage);
+        recordOrUnit.vitalDamageTaken = Math.max(0, Number(recordOrUnit.vitalDamageTaken || 0) + (before - recordOrUnit.vitalRemaining));
+        if (context.reduceCondition !== false && Number.isFinite(recordOrUnit.CPun)) {
+            recordOrUnit.CPun = Math.max(context.minimumCondition || 0, recordOrUnit.CPun - damage);
+        }
+        if (recordOrUnit.vitalRemaining <= 0) {
+            recordOrUnit.releaseEligible = false;
+            if (context.terminal !== false) {
+                recordOrUnit.state = recordOrUnit.state === 'released' ? 'released' : 'terminal';
+                recordOrUnit.digestionState = recordOrUnit.state === 'released' ? 'released' : 'terminal';
+            }
+        }
+        return recordOrUnit;
+    },
+
+    releaseFromVitalState(record) {
+        if (!record) return null;
+        const ratio = Math.max(0.05, this.vitalRatio(record));
+        const max = Math.max(1, Number(record.MPun || record.maxHp || record.vitalMax || 1));
+        record.CPun = Math.max(1, Math.floor(max * ratio));
+        record.CPle = 0;
+        record.status = record.status || {};
+        if (ratio < 0.75) {
+            record.status.vitalWeakness = {
+                ratio,
+                source: 'containment',
+                label: 'Vital Weakness'
+            };
+        }
+        record.inStomach = false;
+        record.inWomb = false;
+        record.inCock = false;
+        record.state = 'released';
+        record.digestionState = 'released';
+        record.releaseEligible = false;
+        return record;
+    },
+
+    summary(record) {
+        if (!record) return '';
+        const ratio = Math.round(this.vitalRatio(record) * 100);
+        const state = this.normalizedState(record);
+        const release = record.releaseEligible && ratio > 0 ? 'releasable' : 'not releasable';
+        return `${state} · vitality ${ratio}% · ${release}`;
     },
 
     emitContainmentBeat(app, kind, holder, prey, options = {}) {
@@ -214,6 +311,8 @@ const YAW_UNIT_CONTAINMENT = {
         prey.digestionState = 'terminal';
         prey.progress = 100;
         prey.digestionProgress = 100;
+        prey.vitalRemaining = 0;
+        prey.vitalDamageTaken = Math.max(prey.vitalMax || 1, Number(prey.vitalDamageTaken || 0));
         prey.releaseEligible = false;
         prey.alive = false;
         prey.CPun = 0;
@@ -263,6 +362,10 @@ const YAW_UNIT_CONTAINMENT = {
     processContainer(app, unit, config) {
         for (const prey of (unit[config.key] || [])) {
             this.normalizeRecord(app, unit, prey, config.key);
+            if (this.isTerminalVitalState(prey) && !['released', 'passed', 'depleted'].includes(prey.state)) {
+                this.terminalize(app, unit, prey, config);
+                continue;
+            }
             if (!this.isActiveContained(prey, config.key) || prey[config.flag] === false) continue;
             this.ensureStatDrain(prey);
             if (config.advanceContained && prey.digestionState === 'contained') prey.digestionState = 'digesting';
@@ -274,10 +377,9 @@ const YAW_UNIT_CONTAINMENT = {
             const drain = Math.max(1, Math.floor(rate * 0.3));
             for (const stat of config.stats) {
                 prey.statDrain[stat] += drain;
-                prey[stat] = Math.max(1, (prey[stat] || 10) - drain);
             }
             const conditionDrain = Math.max(1, Math.floor(rate * 0.4));
-            prey.CPun = Math.max(0, Math.min(prey.MPun || 1, (Number.isFinite(prey.CPun) ? prey.CPun : prey.MPun || 1) - conditionDrain));
+            this.applyVitalDamage(prey, conditionDrain, { source: 'digestion-tick' });
             if (app.settings.statAbsorption) {
                 app._absorbStats(unit, rate, config.stats);
             }
@@ -287,7 +389,7 @@ const YAW_UNIT_CONTAINMENT = {
                     deltas: [{ kind: 'state', state: 'digesting', unit: prey.name }]
                 });
             }
-            if (prey.progress >= 100 || prey.CPun <= 0) {
+            if (prey.progress >= 100 || prey.CPun <= 0 || prey.vitalRemaining <= 0) {
                 this.terminalize(app, unit, prey, config);
             }
         }

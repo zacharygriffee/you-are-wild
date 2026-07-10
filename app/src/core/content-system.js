@@ -874,8 +874,8 @@ const CONTENT_SYSTEM = {
             'group.mutual.social': '{actors} share {action} as a mutual group. Spirit rises for everyone involved.',
             'group.fight.playFight': '{actors} play-fight {target} for {amount} punishment.',
             'group.fight.collapses': '{target} collapses.',
-            'group.feast.noHelpers': '{target} cannot be split without helpers.',
-            'group.feast.split': '{actors} split {target} into chewable portions.',
+            'group.feast.noHelpers': '{target} cannot be reduced without helpers.',
+            'group.feast.split': '{actors} reduce {target} through vital damage.',
             'group.feast.selfBlocked': '{target} cannot eat themself. Select other party members as actors for this target, or select {target} alone to eat another target.',
             'group.feast.tooStrong': '{target} is too large or strong for {actors} to eat.',
             'group.feast.swallow': '{helpers} help {primary} eat {target}.',
@@ -1732,8 +1732,8 @@ const CONTENT_SYSTEM = {
             'group.mutual.social': '{actors} comparten {action} como grupo mutuo. El animo sube para todos los involucrados.',
             'group.fight.playFight': '{actors} juegan a pelear con {target} por {amount} de castigo.',
             'group.fight.collapses': '{target} cae.',
-            'group.feast.noHelpers': '{target} no puede dividirse sin ayudantes.',
-            'group.feast.split': '{actors} dividen a {target} en porciones masticables.',
+            'group.feast.noHelpers': '{target} no puede reducirse sin ayudantes.',
+            'group.feast.split': '{actors} reducen la vitalidad de {target}.',
             'group.feast.selfBlocked': '{target} no puede comerse a si mismo. Selecciona otros miembros del grupo como actores para este objetivo, o selecciona solo a {target} para comer otro objetivo.',
             'group.feast.tooStrong': '{target} es demasiado grande o fuerte para que {actors} lo coman.',
             'group.feast.swallow': '{helpers} ayudan a {primary} a comer a {target}.',
@@ -1896,8 +1896,8 @@ const CONTENT_SYSTEM = {
             },
             chew: {
                 safe: (ctx) => `${ctx.target} is defeated by ${ctx.actor}.`,
-                mature: (ctx) => `${ctx.actor} tears into ${ctx.target} with savage bites.`,
-                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} chews ${ctx.target} into pieces, blood and flesh dripping from their maw.` : null
+                mature: (ctx) => `${ctx.actor} breaks down ${ctx.target}'s vitality.`,
+                adult: (ctx) => ctx.voreEnabled ? `${ctx.actor} chews ${ctx.target} down, reducing their vitality.` : null
             },
             cockVore: {
                 safe: (ctx) => `${ctx.target} is captured by ${ctx.actor}.`,
@@ -1941,13 +1941,13 @@ const CONTENT_SYSTEM = {
             },
             slurp: {
                 safe: (ctx) => `${ctx.actor} draws essence from ${ctx.target}.`,
-                mature: (ctx) => `${ctx.actor} slurps a portion of ${ctx.target}.`,
+                mature: (ctx) => `${ctx.actor} draws vitality from ${ctx.target}.`,
                 adult: (ctx) => ctx.explicit ? `${ctx.actor} drinks deeply from ${ctx.target}'s yielding form, savoring their essence.` : null
             },
             fragment: {
-                safe: (ctx) => `${ctx.actor} breaks a piece from ${ctx.target}.`,
-                mature: (ctx) => `${ctx.actor} tears off a chunk of ${ctx.target}.`,
-                adult: (ctx) => ctx.explicit ? `${ctx.actor} bites a piece from ${ctx.target}'s breakable body, consuming it as sweet nourishment.` : null
+                safe: (ctx) => `${ctx.actor} reduces ${ctx.target}'s vitality.`,
+                mature: (ctx) => `${ctx.actor} weakens ${ctx.target}'s breakable body.`,
+                adult: (ctx) => ctx.explicit ? `${ctx.actor} bites into ${ctx.target}'s breakable body, drawing out nourishment.` : null
             },
             corpseLoot: {
                 safe: (ctx) => ctx.item ? `You search the remains of ${ctx.target} and recover ${ctx.item}.` : `You search the remains of ${ctx.target}, but find nothing useful.`,

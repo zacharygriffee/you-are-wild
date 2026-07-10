@@ -9758,6 +9758,65 @@ test('Combat planner allows party members as Feast targets', () => {
   assertContains(App.lastCombatActionResult.result, 'Ally', 'Combat result should name the party target');
 });
 
+test('Combat planner routes non-Feast party target actions through the resolver', () => {
+  for (const action of ['flirt', 'fuck', 'fight']) {
+    const { App } = loadAppForCombat(() => 0);
+    const player = makeUnit('You', {
+      id: `party-${action}-player`,
+      Figh: 40,
+      Flir: 80,
+      Fuck: 80,
+      cha: 20,
+      combatRow: 'front'
+    });
+    const ally = makeUnit('Ally', {
+      id: `party-${action}-ally`,
+      Figh: 10,
+      Flir: 10,
+      Fuck: 10,
+      wis: 1,
+      con: 1,
+      CPun: 100,
+      MPun: 100,
+      CPle: 0,
+      MPle: 100,
+      combatRow: 'front'
+    });
+    const enemy = makeUnit('Enemy', { id: `party-${action}-enemy`, disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+    App.player = player;
+    App.party = [player, ally];
+    App.creatures = [enemy];
+    App.combatState = {
+      active: true,
+      round: 4,
+      currentTurn: 0,
+      processing: false,
+      xpEarned: 0,
+      turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+      syncActions: []
+    };
+    App.activeActor = player;
+    let advanced = 0;
+    App.nextTurn = function() { advanced++; };
+    App.combatPlanSelection = {
+      active: true,
+      source: 'combat-planner',
+      actorIds: [App._unitSelectionId(player)],
+      pendingIntent: action,
+      explicitActors: true,
+      hadGroupActors: false
+    };
+
+    assertEqual(App.toggleExplorationTarget('party', ally.id), true, `${action} should allow marking a party target in combat`);
+    assertEqual(App.confirmCombatPlan(), true, `${action} should resolve against a marked party member`);
+    assertEqual(advanced, 1, `${action} against a party member should consume the current turn`);
+    assertEqual(App.lastIntentCommand.targetType, 'party', `${action} should preserve party target type`);
+    assertEqual(App.combatCorrectionMessage, null, `${action} should not leave generic invalid-command feedback`);
+    assertEqual(App.lastCombatActionResult.action, action, `${action} should route through direct combat resolution`);
+    assertContains(App.lastCombatActionResult.result, 'Ally', `${action} result should name the party target`);
+  }
+});
+
 test('Exploration party members can be Feast targets', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'explore-party-feast-player', Feas: 60, Flee: 3, size: 8 });
@@ -12046,6 +12105,31 @@ test('Large map exposes sighted nearby tiles without marking them explored', () 
   assertEqual(App.worldMap.has('6,6'), false, 'Sight reveal should not materialize distant unknown large-map tiles');
 });
 
+test('Overworld movement reveals visible 3x3 neighbors on the large map', () => {
+  const { App, elements, document } = loadAppForCombat(() => 1);
+  App.worldMeta = { worldId: 'world-large-map-move-seen', seed: 'large-map-move-seen-seed', generatorVersion: 2, mapModsHash: 'core' };
+  App.player = makeUnit('You');
+  App.party = [App.player];
+  App.creatures = [];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map();
+  App.tileDeltas = new Map();
+  App.exploredTiles = new Set();
+  App.combatState.active = false;
+  App.mode = App.GAME_MODE.EXPLORATION;
+  App.exploreTile(0, 0);
+  App.revealVisibleTiles(0, 0, 1);
+  document.getElementById('coords').textContent = '0, 0';
+
+  App.move(1, 0);
+  assertEqual(App.isExplored(2, 0), false, 'Movement sight should not mark adjacent preview tiles explored');
+  assertEqual(App.getTile(2, 0).seen, true, 'Movement should reveal the new 3x3 east neighbor as seen');
+  assertEqual(App.getTileDelta(2, 0).seen, true, 'Movement sight reveal should persist the new neighbor visibility');
+  assertEqual(YAW_LARGE_MAP.isKnown(App, 2, 0), true, 'Large map should know a movement-revealed 3x3 neighbor');
+  App.renderLargeMap();
+  assertContains(elements.get('large-map').innerHTML, 'large-map-tile known', 'Large map should render movement-revealed neighbors as known tiles');
+});
+
 test('Large map controls zoom pan and recenter the discovered region', () => {
   const { App, elements } = loadAppForCombat(() => 1);
   App.player = makeUnit('You');
@@ -13865,6 +13949,31 @@ test('Player combat action controls localize in desktop composer', () => {
   assertEqual(elements.get('scene-actions').hidden, true, 'Combat scene updates should keep center actions hard-hidden');
   assertEqual(elements.get('mobile-combat-actions').innerHTML, '', 'Mobile combat action bar should not duplicate panel actor controls');
   assertEqual(elements.get('mobile-combat-actions').style.display, 'none', 'Mobile combat action bar should stay hidden while toolbelt and panels handle combat');
+});
+
+test('Combat fallback controls keep Skip and Flee reachable without valid targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'fallback-player' });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [];
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 20 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  const html = App._combatActionButtons(player);
+  assertContains(html, 'data-command-intent="flee"', 'Flee should remain reachable as a creature-specific fallback control');
+  assertContains(html, 'data-command-intent="skip"', 'Skip should remain reachable when no target action is useful');
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+  assertEqual(App.executeCombatIntent('skip'), true, 'Skip fallback should execute for the current actor');
+  assertEqual(advanced, 1, 'Skip fallback should advance the current combat turn');
 });
 
 test('Party panel exposes per-ally AI order controls', () => {

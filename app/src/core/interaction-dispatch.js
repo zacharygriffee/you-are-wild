@@ -275,8 +275,6 @@ const YAW_INTERACTION_DISPATCH = {
             text = app._label('combat.group.needIntent', 'Choose an intent for the group action.');
         } else if (reason === 'missing-lead-actor' && command?.source === 'combat-planner') {
             text = app._label('combat.group.needLead', 'The current actor must lead this group action.');
-        } else if (reason === 'party-target-blocked' && command?.source === 'combat-planner') {
-            text = app._label('combat.group.partyTargetBlocked', 'Party targets need a support intent in combat for now. Broader party-target actions need explicit combat rules.');
         }
         app.combatCorrectionMessage = { text, reason, action: command?.action || '', targetId: target?.id || target?.name || '', time: Date.now() };
         app._pushLog(text, 'combat', { actor, targetId: target?.id || target?.name, targetName: target?.name, action: command?.action, phase: reason });

@@ -4925,8 +4925,6 @@ function loadAppForCombat(random = () => 0.5, options = {}) {
     'desktop-command-composer',
     'desktop-play-cell-center',
     'desktop-play-surface',
-    'desktop-story-strip',
-    'desktop-story-latest',
     'desktop-scene-feed-slot',
     'desktop-scene-feed-latest',
     'desktop-presence-rail',
@@ -16546,9 +16544,11 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, 'id="mobile-story-latest"', 'Mobile story capsule should expose a latest story slot');
   assertContains(template, 'data-command-control="open-story-sheet"', 'Story capsule should expose an open-story command');
   assertContains(template, 'class="nav-btn mobile-story-handle"', 'Mobile should expose a thumb-zone story handle outside the compact scene capsule');
-  assertContains(template, 'id="desktop-story-strip"', 'Desktop should expose a story strip outside the activity log');
   assertContains(template, 'id="desktop-scene-feed-slot"', 'Desktop context panel should expose an in-context Scene Feed slot');
   assertContains(template, 'id="desktop-scene-feed-latest"', 'Desktop context panel should expose the latest Scene Beat target');
+  assertNotContains(template, 'id="desktop-story-strip"', 'Desktop should not keep a duplicate legacy Scene Feed strip');
+  assertNotContains(template, 'id="desktop-story-latest"', 'Desktop should not keep a duplicate legacy latest Scene Beat target');
+  assertEqual((template.match(/id="desktop-scene-feed-latest"/g) || []).length, 1, 'Desktop should expose exactly one canonical latest Scene Feed target');
   assertContains(template, 'data-surface-role="scene-feed"', 'Scene Feed surfaces should use player-facing scene-feed roles');
   assertContains(template, 'Scene Feed', 'Expanded semantic sheet should use Scene Feed wording');
   assertContains(template, 'id="story-sheet"', 'Story should expose an expandable sheet');
@@ -16565,6 +16565,7 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(storyEventsContent, 'renderSceneBeat(app, plan = {}, outcomeInput = {})', 'Story event helper should expose deterministic Scene Beat rendering');
   assertContains(storyEventsContent, 'emitSceneBeat(app, commandOrPlan = {}, result = \'\', options = {})', 'Scene Feed helper should expose player-facing Scene Beat emission');
   assertContains(storyEventsContent, 'contentTier', 'Scene Beat data should carry content-tier metadata');
+  assertNotContains(storyEventsContent, "document.getElementById('desktop-story-latest')", 'Scene Feed renderer should not update a duplicate desktop latest target');
   assertContains(storyEventsContent, 'setUnderlyingInert(enabled)', 'Story sheet should control inert background state');
   assertContains(storyEventsContent, 'setUnderlyingInert(true)', 'Opening Story should make the play UI inert behind the sheet');
   assertContains(storyEventsContent, 'setUnderlyingInert(false)', 'Closing Story should restore the play UI');
@@ -16617,6 +16618,39 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(nextObjectives, 'Do Not Treat As Immediate Tasks', 'Next objectives should label archived priority notes as non-immediate work');
   assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
   assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
+});
+
+test('Desktop Scene Feed uses one canonical latest slot in exploration and combat', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1', disposition: App.DISPOSITION.ENEMY });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk];
+
+  App.renderSceneFeed();
+  const explorationSceneText = [
+    elements.get('scene-description').innerHTML,
+    elements.get('desktop-scene-feed-latest').innerHTML
+  ].join(' ');
+  assertEqual((explorationSceneText.match(/Scene beats will appear here after interactions\./g) || []).length, 1, 'Desktop exploration should render one latest Scene Feed placeholder');
+
+  App.activeActor = you;
+  App.combatState = {
+    active: true,
+    round: 1,
+    currentTurn: 0,
+    processing: false,
+    turnQueue: [{ unit: you, initiative: 20 }, { unit: ratfolk, initiative: 10 }],
+    syncActions: []
+  };
+  App.renderCombatSceneForTurn(you);
+  const combatSceneText = [
+    elements.get('scene-description').innerHTML,
+    elements.get('desktop-scene-feed-latest').innerHTML
+  ].join(' ');
+  assertEqual((combatSceneText.match(/Scene beats will appear here after interactions\./g) || []).length, 1, 'Desktop combat should render one latest Scene Feed placeholder');
+  assertNotContains(combatSceneText, 'desktop-story-latest', 'Desktop combat should not render the retired legacy latest target');
 });
 
 test('Feast containment doctrine locks V1 scope and links from control model', () => {
@@ -16678,7 +16712,6 @@ test('Scene Beat DSL emits combat fight beat with actor target and damage delta'
   assertEqual(event.targetNames.join(', '), 'Ratfolk', 'Scene Beat should preserve target names');
   assertEqual(event.deltas.some(delta => delta.type === 'punishment' && delta.amount === 8), true, 'Scene Beat should extract damage delta');
   assertContains(elements.get('mobile-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in mobile feed');
-  assertContains(elements.get('desktop-story-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render in desktop feed');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'You hit Ratfolk for 8 punishment!', 'Latest Scene Beat should render inside the desktop context panel');
 });
 
@@ -16905,13 +16938,14 @@ test('Story events render semantic interaction results without replacing activit
   assertContains(elements.get('mobile-story-latest').innerHTML, 'Bunnyfolk', 'Mobile story capsule should name the creature actor');
   assertContains(elements.get('mobile-story-latest').innerHTML, 'You', 'Mobile story capsule should name the party target');
   assertContains(elements.get('mobile-story-latest').innerHTML, 'Bunnyfolk bumps You', 'Mobile story capsule should show readable semantic result');
-  assertContains(elements.get('desktop-story-latest').innerHTML, 'Bunnyfolk bumps You', 'Desktop story strip should mirror the semantic result');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Bunnyfolk bumps You', 'Desktop context Scene Feed should mirror the semantic result');
   assertContains(elements.get('log-content').innerHTML, 'Technical combat order entry', 'Activity Log should keep durable technical history');
   assertNotContains(elements.get('log-content').innerHTML, 'Bunnyfolk bumps You', 'Story events should not silently duplicate into Activity Log');
 
   App.openStorySheet();
   assertEqual(elements.get('story-sheet').hidden, false, 'Story sheet should open');
   assertContains(elements.get('story-sheet-list').innerHTML, 'Bunnyfolk bumps You', 'Story sheet should render recent story events');
+  assertContains(elements.get('story-sheet-list').innerHTML, '<h3>Bunnyfolk bumps You', 'Story sheet should lead each beat with the readable summary');
   App.closeStorySheet();
   assertEqual(elements.get('story-sheet').hidden, true, 'Story sheet should close');
 });

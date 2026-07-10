@@ -520,6 +520,11 @@ const YAW_STORY_EVENTS = {
     eventHtml(app, event) {
         const actors = event.actorNames?.length ? event.actorNames.join(', ') : app._label('target.actorRole', 'Actor');
         const targets = event.targetNames?.length ? event.targetNames.join(', ') : app._label('target.targetRole', 'Target');
+        const passage = String(event.passage || '').trim();
+        const summary = String(event.summary || passage || '').trim();
+        const passageHtml = passage && passage !== summary
+            ? `<p>${app._escapeHtml(passage)}</p>`
+            : '';
         const deltas = event.deltas?.length
             ? `<ul class="story-deltas">${event.deltas.map(delta => `<li>${app._escapeHtml(this.deltaLabel(app, delta))}</li>`).join('')}</ul>`
             : '';
@@ -527,9 +532,9 @@ const YAW_STORY_EVENTS = {
             ? `<ul class="story-sub-events">${event.subEvents.map(subEvent => `<li>${app._escapeHtml(subEvent.summary || subEvent.targetName || '')}</li>`).join('')}</ul>`
             : '';
         return `<article class="story-event" data-story-intent="${app._escapeHtml(event.intent)}" data-story-mode="${app._escapeHtml(event.mode)}">`
-            + `<div class="story-event-meta"><span>${app._escapeHtml(event.time)}</span><span>${app._escapeHtml(event.location)}</span><span>${app._escapeHtml(event.intentLabel)}</span></div>`
-            + `<h3>${app._escapeHtml(actors)} -> ${app._escapeHtml(targets)}</h3>`
-            + `<p>${app._escapeHtml(event.passage || event.summary)}</p>`
+            + `<h3>${app._escapeHtml(summary || this.defaultSummary(app, event.actors, event.targets, event.intent))}</h3>`
+            + passageHtml
+            + `<div class="story-event-meta"><span>${app._escapeHtml(event.time)}</span><span>${app._escapeHtml(event.location)}</span><span>${app._escapeHtml(event.intentLabel)}</span><span>${app._escapeHtml(actors)} -> ${app._escapeHtml(targets)}</span></div>`
             + deltas
             + subEvents
             + `</article>`;
@@ -552,13 +557,8 @@ const YAW_STORY_EVENTS = {
             mobileLatest.hidden = combatOwnsMobileStory;
             mobileLatest.innerHTML = combatOwnsMobileStory ? '' : latestHtml;
         }
-        const desktopLatest = document.getElementById('desktop-story-latest');
-        if (desktopLatest) desktopLatest.innerHTML = latestHtml;
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
         if (desktopSceneLatest) desktopSceneLatest.innerHTML = latestHtml;
-        const desktopSceneSlot = document.getElementById('desktop-scene-feed-slot');
-        const desktopLegacyStrip = document.getElementById('desktop-story-strip');
-        if (desktopSceneSlot && desktopLegacyStrip) desktopLegacyStrip.hidden = true;
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
             el.innerHTML = latestHtml;
         });

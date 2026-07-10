@@ -5,7 +5,7 @@
 ## How To Read This File
 
 - The **Ready-To-Implement Backlog Status** section is the source of truth for work that can be picked up without new design discussion.
-- As of 2026-07-09, there are **no implementation-ready no-decision items open**.
+- As of 2026-07-10, the active no-decision work is the **Scene Feed V1 hardening chain** tracked in the goal tool.
 - Sections below that status are either verified implementation history, watchlists for future regressions, or decision-heavy backlog notes.
 - Do not treat old priority labels, polish notes, or lower-priority feature notes as active tasks unless the top status section or a new user request explicitly promotes them.
 
@@ -22,9 +22,9 @@
 - **Controls doctrine:** The UI-safe control model now lives in `docs/control-model.md`; use it before broad traversal, actor/target selection, intent menu, Combat Toolbelt, battle-surface, or inspection-surface changes.
 - **Save/world storage:** Save-as/new-slot now forks mutable world state to a fresh `worldId`, while slot delete and delete-all saves prune unreferenced `YAW_Worlds` records without deleting worlds still referenced by another save.
 
-### Ready-To-Implement Backlog Status (2026-07-09)
+### Ready-To-Implement Backlog Status (2026-07-10)
 
-- **Current no-decision backlog:** no implementation-ready items are currently listed as open. The last no-decision slice documented the Scene Feed DSL contract, verified universal party/creature target Mark controls, per-actor Skip/Flee routing, adjacent 3x3 map reveal, tile-entry observation beats, intent-owned reach-profile failure beats, Activity Log optionality, and tactical-card density/polish coverage.
+- **Current no-decision backlog:** Scene Feed V1 hardening is actively open. The latest verified slices made desktop Scene Feed the single canonical readable feedback slot, added deterministic tile-entry observation beats, reach-profile failure beats, recruitment beats, quest/shop observation and transaction beats, Activity Log separation, and moddable template examples. Continue the active goal-tool chain until the Scene Feed V1 acceptance list is fully implemented and verified.
 - **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible. See `docs/scene-feed-dsl.md`.
 - **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Activity Log remains durable technical/history output; Scene Feed is the primary current feedback surface.
 - **Accepted mechanics decisions:** `docs/control-model.md` now records settled doctrine for impossible physical attempts consuming turns, nonviolent victory XP parity, minimal/default-plus-moddable perks, hard default party cap with mod override, recruited NPCs dropping shop/quest duties by default, pre-beta containment save migration tolerance, and persistent inline mobile feedback first.

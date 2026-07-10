@@ -197,6 +197,11 @@ const YAW_QUEST_FLOW = {
         const existing = this.byId(app, normalized.id);
         if (existing) {
             app.log.push({ text: app._label('quest.alreadyInLog', '{title} is already in your quest log.', { title: existing.title }), type: 'discovery' });
+            app.emitTransactionSceneBeat?.(giver, 'quest', 'blocked', {
+                title: existing.title,
+                questTitle: existing.title,
+                reason: 'already-in-log'
+            });
             if (!app.refreshTransactionWindow?.()) app.showQuestLog();
             app.renderLog();
             return existing;
@@ -208,6 +213,10 @@ const YAW_QUEST_FLOW = {
             if (giver.quest) giver.quest.status = 'active';
         }
         app.log.push({ text: app._label('quest.accepted', 'Quest accepted: {title}.', { title: normalized.title }), type: 'discovery' });
+        app.emitTransactionSceneBeat?.(giver, 'quest', 'accepted', {
+            title: normalized.title,
+            questTitle: normalized.title
+        });
         app.renderLog();
         app.renderCreatures();
         if (app.refreshTransactionWindow?.()) {
@@ -304,17 +313,33 @@ const YAW_QUEST_FLOW = {
         const quest = this.byId(app, questId);
         if (!quest || quest.status !== 'completed') {
             app.log.push({ text: app._label('quest.notReadyTurnIn', 'That quest is not ready to turn in.'), type: 'discovery' });
+            app.emitTransactionSceneBeat?.({ name: quest?.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'blocked', {
+                title: quest?.title || app._label('quest.title', 'Quests'),
+                questTitle: quest?.title || '',
+                reason: 'not-ready'
+            });
             app.renderLog();
             return false;
         }
         if (quest.rewardClaimed) {
             app.log.push({ text: app._label('quest.alreadyTurnedIn', '{title} has already been turned in.', { title: quest.title }), type: 'discovery' });
+            app.emitTransactionSceneBeat?.({ name: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'blocked', {
+                title: quest.title,
+                questTitle: quest.title,
+                reason: 'already-turned-in'
+            });
             app.renderLog();
             if (!app.refreshTransactionWindow?.()) app.showQuestLog();
             return false;
         }
         const granted = this.grantReward(app, quest);
         if (granted) app.log.push({ text: app._label('quest.turnedIn', 'Quest turned in: {title}.', { title: quest.title }), type: 'loot' });
+        if (granted) {
+            app.emitTransactionSceneBeat?.({ name: quest.giverName || app._label('quest.defaultGiver', 'the quest giver') }, 'quest', 'turned-in', {
+                title: quest.title,
+                questTitle: quest.title
+            });
+        }
         app.renderLog();
         app.renderParty();
         if (!app.refreshTransactionWindow?.()) app.showQuestLog();

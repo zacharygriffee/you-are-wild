@@ -4328,6 +4328,9 @@
             emitRecruitmentSceneBeat(target, actor = this.player, kind = 'blocked', reason = '') {
                 return YAW_STORY_EVENTS.emitRecruitmentBeat(this, target, actor, kind, reason);
             },
+            emitTransactionSceneBeat(target, kind = 'trade', phase = 'opened', detail = {}) {
+                return YAW_STORY_EVENTS.emitTransactionBeat(this, target, kind, phase, detail);
+            },
             registerSceneTemplate(template = {}) {
                 return YAW_STORY_EVENTS.registerSceneTemplate(this, template);
             },

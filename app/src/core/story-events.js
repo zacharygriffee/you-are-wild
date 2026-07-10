@@ -95,6 +95,9 @@ const YAW_STORY_EVENTS = {
             resultFirst('adventure.tileObservation', ctx => ctx.tags.includes('tile-entry') && ctx.tags.includes('observation'), 60),
             resultFirst('adventure.recruitAvailable', ctx => ctx.tags.includes('recruit-available'), 55),
             failureBeat('adventure.recruitBlocked', ctx => ctx.actionBase === 'recruit' && ctx.resultKind === 'failure', 50),
+            resultFirst('adventure.transaction', ctx => ctx.tags.includes('transaction'), 52),
+            resultFirst('adventure.quest', ctx => ctx.actionBase === 'quest' || ctx.tags.includes('quest'), 35),
+            resultFirst('adventure.trade', ctx => ctx.actionBase === 'trade' || ctx.tags.includes('trade'), 35),
             failureBeat('combat.failure.cannotReach', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure' && ctx.tags.includes('cannot-reach'), 50),
             failureBeat('combat.failure.invalid', ctx => ctx.mode === 'combat' && ctx.resultKind === 'failure', 40),
             resultFirst('combat.groupFight', ctx => ctx.mode === 'combat' && ctx.shape === 'many-to-one' && ctx.actionBase === 'fight' && ctx.actors.length > 1, 20),
@@ -277,6 +280,8 @@ const YAW_STORY_EVENTS = {
         if (living.length) {
             const names = this.listNames(app, living.map(unit => unit.name));
             const hungry = living.filter(unit => (unit.hunger || 0) >= 60).map(unit => unit.name);
+            const merchants = living.filter(unit => unit.disposition === app.DISPOSITION.MERCHANT).map(unit => unit.name);
+            const questGivers = living.filter(unit => unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest).map(unit => unit.name);
             const creatureText = hungry.length
                 ? app._label('scene.observe.creaturesHungry', 'You notice {names}; {hungry} looks hungry.', {
                     names,
@@ -284,7 +289,22 @@ const YAW_STORY_EVENTS = {
                 })
                 : app._label('scene.observe.creatures', 'You notice {names} nearby.', { names });
             details.push(creatureText);
-            living.forEach(unit => subEvents.push({ type: 'creature', targetId: unit.id || unit.name, targetName: unit.name, summary: unit.name }));
+            if (merchants.length) {
+                details.push(app._label('scene.observe.merchants', '{names} can trade with you here.', {
+                    names: this.listNames(app, merchants, 2)
+                }));
+            }
+            if (questGivers.length) {
+                details.push(app._label('scene.observe.questGivers', '{names} may have work for you.', {
+                    names: this.listNames(app, questGivers, 2)
+                }));
+            }
+            living.forEach(unit => subEvents.push({
+                type: unit.disposition === app.DISPOSITION.MERCHANT ? 'merchant' : ((unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) ? 'quest-giver' : 'creature'),
+                targetId: unit.id || unit.name,
+                targetName: unit.name,
+                summary: unit.name
+            }));
         }
         if (remains.length) {
             details.push(app._label('scene.observe.remains', 'Remains are visible: {names}.', {
@@ -313,6 +333,8 @@ const YAW_STORY_EVENTS = {
                 ...(tile.hasLandmark ? ['landmark'] : []),
                 ...(tile.structure ? ['structure'] : []),
                 ...(living.length ? ['creatures'] : []),
+                ...(living.some(unit => unit.disposition === app.DISPOSITION.MERCHANT) ? ['merchant', 'trade'] : []),
+                ...(living.some(unit => unit.disposition === app.DISPOSITION.QUEST_GIVER || unit.quest) ? ['quest-giver', 'quest'] : []),
                 ...(remains.length ? ['remains'] : []),
                 ...(items.length ? ['items'] : [])
             ],
@@ -345,6 +367,53 @@ const YAW_STORY_EVENTS = {
             subEvents: observation.subEvents,
             source: 'tile-entry',
             metadata: observation.metadata
+        });
+    },
+
+    transactionMessage(app, npc, kind = 'trade', phase = 'opened', detail = {}) {
+        const name = npc?.name || app._label('target.targetRole', 'Target');
+        const itemName = detail.itemName || detail.name || '';
+        const price = Number(detail.price || 0);
+        const title = detail.title || detail.questTitle || '';
+        if (kind === 'quest') {
+            if (phase === 'accepted') return app._label('scene.quest.accepted', 'You accept {title} from {name}.', { title, name });
+            if (phase === 'turned-in') return app._label('scene.quest.turnedIn', 'You turn in {title}.', { title, name });
+            if (phase === 'blocked') return app._label('scene.quest.blocked', '{name} has no quest ready for you right now.', { name });
+            return app._label('scene.quest.opened', '{name} lays out the work available here.', { name });
+        }
+        if (phase === 'bought') return app._label('scene.trade.bought', 'You buy {item} from {name} for {price} gold.', { item: itemName, name, price });
+        if (phase === 'sold') return app._label('scene.trade.sold', 'You sell {item} to {name} for {price} gold.', { item: itemName, name, price });
+        if (phase === 'blocked') return app._label('scene.trade.blocked', '{name} cannot complete that trade right now.', { name });
+        return app._label('scene.trade.opened', '{name} shows what is for sale and what they will buy.', { name });
+    },
+
+    emitTransactionBeat(app, npc, kind = 'trade', phase = 'opened', detail = {}) {
+        if (!npc) return null;
+        const text = this.transactionMessage(app, npc, kind, phase, detail);
+        const action = kind === 'quest' ? 'quest' : 'trade';
+        const deltas = [];
+        if (Number.isFinite(Number(detail.goldDelta)) && Number(detail.goldDelta) !== 0) {
+            deltas.push({ type: 'gold', amount: Number(detail.goldDelta) });
+        }
+        if (detail.itemName || detail.name) {
+            deltas.push({ type: 'item', name: detail.itemName || detail.name });
+        }
+        return this.emitResult(app, {
+            mode: 'adventure',
+            action,
+            actors: [app.player].filter(Boolean),
+            targets: [npc],
+            tags: ['transaction', action, `${action}-${phase}`, phase].filter(Boolean),
+            source: 'transaction',
+            metadata: { phase, itemName: detail.itemName || detail.name || null, questTitle: detail.title || detail.questTitle || null }
+        }, text, {
+            mode: 'adventure',
+            resultKind: phase === 'blocked' ? 'failure' : 'observation',
+            importance: phase === 'opened' ? 'normal' : 'notable',
+            tags: ['transaction', action, `${action}-${phase}`, phase].filter(Boolean),
+            source: 'transaction',
+            deltas,
+            metadata: { phase, ...detail }
         });
     },
 

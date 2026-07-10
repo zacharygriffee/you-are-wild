@@ -76,6 +76,61 @@ Supported string placeholders are:
 
 Higher `priority` wins. Built-in templates are fallback/default behavior; mod templates should use explicit ids and priorities.
 
+### Template Examples
+
+Plain deterministic prose:
+
+```js
+App.registerSceneTemplate({
+  id: 'mod.safe-fight-summary',
+  mode: 'combat',
+  action: 'fight',
+  maxTier: 0,
+  priority: 80,
+  summary: '{actors} presses the attack against {targets}.',
+  passage: '{summary}'
+});
+```
+
+Terse tactical prose:
+
+```js
+App.registerSceneTemplate({
+  id: 'mod.row-failure-tactical',
+  mode: 'combat',
+  tags: ['cannot-reach'],
+  priority: 90,
+  render(app, ctx) {
+    return {
+      summary: `${ctx.actorNames.join(', ')} cannot reach ${ctx.targetNames.join(', ')} with ${YAW_STORY_EVENTS.intentLabel(app, ctx.action)}.`,
+      passage: ctx.outcome.passage || ctx.outcome.summary
+    };
+  }
+});
+```
+
+Systemic JSON-like output for an optional LLM or continuity mod:
+
+```js
+App.registerSceneTemplate({
+  id: 'mod.llm-bridge-json',
+  priority: -10,
+  render(app, ctx) {
+    return {
+      summary: ctx.outcome.summary || ctx.defaultSummary,
+      passage: JSON.stringify({
+        mode: ctx.mode,
+        action: ctx.action,
+        actors: ctx.actorNames,
+        targets: ctx.targetNames,
+        tags: ctx.tags,
+        deltas: ctx.outcome.deltas || []
+      })
+    };
+  }
+});
+```
+
 ## Content-Tier Safety
 
 Content-tier filtering happens before template text is rendered. Store neutral mechanical state in Scene Beats, then let template selection decide how to describe it for the active tier. Do not place higher-tier wording in a low-tier template or in raw mechanical state that must be shown at all tiers.

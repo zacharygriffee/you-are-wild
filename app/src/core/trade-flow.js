@@ -36,12 +36,22 @@ const YAW_TRADE_FLOW = {
         if (!merchant || !item || item.qty <= 0) return;
         if ((app.player.gold || 0) < item.price) {
             app.log.push({ text: app._label('trade.needGold', 'You need {price} gold to buy {name}.', { price: item.price, name: item.name }), type: 'discovery' });
+            app.emitTransactionSceneBeat?.(merchant, 'trade', 'blocked', {
+                itemName: item.name,
+                price: item.price,
+                reason: 'need-gold'
+            });
             app.renderLog();
             app.showTrade(targetId);
             return;
         }
         if (app.inventory.length >= app.MAX_INVENTORY) {
             app.log.push({ text: app._label('inventory.full', 'Inventory is full.'), type: 'discovery' });
+            app.emitTransactionSceneBeat?.(merchant, 'trade', 'blocked', {
+                itemName: item.name,
+                price: item.price,
+                reason: 'inventory-full'
+            });
             app.renderLog();
             app.showTrade(targetId);
             return;
@@ -50,6 +60,11 @@ const YAW_TRADE_FLOW = {
         item.qty -= 1;
         app.inventory.push({ id: `buy_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${app.inventory.length}`, name: item.name });
         app.log.push({ text: app._label('trade.bought', 'Bought {name} for {price} gold.', { name: item.name, price: item.price }), type: 'loot' });
+        app.emitTransactionSceneBeat?.(merchant, 'trade', 'bought', {
+            itemName: item.name,
+            price: item.price,
+            goldDelta: -item.price
+        });
         app.renderLog();
         app.renderParty();
         app.showTrade(targetId);
@@ -87,6 +102,11 @@ const YAW_TRADE_FLOW = {
         if (existing) existing.qty += 1;
         else merchant.stock.push({ id: `sold_${app._stableIdPart(targetId, 'merchant')}_${app._stableIdPart(item.name)}_${merchant.stock.length}`, name: item.name, price: def.value || price, qty: 1 });
         app.log.push({ text: app._label('trade.sold', 'Sold {name} for {price} gold.', { name: item.name, price }), type: 'loot' });
+        app.emitTransactionSceneBeat?.(merchant, 'trade', 'sold', {
+            itemName: item.name,
+            price,
+            goldDelta: price
+        });
         app.renderLog();
         app.renderParty();
         app.showTrade(targetId);

@@ -31,11 +31,17 @@ const YAW_TRANSACTION_WINDOW = {
         if (!npc || !app._isLivingCreature(npc)) return false;
         if (kind === 'trade' && npc.disposition !== app.DISPOSITION.MERCHANT) return false;
         if (kind === 'quest' && !npc.quest && !(app.quests || []).length) return false;
+        const nextTargetId = app._explorationTargetUnitId?.('creature', npc) || npc.id || npc.name;
+        const previous = app.transactionWindow;
+        const sameWindow = previous
+            && previous.kind === kind
+            && String(previous.targetId) === String(nextTargetId);
         app.transactionWindow = {
             kind,
-            targetId: app._explorationTargetUnitId?.('creature', npc) || npc.id || npc.name,
+            targetId: nextTargetId,
             openedAt: { x: app.location.x, y: app.location.y, interior: Boolean(app.inInterior) }
         };
+        if (!sameWindow) app.emitTransactionSceneBeat?.(npc, kind, 'opened');
         app.closeIntentMenu?.();
         app.closeAllPanels?.();
         this.render(app);

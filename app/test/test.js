@@ -16609,11 +16609,16 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, '## ActionOutcome Input', 'Scene Feed DSL should document ActionOutcome input');
   assertContains(sceneFeedDoc, 'if no template matches, the existing result string must still render', 'Scene Feed DSL should document fallback behavior');
   assertContains(sceneFeedDoc, 'Use `App.registerSceneTemplate(template)`', 'Scene Feed DSL should document the mod API seam');
+  assertContains(sceneFeedDoc, '### Template Examples', 'Scene Feed DSL should include concrete template examples');
+  assertContains(sceneFeedDoc, 'mod.safe-fight-summary', 'Scene Feed DSL should show a deterministic prose template example');
+  assertContains(sceneFeedDoc, 'mod.row-failure-tactical', 'Scene Feed DSL should show a tactical failure template example');
+  assertContains(sceneFeedDoc, 'mod.llm-bridge-json', 'Scene Feed DSL should show a systemic bridge template example for optional LLM mods');
   assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
   assertContains(nextObjectives, '# You Are Wild — Handoff Backlog', 'Next objectives should read as a handoff backlog instead of an active task queue');
-  assertContains(nextObjectives, 'no implementation-ready items are currently listed as open', 'Next objectives should not advertise stale no-decision backlog work');
+  assertContains(nextObjectives, 'Scene Feed V1 hardening is actively open', 'Next objectives should identify the active Scene Feed hardening chain');
+  assertContains(nextObjectives, 'quest/shop observation and transaction beats', 'Next objectives should record the latest Scene Feed transaction slice');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
   assertContains(nextObjectives, 'Do Not Treat As Immediate Tasks', 'Next objectives should label archived priority notes as non-immediate work');
   assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
@@ -16828,6 +16833,7 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
     turnQueue: [{ unit: mousefolk, initiative: 20 }, { unit: siren, initiative: 10 }],
     syncActions: []
   };
+  App.nextTurn = () => {};
 
   const resolved = App._dispatchInteractionCommand(App._buildPanelInteractionCommand({
     mode: 'combat',
@@ -16886,6 +16892,123 @@ test('Tile-entry observation emits one coalesced Scene Beat without activity log
   assertContains(event.summary, 'Old Coin', 'Observation should include visible tile items');
   assertEqual(event.subEvents.length >= 4, true, 'Observation should preserve sub-event metadata for landmarks, creatures, remains, and items');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Great Tree', 'Desktop Scene Feed should show the latest tile observation');
+});
+
+test('Tile-entry observation calls out merchants and quest givers', () => {
+  const { App } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1' });
+  const merchant = makeUnit('Human Merchant', {
+    id: 'merchant-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [{ name: 'Healing Herb', price: 10, qty: 1 }]
+  });
+  const guide = makeUnit('Shrine Guide', {
+    id: 'guide-1',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'guide_quest',
+      title: 'Shrine Offering',
+      objectives: [],
+      reward: {}
+    }
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [merchant, guide];
+  App.location = { x: 5, y: 6 };
+  App.log = [];
+  const tile = { x: 5, y: 6, biome: 'grove', creatures: [merchant, guide], items: [] };
+
+  const event = App.emitTileObservation(tile, { wasExplored: false });
+
+  assertEqual(App.log.length, 0, 'Merchant/quest observation beats should not duplicate into Activity Log');
+  assertContains(event.summary, 'Human Merchant', 'Observation should name the merchant');
+  assertContains(event.summary, 'trade', 'Observation should explain merchant trade affordance');
+  assertContains(event.summary, 'Shrine Guide', 'Observation should name the quest giver');
+  assertContains(event.summary, 'work', 'Observation should explain quest-giver affordance');
+  assertEqual(event.tags.includes('merchant'), true, 'Observation should tag merchant presence');
+  assertEqual(event.tags.includes('trade'), true, 'Observation should tag trade presence');
+  assertEqual(event.tags.includes('quest-giver'), true, 'Observation should tag quest-giver presence');
+  assertEqual(event.tags.includes('quest'), true, 'Observation should tag quest presence');
+  assertEqual(event.subEvents.some(entry => entry.type === 'merchant'), true, 'Observation should preserve merchant sub-event metadata');
+  assertEqual(event.subEvents.some(entry => entry.type === 'quest-giver'), true, 'Observation should preserve quest-giver sub-event metadata');
+});
+
+test('Trade transaction Scene Beats cover opening buying selling and blocked purchase', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1', gold: 40 });
+  const merchant = makeUnit('Trader', {
+    id: 'trader-1',
+    disposition: App.DISPOSITION.MERCHANT,
+    stock: [
+      { name: 'Healing Herb', price: 10, qty: 1 },
+      { name: 'Apple', price: 25, qty: 1 }
+    ]
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [merchant];
+  App.inventory = [{ id: 'gem-1', name: 'Shiny Gem' }];
+  App.log = [];
+
+  App.showTrade('trader-1');
+  assertContains(App.latestSceneBeat.summary, 'Trader', 'Opening trade should emit a Scene Beat naming the merchant');
+  assertContains(App.latestSceneBeat.summary, 'sale', 'Opening trade beat should describe the shop surface');
+  assertEqual(App.latestSceneBeat.tags.includes('trade-opened'), true, 'Opening trade beat should be tagged as trade-opened');
+
+  App.buyFromMerchant('trader-1', 0);
+  assertContains(App.latestSceneBeat.summary, 'buy Healing Herb', 'Successful purchase should remain the latest Scene Beat after transaction refresh');
+  assertEqual(App.latestSceneBeat.deltas.some(delta => delta.type === 'gold' && delta.amount === -10), true, 'Purchase beat should include gold delta metadata');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Healing Herb', 'Desktop Scene Feed should show the purchase beat');
+
+  App.sellToMerchant('trader-1', 'gem-1');
+  assertContains(App.latestSceneBeat.summary, 'sell Shiny Gem', 'Successful sale should emit a Scene Beat');
+  assertEqual(App.latestSceneBeat.deltas.some(delta => delta.type === 'gold' && delta.amount === 25), true, 'Sale beat should include gold delta metadata');
+
+  App.player.gold = 0;
+  App.buyFromMerchant('trader-1', 1);
+  assertEqual(App.latestSceneBeat.resultKind, 'failure', 'Blocked purchase should emit a failure Scene Beat');
+  assertContains(App.latestSceneBeat.summary, 'cannot complete', 'Blocked purchase should explain that the trade did not complete');
+  assertEqual(App.latestSceneBeat.tags.includes('trade-blocked'), true, 'Blocked purchase should be tagged as trade-blocked');
+});
+
+test('Quest transaction Scene Beats cover opening accepting and turning in', () => {
+  const { App, elements } = loadAppForCombat();
+  const player = makeUnit('You', { id: 'you-1', gold: 0 });
+  const guide = makeUnit('Shrine Guide', {
+    id: 'guide-1',
+    disposition: App.DISPOSITION.QUEST_GIVER,
+    quest: {
+      id: 'shrine_offering',
+      title: 'Shrine Offering',
+      description: 'Bring a small offering.',
+      turnInRequired: true,
+      objectives: [{ type: 'find', item: 'Apple', label: 'Find Apple', required: 1, progress: 0, complete: false }],
+      reward: { gold: 5 }
+    }
+  });
+  App.player = player;
+  App.party = [player];
+  App.creatures = [guide];
+  App.quests = [];
+  App.log = [];
+
+  App.openTransactionWindow('quest', 'guide-1');
+  assertContains(App.latestSceneBeat.summary, 'Shrine Guide', 'Opening quest window should emit a Scene Beat naming the giver');
+  assertContains(App.latestSceneBeat.summary, 'work', 'Opening quest beat should describe available work');
+  assertEqual(App.latestSceneBeat.tags.includes('quest-opened'), true, 'Opening quest beat should be tagged as quest-opened');
+
+  App.acceptQuestFromUnit('guide-1');
+  assertEqual(App.quests.length, 1, 'Quest acceptance should still add the quest to the log');
+  assertContains(App.latestSceneBeat.summary, 'accept Shrine Offering', 'Quest acceptance should emit an accepted Scene Beat');
+  assertEqual(App.latestSceneBeat.tags.includes('quest-accepted'), true, 'Accepted quest beat should be tagged as quest-accepted');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'Shrine Offering', 'Desktop Scene Feed should show accepted quest beat');
+
+  App.quests[0].status = 'completed';
+  App.quests[0].rewardClaimed = false;
+  App.turnInQuest('shrine_offering');
+  assertContains(App.latestSceneBeat.summary, 'turn in Shrine Offering', 'Quest turn-in should emit a Scene Beat');
+  assertEqual(App.latestSceneBeat.tags.includes('quest-turned-in'), true, 'Turn-in quest beat should be tagged as quest-turned-in');
 });
 
 test('Recruitment Scene Beats explain availability, blocked attempts, and joins', () => {

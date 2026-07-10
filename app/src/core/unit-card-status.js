@@ -62,6 +62,9 @@ const YAW_UNIT_CARD_STATUS = {
         const hunger = unit.hunger ?? 0;
         const status = unit.status || {};
         const inCombat = Boolean(app.combatState?.active);
+        const containedCount = typeof app._activeContainedPrey === 'function'
+            ? ['stomach', 'womb', 'balls'].reduce((sum, container) => sum + app._activeContainedPrey(unit, container).length, 0)
+            : 0;
         const chips = [];
         const add = (key, label, tone = 'neutral') => {
             if (!chips.some(chip => chip.key === key)) chips.push({ key, label, tone });
@@ -81,6 +84,7 @@ const YAW_UNIT_CARD_STATUS = {
         if (status.restrained || status.enveloped || status.stuck) add('restrained', app._label('unit.trait.restrained', 'Restrained'), 'status');
         if (stats.MPun > 0 && stats.CPun <= stats.MPun * 0.35) add('wounded', app._label('unit.trait.wounded', 'Wounded'), 'danger');
         if (maxHunger > 0 && hunger >= maxHunger * 0.7) add('hungry', app._label('unit.trait.hungry', 'Hungry'), 'need');
+        if (containedCount > 0) add('contains', app._label('unit.trait.contains', 'Contains') + ` ${containedCount}`, 'special');
         if (type === 'party') {
             const role = app._getPartyRole(unit);
             if (role && role !== 'companion') add(`role-${role}`, app._partyRoleLabel(role), 'role');

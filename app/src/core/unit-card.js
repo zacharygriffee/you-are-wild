@@ -178,6 +178,7 @@ const YAW_UNIT_CARD = {
             turnBadge
         ].filter(Boolean).join('');
         const tacticalSummary = app._unitTacticalSummary?.(unit) || '';
+        const containmentDetail = isExpanded ? app._containmentDetailSummary?.(unit) || '' : '';
         const statLabels = {
             equipment: app._escapeHtml(app._label('party.equipment', 'Equipment'))
         };
@@ -201,6 +202,7 @@ const YAW_UNIT_CARD = {
                     ${isExpanded ? `<div class="unit-details">
                         <div style="display:grid;grid-template-columns:1fr;gap:8px;font-size:12px;">
                             <div style="color:${hasContained ? 'var(--accent-warning)' : 'var(--text-muted)'}">${capacitySummary}</div>
+                            ${containmentDetail ? `<div class="unit-containment-detail" style="color:var(--accent-warning)">${app._escapeHtml(containmentDetail)}</div>` : ''}
                             <div style="color:var(--text-muted)"><span style="color:var(--text-primary)">${statLabels.equipment}:</span><br>${equipmentSummary}</div>
                         </div>
                         ${partyManagementControls}

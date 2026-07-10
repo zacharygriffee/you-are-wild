@@ -59,6 +59,8 @@ Scene templates are deterministic dumb-code templates first. They may match on a
 
 See [Scene Feed DSL](scene-feed-dsl.md) for the concrete `SceneBeat` shape, `ActionOutcome` input, template registry contract, content-tier rules, and presentation invariants.
 
+See [Feast / Containment Doctrine](feast-containment-doctrine.md) for the V1 containment lifecycle, compatibility adapter over current stomach/prey fields, swallow/release/terminal rules, and feast/container mod seams.
+
 ### Quest Species Matching Doctrine
 
 Quest species objectives match exact internal species IDs. An objective with `species: "wolf"` matches units whose internal `species` is exactly `"wolf"`; it does not fuzzy-match wolfkin-like labels, canine families, beastfolk, tags, hostile-canid categories, or related species such as fox or hyena.

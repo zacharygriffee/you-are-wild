@@ -12,6 +12,7 @@ const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
+const FEAST_CONTAINMENT_DOCTRINE = path.join(__dirname, '..', '..', 'docs', 'feast-containment-doctrine.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -145,6 +146,7 @@ const speciesSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'species
 const unitLifecycleContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-lifecycle.js'), 'utf8');
 const unitContainersContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containers.js'), 'utf8');
 const unitContainmentContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'unit-containment.js'), 'utf8');
+const feastContainmentDoc = fs.readFileSync(FEAST_CONTAINMENT_DOCTRINE, 'utf8');
 const timeSystemContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'time-system.js'), 'utf8');
 const interactionPlanContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-plan.js'), 'utf8');
 const interactionDispatchContent = fs.readFileSync(path.join(SRC_DIR, 'core', 'interaction-dispatch.js'), 'utf8');
@@ -16617,6 +16619,24 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
 });
 
+test('Feast containment doctrine locks V1 scope and links from control model', () => {
+  const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
+  assertContains(controlModel, '[Feast / Containment Doctrine](feast-containment-doctrine.md)', 'Control model should link to feast containment doctrine');
+  assertContains(feastContainmentDoc, 'Feast is a structured containment lifecycle', 'Doctrine should define feast as lifecycle, not one-off consume');
+  assertContains(feastContainmentDoc, 'V1 does not perform a broad save/schema rewrite', 'Doctrine should lock compatibility-adapter scope');
+  assertContains(feastContainmentDoc, 'holderId', 'Doctrine should document normalized holder id');
+  assertContains(feastContainmentDoc, 'containedId', 'Doctrine should document normalized contained id');
+  assertContains(feastContainmentDoc, 'containerId: "stomach"', 'Doctrine should document stomach as V1 container');
+  assertContains(feastContainmentDoc, '`swallow` creates `integrity: "intact"`', 'Doctrine should lock swallow intact default');
+  assertContains(feastContainmentDoc, 'Terminal digestion occurs when `progress >= 100` or contained condition/vitals reach zero', 'Doctrine should lock terminal thresholds');
+  assertContains(feastContainmentDoc, 'Release is command-driven only', 'Doctrine should defer auto-escape');
+  assertContains(feastContainmentDoc, 'Terminal digestion creates no remains or loot by default', 'Doctrine should lock no-remains V1 behavior');
+  assertContains(feastContainmentDoc, 'App.registerFeastVerbProfile(profile)', 'Doctrine should document feast verb mod seam');
+  assertContains(feastContainmentDoc, 'App.registerContainerProfile(profile)', 'Doctrine should document container profile mod seam');
+  assertContains(feastContainmentDoc, 'Chew portions/remains', 'Doctrine should explicitly defer chew portions');
+  assertContains(feastContainmentDoc, 'Nested containment mechanics and transfer math', 'Doctrine should explicitly defer nested containment math');
+});
+
 test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {
   const { App, elements } = loadAppForCombat();
   const you = makeUnit('You', { id: 'you-1' });
@@ -18088,6 +18108,142 @@ test('Marked creature target Feast button resolves default swallow and removes c
   assertEqual(actor.stomach.length, 1, 'Marked-target Feast should place the target in the actor container');
   assertEqual(App.explorationTargetIds.length, 0, 'Resolved marked-target Feast should clear selected targets');
   assertEqual(App.lastIntentCommand.subAction, 'swallow', 'Marked-target Feast should record the default sub-action');
+});
+
+test('Swallow creates normalized containment record and keeps prey recoverable off active surfaces', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'holder-1', Feas: 40, Flee: 40, size: 6, stomach: [] });
+  const target = makeUnit('Bunnyfolk', { id: 'prey-1', disposition: App.DISPOSITION.ENEMY, CPun: 20, MPun: 100, size: 2, Flee: 1 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [target];
+  const prey = App._containTargetIn(actor, target, 'stomach');
+
+  assertEqual(App.creatures.includes(target), false, 'Contained creature should leave active creature surface');
+  assertEqual(actor.stomach.length, 1, 'Contained creature should remain recoverable in stomach record');
+  assertEqual(prey.holderId, 'holder-1', 'Containment record should preserve holder id');
+  assertEqual(prey.containedId, 'prey-1', 'Containment record should preserve contained id');
+  assertEqual(prey.containerId, 'stomach', 'Containment record should use stomach container');
+  assertEqual(prey.entryVerb, 'swallow', 'Containment record should use swallow entry verb');
+  assertEqual(prey.state, 'contained', 'Swallow should start as contained');
+  assertEqual(prey.integrity, 'intact', 'Swallow should preserve intact release eligibility');
+  assertEqual(prey.releaseEligible, true, 'Intact swallowed prey should be releasable before terminal digestion');
+  assertContains(App.latestSceneBeat.summary, 'Bunnyfolk is held', 'Swallow should emit a containment Scene Beat');
+  assertContains(App.latestSceneBeat.tags.join(','), 'containment', 'Scene Beat should carry containment tags');
+});
+
+test('Containment adapter normalizes existing stomach prey saves without data loss', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'holder-legacy',
+    stomach: [makeUnit('Stored', { id: 'stored-legacy', size: 2, alive: true, inStomach: true, digestionProgress: 25 })]
+  });
+  const prey = App._normalizeContainmentRecord(actor, actor.stomach[0], 'stomach');
+
+  assertEqual(prey.holderId, 'holder-legacy', 'Legacy prey should gain holder id');
+  assertEqual(prey.containedId, 'stored-legacy', 'Legacy prey should gain contained id');
+  assertEqual(prey.containerId, 'stomach', 'Legacy prey should normalize to stomach container');
+  assertEqual(prey.progress, 25, 'Legacy digestionProgress should map to progress');
+  assertEqual(prey.state, 'digesting', 'Legacy progress should normalize to digesting state');
+  assertEqual(prey.releaseEligible, true, 'Legacy intact prey should remain releasable');
+});
+
+test('Containment records survive binary save/load through stomach compatibility adapter', () => {
+  const Binary = loadBinaryForTest();
+  const { App } = loadAppForCombat(() => 0, { binary: Binary });
+  const actor = makeUnit('You', { id: 'save-holder', stomach: [] });
+  const prey = makeUnit('Saved Prey', { id: 'save-prey', size: 2, CPun: 30, MPun: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.location = { x: 0, y: 0 };
+  App.worldMap = new Map([['0,0', { ...App.getBaseTile(0, 0), explored: true, creatures: [] }]]);
+  App._containTargetIn(actor, prey, 'stomach');
+
+  const loaded = Binary.loadGame(Binary.saveGame(App));
+  const restoredPrey = loaded.party[0].stomach[0];
+  assertEqual(restoredPrey.containerId, 'stomach', 'Loaded stomach prey should preserve container id');
+  assertEqual(restoredPrey.entryVerb, 'swallow', 'Loaded stomach prey should preserve entry verb');
+  assertEqual(restoredPrey.releaseEligible, true, 'Loaded stomach prey should preserve release eligibility');
+  assertEqual(restoredPrey.containedId, 'save-prey', 'Loaded stomach prey should preserve contained id');
+});
+
+test('Digestion tick advances progress, reduces condition, and terminalizes at threshold', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'digest-holder', stomach: [], hunger: 50, CPun: 50, MPun: 100 });
+  const target = makeUnit('Ratfolk', { id: 'digest-prey', CPun: 10, MPun: 100, size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  const prey = App._containTargetIn(actor, target, 'stomach');
+  prey.progress = 95;
+  prey.digestionProgress = 95;
+  prey.CPun = 1;
+  const beforeHunger = actor.hunger;
+  App._processStomachState(actor);
+
+  assertEqual(prey.state, 'terminal', 'Progress or zero condition should terminalize containment');
+  assertEqual(prey.releaseEligible, false, 'Terminal prey should no longer be releasable');
+  assertEqual(prey.CPun, 0, 'Terminal prey condition should be zero');
+  assert(actor.hunger < beforeHunger, 'Terminal digestion should grant conservative hunger relief');
+  assert(Array.isArray(actor.temporaryStatEffects) && actor.temporaryStatEffects.length > 0, 'Terminal digestion should record temporary stat effects');
+  assertEqual(App._containerUsed(actor, 'stomach'), 0, 'Terminal digestion should stop occupying active stomach capacity');
+  assertContains(App.latestSceneBeat.summary, 'fully digested', 'Terminal digestion should emit a Scene Beat');
+  assertContains(App.log[App.log.length - 1].text, 'terminal digestion', 'Activity Log should remain a separate technical history entry');
+});
+
+test('Release restores contained prey at reduced condition and clears active containment', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'release-holder', stomach: [] });
+  const target = makeUnit('Bunnyfolk', { id: 'release-prey', CPun: 50, MPun: 100, size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [];
+  const prey = App._containTargetIn(actor, target, 'stomach');
+  prey.progress = 40;
+  prey.digestionProgress = 40;
+
+  const result = App._doSubAction('feast', 'release', actor, target, 'You', '');
+  assertContains(result, 'release Bunnyfolk', 'Release sub-action should report release');
+  assertEqual(actor.stomach.length, 0, 'Release should remove active stomach record');
+  assertEqual(App.creatures.includes(prey), true, 'Release should restore prey to creature surface');
+  assertEqual(prey.state, 'released', 'Released prey should keep released lifecycle state');
+  assertEqual(prey.CPun, 60, 'Release should restore prey at reduced condition based on progress');
+  assertContains(App.latestSceneBeat.summary, 'released from You', 'Release should emit a Scene Beat');
+  assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
+});
+
+test('Over-capacity blocks swallow and expanded cards show containment detail', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', {
+    id: 'capacity-holder',
+    size: 2,
+    appetite: 0,
+    expanded: true,
+    stomach: [makeUnit('Held', { id: 'held-1', size: 2, alive: true, inStomach: true, progress: 30, releaseEligible: true })]
+  });
+  const target = makeUnit('Too Big', { id: 'too-big', size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  assertEqual(App._canFitPrey(actor, target, 'stomach'), false, 'Over-capacity should block containment');
+  assertContains(App._capacityFailureMessage(actor, target, 'stomach'), 'too full', 'Capacity feedback should remain available');
+
+  const cardHtml = App.renderUnitCard(actor, 0, 'party');
+  assertContains(cardHtml, 'Contains 1', 'Compact/detail card traits should show small containment indicator');
+  assertContains(cardHtml, 'Held in Belly: 30% · releasable', 'Expanded details should show contained unit, progress, and release eligibility');
+});
+
+test('Terminal digestion uses neutral safe wording and creates no remains by default', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'safe-holder', stomach: [], hunger: 20 });
+  const target = makeUnit('Mousefolk', { id: 'safe-prey', CPun: 1, MPun: 100, size: 1 });
+  App.player = actor;
+  App.party = [actor];
+  const prey = App._containTargetIn(actor, target, 'stomach');
+  prey.progress = 100;
+  App._processStomachState(actor);
+
+  assertContains(App.latestSceneBeat.summary, 'fully digested', 'Safe default terminal wording should stay neutral/systemic');
+  assertNotContains(App.latestSceneBeat.summary, 'gore', 'Safe terminal wording should avoid explicit content');
+  assertEqual(Boolean(prey.remains || prey.loot), false, 'Terminal digestion should create no remains or loot by default');
 });
 
 test('Desktop play surface renders adjacent movement cells', () => {

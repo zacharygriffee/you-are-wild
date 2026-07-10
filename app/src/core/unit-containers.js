@@ -16,7 +16,13 @@ const YAW_UNIT_CONTAINERS = {
     },
 
     used(unit, container = 'stomach') {
-        return this.contents(unit, container).reduce((sum, prey) => sum + (prey.size || 1), 0);
+        return this.contents(unit, container).reduce((sum, prey) => {
+            const state = prey?.state || prey?.digestionState || 'contained';
+            if (['terminal', 'released', 'passed'].includes(state)) return sum;
+            if (container === 'stomach' && prey?.inStomach === false) return sum;
+            if (prey?.alive === false && prey?.CPun === 0) return sum;
+            return sum + (prey.size || 1);
+        }, 0);
     },
 
     canFit(predator, prey, container = 'stomach') {

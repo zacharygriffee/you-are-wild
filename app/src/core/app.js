@@ -735,6 +735,8 @@
             latestSceneBeat: null,
             storyEventSeq: 0,
             sceneTemplates: [],
+            feastVerbProfiles: {},
+            containerProfiles: {},
             tileEvents: [],
             logFilter: 'all',
             logSearch: '',
@@ -1229,6 +1231,25 @@
             _containerSummary(unit, container = 'stomach') {
                 return YAW_UNIT_CONTAINERS.summary(this, unit, container);
             },
+            _normalizeContainmentRecord(holder, prey, container = 'stomach') {
+                return YAW_UNIT_CONTAINMENT.normalizeRecord(this, holder, prey, container);
+            },
+            _normalizeContainmentRecords(holder, container = 'stomach') {
+                return YAW_UNIT_CONTAINMENT.normalizeContainer(this, holder, container);
+            },
+            _activeContainedPrey(unit, container = 'stomach') {
+                return (this._normalizeContainmentRecords(unit, container) || []).filter(prey => YAW_UNIT_CONTAINMENT.isActiveContained(prey, container));
+            },
+            _containmentDetailSummary(unit) {
+                const active = ['stomach', 'womb', 'balls'].flatMap(container => this._activeContainedPrey(unit, container).map(prey => ({ container, prey })));
+                if (!active.length) return '';
+                return active.map(({ container, prey }) => {
+                    const containerLabel = this._label(container === 'stomach' ? 'capacity.stomach' : container === 'womb' ? 'capacity.womb' : 'capacity.balls', container);
+                    const progress = Math.round(prey.progress ?? prey.digestionProgress ?? 0);
+                    const release = prey.releaseEligible ? this._label('containment.releaseEligible', 'releasable') : this._label('containment.releaseBlocked', 'not releasable');
+                    return `${prey.name} in ${containerLabel}: ${progress}% · ${release}`;
+                }).join(' | ');
+            },
             _interiorKey(x = this.interiorLocation.x, y = this.interiorLocation.y) {
                 return YAW_STRUCTURE_NAVIGATION.interiorKey(this, x, y);
             },
@@ -1296,11 +1317,17 @@
                 if (!predator || !target) return null;
                 const prey = this._createStomachPrey(target, {
                     ...extra,
+                    holder: predator,
+                    holderId: predator.id || predator.name,
+                    containedId: target.id || target.name,
+                    containerId: container,
+                    entryVerb: extra.entryVerb || (container === 'stomach' ? 'swallow' : container),
                     inWomb: container === 'womb' || extra.inWomb,
                     inCock: container === 'balls' || extra.inCock
                 });
                 if (!Array.isArray(predator[container])) predator[container] = [];
                 predator[container].push(prey);
+                YAW_UNIT_CONTAINMENT.emitContainmentBeat(this, 'contained', predator, prey);
                 target.CPun = 0;
                 target.CPle = 0;
                 this._removeContainedTarget(target);
@@ -2266,25 +2293,34 @@
                         break;
                     }
                     case 'feast.digest': {
-                        const livingStomach = (actor.stomach || []).filter(p => p.alive && p.inStomach);
+                        const livingStomach = this._activeContainedPrey(actor, 'stomach');
                         if (livingStomach.length === 0) { result = `${actorName} have no one held in their belly.`; break; }
                         const prey = livingStomach[0];
-                        prey.digestionProgress = 100; prey.alive = false;
-                        this._absorbStats(actor, 10, ['str', 'con', 'Figh']);
-                        result = `${actorName} actively digest ${prey.name}, absorbing their essence completely.`;
+                        prey.progress = 100;
+                        prey.digestionProgress = 100;
+                        YAW_UNIT_CONTAINMENT.terminalize(this, actor, prey, { key: 'stomach' });
+                        result = `${actorName} actively digest ${prey.name}, fully breaking them down.`;
                         break;
                     }
                     case 'feast.release': {
-                        const livingStomach = (actor.stomach || []).filter(p => p.alive && p.inStomach);
+                        const livingStomach = this._activeContainedPrey(actor, 'stomach').filter(p => p.releaseEligible);
                         if (livingStomach.length === 0) { result = `${actorName} have no living prey to release.`; break; }
                         const prey = livingStomach[0];
                         const idx = actor.stomach.indexOf(prey);
                         if (idx >= 0) actor.stomach.splice(idx, 1);
                         prey.inStomach = false;
-                        prey.CPun = Math.max(1, Math.floor(prey.MPun * (prey.digestionProgress / 100)));
+                        prey.state = 'released';
+                        prey.digestionState = 'released';
+                        prey.releaseEligible = false;
+                        const remainingRatio = Math.max(0.05, 1 - ((prey.progress ?? prey.digestionProgress ?? 0) / 100));
+                        prey.CPun = Math.max(1, Math.floor((prey.MPun || 1) * remainingRatio));
                         prey.CPle = 0;
                         prey.status = prey.status || {};
                         if (this.creatures.indexOf(prey) === -1) this.creatures.push(prey);
+                        YAW_UNIT_CONTAINMENT.emitContainmentBeat(this, 'released', actor, prey, {
+                            deltas: [{ kind: 'state', state: 'released', unit: prey.name }]
+                        });
+                        this.log.push({ text: `${prey.name} released from ${actor.name}'s stomach at reduced condition.`, type: 'combat' });
                         result = `${actorName} release ${prey.name} from their belly, weak and dazed but alive.`;
                         break;
                     }
@@ -2386,6 +2422,12 @@
             },
 
             // ===== MODDING API =====
+            registerFeastVerbProfile(profile) {
+                return YAW_UNIT_CONTAINMENT.registerFeastVerbProfile(this, profile);
+            },
+            registerContainerProfile(profile) {
+                return YAW_UNIT_CONTAINMENT.registerContainerProfile(this, profile);
+            },
             registerSubAction(action, subId, config) {
                 if (!this.SUB_ACTIONS[action]) this.SUB_ACTIONS[action] = {};
                 this.SUB_ACTIONS[action][subId] = {

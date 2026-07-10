@@ -14647,7 +14647,7 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
   assertEqual(App.inventory[0].id, 'quest_item_wolf-hunt_old-coin_0', 'Quest reward item id should be stable without timestamp entropy');
 });
 
-test('Quest species objectives match exact internal ids and display species labels', () => {
+test('Quest species objectives match explicit taxonomy ids and display species labels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
   App.player = player;
@@ -14658,10 +14658,18 @@ test('Quest species objectives match exact internal ids and display species labe
   assertEqual(App.questSpeciesLabel('wolf'), 'Wolfkin', 'Quest species labels should use player-facing species names');
   assertEqual(App._questObjectiveLabel(objective), 'defeat Wolfkin', 'Generated objective labels should display species names instead of raw ids');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf', target: { species: 'wolf' } }, objective), true, 'Internal wolf species id should match exact wolf objective');
+  App.species.push(
+    { id: 'wolfgirl', name: 'Wolfgirl', icon: '🐺', desc: 'Sapient wolf person' },
+    { id: 'wolf_boy', name: 'Wolfboy', icon: '🐺', desc: 'Sapient wolf person' },
+    { id: 'moon_scout', name: 'Moon Scout', icon: '🐺', desc: 'Sapient wolf scout', questSpecies: 'wolf' }
+  );
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolfgirl', target: { species: 'wolfgirl' } }, objective), true, 'Wolfgirl species should satisfy a wolf-family objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf_boy', target: { species: 'wolf_boy' } }, objective), true, 'Wolfboy species should satisfy a wolf-family objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'moon_scout', target: { species: 'moon_scout' } }, objective), true, 'Explicit questSpecies metadata should satisfy a wolf-family objective');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'fox', target: { species: 'fox' } }, objective), false, 'Internal wolf species id should not fuzzy-match fox');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'hyena', target: { species: 'hyena' } }, objective), false, 'Internal wolf species id should not fuzzy-match hyena or other canid-like species');
-  assertEqual(App._questObjectiveMatches('consume', { target: { species: 'wolf' } }, { ...objective, type: 'consume' }), true, 'Shared consume progress should use exact species ids');
-  assertEqual(App._questObjectiveMatches('seduce', { target: { species: 'wolf' } }, { ...objective, type: 'seduce' }), true, 'Shared seduce progress should use exact species ids');
+  assertEqual(App._questObjectiveMatches('consume', { target: { species: 'wolfgirl' } }, { ...objective, type: 'consume' }), true, 'Shared consume progress should use species taxonomy matching');
+  assertEqual(App._questObjectiveMatches('seduce', { target: { species: 'wolf_boy' } }, { ...objective, type: 'seduce' }), true, 'Shared seduce progress should use species taxonomy matching');
 
   const normalized = App._normalizeQuest({
     id: 'wolfkin_hunt',
@@ -14682,7 +14690,7 @@ test('Quest species objectives match exact internal ids and display species labe
   assertEqual(explicit.objectives[0].label, 'Defeat the northern scout', 'Explicit authored objective labels should be preserved');
 });
 
-test('Generated and mod species quest objectives use registered exact species ids', () => {
+test('Generated and mod species quest objectives use registered ids plus explicit taxonomy', () => {
   const { App } = loadAppForCombat(() => 0);
   const registered = new Set(App.species.map(species => species.id));
   Object.values(App.QUEST_TEMPLATES).forEach(template => {
@@ -14715,6 +14723,8 @@ test('Generated and mod species quest objectives use registered exact species id
   assertEqual(App._questObjectiveLabel(modObjective), 'defeat Modfolk', 'Mod-registered species objectives should generate display-name labels');
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk' } }, modObjective), true, 'Mod-registered species should match exact species objective ids');
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'wolf' } }, modObjective), false, 'Mod species objective should not fuzzy-match other species');
+  App.species.push({ id: 'modfolk_variant', name: 'Modfolk Variant', icon: 'M', questFamilies: ['modfolk'], desc: 'Mod registered person' });
+  assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk_variant' } }, modObjective), true, 'Mod species can opt into quest taxonomy with questFamilies metadata');
 });
 
 test('Quest turn-in can defer rewards until claimed from quest log', () => {
@@ -16693,7 +16703,7 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Mobile feedback should be persistent inline first', 'Mobile feedback doctrine should prefer inline first');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
-  assertContains(nextObjectives, '6 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertContains(nextObjectives, '5 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 

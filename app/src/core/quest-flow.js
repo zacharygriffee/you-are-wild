@@ -65,6 +65,64 @@ const YAW_QUEST_FLOW = {
         return species?.name || species?.label || speciesId;
     },
 
+    taxonomyToken(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    },
+
+    taxonomyRoot(value) {
+        const token = this.taxonomyToken(value);
+        if (!token) return '';
+        const suffixes = ['folk', 'kin', 'girl', 'boy', 'woman', 'man', 'person', 'people'];
+        for (const suffix of suffixes) {
+            if (token.length > suffix.length + 2 && token.endsWith(suffix)) {
+                return token.slice(0, -suffix.length);
+            }
+        }
+        return token;
+    },
+
+    speciesTaxonomyKeys(app, speciesIdOrUnit) {
+        const unit = speciesIdOrUnit && typeof speciesIdOrUnit === 'object' ? speciesIdOrUnit : null;
+        const speciesId = unit?.species || speciesIdOrUnit;
+        const species = (app.species || []).find(s => s.id === speciesId) || {};
+        const canon = app.SPECIES_CANON?.[speciesId] || {};
+        const values = [
+            speciesId,
+            species.name,
+            species.label,
+            species.family,
+            species.speciesFamily,
+            species.questSpecies,
+            canon.family,
+            canon.speciesFamily,
+            canon.questSpecies,
+            ...(Array.isArray(species.families) ? species.families : []),
+            ...(Array.isArray(species.questFamilies) ? species.questFamilies : []),
+            ...(Array.isArray(canon.families) ? canon.families : []),
+            ...(Array.isArray(canon.questFamilies) ? canon.questFamilies : [])
+        ];
+        const keys = new Set();
+        for (const value of values) {
+            const token = this.taxonomyToken(value);
+            const root = this.taxonomyRoot(value);
+            if (token) keys.add(token);
+            if (root) keys.add(root);
+        }
+        return keys;
+    },
+
+    speciesObjectiveMatches(app, objectiveSpecies, payload = {}) {
+        if (!objectiveSpecies) return true;
+        const objectiveKeys = this.speciesTaxonomyKeys(app, objectiveSpecies);
+        const target = payload.target || {};
+        const payloadSpecies = payload.species || target.species;
+        const targetKeys = this.speciesTaxonomyKeys(app, target.species ? target : payloadSpecies);
+        for (const key of objectiveKeys) {
+            if (targetKeys.has(key)) return true;
+        }
+        return false;
+    },
+
     rewardPreviewText(app, reward = {}) {
         const parts = [];
         if (reward.xp) parts.push(app._label('quest.reward.xp', '{count} XP', { count: reward.xp }));
@@ -238,7 +296,7 @@ const YAW_QUEST_FLOW = {
 
     objectiveMatches(app, type, payload, objective) {
         if (!objective || objective.complete || objective.type !== type) return false;
-        if (objective.species && objective.species !== payload.species && objective.species !== payload.target?.species) return false;
+        if (objective.species && !this.speciesObjectiveMatches(app, objective.species, payload)) return false;
         if (objective.targetId && String(objective.targetId) !== String(payload.targetId || payload.target?.id || payload.target?.name)) return false;
         if (objective.item && objective.item !== payload.item && objective.item !== payload.name) return false;
         if ((objective.type === 'escort' || objective.type === 'travel') && objective.location) {

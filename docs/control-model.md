@@ -75,11 +75,11 @@ These decisions are settled doctrine until a later explicit mechanics pass reope
 
 ### Quest Species Matching Doctrine
 
-Quest species objectives match exact internal species IDs. An objective with `species: "wolf"` matches units whose internal `species` is exactly `"wolf"`; it does not fuzzy-match wolfkin-like labels, canine families, beastfolk, tags, hostile-canid categories, or related species such as fox or hyena.
+Quest species objectives match explicit species taxonomy, not broad fuzzy animal categories. An objective with `species: "wolf"` matches units whose internal species ID is exactly `"wolf"` and registered variants that clearly normalize to that family, such as `wolfkin`, `wolfgirl`, or `wolfboy`-style species IDs/display names. It must not automatically match broad canid-like or beastfolk-adjacent species such as fox or hyena.
 
 Player-facing quest text should render species display names from the species registry. The internal ID `wolf` can therefore appear to the player as `Wolfkin`, and generated quest objective labels should prefer that display name when no explicit authored label is provided. Existing authored labels remain authoritative, but default content should avoid exposing raw internal IDs when a display name exists.
 
-Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid exact quest targets when the mod registers the species ID. Broader family, tag, taxonomy, or target-pool quest selectors are deferred until a later quest-design pass and should not be approximated through fuzzy string matching.
+Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid quest targets when the mod registers the exact species ID or supplies explicit taxonomy metadata such as `questSpecies`, `questFamilies`, `speciesFamily`, `family`, or clear family-style species labels. The matcher may normalize safe suffixes like `folk`, `kin`, `girl`, and `boy`, but it should not infer unrelated families merely from broad tags like `canine-folk`.
 
 ### Traversal mode
 

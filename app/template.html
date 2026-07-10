@@ -6249,16 +6249,19 @@
             }
 
             .mobile-story-expand-btn {
-                display: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex: 0 0 auto;
+                min-height: 30px;
+                padding: 5px 9px;
+                font-size: 10px;
+                line-height: 1;
+                text-transform: uppercase;
             }
 
             .mobile-story-handle {
-                position: fixed;
-                left: 50%;
-                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
-                z-index: 126;
-                transform: translateX(-50%);
-                display: inline-flex;
+                display: none;
                 align-items: center;
                 justify-content: center;
                 gap: 6px;
@@ -6361,6 +6364,7 @@
             }
 
             .mobile-combat-story-strip .mobile-story-expand-btn {
+                display: inline-flex;
                 min-height: 30px;
                 padding: 5px 9px;
                 font-size: 10px;
@@ -6442,6 +6446,37 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            .story-latest[data-has-scene-beat="true"] {
+                border-radius: var(--radius-xs);
+            }
+
+            .story-latest[data-scene-importance="hint"],
+            .story-latest[data-scene-importance="failure"],
+            .story-latest[data-scene-result="failure"] {
+                color: var(--accent-warning);
+            }
+
+            .story-latest[data-scene-importance="notable"],
+            .story-latest[data-scene-importance="major"],
+            .story-latest[data-scene-result="decisive"] {
+                color: var(--accent-primary);
+            }
+
+            .scene-beat-highlight[data-has-scene-beat="true"] {
+                animation: scene-beat-pulse 700ms ease-out 1;
+            }
+
+            @keyframes scene-beat-pulse {
+                0% { background: rgba(0, 212, 170, 0.18); box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.25); }
+                100% { background: transparent; box-shadow: none; }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .scene-beat-highlight[data-has-scene-beat="true"] {
+                    animation: none;
+                }
             }
 
             .story-latest-line {

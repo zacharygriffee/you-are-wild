@@ -16554,7 +16554,7 @@ test('Activity log template exposes filters search export and mobile controls', 
 test('Story template exposes expandable semantic story surfaces distinct from activity log', () => {
   assertContains(template, 'id="mobile-story-latest"', 'Mobile story capsule should expose a latest story slot');
   assertContains(template, 'data-command-control="open-story-sheet"', 'Story capsule should expose an open-story command');
-  assertContains(template, 'class="nav-btn mobile-story-handle"', 'Mobile should expose a thumb-zone story handle outside the compact scene capsule');
+  assertContains(template, 'class="nav-btn mobile-story-handle"', 'Mobile should retain compatibility story handle markup');
   assertContains(template, 'id="desktop-scene-feed-slot"', 'Desktop context panel should expose an in-context Scene Feed slot');
   assertContains(template, 'id="desktop-scene-feed-latest"', 'Desktop context panel should expose the latest Scene Beat target');
   assertNotContains(template, 'id="desktop-story-strip"', 'Desktop should not keep a duplicate legacy Scene Feed strip');
@@ -16567,7 +16567,10 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, 'id="mobile-tile-details-sheet"', 'Mobile should expose a tile details sheet');
   assertContains(template, 'id="mobile-tile-details-content"', 'Mobile tile details sheet should expose full metadata content');
   assertContains(template, '.story-sheet-window', 'Story sheet should have bounded window styling');
-  assertContains(template, '.mobile-story-handle', 'Mobile story handle should have dedicated bounded styling');
+  assertContains(template, '.mobile-story-handle', 'Mobile compatibility story handle should have dedicated styling');
+  assertContains(template, '.mobile-story-expand-btn', 'Mobile story capsule should expose inline Scene Feed access');
+  assertContains(template, '.story-latest[data-scene-importance="hint"]', 'Latest Scene Beat styling should support hint/failure emphasis without overlays');
+  assertContains(template, '.scene-beat-highlight[data-has-scene-beat="true"]', 'Latest Scene Beat styling should allow transient highlight without timer dismissal');
   assertContains(template, '#app.story-sheet-open .mobile-story-handle', 'Mobile story handle should hide while the sheet is open');
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
@@ -16700,10 +16703,10 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
   assertContains(controlModel, 'Recruited NPCs lose shop or quest-giver duties by default', 'NPC role recruitment default should be documented');
   assertContains(controlModel, 'Pre-beta containment save changes may break old saves', 'Containment save migration tolerance should be documented');
-  assertContains(controlModel, 'Mobile feedback should be persistent inline first', 'Mobile feedback doctrine should prefer inline first');
+  assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
-  assertContains(nextObjectives, '5 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertContains(nextObjectives, '4 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 
@@ -16871,6 +16874,8 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
   assertEqual(App.storyEvents[0].resultKind, 'failure', 'Blocked reach Scene Beat should be marked as failure');
   assertContains(App.storyEvents[0].summary, 'back row', 'Blocked reach Scene Beat should explain the row problem');
   assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'back row', 'Desktop context Scene Feed should show the reach failure');
+  assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-result'), 'failure', 'Latest Scene Feed slot should expose failure result metadata');
+  assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-importance'), 'hint', 'Cannot-reach Scene Beat should expose hint-level emphasis');
   assertContains(elements.get('log-content').innerHTML, 'back row', 'Activity Log should still retain the technical failure history');
 });
 
@@ -17159,6 +17164,9 @@ test('Story result bridge renders result-first compact feedback without touching
   assertContains(compact, 'You', 'Story metadata should name the actor');
   assertContains(compact, 'Bunnyfolk', 'Story metadata should name the target');
   assertContains(compact, 'class="story-intent"', 'Story metadata should include the intent label');
+  assertEqual(elements.get('mobile-story-latest').getAttribute('data-has-scene-beat'), 'true', 'Mobile latest beat should persist as an explicit scene beat surface');
+  assertEqual(elements.get('mobile-story-latest').getAttribute('data-scene-importance'), 'normal', 'Mobile latest beat should expose importance for emphasis styling');
+  assertEqual(elements.get('mobile-story-latest').classList.contains('scene-beat-highlight'), true, 'Mobile latest beat should briefly highlight without being timer-dismissed');
   assertNotContains(elements.get('scene-description').innerHTML, 'You trade a careful greeting', 'Story result should not replace current tile description');
 });
 

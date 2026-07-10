@@ -574,6 +574,32 @@ const YAW_STORY_EVENTS = {
         return `<span class="story-latest-line"><span class="story-summary">${app._escapeHtml(event.summary)}</span><span class="story-meta-line">${meta}</span></span>`;
     },
 
+    latestAttributes(app, event = null) {
+        const id = event?.id || '';
+        const importance = event?.importance || 'empty';
+        const result = event?.resultKind || 'empty';
+        return {
+            id,
+            importance,
+            result,
+            hasBeat: event ? 'true' : 'false',
+            label: event?.summary || app._label('scene.empty', 'Scene beats will appear here after interactions.')
+        };
+    },
+
+    applyLatestElement(app, element, event, html, { hidden = false } = {}) {
+        if (!element) return;
+        const attrs = this.latestAttributes(app, event);
+        element.hidden = Boolean(hidden);
+        element.innerHTML = hidden ? '' : html;
+        element.setAttribute('data-scene-beat-id', attrs.id);
+        element.setAttribute('data-scene-importance', attrs.importance);
+        element.setAttribute('data-scene-result', attrs.result);
+        element.setAttribute('data-has-scene-beat', attrs.hasBeat);
+        element.setAttribute('aria-label', attrs.label);
+        element.classList.toggle('scene-beat-highlight', Boolean(event) && !hidden);
+    },
+
     deltaLabel(app, delta) {
         if (typeof delta === 'string') return delta;
         if (!delta || typeof delta !== 'object') return String(delta || '');
@@ -636,13 +662,12 @@ const YAW_STORY_EVENTS = {
         const mobileLatest = document.getElementById('mobile-story-latest');
         if (mobileLatest) {
             const combatOwnsMobileStory = Boolean(app.combatState?.active);
-            mobileLatest.hidden = combatOwnsMobileStory;
-            mobileLatest.innerHTML = combatOwnsMobileStory ? '' : latestHtml;
+            this.applyLatestElement(app, mobileLatest, latest, latestHtml, { hidden: combatOwnsMobileStory });
         }
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
-        if (desktopSceneLatest) desktopSceneLatest.innerHTML = latestHtml;
+        if (desktopSceneLatest) this.applyLatestElement(app, desktopSceneLatest, latest, latestHtml);
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {
-            el.innerHTML = latestHtml;
+            this.applyLatestElement(app, el, latest, latestHtml);
         });
         const sheetList = document.getElementById('story-sheet-list');
         if (sheetList) sheetList.innerHTML = this.listHtml(app);

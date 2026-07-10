@@ -98,10 +98,20 @@ const YAW_COMBAT_SCENE = {
         const storyHtml = typeof YAW_STORY_EVENTS !== 'undefined'
             ? YAW_STORY_EVENTS.compactHtml(app, latest)
             : `<span class="story-empty">${app._escapeHtml(app._label('scene.empty', 'Scene beats will appear here after interactions.'))}</span>`;
+        const attrs = typeof YAW_STORY_EVENTS !== 'undefined'
+            ? YAW_STORY_EVENTS.latestAttributes(app, latest)
+            : {
+                id: '',
+                importance: latest?.importance || 'empty',
+                result: latest?.resultKind || 'empty',
+                hasBeat: latest ? 'true' : 'false',
+                label: latest?.summary || app._label('scene.empty', 'Scene beats will appear here after interactions.')
+            };
+        const attrHtml = `data-scene-beat-id="${app._escapeHtml(attrs.id)}" data-scene-importance="${app._escapeHtml(attrs.importance)}" data-scene-result="${app._escapeHtml(attrs.result)}" data-has-scene-beat="${app._escapeHtml(attrs.hasBeat)}" aria-label="${app._escapeHtml(attrs.label)}"`;
         const latestClass = mobile ? 'mobile-combat-story-latest' : 'desktop-combat-story-latest';
         const expandClass = mobile ? 'mobile-story-expand-btn' : 'desktop-story-expand-btn';
         return `<div class="combat-story-strip ${mobile ? 'mobile-combat-story-strip' : 'desktop-combat-story-strip'}" data-surface-role="scene-feed" aria-live="polite">`
-            + `<div class="desktop-story-copy"><span class="desktop-story-kicker">Scene</span><div class="story-latest ${latestClass}" data-surface-role="scene-feed-latest">${storyHtml}</div></div>`
+            + `<div class="desktop-story-copy"><span class="desktop-story-kicker">Scene</span><div class="story-latest ${latestClass}${latest ? ' scene-beat-highlight' : ''}" data-surface-role="scene-feed-latest" ${attrHtml}>${storyHtml}</div></div>`
             + `<button class="nav-btn ${expandClass}" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="${app._escapeHtml(String((app.storyEvents || []).length))}" title="Open scene feed" aria-label="Open scene feed">Feed</button>`
             + `</div>`;
     },

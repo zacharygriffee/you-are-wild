@@ -1152,10 +1152,6 @@ async function checkViewport(browser, name, width, height) {
       const beltStyle = getComputedStyle(belt);
       const storyHandleStyle = getComputedStyle(storyHandle);
       const topStoryButtonStyle = getComputedStyle(topStoryButton);
-      const surface = document.getElementById('mobile-play-surface');
-      surface?.classList.add('combat-active');
-      const combatStoryHandleDisplay = getComputedStyle(storyHandle).display;
-      surface?.classList.remove('combat-active');
       const overlapArea = (a, b) => {
         const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
         const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
@@ -1194,7 +1190,6 @@ async function checkViewport(browser, name, width, height) {
         storyHandleMinHeight: parseFloat(storyHandleStyle.minHeight) || 0,
         storyHandleText: storyHandle?.innerText || '',
         topStoryButtonDisplay: topStoryButtonStyle.display,
-        combatStoryHandleDisplay,
         miniMapBottom: miniMapRect.bottom,
         unitStripsTop: unitStripsRect.top,
         creatureCardTop: creatureCardRect.top,
@@ -1268,14 +1263,9 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
     assert(mobileControls.sheetHeight <= 150, `${name}: mobile story capsule should stay compact above the traversal stage`);
     assert(mobileControls.sheetBottom <= mobileControls.mapTop + 1, `${name}: mobile story capsule should not overlap the traversal map`);
-    assert.strictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: high story capsule button should be hidden on mobile`);
-    assert.strictEqual(mobileControls.storyHandlePosition, 'fixed', `${name}: mobile story access should live in the thumb zone as a fixed handle`);
-    assert.notStrictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: mobile story handle should be visible during normal play`);
-    assert.notStrictEqual(mobileControls.combatStoryHandleDisplay, 'none', `${name}: mobile story handle should remain available during combat`);
-    assert(mobileControls.storyHandleLeft >= -1 && mobileControls.storyHandleRight <= mobileControls.viewportWidth + 1, `${name}: mobile story handle should stay inside viewport horizontally`);
-    assert(mobileControls.storyHandleTop >= 0 && mobileControls.storyHandleBottom <= mobileControls.dockTop + 1, `${name}: mobile story handle should sit above the dock without clipping`);
-    assert(mobileControls.storyHandleWidth >= 96 && mobileControls.storyHandleHeight >= 36 && mobileControls.storyHandleMinHeight >= 36, `${name}: mobile story handle should keep a thumb-sized target`);
-    assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: mobile scene feed handle should be labeled accessibly`);
+    assert.notStrictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: compact story capsule button should be visible on mobile`);
+    assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
+    assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
@@ -1492,7 +1482,7 @@ async function checkViewport(browser, name, width, height) {
       opened.appOpenClassAfterClose = appRoot.classList.contains('story-sheet-open');
       return opened;
     });
-    assert.strictEqual(openStorySheet.hidden, false, `${name}: mobile story sheet should open from the thumb-zone handle path`);
+    assert.strictEqual(openStorySheet.hidden, false, `${name}: mobile story sheet should open from the inline scene feed access path`);
     assert.strictEqual(openStorySheet.ariaHidden, 'false', `${name}: open mobile story sheet should expose dialog semantics`);
     assert.strictEqual(openStorySheet.appOpenClass, true, `${name}: open mobile story sheet should mark root state`);
     assert(openStorySheet.sheetLeft >= -1 && openStorySheet.sheetRight <= openStorySheet.viewportWidth + 1, `${name}: mobile story sheet should stay inside viewport horizontally`);

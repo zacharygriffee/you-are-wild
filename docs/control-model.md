@@ -71,7 +71,7 @@ These decisions are settled doctrine until a later explicit mechanics pass reope
 - Party size uses a hard default cap for performance and UI readability. Mods may raise or replace that cap for players who opt into larger parties on capable devices.
 - Recruited NPCs lose shop or quest-giver duties by default. Keeping those functions requires a special authored companion role or future explicit role-retention mechanic.
 - Pre-beta containment save changes may break old saves if a clean versioned schema becomes necessary. Prefer compatibility adapters when practical, but do not compromise central containment mechanics merely to preserve unreleased legacy saves.
-- Mobile feedback should be persistent inline first. Transient toast or popover feedback is deferred until desktop Scene Feed shape is satisfactory and mobile playtesting proves inline feedback is missed.
+- Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet. Transient highlighting is allowed to draw attention to a new beat, but transient-only feedback is not. Collapsed mobile feedback must not cover the composer, action controls, actor/target pickers, or dock.
 
 ### Quest Species Matching Doctrine
 

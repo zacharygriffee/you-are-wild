@@ -9545,7 +9545,8 @@ test('InteractionPlan backs combat current-turn target plans and validation', ()
   assertEqual(plan.constraints.checkReach, true, 'Combat target plans should preserve reach checks by default');
 
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [ally], targets: [frontEnemy], action: 'fight' })).ok, false, 'Combat plans should reject non-current actors');
-  assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' })).reason, 'cannot-reach', 'Combat plans should reject unreachable back-row targets');
+  const backRowAttempt = App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' }));
+  assertEqual(backRowAttempt.ok, true, 'Combat plans should allow unreachable physical targets as attempted actions');
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [frontEnemy, backEnemy], action: 'fight', constraints: { maxTargets: 1 } })).reason, 'too-many-targets', 'Combat plans should enforce target count constraints when mechanics declare them');
 });
 

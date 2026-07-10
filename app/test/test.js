@@ -16696,6 +16696,8 @@ test('Feast containment doctrine locks V1 scope and links from control model', (
   assertContains(feastContainmentDoc, 'containedId', 'Doctrine should document normalized contained id');
   assertContains(feastContainmentDoc, 'containerId: "stomach"', 'Doctrine should document stomach as V1 container');
   assertContains(feastContainmentDoc, 'vitalRemaining', 'Doctrine should document vital remaining in the normalized record');
+  assertContains(feastContainmentDoc, '`vitalMax` defaults to captured current condition', 'Doctrine should lock captured-condition vital defaults');
+  assertContains(feastContainmentDoc, 'Remains Pool', 'Doctrine should separate corpse remains from living vital pool');
   assertContains(feastContainmentDoc, '`swallow` creates `integrity: "intact"`', 'Doctrine should lock swallow intact default');
   assertContains(feastContainmentDoc, 'Terminal digestion occurs when `progress >= 100`, contained condition reaches zero, or `vitalRemaining <= 0`', 'Doctrine should lock terminal thresholds');
   assertContains(feastContainmentDoc, 'Visible stats are not directly mutated by each digestion tick', 'Doctrine should keep visible stats separate from tick ledger');
@@ -16707,6 +16709,8 @@ test('Feast containment doctrine locks V1 scope and links from control model', (
   assertContains(feastContainmentV2Doc, 'Core Feast should not model chewed creature pieces as inventory items', 'V2 doctrine should reject itemized creature pieces as core model');
   assertContains(feastContainmentV2Doc, 'Regular damage', 'V2 doctrine should distinguish regular damage');
   assertContains(feastContainmentV2Doc, 'Vital damage', 'V2 doctrine should distinguish vital damage');
+  assertContains(feastContainmentV2Doc, 'Remains Pool', 'V2 doctrine should distinguish corpse/remains edible mass');
+  assertContains(feastContainmentV2Doc, "`vitalMax` defaults to the target's current `CPun`", 'V2 doctrine should lock captured current condition vitality');
   assertContains(feastContainmentV2Doc, 'No creature-piece inventory items in core', 'V2 doctrine should lock no piece inventory non-goal');
   assertContains(feastContainmentDoc, 'Nested containment mechanics and transfer math', 'Doctrine should explicitly defer nested containment math');
 });
@@ -16721,7 +16725,8 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
   assertContains(controlModel, 'Recruited NPCs lose shop or quest-giver duties by default', 'NPC role recruitment default should be documented');
   assertContains(controlModel, 'Pre-beta containment save changes may break old saves', 'Containment save migration tolerance should be documented');
-  assertContains(controlModel, 'Feast/containment uses regular damage and vital damage as separate tracks', 'Control model should record vital damage doctrine');
+  assertContains(controlModel, 'Feast/containment uses regular damage and vital damage as separate living-creature tracks', 'Control model should record vital damage doctrine');
+  assertContains(controlModel, 'separate Remains Pool', 'Control model should record corpse/remains pool doctrine');
   assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
@@ -18416,8 +18421,8 @@ test('Swallow creates normalized containment record and keeps prey recoverable o
   assertEqual(prey.state, 'contained', 'Swallow should start as contained');
   assertEqual(prey.integrity, 'intact', 'Swallow should preserve intact release eligibility');
   assertEqual(prey.capturedPun, 20, 'Swallow should capture current condition at containment time');
-  assertEqual(prey.vitalMax, 100, 'Swallow should create a vital max from prey condition capacity');
-  assertEqual(prey.vitalRemaining, 100, 'Swallow should do no immediate vital damage by default');
+  assertEqual(prey.vitalMax, 20, 'Swallow should create vital max from captured current condition');
+  assertEqual(prey.vitalRemaining, 20, 'Swallow should do no immediate vital damage by default');
   assertEqual(prey.originalStats.Figh, target.Figh, 'Swallow should capture original combat stat profile');
   assertEqual(prey.releaseEligible, true, 'Intact swallowed prey should be releasable before terminal digestion');
   assertContains(App.latestSceneBeat.summary, 'Bunnyfolk is held', 'Swallow should emit a containment Scene Beat');
@@ -18451,7 +18456,7 @@ test('Containment adapter normalizes existing stomach prey saves without data lo
   assertEqual(prey.containedId, 'stored-legacy', 'Legacy prey should gain contained id');
   assertEqual(prey.containerId, 'stomach', 'Legacy prey should normalize to stomach container');
   assertEqual(prey.progress, 25, 'Legacy digestionProgress should map to progress');
-  assertEqual(prey.vitalMax, 100, 'Legacy prey should gain vital max');
+  assertEqual(prey.vitalMax, 100, 'Legacy prey should gain vital max from current saved condition');
   assertEqual(prey.vitalRemaining, 75, 'Legacy prey should infer vital remaining from progress');
   assertEqual(prey.state, 'digesting', 'Legacy progress should normalize to digesting state');
   assertEqual(prey.releaseEligible, true, 'Legacy intact prey should remain releasable');
@@ -18474,7 +18479,7 @@ test('Containment records survive binary save/load through stomach compatibility
   assertEqual(restoredPrey.entryVerb, 'swallow', 'Loaded stomach prey should preserve entry verb');
   assertEqual(restoredPrey.releaseEligible, true, 'Loaded stomach prey should preserve release eligibility');
   assertEqual(restoredPrey.containedId, 'save-prey', 'Loaded stomach prey should preserve contained id');
-  assertEqual(restoredPrey.vitalRemaining, 100, 'Loaded stomach prey should preserve vital integrity');
+  assertEqual(restoredPrey.vitalRemaining, 30, 'Loaded stomach prey should preserve captured current vital integrity');
 });
 
 test('Digestion tick advances progress, reduces condition, and terminalizes at threshold', () => {
@@ -18512,14 +18517,14 @@ test('Release restores contained prey at reduced condition and clears active con
   const prey = App._containTargetIn(actor, target, 'stomach');
   prey.progress = 40;
   prey.digestionProgress = 40;
-  prey.vitalRemaining = 60;
+  prey.vitalRemaining = 30;
 
   const result = App._doSubAction('feast', 'release', actor, target, 'You', '');
   assertContains(result, 'release Bunnyfolk', 'Release sub-action should report release');
   assertEqual(actor.stomach.length, 0, 'Release should remove active stomach record');
   assertEqual(App.creatures.includes(prey), true, 'Release should restore prey to creature surface');
   assertEqual(prey.state, 'released', 'Released prey should keep released lifecycle state');
-  assertEqual(prey.CPun, 60, 'Release should restore prey at reduced condition based on vital integrity');
+  assertEqual(prey.CPun, 30, 'Release should restore prey at reduced condition based on vital integrity');
   assert(prey.status.vitalWeakness, 'Release below full vitality should apply Vital Weakness state');
   assertContains(App.latestSceneBeat.summary, 'released from You', 'Release should emit a Scene Beat');
   assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
@@ -18568,6 +18573,49 @@ test('Group chew applies vital damage without synthetic portion records', () => 
   assert(target.vitalRemaining < target.vitalMax, 'Group chew should reduce target vital integrity');
   assertEqual(actor.stomach.length, 0, 'Group chew should not create actor portion records');
   assertEqual(helper.stomach.length, 0, 'Group chew should not create helper portion records');
+});
+
+test('Corpse scavenge uses Remains Pool without creature-piece inventory', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'remains-scavenger', CPun: 20, MPun: 100, hunger: 40, size: 4 });
+  const corpse = makeUnit('Ratfolk', { id: 'rat-remains', species: 'rat', disposition: App.DISPOSITION.ENEMY, size: 3, CPun: 0, MPun: 100 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [corpse];
+  App.inventory = [];
+  App._makeCorpse(corpse, 'fight');
+
+  assertEqual(corpse.kind, 'remains', 'Corpse should normalize as a remains record');
+  assertEqual(corpse.edibleMax, 3, 'Remains Pool should initialize finite edible mass from size');
+  assertEqual(corpse.edibleRemaining, 3, 'Remains Pool should start full');
+  assertEqual(corpse.vitalRemaining, undefined, 'Corpse remains should not use living vital pool');
+
+  const result = App._consumeCorpsePortion(corpse, actor);
+
+  assertEqual(result.consumed, 1, 'Scavenge should consume finite remains mass');
+  assertEqual(corpse.edibleRemaining, 2, 'Scavenge should reduce Remains Pool');
+  assertEqual(corpse.remainingPortions, 2, 'Legacy portion field should mirror Remains Pool for compatibility');
+  assertEqual(App.inventory.length, 0, 'Scavenge should not create creature-piece inventory items');
+  assert(actor.hunger < 40, 'Scavenge should preserve existing hunger relief behavior');
+  assert(actor.CPun > 20, 'Scavenge should preserve existing healing behavior');
+});
+
+test('Depleted remains preserve corpse record while disabling further scavenge', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'remains-finisher', CPun: 20, MPun: 100, hunger: 40, size: 8 });
+  const corpse = makeUnit('Mousefolk', { id: 'mouse-remains', species: 'mouse', disposition: App.DISPOSITION.CORPSE, size: 1, remainingPortions: 1, CPun: 0 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [corpse];
+
+  const consumed = App._consumeCorpsePortions(corpse, [actor]);
+
+  assertEqual(consumed.length, 1, 'Scavenge should consume available remains once');
+  assertEqual(corpse.edibleRemaining, 0, 'Remains Pool should reach zero');
+  assertEqual(corpse.depleted, true, 'Depleted remains should be marked');
+  assertEqual(corpse.scavenged, true, 'Legacy scavenged flag should mirror depletion');
+  assertEqual(App._canScavengeCorpse(corpse), false, 'Depleted remains should not be scavengeable again');
+  assertEqual(App.creatures.includes(corpse), true, 'Depleted remains should remain inspectable until existing decay removes them');
 });
 
 test('Over-capacity blocks swallow and expanded cards show containment detail', () => {

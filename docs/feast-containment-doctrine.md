@@ -14,7 +14,7 @@ Containment data must stay neutral and content-tier safe. Core state should desc
 
 V1 does not perform a broad save/schema rewrite. It normalizes current `stomach`, `womb`, `balls`, `inStomach`, `digestionProgress`, `digestionState`, and `statDrain` fields into the V1 shape at runtime and preserves those fields for compatibility.
 
-V2 builds on this adapter with a two-track damage model. Regular damage affects current punishment/condition. Vital damage affects recoverable vitality and release outcomes. Core does not create itemized creature-piece inventory for chew, slurp, or fragment; those are future/modded extensions. See [Feast / Containment V2 Doctrine](feast-containment-v2.md).
+V2 builds on this adapter with a two-track damage model plus a corpse/remains split. Regular damage affects current punishment/condition. Vital damage affects recoverable vitality and release outcomes for living contained creatures. Corpses/remains use finite Remains Pool for scavenge instead of Vital Pool. Core does not create itemized creature-piece inventory for chew, slurp, fragment, or scavenge; those are future/modded extensions. See [Feast / Containment V2 Doctrine](feast-containment-v2.md).
 
 ## V1 Containment Record
 
@@ -46,6 +46,7 @@ Existing prey snapshots should normalize to this shape:
 V1 defaults:
 
 - `swallow` creates `integrity: "intact"`.
+- `vitalMax` defaults to captured current condition (`CPun`) when the target is contained or first takes vital damage.
 - Intact contained creatures remain releasable until terminal digestion.
 - Terminal digestion occurs when `progress >= 100`, contained condition reaches zero, or `vitalRemaining <= 0`.
 - Release is command-driven only; auto-escape is deferred.

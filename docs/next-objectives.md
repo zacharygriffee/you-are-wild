@@ -27,7 +27,7 @@
 - **Current no-decision backlog:** No ready no-decision Scene Feed V1 hardening tasks remain after commit `480f509`. The verified chain made desktop Scene Feed the single canonical readable feedback slot, added deterministic tile-entry observation beats, reach-profile failure beats, combat/social/group result beats, recruitment beats, quest/shop observation and transaction beats, containment lifecycle beats, expanded Scene Sheet metadata/delta/sub-event rendering, Activity Log separation, focused tests, browser smoke, and moddable template examples. New Scene Feed work should start from concrete playtest evidence or a promoted decision item.
 - **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible. The desktop-first V1 scope is complete, and mobile now uses a persistent latest beat with explicit expanded-sheet access rather than transient-only feedback. See `docs/scene-feed-dsl.md`.
 - **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Activity Log remains durable technical/history output; Scene Feed is the primary current feedback surface.
-- **Accepted mechanics decisions:** `docs/control-model.md` now records settled doctrine for impossible physical attempts consuming turns, nonviolent victory XP parity, minimal/default-plus-moddable perks, hard default party cap with mod override, recruited NPCs dropping shop/quest duties by default, pre-beta containment save migration tolerance, vital-damage-based Feast/containment without core creature-piece inventory, and persistent non-overlapping mobile Scene Feed feedback.
+- **Accepted mechanics decisions:** `docs/control-model.md` now records settled doctrine for impossible physical attempts consuming turns, nonviolent victory XP parity, minimal/default-plus-moddable perks, hard default party cap with mod override, recruited NPCs dropping shop/quest duties by default, pre-beta containment save migration tolerance, vital-damage-based Feast/containment plus corpse Remains Pool without core creature-piece inventory, and persistent non-overlapping mobile Scene Feed feedback.
 - **Row/reach status:** intent-owned reach profiles are the current implementation doctrine. Combat validation allows otherwise-valid physical attempts even when they are likely to fail by row/flying/contact reach, and resolution emits Scene Feed failure beats instead of generic invalid-command feedback. Formal blocker mechanics remain deferred.
 - **Quest taxonomy status:** species objectives now match explicit taxonomy: exact species IDs, clear wolfkin/wolfgirl/wolfboy-style variants, and mod/authored metadata such as `questSpecies` or `questFamilies`. They do not broad-match unrelated canid-like species such as fox or hyena.
 - **Deferred decision count:** 4 topics remain intentionally deferred until design/mechanics discussion: formal row-blocking doctrine beyond intent-owned reach profiles, detailed combat economy/cost balancing, procedural/modded perk presentation details, and richer feast/containment verbs beyond V1.
@@ -57,8 +57,8 @@
 - `breastfeed` — requires `lactating && !lactationCooldown`, restores HP+pleasure, sets cooldown
 - `sacrifice` — livestock/willingPrey feeds themselves to predator; predator decides endo vs fatal
 - `forceFeed` (CNC) — three-party action: holder restrains predator + prey forced into predator; requires `settings.forcedFeeding`
-- `slurp` — target `slurpable`, target loses HP/stat portion, stays alive
-- `fragment` — target `breakable`, target loses stat chunk, can regenerate over time
+- `slurp` — target `slurpable`, applies vital damage, target may stay alive weakened
+- `fragment` — target `breakable`, applies vital damage without itemized fragments in core
 
 ### Creature Properties (Normalized)
 - `lactating`, `lactationCooldown`, `slurpable`, `breakable`, `willingPrey`, `forcedFed`, `pregnant` (struct only)
@@ -212,7 +212,7 @@ The items below are not active no-decision work. Some are already partially impl
 
 ### Decision-Heavy Topics
 
-- **Feast/containment expansion beyond V1:** V1 doctrine and stomach/swallow adapter exist, and V2 doctrine hardens Feast around vital damage rather than itemized creature pieces. Alternate containers, pass-through, nested containment, permanent stat growth, detailed balance, and optional/modded itemized fragment systems remain future design work.
+- **Feast/containment expansion beyond V1:** V1 doctrine and stomach/swallow adapter exist, and V2 doctrine hardens Feast around living Vital Pool plus corpse Remains Pool rather than itemized creature pieces. Alternate containers, pass-through, nested containment, permanent stat growth, detailed balance, and optional/modded itemized fragment systems remain future design work.
 - **Formal row-blocking doctrine:** current implementation uses intent-owned reach profiles; full front-row protection, exposed back rows, equipment reach, snare/grab, and distribution rules are future design work.
 - **Combat economy/cost balancing:** nonviolent victory XP parity is accepted; action costs, hunger/spirit tradeoffs, creature size value, and seduce/fight/feed economy still need balancing discussion.
 - **Procedural/modded perk details:** default perks should stay minimal and approachable; deeper procedural perks, modded trees, unlock costs, presentation, and balance are deferred feature design.

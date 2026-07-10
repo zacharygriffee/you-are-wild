@@ -38,6 +38,15 @@ const YAW_UNIT_CONTAINMENT = {
         };
     },
 
+    normalizeVitalMax(recordOrUnit) {
+        const captured = Number(recordOrUnit?.capturedPun);
+        if (Number.isFinite(captured) && captured > 0) return Math.max(1, Math.floor(captured));
+        const current = Number(recordOrUnit?.CPun);
+        if (Number.isFinite(current) && current > 0) return Math.max(1, Math.floor(current));
+        const max = Number(recordOrUnit?.MPun || recordOrUnit?.maxHp || 1);
+        return Math.max(1, Math.floor(Number.isFinite(max) ? max : 1));
+    },
+
     ensureRegistries(app) {
         if (!app.feastVerbProfiles || typeof app.feastVerbProfiles !== 'object') {
             app.feastVerbProfiles = { ...this.defaultFeastVerbProfiles(), ...(app.feastVerbProfiles || {}) };
@@ -123,7 +132,8 @@ const YAW_UNIT_CONTAINMENT = {
         const integrity = prey.integrity || defaults.integrity || (prey.alive === false ? 'damaged' : 'intact');
         const profile = this.profile(app, containerId);
         const clampedProgress = Math.max(0, Math.min(100, progress));
-        const vitalMax = Math.max(1, Number(prey.vitalMax || prey.MPun || prey.maxHp || 1));
+        prey.capturedPun = Number.isFinite(prey.capturedPun) ? Math.max(1, Math.floor(prey.capturedPun)) : this.normalizeVitalMax(prey);
+        const vitalMax = Math.max(1, Number(prey.vitalMax || prey.capturedPun || 1));
         const inferredVital = Math.max(0, Math.round(vitalMax * (1 - clampedProgress / 100)));
         prey.holderId = holderId;
         prey.containedId = containedId;
@@ -135,7 +145,6 @@ const YAW_UNIT_CONTAINMENT = {
         prey.releaseEligible = typeof prey.releaseEligible === 'boolean'
             ? prey.releaseEligible
             : prey.integrity === 'intact' && !['terminal', 'released', 'passed', 'depleted'].includes(state);
-        prey.capturedPun = Number.isFinite(prey.capturedPun) ? prey.capturedPun : (Number.isFinite(prey.CPun) ? prey.CPun : prey.MPun || vitalMax);
         prey.vitalMax = vitalMax;
         prey.vitalRemaining = Number.isFinite(prey.vitalRemaining) ? Math.max(0, Math.min(vitalMax, prey.vitalRemaining)) : inferredVital;
         prey.vitalDamageTaken = Number.isFinite(prey.vitalDamageTaken) ? Math.max(0, prey.vitalDamageTaken) : Math.max(0, vitalMax - prey.vitalRemaining);
@@ -184,6 +193,12 @@ const YAW_UNIT_CONTAINMENT = {
         return current / max;
     },
 
+    canReleaseFromVitalState(record) {
+        if (!record) return false;
+        if (['terminal', 'released', 'passed', 'depleted'].includes(this.normalizedState(record))) return false;
+        return record.releaseEligible !== false && Number(record.vitalRemaining ?? record.CPun ?? 0) > 0;
+    },
+
     isTerminalVitalState(record) {
         if (!record) return false;
         return record.state === 'terminal'
@@ -194,7 +209,8 @@ const YAW_UNIT_CONTAINMENT = {
 
     applyVitalDamage(recordOrUnit, amount = 0, context = {}) {
         if (!recordOrUnit) return null;
-        const max = Math.max(1, Number(recordOrUnit.vitalMax || recordOrUnit.MPun || recordOrUnit.maxHp || 1));
+        if (!Number.isFinite(recordOrUnit.capturedPun)) recordOrUnit.capturedPun = this.normalizeVitalMax(recordOrUnit);
+        const max = Math.max(1, Number(recordOrUnit.vitalMax || recordOrUnit.capturedPun || 1));
         if (!Number.isFinite(recordOrUnit.vitalMax)) recordOrUnit.vitalMax = max;
         if (!Number.isFinite(recordOrUnit.vitalRemaining)) {
             const progress = Number(recordOrUnit.progress ?? recordOrUnit.digestionProgress ?? 0);
@@ -221,8 +237,7 @@ const YAW_UNIT_CONTAINMENT = {
     releaseFromVitalState(record) {
         if (!record) return null;
         const ratio = Math.max(0.05, this.vitalRatio(record));
-        const max = Math.max(1, Number(record.MPun || record.maxHp || record.vitalMax || 1));
-        record.CPun = Math.max(1, Math.floor(max * ratio));
+        record.CPun = Math.max(1, Math.floor(Number(record.vitalRemaining || 0)));
         record.CPle = 0;
         record.status = record.status || {};
         if (ratio < 0.75) {
@@ -239,6 +254,56 @@ const YAW_UNIT_CONTAINMENT = {
         record.digestionState = 'released';
         record.releaseEligible = false;
         return record;
+    },
+
+    normalizeRemainsRecord(record, defaults = {}) {
+        if (!record || typeof record !== 'object') return record;
+        record.kind = 'remains';
+        record.corpseOf = record.corpseOf || record.sourceId || record.originalId || record.id || record.name || defaults.corpseOf || null;
+        record.displayName = record.displayName || record.corpseName || record.name || defaults.displayName || 'Remains';
+        record.species = record.species || defaults.species || 'unknown';
+        record.size = Math.max(1, Number(record.size || defaults.size || 1));
+        const legacyPortions = Number(record.remainingPortions);
+        const initialMass = Math.max(0, Math.floor(Number.isFinite(legacyPortions) ? legacyPortions : Math.ceil(record.size)));
+        record.edibleMax = Math.max(0, Math.floor(Number.isFinite(Number(record.edibleMax)) ? Number(record.edibleMax) : initialMass));
+        record.edibleRemaining = Math.max(0, Math.floor(Number.isFinite(Number(record.edibleRemaining)) ? Number(record.edibleRemaining) : (record.scavenged ? 0 : initialMass)));
+        record.portionsRemaining = Math.max(0, Math.floor(Number.isFinite(Number(record.portionsRemaining)) ? Number(record.portionsRemaining) : record.edibleRemaining));
+        record.remainingPortions = record.portionsRemaining;
+        record.source = record.source || record.corpseCause || defaults.source || 'fight';
+        record.decayTurns = record.decayTurns ?? defaults.decayTurns ?? 12;
+        record.depleted = Boolean(record.depleted || record.scavenged || record.edibleRemaining <= 0 || record.portionsRemaining <= 0);
+        record.scavenged = record.depleted;
+        return record;
+    },
+
+    applyRemainsScavenge(record, actor, amount = 1, context = {}) {
+        if (!record || !actor) return null;
+        this.normalizeRemainsRecord(record);
+        const consumed = Math.min(record.edibleRemaining, Math.max(1, Math.floor(Number(amount) || 1)));
+        if (consumed <= 0) {
+            record.depleted = true;
+            record.scavenged = true;
+            return null;
+        }
+        record.edibleRemaining = Math.max(0, record.edibleRemaining - consumed);
+        record.portionsRemaining = record.edibleRemaining;
+        record.remainingPortions = record.edibleRemaining;
+        if (record.edibleRemaining <= 0) {
+            record.depleted = true;
+            record.scavenged = true;
+        }
+        if (context.applyBenefits !== false) {
+            const maxPun = Number.isFinite(Number(actor.MPun)) ? Number(actor.MPun) : (actor.CPun || 0);
+            actor.hunger = Math.max(0, (actor.hunger || 0) - 10 * consumed);
+            actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5 * consumed);
+        }
+        return { actor, consumed, remaining: record.edibleRemaining };
+    },
+
+    isDepletedRemains(record) {
+        if (!record) return true;
+        this.normalizeRemainsRecord(record);
+        return record.depleted || record.edibleRemaining <= 0;
     },
 
     summary(record) {

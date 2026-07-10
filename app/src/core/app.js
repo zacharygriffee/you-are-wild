@@ -1246,6 +1246,9 @@
             _vitalRatio(record) {
                 return YAW_UNIT_CONTAINMENT.vitalRatio(record);
             },
+            _canReleaseFromVitalState(record) {
+                return YAW_UNIT_CONTAINMENT.canReleaseFromVitalState(record);
+            },
             _releaseFromVitalState(record) {
                 return YAW_UNIT_CONTAINMENT.releaseFromVitalState(record);
             },
@@ -1254,6 +1257,15 @@
             },
             _containmentSummary(record) {
                 return YAW_UNIT_CONTAINMENT.summary(record);
+            },
+            _normalizeRemainsRecord(record, defaults = {}) {
+                return YAW_UNIT_CONTAINMENT.normalizeRemainsRecord(record, defaults);
+            },
+            _applyRemainsScavenge(record, actor, amount = 1, context = {}) {
+                return YAW_UNIT_CONTAINMENT.applyRemainsScavenge(record, actor, amount, context);
+            },
+            _isDepletedRemains(record) {
+                return YAW_UNIT_CONTAINMENT.isDepletedRemains(record);
             },
             _activeContainedPrey(unit, container = 'stomach') {
                 return (this._normalizeContainmentRecords(unit, container) || []).filter(prey => YAW_UNIT_CONTAINMENT.isActiveContained(prey, container));
@@ -1485,6 +1497,13 @@
                 target.corpseName = target.corpseName || target.name;
                 target.corpseIcon = target.corpseIcon || target.icon;
                 target.decayTurns = target.decayTurns ?? 12;
+                this._normalizeRemainsRecord(target, {
+                    corpseOf: target.id || target.name,
+                    displayName: target.corpseName || target.name,
+                    species: target.species,
+                    size: target.size,
+                    source: cause
+                });
                 target.status = {};
                 target.willing = false;
                 target.knockedOut = false;
@@ -2396,7 +2415,7 @@
                         actor.CPun = Math.min(actor.MPun, actor.CPun + slurpAmount);
                         actor.hunger = Math.max(0, (actor.hunger || 0) - 20);
                         this._awardCombatXP(this.XP_REWARDS.feedAlly);
-                        result = `${actorName} slurp${actorVerb} a portion of ${target.name}, drawing their essence while leaving them alive.`;
+                        result = `${actorName} draw${actorVerb} vitality from ${target.name}, leaving them weakened but whole.`;
                         break;
                     }
                     case 'feed.fragment': {
@@ -3489,13 +3508,8 @@
 
             _initializeCorpsePortions(corpse) {
                 if (!corpse || !this._isCorpse(corpse)) return 0;
-                if (corpse.remainingPortions === undefined || corpse.remainingPortions === null) {
-                    corpse.remainingPortions = corpse.scavenged ? 0 : Math.max(1, Math.ceil(Number(corpse.size || 1)));
-                }
-                const portions = Math.max(0, Math.floor(Number(corpse.remainingPortions) || 0));
-                corpse.remainingPortions = portions;
-                if (portions <= 0) corpse.scavenged = true;
-                return portions;
+                this._normalizeRemainsRecord(corpse);
+                return Math.max(0, Math.floor(Number(corpse.remainingPortions) || 0));
             },
 
             _corpseRemainingPortions(corpse) {
@@ -3528,12 +3542,7 @@
                 const remaining = this._corpseRemainingPortions(corpse);
                 if (remaining <= 0) return null;
                 const consumed = Math.min(remaining, this._corpsePortionDemand(actor));
-                corpse.remainingPortions = Math.max(0, remaining - consumed);
-                if (corpse.remainingPortions <= 0) corpse.scavenged = true;
-                const maxPun = Number.isFinite(Number(actor.MPun)) ? Number(actor.MPun) : (actor.CPun || 0);
-                actor.hunger = Math.max(0, (actor.hunger || 0) - 10 * consumed);
-                actor.CPun = Math.min(maxPun, (actor.CPun || 0) + 5 * consumed);
-                return { actor, consumed, remaining: corpse.remainingPortions };
+                return this._applyRemainsScavenge(corpse, actor, consumed);
             },
 
             _consumeCorpsePortions(corpse, actors = []) {

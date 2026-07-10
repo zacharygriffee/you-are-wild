@@ -14,7 +14,7 @@ Containment data must stay neutral and content-tier safe. Core state should desc
 
 V1 does not perform a broad save/schema rewrite. It normalizes current `stomach`, `womb`, `balls`, `inStomach`, `digestionProgress`, `digestionState`, and `statDrain` fields into the V1 shape at runtime and preserves those fields for compatibility.
 
-V2 builds on this adapter with a two-track damage model plus a corpse/remains split. Regular damage affects current punishment/condition. Vital damage affects recoverable vitality and release outcomes for living contained creatures. Corpses/remains use finite Remains Pool for scavenge instead of Vital Pool. Core does not create itemized creature-piece inventory for chew, slurp, fragment, or scavenge; those are future/modded extensions. See [Feast / Containment V2 Doctrine](feast-containment-v2.md).
+V2 builds on this adapter with a two-track damage model plus a corpse/remains split. Regular damage affects current punishment/condition. Vital damage affects recoverable vitality and release outcomes for living contained creatures. Corpses/remains use finite Remains Pool for scavenge instead of Vital Pool. Core does not create itemized creature-piece inventory for chew, slurp, fragment, or scavenge; those are future/modded extensions. The V2 core doctrine is locked enough for implementation; optional butchering, itemized portions, pass-through, alternate container expansion, nested simulation, permanent stat gain, and detailed balance remain future work. See [Feast / Containment V2 Doctrine](feast-containment-v2.md).
 
 ## V1 Containment Record
 
@@ -120,3 +120,14 @@ Activity Log remains the durable technical/history surface. Safe tier uses neutr
 - Full body-manifest expansion.
 - Broad fullness penalties beyond capacity/fullness/over-capacity blocking.
 - Detailed combat/economy balancing.
+
+## V2 Implementation Sequence
+
+Use small, test-backed passes:
+
+1. Lock Vital Pool and Remains Pool compatibility behavior.
+2. Harden `swallow` / `ingest` containment around intact release, captured-current-`CPun` vitality, and terminal thresholds.
+3. Harden digestion ticks so they apply vital damage, emit milestone Scene Beats only, and grant conservative hunger/healing/temporary effects at terminal digestion.
+4. Harden command-driven release so it restores reduced living targets while blocking ordinary release for depleted or corpse/remains records.
+5. Harden `chew`, `slurp`, and `fragment` as vital-damage verbs without core itemized inventory pieces.
+6. Keep non-stomach containers, nested containment, pass-through, butchering, and permanent stat gain as compatibility/modded/deferred surfaces unless explicitly promoted later.

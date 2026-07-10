@@ -2,6 +2,39 @@
 
 V2 hardens Feast around containment lifecycle, vital damage, and corpse/remains scavenging. Core Feast should not model chewed creature pieces as inventory items. Itemized fragments, butchering, crafting materials, and creature-meat stacks are future or modded extensions, not the default model for the first public release.
 
+## Locked V2 Decisions
+
+These decisions are settled for V2 implementation unless a later explicit mechanics pass reopens them:
+
+- Living containment uses Vital Pool / Vital Integrity.
+- Corpses and remains use Remains Pool / edible mass.
+- Core does not create inventory "pieces of creature".
+- Butchering and itemized portions are future or modded, not first public release behavior.
+- Regular damage and vital damage are separate tracks.
+- Fight damage is regular damage by default.
+- Digestion, chew, slurp, and fragment can apply vital damage.
+- Vital damage usually also reduces current punishment/condition.
+- Ordinary current-punishment damage does not automatically reduce vital integrity.
+- `vitalMax` is the target's current `CPun` at capture or first containment normalization time.
+- `swallow` / `ingest` creates intact containment.
+- `swallow` does little or no immediate vital damage by default.
+- Digestion ticks reduce `vitalRemaining` over time.
+- `chew` applies immediate vital damage.
+- `slurp` / `fragment` use vital-damage semantics for explicit slurpable, breakable, or divisible targets.
+- Release is possible while `vitalRemaining > 0`.
+- Release is not a full undo; the target returns weakened or reduced.
+- `vitalRemaining <= 0` blocks ordinary release.
+- Permanent stat absorption is not default.
+- Hunger relief, healing, and temporary effects are allowed; permanent stat gain belongs to perks, traits, mods, or future authored mechanics.
+- Stomach is the default core container.
+- Other containers remain existing compatibility/content-tier gated surfaces, not expanded core V2 behavior.
+- Nested containment is compatibility and persistence only for now; do not deeply simulate it in V2.
+- Pass-through / all-the-way-through is not default safe/core behavior.
+- Scene Feed should emit meaningful containment milestones, not every digestion tick.
+- Corpse scavenge consumes Remains Pool, not Vital Pool.
+- Corpse/remains are not releasable living targets.
+- Scavenge does not create itemized creature pieces.
+
 ## Damage Tracks
 
 Feast uses two related but distinct living-creature damage tracks:

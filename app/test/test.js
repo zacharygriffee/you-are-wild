@@ -16871,6 +16871,13 @@ test('Feast containment doctrine locks V1 scope and links from control model', (
   assertContains(feastContainmentV2Doc, 'Vital damage', 'V2 doctrine should distinguish vital damage');
   assertContains(feastContainmentV2Doc, 'Remains Pool', 'V2 doctrine should distinguish corpse/remains edible mass');
   assertContains(feastContainmentV2Doc, "`vitalMax` defaults to the target's current `CPun`", 'V2 doctrine should lock captured current condition vitality');
+  assertContains(feastContainmentV2Doc, '## Locked V2 Decisions', 'V2 doctrine should enumerate locked implementation decisions');
+  assertContains(feastContainmentV2Doc, 'Core does not create inventory "pieces of creature"', 'V2 doctrine should reject core inventory creature pieces');
+  assertContains(feastContainmentV2Doc, 'Other containers remain existing compatibility/content-tier gated surfaces', 'V2 doctrine should keep non-stomach containers compatibility gated');
+  assertContains(feastContainmentV2Doc, 'Scene Feed should emit meaningful containment milestones, not every digestion tick', 'V2 doctrine should avoid per-tick Scene Feed spam');
+  assertContains(feastContainmentV2Doc, 'Corpse/remains are not releasable living targets', 'V2 doctrine should keep remains separate from living release');
+  assertContains(feastContainmentDoc, 'The V2 core doctrine is locked enough for implementation', 'V1 doctrine should mark core Feast V2 as ready to implement');
+  assertContains(feastContainmentDoc, '## V2 Implementation Sequence', 'Doctrine should include the V2 implementation sequence');
   assertContains(feastContainmentV2Doc, 'No creature-piece inventory items in core', 'V2 doctrine should lock no piece inventory non-goal');
   assertContains(feastContainmentDoc, 'Nested containment mechanics and transfer math', 'Doctrine should explicitly defer nested containment math');
 });
@@ -16887,10 +16894,12 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Pre-beta containment save changes may break old saves', 'Containment save migration tolerance should be documented');
   assertContains(controlModel, 'Feast/containment uses regular damage and vital damage as separate living-creature tracks', 'Control model should record vital damage doctrine');
   assertContains(controlModel, 'separate Remains Pool', 'Control model should record corpse/remains pool doctrine');
+  assertContains(controlModel, 'Feast V2 is stomach-first by default', 'Control model should record stomach-first Feast V2 doctrine');
   assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
-  assertContains(nextObjectives, '4 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertContains(nextObjectives, '3 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertContains(nextObjectives, 'Feast V2 core doctrine is now locked enough for implementation', 'Next objectives should stop treating core Feast V2 as decision-blocked');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 

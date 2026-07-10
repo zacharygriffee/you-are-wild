@@ -591,6 +591,15 @@ const YAW_STORY_EVENTS = {
         const targets = event.targetNames?.length ? event.targetNames.join(', ') : app._label('target.targetRole', 'Target');
         const passage = String(event.passage || '').trim();
         const summary = String(event.summary || passage || '').trim();
+        const tagText = (Array.isArray(event.tags) ? event.tags : []).filter(Boolean).slice(0, 8).join(', ');
+        const detailMeta = [
+            [app._label('scene.meta.result', 'Result'), event.resultKind],
+            [app._label('scene.meta.mode', 'Mode'), event.mode],
+            [app._label('scene.meta.source', 'Source'), event.source],
+            [app._label('scene.meta.importance', 'Importance'), event.importance],
+            [app._label('scene.meta.tier', 'Tier'), String(event.contentTier ?? this.currentContentTier())],
+            tagText ? [app._label('scene.meta.tags', 'Tags'), tagText] : null
+        ].filter(entry => entry && entry[1]);
         const passageHtml = passage && passage !== summary
             ? `<p>${app._escapeHtml(passage)}</p>`
             : '';
@@ -600,10 +609,14 @@ const YAW_STORY_EVENTS = {
         const subEvents = event.subEvents?.length
             ? `<ul class="story-sub-events">${event.subEvents.map(subEvent => `<li>${app._escapeHtml(subEvent.summary || subEvent.targetName || '')}</li>`).join('')}</ul>`
             : '';
+        const detailMetaHtml = detailMeta.length
+            ? `<div class="story-event-detail-meta">${detailMeta.map(([label, value]) => `<span><strong>${app._escapeHtml(label)}:</strong> ${app._escapeHtml(String(value))}</span>`).join('')}</div>`
+            : '';
         return `<article class="story-event" data-story-intent="${app._escapeHtml(event.intent)}" data-story-mode="${app._escapeHtml(event.mode)}">`
             + `<h3>${app._escapeHtml(summary || this.defaultSummary(app, event.actors, event.targets, event.intent))}</h3>`
             + passageHtml
             + `<div class="story-event-meta"><span>${app._escapeHtml(event.time)}</span><span>${app._escapeHtml(event.location)}</span><span>${app._escapeHtml(event.intentLabel)}</span><span>${app._escapeHtml(actors)} -> ${app._escapeHtml(targets)}</span></div>`
+            + detailMetaHtml
             + deltas
             + subEvents
             + `</article>`;

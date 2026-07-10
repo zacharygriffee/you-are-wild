@@ -16560,6 +16560,8 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(template, '#app.story-sheet-open .mobile-story-handle', 'Mobile story handle should hide while the sheet is open');
   assertContains(template, '.mobile-tile-details-sheet', 'Mobile tile details sheet should have bottom-sheet styling');
   assertContains(template, '.story-meta-line', 'Story capsule should support result-first metadata layout');
+  assertContains(template, '.story-event-detail-meta', 'Expanded Scene Feed should style structured beat metadata');
+  assertContains(template, '.story-sub-events', 'Expanded Scene Feed should style sub-event lists');
   assertContains(storyEventsContent, 'emitResult(app, commandOrPlan = {}, result = \'\', options = {})', 'Story event helper should expose a command/result bridge');
   assertContains(storyEventsContent, 'registerSceneTemplate(app, template = {})', 'Story event helper should expose moddable scene template registration');
   assertContains(storyEventsContent, 'renderSceneBeat(app, plan = {}, outcomeInput = {})', 'Story event helper should expose deterministic Scene Beat rendering');
@@ -16615,6 +16617,7 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'mod.llm-bridge-json', 'Scene Feed DSL should show a systemic bridge template example for optional LLM mods');
   assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
+  assertContains(sceneFeedDoc, 'result metadata, tags, deltas, and sub-events', 'Scene Feed DSL should require expanded sheet metadata and effect details');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
   assertContains(nextObjectives, '# You Are Wild — Handoff Backlog', 'Next objectives should read as a handoff backlog instead of an active task queue');
   assertContains(nextObjectives, 'Scene Feed V1 hardening is actively open', 'Next objectives should identify the active Scene Feed hardening chain');
@@ -17071,6 +17074,55 @@ test('Story events render semantic interaction results without replacing activit
   assertContains(elements.get('story-sheet-list').innerHTML, '<h3>Bunnyfolk bumps You', 'Story sheet should lead each beat with the readable summary');
   App.closeStorySheet();
   assertEqual(elements.get('story-sheet').hidden, true, 'Story sheet should close');
+});
+
+test('Expanded Scene Feed renders metadata deltas and sub-events', () => {
+  const { App, elements } = loadAppForCombat();
+  const you = makeUnit('You', { id: 'you-1' });
+  const ratfolk = makeUnit('Ratfolk', { id: 'rat-1' });
+  App.player = you;
+  App.party = [you];
+  App.creatures = [ratfolk];
+  App.location = { x: 2, y: 3 };
+
+  App.emitSceneBeat({
+    mode: 'combat',
+    actors: [you],
+    targets: [ratfolk],
+    action: 'fight',
+    shape: 'one-to-one',
+    tags: ['cannot-reach', 'test-tag'],
+    source: 'scene-sheet-test'
+  }, 'You tries to hit Ratfolk, but the angle is wrong.', {
+    mode: 'combat',
+    resultKind: 'failure',
+    importance: 'hint',
+    passage: 'The swing goes wide before it can matter.',
+    deltas: [{ type: 'punishment', amount: 0 }],
+    subEvents: [{ type: 'reach', summary: 'Ratfolk keeps distance.' }],
+    tags: ['cannot-reach', 'test-tag'],
+    source: 'scene-sheet-test',
+    metadata: { profile: 'melee' }
+  });
+
+  App.openSceneFeed();
+  const html = elements.get('story-sheet-list').innerHTML;
+  assertContains(html, '<h3>You tries to hit Ratfolk', 'Expanded Scene Feed should lead with summary');
+  assertContains(html, 'The swing goes wide before it can matter.', 'Expanded Scene Feed should show optional passage');
+  assertContains(html, 'Result:', 'Expanded Scene Feed should show result metadata');
+  assertContains(html, 'failure', 'Expanded Scene Feed should show result kind');
+  assertContains(html, 'Mode:', 'Expanded Scene Feed should show mode metadata');
+  assertContains(html, 'combat', 'Expanded Scene Feed should show combat mode');
+  assertContains(html, 'Source:', 'Expanded Scene Feed should show source metadata');
+  assertContains(html, 'scene-sheet-test', 'Expanded Scene Feed should show event source');
+  assertContains(html, 'Importance:', 'Expanded Scene Feed should show importance metadata');
+  assertContains(html, 'hint', 'Expanded Scene Feed should show hint importance');
+  assertContains(html, 'Tier:', 'Expanded Scene Feed should show content tier metadata');
+  assertContains(html, 'Tags:', 'Expanded Scene Feed should show routing tags');
+  assertContains(html, 'cannot-reach, test-tag', 'Expanded Scene Feed should show event tags');
+  assertContains(html, '<li>0 punishment</li>', 'Expanded Scene Feed should show delta details');
+  assertContains(html, '<li>Ratfolk keeps distance.</li>', 'Expanded Scene Feed should show sub-event details');
+  App.closeSceneFeed();
 });
 
 test('Story result bridge renders result-first compact feedback without touching center tile', () => {

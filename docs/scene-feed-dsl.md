@@ -140,6 +140,7 @@ Content-tier filtering happens before template text is rendered. Store neutral m
 - Latest Scene Beat remains visible until replaced.
 - Latest beat may highlight briefly, but it must not disappear on a timer.
 - Expanded Scene Sheet opens intentionally.
+- Expanded Scene Sheet should show recent beats with summary first, optional passage, actor/target/intent, time/location, result metadata, tags, deltas, and sub-events.
 - Compact latest beat must not cover composer or action controls.
 - Desktop should prefer the in-context Scene Feed slot.
 - Mobile may use a compact latest-beat handle or sheet, but notification/toast behavior is still a deferred design decision.

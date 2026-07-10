@@ -10,6 +10,7 @@ const path = require('path');
 const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
+const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -16577,6 +16578,35 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
   assertContains(storyEventsContent, 'emitRecruitmentBeat(app, target, actor = app.player, kind = \'blocked\', reason = \'\')', 'Scene Feed helper should own recruitment beat emission');
   assertContains(movementFlowContent, 'app.emitTileObservation?.(tile, { wasExplored })', 'Movement should emit coalesced tile-entry observation beats after tile state settles');
   assertNotContains(storyEventsContent, 'setTimeout', 'Latest Scene Beat should not disappear on a timer');
+});
+
+test('Scene Feed DSL contract documents deterministic template and log boundaries', () => {
+  const sceneFeedDoc = fs.readFileSync(SCENE_FEED_DSL, 'utf8');
+  const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
+  assertContains(sceneFeedDoc, 'InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed', 'Scene Feed DSL should document the core transformation');
+  assertContains(sceneFeedDoc, 'LLM or media mods may consume Scene Beats later, but core gameplay must remain readable through deterministic templates', 'Scene Feed DSL should keep dumb-code templates authoritative');
+  assertContains(sceneFeedDoc, '## SceneBeat Shape', 'Scene Feed DSL should document the SceneBeat shape');
+  assertContains(sceneFeedDoc, '`mode`', 'SceneBeat shape should include mode');
+  assertContains(sceneFeedDoc, '`action`', 'SceneBeat shape should include action');
+  assertContains(sceneFeedDoc, '`subAction`', 'SceneBeat shape should include subAction');
+  assertContains(sceneFeedDoc, '`shape`', 'SceneBeat shape should include shape');
+  assertContains(sceneFeedDoc, '`actors`', 'SceneBeat shape should include actors');
+  assertContains(sceneFeedDoc, '`targets`', 'SceneBeat shape should include targets');
+  assertContains(sceneFeedDoc, '`resultKind`', 'SceneBeat shape should include resultKind');
+  assertContains(sceneFeedDoc, '`summary`', 'SceneBeat shape should include summary');
+  assertContains(sceneFeedDoc, '`passage`', 'SceneBeat shape should include passage');
+  assertContains(sceneFeedDoc, '`deltas`', 'SceneBeat shape should include deltas');
+  assertContains(sceneFeedDoc, '`tags`', 'SceneBeat shape should include tags');
+  assertContains(sceneFeedDoc, '`importance`', 'SceneBeat shape should include importance');
+  assertContains(sceneFeedDoc, '`source`', 'SceneBeat shape should include source');
+  assertContains(sceneFeedDoc, '`contentTier`', 'SceneBeat shape should include contentTier');
+  assertContains(sceneFeedDoc, '`subEvents`', 'SceneBeat shape should include subEvents');
+  assertContains(sceneFeedDoc, '## ActionOutcome Input', 'Scene Feed DSL should document ActionOutcome input');
+  assertContains(sceneFeedDoc, 'if no template matches, the existing result string must still render', 'Scene Feed DSL should document fallback behavior');
+  assertContains(sceneFeedDoc, 'Use `App.registerSceneTemplate(template)`', 'Scene Feed DSL should document the mod API seam');
+  assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
+  assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
+  assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
 });
 
 test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {

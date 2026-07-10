@@ -57,6 +57,8 @@ Multiple mechanical effects from one command should coalesce into one Scene Beat
 
 Scene templates are deterministic dumb-code templates first. They may match on action, mode, shape, tags, result kind, and content tier; mod templates may override by priority, but a core fallback must always remain available. Content-tier safety belongs in template matching before text is rendered.
 
+See [Scene Feed DSL](scene-feed-dsl.md) for the concrete `SceneBeat` shape, `ActionOutcome` input, template registry contract, content-tier rules, and presentation invariants.
+
 ### Quest Species Matching Doctrine
 
 Quest species objectives match exact internal species IDs. An objective with `species: "wolf"` matches units whose internal `species` is exactly `"wolf"`; it does not fuzzy-match wolfkin-like labels, canine families, beastfolk, tags, hostile-canid categories, or related species such as fox or hyena.

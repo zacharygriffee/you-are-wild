@@ -11,6 +11,7 @@ const SRC_DIR = path.join(__dirname, '..', 'src');
 const TEMPLATE = path.join(__dirname, '..', 'template.html');
 const BATTLE_MODE_CONTRACT = path.join(__dirname, '..', '..', 'docs', 'battle-mode-contract.md');
 const SCENE_FEED_DSL = path.join(__dirname, '..', '..', 'docs', 'scene-feed-dsl.md');
+const NEXT_OBJECTIVES = path.join(__dirname, '..', '..', 'docs', 'next-objectives.md');
 const args = process.argv.slice(2);
 const filterArg = args.find(arg => arg.startsWith('--filter='));
 const activeFilter = filterArg ? filterArg.split('=')[1] : 'all';
@@ -16583,6 +16584,7 @@ test('Story template exposes expandable semantic story surfaces distinct from ac
 test('Scene Feed DSL contract documents deterministic template and log boundaries', () => {
   const sceneFeedDoc = fs.readFileSync(SCENE_FEED_DSL, 'utf8');
   const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
+  const nextObjectives = fs.readFileSync(NEXT_OBJECTIVES, 'utf8');
   assertContains(sceneFeedDoc, 'InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed', 'Scene Feed DSL should document the core transformation');
   assertContains(sceneFeedDoc, 'LLM or media mods may consume Scene Beats later, but core gameplay must remain readable through deterministic templates', 'Scene Feed DSL should keep dumb-code templates authoritative');
   assertContains(sceneFeedDoc, '## SceneBeat Shape', 'Scene Feed DSL should document the SceneBeat shape');
@@ -16607,6 +16609,8 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
+  assertContains(nextObjectives, 'no implementation-ready items are currently listed as open', 'Next objectives should not advertise stale no-decision backlog work');
+  assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
 });
 
 test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {

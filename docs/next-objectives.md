@@ -17,12 +17,11 @@
 
 ### Ready-To-Implement Backlog Status (2026-07-09)
 
-- **Active goal:** finish the Scene Feed / Scene Beat foundation before more broad UI restructuring. Player-facing "Story" language is being retired in favor of Scene Feed: latest readable POV beat, expanded recent beat sheet, and deterministic dumb-code templates from structured gameplay outcomes.
-- **Ready item count:** 5 items remain implementation-ready after the Scene Feed foundation slice: Combat Layout Parity follow-up, mobile Scene Feed feedback pattern, Activity Log optionality polish, Tactical Card Polish follow-up, and Docs Refresh.
-- **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible.
+- **Current no-decision backlog:** no implementation-ready items are currently listed as open. The last no-decision slice documented the Scene Feed DSL contract, verified universal party/creature target Mark controls, per-actor Skip/Flee routing, adjacent 3x3 map reveal, tile-entry observation beats, intent-owned reach-profile failure beats, Activity Log optionality, and tactical-card density/polish coverage.
+- **Scene Feed status:** `YAW_STORY_EVENTS` remains the compatibility namespace, but the canonical doctrine is now `InteractionPlan + ActionOutcome -> SceneBeat -> Scene Feed / Activity Log / optional LLM or media mods`. Scene Beats carry content-tier metadata, support moddable templates, and failure beats should replace vague "invalid combat" feedback where possible. See `docs/scene-feed-dsl.md`.
 - **Activity Log status:** default optionality is already in place through `YAW_LOG_VIEW.normalizePreferences()`, which collapses the log on fresh storage unless the user explicitly expands it. Activity Log remains durable technical/history output; Scene Feed is the primary current feedback surface.
-- **Deferred decision count:** 5 topics remain intentionally deferred until design/mechanics discussion: removing/replacing legacy Sync internals, formal row-blocking rules, feast/containment redesign, quest target taxonomy beyond exact species IDs, and mobile Scene Feed toast/notification behavior.
-- **Verification expectation:** every ready backlog pass should run `npm run full-build`, `npm run audit:branding`, and `git diff --check`; use browser smoke for `412x915` mobile and `1365x768` desktop when layout is touched.
+- **Deferred decision count:** 9 topics remain intentionally deferred until design/mechanics discussion: feast/containment redesign, formal row-blocking doctrine beyond intent-owned reach profiles, broad combat balance/costs and rewards, perk-tree design, party-size upgrade economics, NPC role recruitment exceptions, quest taxonomy beyond exact species IDs, mobile Scene Feed toast/notification behavior, and public save/schema rewrites.
+- **Verification expectation:** every future ready backlog pass should run `npm run full-build`, `npm run audit:branding`, and `git diff --check`; use browser smoke for `412x915` mobile and `1365x768` desktop when layout is touched.
 
 ---
 

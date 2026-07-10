@@ -16620,7 +16620,7 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'result metadata, tags, deltas, and sub-events', 'Scene Feed DSL should require expanded sheet metadata and effect details');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
   assertContains(nextObjectives, '# You Are Wild — Handoff Backlog', 'Next objectives should read as a handoff backlog instead of an active task queue');
-  assertContains(nextObjectives, 'Scene Feed V1 hardening is actively open', 'Next objectives should identify the active Scene Feed hardening chain');
+  assertContains(nextObjectives, 'No ready no-decision Scene Feed V1 hardening tasks remain', 'Next objectives should identify the completed Scene Feed hardening chain');
   assertContains(nextObjectives, 'quest/shop observation and transaction beats', 'Next objectives should record the latest Scene Feed transaction slice');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
   assertContains(nextObjectives, 'Do Not Treat As Immediate Tasks', 'Next objectives should label archived priority notes as non-immediate work');

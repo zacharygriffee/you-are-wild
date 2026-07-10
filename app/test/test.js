@@ -16609,8 +16609,12 @@ test('Scene Feed DSL contract documents deterministic template and log boundarie
   assertContains(sceneFeedDoc, 'Content-tier filtering happens before template text is rendered', 'Scene Feed DSL should document content-tier safety');
   assertContains(sceneFeedDoc, 'Scene Feed is not a filtered view of the Activity Log', 'Scene Feed DSL should document Activity Log separation');
   assertContains(controlModel, '[Scene Feed DSL](scene-feed-dsl.md)', 'Control model should link to the Scene Feed DSL contract');
+  assertContains(nextObjectives, '# You Are Wild — Handoff Backlog', 'Next objectives should read as a handoff backlog instead of an active task queue');
   assertContains(nextObjectives, 'no implementation-ready items are currently listed as open', 'Next objectives should not advertise stale no-decision backlog work');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep decision-heavy backlog separate from ready implementation work');
+  assertContains(nextObjectives, 'Do Not Treat As Immediate Tasks', 'Next objectives should label archived priority notes as non-immediate work');
+  assertNotContains(nextObjectives, '## Open Objectives (Priority Order)', 'Next objectives should not keep stale active-work headings');
+  assertNotContains(nextObjectives, '## Next Execution Goals', 'Next objectives should not keep stale execution-goal headings');
 });
 
 test('Scene Beat DSL emits combat fight beat with actor target and damage delta', () => {

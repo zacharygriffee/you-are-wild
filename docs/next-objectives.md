@@ -1,6 +1,13 @@
-# You Are Wild — Next Objectives
+# You Are Wild — Handoff Backlog
 
 > Handoff document for the next agent. This is a mature-capable game with safe/mature/adult content tiers. **Safe is the default**; mature/adult settings and labels are opt-in and should remain gated by the content-tier system.
+
+## How To Read This File
+
+- The **Ready-To-Implement Backlog Status** section is the source of truth for work that can be picked up without new design discussion.
+- As of 2026-07-09, there are **no implementation-ready no-decision items open**.
+- Sections below that status are either verified implementation history, watchlists for future regressions, or decision-heavy backlog notes.
+- Do not treat old priority labels, polish notes, or lower-priority feature notes as active tasks unless the top status section or a new user request explicitly promotes them.
 
 ---
 
@@ -175,9 +182,9 @@
 
 ---
 
-## Open Objectives (Priority Order)
+## Verified UI Status And Watchlists
 
-## North-Star UI Status (2026-07-07)
+### North-Star UI Status (2026-07-07)
 
 0. **Latest verified commit:** `d78d3b8 Complete north-star UI comfort pass`. The final north-star sweep covered 12 browser-observable UI states with 0 blocking failures: mobile baseline, mobile creature target, mobile actor rail, mobile drawer round-trip, mobile combat, desktop no-target, desktop creature/NPC, desktop item/composer, desktop combat, fresh-log default, horizontal overflow, and narrow viewport guardrails. Screenshots from that sweep live under `/tmp/yaw-north-star-final-sweep/`.
 1. **Small UI polish pass verified after `d78d3b8`.** The follow-up polish pass covered 5 focused checks with 0 failures: mobile `Here: X` cue hidden while the compact creature rail is open and restored when closed; mobile actor cards reserve readable label space with 44px Actor/Mark controls; Activity Log applies collapsed layout on fresh storage immediately; bounded bottom-sheet Details drawers handle 4 party members and 3 creatures; actor/target selection state survives party and creature drawer round-trips. Required commands passed: `npm run full-build` after source changes, plus the focused Playwright smoke.
@@ -187,7 +194,7 @@
 5. **Desktop center cleanup is an invariant, not an active duplication hunt.** Current tests assert that center stage presence is visual only, the desktop presence rail does not duplicate side-panel actor/target selection, command sentences and target actions live below the stage in the composer, and legacy center action slots stay hidden/empty during exploration details, combat, recovery, and rich detail views.
 6. **Composer ownership remains the key UI rule.** Scene Feed is read-only semantic presentation, Stage is 3x3 traversal/local presence, Composer owns `Actor(s) -> Target(s) -> Intent`, and drawers remain opt-in detail/management surfaces. Future UI changes should add tests only when they protect a discovered regression or a new expected workflow.
 
-### Remaining UI Objectives
+### UI Watchlist (Not Current No-Decision Work)
 
 1. **Do real-device mobile smoke when hardware is available.** Automated emulation is passing, but physical browser chrome, safe-area behavior, and real touch ergonomics still need a phone check before claiming final mobile polish.
 2. **Keep observing ordinary play for panel dependency regressions.** Common actor/target/intent flows should continue to work without full Party/Creatures drawers; any new mechanic or content surface that reintroduces drawer-first play should be routed through compact cards/chips and the composer.
@@ -196,22 +203,37 @@
 5. **Preserve SFW defaults and mod compatibility while polishing UI.** Do not expand explicit content during UI slices; keep safe labels, internal action ids, content-tier gates, save compatibility, accessibility metadata, and mod extension points intact.
 6. **Defer death/defeat regression review to mechanics.** A later screenshot/playtest suggested the death/defeat concept may have regressed while UI was being polished. Do not chase this inside UI comfort work; capture it for the next mechanics pass and verify defeat-state rules, dead/living eligibility, and recovery boundaries there.
 
-## Next Execution Goals
+## Deferred Backlog And Long-Horizon Notes
+
+The items below are not active no-decision work. Some are already partially implemented and need only future regression checks; others require explicit product/mechanics decisions before implementation.
+
+### Decision-Heavy Topics
+
+- **Feast/containment redesign:** needs a structured containment/digestion doctrine before new implementation.
+- **Formal row-blocking doctrine:** current implementation uses intent-owned reach profiles; full front-row protection, exposed back rows, equipment reach, snare/grab, and distribution rules are future design work.
+- **Combat balance/costs and rewards:** action costs, hunger/spirit tradeoffs, creature size value, and seduce/fight/feed economy need balancing discussion.
+- **Perk tree and party-size upgrades:** progression shape, unlock costs, and balance are not decided.
+- **NPC role recruitment exceptions:** merchants, quest givers, and duty-bound NPCs need doctrine for recruitment, prices, rewards, and relationship benefits.
+- **Quest taxonomy expansion:** broader species-family/tag objectives beyond exact species IDs need design before implementation.
+- **Mobile Scene Feed notification pattern:** toast/popover behavior is deferred until desktop Scene Feed presentation is satisfactory.
+- **Public save/schema rewrites:** defer unless a concrete mechanics migration requires them.
+
+### Long-Horizon Notes (Do Not Treat As Immediate Tasks)
 
 1. **Harden self-included multi-creature interactions.** Identical actor/target sets now have mutual-group handling; continue edge-case coverage for richer unequal non-asymmetric groups and only change behavior where the current resolver routes helpers, targets, or self-actions incorrectly.
 2. **Maintain default species taxonomy and interaction eligibility.** The first-pass person-like canon and shared animal-metadata gates are in place; keep auditing new default species, generated descriptions, quest/merchant/recruit surfaces, and mod registration examples so baseline social/party/quest/merchant/recruit/feed/eat lanes stay attached to sapient/person-like fantasy beings rather than ordinary animals.
-3. **Finish the Unified Center-Tile Traversal Surface.** The 3x3 play surface is implemented; keep the optional mobile move pad dormant unless an accessibility/reachability setting intentionally enables it. Continue tightening the center tile as the compositor for place, local presence, semantic/event summary, items, POIs, and immediate local affordances. Keep the display map as deliberate planning/review, not the routine movement loop.
+3. **Monitor the Unified Center-Tile Traversal Surface.** The 3x3 play surface is implemented; keep the optional mobile move pad dormant unless an accessibility/reachability setting intentionally enables it. Continue tightening only when playtest evidence shows place, local presence, semantic/event summary, items, POIs, or immediate local affordances are unclear. Keep the display map as deliberate planning/review, not the routine movement loop.
 4. **Keep the save-slot/new-game flow tight.** Explicit save/load/new mode separation is in place; continue device-testing that the load menu exposes a clear New Game path, slot cards can start a new run or take over an existing slot, occupied slot takeover requires an irreversible overwrite warning, empty slots read as new-run starts, and delete remains scoped to one slot with an irreversible warning.
 5. **Device-test mobile save and party surfaces.** Automated viewport smoke now covers standard mobile modal, slot, panel, and long-press menu bounds; confirm the same surfaces with real mobile browser chrome and safe-area variants.
 6. **Continue accessibility/localization pass on high-traffic controls.** Automated viewport smoke now covers high-contrast, reduced-motion, and max-font rendering; keep preferring labels/tooltips and focus behavior for controls players hit constantly before lower-traffic debug or admin surfaces.
 7. **Create a flexible asset/tileset manifest seam.** Source ownership for the proposed terrain sheet is project-owner ChatGPT Image output; before importing art, add manifest metadata for tilesets/assets including id, type, version, author, license/allowed use, provenance (`ai_generated`, tool, generated-by, generated-at, notes/prompt hash when useful), relative asset paths, fallback behavior, and tile-key mappings so first-party and modded tilesets can register assets without hardcoding provenance assumptions. Image assets are feature-tier priority, not mechanics/core; when an image asset would materially help readability or player experience, propose the needed asset first, load it through relative paths, and keep current icon/emoji fallbacks for missing assets, accessibility, and low-bandwidth builds.
 8. **Strengthen biome/map mechanics and traversal.** Make deterministic worldgen mechanically playable, not just organic: formalize start-area safety, traversal metadata, beach derivation, roads/bridges as overlays, POI budgets, route seams, encounter pressure hooks, and safe map UI summaries while preserving sparse-grid architecture and save compatibility.
-9. **Unify panel-based actor, target, and intent flow.** Weight combat and non-combat interaction onto cards/chips/panels first: cards/chips choose actors and targets, shared menus/sheets/toolbelts choose intent, and the center tile reflects context/events instead of duplicating the primary action grid. The current mobile combat toolbelt already owns shared intent buttons plus a visible actor/target/intent sentence; keep reducing repeated card-level action clutter while preserving visible `Actor`/`Mark`/Stats affordances.
-10. **Continue combat toolbelt and battle-surface polish.** Battle mode now reduces traversal on mobile, places enemies above the shared toolbelt, and keeps party access near thumb reach. Continue making desktop and mobile mirror the same conceptual flow, keep the center stage focused on combat events, and keep Flee party-member dependent; if the whole party flees, return to directional escape selection on the play surface.
+9. **Maintain panel-based actor, target, and intent flow.** Combat and non-combat interaction are weighted onto cards/chips/panels first: cards/chips choose actors and targets, shared menus/sheets/toolbelts choose intent, and the center tile reflects context/events instead of duplicating the primary action grid. Treat future changes here as regression-driven unless a new mechanic needs a surface.
+10. **Monitor combat toolbelt and battle-surface polish.** Battle mode now reduces traversal on mobile, places enemies above the shared toolbelt, and keeps party access near thumb reach. Keep desktop and mobile conceptually aligned, keep the center stage focused on combat events, and keep Flee party-member dependent. If the whole party flees, return to directional escape selection on the play surface.
 11. **Keep legacy intent/menu paths subordinate to the composer.** Mobile long-press now marks/focuses targets and the visible composer/belt owns intent choices; desktop should follow the same doctrine instead of reviving a parallel card action menu. If a fallback action sheet/popover remains for accessibility or overflow, keep it bounded, reversible, and wired through the normalized actor-target-intent command path. Also verify overlay returns: opening Settings from the main menu and closing it should restore the intended centered menu layout.
 12. **Defer larger design decisions unless they block mechanics.** Sparse-map mobile ergonomics, advanced quest scripting, richer party dismissal dialogue, quest preview polish, and creature equipment management should wait until the current mechanics/UI loop is stable.
 
-### 🟡 Tier 2: High Impact
+### Archived Priority Notes: Former Tier 2
 
 #### 1. Humanoid/Sapient Creature Canon
 - Treat this as a core safety/mechanics goal, not flavor polish. Default interactable species must be framed as sapient fantasy/person-like beings rather than ordinary animals so the project does not read as bestiality-oriented.
@@ -285,7 +307,7 @@
 - Review `archive/` and `legacy/` retention policy so old reference material is quarantined without confusing active branding audits
 - Ensure repository metadata stays aligned with GitHub defaults: local branch `main`, remote `origin`, and README/build instructions aligned with the final layout
 
-### 🔵 Tier 4: Lower Priority
+### Archived Priority Notes: Former Tier 4
 
 #### 7. Sparse Map Generation Foundation
 - Expand the large-map low-LOD view with mobile-specific ergonomics once traversal controls settle
@@ -313,7 +335,7 @@
 #### 16. Advanced Equipment
 - Keep non-player equipment read-only for now; revisit full creature equipment management only if party/inventory systems need player-controlled ally loadouts
 
-### 🟣 Tier 5: UI/UX & Polish
+### Archived Priority Notes: Former Tier 5
 
 #### 18. Advanced Party Management UI
 - Polish drag/drop party reordering after device testing; arrow-button fallback remains for constrained browsers and touch layouts

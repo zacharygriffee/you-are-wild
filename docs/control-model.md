@@ -124,6 +124,7 @@ Current implementation:
 - Flying can engage across rows. Flying targets still need an appropriate physical answer for contact-style actions.
 - Ranged actors can reach flying targets and can use ranged reach from the back row. A ranged actor in the front row may need to retreat before using a purely ranged profile against grounded targets.
 - Anti-flying actors answer front-row flying targets for relevant physical profiles.
+- Back-row ordinary melee and close/contact actors cannot successfully hit front-row targets without a future special reach profile. These remain legal attempts that can consume the action and explain the failure through Scene Feed.
 - Impossible or poor physical attempts should be allowed where the target is otherwise valid. The action can consume the turn and fail with a Scene Beat explaining why, rather than presenting a generic invalid-command error.
 - Current reach is intentionally narrow: the current implementation does not yet model full front-row blockers, exposed back rows, equipment reach, snare/grab, or area distribution.
 - `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy should not imply that moving rows always solves back-row targeting.
@@ -149,8 +150,8 @@ The combat UI grammar is:
 - Player-facing combat group planning is `Actor(s) -> Target(s) -> Intent -> Commit`. The older Sync button is compatibility/internal terminology and should not be the primary visible route for ordinary players.
 - The current turn actor is the required Lead Actor for this phase of the system. Do not allow group plans that exclude the current actor yet.
 - Non-current party members may participate. Once a group plan is committed, those participants are locked into the queued group action and count as having spent their turn.
-- Group combat targets one enemy by default. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
-- Current combat group planning allows party targets only for support intents such as Feed, Heal, Guard, Assist, and future buffs. This is a phase guardrail, not the final doctrine: future combat interaction rules should allow party members, enemies, and neutral creatures to be targets for the full interaction set when explicit consent, hostility, safety, and resolution rules exist.
+- Group combat still defaults to one target. Multi-target group combat plans require future explicit ability, distribution, and target-resolution rules.
+- Combat party targets are valid targets for the normal interaction set. A party member can mark another party member, or themself where the action resolver supports it, for Feast, Talk, Play, Fight, Feed, and future intents. Guardrails should live in action resolution, content/safety policy, and Scene Feed feedback rather than a blanket party-target block.
 - If the target or participants become invalid before resolution, the plan fizzles cleanly and emits Activity Log / Scene Feed feedback. It does not retarget automatically and should not interrupt combat with a correction prompt.
 - There is no universal enemy interrupt mechanic yet. Future systems can add interrupt tags, guard behavior, or enemy traits without changing the base group-planning grammar.
 - Internally, current group planning may continue to queue `sync_*` actions through `syncSelection`, `syncActions`, and `queueSyncAction`. Preserve those names and save/load compatibility until a separate mechanics migration deliberately replaces them.

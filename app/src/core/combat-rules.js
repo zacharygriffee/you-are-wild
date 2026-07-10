@@ -110,6 +110,11 @@ const YAW_COMBAT_RULES = {
                 result.canSucceed = true;
                 return result;
             }
+            if (actor?.combatRow === 'back' && target?.combatRow === 'front' && !actor?.ranged) {
+                result.reason = 'contact-needs-front-row';
+                result.counterplay = 'advance-or-social';
+                return result;
+            }
             if (target?.flying && !actor?.antiflying) {
                 result.reason = 'target-flying-contact';
                 result.counterplay = 'flying-or-anti-flying';
@@ -121,6 +126,11 @@ const YAW_COMBAT_RULES = {
                 return result;
             }
             result.canSucceed = true;
+            return result;
+        }
+        if (profile === 'melee' && actor?.combatRow === 'back' && target?.combatRow === 'front' && !actor?.flying && !actor?.ranged) {
+            result.reason = 'melee-needs-front-row';
+            result.counterplay = 'advance-or-social';
             return result;
         }
         if (target?.flying && !actor?.flying && !actor?.ranged && !actor?.antiflying) {
@@ -167,6 +177,20 @@ const YAW_COMBAT_RULES = {
         }
         if (reason === 'contact-back-row') {
             return app._label('combat.reachFail.contactBackRow', '{actors} tries {action} on {target}, but that needs close contact and {target} is in the back row.', {
+                actors: actorText,
+                action: actionLabel,
+                target: targetName
+            });
+        }
+        if (reason === 'melee-needs-front-row') {
+            return app._label('combat.reachFail.meleeNeedsFront', '{actors} tries {action} on {target}, but ordinary melee needs the front row. Advance first, use ranged or flying reach, or try a social action.', {
+                actors: actorText,
+                action: actionLabel,
+                target: targetName
+            });
+        }
+        if (reason === 'contact-needs-front-row') {
+            return app._label('combat.reachFail.contactNeedsFront', '{actors} tries {action} on {target}, but close contact needs the front row. Advance first or try a social action.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName

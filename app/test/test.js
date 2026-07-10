@@ -9678,7 +9678,7 @@ test('Sync target pick dispatches through a slowest-participant InteractionPlan'
   assertEqual(sync.plan.constraints.minActors, 2, 'Queued Sync plan should retain group actor constraints');
 });
 
-test('Combat group planner requires current actor lead and blocks hostile party targets', () => {
+test('Combat group planner requires current actor lead and queues enemy group actions', () => {
   const { App } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'doctrine-player', Figh: 20, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'doctrine-ally', Figh: 18, combatRow: 'front' });
@@ -9715,22 +9715,63 @@ test('Combat group planner requires current actor lead and blocks hostile party 
   assertEqual(App.combatState.syncActions[0].plan.constraints.requireCurrentTurn, true, 'Queued group plan should require the current turn lead');
   assertEqual(App.combatState.turnQueue[0].actedThisRound, true, 'Committed group plan should lock the current lead as having spent the turn');
   assertEqual(App.combatState.turnQueue[1].actedThisRound, true, 'Committed group plan should lock non-current participants as having spent their turns');
+});
 
-  App.combatState.syncActions = [];
+test('Combat planner allows party members as Feast targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'party-feast-player', Feas: 60, Flee: 3, size: 8, combatRow: 'front' });
+  const ally = makeUnit('Ally', { id: 'party-feast-ally', Feas: 10, Flee: 1, size: 2, CPun: 100, MPun: 100, combatRow: 'front' });
+  const enemy = makeUnit('Enemy', { id: 'party-feast-enemy', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [enemy];
+  App.defaultSubActions.feast = 'swallow';
+  App.combatState = {
+    active: true,
+    round: 4,
+    currentTurn: 0,
+    processing: false,
+    xpEarned: 0,
+    turnQueue: [{ unit: player, initiative: 30 }, { unit: ally, initiative: 20 }, { unit: enemy, initiative: 10 }],
+    syncActions: []
+  };
+  App.activeActor = player;
+  let advanced = 0;
+  App.nextTurn = function() { advanced++; };
+
   App.combatPlanSelection = {
     active: true,
     source: 'combat-planner',
-    actorIds: [App._unitSelectionId(player), App._unitSelectionId(ally)],
-    pendingIntent: 'fight',
-    explicitActors: true
+    actorIds: [App._unitSelectionId(player)],
+    pendingIntent: 'feast',
+    explicitActors: true,
+    hadGroupActors: false
   };
-  App.combatTargetIds = [App._unitSelectionId(enemy)];
-  App.toggleExplorationTarget('party', 'doctrine-party-target');
-  assertEqual(App.confirmCombatPlan(), false, 'Hostile combat group plan should reject marked party targets');
-  assertContains(App.combatCorrectionMessage.text, 'Party targets need a support intent in combat for now.', 'Hostile party target rejection should explain the current-phase support-only guardrail');
-  assertContains(App.combatCorrectionMessage.text, 'explicit combat rules', 'Hostile party target rejection should leave room for future broader party-target interactions');
-  assertEqual(App.combatState.syncActions.length, 0, 'Rejected party-target hostile group plan should not queue');
-  assertEqual(App.combatPlanSelection.active, true, 'Rejected party-target hostile group plan should preserve planner state');
+  assertEqual(App.toggleExplorationTarget('party', 'party-feast-ally'), true, 'Party member Mark should select a combat party target');
+  assertEqual(App.confirmCombatPlan(), true, 'Single-actor combat Feast should resolve against a marked party member');
+  assertEqual(advanced, 1, 'Combat party-target Feast should consume the current turn');
+  assertEqual(App.lastIntentCommand.targetType, 'party', 'Combat party-target Feast should preserve party target type');
+  assertEqual(App.party.includes(ally), false, 'Feasted party target should leave active party surface');
+  assertEqual(player.stomach.length, 1, 'Feasted party target should remain recoverable in containment');
+  assertEqual(player.stomach[0].name, 'Ally', 'Containment record should preserve the party target identity');
+  assertEqual(App.combatState.turnQueue.some(entry => entry.unit === ally), false, 'Contained party target should leave combat turn queue');
+  assertContains(App.lastCombatActionResult.result, 'Ally', 'Combat result should name the party target');
+});
+
+test('Exploration party members can be Feast targets', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const player = makeUnit('You', { id: 'explore-party-feast-player', Feas: 60, Flee: 3, size: 8 });
+  const ally = makeUnit('Ally', { id: 'explore-party-feast-ally', Feas: 10, Flee: 1, size: 2, CPun: 100, MPun: 100 });
+  App.player = player;
+  App.party = [player, ally];
+  App.creatures = [];
+  App.combatState.active = false;
+  App.defaultSubActions.feast = 'swallow';
+
+  assertEqual(App.outsideActionOnTarget('feast', ally, player), true, 'Exploration Feast should allow a party member target');
+  assertEqual(App.party.includes(ally), false, 'Exploration Feast should remove contained party member from active party');
+  assertEqual(player.stomach.length, 1, 'Exploration Feast should keep party target recoverable in containment');
+  assertEqual(player.stomach[0].name, 'Ally', 'Exploration containment should preserve party target identity');
 });
 
 test('Combat intent belts hide primary Sync by default while preserving legacy fallback', () => {
@@ -13407,10 +13448,11 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   const anti = makeUnit('Anti', { id: 'reach-anti', Figh: 40, antiflying: true, combatRow: 'front' });
   const ranged = makeUnit('Ranged', { id: 'reach-ranged', Figh: 40, ranged: true, combatRow: 'back' });
   const backline = makeUnit('Backline', { id: 'reach-backline', disposition: App.DISPOSITION.ENEMY, CPun: 100, CPle: 0, MPle: 100, wis: 1, combatRow: 'back' });
+  const frontTarget = makeUnit('Frontline', { id: 'reach-frontline', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'front' });
   const flyingTarget = makeUnit('Harpy', { id: 'reach-harpy', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front', con: 1 });
   App.player = ground;
   App.party = [ground, flyer, anti, ranged];
-  App.creatures = [backline, flyingTarget];
+  App.creatures = [backline, frontTarget, flyingTarget];
   App.combatState.active = true;
   App.nextTurn = function() {};
 
@@ -13420,6 +13462,15 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
 
   App.executeActionAgainstTarget('feast', ground, backline);
   assertContains(App.lastCombatActionResult.result, 'needs close contact', 'Feast should use a close/contact profile by default');
+
+  ground.combatRow = 'back';
+  App.executeActionAgainstTarget('fight', ground, frontTarget);
+  assertEqual(frontTarget.CPun, 100, 'Back-row ordinary melee should not damage a front-row target');
+  assertContains(App.lastCombatActionResult.result, 'ordinary melee needs the front row', 'Back-row ordinary melee should explain why the attempt failed');
+  App.executeActionAgainstTarget('feast', ground, frontTarget);
+  assertEqual(frontTarget.CPun, 100, 'Back-row close/contact Feast should not affect a front-row target');
+  assertContains(App.lastCombatActionResult.result, 'close contact needs the front row', 'Back-row contact failure should explain the front-row requirement');
+  ground.combatRow = 'front';
 
   App.executeActionAgainstTarget('fight', flyer, backline);
   assert(backline.CPun < 100, 'Flying actor should be able to fight across rows');

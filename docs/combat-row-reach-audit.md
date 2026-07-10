@@ -12,6 +12,8 @@ This note records the current front/back row and intent-owned reach behavior so 
 - `feast` currently evaluates close/contact reach.
 - Social/support intents such as Talk, Play, and Feed can target across rows unless another explicit mechanic blocks them.
 - Physical attempts against flying or back-row targets are allowed when the target is otherwise valid. They can consume the turn and fail with Scene Feed feedback that explains the reach problem.
+- Back-row ordinary melee actors cannot successfully hit front-row targets. The attempt is allowed, consumes the action, and should produce Scene Feed feedback telling the player to advance, use ranged/flying reach, or try a social action.
+- Back-row close/contact Feast attempts against front-row targets follow the same shape: they are allowed attempts, but fail until the actor has front-row contact or a future special reach profile.
 - Flying actors can engage across rows. Ranged actors can reach flying targets and use ranged reach from the back row. Anti-flying answers flying targets for relevant physical profiles.
 - `Move Row` toggles the active actor between front and back rows, clears transient targeting/sync/feed state, logs the row change, and consumes the actor's turn.
 
@@ -26,7 +28,7 @@ This note records the current front/back row and intent-owned reach behavior so 
 
 A formal row system should decide these before expanding mechanics:
 
-- Can back-row melee actors hit front-row targets?
+- Should future reach traits or equipment allow some back-row melee actors to hit front-row targets?
 - Do front-row units block access to back-row units?
 - Can moving to the back row create defensive value for non-ranged units?
 - Should terrain, body size, reach traits, or weapon tags add row-dependent access?

@@ -114,12 +114,34 @@ const YAW_COMBAT_PLANNING = {
         return app.combatPlanSelection?.active ? (app.combatPlanSelection.pendingIntent || null) : null;
     },
 
+    markedTargets(app) {
+        const targets = [
+            ...(app._combatMarkedTargets?.() || []),
+            ...((app._getExplorationTargets?.() || []).filter(unit => app.party.includes(unit)))
+        ];
+        const seen = new Set();
+        return targets.filter(unit => {
+            if (!unit) return false;
+            const id = this.actorId(app, unit) || String(unit.id || unit.name || '');
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+    },
+
+    targetType(app, targets = []) {
+        const types = new Set(targets.map(unit => app.party.includes(unit)
+            ? 'party'
+            : (unit?.disposition === app.DISPOSITION.ENEMY ? 'enemy' : 'creature')));
+        return types.size > 1 ? 'mixed' : ([...types][0] || 'target');
+    },
+
     shouldPlanIntent(app) {
         if (!app.combatState?.active) return false;
         if (app.syncSelection?.active || app.feedSelection?.active) return false;
         const actorIds = app.combatPlanSelection?.actorIds || [];
         const actorPlan = Boolean(app.combatPlanSelection?.active && (app.combatPlanSelection.explicitActors || actorIds.length !== 1));
-        const marked = (app._combatMarkedTargets?.() || []).length > 0;
+        const marked = this.markedTargets(app).length > 0;
         return actorPlan || marked;
     },
 
@@ -151,24 +173,23 @@ const YAW_COMBAT_PLANNING = {
         const action = app.combatPlanSelection.pendingIntent;
         const syncType = this.typeForIntent(app, action);
         const actors = this.actors(app);
-        const targets = app._combatMarkedTargets?.() || [];
+        const targets = this.markedTargets(app);
+        const targetType = this.targetType(app, targets);
         const current = this.currentActor(app);
         const includesCurrent = Boolean(current && actors.some(unit => this.actorId(app, unit) === this.actorId(app, current)));
-        const partyTargets = (app._getExplorationTargets?.() || []).filter(unit => app.party.includes(unit));
-        const supportIntents = new Set(['feed', 'heal', 'guard', 'assist']);
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',
             actors,
             targets,
             action: syncType || action,
             source: 'combat-planner',
-            targetType: 'enemy',
+            targetType,
             shape: 'many-to-one',
             timing: 'slowest-participant',
             distribution: 'single',
             constraints: {
                 requireCurrentTurn: true,
-                hostileOnly: true,
+                hostileOnly: false,
                 checkReach: true,
                 checkRows: true,
                 minActors: 2,
@@ -189,10 +210,6 @@ const YAW_COMBAT_PLANNING = {
             app._reportInvalidCombatCommand?.(command, 'missing-lead-actor');
             return false;
         }
-        if (partyTargets.length > 0 && !supportIntents.has(action)) {
-            app._reportInvalidCombatCommand?.({ ...command, targets: partyTargets, targetType: 'party' }, 'party-target-blocked');
-            return false;
-        }
         if (actors.length === 1 && !intendedGroup) {
             const singleCommand = app._buildPanelInteractionCommand({
                 mode: 'combat',
@@ -200,13 +217,13 @@ const YAW_COMBAT_PLANNING = {
                 targets,
                 action,
                 source: 'combat-planner',
-                targetType: 'enemy',
+                targetType,
                 shape: 'one-to-one',
                 timing: 'current-turn',
                 distribution: 'single',
                 constraints: {
                     requireCurrentTurn: true,
-                    hostileOnly: true,
+                    hostileOnly: false,
                     checkReach: true,
                     checkRows: true,
                     minActors: 1,

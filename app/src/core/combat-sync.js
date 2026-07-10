@@ -316,8 +316,8 @@ const YAW_COMBAT_SYNC = {
         const baseAction = app._syncBaseAction(sync.type);
         if (app._isPhysicalCombatAction?.(baseAction)) {
             const reachResults = (sync.participants || []).map(unit => app._combatReachResult?.(unit, sync.target, baseAction)).filter(Boolean);
-            if (!reachResults.some(result => result.canSucceed)) {
-                const reach = reachResults.find(result => result.canAttempt) || reachResults[0] || null;
+            if (reachResults.length !== (sync.participants || []).length || !reachResults.every(result => result.canSucceed)) {
+                const reach = reachResults.find(result => result?.canAttempt && !result.canSucceed) || reachResults[0] || null;
                 const result = YAW_COMBAT_RESOLUTION.reachFailure(app, baseAction, sync.participants || [], sync.target, reach);
                 app.renderLog();
                 app.renderParty();

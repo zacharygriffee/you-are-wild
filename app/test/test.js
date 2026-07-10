@@ -9558,7 +9558,11 @@ test('InteractionPlan backs combat current-turn target plans and validation', ()
 
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [ally], targets: [frontEnemy], action: 'fight' })).ok, false, 'Combat plans should reject non-current actors');
   const backRowAttempt = App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' }));
-  assertEqual(backRowAttempt.ok, true, 'Combat plans should allow unreachable physical targets as attempted actions');
+  assertEqual(backRowAttempt.ok, false, 'Combat plans should block known-impossible protected physical targets');
+  assertEqual(backRowAttempt.reason, 'cannot-reach', 'Protected physical target should report cannot-reach');
+  frontEnemy.CPun = 0;
+  const exposedBackRow = App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [backEnemy], action: 'fight' }));
+  assertEqual(exposedBackRow.ok, true, 'Combat plans should allow exposed back-row targets when no front blockers remain');
   assertEqual(App._validateInteractionCommand(App._buildPanelInteractionCommand({ mode: 'combat', actors: [player], targets: [frontEnemy, backEnemy], action: 'fight', constraints: { maxTargets: 1 } })).reason, 'too-many-targets', 'Combat plans should enforce target count constraints when mechanics declare them');
 });
 
@@ -13484,13 +13488,14 @@ test('Combat auto-position assigns flying and ranged units to back row', () => {
   assertEqual(harpy.combatRow, 'back', 'Flying/ranged enemy should default to back row');
 });
 
-test('Melee combat targeting allows back-row attempts and fails through Scene Feed', () => {
+test('Melee combat targeting blocks protected back rows and allows exposed back rows', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-melee', Figh: 30 });
   const enemy = makeUnit('Backline', { id: 'backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
+  const blocker = makeUnit('Blocker', { id: 'front-blocker-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'front' });
   App.player = player;
   App.party = [player];
-  App.creatures = [enemy];
+  App.creatures = [enemy, blocker];
   App.combatState.active = true;
   App.activeActor = player;
   player.combatRow = 'front';
@@ -13499,14 +13504,14 @@ test('Melee combat targeting allows back-row attempts and fails through Scene Fe
   assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-intent="flirt"', 'Talk should remain available when physical reach is blocked by row');
   App.selectTarget('fight');
   const desktopTargetHtml = elements.get('enemies-content').innerHTML;
-  assertNotContains(desktopTargetHtml, 'disabled aria-disabled="true"', 'Back-row enemy should remain selectable for an attempted physical action');
-  assertContains(desktopTargetHtml, 'Try', 'Unreachable physical target should be labeled as an attempt, not unavailable');
-  assertContains(desktopTargetHtml, 'Backline, but the back row is beyond ordinary melee reach', 'Desktop target should explain likely reach failure');
+  assertContains(desktopTargetHtml, 'disabled aria-disabled="true"', 'Protected back-row enemy should be blocked before spending a turn');
+  assertContains(desktopTargetHtml, 'Unavailable', 'Known-impossible protected target should be labeled unavailable');
+  assertContains(desktopTargetHtml, 'front-row blockers protect the back row', 'Desktop target should explain protected back-row failure');
   assertContains(desktopTargetHtml, 'try a social action', 'Desktop target should suggest non-physical counterplay');
   assertNotContains(desktopTargetHtml, 'move rows before choosing', 'Unreachable desktop target should not imply Move Row solves current back-row reach rules');
   const mobileTargetHtml = App.renderMobileUnitChip(enemy, 0, 'creature');
-  assertContains(mobileTargetHtml, 'Try', 'Unreachable mobile target should expose attempt semantics');
-  assertContains(mobileTargetHtml, 'Backline, but the back row is beyond ordinary melee reach', 'Mobile target should explain likely reach failure');
+  assertContains(mobileTargetHtml, 'data-selection-state="blocked"', 'Protected mobile target should expose blocked target metadata');
+  assertContains(mobileTargetHtml, 'front-row blockers protect the back row', 'Mobile target should explain protected back-row failure');
   assertNotContains(mobileTargetHtml, 'move rows before choosing', 'Unreachable mobile target should not imply Move Row solves current back-row reach rules');
   App.updateLanguage('es');
   const command = App._buildPanelInteractionCommand({
@@ -13518,11 +13523,22 @@ test('Melee combat targeting allows back-row attempts and fails through Scene Fe
     constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
   });
   const valid = App._validateInteractionCommand(command);
-  assertEqual(valid.ok, true, 'Back-row physical target should validate as an attempt');
-  App._dispatchInteractionCommand(command);
+  assertEqual(valid.ok, false, 'Protected back-row physical target should fail validation before spending the turn');
+  assertEqual(valid.reason, 'cannot-reach', 'Protected back-row validation should fail with cannot-reach');
   assertEqual(enemy.CPun, 100, 'Unreachable target should not take damage');
-  assertContains(App.latestSceneBeat.summary, 'retaguardia', 'Reach failure should emit a localized Scene Beat');
-  assertContains(App.log[App.log.length - 1].text, 'retaguardia', 'Reach failure should remain in the durable log');
+  blocker.CPun = 0;
+  App.updateLanguage('en');
+  const exposed = App._buildPanelInteractionCommand({
+    mode: 'combat',
+    actors: [player],
+    targets: [enemy],
+    action: 'fight',
+    source: 'combat-targeting',
+    constraints: { requireCurrentTurn: true, hostileOnly: true, checkReach: true, checkRows: true }
+  });
+  assertEqual(App._validateInteractionCommand(exposed).ok, true, 'Exposed back-row target should validate once no living front blockers remain');
+  App._dispatchInteractionCommand(exposed);
+  assert(enemy.CPun < 100, 'Exposed back-row target should take ordinary melee damage');
 });
 
 test('Intent reach profiles separate social ranged flying anti-flying and contact rules', () => {
@@ -13545,7 +13561,13 @@ test('Intent reach profiles separate social ranged flying anti-flying and contac
   assertContains(App.lastCombatActionResult.result, 'talk', 'Cross-row Talk should resolve normally');
 
   App.executeActionAgainstTarget('feast', ground, backline);
-  assertContains(App.lastCombatActionResult.result, 'needs close contact', 'Feast should use a close/contact profile by default');
+  assertContains(App.lastCombatActionResult.result, 'close contact cannot reach a protected back-row target', 'Feast should use a close/contact profile and respect front-row blockers');
+  frontTarget.CPun = 0;
+  flyingTarget.CPun = 0;
+  assertEqual(App._combatReachResult(ground, backline, 'feast').canSucceed, true, 'Feast/contact should reach an exposed back-row target when no front blockers remain');
+  backline.CPun = 100;
+  frontTarget.CPun = 100;
+  flyingTarget.CPun = 100;
 
   ground.combatRow = 'back';
   App.executeActionAgainstTarget('fight', ground, frontTarget);
@@ -13596,17 +13618,18 @@ test('Combat ranged back-row traits outrank generic tags and emit an intro beat'
   siren.expanded = true;
   const detailed = App.renderUnitCard(siren, 0, 'creature');
   assertContains(detailed, 'Ranged back-row attacker', 'Detailed card should include tactical row/range summary');
-  assertContains(detailed, 'Talk/Flee', 'Detailed card should suggest non-physical answers');
+  assertContains(detailed, 'social intents', 'Detailed card should suggest non-physical answers');
 });
 
-test('Combat group planner queues unreachable physical attempts and fizzles through Scene Feed', () => {
+test('Combat group planner blocks protected targets and delayed groups can fizzle through Scene Feed', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'planner-row-player', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'planner-row-ally', Figh: 30, combatRow: 'front' });
   const enemy = makeUnit('Siren 1', { id: 'planner-row-siren', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'back' });
+  const blocker = makeUnit('Guard', { id: 'planner-row-guard', disposition: App.DISPOSITION.ENEMY, CPun: 100, MPun: 100, combatRow: 'front' });
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [enemy];
+  App.creatures = [enemy, blocker];
   App.combatState = {
     active: true,
     round: 2,
@@ -13627,24 +13650,30 @@ test('Combat group planner queues unreachable physical attempts and fizzles thro
   App.combatTargetIds = [App._unitSelectionId(enemy)];
   App.nextTurn = function() { this._plannerNextTurn = (this._plannerNextTurn || 0) + 1; };
 
-  assertEqual(App.confirmCombatPlan(), true, 'Unreachable group plan should queue as an attempted physical action');
-  assertEqual(App.combatState.syncActions.length, 1, 'Attempted group action should queue through existing slowest-participant plumbing');
-  assertEqual(App.combatCorrectionMessage, null, 'Queued attempt should not leave invalid-command correction state');
+  assertEqual(App.confirmCombatPlan(), false, 'Protected group physical target should not queue');
+  assertEqual(App.combatState.syncActions.length, 0, 'Blocked group action should not create a queued sync action');
+  assertContains(App.combatCorrectionMessage?.text || '', 'front-row blockers protect the back row', 'Blocked group action should explain the protected row');
+  blocker.CPun = 0;
+  assertEqual(App.confirmCombatPlan(), true, 'Exposed back-row group plan should queue through existing slowest-participant plumbing');
+  assertEqual(App.combatState.syncActions.length, 1, 'Exposed group action should queue');
+  assertEqual(App.combatCorrectionMessage, null, 'Queued exposed plan should not leave invalid-command correction state');
+  blocker.CPun = 100;
   App._resolveSyncAction(App.combatState.syncActions[0]);
   assertContains(App.latestSceneBeat.summary, 'Siren 1', 'Fizzling group reach should name the target in Scene Feed');
-  assertContains(App.latestSceneBeat.summary, 'back row', 'Fizzling group reach should explain the row blocker');
+  assertContains(App.latestSceneBeat.summary, 'front-row blockers protect the back row', 'Fizzling group reach should explain the row blocker');
   App.renderMobileCombatToolbelt();
-  assertContains(App.log[App.log.length - 1].text, 'back row', 'Fizzling group action should remain in the durable log');
+  assertContains(App.log[App.log.length - 1].text, 'front-row blockers protect the back row', 'Fizzling group action should remain in the durable log');
 });
 
-test('Sync combat target selection allows attempts and resolves unreachable groups as fizzles', () => {
+test('Sync combat target selection blocks protected targets and resolves stale groups as fizzles', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'player-sync-reach', Figh: 30, combatRow: 'front' });
   const ally = makeUnit('Ally', { id: 'ally-sync-reach', Figh: 30, combatRow: 'front' });
   const enemy = makeUnit('Backline', { id: 'sync-backline-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'back' });
+  const blocker = makeUnit('Front Guard', { id: 'sync-front-guard', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'front' });
   App.player = player;
   App.party = [player, ally];
-  App.creatures = [enemy];
+  App.creatures = [enemy, blocker];
   App.combatState = { active: true, round: 1, currentTurn: 0, processing: false, xpEarned: 0, turnQueue: [{ unit: player, initiative: 20 }, { unit: ally, initiative: 10 }, { unit: enemy, initiative: 5 }], syncActions: [] };
   App.activeActor = player;
   App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-reach', participantIds: ['player-sync-reach', 'ally-sync-reach'] };
@@ -13652,21 +13681,24 @@ test('Sync combat target selection allows attempts and resolves unreachable grou
   App.nextTurn = function() { this._syncReachConsumedTurn = (this._syncReachConsumedTurn || 0) + 1; };
 
   App.renderCreatures();
-  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow attempted physical targets');
-  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Unreachable sync attempt should not render as disabled');
-  assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Unreachable sync attempt should render as pickable');
-  assertContains(elements.get('enemies-content').innerHTML, 'Try', 'Unreachable sync attempt should be labeled as a try');
-  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Unreachable sync target should queue as an attempted group action');
-  assertEqual(App.combatState.syncActions.length, 1, 'Attempted sync target should create a queued sync action');
+  assertEqual(App.canSelectCreatureTarget(enemy), false, 'Sync target selection should block protected physical targets');
+  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Protected sync target should render as disabled');
+  assertContains(elements.get('enemies-content').innerHTML, 'Unavailable', 'Protected sync target should be labeled unavailable');
+  assertEqual(App.queueSyncAction('sync_fight', enemy), false, 'Protected sync target should not queue');
+  assertEqual(App.combatState.syncActions.length, 0, 'Blocked sync target should not create a queued sync action');
+  blocker.CPun = 0;
+  assertEqual(App.queueSyncAction('sync_fight', enemy), true, 'Exposed sync target should queue');
+  assertEqual(App.combatState.syncActions.length, 1, 'Exposed sync target should create a queued sync action');
+  blocker.CPun = 100;
   App._resolveSyncAction(App.combatState.syncActions[0]);
-  assertContains(App.latestSceneBeat.summary, 'back row', 'Unreachable queued sync should fizzle with a Scene Feed explanation');
+  assertContains(App.latestSceneBeat.summary, 'front-row blockers protect the back row', 'Stale queued sync should fizzle with a Scene Feed explanation');
 
-  ally.ranged = true;
   App.combatState.syncActions = [];
+  blocker.CPun = 0;
   App.syncSelection = { active: true, phase: 'target', type: 'sync_fight', actorId: 'player-sync-reach', participantIds: ['player-sync-reach', 'ally-sync-reach'] };
   App._syncParticipants = [player, ally];
   App.renderCreatures();
-  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow a target at least one selected participant can reach');
+  assertEqual(App.canSelectCreatureTarget(enemy), true, 'Sync target selection should allow an exposed back-row target every participant can reach');
   assertContains(elements.get('enemies-content').innerHTML, 'data-selection-mode="combat-pick" data-selection-state="pickable"', 'Reachable sync target should render as pickable');
 });
 
@@ -13860,7 +13892,7 @@ test('Swamp terrain stuck outcome is deterministic by combat state', () => {
   assertEqual(buildCase(() => 0), buildCase(() => 0.99), 'Swamp terrain stuck should not depend on ambient Math.random');
 });
 
-test('Ground melee can attempt flying targets and fails with Scene Feed feedback', () => {
+test('Ground melee flying targets are blocked in selection and fail if resolved stale', () => {
   const { App, elements } = loadAppForCombat(() => 0);
   const player = makeUnit('You', { id: 'ground-melee', Figh: 30 });
   const flyer = makeUnit('Flyer', { id: 'flying-target', disposition: App.DISPOSITION.ENEMY, CPun: 100, flying: true, combatRow: 'front' });
@@ -13871,8 +13903,9 @@ test('Ground melee can attempt flying targets and fails with Scene Feed feedback
   App.activeActor = player;
   App.nextTurn = function() {};
   App.selectTarget('fight');
-  assertNotContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Ground melee should be allowed to try a flying target');
-  assertContains(elements.get('enemies-content').innerHTML, 'Try', 'Ground melee flying target should be labeled as an attempt');
+  assertContains(elements.get('enemies-content').innerHTML, 'disabled aria-disabled="true"', 'Known-impossible ground melee flying target should be blocked');
+  assertContains(elements.get('enemies-content').innerHTML, 'Unavailable', 'Ground melee flying target should be labeled unavailable');
+  assertContains(elements.get('enemies-content').innerHTML, 'out of reach in the air', 'Blocked flying target should explain the reach problem');
   App.executeActionAgainstTarget('fight', player, flyer);
   assertEqual(flyer.CPun, 100, 'Failed flying reach attempt should not damage the target');
   assertContains(App.latestSceneBeat.summary, 'out of reach in the air', 'Failed flying reach should explain the miss through Scene Feed');
@@ -14819,7 +14852,7 @@ test('Quest progress completes defeat objectives and grants rewards', () => {
   assertEqual(App.inventory[0].id, 'quest_item_wolf-hunt_old-coin_0', 'Quest reward item id should be stable without timestamp entropy');
 });
 
-test('Quest species objectives match explicit taxonomy ids and display species labels', () => {
+test('Quest species objectives match exact internal ids and display species labels', () => {
   const { App, elements } = loadAppForCombat();
   const player = makeUnit('You', { xp: 0, xpToNext: 100, gold: 0 });
   App.player = player;
@@ -14835,13 +14868,13 @@ test('Quest species objectives match explicit taxonomy ids and display species l
     { id: 'wolf_boy', name: 'Wolfboy', icon: '🐺', desc: 'Sapient wolf person' },
     { id: 'moon_scout', name: 'Moon Scout', icon: '🐺', desc: 'Sapient wolf scout', questSpecies: 'wolf' }
   );
-  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolfgirl', target: { species: 'wolfgirl' } }, objective), true, 'Wolfgirl species should satisfy a wolf-family objective');
-  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf_boy', target: { species: 'wolf_boy' } }, objective), true, 'Wolfboy species should satisfy a wolf-family objective');
-  assertEqual(App._questObjectiveMatches('defeat', { species: 'moon_scout', target: { species: 'moon_scout' } }, objective), true, 'Explicit questSpecies metadata should satisfy a wolf-family objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolfgirl', target: { species: 'wolfgirl' } }, objective), false, 'Wolfgirl species should not satisfy an exact wolf objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'wolf_boy', target: { species: 'wolf_boy' } }, objective), false, 'Wolfboy species should not satisfy an exact wolf objective');
+  assertEqual(App._questObjectiveMatches('defeat', { species: 'moon_scout', target: { species: 'moon_scout' } }, objective), false, 'questSpecies metadata should not override exact species matching in this pass');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'fox', target: { species: 'fox' } }, objective), false, 'Internal wolf species id should not fuzzy-match fox');
   assertEqual(App._questObjectiveMatches('defeat', { species: 'hyena', target: { species: 'hyena' } }, objective), false, 'Internal wolf species id should not fuzzy-match hyena or other canid-like species');
-  assertEqual(App._questObjectiveMatches('consume', { target: { species: 'wolfgirl' } }, { ...objective, type: 'consume' }), true, 'Shared consume progress should use species taxonomy matching');
-  assertEqual(App._questObjectiveMatches('seduce', { target: { species: 'wolf_boy' } }, { ...objective, type: 'seduce' }), true, 'Shared seduce progress should use species taxonomy matching');
+  assertEqual(App._questObjectiveMatches('consume', { target: { species: 'wolfgirl' } }, { ...objective, type: 'consume' }), false, 'Shared consume progress should use exact species matching');
+  assertEqual(App._questObjectiveMatches('seduce', { target: { species: 'wolf_boy' } }, { ...objective, type: 'seduce' }), false, 'Shared seduce progress should use exact species matching');
 
   const normalized = App._normalizeQuest({
     id: 'wolfkin_hunt',
@@ -14862,7 +14895,7 @@ test('Quest species objectives match explicit taxonomy ids and display species l
   assertEqual(explicit.objectives[0].label, 'Defeat the northern scout', 'Explicit authored objective labels should be preserved');
 });
 
-test('Generated and mod species quest objectives use registered ids plus explicit taxonomy', () => {
+test('Generated and mod species quest objectives use exact registered ids', () => {
   const { App } = loadAppForCombat(() => 0);
   const registered = new Set(App.species.map(species => species.id));
   Object.values(App.QUEST_TEMPLATES).forEach(template => {
@@ -14896,7 +14929,7 @@ test('Generated and mod species quest objectives use registered ids plus explici
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk' } }, modObjective), true, 'Mod-registered species should match exact species objective ids');
   assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'wolf' } }, modObjective), false, 'Mod species objective should not fuzzy-match other species');
   App.species.push({ id: 'modfolk_variant', name: 'Modfolk Variant', icon: 'M', questFamilies: ['modfolk'], desc: 'Mod registered person' });
-  assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk_variant' } }, modObjective), true, 'Mod species can opt into quest taxonomy with questFamilies metadata');
+  assertEqual(App._questObjectiveMatches('defeat', { target: { species: 'modfolk_variant' } }, modObjective), false, 'Mod metadata should not override exact species objective ids');
 });
 
 test('Quest turn-in can defer rewards until claimed from quest log', () => {
@@ -16114,13 +16147,13 @@ test('Unit selection controls distinguish focus actor target and combat pick sem
   assertContains(mobileEnemyChip, 'data-selection-control="combat-target"', 'Mobile combat target button should identify combat target selection separately from exploration marking');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile combat target button should expose available combat-target mode');
   assertContains(mobileEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile combat target button should identify the target slot');
-  assertNotContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop difficult combat target should remain selectable as an attempted action');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available"', 'Desktop difficult combat target should expose available combat-target state');
-  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Desktop difficult combat target should identify the target slot');
-  assertContains(blockedEnemyCard, '>Try</button>', 'Desktop difficult combat target should show attempt semantics');
-  assertNotContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile difficult combat target should remain selectable as an attempted action');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available"', 'Mobile difficult combat target should expose available combat-target state');
-  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="available" data-command-slot="target"', 'Mobile difficult combat target should identify the target slot');
+  assertContains(blockedEnemyCard, 'disabled aria-disabled="true"', 'Desktop known-impossible combat target should be disabled before spending a turn');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Desktop difficult combat target should expose blocked combat-target state');
+  assertContains(blockedEnemyCard, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Desktop difficult combat target should identify the target slot');
+  assertContains(blockedEnemyCard, '>Unavailable</button>', 'Desktop difficult combat target should show blocked semantics');
+  assertContains(mobileBlockedEnemyChip, 'disabled aria-disabled="true"', 'Mobile known-impossible combat target should be disabled before spending a turn');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked"', 'Mobile difficult combat target should expose blocked combat-target state');
+  assertContains(mobileBlockedEnemyChip, 'data-selection-mode="combat-target" data-selection-state="blocked" data-command-slot="target"', 'Mobile difficult combat target should identify the target slot');
   assertContains(mobileBlockedEnemyChip, 'stays out of reach in the air', 'Mobile difficult combat target should keep the reach warning available to assistive tech');
   assertNotContains(enemyCard, 'data-selection-control="target" aria-pressed', 'Combat target picking should not present itself as exploration target marking');
   assertNotContains(enemyCard, 'data-selection-mode="mark-target"', 'Combat target picking should not reuse exploration mark-target mode');
@@ -16886,7 +16919,7 @@ test('Control model records accepted mechanics decisions', () => {
   const controlModel = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'control-model.md'), 'utf8');
   const nextObjectives = fs.readFileSync(NEXT_OBJECTIVES, 'utf8');
   assertContains(controlModel, '## Accepted Mechanics Decisions', 'Control model should record settled mechanics decisions');
-  assertContains(controlModel, 'Impossible or poor physical actions should consume the actor or committed group', 'Physical failure attempts should be accepted as turn-consuming doctrine');
+  assertContains(controlModel, 'Known impossible target selection should block and explain the issue before spending the turn', 'Known-impossible physical selection should be documented as blocked');
   assertContains(controlModel, 'Nonviolent victory should grant equivalent baseline XP to combat victory', 'Nonviolent victory XP parity should be accepted doctrine');
   assertContains(controlModel, 'Perks are a feature layer, not a prerequisite for core mechanics', 'Perks should be documented as a feature layer');
   assertContains(controlModel, 'Party size uses a hard default cap', 'Party cap doctrine should be documented');
@@ -16898,7 +16931,7 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(controlModel, 'Mobile feedback uses a persistent latest Scene Beat plus an explicit expanded Scene Feed sheet', 'Mobile feedback doctrine should require persistent latest beat plus explicit sheet access');
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
-  assertContains(nextObjectives, '3 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
+  assertContains(nextObjectives, '2 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
   assertContains(nextObjectives, 'Feast V2 core doctrine is now locked enough for implementation', 'Next objectives should stop treating core Feast V2 as decision-blocked');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
@@ -17031,9 +17064,10 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
   const { App, elements } = loadAppForCombat();
   const mousefolk = makeUnit('Mousefolk', { id: 'mouse-1', Figh: 20, combatRow: 'front' });
   const siren = makeUnit('Siren 1', { id: 'siren-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, ranged: true, combatRow: 'back' });
+  const guard = makeUnit('Guard', { id: 'guard-1', disposition: App.DISPOSITION.ENEMY, CPun: 100, combatRow: 'front' });
   App.player = mousefolk;
   App.party = [mousefolk];
-  App.creatures = [siren];
+  App.creatures = [siren, guard];
   App.activeActor = mousefolk;
   App.combatState = {
     active: true,
@@ -17061,15 +17095,15 @@ test('Blocked combat reach emits a failure Scene Beat with row guidance', () => 
     }
   }));
 
-  assertEqual(resolved, true, 'Blocked physical reach should resolve as a spent failed attempt');
+  assertEqual(resolved, false, 'Known-impossible protected physical reach should be blocked before spending the turn');
   assertEqual(siren.CPun, 100, 'Blocked reach attempt should not damage the target');
   assertEqual(App.storyEvents.length, 1, 'Blocked reach should emit one failure Scene Beat');
   assertEqual(App.storyEvents[0].resultKind, 'failure', 'Blocked reach Scene Beat should be marked as failure');
-  assertContains(App.storyEvents[0].summary, 'back row', 'Blocked reach Scene Beat should explain the row problem');
-  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'back row', 'Desktop context Scene Feed should show the reach failure');
+  assertContains(App.storyEvents[0].summary, 'front-row blockers protect the back row', 'Blocked reach Scene Beat should explain the row problem');
+  assertContains(elements.get('desktop-scene-feed-latest').innerHTML, 'front-row blockers protect the back row', 'Desktop context Scene Feed should show the reach failure');
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-result'), 'failure', 'Latest Scene Feed slot should expose failure result metadata');
   assertEqual(elements.get('desktop-scene-feed-latest').getAttribute('data-scene-importance'), 'hint', 'Cannot-reach Scene Beat should expose hint-level emphasis');
-  assertContains(elements.get('log-content').innerHTML, 'back row', 'Activity Log should still retain the technical failure history');
+  assertContains(elements.get('log-content').innerHTML, 'front-row blockers protect the back row', 'Activity Log should still retain the technical failure history');
 });
 
 test('Tile-entry observation emits one coalesced Scene Beat without activity log duplication', () => {

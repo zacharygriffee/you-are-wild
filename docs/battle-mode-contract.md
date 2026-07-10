@@ -17,6 +17,8 @@ Battle mode is not a separate action model. It is the normal actor, target, and 
 - Row and reach rules constrain valid targets.
 - Terrain can modify speed, reach, cover, or status outcomes.
 - Group actions resolve through the same intent model, but timing is delayed to the slowest participant.
+- Physical group actions require every committed physical participant to have a valid contribution path at queue time; if the battlefield changes before resolution, the queued plan can fizzle through the compatibility group-action plumbing.
+- Sync remains compatibility/internal terminology and plumbing. Player-facing combat should use Lead Actor + Helpers -> Target(s) -> Intent -> Commit.
 - Flee is actor-specific. A party member can opt out; when all remaining party members have fled or fallen, combat resolves.
 
 See [Combat Row And Reach Audit](combat-row-reach-audit.md) for the current first-pass row behavior and open formation-system questions.

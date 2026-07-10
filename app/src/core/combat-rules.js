@@ -53,6 +53,39 @@ const YAW_COMBAT_RULES = {
         }
     },
 
+    sameCombatSide(app, a, b) {
+        if (!app || !a || !b) return false;
+        const aParty = app.party?.includes?.(a);
+        const bParty = app.party?.includes?.(b);
+        if (aParty || bParty) return Boolean(aParty && bParty);
+        return app.creatures?.includes?.(a) && app.creatures?.includes?.(b);
+    },
+
+    sideUnitsFor(app, unit) {
+        if (!app || !unit) return [];
+        if (app.party?.includes?.(unit)) return app.party || [];
+        if (app.creatures?.includes?.(unit)) return app.creatures || [];
+        return [];
+    },
+
+    livingFrontBlockers(app, target) {
+        if (!target) return [];
+        return this.sideUnitsFor(app, target).filter(unit => unit
+            && unit !== target
+            && unit.CPun > 0
+            && unit.combatRow === 'front'
+            && !unit.fledCombat
+            && unit.disposition !== app.DISPOSITION?.CORPSE);
+    },
+
+    isBackRowProtected(app, target) {
+        return Boolean(target && target.combatRow === 'back' && this.livingFrontBlockers(app, target).length > 0);
+    },
+
+    isBackRowExposed(app, target) {
+        return Boolean(target && target.combatRow === 'back' && this.livingFrontBlockers(app, target).length === 0);
+    },
+
     isPhysicalCombatAction(action) {
         const base = String(action || '').replace(/^sync_/, '');
         return base === 'fight' || base === 'feast';
@@ -82,7 +115,9 @@ const YAW_COMBAT_RULES = {
             reason: '',
             counterplay: '',
             profile,
-            action: base
+            action: base,
+            protectedBackRow: false,
+            exposedBackRow: false
         };
         if (!result.canAttempt) {
             result.reason = 'invalid-target';
@@ -121,8 +156,14 @@ const YAW_COMBAT_RULES = {
                 return result;
             }
             if (target?.combatRow === 'back') {
-                result.reason = 'contact-back-row';
-                result.counterplay = 'front-row-contact';
+                result.protectedBackRow = this.isBackRowProtected(app, target);
+                result.exposedBackRow = !result.protectedBackRow;
+                if (result.protectedBackRow) {
+                    result.reason = 'contact-protected-back-row';
+                    result.counterplay = 'front-blockers-or-social';
+                    return result;
+                }
+                result.canSucceed = true;
                 return result;
             }
             result.canSucceed = true;
@@ -139,9 +180,13 @@ const YAW_COMBAT_RULES = {
             return result;
         }
         if (target?.combatRow === 'back' && !actor?.flying && !actor?.ranged) {
-            result.reason = 'target-back-row';
-            result.counterplay = 'flying-ranged-social';
-            return result;
+            result.protectedBackRow = this.isBackRowProtected(app, target);
+            result.exposedBackRow = !result.protectedBackRow;
+            if (result.protectedBackRow) {
+                result.reason = 'target-protected-back-row';
+                result.counterplay = 'front-blockers-ranged-flying-social';
+                return result;
+            }
         }
         result.canSucceed = true;
         return result;
@@ -168,15 +213,15 @@ const YAW_COMBAT_RULES = {
                 target: targetName
             });
         }
-        if (reason === 'target-back-row') {
-            return app._label('combat.reachFail.backRow', '{actors} tries {action} on {target}, but the back row is beyond ordinary melee reach. Use ranged or flying reach, or try a social action.', {
+        if (reason === 'target-protected-back-row' || reason === 'target-back-row') {
+            return app._label('combat.reachFail.protectedBackRow', '{actors} cannot use {action} on {target}: front-row blockers protect the back row. Use ranged or flying reach, clear the front row, or try a social action.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName
             });
         }
-        if (reason === 'contact-back-row') {
-            return app._label('combat.reachFail.contactBackRow', '{actors} tries {action} on {target}, but that needs close contact and {target} is in the back row.', {
+        if (reason === 'contact-protected-back-row' || reason === 'contact-back-row') {
+            return app._label('combat.reachFail.contactProtectedBackRow', '{actors} cannot use {action} on {target}: close contact cannot reach a protected back-row target.', {
                 actors: actorText,
                 action: actionLabel,
                 target: targetName

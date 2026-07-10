@@ -11,10 +11,14 @@ This note records the current front/back row and intent-owned reach behavior so 
 - `fight` currently evaluates melee, ranged, or hybrid reach from actor traits and action metadata.
 - `feast` currently evaluates close/contact reach.
 - Social/support intents such as Talk, Play, and Feed can target across rows unless another explicit mechanic blocks them.
-- Physical attempts against flying or back-row targets are allowed when the target is otherwise valid. They can consume the turn and fail with Scene Feed feedback that explains the reach problem.
-- Back-row ordinary melee actors cannot successfully hit front-row targets. The attempt is allowed, consumes the action, and should produce Scene Feed feedback telling the player to advance, use ranged/flying reach, or try a social action.
-- Back-row close/contact Feast attempts against front-row targets follow the same shape: they are allowed attempts, but fail until the actor has front-row contact or a future special reach profile.
+- Known-impossible physical target selection is blocked before spending a turn and must explain the reach problem without generic invalid-command copy.
+- Front-row blockers protect same-side back-row units from ordinary melee/contact actions.
+- Exposed back-row units are reachable by ordinary melee/contact when their side has no living front-row blockers.
+- Back-row ordinary melee actors cannot successfully hit front-row targets. The target should be blocked during selection unless the actor has ranged/flying/reach/special access.
+- Back-row close/contact Feast attempts against front-row targets follow the same shape until the actor has front-row contact or a future special reach profile.
 - Flying actors can engage across rows. Ranged actors can reach flying targets and use ranged reach from the back row. Anti-flying answers flying targets for relevant physical profiles.
+- Committed/delayed group plans can still fizzle if their target or participant reach becomes invalid before resolution. That fizzle consumes the committed plan through existing group timing and emits Scene Feed feedback.
+- Physical group plans require every committed physical participant to have a valid contribution path by default. Social group plans ignore rows unless another mechanic says otherwise.
 - `Move Row` toggles the active actor between front and back rows, clears transient targeting/sync/feed state, logs the row change, and consumes the actor's turn.
 
 ## UI Copy
@@ -24,15 +28,13 @@ This note records the current front/back row and intent-owned reach behavior so 
 - Row should remain visible in combat details and compact combat cards while rows affect targeting or damage feedback.
 - `Move Row` may remain visible for now because it is an implemented turn-consuming intent, but future UI passes should consider hiding or demoting it unless the active actor has a clear tactical reason to change rows.
 
-## Future Row System Questions
+## Deferred Row System Questions
 
-A formal row system should decide these before expanding mechanics:
+The foundation is settled, but later mechanics still need explicit design before implementation:
 
-- Should future reach traits or equipment allow some back-row melee actors to hit front-row targets?
-- Do front-row units block access to back-row units?
-- Can moving to the back row create defensive value for non-ranged units?
-- Should terrain, body size, reach traits, or weapon tags add row-dependent access?
-- Should row movement ever help a ground melee actor reach a back-row or flying target, or is that always reserved for reach capabilities?
-- How should future equipment, snare/grab, terrain, size, and special reach tags map into explicit per-intent reach profiles?
+- Which future reach traits or equipment allow back-row melee actors to hit front-row targets?
+- Can moving to the back row create defensive value for non-ranged units beyond current protection?
+- How do terrain, body size, weapon tags, snare/grab, pull, and ability-specific reach map into per-intent reach profiles?
+- How should future area or multi-target distribution interact with blockers?
 
-Until those questions are answered, treat rows as formation context and presentation signal. Intent reach profiles decide whether an action succeeds, and failed attempts should explain themselves through Scene Feed rather than generic invalid-command feedback.
+Until those mechanics are designed, treat rows as formation context and presentation signal. Intent reach profiles decide whether an action is selectable, whether a delayed plan still resolves, and what Scene Feed explanation appears when reach fails.

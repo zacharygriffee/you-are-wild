@@ -65,62 +65,11 @@ const YAW_QUEST_FLOW = {
         return species?.name || species?.label || speciesId;
     },
 
-    taxonomyToken(value) {
-        return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    },
-
-    taxonomyRoot(value) {
-        const token = this.taxonomyToken(value);
-        if (!token) return '';
-        const suffixes = ['folk', 'kin', 'girl', 'boy', 'woman', 'man', 'person', 'people'];
-        for (const suffix of suffixes) {
-            if (token.length > suffix.length + 2 && token.endsWith(suffix)) {
-                return token.slice(0, -suffix.length);
-            }
-        }
-        return token;
-    },
-
-    speciesTaxonomyKeys(app, speciesIdOrUnit) {
-        const unit = speciesIdOrUnit && typeof speciesIdOrUnit === 'object' ? speciesIdOrUnit : null;
-        const speciesId = unit?.species || speciesIdOrUnit;
-        const species = (app.species || []).find(s => s.id === speciesId) || {};
-        const canon = app.SPECIES_CANON?.[speciesId] || {};
-        const values = [
-            speciesId,
-            species.name,
-            species.label,
-            species.family,
-            species.speciesFamily,
-            species.questSpecies,
-            canon.family,
-            canon.speciesFamily,
-            canon.questSpecies,
-            ...(Array.isArray(species.families) ? species.families : []),
-            ...(Array.isArray(species.questFamilies) ? species.questFamilies : []),
-            ...(Array.isArray(canon.families) ? canon.families : []),
-            ...(Array.isArray(canon.questFamilies) ? canon.questFamilies : [])
-        ];
-        const keys = new Set();
-        for (const value of values) {
-            const token = this.taxonomyToken(value);
-            const root = this.taxonomyRoot(value);
-            if (token) keys.add(token);
-            if (root) keys.add(root);
-        }
-        return keys;
-    },
-
     speciesObjectiveMatches(app, objectiveSpecies, payload = {}) {
         if (!objectiveSpecies) return true;
-        const objectiveKeys = this.speciesTaxonomyKeys(app, objectiveSpecies);
         const target = payload.target || {};
         const payloadSpecies = payload.species || target.species;
-        const targetKeys = this.speciesTaxonomyKeys(app, target.species ? target : payloadSpecies);
-        for (const key of objectiveKeys) {
-            if (targetKeys.has(key)) return true;
-        }
-        return false;
+        return Boolean(payloadSpecies && String(payloadSpecies) === String(objectiveSpecies));
     },
 
     rewardPreviewText(app, reward = {}) {

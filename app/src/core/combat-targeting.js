@@ -37,7 +37,7 @@ const YAW_COMBAT_TARGETING = {
             const actor = app.activeActor || app.player;
             if (app.targetSelection.action === 'scavenge') return app._canScavengeCorpse(unit);
             if (unit.CPun <= 0) return false;
-            return unit.disposition === app.DISPOSITION.ENEMY && app._canAttemptCombatTarget(actor, unit, app.targetSelection.action);
+            return unit.disposition === app.DISPOSITION.ENEMY && Boolean(app._combatReachResult?.(actor, unit, app.targetSelection.action)?.canSucceed);
         }
         if (unit.CPun <= 0 && !app._isCorpse(unit)) return false;
         return unit.disposition !== app.DISPOSITION.PARTY;
@@ -145,7 +145,10 @@ const YAW_COMBAT_TARGETING = {
         if (!target || target.CPun <= 0 || target.disposition !== app.DISPOSITION.ENEMY) return false;
         if (livingParticipants.length < 2) return false;
         const action = this.syncBaseAction(syncType);
-        return livingParticipants.some(unit => app._canAttemptCombatTarget(unit, target, action));
+        if (app._isPhysicalCombatAction?.(action)) {
+            return livingParticipants.every(unit => app._combatReachResult?.(unit, target, action)?.canSucceed);
+        }
+        return livingParticipants.every(unit => app._canAttemptCombatTarget(unit, target, action));
     },
 
     reachWarning(app, actors = [], unit, action) {
@@ -169,7 +172,7 @@ const YAW_COMBAT_TARGETING = {
             ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
             : [app.activeActor || app.player].filter(Boolean);
         const warning = this.reachWarning(app, actors, unit, effectiveAction);
-        if (canTarget && warning) {
+        if (warning) {
             return app._combatReachFailureText?.(actors, unit, effectiveAction, warning)
                 || app._label('target.likelyFails', 'You can try {action} on {name}, but it may not connect.', { name, action: actionLabel });
         }
@@ -186,7 +189,6 @@ const YAW_COMBAT_TARGETING = {
             const actors = syncActive
                 ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
                 : [app.activeActor || app.player].filter(Boolean);
-            if (this.reachWarning(app, actors, unit, effectiveAction)) return app._label('target.try', 'Try');
             return app._label('target.pick', 'Pick');
         }
         if (!unit) return app._label('target.pick', 'Pick');
@@ -195,7 +197,6 @@ const YAW_COMBAT_TARGETING = {
         const actors = syncActive
             ? (app._syncParticipants || app._syncSelectedParticipants?.() || [])
             : [app.activeActor || app.player].filter(Boolean);
-        if (this.reachWarning(app, actors, unit, effectiveAction)) return app._label('target.try', 'Try');
         return app._label('target.unavailable', 'Unavailable');
     },
 

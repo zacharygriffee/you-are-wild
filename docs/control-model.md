@@ -65,7 +65,7 @@ See [Feast / Containment Doctrine](feast-containment-doctrine.md) for the V1 con
 
 These decisions are settled doctrine until a later explicit mechanics pass reopens them:
 
-- Impossible or poor physical actions should consume the actor or committed group's action when attempted. Scene Feed feedback is responsible for explaining why the attempt failed and what the player can learn from it.
+- Known-impossible physical actions should be blocked during selection or preview with clear Scene Feed/correction feedback before spending the turn. Poor but selectable physical actions, or delayed plans that become impossible before resolution, can still consume the actor or committed group's action and explain the failure through Scene Feed.
 - Nonviolent victory should grant equivalent baseline XP to combat victory. Reward flavor, tags, relationship changes, quest hooks, or follow-up opportunities can differ, but social routes should not be mechanically inferior by default.
 - Perks are a feature layer, not a prerequisite for core mechanics. The default game should expose a minimal, approachable perk surface: early perks can be stat bumps and small passives, milestone perks can unlock mechanics, and deeper procedural or moddable perk trees are deferred until the core game shape is stable.
 - Party size uses a hard default cap for performance and UI readability. Mods may raise or replace that cap for players who opt into larger parties on capable devices.
@@ -76,11 +76,11 @@ These decisions are settled doctrine until a later explicit mechanics pass reope
 
 ### Quest Species Matching Doctrine
 
-Quest species objectives match explicit species taxonomy, not broad fuzzy animal categories. An objective with `species: "wolf"` matches units whose internal species ID is exactly `"wolf"` and registered variants that clearly normalize to that family, such as `wolfkin`, `wolfgirl`, or `wolfboy`-style species IDs/display names. It must not automatically match broad canid-like or beastfolk-adjacent species such as fox or hyena.
+Quest species objectives use exact internal species IDs, not fuzzy animal categories or family-style suffix matching. An objective with `species: "wolf"` matches units whose internal species ID is exactly `"wolf"`. It does not automatically match `wolfkin`, `wolfgirl`, `wolfboy`, canine-like species, beastfolk-adjacent species, or display labels.
 
 Player-facing quest text should render species display names from the species registry. The internal ID `wolf` can therefore appear to the player as `Wolfkin`, and generated quest objective labels should prefer that display name when no explicit authored label is provided. Existing authored labels remain authoritative, but default content should avoid exposing raw internal IDs when a display name exists.
 
-Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid quest targets when the mod registers the exact species ID or supplies explicit taxonomy metadata such as `questSpecies`, `questFamilies`, `speciesFamily`, `family`, or clear family-style species labels. The matcher may normalize safe suffixes like `folk`, `kin`, `girl`, and `boy`, but it should not infer unrelated families merely from broad tags like `canine-folk`.
+Generated quest objectives and structure quest-giver species pools should use registered species IDs from the currently enabled species registry. Mod species become valid quest targets when a quest asks for that exact registered species ID. Family/tag/taxonomy selectors such as `questFamilies`, `speciesFamily`, or broad canid-like grouping are deferred until a later authored-taxonomy pass.
 
 ### Traversal mode
 
@@ -124,18 +124,16 @@ Current implementation:
 - Flying can engage across rows. Flying targets still need an appropriate physical answer for contact-style actions.
 - Ranged actors can reach flying targets and can use ranged reach from the back row. A ranged actor in the front row may need to retreat before using a purely ranged profile against grounded targets.
 - Anti-flying actors answer front-row flying targets for relevant physical profiles.
-- Back-row ordinary melee and close/contact actors cannot successfully hit front-row targets without a future special reach profile. These remain legal attempts that can consume the action and explain the failure through Scene Feed.
-- Impossible or poor physical attempts should be allowed where the target is otherwise valid. The action can consume the turn and fail with a Scene Beat explaining why, rather than presenting a generic invalid-command error.
-- Current reach is intentionally narrow: the current implementation does not yet model full front-row blockers, exposed back rows, equipment reach, snare/grab, or area distribution.
+- Front-row blockers protect back-row units on the same side. Ordinary melee and close/contact actions cannot target a protected back-row unit while living front-row blockers remain.
+- If a side has no living front-row blockers, back-row targets are exposed. Ordinary melee and close/contact actions may reach exposed back-row targets unless a specific action profile says otherwise.
+- Back-row ordinary melee and close/contact actors cannot freely hit front-row targets without a future special reach profile. Known impossible target selection should block and explain the issue before spending the turn.
+- If a committed or delayed group plan becomes impossible before resolution, it can fizzle and consume the committed plan through existing group timing, with Scene Feed explaining the failure.
+- Current reach is intentionally narrow: the current implementation does not yet model equipment reach, snare/grab, pull, advanced row AI, or area distribution.
 - `Move Row` toggles the active actor between front and back row and consumes that actor's turn. UI copy should not imply that moving rows always solves back-row targeting.
-
-Future formal row rules should decide these points before deeper mechanics work:
-
-- Front-row units protect back-row units on the same side. Ordinary physical melee should not target protected back-row units while living front-row blockers remain.
-- Back-row melee actors are protected but limited. They should usually Advance before ordinary physical melee unless they have reach, ranged, flying, or special access.
-- If a side has no living front-row blockers, ordinary melee may reach exposed back-row targets.
 - Flying still occupies a row for UI purposes. Flying can bypass row blockers, and flying targets still require flying, ranged, or anti-flying reach. Do not add a third air lane until a later formal pass needs it.
-- Size, reach traits, equipment, terrain, and abilities should eventually feed into explicit helper predicates for row access instead of ad hoc card or action checks.
+- Group physical plans require every committed physical participant to have a valid contribution path by default. Social group actions can ignore rows unless a mechanic says otherwise.
+
+Future row mechanics can add equipment reach, snare/grab/pull, size, terrain, and ability-specific profile predicates without changing the basic doctrine that intents own reach.
 
 #### Combat Group Planning Doctrine
 

@@ -1093,7 +1093,7 @@ async function runCombatSlotGroupComposerFlow(page) {
     sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
     oldConfirmVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-sync-participants"]')),
     confirmGroupVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]')),
-    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="fight"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-surface="combat-intents"] button[data-command-intent="fight"]')),
     targetIds: App.combatTargetIds
   }));
   assert.strictEqual(state.planActive, true, 'Mobile actor badge should enter combat planner state');
@@ -1101,7 +1101,7 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile actor badge should select current actor plus ally');
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile compose sentence should show actors and target');
   assert.strictEqual(state.oldConfirmVisible, false, 'Mobile slot group compose should not show old Confirm Participants');
-  assert.strictEqual(state.confirmGroupVisible, true, 'Mobile combat planner should expose Confirm Group');
+  assert.strictEqual(state.confirmGroupVisible, false, 'Mobile combat planner should defer Confirm Group until an intent is pending');
   assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
   assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Mobile slot group compose should keep enemy Mark usable');
   assertMobileMicroCardsDoNotOverlap(await mobileMicroCardOverlapMetrics(page, '#mobile-party-strip'), 'Mobile slot group party strip');
@@ -1112,6 +1112,8 @@ async function runCombatSlotGroupComposerFlow(page) {
     combatPlanSelection: App.combatPlanSelection,
     syncCount: App.combatState.syncActions.length,
     pendingIntent: App.combatPlanSelection?.pendingIntent || null,
+    confirmGroupVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-surface="combat-intents"] button[data-command-intent="fight"]')),
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name)
@@ -1119,6 +1121,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.combatPlanSelection?.active, true, 'Mobile Fight should arm planner before confirmation');
   assert.strictEqual(state.syncCount, 0, 'Mobile Fight should not queue before Confirm Group');
   assert.strictEqual(state.pendingIntent, 'fight', 'Mobile Fight should become the pending group intent');
+  assert.strictEqual(state.confirmGroupVisible, true, 'Mobile combat planner should expose Confirm Group after an intent is pending');
+  assert.strictEqual(state.normalFightVisible, false, 'Mobile combat planner should hide the full intent grid while confirming a pending group intent');
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]`).first().click();
   state = await page.evaluate(() => ({
     combatPlanSelection: App.combatPlanSelection,
@@ -1269,7 +1273,7 @@ async function runCombatSlotGroupComposerFlow(page) {
     targetIds: App.combatTargetIds,
     sentence: document.querySelector('#mobile-combat-toolbelt .mobile-combat-selection-sentence')?.innerText || '',
     clearVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="clear-combat-group"]')),
-    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-intent="fight"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-surface="combat-intents"] button[data-command-intent="fight"]')),
     actorBadgeText: document.querySelector('#mobile-party-strip button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.textContent.trim() || '',
     actorBadgeStyle: document.querySelector('#mobile-party-strip button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]')?.getAttribute('style') || ''
   }));
@@ -1277,7 +1281,7 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Mobile target-first flow should select current actor plus ally');
   assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Mobile target-first flow should preserve the marked enemy');
   assert(state.sentence.includes('You') && state.sentence.includes('Ally') && state.sentence.includes('Enemy'), 'Mobile target-first sentence should show actors and target');
-  assert.strictEqual(state.clearVisible, true, 'Mobile slot group compose should expose Clear Group');
+  assert.strictEqual(state.clearVisible, false, 'Mobile slot group compose should defer Clear Group until an intent is pending');
   assert.strictEqual(state.normalFightVisible, true, 'Mobile slot group compose should keep normal intents visible');
   assert.strictEqual(state.actorBadgeText, '', 'Mobile compact combat actor badge should not duplicate the avatar as text');
   assert(state.actorBadgeStyle.includes("--compact-card-icon-content:'X'"), 'Mobile compact combat actor badge should paint the unit avatar/icon');
@@ -1286,6 +1290,9 @@ async function runCombatSlotGroupComposerFlow(page) {
     combatPlanSelection: App.combatPlanSelection,
     syncCount: App.combatState.syncActions.length,
     pendingIntent: App.combatPlanSelection?.pendingIntent || null,
+    confirmGroupVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]')),
+    clearVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="clear-combat-group"]')),
+    normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-surface="combat-intents"] button[data-command-intent="fight"]')),
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name)
@@ -1293,6 +1300,9 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.combatPlanSelection?.active, true, 'Mobile target-first Fight should arm planner before confirmation');
   assert.strictEqual(state.syncCount, 0, 'Mobile target-first Fight should not queue before Confirm Group');
   assert.strictEqual(state.pendingIntent, 'fight', 'Mobile target-first Fight should become the pending group intent');
+  assert.strictEqual(state.confirmGroupVisible, true, 'Mobile target-first planner should expose Confirm Group after an intent is pending');
+  assert.strictEqual(state.clearVisible, true, 'Mobile target-first planner should expose Clear Group after an intent is pending');
+  assert.strictEqual(state.normalFightVisible, false, 'Mobile target-first planner should hide the full intent grid while confirming a pending group intent');
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]`).first().click();
   state = await page.evaluate(() => ({
     combatPlanSelection: App.combatPlanSelection,

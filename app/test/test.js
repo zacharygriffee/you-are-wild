@@ -4612,6 +4612,10 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile command belt should keep a stable layer after stage feedback');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;\n                position: fixed;', 'mobile combat action belt should stay reachable above the dock without being pushed by Scene Beats');
+  assertContains(template, 'max-height: min(238px, 36dvh);\n                overflow-y: visible;', 'mobile combat action belt should reserve enough zero-scroll height for the primary intent grid');
+  assertContains(mobileCombatToolbeltContent, "if (app.targetSelection?.source === 'combat') return '';", 'mobile combat should hide the full intent grid during target confirmation phases');
+  assertContains(mobileCombatToolbeltContent, 'if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide the full intent grid once a group intent is pending');
+  assertContains(mobileCombatToolbeltContent, 'if (!app.combatPlanSelection.pendingIntent) return \'\';', 'mobile combat should hide Confirm/Clear until a group intent is pending');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');

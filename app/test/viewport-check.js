@@ -1842,7 +1842,7 @@ async function checkViewport(browser, name, width, height) {
         active: true,
         round: 1,
         currentTurn: 0,
-        turnQueue: [{ unit: App.player, initiative: 10 }, { unit: enemy, initiative: 5 }],
+        turnQueue: [{ unit: App.player, initiative: 10 }, { unit: App.party[1], initiative: 8 }, { unit: enemy, initiative: 5 }],
         syncActions: [],
         processing: false
       };
@@ -1884,6 +1884,84 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileCombat.descHasBoxedRecent, false, `${name}: mobile combat should not embed the boxed recent-exchange list`);
     assert.strictEqual(mobileCombat.descHasTurnOrder, false, `${name}: mobile combat should not embed the full turn-order box`);
     assert.strictEqual(mobileCombat.pageOverflow, false, `${name}: mobile combat strip should not create horizontal overflow`);
+    if (width === 412 && height === 915) {
+      const groupIntentPhase = await page.evaluate(() => {
+        const enemy = App.creatures[0];
+        const ally = App.party[1];
+        App.combatPlanSelection = {
+          active: true,
+          source: 'combat-planner',
+          actorIds: [App._unitSelectionId(App.player), App._unitSelectionId(ally)],
+          pendingIntent: null,
+          explicitActors: true,
+          hadGroupActors: true
+        };
+        App.combatTargetIds = [App._unitSelectionId(enemy)];
+        App.combatTargetId = App._unitSelectionId(enemy);
+        App.renderMobileCombatToolbelt();
+        const belt = document.getElementById('mobile-combat-toolbelt');
+        const dock = document.querySelector('.mobile-panel-dock');
+        const dockRect = dock.getBoundingClientRect();
+        const buttonRects = Array.from(belt.querySelectorAll('.action-btn')).map(button => {
+          const rect = button.getBoundingClientRect();
+          return {
+            text: button.textContent.trim(),
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height
+          };
+        });
+        return {
+          text: belt.innerText,
+          buttonRects,
+          dockTop: dockRect.top,
+          beltScrollHeight: belt.scrollHeight,
+          beltClientHeight: belt.clientHeight,
+          beltOverflowY: getComputedStyle(belt).overflowY
+        };
+      });
+      const intentLabels = ['Fight', 'Talk', 'Eat', 'Play', 'Feed', 'Flee'];
+      for (const label of intentLabels) {
+        const match = groupIntentPhase.buttonRects.find(button => button.text.includes(label));
+        assert(match, `${name}: group intent phase should expose ${label}`);
+        assert(match.bottom <= groupIntentPhase.dockTop + 1, `${name}: ${label} should be fully reachable above the fixed dock`);
+      }
+      assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Confirm Group')), `${name}: group intent phase should not show Confirm Group before an intent is pending`);
+      assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915`);
+      assert.strictEqual(groupIntentPhase.beltOverflowY, 'visible', `${name}: group intent phase should avoid a nested scroll belt`);
+
+      const groupConfirmPhase = await page.evaluate(() => {
+        App.combatPlanSelection.pendingIntent = 'fight';
+        App.renderMobileCombatToolbelt();
+        const belt = document.getElementById('mobile-combat-toolbelt');
+        const dock = document.querySelector('.mobile-panel-dock');
+        const dockRect = dock.getBoundingClientRect();
+        const buttonRects = Array.from(belt.querySelectorAll('.action-btn')).map(button => {
+          const rect = button.getBoundingClientRect();
+          return {
+            text: button.textContent.trim(),
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height
+          };
+        });
+        return {
+          text: belt.innerText,
+          buttonRects,
+          dockTop: dockRect.top,
+          beltScrollHeight: belt.scrollHeight,
+          beltClientHeight: belt.clientHeight
+        };
+      });
+      const confirm = groupConfirmPhase.buttonRects.find(button => button.text.includes('Confirm Group'));
+      const clear = groupConfirmPhase.buttonRects.find(button => button.text.includes('Clear Group'));
+      assert(confirm && clear, `${name}: group confirm phase should expose Confirm Group and Clear Group`);
+      assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && clear.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
+      assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Eat') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
+      assert(groupConfirmPhase.beltScrollHeight <= groupConfirmPhase.beltClientHeight + 1, `${name}: group confirm phase should not require internal belt scrolling at 412x915`);
+    }
     await page.evaluate(() => {
       App.combatState.active = false;
       App.renderMobileCombatToolbelt();

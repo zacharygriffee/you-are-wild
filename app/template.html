@@ -282,16 +282,23 @@
            ============================================= */
         .stage {
             grid-area: stage;
+            --desktop-side-rail-width: clamp(144px, 13vw, 164px);
+            --desktop-main-stage-width: clamp(
+                620px,
+                calc(100dvw - (var(--space-md) * 4) - (var(--desktop-side-rail-width) * 2)),
+                820px
+            );
             display: grid;
-            grid-template-columns: minmax(720px, 960px) minmax(144px, 164px) minmax(144px, 164px);
+            grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
             grid-template-areas: "main party enemies";
             gap: var(--space-md);
             padding: var(--space-md);
             overflow: hidden;
+            justify-content: center;
         }
 
         .stage.target-panel-empty {
-            grid-template-columns: minmax(720px, 960px) minmax(144px, 164px) 0;
+            grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
         }
 
         /* Panel Base */
@@ -577,15 +584,19 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             text-align: center;
-            padding: var(--space-xl);
+            padding: clamp(16px, 3dvh, 28px) var(--space-xl) var(--space-xl);
+            gap: 10px;
         }
 
         .desktop-play-surface {
-            width: min(100%, 980px);
-            height: clamp(430px, calc(100dvh - 238px), 560px);
+            --desktop-play-surface-width: min(100%, var(--desktop-main-stage-width, 820px));
+            --desktop-play-surface-height: clamp(360px, calc(100dvh - 360px), 500px);
+            width: var(--desktop-play-surface-width);
+            height: var(--desktop-play-surface-height);
+            flex: 0 0 var(--desktop-play-surface-height);
             min-height: 0;
             max-height: 100%;
             position: relative;
@@ -1838,14 +1849,14 @@
 
         .desktop-context-belt {
             display: flex;
-            gap: var(--space-sm);
+            gap: 6px;
             justify-content: center;
             align-items: center;
             flex-wrap: wrap;
             width: 100%;
             max-width: min(100%, 720px);
             margin: var(--space-sm) auto 0;
-            padding: 7px;
+            padding: 6px;
             border: 1px solid var(--border-default);
             border-radius: var(--radius-md);
             background: rgba(26, 26, 46, 0.88);
@@ -1857,7 +1868,7 @@
 
         .desktop-context-belt .composer-control-group {
             display: flex;
-            gap: var(--space-sm);
+            gap: 6px;
             justify-content: center;
             align-items: center;
             flex-wrap: wrap;
@@ -1874,9 +1885,9 @@
 
         .desktop-context-belt .action-btn {
             flex: 0 0 auto;
-            min-width: 78px;
+            min-width: 70px;
             max-width: 120px;
-            padding: 7px 9px;
+            padding: 6px 8px;
         }
 
         .desktop-context-belt .action-caption {
@@ -1892,11 +1903,11 @@
 
         .desktop-context-belt .target-action-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(58px, 82px));
+            grid-template-columns: repeat(auto-fit, minmax(54px, 70px));
             justify-content: center;
-            gap: var(--space-sm);
+            gap: 6px;
             max-width: 100%;
-            width: min(100%, 560px);
+            width: min(100%, 640px);
             min-width: 0;
             overflow-x: hidden;
             margin-inline: auto;
@@ -1905,9 +1916,9 @@
         .desktop-context-belt .target-action-row > .action-btn {
             min-width: 0;
             width: 100%;
-            max-width: 82px;
-            min-height: 52px;
-            padding: 7px 4px;
+            max-width: 70px;
+            min-height: 44px;
+            padding: 5px 4px;
         }
 
         .desktop-context-belt .target-action-row .action-icon {
@@ -3874,21 +3885,33 @@
            ============================================= */
         @media (max-width: 1400px) {
             .stage {
-                grid-template-columns: minmax(660px, 960px) minmax(140px, 156px) minmax(140px, 156px);
+                --desktop-side-rail-width: clamp(140px, 13vw, 156px);
+                --desktop-main-stage-width: clamp(
+                    620px,
+                    calc(100dvw - (var(--space-md) * 4) - (var(--desktop-side-rail-width) * 2)),
+                    820px
+                );
+                grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(660px, 960px) minmax(140px, 156px) 0;
+                grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
             }
         }
 
         @media (max-width: 1200px) {
             .stage {
-                grid-template-columns: minmax(560px, 820px) minmax(136px, 148px) minmax(136px, 148px);
+                --desktop-side-rail-width: clamp(136px, 12vw, 148px);
+                --desktop-main-stage-width: clamp(
+                    560px,
+                    calc(100dvw - (var(--space-md) * 4) - (var(--desktop-side-rail-width) * 2)),
+                    820px
+                );
+                grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
             }
 
             .stage.target-panel-empty {
-                grid-template-columns: minmax(560px, 820px) minmax(136px, 148px) 0;
+                grid-template-columns: minmax(0, var(--desktop-main-stage-width)) var(--desktop-side-rail-width) var(--desktop-side-rail-width);
             }
         }
 

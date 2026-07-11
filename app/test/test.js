@@ -4776,6 +4776,9 @@ test('Desktop play surface uses a 3x3 center-tile layout', () => {
   const centerEnd = template.indexOf('id="desktop-play-cell-e"', centerStart);
   const centerMarkup = template.slice(centerStart, centerEnd);
   assertNotContains(centerMarkup, 'id="scene-actions"', 'Desktop center tile should not contain the legacy action slot');
+  assertNotContains(centerMarkup, 'id="desktop-scene-feed-slot"', 'Desktop center tile should not contain the latest Scene Feed slot');
+  assert(template.indexOf('id="desktop-play-surface"') < template.indexOf('id="desktop-scene-feed-slot"'), 'Desktop Scene Feed should sit below the 3x3/combat surface');
+  assert(template.indexOf('id="desktop-scene-feed-slot"') < template.indexOf('id="desktop-command-composer"'), 'Desktop Scene Feed should stay visible above the composer controls');
   assert(template.indexOf('id="desktop-command-composer"') < template.indexOf('id="scene-actions"'), 'Legacy action slot should live after the command composer, outside the center presentation tile');
   assertContains(template, '.desktop-context-belt .target-action-row', 'desktop target actions should be bounded inside the composer belt');
   assertContains(template, 'width: min(100%, 640px);', 'desktop target action row should have a compact maximum width');

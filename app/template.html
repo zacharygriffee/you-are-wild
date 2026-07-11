@@ -593,7 +593,7 @@
 
         .desktop-play-surface {
             --desktop-play-surface-width: min(100%, var(--desktop-main-stage-width, 820px));
-            --desktop-play-surface-height: clamp(360px, calc(100dvh - 360px), 500px);
+            --desktop-play-surface-height: clamp(320px, calc(100dvh - 430px), 500px);
             width: var(--desktop-play-surface-width);
             height: var(--desktop-play-surface-height);
             flex: 0 0 var(--desktop-play-surface-height);
@@ -1065,7 +1065,7 @@
         .desktop-presence-rail {
             width: 100%;
             max-width: 720px;
-            margin: 8px auto 0;
+            margin: 0 auto;
         }
 
         .desktop-presence-rail .center-presence {
@@ -1611,7 +1611,7 @@
             gap: 6px;
             width: min(100%, 720px);
             max-width: 100%;
-            margin: 6px auto 0;
+            margin: 0 auto;
             min-width: 0;
             position: relative;
             z-index: 4;
@@ -1626,7 +1626,7 @@
         .desktop-scene-feed-slot {
             width: min(100%, 720px);
             max-width: 100%;
-            margin: 8px auto 0;
+            margin: 0 auto;
             padding: 8px 10px;
             display: flex;
             align-items: center;
@@ -1639,8 +1639,7 @@
         }
 
         .desktop-scene-feed-slot {
-            width: min(100%, 680px);
-            margin-top: 12px;
+            width: min(100%, 720px);
             background: rgba(10, 22, 43, 0.72);
         }
 
@@ -7360,19 +7359,19 @@
 	                                        </div>
 	                                        <div class="center-presence-slot" id="center-presence" data-stage-layer="presence" aria-live="polite"></div>
 	                                        <div class="tile-event-feed-slot" id="tile-event-feed" data-stage-layer="event-feed" aria-live="polite"></div>
-                                            <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed" aria-live="polite">
-                                                <div class="desktop-story-copy">
-                                                    <span class="desktop-story-kicker">Scene</span>
-                                                    <div class="story-latest" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest"></div>
-                                                </div>
-                                                <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
-                                            </div>
                                     </div>
                                 </div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-e"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-sw"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-s"></div>
                                 <div class="desktop-play-cell" id="desktop-play-cell-se"></div>
+                            </div>
+                            <div class="desktop-scene-feed-slot" id="desktop-scene-feed-slot" data-surface-role="scene-feed" aria-live="polite">
+                                <div class="desktop-story-copy">
+                                    <span class="desktop-story-kicker">Scene</span>
+                                    <div class="story-latest" id="desktop-scene-feed-latest" data-surface-role="scene-feed-latest"></div>
+                                </div>
+                                <button class="nav-btn desktop-story-expand-btn" data-command-surface="story-controls" data-command-mode="story" data-command-control="open-story-sheet" data-story-count="0" title="Open scene feed" aria-label="Open scene feed">Feed</button>
                             </div>
                             <div class="desktop-presence-rail" id="desktop-presence-rail" data-surface-role="presence-rail" aria-live="polite"></div>
                             <div class="desktop-command-composer" id="desktop-command-composer" data-surface-role="command-composer" data-command-grammar="actor-target-intent" aria-label="Command composer" aria-hidden="true" hidden>

@@ -3627,6 +3627,8 @@
                 if (consumed.length === 0) return true;
                 const consumedActors = consumed.map(entry => entry.actor);
                 const totalPortions = consumed.reduce((sum, entry) => sum + entry.consumed, 0);
+                const depletedNow = Boolean(corpse.depleted && !corpse.remainsDepletionSceneBeatEmitted);
+                if (depletedNow) corpse.remainsDepletionSceneBeatEmitted = true;
                 const actorText = YAW_INTERACTION_STATE.unitNames(this, consumedActors, this.player?.name || this._label('party.you', 'You'));
                 const singularNamedActor = consumedActors.length === 1 && consumedActors[0] !== this.player;
                 const text = CONTENT.actionResult('corpseScavenge', {
@@ -3640,8 +3642,26 @@
                     explicit: true,
                     voreEnabled: this.settings.vore
                 });
+                const sceneText = depletedNow
+                    ? `${text} ${this._label('scene.remainsDepleted', "{target}'s remains are depleted.", { target: corpse.corpseName || corpse.name })}`
+                    : text;
                 this.log.push({ text, type: 'discovery' });
-                this.emitStoryResult({ mode: 'adventure', actors: consumedActors, targets: [corpse], action: 'scavenge' }, text);
+                this.emitStoryResult({
+                    mode: 'adventure',
+                    actors: consumedActors,
+                    targets: [corpse],
+                    action: 'scavenge',
+                    tags: depletedNow ? ['remains', 'depleted'] : ['remains']
+                }, sceneText, {
+                    resultKind: depletedNow ? 'depleted' : 'state',
+                    tags: depletedNow ? ['remains', 'scavenge', 'depleted'] : ['remains', 'scavenge'],
+                    subEvents: depletedNow ? [{
+                        type: 'remains-depleted',
+                        targetId: corpse.id || corpse.name,
+                        targetName: corpse.corpseName || corpse.name,
+                        summary: this._label('scene.remainsDepleted', "{target}'s remains are depleted.", { target: corpse.corpseName || corpse.name })
+                    }] : []
+                });
                 this.renderLog();
                 this.renderParty();
                 this.renderCreatures();

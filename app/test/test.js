@@ -16932,7 +16932,7 @@ test('Control model records accepted mechanics decisions', () => {
   assertContains(nextObjectives, 'Accepted mechanics decisions', 'Next objectives should reference accepted mechanics decisions separately from deferred topics');
   assertContains(nextObjectives, 'Deferred decision count', 'Next objectives should keep the remaining deferred count visible');
   assertContains(nextObjectives, '2 topics remain intentionally deferred', 'Next objectives should reflect updated deferred-topic count');
-  assertContains(nextObjectives, 'Feast V2 core doctrine is now locked enough for implementation', 'Next objectives should stop treating core Feast V2 as decision-blocked');
+  assertContains(nextObjectives, 'core Feast/Containment V2 is implemented', 'Next objectives should record Feast V2 core as implemented instead of decision-blocked');
   assertNotContains(nextObjectives, 'feast/containment redesign, formal row-blocking doctrine', 'Next objectives should not preserve stale undecided feast wording in the status summary');
 });
 
@@ -18782,6 +18782,27 @@ test('Release restores contained prey at reduced condition and clears active con
   assertContains(App.log[App.log.length - 1].text, 'released from You', 'Release should also create a technical Activity Log entry');
 });
 
+test('Release blocks depleted vital containment without restoring prey', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'release-block-holder', stomach: [] });
+  const target = makeUnit('Bunnyfolk', { id: 'release-block-prey', CPun: 20, MPun: 100, size: 2 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [];
+  const prey = App._containTargetIn(actor, target, 'stomach');
+  prey.vitalRemaining = 0;
+  prey.releaseEligible = true;
+
+  const result = App._doSubAction('feast', 'release', actor, target, 'You', '');
+
+  assertContains(result, 'no living prey to release', 'Release should reject depleted vital state');
+  assertEqual(actor.stomach.length, 1, 'Blocked release should keep the containment record for terminal history');
+  assertEqual(App.creatures.includes(prey), false, 'Blocked release should not restore depleted prey to the creature surface');
+  assertEqual(prey.state, 'terminal', 'Normalizing depleted vital state should terminalize the record');
+  assertEqual(prey.releaseEligible, false, 'Depleted vital state should clear release eligibility');
+  assertNotContains(App.latestSceneBeat.summary, 'released from You', 'Blocked release should not emit a release Scene Beat');
+});
+
 test('Chew slurp and fragment use vital damage without creature-piece inventory', () => {
   const { App } = loadAppForCombat(() => 0);
   const actor = makeUnit('You', { id: 'vital-actor', Feas: 40, Feed: 20, size: 6, CPun: 50, MPun: 100, hunger: 50 });
@@ -18868,6 +18889,27 @@ test('Depleted remains preserve corpse record while disabling further scavenge',
   assertEqual(corpse.scavenged, true, 'Legacy scavenged flag should mirror depletion');
   assertEqual(App._canScavengeCorpse(corpse), false, 'Depleted remains should not be scavengeable again');
   assertEqual(App.creatures.includes(corpse), true, 'Depleted remains should remain inspectable until existing decay removes them');
+});
+
+test('Scavenge depletion coalesces a Remains Pool Scene Beat milestone', () => {
+  const { App } = loadAppForCombat(() => 0);
+  const actor = makeUnit('You', { id: 'remains-scene-scavenger', CPun: 20, MPun: 100, hunger: 40, size: 8 });
+  const corpse = makeUnit('Mousefolk', { id: 'mouse-remains-scene', species: 'mouse', disposition: App.DISPOSITION.CORPSE, size: 1, remainingPortions: 1, CPun: 0 });
+  App.player = actor;
+  App.party = [actor];
+  App.creatures = [corpse];
+  App.inventory = [];
+
+  const resolved = App.scavengeCorpse('mouse-remains-scene', [actor]);
+
+  assertEqual(resolved, true, 'Scavenge should resolve through the public corpse action');
+  assertEqual(corpse.depleted, true, 'Scavenge should deplete the Remains Pool');
+  assertEqual(corpse.remainsDepletionSceneBeatEmitted, true, 'Depletion milestone should be marked as emitted');
+  assertContains(App.latestSceneBeat.summary, "Mousefolk's remains are depleted", 'Latest Scene Beat should include the remains depletion milestone');
+  assertEqual(App.latestSceneBeat.resultKind, 'depleted', 'Remains depletion beat should expose depletion result metadata');
+  assertEqual(App.latestSceneBeat.tags.includes('depleted'), true, 'Remains depletion beat should carry depleted tag');
+  assertEqual(App.latestSceneBeat.subEvents.some(entry => entry.type === 'remains-depleted'), true, 'Remains depletion should be represented as sub-event metadata');
+  assertEqual(App.inventory.length, 0, 'Remains depletion should not create creature-piece inventory items');
 });
 
 test('Over-capacity blocks swallow and expanded cards show containment detail', () => {

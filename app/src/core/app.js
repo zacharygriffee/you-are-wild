@@ -276,6 +276,9 @@
             handleComposerSlotClick(slot) {
                 return YAW_INTERACTION_STATE.handleSlotClick(this, slot);
             },
+            clearComposerSlot(slot) {
+                return YAW_INTERACTION_STATE.clearSlot(this, slot);
+            },
             _panelInteractionTrayTitle(mode) {
                 return YAW_PANEL_INTERACTIONS.title(this, mode);
             },
@@ -311,6 +314,9 @@
             },
             setCombatPlanIntent(action) {
                 return YAW_COMBAT_PLANNING.setIntent(this, action);
+            },
+            clearCombatPlanIntent() {
+                return YAW_COMBAT_PLANNING.clearIntent(this);
             },
             confirmCombatPlan() {
                 return YAW_COMBAT_PLANNING.confirm(this);

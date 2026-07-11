@@ -1570,6 +1570,28 @@
             text-underline-offset: 2px;
         }
 
+        .selection-sentence-clear {
+            display: inline-grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            padding: 0;
+            border: 1px solid rgba(255, 115, 178, 0.42);
+            border-radius: 50%;
+            background: rgba(255, 115, 178, 0.12);
+            color: var(--accent-pink);
+            font: 800 12px/1 var(--font-ui);
+            cursor: pointer;
+        }
+
+        .selection-sentence-clear:hover,
+        .selection-sentence-clear:focus-visible {
+            border-color: var(--accent-pink);
+            background: rgba(255, 115, 178, 0.22);
+            outline: none;
+        }
+
         .selection-sentence-change {
             color: var(--accent-cyan);
             font-size: 9px;
@@ -5599,7 +5621,7 @@
                 width: auto;
                 background: rgba(26, 26, 46, 0.96);
                 box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.22);
-                max-height: min(238px, 36dvh);
+                max-height: min(268px, 40dvh);
                 overflow-y: visible;
             }
 

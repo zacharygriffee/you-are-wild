@@ -308,6 +308,24 @@ const YAW_INTERACTION_STATE = {
         return app.combatState?.active ? this.combatSentence(app) : this.explorationSentence(app);
     },
 
+    isSlotClearable(app, part) {
+        if (!part?.slot) return false;
+        if (app.combatState?.active) {
+            if (part.slot === 'actor') return Boolean(app.combatPlanSelection?.active || app.syncSelection?.active);
+            if (part.slot === 'target') return Boolean(
+                (app._combatMarkedTargets?.() || []).length > 0 ||
+                app.targetSelection?.source === 'combat' ||
+                (app.syncSelection?.active && app.syncSelection.phase === 'target')
+            );
+            if (part.slot === 'intent') return Boolean(app.combatPlanSelection?.pendingIntent || app.targetSelection?.source === 'combat' || app.feedSelection?.active);
+            return false;
+        }
+        if (part.slot === 'actor') return Boolean(app.explorationActorSelectionExplicit);
+        if (part.slot === 'target') return Boolean((app._getExplorationTargets?.() || []).length > 0 || app.focusedStageObject?.name);
+        if (part.slot === 'intent') return Boolean(app.focusedStageObject?.intent && app.focusedStageObject.intent !== 'choose');
+        return false;
+    },
+
     sentenceHtml(app, parts = []) {
         if (!parts.length) return '';
         return parts.map((part, index) => {
@@ -321,8 +339,73 @@ const YAW_INTERACTION_STATE = {
             const change = part.slot === 'actor' || part.slot === 'target'
                 ? `<span class="selection-sentence-change">${app._escapeHtml(app._label('ui.change', 'Change'))}</span>`
                 : '';
-            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"${countAttr}${intentAttr}><button type="button" class="selection-sentence-slot" data-command-surface="command-sentence" data-command-control="open-${slot}-slot" data-command-slot="${slot}"${countAttr}${intentAttr} title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.handleComposerSlotClick('${slot}')"><span class="selection-sentence-label">${label}</span><span class="selection-sentence-value">${value}</span>${change}</button></span>`;
+            const clearable = this.isSlotClearable(app, part);
+            const clearTitle = app._escapeHtml(app._label('target.clearSlot', 'Clear {slot}: {value}', { slot: part.label, value: part.value }));
+            const clear = clearable
+                ? `<button type="button" class="selection-sentence-clear" data-command-surface="command-sentence" data-command-control="clear-${slot}-slot" data-command-slot="${slot}" title="${clearTitle}" aria-label="${clearTitle}" onclick="event.stopPropagation();App.clearComposerSlot('${slot}')">×</button>`
+                : '';
+            return `${arrow}<span class="selection-sentence-part" data-command-slot="${slot}"${countAttr}${intentAttr}><button type="button" class="selection-sentence-slot" data-command-surface="command-sentence" data-command-control="open-${slot}-slot" data-command-slot="${slot}"${countAttr}${intentAttr} title="${title}" aria-label="${title}" onclick="event.stopPropagation();App.handleComposerSlotClick('${slot}')"><span class="selection-sentence-label">${label}</span><span class="selection-sentence-value">${value}</span>${change}</button>${clear}</span>`;
         }).join('');
+    },
+
+    clearSlot(app, slot) {
+        if (!slot) return false;
+        if (app.combatState?.active) {
+            if (slot === 'actor') {
+                if (app.combatPlanSelection?.active) return app.clearCombatPlan?.('slot-clear') || false;
+                if (app.syncSelection?.active) {
+                    app.cancelTargetSelection?.();
+                    return true;
+                }
+                return false;
+            }
+            if (slot === 'target') {
+                app.combatCorrectionMessage = null;
+                app.combatTargetId = null;
+                app.combatTargetIds = [];
+                if (app.syncSelection?.active && app.syncSelection.phase === 'target') app.syncSelection.phase = 'participants';
+                app._renderInteractionState({ exploration: false, toolbelt: true });
+                return true;
+            }
+            if (slot === 'intent') {
+                if (app.combatPlanSelection?.active && app.combatPlanSelection.pendingIntent) return app.clearCombatPlanIntent?.() || false;
+                if (app.targetSelection?.source === 'combat') {
+                    const targets = app.combatTargetIds || [];
+                    app.targetSelection = null;
+                    app.combatCorrectionMessage = null;
+                    app.combatTargetIds = targets;
+                    app.combatTargetId = targets[0] || null;
+                    app._renderInteractionState({ exploration: false, toolbelt: true });
+                    return true;
+                }
+                if (app.feedSelection?.active) {
+                    app.feedSelection = null;
+                    app._renderInteractionState({ exploration: false, toolbelt: true });
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        }
+        if (slot === 'actor') {
+            app.explorationActorIds = [];
+            app.explorationActorId = null;
+            app.explorationActorSelectionExplicit = false;
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            return true;
+        }
+        if (slot === 'target') {
+            app.focusedStageObject = null;
+            app.clearExplorationTargets?.();
+            return true;
+        }
+        if (slot === 'intent') {
+            if (!app.focusedStageObject) return false;
+            app.focusedStageObject = null;
+            app._renderInteractionState({ exploration: true, toolbelt: false });
+            return true;
+        }
+        return false;
     },
 
     handleSlotClick(app, slot) {

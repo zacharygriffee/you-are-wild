@@ -231,9 +231,8 @@ async function clickIntentAndTarget(page, action) {
   const target = page.locator('#enemies-content button[data-command-control="mark-combat-target"]').first();
   await assert.doesNotReject(() => target.waitFor({ state: 'visible', timeout: 1000 }), `${action} should render a target mark button`);
   await target.click();
-  const confirm = page.locator('#desktop-context-belt button[data-command-control="confirm-targets"]').first();
-  await assert.doesNotReject(() => confirm.waitFor({ state: 'visible', timeout: 1000 }), `${action} should render target confirmation`);
-  await confirm.click();
+  const confirmCount = await page.locator('#desktop-context-belt button[data-command-control="confirm-targets"]').count();
+  assert.strictEqual(confirmCount, 0, `${action} should resolve from target tap without a generic target confirmation`);
 }
 
 async function mobileCombatToolbeltMetrics(page) {
@@ -502,11 +501,14 @@ async function runCombatTargetFirstComposerFlow(page) {
     commandTargetIds: App.lastIntentCommand?.targetIds || [],
     commandAction: App.lastIntentCommand?.action || ''
   }));
-  assert.strictEqual(state.enemyPun, 100, 'Desktop Mark + Fight should arm a plan, not resolve immediately');
-  assert.strictEqual(state.combatTargetId, 'enemy-1', 'Desktop armed plan should preserve the marked target');
-  assert.strictEqual(state.targetSelection, null, 'Desktop armed plan should not enter quick target-pick state');
-  assert.strictEqual(state.planActive, true, 'Desktop Mark + Fight should create combat planner state');
-  assert.strictEqual(state.pendingIntent, 'fight', 'Desktop Mark + Fight should arm Fight as the pending intent');
+  assert.strictEqual(state.commandAction, 'fight', 'Desktop Mark + Fight should resolve directly without a generic Confirm Action step');
+  assert.strictEqual(state.combatTargetId, null, 'Desktop direct Mark + Fight should clear the combat target after resolving');
+  assert.strictEqual(state.targetSelection, null, 'Desktop direct Mark + Fight should leave no target-pick state');
+  assert.strictEqual(state.planActive, false, 'Desktop direct Mark + Fight should not create combat planner state');
+  assert.strictEqual(state.pendingIntent, null, 'Desktop direct Mark + Fight should leave no pending intent');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop direct Mark + Fight should dispatch from the combat composer');
+  assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Desktop direct Mark + Fight should dispatch the marked enemy id');
+  assert.strictEqual(state.commandAction, 'fight', 'Desktop direct Mark + Fight should dispatch the selected intent');
 
   await setupCombat(page);
   await page.locator(`#desktop-context-belt button[onclick*="executeCombatIntent('fight')"]`).first().click();
@@ -588,13 +590,16 @@ async function runCombatTargetFirstComposerFlow(page) {
     planActive: Boolean(App.combatPlanSelection?.active),
     pendingIntent: App.combatPlanSelection?.pendingIntent || null,
     commandSource: App.lastIntentCommand?.source || '',
-    commandTargetIds: App.lastIntentCommand?.targetIds || []
+    commandTargetIds: App.lastIntentCommand?.targetIds || [],
+    commandAction: App.lastIntentCommand?.action || ''
   }));
-  assert.strictEqual(state.enemyPun, 100, 'Mobile Mark + Fight should arm a plan, not resolve immediately');
-  assert.strictEqual(state.combatTargetId, 'enemy-1', 'Mobile armed plan should preserve the marked target');
-  assert.strictEqual(state.targetSelection, null, 'Mobile armed plan should not enter quick target-pick state');
-  assert.strictEqual(state.planActive, true, 'Mobile Mark + Fight should create combat planner state');
-  assert.strictEqual(state.pendingIntent, 'fight', 'Mobile Mark + Fight should arm Fight as the pending intent');
+  assert.strictEqual(state.commandAction, 'fight', 'Mobile Mark + Fight should resolve directly without a generic Confirm Action step');
+  assert.strictEqual(state.combatTargetId, null, 'Mobile direct Mark + Fight should clear the combat target after resolving');
+  assert.strictEqual(state.targetSelection, null, 'Mobile direct Mark + Fight should leave no target-pick state');
+  assert.strictEqual(state.planActive, false, 'Mobile direct Mark + Fight should not create combat planner state');
+  assert.strictEqual(state.pendingIntent, null, 'Mobile direct Mark + Fight should leave no pending intent');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile direct Mark + Fight should dispatch from the combat composer');
+  assert.deepStrictEqual(state.commandTargetIds, ['enemy-1'], 'Mobile direct Mark + Fight should dispatch the marked enemy id');
 
   await setupCombat(page);
   await page.locator(`#mobile-combat-toolbelt button[onclick*="executeCombatIntent('fight')"]`).first().click();
@@ -813,19 +818,10 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   assert.strictEqual(state.centerHasControls, false, 'Desktop multi-enemy target picking should keep center free of controls');
 
   await page.locator(`#enemies-content button[onclick*="front-enemy"]`).click();
-  await page.locator(`#enemies-content button[onclick*="back-enemy"]`).click();
   state = await page.evaluate(() => ({
     markedTargets: App.combatTargetIds || [],
     targetCount: document.querySelector('#selection-sentence')?.getAttribute('data-command-target-count') || '',
-    confirmDisabled: document.querySelector('#desktop-context-belt button[data-command-control="confirm-targets"]')?.hasAttribute('disabled') || false,
-    frontSelected: document.querySelector('#enemies-content .compact-tactical-card')?.classList.contains('selected-target') || false
-  }));
-  assert.deepStrictEqual(state.markedTargets, ['front-enemy', 'back-enemy'], 'Desktop target clicks should mark multiple selected enemies');
-  assert.strictEqual(state.targetCount, '2', 'Desktop command sentence should expose marked target count before confirmation');
-  assert.strictEqual(state.confirmDisabled, false, 'Desktop target confirmation should enable after a target mark');
-  assert.strictEqual(state.frontSelected, true, 'Desktop marked front-row card should expose selected-target state');
-  await page.locator('#desktop-context-belt button[data-command-control="confirm-targets"]').click();
-  state = await page.evaluate(() => ({
+    confirmVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-targets"]')),
     frontPle: App.creatures.find(unit => unit.id === 'front-enemy')?.CPle,
     backPle: App.creatures.find(unit => unit.id === 'back-enemy')?.CPle,
     targetSelection: App.targetSelection,
@@ -833,11 +829,14 @@ async function runMultiEnemyCombatTargetingFlow(page) {
     commandTargets: App.lastIntentCommand?.targetIds || [],
     centerHasIntentControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
-  assert(state.frontPle > 0, 'Desktop confirmation should affect the selected front enemy');
-  assert(state.backPle > 0, 'Desktop confirmation should affect the second marked enemy');
-  assert.strictEqual(state.targetSelection, null, 'Desktop front-row pick should clear target-pick state');
-  assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop front-row confirmation should preserve composer source');
-  assert.deepStrictEqual(state.commandTargets, ['front-enemy', 'back-enemy'], 'Desktop confirmation should record every selected enemy id');
+  assert.deepStrictEqual(state.markedTargets, [], 'Desktop target tap should not leave marked targets waiting for confirmation');
+  assert(['', '0'].includes(state.targetCount), 'Desktop command sentence should not expose pending marked targets after direct resolution');
+  assert.strictEqual(state.confirmVisible, false, 'Desktop target tap should not require a generic Confirm Action button');
+  assert(state.frontPle > 0, 'Desktop target tap should affect the selected front enemy');
+  assert.strictEqual(state.backPle, 0, 'Desktop single target tap should not affect an unselected second enemy');
+  assert.strictEqual(state.targetSelection, null, 'Desktop front-row target tap should clear target-pick state');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Desktop front-row target tap should preserve composer source');
+  assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Desktop target tap should record the selected enemy id');
   assert.strictEqual(state.centerHasIntentControls, false, 'Desktop multi-enemy resolution should keep center free of intent/action controls');
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -888,19 +887,10 @@ async function runMultiEnemyCombatTargetingFlow(page) {
   assert.strictEqual(state.centerHasControls, false, 'Mobile multi-enemy target picking should keep center free of controls');
 
   await page.locator(`#mobile-creature-strip button[onclick*="front-enemy"]`).click();
-  await page.locator(`#mobile-creature-strip button[onclick*="back-enemy"]`).click();
   state = await page.evaluate(() => ({
     markedTargets: App.combatTargetIds || [],
     targetCount: document.querySelector('#mobile-combat-toolbelt')?.getAttribute('data-command-target-count') || '',
-    confirmDisabled: document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]')?.hasAttribute('disabled') || false,
-    frontSelected: document.querySelector('#mobile-creature-strip .mobile-unit-chip')?.classList.contains('selected-target') || false
-  }));
-  assert.deepStrictEqual(state.markedTargets, ['front-enemy', 'back-enemy'], 'Mobile target clicks should mark multiple selected enemies');
-  assert.strictEqual(state.targetCount, '2', 'Mobile combat toolbelt should expose marked target count before confirmation');
-  assert.strictEqual(state.confirmDisabled, false, 'Mobile target confirmation should enable after a target mark');
-  assert.strictEqual(state.frontSelected, true, 'Mobile marked front-row chip should expose selected-target state');
-  await page.locator('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]').click();
-  state = await page.evaluate(() => ({
+    confirmVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]')),
     frontPle: App.creatures.find(unit => unit.id === 'front-enemy')?.CPle,
     backPle: App.creatures.find(unit => unit.id === 'back-enemy')?.CPle,
     targetSelection: App.targetSelection,
@@ -909,12 +899,15 @@ async function runMultiEnemyCombatTargetingFlow(page) {
     toolbeltActive: document.querySelector('#mobile-combat-toolbelt')?.classList.contains('active') || false,
     centerHasIntentControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
-  assert(state.frontPle > 0, 'Mobile confirmation should affect the selected front enemy');
-  assert(state.backPle > 0, 'Mobile confirmation should affect the second marked enemy');
-  assert.strictEqual(state.targetSelection, null, 'Mobile front-row pick should clear target-pick state');
-  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile front-row confirmation should preserve composer source');
-  assert.deepStrictEqual(state.commandTargets, ['front-enemy', 'back-enemy'], 'Mobile confirmation should record every selected enemy id');
-  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after multi-enemy resolution');
+  assert.deepStrictEqual(state.markedTargets, [], 'Mobile target tap should not leave marked targets waiting for confirmation');
+  assert.strictEqual(state.targetCount, '0', 'Mobile combat toolbelt should clear target count after direct resolution');
+  assert.strictEqual(state.confirmVisible, false, 'Mobile target tap should not require a generic Confirm Action button');
+  assert(state.frontPle > 0, 'Mobile target tap should affect the selected front enemy');
+  assert.strictEqual(state.backPle, 0, 'Mobile single target tap should not affect an unselected second enemy');
+  assert.strictEqual(state.targetSelection, null, 'Mobile front-row target tap should clear target-pick state');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile front-row target tap should preserve composer source');
+  assert.deepStrictEqual(state.commandTargets, ['front-enemy'], 'Mobile target tap should record the selected enemy id');
+  assert.strictEqual(state.toolbeltActive, true, 'Mobile combat toolbelt should remain active after direct target resolution');
   assert.strictEqual(state.centerHasIntentControls, false, 'Mobile multi-enemy resolution should keep center free of intent/action controls');
   await page.setViewportSize({ width: 1365, height: 768 });
 }
@@ -984,7 +977,8 @@ async function runCombatSlotGroupComposerFlow(page) {
     sentence: document.querySelector('#selection-sentence')?.innerText || '',
     oldConfirmVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-sync-participants"]')),
     confirmGroupVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="confirm-combat-plan"]')),
-    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-intent="fight"]')),
+    clearGroupVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-control="clear-combat-group"]')),
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-surface="combat-intents"][data-command-intent="fight"]')),
     centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.planActive, true, 'Desktop actor badge should enter combat planner state');
@@ -992,7 +986,8 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop actor badge should select current actor plus ally');
   assert(state.sentence.includes('You') && state.sentence.includes('Ally'), 'Desktop group compose sentence should show both actors');
   assert.strictEqual(state.oldConfirmVisible, false, 'Desktop slot group compose should not show old Confirm Participants');
-  assert.strictEqual(state.confirmGroupVisible, true, 'Desktop combat planner should expose Confirm Group');
+  assert.strictEqual(state.confirmGroupVisible, false, 'Desktop combat planner should defer group commit until an intent is pending');
+  assert.strictEqual(state.clearGroupVisible, true, 'Desktop combat planner should expose compact Clear while actors are selected');
   assert.strictEqual(state.normalFightVisible, true, 'Desktop slot group compose should keep normal intents visible');
   assert.strictEqual(state.centerHasControls, false, 'Desktop slot group compose should keep center stage free of controls');
 
@@ -1016,12 +1011,18 @@ async function runCombatSlotGroupComposerFlow(page) {
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
     queuedParticipants: (App.combatState.syncActions[0]?.participants || []).map(unit => unit.id || unit.name),
+    commitText: document.querySelector('#desktop-context-belt button[data-command-control="confirm-combat-plan"]')?.textContent.trim() || '',
+    genericConfirmVisible: /Confirm Action|Confirm Group/.test(document.querySelector('#desktop-context-belt')?.textContent || ''),
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-surface="combat-intents"][data-command-intent="fight"]')),
     centerHasControls: /executeCombatIntent|unit-combat-actions|data-command-surface="combat-intents"|selectSyncParticipants|confirmSyncParticipants/.test(document.querySelector('#desktop-play-cell-center')?.innerHTML || '')
   }));
   assert.strictEqual(state.combatPlanSelection?.active, true, 'Desktop Fight should arm planner before confirmation');
   assert.strictEqual(state.targetSelection, null, 'Desktop slot group queue should leave no target-pick state');
   assert.strictEqual(state.syncCount, 0, 'Desktop Fight should not queue before Confirm Group');
   assert.strictEqual(state.pendingIntent, 'fight', 'Desktop Fight should become the pending group intent');
+  assert.strictEqual(state.commitText, 'Commit Group Fight', 'Desktop pending group plan should use an intent-owned commit label');
+  assert.strictEqual(state.genericConfirmVisible, false, 'Desktop pending group plan should not show a generic Confirm Action or Confirm Group label');
+  assert.strictEqual(state.normalFightVisible, false, 'Desktop pending group plan should hide the full intent grid while confirming');
   assert.strictEqual(state.advanced, false, 'Desktop armed group plan should not advance the current turn');
 
   await page.locator(`#desktop-context-belt button[data-command-control="confirm-combat-plan"]`).first().click();
@@ -1113,6 +1114,8 @@ async function runCombatSlotGroupComposerFlow(page) {
     syncCount: App.combatState.syncActions.length,
     pendingIntent: App.combatPlanSelection?.pendingIntent || null,
     confirmGroupVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]')),
+    commitText: document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]')?.textContent.trim() || '',
+    genericConfirmVisible: /Confirm Action|Confirm Group/.test(document.querySelector('#mobile-combat-toolbelt')?.textContent || ''),
     normalFightVisible: Boolean(document.querySelector('#mobile-combat-toolbelt [data-command-surface="combat-intents"] button[data-command-intent="fight"]')),
     queuedType: App.combatState.syncActions[0]?.type || '',
     queuedTarget: App.combatState.syncActions[0]?.target?.id || '',
@@ -1121,7 +1124,9 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.combatPlanSelection?.active, true, 'Mobile Fight should arm planner before confirmation');
   assert.strictEqual(state.syncCount, 0, 'Mobile Fight should not queue before Confirm Group');
   assert.strictEqual(state.pendingIntent, 'fight', 'Mobile Fight should become the pending group intent');
-  assert.strictEqual(state.confirmGroupVisible, true, 'Mobile combat planner should expose Confirm Group after an intent is pending');
+  assert.strictEqual(state.confirmGroupVisible, true, 'Mobile combat planner should expose a group commit after an intent is pending');
+  assert.strictEqual(state.commitText, 'Commit Group Fight', 'Mobile pending group plan should use an intent-owned commit label');
+  assert.strictEqual(state.genericConfirmVisible, false, 'Mobile pending group plan should not show a generic Confirm Action or Confirm Group label');
   assert.strictEqual(state.normalFightVisible, false, 'Mobile combat planner should hide the full intent grid while confirming a pending group intent');
   await page.locator(`#mobile-combat-toolbelt button[data-command-control="confirm-combat-plan"]`).first().click();
   state = await page.evaluate(() => ({
@@ -1179,6 +1184,47 @@ async function runCombatSlotGroupComposerFlow(page) {
   assert.strictEqual(state.actorBadgeText, '', 'Desktop compact combat actor badge should not duplicate the avatar as text');
   assert(state.actorBadgeStyle.includes("--compact-card-icon-content:'X'"), 'Desktop compact combat actor badge should paint the unit avatar/icon');
 
+  await page.locator(`#selection-sentence button[data-command-control="clear-target-slot"]`).first().click();
+  state = await page.evaluate(() => ({
+    planActive: Boolean(App.combatPlanSelection?.active),
+    participants: App._combatPlanActors().map(unit => unit.id || unit.name),
+    targetIds: App.combatTargetIds,
+    pendingIntent: App.combatPlanSelection?.pendingIntent || null
+  }));
+  assert.strictEqual(state.planActive, true, 'Desktop target slot clear should preserve group actor planning');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop target slot clear should preserve selected actors');
+  assert.deepStrictEqual(state.targetIds, [], 'Desktop target slot clear should clear only marked targets');
+  assert.strictEqual(state.pendingIntent, null, 'Desktop target slot clear should not invent a pending intent');
+
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  await page.locator(`#desktop-context-belt button[data-command-intent="fight"]`).first().click();
+  await page.locator(`#selection-sentence button[data-command-control="clear-intent-slot"]`).first().click();
+  state = await page.evaluate(() => ({
+    planActive: Boolean(App.combatPlanSelection?.active),
+    participants: App._combatPlanActors().map(unit => unit.id || unit.name),
+    targetIds: App.combatTargetIds,
+    pendingIntent: App.combatPlanSelection?.pendingIntent || null,
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-surface="combat-intents"][data-command-intent="fight"]'))
+  }));
+  assert.strictEqual(state.planActive, true, 'Desktop intent slot clear should preserve group actor planning');
+  assert.deepStrictEqual(state.participants, ['player-1', 'ally-1'], 'Desktop intent slot clear should preserve selected actors');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Desktop intent slot clear should preserve marked target');
+  assert.strictEqual(state.pendingIntent, null, 'Desktop intent slot clear should clear only the pending intent');
+  assert.strictEqual(state.normalFightVisible, true, 'Desktop intent slot clear should restore the normal intent grid');
+
+  await page.locator(`#selection-sentence button[data-command-control="clear-actor-slot"]`).first().click();
+  state = await page.evaluate(() => ({
+    combatPlanSelection: App.combatPlanSelection,
+    targetIds: App.combatTargetIds,
+    normalFightVisible: Boolean(document.querySelector('#desktop-context-belt button[data-command-surface="combat-intents"][data-command-intent="fight"]'))
+  }));
+  assert.strictEqual(state.combatPlanSelection, null, 'Desktop actor slot clear should exit explicit group actor planning');
+  assert.deepStrictEqual(state.targetIds, ['enemy-1'], 'Desktop actor slot clear should preserve marked target for current actor');
+  assert.strictEqual(state.normalFightVisible, true, 'Desktop actor slot clear should keep normal combat intents usable');
+
+  await prepare();
+  await page.locator(`#enemies-content button[data-command-control="mark-combat-target"]`).first().click();
+  await page.locator(`#party-content button[data-command-surface="combat-plan-actors"][onclick*="ally-1"]`).first().click();
   await page.locator(`#desktop-context-belt button[data-command-control="clear-combat-group"]`).first().click();
   state = await page.evaluate(() => ({
     combatPlanSelection: App.combatPlanSelection,
@@ -2900,18 +2946,19 @@ async function runMobileSelectionAndCombatFlow(page) {
   assert.strictEqual(state.hasAdventureMark, false, 'Mobile combat target picking should not render adventure Mark controls');
 
   await mobilePick.click();
-  await page.locator('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]').first().click();
   state = await page.evaluate(() => {
     return {
       enemyPun: App.creatures.find(unit => unit.id === 'enemy-1')?.CPun,
       targetSelection: App.targetSelection,
+      confirmVisible: Boolean(document.querySelector('#mobile-combat-toolbelt button[data-command-control="confirm-targets"]')),
       commandSource: App.lastIntentCommand?.source || '',
       centerHasActorControls: window.__yawCenterHasActorControlsOutsideBattleStack()
     };
   });
-  assert(state.enemyPun < 100, 'Mobile combat target confirmation should resolve the selected fight target');
-  assert.strictEqual(state.targetSelection, null, 'Mobile combat target confirmation should clear target selection after resolving');
-  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile combat target confirmation should identify the composer command surface');
+  assert(state.enemyPun < 100, 'Mobile combat target tap should resolve the selected fight target without a generic Confirm Action');
+  assert.strictEqual(state.targetSelection, null, 'Mobile combat target tap should clear target selection after resolving');
+  assert.strictEqual(state.confirmVisible, false, 'Mobile combat target-pick should not render a generic Confirm Action button');
+  assert.strictEqual(state.commandSource, 'combat-composer', 'Mobile combat target tap should identify the composer command surface');
   assert.strictEqual(state.centerHasActorControls, false, 'Center tile should stay free of actor controls after mobile combat resolution');
 
   await page.setViewportSize({ width: 1365, height: 768 });

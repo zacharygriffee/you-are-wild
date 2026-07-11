@@ -27,6 +27,13 @@ const YAW_COMBAT_INTENTS = {
         app.activeActor = current;
         if (action === 'fight' || action === 'flirt' || action === 'fuck' || action === 'feast' || action === 'scavenge') {
             if (action !== 'scavenge' && YAW_COMBAT_PLANNING.shouldPlanIntent(app)) {
+                if (!YAW_COMBAT_PLANNING.requiresCommit(app)) {
+                    if (app._combatMarkedTarget?.()) {
+                        return app._executeCombatIntentOnMarkedTarget(action, current);
+                    }
+                    app.selectTarget(action);
+                    return true;
+                }
                 return app.setCombatPlanIntent(action);
             }
             if (action !== 'scavenge' && app._isCombatGroupCompose?.() && (app._syncSelectedParticipants?.() || []).length > 1) {

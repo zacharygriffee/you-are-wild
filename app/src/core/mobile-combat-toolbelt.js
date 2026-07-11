@@ -54,7 +54,9 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.combatPlanSelection?.active) {
             if (!app.combatPlanSelection.pendingIntent) return '';
             const controls = app._combatPlanControls?.() || '';
-            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(app._label('combat.group.confirm', 'Confirm Group'))}">${controls}</div>` : '';
+            const intentLabel = app._uiLabel(app.combatPlanSelection.pendingIntent);
+            const phaseLabel = app._label('combat.group.commitIntent', 'Commit Group {intent}', { intent: intentLabel });
+            return controls ? `<div class="mobile-combat-intents mobile-combat-phase-controls" data-command-surface="combat-planner" data-command-mode="combat" data-command-grammar="actor-target-intent" role="group" aria-label="${app._escapeHtml(phaseLabel)}">${controls}</div>` : '';
         }
         if (app._isCombatGroupCompose?.()) {
             const clearGroup = app._label('combat.group.clear', 'Clear Group');
@@ -98,11 +100,7 @@ const YAW_MOBILE_COMBAT_TOOLBELT = {
         if (app.targetSelection?.source === 'combat') {
             const actionLabel = app._uiLabel(app.targetSelection.action || 'action');
             const cancelAction = app._label('target.cancelAction', 'Cancel {action}', { action: actionLabel }) || cancelLabel;
-            const targetCount = (app._combatMarkedTargets?.() || []).length;
-            const confirmLabel = app._label('target.confirmAction', 'Confirm {action}', { action: actionLabel });
-            const confirmAttrs = `data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="confirm-targets" data-command-slot="intent"${targetCount > 0 ? '' : ' disabled aria-disabled="true"'}`;
-            const confirm = button(confirmLabel, 'event.stopPropagation();App.confirmCombatTargets()', `action-btn primary${targetCount > 0 ? '' : ' disabled'}`, confirmLabel, confirmAttrs);
-            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', confirm + button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"'));
+            return row(app._label('target.controls', 'Target controls'), 'combat-targeting', button(cancelAction, 'event.stopPropagation();App.cancelTargetSelection()', 'action-btn compact-secondary', cancelAction, 'data-command-surface="combat-targeting" data-command-mode="combat" data-command-grammar="actor-target-intent" data-command-control="cancel-targeting" data-command-slot="exit"'));
         }
         return '';
     },

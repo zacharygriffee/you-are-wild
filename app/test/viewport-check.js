@@ -2056,7 +2056,7 @@ async function checkViewport(browser, name, width, height) {
         assert(match, `${name}: group intent phase should expose ${label}`);
         assert(match.bottom <= groupIntentPhase.dockTop + 1, `${name}: ${label} should be fully reachable above the fixed dock`);
       }
-      assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Confirm Group')), `${name}: group intent phase should not show Confirm Group before an intent is pending`);
+      assert(!groupIntentPhase.buttonRects.some(button => button.text.includes('Commit Group')), `${name}: group intent phase should not show a group commit before an intent is pending`);
       assert(groupIntentPhase.beltScrollHeight <= groupIntentPhase.beltClientHeight + 1, `${name}: group intent phase should not require internal belt scrolling at 412x915`);
       assert.strictEqual(groupIntentPhase.beltOverflowY, 'visible', `${name}: group intent phase should avoid a nested scroll belt`);
 
@@ -2084,9 +2084,9 @@ async function checkViewport(browser, name, width, height) {
           beltClientHeight: belt.clientHeight
         };
       });
-      const confirm = groupConfirmPhase.buttonRects.find(button => button.text.includes('Confirm Group'));
-      const clear = groupConfirmPhase.buttonRects.find(button => button.text.includes('Clear Group'));
-      assert(confirm && clear, `${name}: group confirm phase should expose Confirm Group and Clear Group`);
+      const confirm = groupConfirmPhase.buttonRects.find(button => button.text.includes('Commit Group Fight'));
+      const clear = groupConfirmPhase.buttonRects.find(button => button.text === 'Clear');
+      assert(confirm && clear, `${name}: group confirm phase should expose intent-owned commit and compact Clear controls`);
       assert(confirm.bottom <= groupConfirmPhase.dockTop + 1 && clear.bottom <= groupConfirmPhase.dockTop + 1, `${name}: group confirm controls should stay above the fixed dock`);
       assert(!groupConfirmPhase.buttonRects.some(button => button.text.includes('Talk') || button.text.includes('Eat') || button.text.includes('Play')), `${name}: group confirm phase should not keep the full intent grid visible`);
       assert(groupConfirmPhase.beltScrollHeight <= groupConfirmPhase.beltClientHeight + 1, `${name}: group confirm phase should not require internal belt scrolling at 412x915`);

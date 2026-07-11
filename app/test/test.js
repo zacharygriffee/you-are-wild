@@ -13274,7 +13274,7 @@ test('Selection sentence mirrors combat target-pick state without changing actio
   assertEqual(App.targetSelection.action, 'fight', 'Combat sentence should not rename internal action ids');
   App.renderDesktopCombatComposer(player);
   assertContains(elements.get('desktop-context-belt').innerHTML, 'aria-label="Cancel Fight"', 'Desktop combat target tray should expose cancellation controls');
-  assertContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="confirm-targets"', 'Desktop combat target tray should expose explicit target confirmation');
+  assertNotContains(elements.get('desktop-context-belt').innerHTML, 'data-command-control="confirm-targets"', 'Desktop combat target tray should not expose a generic target confirmation');
   assertNotContains(elements.get('desktop-context-belt').innerHTML, 'selected-target-summary', 'Desktop combat target tray should leave target-pick summary to the composer sentence');
   App.toggleCombatTarget('enemy-sentence');
   html = App.renderSelectionSentence();

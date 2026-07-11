@@ -90,6 +90,11 @@ const YAW_COMBAT_TARGETING = {
         if (targetPickActive && !this.canSelectCreatureTarget(app, target)) return false;
         app.combatCorrectionMessage = null;
         const unitId = app._unitSelectionId(target);
+        if (targetPickActive) {
+            app.combatTargetIds = [unitId];
+            app.combatTargetId = unitId;
+            return this.executeIntentOnMarkedTarget(app, app.targetSelection.action, app.activeActor || app._currentCombatActor() || app.player);
+        }
         const ids = this.targetIds(app);
         app.combatTargetIds = ids.includes(unitId)
             ? ids.filter(existing => existing !== unitId)
@@ -133,6 +138,7 @@ const YAW_COMBAT_TARGETING = {
         app.combatTargetId = null;
         app.combatTargetIds = [];
         app.targetSelection = null;
+        app.combatPlanSelection = null;
         return app._dispatchInteractionCommand(command);
     },
 
@@ -234,7 +240,10 @@ const YAW_COMBAT_TARGETING = {
         }
         const actor = app.activeActor || app.player;
         if (app.targetSelection?.source === 'combat' && action !== 'scavenge') {
-            return this.toggleMarkedTarget(app, targetId);
+            if (!this.canSelectCreatureTarget(app, target)) return false;
+            app.combatTargetIds = [app._unitSelectionId(target)];
+            app.combatTargetId = app.combatTargetIds[0];
+            return this.executeIntentOnMarkedTarget(app, action, actor);
         }
         const command = app._buildPanelInteractionCommand({
             mode: 'combat',

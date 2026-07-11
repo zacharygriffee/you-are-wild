@@ -3996,11 +3996,15 @@
             }
 
             .stage {
+                display: block;
                 grid-template-columns: 1fr;
                 grid-template-areas: "main";
                 padding: 8px;
                 gap: 8px;
-                overflow: hidden;
+                overflow-x: hidden;
+                overflow-y: auto;
+                overscroll-behavior-y: contain;
+                -webkit-overflow-scrolling: touch;
                 min-width: 0;
                 min-height: 0;
                 max-width: 100vw;
@@ -4239,7 +4243,8 @@
 	                display: flex;
 	                flex-direction: column;
 	                gap: 8px;
-	                min-height: 0;
+                    box-sizing: border-box;
+	                min-height: 100dvh;
 	                overflow: visible;
 	                padding-bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 10px);
 	            }
@@ -4258,15 +4263,15 @@
             }
 
             .mobile-play-surface.has-control-belt {
-                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 18px);
+                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-compact-height) + env(safe-area-inset-bottom) + 72px);
             }
 
             .mobile-play-surface.has-control-belt.control-belt-expanded {
-                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 22px);
+                padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 72px);
             }
 
             .mobile-play-surface.combat-active {
-                padding-bottom: calc(var(--mobile-dock-height) + min(260px, 42dvh) + env(safe-area-inset-bottom) + 24px);
+                padding-bottom: calc(var(--mobile-dock-height) + min(180px, 30dvh) + env(safe-area-inset-bottom) + 92px);
             }
 
             .mobile-play-surface.has-control-belt .mobile-map-card {
@@ -4304,6 +4309,7 @@
 
             .mobile-map-card {
                 order: 1;
+                margin-top: clamp(140px, 26dvh, 260px);
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
@@ -4561,6 +4567,14 @@
                     --mobile-map-height: 324px;
                 }
 
+                .mobile-map-card {
+                    margin-top: clamp(24px, 7dvh, 52px);
+                }
+
+                .mobile-play-surface.combat-active .mobile-unit-strips {
+                    margin-top: clamp(40px, 10dvh, 72px);
+                }
+
                 .mobile-play-surface {
                     gap: 4px;
                 }
@@ -4716,7 +4730,7 @@
                 display: flex;
                 align-items: center;
                 min-width: 0;
-                order: 3;
+                order: 0;
                 padding: 0 2px;
             }
 
@@ -4870,6 +4884,14 @@
             }
 
             @media (max-width: 380px) {
+                .mobile-map-card {
+                    margin-top: clamp(72px, 18dvh, 140px);
+                }
+
+                .mobile-play-surface.combat-active .mobile-unit-strips {
+                    margin-top: clamp(96px, 22dvh, 160px);
+                }
+
                 .mobile-control-belt.target-controls-open {
                     max-height: min(176px, 24dvh);
                 }
@@ -5558,7 +5580,8 @@
                 order: 2;
                 display: flex;
                 flex-direction: column;
-                flex: 1 1 auto;
+                flex: 0 0 auto;
+                margin-top: clamp(180px, 34dvh, 300px);
                 min-height: 0;
                 overflow: visible;
                 overscroll-behavior: contain;
@@ -5578,7 +5601,7 @@
                 width: auto;
                 background: rgba(26, 26, 46, 0.96);
                 box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.22);
-                max-height: min(260px, 42dvh);
+                max-height: min(180px, 30dvh);
                 overflow-y: auto;
             }
 

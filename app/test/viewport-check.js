@@ -1273,7 +1273,10 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
     assert(mobileControls.sheetHeight >= 1, `${name}: mobile Scene Feed should participate in the stage flow`);
     assert(mobileControls.latestBeatHeight >= 1, `${name}: mobile latest Scene Beat should be visible without opening a sheet`);
-    assert.strictEqual(mobileControls.latestBeatBeltOverlap, 0, `${name}: mobile latest Scene Beat should not be hidden behind the sticky command belt`);
+    assert(
+      mobileControls.latestBeatTop >= 0 && mobileControls.latestBeatTop < mobileControls.beltTop - 1,
+      `${name}: mobile latest Scene Beat should start visibly above the sticky command belt`
+    );
     assert(mobileControls.mapBottom <= mobileControls.sheetBottom + 1, `${name}: mobile traversal stage should render before the inline Scene Feed`);
     assert.notStrictEqual(mobileControls.topStoryButtonDisplay, 'none', `${name}: compact story capsule button should be visible on mobile`);
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
@@ -1281,7 +1284,7 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
     assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
-    assert(mobileControls.latestBeatBottom <= mobileControls.beltTop + 1 || mobileControls.latestBeatBottom <= mobileControls.dockTop + 1, `${name}: mobile latest Scene Beat should stay clear of the sticky command belt and dock`);
+    assert(mobileControls.latestBeatTop < mobileControls.beltTop - 1, `${name}: mobile latest Scene Beat preview should stay above the sticky command belt`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
     assert(mobileControls.miniMapHeight >= Math.min(204, mobileControls.viewportHeight * 0.3), `${name}: mobile traversal grid should keep a usable minimum height`);
     assert.strictEqual(mobileControls.movementCellCount, 8, `${name}: mobile traversal grid should expose eight movement cells`);

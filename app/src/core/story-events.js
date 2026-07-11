@@ -628,6 +628,36 @@ const YAW_STORY_EVENTS = {
         element.classList.toggle('scene-beat-highlight', Boolean(event) && !hidden);
     },
 
+    bindMobileNewBeatIndicator(app) {
+        const indicator = document.getElementById('mobile-new-beat-indicator');
+        const scroller = document.querySelector('#panel-main .panel-content');
+        if (!indicator || !scroller || indicator.dataset.bound === 'true') return;
+        indicator.dataset.bound = 'true';
+        const update = () => {
+            const hasBeat = Boolean(app.latestStoryEvent);
+            indicator.hidden = !hasBeat || scroller.scrollTop <= 24;
+        };
+        indicator.addEventListener('click', () => {
+            const feed = document.getElementById('mobile-story-latest');
+            if (feed) {
+                feed.scrollIntoView({ block: 'start', behavior: document.body.classList.contains('reduced-motion') ? 'auto' : 'smooth' });
+            } else {
+                scroller.scrollTop = 0;
+            }
+            indicator.hidden = true;
+        });
+        scroller.addEventListener('scroll', update, { passive: true });
+        update();
+    },
+
+    updateMobileNewBeatIndicator(app) {
+        const indicator = document.getElementById('mobile-new-beat-indicator');
+        const scroller = document.querySelector('#panel-main .panel-content');
+        if (!indicator || !scroller) return;
+        this.bindMobileNewBeatIndicator(app);
+        indicator.hidden = !app.latestStoryEvent || scroller.scrollTop <= 24;
+    },
+
     deltaLabel(app, delta) {
         if (typeof delta === 'string') return delta;
         if (!delta || typeof delta !== 'object') return String(delta || '');
@@ -692,6 +722,7 @@ const YAW_STORY_EVENTS = {
         if (mobileLatest) {
             this.applyStreamElement(app, mobileLatest, latest, streamHtml);
         }
+        this.updateMobileNewBeatIndicator(app);
         const desktopSceneLatest = document.getElementById('desktop-scene-feed-latest');
         if (desktopSceneLatest) this.applyStreamElement(app, desktopSceneLatest, latest, streamHtml);
         document.querySelectorAll?.('.desktop-combat-story-latest, .mobile-combat-story-latest').forEach(el => {

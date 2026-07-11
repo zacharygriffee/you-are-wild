@@ -3928,8 +3928,8 @@
             :root {
                 --mobile-actions-height: 0px;
                 --mobile-dock-height: 58px;
-                --mobile-control-belt-compact-height: 104px;
-                --mobile-control-belt-max-height: 164px;
+                --mobile-control-belt-compact-height: 112px;
+                --mobile-control-belt-max-height: 286px;
                 --mobile-scene-height: clamp(112px, 17dvh, 148px);
                 --mobile-map-height: clamp(336px, 38dvh, 340px);
             }
@@ -4270,11 +4270,18 @@
                 padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 72px);
             }
 
+            .mobile-play-surface.has-control-belt.actor-controls-open,
+            .mobile-play-surface.has-control-belt.target-controls-open,
+            .mobile-play-surface.has-control-belt.target-picker-open {
+                padding-bottom: calc(var(--mobile-dock-height) + min(var(--mobile-control-belt-max-height), 34dvh) + env(safe-area-inset-bottom) + 76px);
+            }
+
             .mobile-play-surface.combat-active {
                 padding-bottom: calc(var(--mobile-dock-height) + min(238px, 36dvh) + env(safe-area-inset-bottom) + 92px);
             }
 
             .mobile-play-surface.has-control-belt .mobile-map-card {
+                margin-top: clamp(24px, 6dvh, 64px);
                 flex-basis: clamp(304px, 34dvh, 312px);
                 height: clamp(304px, 34dvh, 312px);
                 min-height: clamp(304px, 34dvh, 312px);
@@ -4293,10 +4300,21 @@
             }
 
             .mobile-play-surface.control-belt-expanded .mobile-map-card {
+                margin-top: clamp(12px, 3dvh, 30px);
                 flex-basis: clamp(268px, 31dvh, 292px);
                 height: clamp(268px, 31dvh, 292px);
                 min-height: clamp(268px, 31dvh, 292px);
                 max-height: clamp(268px, 31dvh, 292px);
+            }
+
+            .mobile-play-surface.actor-controls-open .mobile-map-card,
+            .mobile-play-surface.target-controls-open .mobile-map-card,
+            .mobile-play-surface.target-picker-open .mobile-map-card {
+                margin-top: clamp(8px, 2.5dvh, 24px);
+                flex-basis: clamp(248px, 28dvh, 268px);
+                height: clamp(248px, 28dvh, 268px);
+                min-height: clamp(248px, 28dvh, 268px);
+                max-height: clamp(248px, 28dvh, 268px);
             }
 
             .mobile-map-card,
@@ -4636,11 +4654,11 @@
             }
 
             .mobile-control-belt.expanded-controls-open {
-                max-height: min(var(--mobile-control-belt-max-height), 18dvh);
+                max-height: min(var(--mobile-control-belt-max-height), 34dvh);
             }
 
             .mobile-control-belt.actor-controls-open {
-                max-height: min(236px, 28dvh);
+                max-height: min(var(--mobile-control-belt-max-height), 34dvh);
                 overflow-y: visible;
             }
 
@@ -4685,7 +4703,7 @@
             .mobile-control-belt.target-controls-open {
                 gap: 4px;
                 padding: 6px;
-                max-height: min(208px, 28dvh);
+                max-height: min(var(--mobile-control-belt-max-height), 34dvh);
             }
 
             .mobile-control-belt.target-controls-open .mobile-selection-sentence {
@@ -4848,7 +4866,7 @@
             }
 
             .mobile-control-belt.target-controls-open.actor-controls-open {
-                max-height: min(236px, 28dvh);
+                max-height: min(var(--mobile-control-belt-max-height), 34dvh);
                 overflow-y: visible;
             }
 
@@ -4992,7 +5010,7 @@
             }
 
             .mobile-control-belt.target-picker-open {
-                max-height: min(236px, 28dvh);
+                max-height: min(var(--mobile-control-belt-max-height), 34dvh);
                 overflow-y: visible;
             }
 

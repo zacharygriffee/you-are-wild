@@ -1352,9 +1352,12 @@ async function checkViewport(browser, name, width, height) {
       const dock = document.querySelector('.mobile-panel-dock');
       const cue = document.getElementById('mobile-creature-presence-cue');
       const picker = document.getElementById('mobile-target-picker-belt');
+      const belt = document.getElementById('mobile-control-belt');
       const cueButton = cue?.querySelector('button');
       const cueRect = cue.getBoundingClientRect();
       const dockRect = dock.getBoundingClientRect();
+      const beltRect = belt.getBoundingClientRect();
+      const pickerRect = picker.getBoundingClientRect();
       const detailButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-strip-details-btn'));
       const detailRects = detailButtons.map(button => {
         const rect = button.getBoundingClientRect();
@@ -1379,9 +1382,26 @@ async function checkViewport(browser, name, width, height) {
           ariaLabel: button.getAttribute('aria-label') || button.closest('button')?.getAttribute('aria-label') || ''
         };
       }).filter(rect => rect.width > 0 && rect.height > 0);
+      const targetChipRects = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-target-picker-chip')).map(chip => {
+        const rect = chip.getBoundingClientRect();
+        return {
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height
+        };
+      }).filter(rect => rect.width > 0 && rect.height > 0);
       const result = {
         pickerOpen: App.mobileTargetPickerOpen,
         pickerVisible: Boolean(picker && getComputedStyle(picker).display !== 'none' && picker.getBoundingClientRect().height > 0),
+        beltAboveDock: beltRect.bottom <= dockRect.top + 1,
+        pickerAboveDock: pickerRect.bottom <= dockRect.top + 1,
+        pickerInsideBelt: pickerRect.top >= beltRect.top - 1 && pickerRect.bottom <= beltRect.bottom + 1,
+        targetChipCount: targetChipRects.length,
+        targetChipsAboveDock: targetChipRects.every(rect => rect.bottom <= dockRect.top + 1),
+        targetChipsInsideBelt: targetChipRects.every(rect => rect.top >= beltRect.top - 1 && rect.bottom <= beltRect.bottom + 1),
+        beltScrollHeight: belt.scrollHeight,
+        beltClientHeight: belt.clientHeight,
         cueVisible: Boolean(cueButton) && getComputedStyle(cue).display !== 'none' && cueRect.width > 0 && cueRect.height > 0,
         detailCount: detailRects.length,
         minDetailWidth: Math.min(...detailRects.map(rect => rect.width)),
@@ -1403,6 +1423,9 @@ async function checkViewport(browser, name, width, height) {
     });
     assert.strictEqual(openedTargetPicker.pickerOpen, true, `${name}: Target slot should open the lightweight target picker`);
     assert.strictEqual(openedTargetPicker.pickerVisible, true, `${name}: open target picker should be visible`);
+    assert.strictEqual(openedTargetPicker.beltAboveDock, true, `${name}: open target picker belt should stay above the fixed dock`);
+    assert.strictEqual(openedTargetPicker.pickerAboveDock, true, `${name}: open target picker should stay above the fixed dock`);
+    assert.strictEqual(openedTargetPicker.pickerInsideBelt, true, `${name}: open target picker should fit inside the fixed command belt`);
     assert.strictEqual(openedTargetPicker.cueVisible, false, `${name}: open target picker should suppress the duplicate mobile creature cue`);
     assert(openedTargetPicker.detailCount >= 1, `${name}: open target picker should expose an explicit Details route`);
     assert(openedTargetPicker.minDetailWidth >= 40 && openedTargetPicker.minDetailHeight >= 40, `${name}: target picker Details route should keep a usable icon tap target`);
@@ -1411,9 +1434,74 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(openedTargetPicker.detailsAccessible, true, `${name}: target picker Details route should keep title and aria-label text`);
     assert.strictEqual(openedTargetPicker.detailsAboveDock, true, `${name}: target picker Details route should stay above the fixed dock`);
     assert(openedTargetPicker.targetButtonCount >= 1, `${name}: open target picker should expose compact target toggle controls`);
+    assert(openedTargetPicker.targetChipCount >= 2, `${name}: open target picker should expose target and utility chips`);
+    assert.strictEqual(openedTargetPicker.targetChipsAboveDock, true, `${name}: open target picker chips should stay fully above the fixed dock`);
+    assert.strictEqual(openedTargetPicker.targetChipsInsideBelt, true, `${name}: open target picker chips should fit inside the fixed command belt`);
+    assert(openedTargetPicker.beltScrollHeight <= openedTargetPicker.beltClientHeight + 1, `${name}: open target picker should not require internal belt scrolling`);
     assert(openedTargetPicker.maxTargetButtonWidth <= 44 && openedTargetPicker.maxTargetButtonHeight <= 44, `${name}: target picker toggles should stay compact and icon-sized while preserving touch area`);
     assert.strictEqual(openedTargetPicker.maxTargetButtonFontSize, 0, `${name}: target picker toggles should hide visible text labels`);
     assert.strictEqual(openedTargetPicker.targetButtonsAccessible, true, `${name}: icon-only target picker toggles should keep title and aria-label text`);
+    await page.evaluate(() => {
+      App.mobileActorBeltOpen = false;
+      App.mobileTargetPickerOpen = false;
+      App.renderMobileExplorationControls?.();
+      App.toggleMobileActorBelt?.();
+    });
+    await page.waitForTimeout(80);
+    const openedActorPicker = await page.evaluate(() => {
+      const dock = document.querySelector('.mobile-panel-dock');
+      const belt = document.getElementById('mobile-control-belt');
+      const actorBelt = document.getElementById('mobile-actor-belt');
+      const map = document.querySelector('.mobile-map-card');
+      const dockRect = dock.getBoundingClientRect();
+      const beltRect = belt.getBoundingClientRect();
+      const actorBeltRect = actorBelt.getBoundingClientRect();
+      const mapRect = map.getBoundingClientRect();
+      const chips = Array.from(actorBelt.querySelectorAll('.mobile-actor-chip, .mobile-unit-chip, .compact-tactical-card')).map(chip => {
+        const rect = chip.getBoundingClientRect();
+        return {
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+          height: rect.height
+        };
+      }).filter(rect => rect.width > 0 && rect.height > 0);
+      return {
+        actorBeltOpen: Boolean(App.mobileActorBeltOpen),
+        beltHasControls: belt.classList.contains('has-controls'),
+        beltActorClass: belt.classList.contains('actor-controls-open'),
+        surfaceActorClass: document.getElementById('mobile-play-surface')?.classList.contains('actor-controls-open') || false,
+        beltAboveDock: beltRect.bottom <= dockRect.top + 1,
+        actorBeltVisible: getComputedStyle(actorBelt).display !== 'none' && actorBeltRect.width > 0 && actorBeltRect.height > 0,
+        actorBeltAboveDock: actorBeltRect.bottom <= dockRect.top + 1,
+        actorBeltInsideBelt: actorBeltRect.top >= beltRect.top - 1 && actorBeltRect.bottom <= beltRect.bottom + 1,
+        actorChipCount: chips.length,
+        actorChipsAboveDock: chips.every(rect => rect.bottom <= dockRect.top + 1),
+        actorChipsInsideBelt: chips.every(rect => rect.top >= beltRect.top - 1 && rect.bottom <= beltRect.bottom + 1),
+        beltScrollHeight: belt.scrollHeight,
+        beltClientHeight: belt.clientHeight,
+        mapTop: mapRect.top
+      };
+    });
+    assert.strictEqual(openedActorPicker.actorBeltOpen, true, `${name}: Actor slot should open the lightweight actor picker`);
+    assert.strictEqual(openedActorPicker.beltHasControls, true, `${name}: open actor picker should populate the command belt`);
+    assert.strictEqual(openedActorPicker.beltActorClass, true, `${name}: open actor picker should set actor-controls-open on the command belt`);
+    assert.strictEqual(openedActorPicker.surfaceActorClass, true, `${name}: open actor picker should set actor-controls-open on the play surface`);
+    assert.strictEqual(openedActorPicker.beltAboveDock, true, `${name}: open actor picker belt should stay above the fixed dock`);
+    assert.strictEqual(openedActorPicker.actorBeltVisible, true, `${name}: open actor picker should be visible`);
+    assert.strictEqual(openedActorPicker.actorBeltAboveDock, true, `${name}: open actor picker should stay fully above the fixed dock`);
+    assert.strictEqual(openedActorPicker.actorBeltInsideBelt, true, `${name}: open actor picker should fit inside the fixed command belt`);
+    assert(openedActorPicker.actorChipCount >= 3, `${name}: open actor picker should expose exit, actors, and details chips`);
+    assert.strictEqual(openedActorPicker.actorChipsAboveDock, true, `${name}: open actor picker chips should stay fully above the fixed dock`);
+    assert.strictEqual(openedActorPicker.actorChipsInsideBelt, true, `${name}: open actor picker chips should fit inside the fixed command belt`);
+    assert(openedActorPicker.beltScrollHeight <= openedActorPicker.beltClientHeight + 1, `${name}: open actor picker should not require internal belt scrolling`);
+    assert(openedActorPicker.mapTop < 140, `${name}: active actor controls should shrink the top presentation spacer`);
+    await page.evaluate(() => {
+      App.mobileActorBeltOpen = false;
+      App.renderMobileExplorationControls?.();
+    });
     assert.strictEqual(mobileControls.moveToggleHidden, true, `${name}: dormant move toggle should be hidden while map traversal is primary`);
     assert.strictEqual(mobileControls.moveToggleHeight, 0, `${name}: hidden move toggle should not consume vertical space`);
     assert.strictEqual(mobileControls.moveExpanded, false, `${name}: move pad should start collapsed`);

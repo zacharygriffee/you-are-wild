@@ -4265,6 +4265,10 @@
                 padding-bottom: calc(var(--mobile-dock-height) + var(--mobile-control-belt-max-height) + env(safe-area-inset-bottom) + 22px);
             }
 
+            .mobile-play-surface.combat-active {
+                padding-bottom: calc(var(--mobile-dock-height) + min(260px, 42dvh) + env(safe-area-inset-bottom) + 24px);
+            }
+
             .mobile-play-surface.has-control-belt .mobile-map-card {
                 flex-basis: clamp(304px, 34dvh, 312px);
                 height: clamp(304px, 34dvh, 312px);
@@ -4601,10 +4605,12 @@
                 border: 1px solid var(--border-default);
                 border-radius: var(--radius-md);
                 background: rgba(26, 26, 46, 0.94);
-                position: sticky;
+                position: fixed;
+                left: max(8px, calc((100vw - 430px) / 2 + 8px));
+                right: max(8px, calc((100vw - 430px) / 2 + 8px));
                 bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
                 z-index: 78;
-                width: 100%;
+                width: auto;
                 max-height: var(--mobile-control-belt-compact-height);
                 overflow-y: visible;
                 overscroll-behavior: contain;
@@ -5563,12 +5569,17 @@
             }
 
             .mobile-play-surface.combat-active #mobile-combat-toolbelt {
-                order: 3;
-                position: sticky;
+                order: 4;
+                position: fixed;
+                left: max(8px, calc((100vw - 430px) / 2 + 8px));
+                right: max(8px, calc((100vw - 430px) / 2 + 8px));
                 bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);
                 z-index: 78;
+                width: auto;
                 background: rgba(26, 26, 46, 0.96);
                 box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.22);
+                max-height: min(260px, 42dvh);
+                overflow-y: auto;
             }
 
             .mobile-play-surface.combat-active #mobile-party-card {
@@ -6386,16 +6397,30 @@
                 pointer-events: none;
             }
 
-            .mobile-play-surface.combat-active .mobile-scene-sheet {
+            .mobile-play-surface.combat-active .mobile-scene-sheet:not(.rich-content) {
                 order: 1;
-                flex: 0 0 auto;
-                height: auto;
-                min-height: 0;
-                max-height: none;
-                overflow: visible;
-                padding: 0;
-                border: 0;
-                background: transparent;
+                display: contents;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-header,
+            .mobile-play-surface.combat-active .mobile-scene-description,
+            .mobile-play-surface.combat-active .mobile-story-latest {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-header {
+                order: 1;
+                margin-bottom: 0;
+            }
+
+            .mobile-play-surface.combat-active .mobile-scene-description {
+                order: 1;
+            }
+
+            .mobile-play-surface.combat-active .mobile-story-latest {
+                order: 3;
+                margin-top: 0;
             }
 
             .mobile-combat-latest-strip {
@@ -6465,12 +6490,9 @@
             }
 
             .mobile-play-surface.combat-active .mobile-scene-title,
-            .mobile-play-surface.combat-active #mobile-tile-event-feed {
-                display: none;
-            }
-
+            .mobile-play-surface.combat-active #mobile-tile-event-feed,
             .mobile-play-surface.combat-active .mobile-activity-log {
-                margin-top: 6px;
+                display: none;
             }
 
             .mobile-activity-log[open] {

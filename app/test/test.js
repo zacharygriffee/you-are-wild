@@ -4569,7 +4569,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-scene-sheet {\n                order: 2;', 'mobile Scene Feed should sit below the mode-specific stage area');
   assertContains(template, 'height: auto;\n                min-height: 0;\n                max-height: none;\n                overflow: visible;', 'normal mobile Scene Feed should flow with the primary stage scroll instead of creating a nested scroll container');
   assertContains(template, '.mobile-play-surface:not(.combat-active) .mobile-scene-header', 'mobile exploration Scene Feed should keep review access without consuming a full feedback row');
-  assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet', 'mobile combat scene should opt out of fixed exploration height');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-scene-sheet:not(.rich-content)', 'mobile combat scene should split context and feed ordering without creating a nested feed box');
+  assertContains(template, '.mobile-play-surface.combat-active .mobile-story-latest {\n                order: 3;', 'mobile combat Scene Feed should render after enemy and party belts');
   assertContains(template, '.mobile-story-latest', 'mobile Scene Feed should expose the latest beat inline in the stage');
   assertContains(template, 'display: flex;\n                flex-direction: column;', 'mobile map card should stack tile info above the navigation map');
   assertContains(template, 'grid-template-columns: minmax(48px, 1fr) minmax(176px, 1.95fr) minmax(48px, 1fr);', 'mobile routine play should use a true 3x3 surface with a finger-sized center');
@@ -4607,8 +4608,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.details-drawer-open .mobile-control-belt', 'mobile details drawers should pause normal composer rails behind the drawer');
   assertContains(template, '.mobile-control-belt.target-controls-open .mobile-creature-presence-cue', 'mobile marked-target controls should suppress lower-priority cue rows inside the fixed belt');
   assertContains(template, '.mobile-play-surface.has-control-belt', 'mobile play surface should reserve bottom space when the context belt is populated');
-  assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile sticky control belt should sit after stage feedback and before compact cast rails');
-  assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 3;\n                position: sticky;', 'mobile combat action belt should stay reachable as a sticky control stack after combat strips');
+  assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile command belt should keep a stable layer after stage feedback');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;\n                position: fixed;', 'mobile combat action belt should stay reachable above the dock without being pushed by Scene Beats');
   assertContains(template, '.mobile-location-actions', 'mobile location actions should have bounded control-belt styling');
   assertNotContains(template, 'class="mobile-scene-actions action-bar"', 'mobile presentation sheet should not own location action controls');
   assertContains(template, 'id="mobile-target-action-tray"', 'mobile marked-target actions should have a visible exploration tray');
@@ -4646,7 +4647,7 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, "onclick=\"App.move(1,1)\"", 'mobile movement pad should mirror southeast traversal');
   assert(template.indexOf('id="mobile-tile-info"') < template.indexOf('id="mobile-mini-map"'), 'Mobile current tile info should render above the navigation map');
   assertContains(template, '.mobile-control-belt {\n                order: 4;', 'mobile exploration controls should sit below the inline Scene Feed');
-  assertContains(template, 'position: sticky;\n                bottom: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom) + 8px);', 'mobile context belt should stay reachable above the fixed dock');
+  assertContains(template, 'position: fixed;\n                left: max(8px, calc((100vw - 430px) / 2 + 8px));', 'mobile context belt should stay viewport-anchored above the fixed dock');
   assertContains(template, 'overflow-y: visible;', 'normal mobile composer should avoid an internal vertical scroll container');
   assertContains(template, '.mobile-panel-dock {\n                order: 4;', 'mobile panel shortcuts should sit below the exploration control belt');
   assertContains(template, 'position: fixed;\n                left: 50%;', 'mobile panel dock should stay anchored to the viewport');
@@ -4670,8 +4671,8 @@ test('Mobile gameplay surface keeps map units and scene together', () => {
   assertContains(template, '.mobile-play-surface.combat-active .mobile-map-card {\n                display: none;', 'combat mode should hide map navigation');
   assertContains(template, '.mobile-play-surface.combat-active .mobile-unit-strips {\n                order: 2;', 'combat unit strips should participate in the battle surface after traversal is hidden');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-creature-card {\n                order: 1;', 'combat enemy strip should render above the party strip');
-  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 2;', 'combat party strip should render before the sticky combat composer');
-  assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 3;', 'combat prompt should render after combat strips as a sticky composer');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 2;', 'combat party strip should render before the Scene Beat stream');
+  assertContains(template, '.mobile-play-surface.combat-active #mobile-combat-toolbelt {\n                order: 4;', 'combat prompt should render as a fixed composer after combat strips and Scene Feed');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-card {\n                order: 2;\n                max-height: none;\n                overflow: visible;', 'combat party card should not clip expanded medium party chips');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-strip {\n                max-height: none;\n                align-items: flex-start;\n                overflow-y: visible;', 'combat party strip should grow vertically for medium party cards');
   assertContains(template, '.mobile-play-surface.combat-active #mobile-party-strip .mobile-unit-chip.density-medium {\n                max-height: none;\n                overflow: visible;', 'combat medium party chips should not clip their own content');

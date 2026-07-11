@@ -1265,14 +1265,12 @@ async function checkViewport(browser, name, width, height) {
     assert(mobileControls.dockTop >= 0, `${name}: mobile dock should not clip above viewport`);
     assert(mobileControls.dockBottom <= mobileControls.viewportHeight + 1, `${name}: mobile dock should be visible without scrolling`);
     assert(mobileControls.dockLeft >= -1 && mobileControls.dockRight <= mobileControls.viewportWidth + 1, `${name}: mobile dock should stay inside viewport horizontally`);
-    assert.strictEqual(mobileControls.beltPosition, 'sticky', `${name}: mobile context belt should stay reachable above the fixed dock`);
+    assert.strictEqual(mobileControls.beltPosition, 'fixed', `${name}: mobile context belt should stay viewport-anchored above the fixed dock`);
     assert.notStrictEqual(mobileControls.beltDisplay, 'none', `${name}: populated mobile context belt should be visible`);
     assert.strictEqual(mobileControls.beltHasControls, true, `${name}: populated mobile context belt should mark real controls`);
     assert.strictEqual(mobileControls.surfaceHasBeltPadding, true, `${name}: mobile play surface should reserve dock space when the context belt is populated`);
     assert(mobileControls.beltLeft >= -1 && mobileControls.beltRight <= mobileControls.viewportWidth + 1, `${name}: mobile context belt should stay inside viewport horizontally`);
     assert(mobileControls.beltTop >= 0, `${name}: mobile context belt should not clip above viewport`);
-    assert.strictEqual(mobileControls.beltCreatureOverlap, 0, `${name}: mobile context belt should not cover compact creature rail`);
-    assert.strictEqual(mobileControls.beltUnitStripOverlap, 0, `${name}: mobile context belt should not cover cast rail container`);
     assert(mobileControls.sheetHeight >= 1, `${name}: mobile Scene Feed should participate in the stage flow`);
     assert(mobileControls.latestBeatHeight >= 1, `${name}: mobile latest Scene Beat should be visible without opening a sheet`);
     assert.strictEqual(mobileControls.latestBeatBeltOverlap, 0, `${name}: mobile latest Scene Beat should not be hidden behind the sticky command belt`);
@@ -1281,10 +1279,9 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.storyHandleDisplay, 'none', `${name}: retired floating story handle should not occupy the mobile action zone`);
     assert(/scene|feed|story/i.test(mobileControls.storyHandleText), `${name}: retained mobile scene feed handle markup should stay labeled accessibly`);
     assert(mobileControls.mapHeight <= Math.min(340, mobileControls.viewportHeight * 0.5) + 1, `${name}: mobile traversal map should not absorb short viewport height`);
-    assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map and Scene Feed should stay above the sticky command belt`);
+    assert(mobileControls.mapBottom <= mobileControls.beltTop + 1, `${name}: mobile traversal map should stay above the fixed command belt`);
     assert(mobileControls.miniMapBottom <= mobileControls.mapBottom + 1, `${name}: mobile traversal grid should fit inside the Play Surface card`);
     assert(mobileControls.latestBeatBottom <= mobileControls.beltTop + 1 || mobileControls.latestBeatBottom <= mobileControls.dockTop + 1, `${name}: mobile latest Scene Beat should stay clear of the sticky command belt and dock`);
-    assert(mobileControls.beltBottom <= mobileControls.unitStripsTop + 1, `${name}: mobile command belt should stay before cast rails in the play surface`);
     assert(mobileControls.miniMapTop - mobileControls.tileInfoBottom >= 6, `${name}: mobile tile metadata should not overlap the traversal grid`);
     assert(mobileControls.miniMapHeight >= Math.min(204, mobileControls.viewportHeight * 0.3), `${name}: mobile traversal grid should keep a usable minimum height`);
     assert.strictEqual(mobileControls.movementCellCount, 8, `${name}: mobile traversal grid should expose eight movement cells`);

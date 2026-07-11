@@ -1319,6 +1319,40 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(mobileControls.creatureCueVisible, true, `${name}: baseline mobile play should expose a creature cue without opening the full target rail`);
     assert(mobileControls.creatureCueText.includes('Here:'), `${name}: baseline mobile creature cue should summarize the first visible creature`);
     assert.strictEqual(mobileControls.creatureCueInSheet, false, `${name}: mobile creature cue should not reintroduce a HERE block into the presentation sheet`);
+    const hingeDelta = (before, after) => Math.abs(Number(before) - Number(after));
+    const assertStableMobileMapHinge = (state) => {
+      assert(
+        hingeDelta(mobileControls.mapTop, state.mapTop) <= 2,
+        `${name}: mobile hinge should keep the map top stable when ${state.label} appears`
+      );
+      assert(
+        hingeDelta(mobileControls.mapBottom, state.mapBottom) <= 2,
+        `${name}: mobile hinge should keep the map bottom stable when ${state.label} appears`
+      );
+    };
+    const locationActionHinge = await page.evaluate(() => {
+      const tile = App.getTile?.(App.location?.x || 0, App.location?.y || 0);
+      const previousStructure = tile ? tile.structure : null;
+      if (tile) tile.structure = 'camp';
+      App.renderMap?.();
+      App.renderExplorationActions?.();
+      App.renderMobileExplorationControls?.();
+      const mapRect = document.querySelector('.mobile-map-card').getBoundingClientRect();
+      const actions = document.getElementById('mobile-explore-actions');
+      const result = {
+        label: 'location actions',
+        mapTop: mapRect.top,
+        mapBottom: mapRect.bottom,
+        hasEnter: /Enter/.test(actions?.innerText || '')
+      };
+      if (tile) tile.structure = previousStructure;
+      App.renderMap?.();
+      App.renderExplorationActions?.();
+      App.renderMobileExplorationControls?.();
+      return result;
+    });
+    assert.strictEqual(locationActionHinge.hasEnter, true, `${name}: fixture should expose Enter while checking mobile hinge stability`);
+    assertStableMobileMapHinge(locationActionHinge);
     const closedCreatureCue = await page.evaluate(() => {
       App.mobileCreatureRailOpen = false;
       App.mobileTargetPickerOpen = false;
@@ -1358,6 +1392,7 @@ async function checkViewport(browser, name, width, height) {
       const dockRect = dock.getBoundingClientRect();
       const beltRect = belt.getBoundingClientRect();
       const pickerRect = picker.getBoundingClientRect();
+      const mapRect = document.querySelector('.mobile-map-card').getBoundingClientRect();
       const detailButtons = Array.from(document.querySelectorAll('#mobile-target-picker-belt .mobile-strip-details-btn'));
       const detailRects = detailButtons.map(button => {
         const rect = button.getBoundingClientRect();
@@ -1392,8 +1427,11 @@ async function checkViewport(browser, name, width, height) {
         };
       }).filter(rect => rect.width > 0 && rect.height > 0);
       const result = {
+        label: 'target picker',
         pickerOpen: App.mobileTargetPickerOpen,
         pickerVisible: Boolean(picker && getComputedStyle(picker).display !== 'none' && picker.getBoundingClientRect().height > 0),
+        mapTop: mapRect.top,
+        mapBottom: mapRect.bottom,
         beltAboveDock: beltRect.bottom <= dockRect.top + 1,
         pickerAboveDock: pickerRect.bottom <= dockRect.top + 1,
         pickerInsideBelt: pickerRect.top >= beltRect.top - 1 && pickerRect.bottom <= beltRect.bottom + 1,
@@ -1437,6 +1475,7 @@ async function checkViewport(browser, name, width, height) {
     assert(openedTargetPicker.targetChipCount >= 2, `${name}: open target picker should expose target and utility chips`);
     assert.strictEqual(openedTargetPicker.targetChipsAboveDock, true, `${name}: open target picker chips should stay fully above the fixed dock`);
     assert.strictEqual(openedTargetPicker.targetChipsInsideBelt, true, `${name}: open target picker chips should fit inside the fixed command belt`);
+    assertStableMobileMapHinge(openedTargetPicker);
     assert(openedTargetPicker.beltScrollHeight <= openedTargetPicker.beltClientHeight + 1, `${name}: open target picker should not require internal belt scrolling`);
     assert(openedTargetPicker.maxTargetButtonWidth <= 44 && openedTargetPicker.maxTargetButtonHeight <= 44, `${name}: target picker toggles should stay compact and icon-sized while preserving touch area`);
     assert.strictEqual(openedTargetPicker.maxTargetButtonFontSize, 0, `${name}: target picker toggles should hide visible text labels`);
@@ -1469,6 +1508,7 @@ async function checkViewport(browser, name, width, height) {
         };
       }).filter(rect => rect.width > 0 && rect.height > 0);
       return {
+        label: 'actor picker',
         actorBeltOpen: Boolean(App.mobileActorBeltOpen),
         beltHasControls: belt.classList.contains('has-controls'),
         beltActorClass: belt.classList.contains('actor-controls-open'),
@@ -1482,7 +1522,8 @@ async function checkViewport(browser, name, width, height) {
         actorChipsInsideBelt: chips.every(rect => rect.top >= beltRect.top - 1 && rect.bottom <= beltRect.bottom + 1),
         beltScrollHeight: belt.scrollHeight,
         beltClientHeight: belt.clientHeight,
-        mapTop: mapRect.top
+        mapTop: mapRect.top,
+        mapBottom: mapRect.bottom
       };
     });
     assert.strictEqual(openedActorPicker.actorBeltOpen, true, `${name}: Actor slot should open the lightweight actor picker`);
@@ -1497,7 +1538,7 @@ async function checkViewport(browser, name, width, height) {
     assert.strictEqual(openedActorPicker.actorChipsAboveDock, true, `${name}: open actor picker chips should stay fully above the fixed dock`);
     assert.strictEqual(openedActorPicker.actorChipsInsideBelt, true, `${name}: open actor picker chips should fit inside the fixed command belt`);
     assert(openedActorPicker.beltScrollHeight <= openedActorPicker.beltClientHeight + 1, `${name}: open actor picker should not require internal belt scrolling`);
-    assert(openedActorPicker.mapTop < 140, `${name}: active actor controls should shrink the top presentation spacer`);
+    assertStableMobileMapHinge(openedActorPicker);
     await page.evaluate(() => {
       App.mobileActorBeltOpen = false;
       App.renderMobileExplorationControls?.();
